@@ -15,22 +15,45 @@
 package engine
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-func newDebuggingEventEmitter(events eventEmitter) plugin.DebugEventEmitter {
-	return &debuggingEventEmitter{
-		events: events,
+func newDebugContext(events eventEmitter, attachDebugger []string) plugin.DebugContext {
+	return &debugContext{
+		attachDebugger: attachDebugger,
+		events:         events,
 	}
 }
 
-type debuggingEventEmitter struct {
-	events eventEmitter // the channel to emit events into.
+type debugContext struct {
+	attachDebugger []string     // the debugger types to attach to.
+	events         eventEmitter // the channel to emit events into.
 }
 
-var _ plugin.DebugEventEmitter = (*debuggingEventEmitter)(nil)
+var _ plugin.DebugContext = (*debugContext)(nil)
 
-func (s *debuggingEventEmitter) StartDebugging(info plugin.DebuggingInfo) error {
+func (s *debugContext) StartDebugging(info plugin.DebuggingInfo) error {
 	s.events.startDebugging(info)
 	return nil
+}
+
+func (s *debugContext) AttachDebugger(spec plugin.DebugSpec) bool {
+	if slices.Contains(s.attachDebugger, "all") {
+		return true
+	}
+	if spec.Type == plugin.DebugTypeProgram && slices.Contains(s.attachDebugger, "program") {
+		return true
+	}
+	if slices.Contains(s.attachDebugger, "plugins") {
+		return true
+	}
+	for _, requested := range s.attachDebugger {
+		if name := strings.TrimPrefix(requested, "plugin:"); name == spec.Name {
+			return true
+		}
+	}
+	return false
 }

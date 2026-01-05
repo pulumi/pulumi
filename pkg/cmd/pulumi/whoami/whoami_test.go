@@ -40,7 +40,7 @@ func TestWhoAmICmd_default(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -69,7 +69,7 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -103,7 +103,7 @@ func TestWhoAmICmd_json(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -140,7 +140,7 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -178,7 +178,7 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -215,7 +215,7 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -130,10 +130,6 @@ service ResourceProvider {
     // Invoke dynamically executes a built-in function in the provider.
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
 
-    // StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-    // of responses.
-    rpc StreamInvoke(InvokeRequest) returns (stream InvokeResponse) {}
-
     // Call dynamically executes a method in the provider associated with a component resource.
     rpc Call(CallRequest) returns (CallResponse) {}
 
@@ -203,6 +199,7 @@ service ResourceProvider {
     // to the host to decide how long to wait after Cancel is called before (e.g.)
     // hard-closing any gRPC connection.
     rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 
@@ -262,6 +259,16 @@ message ProviderHandshakeRequest {
 
     // If true the engine will send URN, Name, Type, and ID to the provider as part of the configuration.
     bool configure_with_urn = 4;
+
+    // If true the engine supports views and can send the address of a [](pulumirpc.ResourceStatus) service which can be
+    // used to e.g. create or update view resources.
+    bool supports_views = 5;
+
+    // If true the engine supports letting the provider mark resource states as requiring refresh before update.
+    bool supports_refresh_before_update = 6;
+
+    // If true the engine will send `preview` to `Invoke` methods to let them know if the current operation is a preview or up.
+    bool invoke_with_preview = 7;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -484,6 +491,10 @@ message InvokeRequest {
     // sure those fields don't get reused.
     reserved 3 to 6;
     reserved "provider", "version", "acceptResources", "pluginDownloadURL";
+
+    // This is only set if `HandshakeRequest.invoke_with_preview` was true. If this is true then the engine is currently
+    // running a preview deployment.
+    bool preview = 7;
 }
 
 message InvokeResponse {
@@ -517,6 +528,9 @@ message CallRequest {
     string organization = 14;       // the organization of the stack being deployed into.
 
     bool accepts_output_values = 17; // the engine can be passed output values back, returnDependencies can be left blank if returning output values.
+
+    // The stack trace handle for the call. Supports stitching stack traces together across plugins.
+    string stack_trace_handle = 18;
 }
 
 message CallResponse {
@@ -789,6 +803,12 @@ message CreateRequest {
     // The type of the resource being created. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 6;
+
+    // The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
+    string resource_status_address = 7;
+
+    // The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
+    string resource_status_token = 8;
 }
 
 // `CreateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Create) call. A `CreateResponse`
@@ -800,6 +820,9 @@ message CreateResponse {
     // The resource's output properties. Typically this will be a union of the resource's input properties and any
     // additional values that were computed or made available during creation.
     google.protobuf.Struct properties = 2;
+
+    // Indicates that this resource should always be refreshed prior to updates.
+    bool refresh_before_update = 3;
 }
 
 // `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
@@ -824,6 +847,16 @@ message ReadRequest {
     // The type of the resource being read. This must match the type specified by the `urn` field, and is passed so that
     // providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 6;
+
+    // The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
+    string resource_status_address = 7;
+
+    // The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
+    string resource_status_token = 8;
+
+    // The old views for the resource being read. These will only be populated when the
+    // [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
+    repeated View old_views = 9;
 }
 
 // `ReadResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Read) call. A `ReadResponse` contains
@@ -838,6 +871,9 @@ message ReadResponse {
     // Output-derived input properties for the resource. These are returned as they would be returned from a
     // [](pulumirpc.ResourceProvider.Check) call with the same values.
     google.protobuf.Struct inputs = 3;
+
+    // Indicates that this resource should always be refreshed prior to updates.
+    bool refresh_before_update = 4;
 }
 
 // `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
@@ -875,6 +911,15 @@ message UpdateRequest {
     // The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 10;
+
+    // The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
+    string resource_status_address = 11;
+
+    // The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
+    string resource_status_token = 12;
+
+    // The old views for the resource being updated.
+    repeated View old_views = 13;
 }
 
 // `UpdateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Update) call.
@@ -882,6 +927,9 @@ message UpdateResponse {
     // An updated set of resource output properties. Typically this will be a union of the resource's inputs and any
     // additional values that were computed or made available during the update.
     google.protobuf.Struct properties = 1;
+
+    // Indicates that this resource should always be refreshed prior to updates.
+    bool refresh_before_update = 2;
 }
 
 // `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.
@@ -908,6 +956,15 @@ message DeleteRequest {
     // The type of the resource being deleted. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 7;
+
+    // The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
+    string resource_status_address = 8;
+
+    // The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
+    string resource_status_token = 9;
+
+    // The old views for the resource being read.
+    repeated View old_views = 10;
 }
 
 // `ConstructRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Construct) call. A
@@ -1044,6 +1101,22 @@ message ConstructRequest {
     // may be used to communicate dependency information and so there is no need to populate
     // [](pulumirpc.ConstructResponse)'s `stateDependencies` field.
     bool accepts_output_values = 25;
+
+    message ResourceHooksBinding {
+        repeated string before_create = 1;
+        repeated string after_create = 2;
+        repeated string before_update = 3;
+        repeated string after_update = 4;
+        repeated string before_delete = 5;
+        repeated string after_delete = 6;
+    }
+    optional ResourceHooksBinding resource_hooks = 26;
+
+    // The stack trace handle for the construct call. Supports stitching stack traces together across plugins.
+    string stack_trace_handle = 27;
+
+    // The URNs of resources whose replaces will trigger a replace on this resource.
+    repeated string replace_with = 28;
 }
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.
@@ -1073,6 +1146,9 @@ message ErrorResourceInitFailed {
     google.protobuf.Struct properties = 2; // any properties that were computed during updating.
     repeated string reasons = 3;           // error messages associated with initialization failure.
     google.protobuf.Struct inputs = 4;     // the current inputs to this resource (only applicable for Read)
+
+    // Indicates that this resource should always be refreshed prior to updates.
+    bool refresh_before_update = 5;
 }
 
 
@@ -1113,4 +1189,25 @@ message GetMappingsResponse {
     // The set of *source provider keys* this provider can supply mappings for. For example the Pulumi provider
     // `terraform-template` would return `["template"]` for this.
     repeated string providers = 1;
+}
+
+// `View` represents the state of a view resource.
+message View {
+    // The type of the view resource.
+    string type = 1;
+
+    // The name of the view resource.
+    string name = 2;
+
+    // An optional type of the parent view resource.
+    string parent_type = 3;
+
+    // An optional name of the parent view resource.
+    string parent_name = 4;
+
+    // The view resource's inputs.
+    google.protobuf.Struct inputs = 5;
+
+    // The view resource's outputs.
+    google.protobuf.Struct outputs = 6;
 }

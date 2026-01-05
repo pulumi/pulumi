@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import {
     getResource,
     readResource,
     registerResource,
+    registerResourceHook,
     registerResourceOutputs,
     SourcePosition,
 } from "./runtime/resource";
@@ -147,6 +148,15 @@ export function allAliases(
 }
 
 /**
+ * {@link CallSite} describes a single stack frame, including optional position information.
+ */
+interface CallSite {
+    file?: string;
+    line?: number;
+    column?: number;
+}
+
+/**
  * {@link Resource} represents a class whose CRUD operations are implemented by
  * a provider plugin.
  */
@@ -154,8 +164,7 @@ export abstract class Resource {
     /**
      * A regexp for use with {@link sourcePosition}.
      */
-    private static sourcePositionRegExp =
-        /Error:\s*\n\s*at new Resource \(.*\)\n\s*at new \S*Resource \(.*\)\n(\s*at new \S* \(.*\)\n)?[^(]*\((?<file>.*):(?<line>[0-9]+):(?<col>[0-9]+)\)\n/;
+    private static framePositionRegExp = /^\s*at .* \((?<file>.*):(?<line>[0-9]+):(?<column>[0-9]+)\)$/;
 
     /**
      * A private field to help with RTTI that works in SxS scenarios.
@@ -325,56 +334,69 @@ export abstract class Resource {
     }
 
     /**
-     * Returns the source position of the user code that instantiated this
-     * resource.
+     * Returns the list of callsites for the current stack. The top of the stack is at index 0.
      *
-     * This is somewhat brittle in that it expects a call stack of the form:
-     *
-     * - {@link Resource} class constructor
-     * - abstract {@link Resource} subclass constructor
-     * - concrete {@link Resource} subclass constructor
-     * - user code
-     *
-     * This stack reflects the expected class hierarchy of:
-     *
-     * Resource > Custom/Component resource > Cloud/Component resource
-     *
-     * For example, consider the AWS S3 Bucket resource. When user code
-     * instantiates a Bucket, the stack will look like this:
-     *
-     *     new Resource (/path/to/resource.ts:123:45)
-     *     new CustomResource (/path/to/resource.ts:678:90)
-     *     new Bucket (/path/to/bucket.ts:987:65)
-     *     <user code> (/path/to/index.ts:4:3)
-     *
-     * Because Node can only give us the stack trace as text, we parse out the
-     * source position using a regex that matches traces of this form (see
-     * the {@link sourcePositionRegExp} above).
+     * Some callsites may not contain position information. It is up to the caller to detect this situation.
      */
-    private static sourcePosition(): SourcePosition | undefined {
-        const stackObj: any = {};
-        Error.captureStackTrace(stackObj, Resource.sourcePosition);
-
-        // Parse out the source position of the user code. If any part of the match is missing, return undefined.
-        const { file, line, col } = Resource.sourcePositionRegExp.exec(stackObj.stack)?.groups || {};
-        if (!file || !line || !col) {
-            return undefined;
-        }
-
-        // Parse the line and column numbers. If either fails to parse, return undefined.
+    private static callsites(): CallSite[] {
+        // NOTE: it would be lovely to implement this using prepareStackTrace and actual V8 callsite information.
+        // Unfortunately, the V8 source locations are not mapped from transpiled locations to user locations, and
+        // Node 20.x does not expose an easy way to access source map information. Furthermore, ts-node may inject
+        // hooks that perform this mapping as part of prepareStackTrace. Instead of using prepareStackTrace, then,
+        // we parse its output as returned via `new Error().stack`. The stack trace will look like:
         //
-        // Note: this really shouldn't happen given the regex; this is just a bit of defensive coding.
-        const lineNum = parseInt(line, 10);
-        const colNum = parseInt(col, 10);
-        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
-            return undefined;
-        }
+        //     Error
+        //         at foo (file:line:column)
+        //         at bar (file:line:column)
+        //         at baz (file:line:column)
+        //
+        // We process this by splitting it into lines and parsing the position information out of each line.
+        const stackTraceLimit = Error.stackTraceLimit;
+        try {
+            Error.stackTraceLimit = Number.POSITIVE_INFINITY;
 
-        return {
-            uri: url.pathToFileURL(file).toString(),
-            line: lineNum,
-            column: colNum,
-        };
+            const stackTrace = new Error().stack;
+            return (
+                stackTrace
+                    ?.split("\n")
+                    ?.slice(1)
+                    ?.map((frame) => {
+                        const { file, line, column } = Resource.framePositionRegExp.exec(frame)?.groups || {};
+                        if (!file || !line || !column || file.startsWith("node:")) {
+                            return {};
+                        }
+                        const lineNum = parseInt(line, 10);
+                        const colNum = parseInt(column, 10);
+                        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
+                            return {};
+                        }
+                        return { file, line: lineNum, column: colNum };
+                    }) || []
+            );
+        } finally {
+            Error.stackTraceLimit = stackTraceLimit;
+        }
+    }
+
+    private static stackTrace(skip: number): (SourcePosition | undefined)[] {
+        let stack = Resource.callsites();
+        if (stack.length < skip + 1) {
+            return [];
+        }
+        stack = stack.slice(skip + 1);
+
+        return stack.map((frame) => {
+            const { file, line, column } = frame;
+            if (!file || !line || !column) {
+                return undefined;
+            }
+
+            return {
+                uri: url.pathToFileURL(file).toString(),
+                line,
+                column,
+            };
+        });
     }
 
     /**
@@ -533,7 +555,26 @@ export abstract class Resource {
             }
         }
 
-        const sourcePosition = Resource.sourcePosition();
+        // This is somewhat brittle in that it expects a call stack of the form:
+        //
+        // - {@link Resource} class constructor
+        // - abstract {@link Resource} subclass constructor
+        // - concrete {@link Resource} subclass constructor
+        // - user code
+        //
+        // This stack reflects the expected class hierarchy of:
+        //
+        // Resource > Custom/Component resource > Cloud/Component resource
+        //
+        // For example, consider the AWS S3 Bucket resource. When user code
+        // instantiates a Bucket, the stack will look like this:
+        //
+        //     new Resource (/path/to/resource.ts:123:45)
+        //     new CustomResource (/path/to/resource.ts:678:90)
+        //     new Bucket (/path/to/bucket.ts:987:65)
+        //     <user code> (/path/to/index.ts:4:3)
+        const stackTrace = Resource.stackTrace(4);
+        const sourcePosition = stackTrace.length < 1 ? undefined : stackTrace[0];
 
         if (opts.urn) {
             // This is a resource that already exists. Read its state from the engine.
@@ -546,7 +587,7 @@ export abstract class Resource {
                     opts.parent,
                 );
             }
-            readResource(this, parent, t, name, props, opts, sourcePosition, packageRef);
+            readResource(this, parent, t, name, props, opts, sourcePosition, stackTrace, packageRef);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
@@ -563,6 +604,7 @@ export abstract class Resource {
                 props,
                 opts,
                 sourcePosition,
+                stackTrace,
                 packageRef,
             );
         }
@@ -745,6 +787,11 @@ export interface ResourceOptions {
     replaceOnChanges?: string[];
 
     /**
+     * If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+     */
+    replacementTrigger?: Input<any>;
+
+    /**
      * An optional version, corresponding to the version of the provider plugin that should be used when operating on
      * this resource. This version overrides the version information inferred from the current package and should
      * rarely be used.
@@ -808,6 +855,22 @@ export interface ResourceOptions {
      * if specified is being deleted as well.
      */
     deletedWith?: Resource;
+
+    /**
+     * If set, the URNs of the resources whose replaces will also replace this resource.
+     */
+    replaceWith?: Resource[];
+
+    /**
+     * Optional resource hooks to bind to this resource. The hooks will be
+     * invoked during certain step of the lifecycle of the resource.
+     */
+    hooks?: ResourceHookBinding;
+
+    /**
+     * A list of property paths where the diffs will be hidden. This only changes display logic.
+     */
+    hideDiffs?: string[];
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
@@ -985,6 +1048,162 @@ export interface CustomResourceOptions extends ResourceOptions {
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
+}
+
+/**
+ * ResourceHook is a named hook that can be registered as a resource hook.
+ */
+export class ResourceHook {
+    /**
+     * The unqiue name of the resource hook.
+     */
+    public name: string;
+    /**
+     * The function that will be called when the resource hook is triggered.
+     */
+    public callback: ResourceHookFunction;
+    /**
+     * Run the hook during dry run (preview) operations. Defaults to false.
+     */
+    public opts?: ResourceHookOptions;
+
+    /**
+     * Tracks the registration of the resource hook. The promise will resolve
+     * once the hook has been registered, or reject if any error occurs.
+     *
+     * @internal
+     */
+    public __registered: Promise<void>;
+
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     *
+     * @internal
+     */
+    public readonly __pulumiResourceHook: boolean = true;
+
+    constructor(name: string, callback: ResourceHookFunction, opts?: ResourceHookOptions) {
+        this.name = name;
+        this.callback = callback;
+        this.opts = opts;
+        this.__registered = registerResourceHook(this);
+    }
+
+    public static isInstance(obj: any): obj is ResourceHook {
+        return utils.isInstance<ResourceHook>(obj, "__pulumiResourceHook");
+    }
+}
+
+/**
+ * Options for registering a resource hook.
+ */
+export interface ResourceHookOptions {
+    /**
+     * Run the hook during dry run (preview) operations. Defaults to false.
+     */
+    onDryRun?: boolean;
+}
+
+/**
+ * ResourceHookArgs represents the arguments passed to a resource hook
+ * Depending on the hook type, only some of the new/old inputs/outputs are set.
+ *
+ * | Hook Type     | old_inputs | new_inputs | old_outputs | new_outputs |
+ * | ------------- | ---------- | ---------- | ----------- | ----------- |
+ * | before_create |            | ✓          |             |             |
+ * | after_create  |            | ✓          |             | ✓           |
+ * | before_update | ✓          | ✓          | ✓           |             |
+ * | after_update  | ✓          | ✓          | ✓           | ✓           |
+ * | before_delete | ✓          |            | ✓           |             |
+ * | after_delete  | ✓          |            | ✓           |             |
+ */
+export interface ResourceHookArgs {
+    /**
+     * The URN of the resource that triggered the hook.
+     */
+    urn: URN;
+    /**
+     * The ID of the resource that triggered the hook.
+     */
+    id: ID;
+    /**
+     * The name of the resource that triggered the hook.
+     */
+    name: string;
+    /**
+     * The type of the resource that triggered the hook.
+     */
+    type: string;
+    /**
+     * The new inputs of the resource that triggered the hook.
+     */
+    newInputs?: Record<string, any>;
+    /**
+     * The old inputs of the resource that triggered the hook.
+     */
+    oldInputs?: Record<string, any>;
+    /**
+     * The new outputs of the resource that triggered the hook.
+     */
+    newOutputs?: Record<string, any>;
+    /**
+     * The old outputs of the resource that triggered the hook.
+     */
+    oldOutputs?: Record<string, any>;
+}
+
+/**
+ * ResourceHookFunction is a function that can be registered as a resource hook.
+ */
+export type ResourceHookFunction = (args: ResourceHookArgs) => void | Promise<void>;
+
+/**
+ * Binds {@link ResourceHook} instances to a resource. The resource hooks will
+ * be invoked during certain step of the lifecycle of the resource.
+ *
+ * `before_${action}` hooks that raise an exception cause the action to fail.
+ * `after_${action}` hooks that raise an exception will log a warning, but do
+ * not cause the action or the deployment to fail.
+ *
+ * When running `pulumi destroy`, `before_delete` and `after_delete` resource
+ * hooks require the operation to run with `--run-program`, to ensure that the
+ * program which defines the hooks is available.
+ */
+export interface ResourceHookBinding {
+    /**
+     * Hooks to be invoked before the resource is created.
+     */
+    beforeCreate?: Array<ResourceHookFunction | ResourceHook>;
+    /**
+     * Hooks to be invoked after the resource is created.
+     */
+    afterCreate?: Array<ResourceHookFunction | ResourceHook>;
+    /**
+     * Hooks to be invoked before the resource is updated.
+     */
+    beforeUpdate?: Array<ResourceHookFunction | ResourceHook>;
+    /**
+     * Hooks to be invoked after the resource is updated.
+     */
+    afterUpdate?: Array<ResourceHookFunction | ResourceHook>;
+    /**
+     * Hooks to be invoked before the resource is deleted.
+     *
+     * Note that delete hooks require that destroy operations are run with `--run-program`. Unlike other hook types,
+     * this argument requires named {@link ResourceHook} instances, and does not accept anonymous
+     * {@link ResourceHookFunction}. This is because the engine needs to be able to identify a hook when a resource is
+     * deleted.
+     */
+    beforeDelete?: Array<ResourceHook>;
+    /**
+     * Hooks to be invoked after the resource is deleted.
+     *
+     * Note that delete hooks require that destroy operations are run with `--run-program`. Unlike other hook types,
+     * this argument requires named {@link ResourceHook} instances, and does not accept anonymous
+     * {@link ResourceHookFunction}. This is because the engine needs to be able to identify a hook when a resource is
+     * deleted.
+     */
+    afterDelete?: Array<ResourceHook>;
 }
 
 /**
@@ -1216,19 +1435,13 @@ export class ComponentResource<TData = any> extends Resource {
         remote: boolean = false,
         packageRef?: Promise<string | undefined>,
     ) {
-        // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
-        // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
-        // only as a container for other resources.  Another way to think about this is that a normal
-        // 'custom resource' corresponds to real piece of cloud infrastructure.  So, when it changes
-        // in some way, the cloud resource needs to be updated (and vice versa).  That is not true
-        // for a component resource.  The component is just used for organizational purposes and does
-        // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
-        // do not have any effect on the cloud side of things at all.
+        // If the PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable is set,
+        // we skip sending the inputs to the engine.
         super(
             type,
             name,
             /*custom:*/ false,
-            /*props:*/ remote || opts?.urn ? args : {},
+            process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS ? {} : args,
             opts,
             remote,
             false,
@@ -1236,14 +1449,22 @@ export class ComponentResource<TData = any> extends Resource {
         );
         this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
-        this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
+        this.__data =
+            remote || opts?.urn
+                ? Promise.resolve(<TData>{})
+                : this.initializeAndRegisterOutputs(args, opts, name, type);
     }
 
     /**
      * @internal
      */
-    private async initializeAndRegisterOutputs(args: Inputs) {
-        const data = await this.initialize(args);
+    private async initializeAndRegisterOutputs(
+        args: Inputs,
+        opts: ComponentResourceOptions,
+        name: string,
+        type: string,
+    ) {
+        const data = await this.initialize(args, opts, name, type);
         this.registerOutputs();
         return data;
     }
@@ -1253,7 +1474,12 @@ export class ComponentResource<TData = any> extends Resource {
      * automatically when constructed. The data will be available immediately for subclass
      * constructors to use. To access the data use {@link getData}.
      */
-    protected async initialize(args: Inputs): Promise<TData> {
+    protected async initialize(
+        args: Inputs,
+        opts?: ComponentResourceOptions,
+        name?: string,
+        type?: string,
+    ): Promise<TData> {
         return <TData>undefined!;
     }
 
@@ -1349,7 +1575,32 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
             continue;
         }
 
+        if (key === "hooks") {
+            continue;
+        }
+
         dest[key] = merge(destVal, sourceVal, /*alwaysCreateArray:*/ false);
+    }
+
+    if (dest.hooks || source.hooks) {
+        const hookTypes = [
+            "beforeCreate",
+            "afterCreate",
+            "beforeUpdate",
+            "afterUpdate",
+            "beforeDelete",
+            "afterDelete",
+        ] as const;
+        for (const hookType of hookTypes) {
+            const destHooks = dest?.hooks?.[hookType];
+            const sourceHooks = source?.hooks?.[hookType];
+            if (destHooks || sourceHooks) {
+                if (!dest.hooks) {
+                    dest.hooks = {};
+                }
+                dest.hooks[hookType] = merge(destHooks, sourceHooks, /*alwaysCreateArray:*/ false);
+            }
+        }
     }
 
     // Now, if we are left with a .providers that is just a single key/value pair, then
@@ -1510,4 +1761,24 @@ export function pkgFromType(type: string): string | undefined {
         return parts[0];
     }
     return undefined;
+}
+
+/**
+ * The Pulumi type assigned to the resource at construction, of the form `package:module:name`.
+ */
+export function resourceType(res: Resource): string {
+    return res.__pulumiType;
+}
+
+/**
+ * The Pulumi name assigned to the resource at construction, i.e. the "name" in its constructor call.
+ */
+export function resourceName(res: Resource): string {
+    if (res.__name === undefined) {
+        throw new ResourceError(
+            "Resource name is not available, this resource instance must have been constructed by an old SDK",
+            res,
+        );
+    }
+    return res.__name;
 }

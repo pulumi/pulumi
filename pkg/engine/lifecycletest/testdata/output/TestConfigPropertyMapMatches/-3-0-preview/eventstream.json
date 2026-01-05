@@ -1,0 +1,3 @@
+{"sequence":0,"timestamp":0,"preludeEvent":{"config":{"pkgA:array":"[1,2,3]","pkgA:bool":"true","pkgA:float":"12.34","pkgA:int":"1234","pkgA:map":"{\"bar\":\"02\",\"foo\":1}","pkgA:plain":"all I see is ******","pkgA:secret":"[secret]","pkgA:string":"012345"}}}
+{"sequence":0,"timestamp":0,"summaryEvent":{"maybeCorrupt":false,"durationSeconds":1,"resourceChanges":{},"PolicyPacks":{},"isPreview":true}}
+{"sequence":0,"timestamp":0,"cancelEvent":{}}

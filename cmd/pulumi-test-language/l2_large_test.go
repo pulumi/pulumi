@@ -241,7 +241,7 @@ func (h *L2LargeLanguageHost) Run(
 func TestL2LargeString(t *testing.T) {
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L2LargeLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

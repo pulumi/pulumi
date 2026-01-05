@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -26,12 +27,15 @@ import (
 
 func init() {
 	LanguageTests["l2-primitive-ref"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.PrimitiveRefProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.PrimitiveRefProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 
@@ -47,8 +51,8 @@ func init() {
 							"float":     2.17,
 							"integer":   -12,
 							"string":    "Goodbye",
-							"boolArray": []interface{}{false, true},
-							"stringMap": map[string]interface{}{
+							"boolArray": []any{false, true},
+							"stringMap": map[string]any{
 								"two":   "turtle doves",
 								"three": "french hens",
 							},

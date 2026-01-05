@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build go || all
-
 package ints
 
 import (
@@ -80,7 +78,6 @@ func TestConstructGo(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -119,10 +116,10 @@ func optsForConstructGo(
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
+				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
 
@@ -130,7 +127,7 @@ func optsForConstructGo(
 				// plugin.
 				urns := make(map[string]resource.URN)
 				for _, res := range stackInfo.Deployment.Resources[1:] {
-					assert.NotNil(t, res)
+					require.NotNil(t, res)
 
 					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
@@ -147,7 +144,7 @@ func optsForConstructGo(
 						assert.ElementsMatch(t, expected, res.Dependencies)
 						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "a", "b", "c":
-						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						secretPropValue, ok := res.Outputs["secret"].(map[string]any)
 						assert.Truef(t, ok, "secret output was not serialized as a secret")
 						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}

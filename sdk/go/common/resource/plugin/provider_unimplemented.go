@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -106,16 +105,12 @@ func (p *UnimplementedProvider) Invoke(context.Context, InvokeRequest) (InvokeRe
 	return InvokeResponse{}, status.Error(codes.Unimplemented, "Invoke is not yet implemented")
 }
 
-func (p *UnimplementedProvider) StreamInvoke(context.Context, StreamInvokeRequest) (StreamInvokeResponse, error) {
-	return StreamInvokeResponse{}, status.Error(codes.Unimplemented, "StreamInvoke is not yet implemented")
-}
-
 func (p *UnimplementedProvider) Call(context.Context, CallRequest) (CallResponse, error) {
 	return CallResponse{}, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 
-func (p *UnimplementedProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{}, status.Error(codes.Unimplemented, "GetPluginInfo is not yet implemented")
+func (p *UnimplementedProvider) GetPluginInfo(context.Context) (PluginInfo, error) {
+	return PluginInfo{}, status.Error(codes.Unimplemented, "GetPluginInfo is not yet implemented")
 }
 
 func (p *UnimplementedProvider) GetMapping(context.Context, GetMappingRequest) (GetMappingResponse, error) {

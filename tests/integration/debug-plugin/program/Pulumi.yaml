@@ -1,0 +1,6 @@
+name: yaml-program-uses-debug-plugin
+runtime: yaml
+description: A minimal YAML Pulumi program to test plugin debugging.
+resources:
+  debugResource:
+    type: debugplugin:index:MyDebugResource

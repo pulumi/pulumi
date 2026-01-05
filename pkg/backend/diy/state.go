@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,12 +25,16 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -39,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
@@ -47,47 +50,26 @@ import (
 // be used as a last resort when a command absolutely must be run.
 var DisableIntegrityChecking bool
 
-// update is an implementation of engine.Update backed by diy state.
-type update struct {
-	root    string
-	proj    *workspace.Project
-	target  *deploy.Target
-	backend *diyBackend
-}
-
-func (u *update) GetRoot() string {
-	return u.root
-}
-
-func (u *update) GetProject() *workspace.Project {
-	return u.proj
-}
-
-func (u *update) GetTarget() *deploy.Target {
-	return u.target
-}
-
 func (b *diyBackend) newUpdate(
 	ctx context.Context,
 	secretsProvider secrets.Provider,
 	ref *diyBackendReference,
 	op backend.UpdateOperation,
-) (*update, error) {
+) (engine.UpdateInfo, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	// Construct the deployment target.
 	target, err := b.getTarget(ctx, secretsProvider, ref,
 		op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
-		return nil, err
+		return engine.UpdateInfo{}, err
 	}
 
 	// Construct and return a new update.
-	return &update{
-		root:    op.Root,
-		proj:    op.Proj,
-		target:  target,
-		backend: b,
+	return engine.UpdateInfo{
+		Root:    op.Root,
+		Project: op.Proj,
+		Target:  target,
 	}, nil
 }
 
@@ -107,12 +89,19 @@ func (b *diyBackend) getTarget(
 	if err != nil {
 		return nil, err
 	}
+	// Load stack tags
+	tags, err := b.loadStackTags(ctx, ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load stack tags: %w", err)
+	}
+
 	return &deploy.Target{
 		Name:         ref.Name(),
 		Organization: "organization", // diy has no organizations really, but we just always say it's "organization"
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
+		Tags:         tags,
 	}, nil
 }
 
@@ -142,37 +131,68 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 ) (*deploy.Snapshot, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
-	checkpoint, err := b.getCheckpoint(ctx, ref)
+	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
 
 	// Materialize an actual snapshot object.
-	snapshot, err := stack.DeserializeCheckpoint(ctx, secretsProvider, checkpoint)
+	snap, err := stack.DeserializeCheckpoint(ctx, secretsProvider, checkpoint)
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
 	if !backend.DisableIntegrityChecking {
-		if err := snapshot.VerifyIntegrity(); err != nil {
-			if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
-				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForRead(snapshot))
+		if err := snap.VerifyIntegrity(); err != nil {
+			if sie, ok := snapshot.AsSnapshotIntegrityError(err); ok {
+				var metadata *apitype.SnapshotIntegrityErrorMetadataV1
+				if snap.Metadata.IntegrityErrorMetadata != nil {
+					metadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+						Version: snap.Metadata.IntegrityErrorMetadata.Version,
+						Command: snap.Metadata.IntegrityErrorMetadata.Command,
+						Error:   snap.Metadata.IntegrityErrorMetadata.Error,
+					}
+				}
+				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForReadWithMetadata(metadata))
 			}
 
 			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
 		}
 	}
 
-	return snapshot, nil
+	return snap, nil
 }
 
-// GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
-func (b *diyBackend) getCheckpoint(ctx context.Context, ref *diyBackendReference) (*apitype.CheckpointV3, error) {
+func (b *diyBackend) getSnapshotStackOutputs(ctx context.Context,
+	secretsProvider secrets.Provider, ref *diyBackendReference,
+) (property.Map, error) {
+	contract.Requiref(ref != nil, "ref", "must not be nil")
+
+	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
+	if err != nil {
+		return property.Map{}, fmt.Errorf("failed to load checkpoint: %w", err)
+	}
+	if checkpoint == nil || checkpoint.Latest == nil {
+		return property.Map{}, nil
+	}
+	outputs, err := stack.DeserializeStackOutputs(ctx, *checkpoint.Latest, secretsProvider)
+	if err != nil {
+		return property.Map{}, err
+	}
+	return resource.FromResourcePropertyMap(outputs), nil
+}
+
+// getCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace,
+// returning the checkpoint, version, and features.
+func (b *diyBackend) getCheckpoint(
+	ctx context.Context,
+	ref *diyBackendReference,
+) (*apitype.CheckpointV3, int, []string, error) {
 	chkpath := b.stackPath(ctx, ref)
 	bytes, err := b.bucket.ReadAll(ctx, chkpath)
 	if err != nil {
-		return nil, err
+		return nil, 0, nil, err
 	}
 	m := encoding.JSON
 	if encoding.IsCompressed(bytes) {
@@ -241,7 +261,7 @@ func (b *diyBackend) saveCheckpoint(
 			Delay:    &delay,
 			MaxDelay: &maxDelay,
 			Backoff:  &backoff,
-			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
 				// And now write out the new snapshot file, overwriting that location.
 				err := b.bucket.WriteAll(ctx, file, byts, nil)
 				if err != nil {
@@ -273,12 +293,14 @@ func (b *diyBackend) saveCheckpoint(
 
 func (b *diyBackend) saveStack(
 	ctx context.Context,
-	ref *diyBackendReference, snap *deploy.Snapshot,
+	ref *diyBackendReference,
+	deployment apitype.TypedDeployment,
 ) (string, error) {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
-	chk, err := stack.SerializeCheckpoint(ref.FullyQualifiedName(), snap, false /* showSecrets */)
+	chk, err := stack.DeploymentV3ToCheckpoint(
+		ref.FullyQualifiedName(), deployment.Deployment, deployment.Version, deployment.Features)
 	if err != nil {
-		return "", fmt.Errorf("serializaing checkpoint: %w", err)
+		return "", fmt.Errorf("serializing checkpoint: %w", err)
 	}
 
 	backup, file, err := b.saveCheckpoint(ctx, ref, chk)
@@ -290,7 +312,7 @@ func (b *diyBackend) saveStack(
 		// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
 		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
 		// file is already written and might be bad.
-		if verifyerr := snap.VerifyIntegrity(); verifyerr != nil {
+		if verifyerr := snapshot.VerifyIntegrity(deployment.Deployment); verifyerr != nil {
 			return "", fmt.Errorf(
 				"%s: snapshot integrity failure; it was already written, but is invalid (backup available at %s): %w",
 				file, backup, verifyerr)
@@ -301,15 +323,59 @@ func (b *diyBackend) saveStack(
 }
 
 // removeStack removes information about a stack from the current workspace.
-func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference) error {
+func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference, removeBackups bool) error {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
-	// Just make a backup of the file and don't write out anything new.
+	var resultErr error
+
 	file := b.stackPath(ctx, ref)
-	backupTarget(ctx, b.bucket, file, false)
+	if removeBackups {
+		// Remove the stack file and its backup file.
+		if err := removeTargetAndBackup(ctx, b.bucket, file); err != nil {
+			resultErr = errors.Join(resultErr,
+				fmt.Errorf("removing file for stack %s: %w", ref.FullyQualifiedName(), err))
+		}
+
+		// Remove the backups.
+		backupDir := ref.BackupDir()
+		if err := removeAllByPrefix(ctx, b.bucket, backupDir); err != nil {
+			resultErr = errors.Join(resultErr,
+				fmt.Errorf("removing backups for stack %s: %w", ref.FullyQualifiedName(), err))
+		}
+	} else {
+		// Just make a backup of the file and don't write out anything new.
+		backupTarget(ctx, b.bucket, file, false)
+	}
+
+	// Also remove the tags file if it exists
+	if err := b.deleteStackTags(ctx, ref); err != nil {
+		// Log the error but don't fail the removal for this
+		logging.V(5).Infof("error deleting stack tags: %v", err)
+	}
 
 	historyDir := ref.HistoryDir()
-	return removeAllByPrefix(ctx, b.bucket, historyDir)
+	if err := removeAllByPrefix(ctx, b.bucket, historyDir); err != nil {
+		resultErr = errors.Join(resultErr,
+			fmt.Errorf("removing history for stack %s: %w", ref.FullyQualifiedName(), err))
+	}
+
+	return resultErr
+}
+
+// removeTargetAndBackup deletes the target file and its backup, if they exist.
+func removeTargetAndBackup(ctx context.Context, bucket Bucket, file string) error {
+	contract.Requiref(file != "", "file", "must not be empty")
+	var resultErr error
+	files := []string{file, file + ".bak"}
+	for _, f := range files {
+		if err := bucket.Delete(ctx, f); err != nil {
+			// Ignore NotFound errors, as the file may not exist.
+			if gcerrors.Code(err) != gcerrors.NotFound {
+				resultErr = errors.Join(resultErr, fmt.Errorf("removing file %s: %w", f, err))
+			}
+		}
+	}
+	return resultErr
 }
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.
@@ -399,9 +465,10 @@ func (b *diyBackend) stackPath(ctx context.Context, ref *diyBackendReference) st
 		}
 
 		// plainObj will always come out first since allObjs is sorted by Key
-		if file.Key == plainPath {
+		switch file.Key {
+		case plainPath:
 			plainObj = file
-		} else if file.Key == gzipedPath {
+		case gzipedPath:
 			// We have a plain .json file and it was modified after this gzipped one so use it.
 			if plainObj != nil && plainObj.ModTime.After(file.ModTime) {
 				return plainPath

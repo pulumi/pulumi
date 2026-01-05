@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package state
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -29,9 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -45,18 +42,10 @@ func createStackWithResources(
 	sm := b64.NewBase64SecretsManager()
 
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
-	ctx := context.Background()
+	ctx := t.Context()
 
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
-	assert.NoError(t, err)
-
-	data, err := encoding.JSON.Marshal(sdep)
-	assert.NoError(t, err)
-
-	udep := &apitype.UntypedDeployment{
-		Version:    3,
-		Deployment: json.RawMessage(data),
-	}
+	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
+	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference(stackName)
 	require.NoError(t, err)
@@ -95,11 +84,11 @@ func runMoveWithDestResources(
 func runMoveWithOptionsAndDestResources(
 	t *testing.T, sourceResources, destResources []*resource.State, args []string, options *MoveOptions,
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
@@ -121,13 +110,13 @@ func runMoveWithOptionsAndDestResources(
 		IncludeParents: options.IncludeParents,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, args, mp, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return sourceSnapshot, destSnapshot, stdout
 }
@@ -161,9 +150,9 @@ Successfully moved resources from organization/test/sourceStack to organization/
 `
 	assert.Equal(t, expectedStdout, stdout.String())
 
-	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
 
-	assert.Equal(t, 3, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resource
+	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resource
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -207,9 +196,9 @@ func TestChildrenAreBeingMoved(t *testing.T) {
 			"  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name\n"+
 			"  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name2")
 
-	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
 
-	assert.Equal(t, 4, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resources
+	require.Len(t, destSnapshot.Resources, 4) // We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -316,14 +305,14 @@ Successfully moved resources from organization/test/sourceStack to organization/
 	assert.Equal(t, expectedStdout, stdout.String())
 
 	// Only the provider and the resources that are not moved should remain in the source stack
-	assert.Equal(t, 5, len(sourceSnapshot.Resources))
+	require.Len(t, sourceSnapshot.Resources, 5)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0"),
 		sourceSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::remainingDep"),
 		sourceSnapshot.Resources[1].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::deps"),
 		sourceSnapshot.Resources[2].URN)
-	assert.Equal(t, 1, len(sourceSnapshot.Resources[2].Dependencies))
+	require.Len(t, sourceSnapshot.Resources[2].Dependencies, 1)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::remainingDep"),
 		sourceSnapshot.Resources[2].Dependencies[0])
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::deletedWith"),
@@ -331,25 +320,25 @@ Successfully moved resources from organization/test/sourceStack to organization/
 	assert.Equal(t, urn.URN(""), sourceSnapshot.Resources[3].DeletedWith)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::propDeps"),
 		sourceSnapshot.Resources[4].URN)
-	assert.Equal(t, 1, len(sourceSnapshot.Resources[4].PropertyDependencies))
-	assert.Equal(t, 1, len(sourceSnapshot.Resources[4].PropertyDependencies["key"]))
+	require.Len(t, sourceSnapshot.Resources[4].PropertyDependencies, 1)
+	require.Len(t, sourceSnapshot.Resources[4].PropertyDependencies["key"], 1)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::d:e:f$a:b:c::remainingDep"),
 		sourceSnapshot.Resources[4].PropertyDependencies["key"][0])
 
-	assert.Equal(t, 5, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resources
+	require.Len(t, destSnapshot.Resources, 5) // We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
 		destSnapshot.Resources[1].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::resToMove"),
 		destSnapshot.Resources[2].URN)
-	assert.Equal(t, 0, len(destSnapshot.Resources[2].Dependencies))
+	assert.Empty(t, destSnapshot.Resources[2].Dependencies)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::movedChildURN"),
 		destSnapshot.Resources[3].URN)
-	assert.Equal(t, 0, len(destSnapshot.Resources[3].Dependencies))
+	assert.Empty(t, destSnapshot.Resources[3].Dependencies)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::dependsOnMovedChildURN"),
 		destSnapshot.Resources[4].URN)
-	assert.Equal(t, 1, len(destSnapshot.Resources[4].Dependencies))
+	require.Len(t, destSnapshot.Resources[4].Dependencies, 1)
 }
 
 func TestMoveWithExistingProvider(t *testing.T) {
@@ -363,7 +352,7 @@ func TestMoveWithExistingProvider(t *testing.T) {
 			ID:     "provider_id",
 			Custom: true,
 			Inputs: resource.PropertyMap{
-				"key": resource.NewStringProperty("value"),
+				"key": resource.NewProperty("value"),
 			},
 		},
 		{
@@ -380,15 +369,15 @@ func TestMoveWithExistingProvider(t *testing.T) {
 			ID:     "other_provider_id",
 			Custom: true,
 			Inputs: resource.PropertyMap{
-				"key": resource.NewStringProperty("different value"),
+				"key": resource.NewProperty("different value"),
 			},
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 
@@ -447,10 +436,10 @@ func TestMoveWithExistingResource(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 
@@ -503,9 +492,9 @@ func TestParentsAreBeingMoved(t *testing.T) {
 	sourceSnapshot, destSnapshot, _ := runMoveWithOptions(t, sourceResources, []string{string(sourceResources[2].URN)},
 		&MoveOptions{IncludeParents: true})
 
-	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
 
-	assert.Equal(t, 4, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resources
+	require.Len(t, destSnapshot.Resources, 4) // We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -525,10 +514,10 @@ func TestParentsAreBeingMoved(t *testing.T) {
 func TestEmptySourceStack(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceRef, err := b.ParseStackReference(sourceStackName)
@@ -559,10 +548,10 @@ func TestEmptySourceStack(t *testing.T) {
 
 //nolint:paralleltest // changest directory for process
 func TestEmptyDestStack(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*resource.State{
@@ -597,7 +586,7 @@ func TestEmptyDestStack(t *testing.T) {
 		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	})
 
-	chdir(t, tmpDir)
+	t.Chdir(tmpDir)
 
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
 	// Set up dummy project in this directory
@@ -611,20 +600,20 @@ runtime: mock
 		Colorizer: colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[1].URN)}, mp, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
 
-	assert.Equal(t, 3, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resource
+	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resource
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -667,10 +656,10 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 
@@ -693,32 +682,32 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 		Colorizer: colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// The provider, rootstack and one resource remain
-	assert.Equal(t, 3, len(sourceSnapshot.Resources))
+	require.Len(t, sourceSnapshot.Resources, 3)
 	// The provider, rootstack and the moved resource are in the destination
-	assert.Equal(t, 3, len(destSnapshot.Resources))
+	require.Len(t, destSnapshot.Resources, 3)
 
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[3].URN)}, mp, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceSnapshot, err = sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destSnapshot, err = destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Only the provider and root stack remain
-	assert.Equal(t, 2, len(sourceSnapshot.Resources))
+	require.Len(t, sourceSnapshot.Resources, 2)
 
-	assert.Equal(t, 4, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resources
+	require.Len(t, destSnapshot.Resources, 4) // We expect the root stack, the provider, and the moved resources
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -763,10 +752,10 @@ func TestMoveUnknownResource(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 
@@ -792,10 +781,10 @@ func TestMoveUnknownResource(t *testing.T) {
 	assert.ErrorContains(t, err, "no resources found to move")
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Contains(t, stdout.String(), "warning: Resource not-a-urn not found in source stack")
-	assert.Equal(t, 3, len(sourceSnapshot.Resources)) // No resources should be moved
+	require.Len(t, sourceSnapshot.Resources, 3) // No resources should be moved
 }
 
 func TestProviderIsReparented(t *testing.T) {
@@ -825,13 +814,13 @@ func TestProviderIsReparented(t *testing.T) {
 	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(sourceResources[2].URN)})
 
 	// Only the provider and the root stack should remain in the source stack
-	assert.Equal(t, 2, len(sourceSnapshot.Resources))
+	require.Len(t, sourceSnapshot.Resources, 2)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:pulumi:Stack::test-sourceStack"),
 		sourceSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0"),
 		sourceSnapshot.Resources[1].URN)
 
-	assert.Equal(t, 3, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resource
+	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resource
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -870,10 +859,10 @@ func TestMoveProvider(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 
@@ -899,9 +888,9 @@ func TestMoveProvider(t *testing.T) {
 	assert.ErrorContains(t, err, "cannot move provider")
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, 3, len(sourceSnapshot.Resources)) // No resources should be moved
+	require.Len(t, sourceSnapshot.Resources, 3) // No resources should be moved
 }
 
 func TestMoveRootStack(t *testing.T) {
@@ -930,10 +919,10 @@ func TestMoveRootStack(t *testing.T) {
 
 	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(sourceResources[0].URN)})
 
-	// Expect only the root stack to remain
-	assert.Equal(t, 1, len(sourceSnapshot.Resources))
+	// Expect the root stack and the provider to remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 2)
 	// All other resources are moved to the destination
-	assert.Equal(t, 3, len(destSnapshot.Resources))
+	require.Len(t, destSnapshot.Resources, 3)
 
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
@@ -969,15 +958,15 @@ func TestMoveSecret(t *testing.T) {
 			Type:     "a:b:c",
 			Provider: string(providerURN) + "::provider_id",
 			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewStringProperty("secret"))},
+			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
@@ -997,7 +986,7 @@ func TestMoveSecret(t *testing.T) {
 		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	})
 
-	chdir(t, tmpDir)
+	t.Chdir(tmpDir)
 
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
 	// Set up dummy project in this directory
@@ -1015,21 +1004,21 @@ runtime: mock
 		Colorizer: colors.Never,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Expect the root stack and the provider to remain in the source stack
-	assert.Equal(t, 2, len(sourceSnapshot.Resources))
+	require.Len(t, sourceSnapshot.Resources, 2)
 	// All other resources are moved to the destination
-	assert.Equal(t, 3, len(destSnapshot.Resources))
+	require.Len(t, destSnapshot.Resources, 3)
 
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
@@ -1068,15 +1057,15 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 			Type:     "a:b:c",
 			Provider: string(providerURN) + "::provider_id",
 			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewStringProperty("secret"))},
+			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
@@ -1109,16 +1098,16 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 	assert.ErrorContains(t, err, "destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Expect no resources to be moved
-	assert.Equal(t, 3, len(sourceSnapshot.Resources))
+	require.Len(t, sourceSnapshot.Resources, 3)
 	assert.Nil(t, destSnapshot)
 }
 
@@ -1141,15 +1130,15 @@ func TestMoveSecretNotInDestProjectDir(t *testing.T) {
 			Type:     "a:b:c",
 			Provider: string(providerURN) + "::provider_id",
 			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewStringProperty("secret"))},
+			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
@@ -1169,7 +1158,7 @@ func TestMoveSecretNotInDestProjectDir(t *testing.T) {
 		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	})
 
-	chdir(t, tmpDir)
+	t.Chdir(tmpDir)
 
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
 	// Set up dummy project in this directory
@@ -1192,16 +1181,16 @@ runtime: mock
 	assert.ErrorContains(t, err, "destination stack has no secret manager. To move resources either initialize the stack with a secret manager, or run the pulumi state move command from the destination project directory")
 
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destRef)
 	require.NoError(t, err)
 
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Expect no resources to be moved
-	assert.Equal(t, 3, len(sourceSnapshot.Resources))
+	require.Len(t, sourceSnapshot.Resources, 3)
 	assert.Nil(t, destSnapshot)
 }
 
@@ -1216,7 +1205,7 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 			ID:     "provider_id",
 			Custom: true,
 			Inputs: resource.PropertyMap{
-				"key": resource.NewStringProperty("value"),
+				"key": resource.NewProperty("value"),
 			},
 		},
 		{
@@ -1234,7 +1223,7 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 			ID:     "another_provider_id",
 			Custom: true,
 			Inputs: resource.PropertyMap{
-				"key": resource.NewStringProperty("value"),
+				"key": resource.NewProperty("value"),
 			},
 		},
 	}
@@ -1251,9 +1240,9 @@ Successfully moved resources from organization/test/sourceStack to organization/
 `
 	assert.Equal(t, expectedStdout, stdout.String())
 
-	assert.Equal(t, 1, len(sourceSnapshot.Resources)) // Only the provider should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 1) // Only the provider should remain in the source stack
 
-	assert.Equal(t, 3, len(destSnapshot.Resources)) // We expect the root stack, the provider, and the moved resource
+	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resource
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[0].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
@@ -1299,11 +1288,11 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sourceStackName := "organization/test/sourceStack"
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
@@ -1325,10 +1314,10 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	}
 
 	lockingB, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = lockingB.Lock(ctx, sourceStack.Ref())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, []string{string(sourceResources[2].URN)}, mp, mp)
 	assert.ErrorContains(t, err, "None of the resources have been moved.  Please fix the error and try again")
@@ -1336,14 +1325,14 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	sourceStack, err = b.GetStack(ctx, sourceStack.Ref())
 	require.NoError(t, err)
 	sourceSnapshot, err := sourceStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	destStack, err = b.GetStack(ctx, destStack.Ref())
 	require.NoError(t, err)
 	destSnapshot, err := destStack.Snapshot(ctx, mp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, destSnapshot.Resources, 0)
+	require.Len(t, destSnapshot.Resources, 0)
 
 	require.Len(t, sourceSnapshot.Resources, 4)
 	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:pulumi:Stack::test-sourceStack"),
@@ -1356,14 +1345,58 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 		sourceSnapshot.Resources[3].URN)
 }
 
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		assert.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		assert.NoError(t, err)
-		assert.Equal(t, cwd, restoredDir)
-	})
+// Test that when a resource is moved and it has a provider as parent, the provider is still
+// treated as a normal provider, and not as parent. This means its children are not moved by default.
+func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceResources := []*resource.State{
+		{
+			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
+			Type: "pulumi:pulumi:Stack",
+		},
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+			Custom: true,
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.URN(string(providerURN)),
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "d:e:f", "a:b:c", "name2"),
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   resource.URN(string(providerURN)),
+		},
+	}
+
+	sourceSnapshot, destSnapshot, stdout := runMoveWithOptions(
+		t, sourceResources, []string{string(sourceResources[2].URN)},
+		&MoveOptions{IncludeParents: true})
+
+	assert.Contains(t, stdout.String(),
+		"Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:\n\n"+
+			"  - urn:pulumi:sourceStack::test::d:e:f$a:b:c::name")
+
+	// The root stack, provider and "name2" should remain in the source stack
+	require.Len(t, sourceSnapshot.Resources, 3)
+
+	require.Len(t, destSnapshot.Resources, 3) // We expect the root stack, the provider, and the moved resources
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
+		destSnapshot.Resources[1].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::d:e:f$a:b:c::name"),
+		destSnapshot.Resources[2].URN)
+	assert.Equal(t, "urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0::provider_id",
+		destSnapshot.Resources[2].Provider)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[2].Parent)
 }

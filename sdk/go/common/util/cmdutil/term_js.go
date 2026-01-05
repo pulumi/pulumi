@@ -13,11 +13,14 @@
 // limitations under the License.
 
 //go:build js
-// +build js
 
 package cmdutil
 
 import "errors"
+
+func Interrupt(pid int) error {
+	panic(errors.New("unsupported"))
+}
 
 func shutdownProcessGroup(pid int) error {
 	panic(errors.New("unimplemented"))

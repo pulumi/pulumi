@@ -15,19 +15,33 @@
 package operations
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 
+	"github.com/spf13/cobra"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // parseAndSaveConfigArray parses the config array and saves it as a config for
 // the provided stack.
-func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArray []string, path bool) error {
+func parseAndSaveConfigArray(
+	ctx context.Context,
+	sink diag.Sink,
+	ws pkgWorkspace.Context,
+	s backend.Stack,
+	configArray []string,
+	path bool,
+) error {
 	if len(configArray) == 0 {
 		return nil
 	}
@@ -36,7 +50,7 @@ func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArr
 		return err
 	}
 
-	if err = newcmd.SaveConfig(ws, s, commandLineConfig); err != nil {
+	if err = newcmd.SaveConfig(ctx, sink, ws, s, commandLineConfig); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil
@@ -53,7 +67,7 @@ func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*works
 		return nil, "", err
 	}
 	if clientAddress != "" {
-		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]interface{}{
+		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]any{
 			"address": clientAddress,
 		})
 	}
@@ -103,4 +117,33 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 
 	// the default functionality right now is to always skip a refresh
 	return false, nil
+}
+
+// configureNeoOptions configures display options related to Neo features based on the command line
+// flags and environment variables. Both --neo and --copilot flags are supported for backwards compatibility.
+func configureNeoOptions(neoEnabledFlag bool, cmd *cobra.Command, displayOpts *display.Options,
+	isDIYBackend bool,
+) {
+	// Handle neo/copilot flag and environment variable. If either flag is explicitly set (via command line),
+	// use that value. Otherwise fall back to environment variable, then default to false.
+	var showNeoFeatures bool
+	if cmd.Flags().Changed("neo") {
+		showNeoFeatures = neoEnabledFlag
+	} else if cmd.Flags().Changed("copilot") {
+		showNeoFeatures = neoEnabledFlag
+	} else {
+		showNeoFeatures = env.NeoEnabled.Value()
+	}
+	logging.V(7).Infof("neo flag=%v, PULUMI_NEO=%v, using value=%v",
+		neoEnabledFlag, env.NeoEnabled.Value(), showNeoFeatures)
+
+	// Do not enable any Neo features if we are using a DIY backend
+	if showNeoFeatures && isDIYBackend {
+		logging.Warningf("Neo features are not available with DIY backends.")
+		return
+	}
+
+	displayOpts.ShowNeoFeatures = showNeoFeatures
+	displayOpts.NeoSummaryModel = env.NeoSummaryModel.Value()
+	displayOpts.NeoSummaryMaxLen = env.NeoSummaryMaxLen.Value()
 }

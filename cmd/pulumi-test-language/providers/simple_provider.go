@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type SimpleProvider struct {
@@ -170,9 +169,25 @@ func (p *SimpleProvider) Create(
 	}, nil
 }
 
-func (p *SimpleProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *SimpleProvider) Update(
+	_ context.Context, req plugin.UpdateRequest,
+) (plugin.UpdateResponse, error) {
+	// URN should be of the form "simple:index:Resource"
+	if req.URN.Type() != "simple:index:Resource" {
+		return plugin.UpdateResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	return plugin.UpdateResponse{
+		Properties: req.NewInputs,
+		Status:     resource.StatusOK,
+	}, nil
+}
+
+func (p *SimpleProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("2.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }
@@ -209,4 +224,25 @@ func (p *SimpleProvider) Delete(
 	context.Context, plugin.DeleteRequest,
 ) (plugin.DeleteResponse, error) {
 	return plugin.DeleteResponse{}, nil
+}
+
+func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+	if req.URN.Type() != "simple:index:Resource" {
+		return plugin.ReadResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	return plugin.ReadResponse{
+		ReadResult: plugin.ReadResult{
+			ID: req.ID,
+			Inputs: resource.PropertyMap{
+				"value": resource.NewProperty(true),
+			},
+			Outputs: resource.PropertyMap{
+				"value": resource.NewProperty(true),
+			},
+		},
+		Status: resource.StatusOK,
+	}, nil
 }

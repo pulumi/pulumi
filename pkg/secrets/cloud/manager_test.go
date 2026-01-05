@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -63,16 +64,16 @@ func testURL(ctx context.Context, t *testing.T, url string) {
 }
 
 func randomName(t *testing.T) string {
-	name := ""
 	letters := "abcdefghijklmnopqrstuvwxyz"
+	var name strings.Builder
 	for i := 0; i < 32; i++ {
 		j, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
 		require.NoError(t, err)
 
 		char := letters[j.Int64()]
-		name = name + string(char)
+		name.WriteString(string(char))
 	}
-	return name
+	return name.String()
 }
 
 //nolint:paralleltest
@@ -94,10 +95,9 @@ func TestSecretsProviderOverride(t *testing.T) {
 
 		_, createSecretsManagerError = NewCloudSecretsManager(stackConfig, "test://bar", false)
 		msg := "NewCloudSecretsManager with unexpected secretsProvider URL succeeded, expected an error"
-		assert.NotNil(t, createSecretsManagerError, msg)
+		require.NotNil(t, createSecretsManagerError, msg)
 	})
 
-	//nolint:paralleltest
 	t.Run("with override", func(t *testing.T) {
 		opener.wantURL = "test://bar"
 		t.Setenv("PULUMI_CLOUD_SECRET_OVERRIDE", "test://bar")

@@ -37,7 +37,7 @@ import (
 // converter reflects a converter plugin, loaded dynamically from another process over gRPC.
 type converter struct {
 	name      string
-	plug      *plugin                   // the actual plugin process wrapper.
+	plug      *Plugin                   // the actual plugin process wrapper.
 	clientRaw pulumirpc.ConverterClient // the raw provider client; usually unsafe to use directly.
 }
 
@@ -46,8 +46,8 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(
-		ctx.Diag,
-		workspace.PluginSpec{Name: name, Version: version, Kind: apitype.ConverterPlugin},
+		ctx.baseContext, ctx.Diag,
+		workspace.PluginDescriptor{Name: name, Version: version, Kind: apitype.ConverterPlugin},
 		ctx.Host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
@@ -57,7 +57,8 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 
 	plug, _, err := newPlugin(ctx, ctx.Pwd, path, prefix,
 		apitype.ConverterPlugin, []string{}, os.Environ(),
-		testConnection, converterPluginDialOptions(ctx, name, ""))
+		testConnection, converterPluginDialOptions(ctx, name, ""),
+		ctx.Host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: name}))
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func converterPluginDialOptions(ctx *Context, name string, path string) []grpc.D
 	)
 
 	if ctx.DialOptions != nil {
-		metadata := map[string]interface{}{
+		metadata := map[string]any{
 			"mode": "client",
 			"kind": "converter",
 		}
@@ -155,11 +156,12 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 	logging.V(7).Infof("%s executing", label)
 
 	resp, err := c.clientRaw.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
-		SourceDirectory: req.SourceDirectory,
-		TargetDirectory: req.TargetDirectory,
-		MapperTarget:    req.MapperTarget,
-		LoaderTarget:    req.LoaderTarget,
-		Args:            req.Args,
+		SourceDirectory:           req.SourceDirectory,
+		TargetDirectory:           req.TargetDirectory,
+		MapperTarget:              req.MapperTarget,
+		LoaderTarget:              req.LoaderTarget,
+		Args:                      req.Args,
+		GeneratedProjectDirectory: req.GeneratedProjectDirectory,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

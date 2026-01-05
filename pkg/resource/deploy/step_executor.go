@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 const (
@@ -122,6 +122,9 @@ type stepExecutor struct {
 	erroredStepLock sync.RWMutex
 	erroredSteps    []Step
 
+	// Channel to collect panic errors from goroutines in this step executor
+	panicErrs chan error
+
 	// ExecuteRegisterResourceOutputs will save the event for the stack resource so that the stack outputs
 	// can be finalized at the end of the deployment. We do this so we can determine whether or not the
 	// deployment succeeded. If there were errors, we update any stack outputs that were updated, but don't delete
@@ -177,17 +180,17 @@ func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
 	wg.Add(len(antichain))
 	for _, step := range antichain {
 		tok := se.ExecuteSerial(chain{step})
-		go func() {
+		go PanicRecovery(se.panicErrs, func() {
 			defer wg.Done()
 			tok.Wait(se.ctx)
-		}()
+		})
 	}
 
 	done := make(chan bool)
-	go func() {
+	go PanicRecovery(se.panicErrs, func() {
 		wg.Wait()
 		close(done)
-	}()
+	})
 
 	return completionToken{channel: done}
 }
@@ -270,6 +273,43 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		} else {
 			return fmt.Errorf(
 				"resource should already have a plan from when we called register resources [urn=%v]", urn)
+		}
+	}
+
+	if !reg.Res().Custom {
+		// Run the after hooks for Create/Update/Delete steps for
+		// `ComponentResources `now that `RegisterResourceOutputs `is about to
+		// complete.
+		if s, ok := reg.(*CreateStep); ok {
+			if err := s.Deployment().RunHooks(
+				s.new.ResourceHooks[resource.AfterCreate],
+				false, /* isBeforeHook */
+				s.new.ID,
+				s.new.URN,
+				s.new.URN.Name(),
+				s.Type(),
+				s.new.Inputs,
+				nil, /* oldInputs */
+				s.new.Outputs,
+				nil, /* oldOutputs */
+			); err != nil {
+				return err
+			}
+		} else if s, ok := reg.(*UpdateStep); ok {
+			if err := s.Deployment().RunHooks(
+				s.new.ResourceHooks[resource.AfterUpdate],
+				false, /* isBeforeHook */
+				s.new.ID,
+				s.new.URN,
+				s.new.URN.Name(),
+				s.Type(),
+				s.new.Inputs,
+				s.old.Inputs,
+				s.new.Outputs,
+				s.old.Outputs,
+			); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -398,14 +438,14 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 //   2. If successful, the step is executed (if not a preview)
 //   3. The post-step event is raised, if there are any attached callbacks to the engine
 //
-// The pre-step event returns an interface{}, which is some arbitrary context that must be passed
+// The pre-step event returns an any, which is some arbitrary context that must be passed
 // verbatim to the post-step event.
 //
 
 // executeStep executes a single step, returning true if the step execution was successful and
 // false if it was not.
 func (se *stepExecutor) executeStep(workerID int, step Step) error {
-	var payload interface{}
+	var payload any
 	events := se.deployment.events
 
 	// DiffSteps are special, we just use them for step worker parallelism but they shouldn't be passed to the rest of
@@ -421,19 +461,24 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 	}
 
+	return se.continueExecuteStep(payload, workerID, step)
+}
+
+func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step) error {
+	events := se.deployment.events
+
 	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.deployment.opts.DryRun)
 	status, stepComplete, err := step.Apply()
-	if isDiff {
+
+	// DiffSteps are special, we just use them for step worker parallelism but they shouldn't be passed to the rest of
+	// the system.
+	if _, isDiff := step.(*DiffStep); isDiff {
 		return nil
 	}
 
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
-			if prior, has := se.pendingNews.Load(step.URN()); has {
-				return fmt.Errorf("resource '%s' registered twice (%s and %s)", step.URN(), prior.Op(), step.Op())
-			}
-
 			se.pendingNews.Store(step.URN(), step)
 		}
 	}
@@ -497,10 +542,13 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		// references using pulumi:pulumi:getResource. If it's a resource managed by Pulumi (i.e. it's the result of a
 		// resource registration with a goal state), we'll record it in news. If it's not managed by Pulumi (i.e. it's the
 		// result of a Read, perhaps caused by a .get in an SDK, for instance), we'll record it in reads.
-		if _, hasGoal := se.deployment.goals.Load(newState.URN); hasGoal {
-			se.deployment.news.Store(newState.URN, newState)
-		} else if step.Op() == OpRead || step.Op() == OpReadReplacement {
+		if step.Op() == OpRead || step.Op() == OpReadReplacement {
 			se.deployment.reads.Store(newState.URN, newState)
+		} else {
+			// Read tells us a state was for an external, but we can't check deployment.goals to see if a
+			// resource is managed because untargetted but removed from program resources are still considered
+			// managed but don't have a goal state.
+			se.deployment.news.Store(newState.URN, newState)
 		}
 
 		// If we're generating plans update the resource's outputs in the generated plan.
@@ -511,10 +559,41 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 	}
 
+	// Executes view steps serially, in the order they were published to the resource status server.
+	executeViewSteps := func() error {
+		steps := se.deployment.resourceStatus.ReleaseToken(step.URN())
+		// Execute the steps in the order they were published.
+		var errs []error
+		for _, step := range steps {
+			if err := se.continueExecuteStep(step.payload, workerID, step.step); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		return errors.Join(errs...)
+	}
+
+	_, isDelete := step.(*DeleteStep)
+
+	// For delete operations, execute view steps before the post-step event. This way, any delete steps for child views
+	// are executed and saved to state before OnResourceStepPost for this resource saves the results of the step in the
+	// snapshot.
+	if isDelete {
+		if err := executeViewSteps(); err != nil {
+			return err
+		}
+	}
+
 	if events != nil {
 		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
 			return fmt.Errorf("post-step event returned an error: %w", postErr)
+		}
+	}
+
+	// For non-delete operations, execute view steps after the post-step event.
+	if !isDelete {
+		if err := executeViewSteps(); err != nil {
+			return err
 		}
 	}
 
@@ -534,7 +613,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 }
 
 // log is a simple logging helper for the step executor.
-func (se *stepExecutor) log(workerID int, msg string, args ...interface{}) {
+func (se *stepExecutor) log(workerID int, msg string, args ...any) {
 	if logging.V(stepExecutorLogLevel) {
 		message := fmt.Sprintf(msg, args...)
 		logging.V(stepExecutorLogLevel).Infof("StepExecutor worker(%d): %s", workerID, message)
@@ -568,14 +647,20 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 		se.log(workerID, "worker waiting for incoming chains")
 		select {
 		case request := <-se.incomingChains:
-			if request.Chain == nil {
-				se.log(workerID, "worker received nil chain, exiting")
+			contract.Assertf(request.CompletionChan != nil || request.Chain == nil,
+				"worker received a non-nil chain with a nil completion channel: %v", request.Chain,
+			)
+
+			if request.CompletionChan == nil {
+				se.log(workerID, "worker received nil completion channel, exiting")
 				return
 			}
 
 			se.log(workerID, "worker received chain for execution")
 			if !launchAsync {
-				se.executeChain(workerID, request.Chain)
+				PanicRecovery(se.panicErrs, func() {
+					se.executeChain(workerID, request.Chain)
+				})
 				close(request.CompletionChan)
 				continue
 			}
@@ -584,12 +669,14 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 			// launch with our worker wait group.
 			se.workers.Add(1)
 			newWorkerID := oneshotWorkerID
-			go func() {
+			completionChan := request.CompletionChan
+			chain := request.Chain
+			go PanicRecovery(se.panicErrs, func() {
 				defer se.workers.Done()
 				se.log(newWorkerID, "launching oneshot worker")
-				se.executeChain(newWorkerID, request.Chain)
-				close(request.CompletionChan)
-			}()
+				se.executeChain(newWorkerID, chain)
+				close(completionChan)
+			})
 
 			oneshotWorkerID++
 		case <-se.ctx.Done():
@@ -611,13 +698,26 @@ func newStepExecutor(
 		incomingChains: make(chan incomingChain),
 		ctx:            ctx,
 		cancel:         cancel,
+		panicErrs:      make(chan error, 1),
 	}
+
+	// Start a goroutine to monitor for panic errors and handle them
+	go func() {
+		for panicErr := range exec.panicErrs {
+			exec.cancelDueToError(panicErr, nil)
+			if deployment.panicErrs != nil {
+				deployment.panicErrs <- panicErr
+			}
+		}
+	}()
 
 	// If we're being asked to run as parallel as possible, spawn a single worker that launches chain executions
 	// asynchronously.
 	if deployment.opts.InfiniteParallelism() {
 		exec.workers.Add(1)
-		go exec.worker(infiniteWorkerID, true /*launchAsync*/)
+		go PanicRecovery(exec.panicErrs, func() {
+			exec.worker(infiniteWorkerID, true /*launchAsync*/)
+		})
 		return exec
 	}
 
@@ -625,7 +725,10 @@ func newStepExecutor(
 	fanout := deployment.opts.DegreeOfParallelism()
 	for i := 0; i < int(fanout); i++ {
 		exec.workers.Add(1)
-		go exec.worker(i, false /*launchAsync*/)
+		workerID := i
+		go PanicRecovery(exec.panicErrs, func() {
+			exec.worker(workerID, false /*launchAsync*/)
+		})
 	}
 
 	return exec

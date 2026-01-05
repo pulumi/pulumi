@@ -29,14 +29,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
+	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 type cloudRequiredPolicy struct {
@@ -58,10 +59,10 @@ func newCloudRequiredPolicy(client *client.Client,
 }
 
 func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name }
-func (rp *cloudRequiredPolicy) Version() string { return rp.RequiredPolicy.VersionTag }
+func (rp *cloudRequiredPolicy) Version() string { return rp.VersionTag }
 func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
 
-func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
+func (rp *cloudRequiredPolicy) Install(ctx *plugin.Context) (string, error) {
 	policy := rp.RequiredPolicy
 
 	// If version tag is empty, we use the version tag. This is to support older version of
@@ -80,12 +81,12 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 		return policyPackPath, nil
 	}
 
-	fmt.Printf("Installing policy pack %s %s...\r\n", policy.Name, version)
+	fmt.Fprintf(os.Stderr, "Installing policy pack %s %s...\r\n", policy.Name, version)
 
 	// PolicyPack has not been downloaded and installed. Do this now.
 
 	logging.V(7).Infof("Downloading policy pack %s %s from %s", policy.Name, version, policy.PackLocation)
-	policyPackTarball, err := rp.client.DownloadPolicyPack(ctx, policy.PackLocation)
+	policyPackTarball, err := rp.client.DownloadPolicyPack(ctx.Request(), policy.PackLocation)
 	if err != nil {
 		return "", err
 	}
@@ -136,7 +137,7 @@ func (pr *cloudBackendPolicyPackReference) Name() tokens.QName {
 }
 
 func (pr *cloudBackendPolicyPackReference) CloudConsoleURL() string {
-	return fmt.Sprintf("%s/%s/policypacks/%s", pr.cloudConsoleURL, pr.orgName, pr.Name())
+	return fmt.Sprintf("%s/%s/insights/policypacks/%s", pr.cloudConsoleURL, pr.orgName, pr.Name())
 }
 
 // cloudPolicyPack is a the Pulumi service implementation of the PolicyPack interface.
@@ -214,7 +215,8 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Uploading policy pack to Pulumi service")
 
-	publishedVersion, err := pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
+	publishedVersion, err := pack.cl.PublishPolicyPack(
+		ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
 	if err != nil {
 		return err
 	}
@@ -260,7 +262,7 @@ func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOp
 
 const packageDir = "package"
 
-func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadCloser) error {
+func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadCloser) error {
 	// If part of the directory tree is missing, os.MkdirTemp will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0o700); err != nil {
@@ -304,54 +306,35 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("failed to load policy project at %s: %w", finalDir, err)
 	}
 
-	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		if err := completeNodeJSInstall(ctx, finalDir); err != nil {
-			return err
-		}
-	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		if err := completePythonInstall(ctx, finalDir, projPath, proj); err != nil {
-			return err
+	// Workaround for python, some policy packs don't specify a venv but we want to use one
+	if proj.Runtime.Name() == "python" {
+		// If the policy's options provide a virtualenv use it, else default to "venv"
+		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
+			proj.Runtime.SetOption("virtualenv", "venv")
+			err = proj.Save(projPath)
+			if err != nil {
+				return fmt.Errorf("failed to save policy project at %s: %w", finalDir, err)
+			}
 		}
 	}
 
-	fmt.Println("Finished installing policy pack\r")
-	fmt.Println()
-
-	return nil
-}
-
-func completeNodeJSInstall(ctx context.Context, finalDir string) error {
-	if bin, err := npm.Install(ctx, npm.AutoPackageManager, finalDir, false /*production*/, nil, os.Stderr); err != nil {
-		return fmt.Errorf("failed to install dependencies of policy pack; you may need to re-run `%s install` "+
-			"in %q before this policy pack works"+": %w", bin, finalDir, err)
-	}
-
-	return nil
-}
-
-func completePythonInstall(ctx context.Context, finalDir, projPath string, proj *workspace.PolicyPackProject) error {
-	const venvDir = "venv"
-	// TODO[pulumi/pulumi/issues/16286]: Allow using different toolchains for policy packs.
-	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		Toolchain:  toolchain.Pip,
-		Root:       finalDir,
-		Virtualenv: venvDir,
-	})
+	language, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
 	if err != nil {
-		return fmt.Errorf("failed to get python toolchain: %w", err)
+		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
-	if err := tc.InstallDependencies(ctx, finalDir, false /* useLanguageVersionTools */, false, /*showOutput*/
-		os.Stdout, os.Stderr); err != nil {
-		return err
+	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())
+	err = pkgCmdUtil.InstallDependencies(language, plugin.InstallDependenciesRequest{
+		Info:                    info,
+		UseLanguageVersionTools: false,
+		IsPlugin:                true,
+	}, os.Stdout, os.Stderr)
+	if err != nil {
+		return fmt.Errorf("installing dependencies: %w", err)
 	}
 
-	// Save project with venv info.
-	proj.Runtime.SetOption("virtualenv", venvDir)
-	if err := proj.Save(projPath); err != nil {
-		return fmt.Errorf("saving project at %s: %w", projPath, err)
-	}
+	fmt.Fprintln(os.Stderr, "Finished installing policy pack\r")
+	fmt.Fprintln(os.Stderr)
 
 	return nil
 }

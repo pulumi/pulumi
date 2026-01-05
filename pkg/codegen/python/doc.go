@@ -73,15 +73,29 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return ""
 }
 
-// GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
-	typeDetails := map[*schema.ObjectType]*typeDetails{}
-	mod := &modContext{
-		pkg:         pkg.Reference(),
-		mod:         moduleName,
-		typeDetails: typeDetails,
+func (d DocLanguageHelper) GetModuleName(pkg schema.PackageReference, module string) string {
+	var info PackageInfo
+	if a, err := pkg.Language("python"); err == nil {
+		info, _ = a.(PackageInfo)
 	}
-	typeName := mod.typeString(t, input, false /*acceptMapping*/, false /*forDict*/)
+
+	return moduleToPythonModule(module, info.ModuleNameOverrides)
+}
+
+// GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
+func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
+	var info PackageInfo
+	if a, err := pkg.Language("python"); err == nil {
+		info, _ = a.(PackageInfo)
+	}
+
+	mod := &modContext{
+		pkg:              pkg,
+		mod:              moduleToPythonModule(relativeToModule, info.ModuleNameOverrides),
+		modNameOverrides: info.ModuleNameOverrides,
+		typeDetails:      map[*schema.ObjectType]*typeDetails{},
+	}
+	typeName := mod.typeString(t, typeStringOpts{input: input, forDocs: true})
 
 	// Remove any package qualifiers from the type name.
 	if !input {
@@ -94,7 +108,11 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return typeName
 }
 
-func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
+	return resourceName(r)
+}
+
+func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 	return PyName(tokenToName(f.Token))
 }
 
@@ -108,7 +126,7 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return PyName(m.Name)
 }
 
-func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,
 	m *schema.Method,
 ) string {
 	var returnType *schema.ObjectType
@@ -118,16 +136,21 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 		}
 	}
 
-	if info, ok := pkg.Language["python"].(PackageInfo); ok {
-		if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
-			typeDetails := map[*schema.ObjectType]*typeDetails{}
-			mod := &modContext{
-				pkg:         pkg.Reference(),
-				mod:         modName,
-				typeDetails: typeDetails,
-			}
-			return mod.typeString(returnType.Properties[0].Type, false, false, false /*forDict*/)
+	var info PackageInfo
+	if i, err := pkg.Language("python"); err == nil {
+		info, _ = i.(PackageInfo)
+	}
+
+	if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
+		typeDetails := map[*schema.ObjectType]*typeDetails{}
+		mod := &modContext{
+			pkg:         pkg,
+			mod:         modName,
+			typeDetails: typeDetails,
 		}
+		return mod.typeString(returnType.Properties[0].Type, typeStringOpts{
+			forDocs: true,
+		})
 	}
 	return fmt.Sprintf("%s.%sResult", resourceName(r), title(d.GetMethodName(m)))
 }
@@ -144,17 +167,4 @@ func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string,
 		name = e.Name
 	}
 	return makeSafeEnumName(name, typeName)
-}
-
-// GetModuleDocLink returns the display name and the link for a module.
-func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
-	var displayName string
-	var link string
-	if modName == "" {
-		displayName = PyPack(pkg.Namespace, pkg.Name)
-	} else {
-		displayName = fmt.Sprintf("%s/%s", PyPack(pkg.Namespace, pkg.Name), strings.ToLower(modName))
-	}
-	link = "/docs/reference/pkg/python/" + displayName
-	return displayName, link
 }

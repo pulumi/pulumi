@@ -72,7 +72,6 @@ func TestWorkerPool_error(t *testing.T) {
 	}
 
 	for _, err := range errors {
-		err := err
 		pool.Enqueue(func() error {
 			return err
 		})
@@ -97,7 +96,6 @@ func TestWorkerPool_oneError(t *testing.T) {
 	const numTasks = 10
 	giveErr := errors.New("great sadness")
 	for i := 0; i < numTasks; i++ {
-		i := i
 		pool.Enqueue(func() error {
 			if i == 7 {
 				return giveErr
@@ -151,7 +149,6 @@ func TestWorkerPool_workerCount(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -192,7 +189,7 @@ func TestWorkerPool_randomActions(t *testing.T) {
 				})
 			},
 			"wait": func(t *rapid.T) {
-				assert.NoError(t, pool.Wait())
+				require.NoError(t, pool.Wait())
 				assert.Zero(t, pending.Load())
 			},
 		})

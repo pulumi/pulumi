@@ -17,16 +17,24 @@ import { generateSchema } from "../../../provider/experimental/schema";
 import { ComponentDefinition, TypeDefinition } from "../../../provider/experimental/analyzer";
 
 describe("Schema", function () {
-    it("should generate schema with correct language dependencies", function () {
+    it("should generate schema dependencies", function () {
         const components: Record<string, ComponentDefinition> = {};
         const typeDefinitions: Record<string, TypeDefinition> = {};
 
         // Mock package references
-        const packageReferences = {
-            aws: "5.0.0",
-            "azure-native": "4.0.0",
-            kubernetes: "3.0.0",
-        };
+        const dependencies = [
+            { name: "aws", version: "5.0.0" },
+            {
+                name: "terraform-provider",
+                version: "0.10.0",
+                parameterization: {
+                    name: "parameterized",
+                    version: "0.2.2",
+                    value: "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL25ldGxpZnkvbmV0bGlmeSIsInZlcnNpb24iOiIwLjIuMiJ9fQ==",
+                },
+            },
+            { name: "kubernetes", version: "3.0.0", downloadURL: "example.com/download" },
+        ];
 
         // Generate schema
         const schema = generateSchema(
@@ -35,38 +43,22 @@ describe("Schema", function () {
             "Test provider for Pulumi",
             components,
             typeDefinitions,
-            packageReferences,
+            dependencies,
         );
 
-        // Verify NodeJS dependencies
-        assert.deepStrictEqual(schema.language?.nodejs.dependencies, {
-            "@pulumi/aws": "5.0.0",
-            "@pulumi/azure-native": "4.0.0",
-            "@pulumi/kubernetes": "3.0.0",
-        });
-
-        // Verify Python dependencies
-        assert.deepStrictEqual(schema.language?.python.requires, {
-            "pulumi-aws": "==5.0.0",
-            "pulumi-azure-native": "==4.0.0",
-            "pulumi-kubernetes": "==3.0.0",
-        });
-
-        // Verify C# dependencies
-        assert.deepStrictEqual(schema.language?.csharp.packageReferences, {
-            "Pulumi.Aws": "5.0.0",
-            "Pulumi.AzureNative": "4.0.0",
-            "Pulumi.Kubernetes": "3.0.0",
-        });
-
-        // Verify Java dependencies
-        assert.deepStrictEqual(schema.language?.java.dependencies, {
-            "com.pulumi:aws": "5.0.0",
-            "com.pulumi:azure-native": "4.0.0",
-            "com.pulumi:kubernetes": "3.0.0",
-        });
-
-        assert.strictEqual(schema.description, "Test provider for Pulumi");
+        assert.deepStrictEqual(schema.dependencies, [
+            { name: "aws", version: "5.0.0" },
+            {
+                name: "terraform-provider",
+                version: "0.10.0",
+                parameterization: {
+                    name: "parameterized",
+                    version: "0.2.2",
+                    value: "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL25ldGxpZnkvbmV0bGlmeSIsInZlcnNpb24iOiIwLjIuMiJ9fQ==",
+                },
+            },
+            { name: "kubernetes", version: "3.0.0", downloadURL: "example.com/download" },
+        ]);
     });
 
     it("should use the namespace if there is one", function () {
@@ -79,7 +71,7 @@ describe("Schema", function () {
             "my-description",
             components,
             typeDefinitions,
-            {},
+            [],
             "my-namespace",
         );
 

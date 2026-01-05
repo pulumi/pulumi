@@ -21,11 +21,14 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -36,6 +39,7 @@ import (
 // HandleConfig handles prompting for config values (as needed) and saving config.
 func HandleConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	ws pkgWorkspace.Context,
 	prompt promptForValueFunc,
@@ -50,12 +54,12 @@ func HandleConfig(
 ) error {
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
 	stackConfig, err := backend.GetLatestConfiguration(ctx, s)
-	if err != nil && err != backend.ErrNoPreviousDeployment {
+	if err != nil && err != backenderr.ErrNoPreviousDeployment {
 		return err
 	}
 
 	// Get the existing snapshot.
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return err
 	}
@@ -80,6 +84,7 @@ func HandleConfig(
 		// Prompt for config as needed.
 		c, err = promptForConfig(
 			ctx,
+			sink,
 			ssml,
 			prompt,
 			project,
@@ -97,7 +102,7 @@ func HandleConfig(
 
 	// Save the config.
 	if len(c) > 0 {
-		if err = SaveConfig(ws, s, c); err != nil {
+		if err = SaveConfig(ctx, sink, ws, s, c); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
@@ -173,6 +178,7 @@ var templateKey = config.MustMakeKey("pulumi", "template")
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	prompt promptForValueFunc,
 	project *workspace.Project,
@@ -203,7 +209,7 @@ func promptForConfig(
 	sort.Sort(keys)
 
 	// We need to load the stack config here for the secret manager
-	ps, err := cmdStack.LoadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack)
 	if err != nil {
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
@@ -213,7 +219,7 @@ func promptForConfig(
 		return nil, err
 	}
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+		if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}
@@ -322,13 +328,13 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 }
 
 // SaveConfig saves the config for the stack.
-func SaveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
+func SaveConfig(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
 
-	ps, err := cmdStack.LoadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack)
 	if err != nil {
 		return err
 	}
@@ -337,5 +343,5 @@ func SaveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) erro
 		ps.Config[k] = v
 	}
 
-	return cmdStack.SaveProjectStack(stack, ps)
+	return cmdStack.SaveProjectStack(ctx, stack, ps)
 }

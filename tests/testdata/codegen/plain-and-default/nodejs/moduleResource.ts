@@ -34,7 +34,7 @@ export class ModuleResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === ModuleResource.__pulumiType;
     }
 
-    public readonly optionalBool!: pulumi.Output<boolean | undefined>;
+    declare public readonly optionalBool: pulumi.Output<boolean | undefined>;
 
     /**
      * Create a ModuleResource resource with the given unique name, arguments, and options.
@@ -47,47 +47,47 @@ export class ModuleResource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.plainRequiredBool === undefined) && !opts.urn) {
+            if (args?.plainRequiredBool === undefined && !opts.urn) {
                 throw new Error("Missing required property 'plainRequiredBool'");
             }
-            if ((!args || args.plainRequiredConst === undefined) && !opts.urn) {
+            if (args?.plainRequiredConst === undefined && !opts.urn) {
                 throw new Error("Missing required property 'plainRequiredConst'");
             }
-            if ((!args || args.plainRequiredNumber === undefined) && !opts.urn) {
+            if (args?.plainRequiredNumber === undefined && !opts.urn) {
                 throw new Error("Missing required property 'plainRequiredNumber'");
             }
-            if ((!args || args.plainRequiredString === undefined) && !opts.urn) {
+            if (args?.plainRequiredString === undefined && !opts.urn) {
                 throw new Error("Missing required property 'plainRequiredString'");
             }
-            if ((!args || args.requiredBool === undefined) && !opts.urn) {
+            if (args?.requiredBool === undefined && !opts.urn) {
                 throw new Error("Missing required property 'requiredBool'");
             }
-            if ((!args || args.requiredEnum === undefined) && !opts.urn) {
+            if (args?.requiredEnum === undefined && !opts.urn) {
                 throw new Error("Missing required property 'requiredEnum'");
             }
-            if ((!args || args.requiredNumber === undefined) && !opts.urn) {
+            if (args?.requiredNumber === undefined && !opts.urn) {
                 throw new Error("Missing required property 'requiredNumber'");
             }
-            if ((!args || args.requiredString === undefined) && !opts.urn) {
+            if (args?.requiredString === undefined && !opts.urn) {
                 throw new Error("Missing required property 'requiredString'");
             }
-            resourceInputs["optionalBool"] = (args ? args.optionalBool : undefined) ?? true;
+            resourceInputs["optionalBool"] = (args?.optionalBool) ?? true;
             resourceInputs["optionalConst"] = "val";
-            resourceInputs["optionalEnum"] = (args ? args.optionalEnum : undefined) ?? 8;
-            resourceInputs["optionalNumber"] = (args ? args.optionalNumber : undefined) ?? 42;
-            resourceInputs["optionalString"] = (args ? args.optionalString : undefined) ?? "buzzer";
-            resourceInputs["plainOptionalBool"] = (args ? args.plainOptionalBool : undefined) ?? true;
+            resourceInputs["optionalEnum"] = (args?.optionalEnum) ?? 8;
+            resourceInputs["optionalNumber"] = (args?.optionalNumber) ?? 42;
+            resourceInputs["optionalString"] = (args?.optionalString) ?? "buzzer";
+            resourceInputs["plainOptionalBool"] = (args?.plainOptionalBool) ?? true;
             resourceInputs["plainOptionalConst"] = "val";
-            resourceInputs["plainOptionalNumber"] = (args ? args.plainOptionalNumber : undefined) ?? 42;
-            resourceInputs["plainOptionalString"] = (args ? args.plainOptionalString : undefined) ?? "buzzer";
-            resourceInputs["plainRequiredBool"] = (args ? args.plainRequiredBool : undefined) ?? true;
+            resourceInputs["plainOptionalNumber"] = (args?.plainOptionalNumber) ?? 42;
+            resourceInputs["plainOptionalString"] = (args?.plainOptionalString) ?? "buzzer";
+            resourceInputs["plainRequiredBool"] = (args?.plainRequiredBool) ?? true;
             resourceInputs["plainRequiredConst"] = "val";
-            resourceInputs["plainRequiredNumber"] = (args ? args.plainRequiredNumber : undefined) ?? 42;
-            resourceInputs["plainRequiredString"] = (args ? args.plainRequiredString : undefined) ?? "buzzer";
-            resourceInputs["requiredBool"] = (args ? args.requiredBool : undefined) ?? true;
-            resourceInputs["requiredEnum"] = (args ? args.requiredEnum : undefined) ?? 4;
-            resourceInputs["requiredNumber"] = (args ? args.requiredNumber : undefined) ?? 42;
-            resourceInputs["requiredString"] = (args ? args.requiredString : undefined) ?? "buzzer";
+            resourceInputs["plainRequiredNumber"] = (args?.plainRequiredNumber) ?? 42;
+            resourceInputs["plainRequiredString"] = (args?.plainRequiredString) ?? "buzzer";
+            resourceInputs["requiredBool"] = (args?.requiredBool) ?? true;
+            resourceInputs["requiredEnum"] = (args?.requiredEnum) ?? 4;
+            resourceInputs["requiredNumber"] = (args?.requiredNumber) ?? 42;
+            resourceInputs["requiredString"] = (args?.requiredString) ?? "buzzer";
         } else {
             resourceInputs["optionalBool"] = undefined /*out*/;
         }

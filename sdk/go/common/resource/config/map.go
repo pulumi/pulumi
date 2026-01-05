@@ -19,9 +19,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Map is a bag of config stored in the settings file.
@@ -29,29 +29,76 @@ type Map map[Key]Value
 
 // Decrypt returns the configuration as a map from module member to decrypted value.
 func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
-	r := map[Key]string{}
-	for k, c := range m {
-		v, err := c.Value(decrypter)
+	ctx := context.TODO()
+
+	if decrypter == NopDecrypter {
+		result := map[Key]string{}
+		for k, v := range m {
+			vv, err := v.Value(decrypter)
+			if err != nil {
+				return nil, err
+			}
+			result[k] = vv
+		}
+		return result, nil
+	}
+
+	objectMap := map[Key]object{}
+	for k, v := range m {
+		obj, err := v.unmarshalObject()
 		if err != nil {
 			return nil, err
 		}
-		r[k] = v
+		objectMap[k] = obj
 	}
-	return r, nil
+
+	plaintextMap, err := decryptMap(ctx, objectMap, decrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := map[Key]string{}
+	for k, pt := range plaintextMap {
+		v, err := pt.marshalText()
+		if err != nil {
+			return nil, err
+		}
+		result[k] = v
+	}
+	return result, nil
 }
 
 func (m Map) Copy(decrypter Decrypter, encrypter Encrypter) (Map, error) {
-	newConfig := make(Map)
-	for k, c := range m {
-		val, err := c.Copy(decrypter, encrypter)
+	ctx := context.TODO()
+
+	objectMap := map[Key]object{}
+	for k, v := range m {
+		obj, err := v.unmarshalObject()
 		if err != nil {
 			return nil, err
 		}
-
-		newConfig[k] = val
+		objectMap[k] = obj
 	}
 
-	return newConfig, nil
+	plaintextMap, err := decryptMap(ctx, objectMap, decrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	newObjectMap, err := encryptMap(ctx, plaintextMap, encrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := Map{}
+	for k, obj := range newObjectMap {
+		v, err := obj.marshalValue()
+		if err != nil {
+			return nil, err
+		}
+		result[k] = v
+	}
+	return result, nil
 }
 
 // SecureKeys returns a list of keys that have secure values.
@@ -77,21 +124,26 @@ func (m Map) HasSecureValue() bool {
 }
 
 // AsDecryptedPropertyMap returns the config as a property map, with secret values decrypted.
-func (m Map) AsDecryptedPropertyMap(ctx context.Context, decrypter Decrypter) (resource.PropertyMap, error) {
-	pm := resource.PropertyMap{}
-
+func (m Map) AsDecryptedPropertyMap(ctx context.Context, decrypter Decrypter) (property.Map, error) {
+	objectMap := map[Key]object{}
 	for k, v := range m {
-		newV, err := adjustObjectValue(v)
+		obj, err := v.coerceObject()
 		if err != nil {
-			return resource.PropertyMap{}, err
+			return property.Map{}, err
 		}
-		plaintext, err := newV.toDecryptedPropertyValue(ctx, decrypter)
-		if err != nil {
-			return resource.PropertyMap{}, err
-		}
-		pm[resource.PropertyKey(k.String())] = plaintext
+		objectMap[k] = obj
 	}
-	return pm, nil
+
+	plaintextMap, err := decryptMap(ctx, objectMap, decrypter)
+	if err != nil {
+		return property.Map{}, err
+	}
+
+	result := map[string]property.Value{}
+	for k, pt := range plaintextMap {
+		result[k.String()] = pt.PropertyValue()
+	}
+	return property.NewMap(result), nil
 }
 
 // Get gets the value for a given key. If path is true, the key's name portion is treated as a path.
@@ -185,7 +237,7 @@ func (m Map) Set(k Key, v Value, path bool) error {
 
 	var newV object
 	if len(p) > 1 || v.typ != TypeUnknown {
-		newV, err = adjustObjectValue(v)
+		newV, err = v.coerceObject()
 		if err != nil {
 			return err
 		}
@@ -246,7 +298,7 @@ func (m *Map) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (m Map) MarshalYAML() (interface{}, error) {
+func (m Map) MarshalYAML() (any, error) {
 	rawMap := make(map[string]Value, len(m))
 	for k, v := range m {
 		rawMap[k.String()] = v
@@ -255,7 +307,7 @@ func (m Map) MarshalYAML() (interface{}, error) {
 	return rawMap, nil
 }
 
-func (m *Map) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (m *Map) UnmarshalYAML(unmarshal func(any) error) error {
 	rawMap := make(map[string]Value)
 	if err := unmarshal(&rawMap); err != nil {
 		return fmt.Errorf("could not unmarshal map: %w", err)
@@ -299,55 +351,4 @@ func parseKeyPath(k Key) (resource.PropertyPath, Key, error) {
 	configKey := MustMakeKey(k.Namespace(), firstKey)
 
 	return p, configKey, nil
-}
-
-// adjustObjectValue returns a more suitable value for objects:
-func adjustObjectValue(v Value) (object, error) {
-	// If it's a secure value or an object, return as-is.
-	if v.Secure() || v.Object() {
-		return v.unmarshalObject()
-	}
-
-	if v.typ == TypeString {
-		return newObject(v.value), nil
-	} else if v.typ == TypeInt {
-		i, err := strconv.Atoi(v.value)
-		if err != nil {
-			return object{}, err
-		}
-		return newObject(int64(i)), nil
-	} else if v.typ == TypeBool {
-		return newObject(v.value == "true"), nil
-	} else if v.typ == TypeFloat {
-		f, err := strconv.ParseFloat(v.value, 64)
-		if err != nil {
-			return object{}, err
-		}
-		return newObject(f), nil
-	}
-
-	// If "false" or "true", return the boolean value.
-	if v.value == "false" {
-		return newObject(false), nil
-	} else if v.value == "true" {
-		return newObject(true), nil
-	}
-
-	// If the value has more than one character and starts with "0", return the value as-is
-	// so values like "0123456" are saved as a string (without stripping any leading zeros)
-	// rather than as the integer 123456.
-	if len(v.value) > 1 && v.value[0] == '0' {
-		return v.unmarshalObject()
-	}
-
-	// If it's convertible to an int, return the int.
-	if i, err := strconv.ParseInt(v.value, 10, 64); err == nil {
-		return newObject(i), nil
-	}
-	if i, err := strconv.ParseUint(v.value, 10, 64); err == nil {
-		return newObject(i), nil
-	}
-
-	// Otherwise, just return the string value.
-	return v.unmarshalObject()
 }

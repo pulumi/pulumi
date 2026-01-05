@@ -1,2 +1,5 @@
 name: parameterized 
-runtime: python
+runtime:
+  name: python
+  options:
+    virtualenv: venv

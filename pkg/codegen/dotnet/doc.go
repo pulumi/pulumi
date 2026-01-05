@@ -25,12 +25,7 @@ import (
 )
 
 // DocLanguageHelper is the DotNet-specific implementation of the DocLanguageHelper.
-type DocLanguageHelper struct {
-	// Namespaces is a map of Pulumi schema module names to their
-	// C# equivalent names, to be used when creating fully-qualified
-	// property type strings.
-	Namespaces map[string]string
-}
+type DocLanguageHelper struct{}
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
@@ -56,7 +51,8 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, _, typ
 	if pkg == nil {
 		packageNamespace = ""
 	} else if pkg.Name != "" {
-		packageNamespace = "." + namespaceName(d.Namespaces, pkg.Name)
+		info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
+		packageNamespace = "." + namespaceName(info.Namespaces, pkg.Name)
 	}
 	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
 }
@@ -72,17 +68,16 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the DotNet-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
-	info, ok := pkg.Language["csharp"].(CSharpPackageInfo)
-	if !ok {
-		info = CSharpPackageInfo{}
+func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
+	var info CSharpPackageInfo
+	if a, err := pkg.Language("csharp"); err == nil {
+		info, _ = a.(CSharpPackageInfo)
 	}
-	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
-		pkg:           pkg.Reference(),
-		mod:           moduleName,
-		typeDetails:   typeDetails,
-		namespaces:    d.Namespaces,
+		pkg:           pkg,
+		mod:           relativeToModule,
+		typeDetails:   map[*schema.ObjectType]*typeDetails{},
+		namespaces:    info.Namespaces,
 		rootNamespace: info.GetRootNamespace(),
 	}
 	qualifier := "Inputs"
@@ -92,14 +87,18 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return mod.typeString(t, qualifier, input, false /*state*/, true /*requireInitializers*/)
 }
 
-func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
+	return resourceName(r)
+}
+
+func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 	return tokenToFunctionName(f.Token)
 }
 
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
-	funcName := d.GetFunctionName(modName, f)
+	funcName := d.GetFunctionName(f)
 	return funcName + "Result"
 }
 
@@ -107,37 +106,42 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return Title(m.Name)
 }
 
-func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+func (d DocLanguageHelper) GetModuleName(pkg schema.PackageReference, module string) string {
+	a, _ := pkg.Language("csharp")
+	info, _ := a.(CSharpPackageInfo)
+	return namespaceName(info.Namespaces, module)
+}
+
+func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,
 	m *schema.Method,
 ) string {
+	a, _ := pkg.Language("csharp")
+	info, _ := a.(CSharpPackageInfo)
 	var returnType *schema.ObjectType
 	if m.Function.ReturnType != nil {
 		if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok {
 			returnType = objectType
 		} else {
-			typeDetails := map[*schema.ObjectType]*typeDetails{}
 			mod := &modContext{
-				pkg:         pkg.Reference(),
-				mod:         modName,
-				typeDetails: typeDetails,
-				namespaces:  d.Namespaces,
+				pkg:           pkg,
+				mod:           modName,
+				typeDetails:   map[*schema.ObjectType]*typeDetails{},
+				namespaces:    info.Namespaces,
+				rootNamespace: info.GetRootNamespace(),
 			}
 			return mod.typeString(m.Function.ReturnType, "", false, false, false)
 		}
 	}
 
-	if info, ok := pkg.Language["csharp"].(CSharpPackageInfo); ok {
-		if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
-			typeDetails := map[*schema.ObjectType]*typeDetails{}
-			mod := &modContext{
-				pkg:           pkg.Reference(),
-				mod:           modName,
-				typeDetails:   typeDetails,
-				namespaces:    d.Namespaces,
-				rootNamespace: info.GetRootNamespace(),
-			}
-			return mod.typeString(returnType.Properties[0].Type, "", false, false, false)
+	if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
+		mod := &modContext{
+			pkg:           pkg,
+			mod:           modName,
+			typeDetails:   map[*schema.ObjectType]*typeDetails{},
+			namespaces:    info.Namespaces,
+			rootNamespace: info.GetRootNamespace(),
 		}
+		return mod.typeString(returnType.Properties[0].Type, "", false, false, false)
 	}
 	return fmt.Sprintf("%s.%sResult", resourceName(r), d.GetMethodName(m))
 }
@@ -148,7 +152,7 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	propLangName := strings.Title(p.Name)
 
 	if raw, ok := p.Language["csharp"].(json.RawMessage); ok {
-		val, err := Importer.ImportPropertySpec(p, raw)
+		val, err := Importer.ImportPropertySpec(raw)
 		if err != nil {
 			return "", err
 		}
@@ -171,21 +175,4 @@ func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string,
 		name = e.Name
 	}
 	return makeSafeEnumName(name, typeName)
-}
-
-// GetModuleDocLink returns the display name and the link for a module.
-func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
-	var displayName string
-	var link string
-	rootNamespace := "Pulumi"
-	if pkg.Namespace != "" {
-		rootNamespace = namespaceName(d.Namespaces, pkg.Namespace)
-	}
-	if modName == "" {
-		displayName = rootNamespace + "." + namespaceName(d.Namespaces, pkg.Name)
-	} else {
-		displayName = fmt.Sprintf("%s.%s.%s", rootNamespace, namespaceName(d.Namespaces, pkg.Name), modName)
-	}
-	link = d.GetDocLinkForResourceType(pkg, "", displayName)
-	return displayName, link
 }

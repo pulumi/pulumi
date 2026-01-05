@@ -18,20 +18,16 @@ import asyncio
 import copy
 import warnings
 from typing import (
-    Awaitable,
     Optional,
-    List,
     Any,
-    Mapping,
-    Sequence,
     Union,
-    Set,
-    Callable,
-    Tuple,
     TYPE_CHECKING,
     cast,
 )
+from collections.abc import Callable
+from collections.abc import Awaitable, Mapping, Sequence
 from . import _types
+from .resource_hooks import ResourceHookBinding
 from .runtime import known_types
 from .runtime.resource import (
     _pkg_from_type,
@@ -53,6 +49,11 @@ if TYPE_CHECKING:
 
 
 class CustomTimeouts:
+    """
+    CustomTimeouts allows specifying custom timeouts for resource operations. Timeouts can
+    be specified separately for create, update, and delete operations.
+    """
+
     create: Optional[str]
     """
     create is the optional create timout represented as a string e.g. 5m, 40s, 1d.
@@ -376,7 +377,7 @@ class ResourceOptions:
     Note: Only a list should be used. Mapping keys are not respected.
     """
 
-    ignore_changes: Optional[List[str]]
+    ignore_changes: Optional[list[str]]
     """
     If provided, ignore changes to any of the specified properties.
     """
@@ -400,7 +401,7 @@ class ResourceOptions:
     An optional list of aliases to treat this resource as matching.
     """
 
-    additional_secret_outputs: Optional[List[str]]
+    additional_secret_outputs: Optional[list[str]]
     """
     The names of outputs for this resource that should be treated as secrets. This augments the list
     that the resource provider and pulumi engine already determine based on inputs to your resource.
@@ -412,20 +413,26 @@ class ResourceOptions:
     An optional customTimeouts config block.
     """
 
-    transformations: Optional[List[ResourceTransformation]]
+    transformations: Optional[list[ResourceTransformation]]
     """
     Optional list of transformations to apply to this resource during construction. The
     transformations are applied in order, and are applied prior to transformation applied to
     parents walking from the resource up to the stack.
     """
 
-    transforms: Optional[List[ResourceTransform]]
+    transforms: Optional[list[ResourceTransform]]
     """
     Optional list of transforms to apply to this resource during construction. The
     transforms are applied in order, and are applied prior to transform applied to
     parents walking from the resource up to the stack.
 
     This is experimental.
+    """
+
+    hooks: Optional[ResourceHookBinding]
+    """
+    Optional resource hooks to bind to this resource. The hooks will be invoked during
+    certain step of the lifecycle of the resource.
     """
 
     id: Optional["Input[str]"]
@@ -446,11 +453,17 @@ class ResourceOptions:
     The URN of a previously-registered resource of this type to read from the engine.
     """
 
-    replace_on_changes: Optional[List[str]]
+    replace_on_changes: Optional[list[str]]
     """
     Changes to any of these property paths will force a replacement.  If this list includes `"*"`, changes
     to any properties will force a replacement.  Initialization errors from previous deployments will
     require replacement instead of update only if `"*"` is passed.
+    """
+
+    replacement_trigger: Optional["Input[Any]"]
+    """
+    If set, the engine will diff this with the last recorded value, and trigger
+    a replace if they are not equal.
     """
 
     retain_on_delete: Optional[bool]
@@ -464,6 +477,18 @@ class ResourceOptions:
     if specified resource is being deleted as well.
     """
 
+    replace_with: Optional[list["Resource"]]
+    """
+    If set, this resource will also be replaced whenever any of the provided
+    resources are replaced.
+    """
+
+    hide_diffs: Optional[list[str]]
+    """
+    If set, diffs from the included property paths will not be shown.
+    This only affects the diff display, and does not affect update behavior.
+    """
+
     def __init__(
         self,
         parent: Optional["Resource"] = None,
@@ -473,23 +498,27 @@ class ResourceOptions:
         protect: Optional[bool] = None,
         provider: Optional["ProviderResource"] = None,
         providers: Optional[
-            Union[Mapping[str, "ProviderResource"], List["ProviderResource"]]
+            Union[Mapping[str, "ProviderResource"], list["ProviderResource"]]
         ] = None,
         delete_before_replace: Optional[bool] = None,
-        ignore_changes: Optional[List[str]] = None,
+        ignore_changes: Optional[list[str]] = None,
         version: Optional[str] = None,
         aliases: Optional[Sequence["Input[Union[str, Alias]]"]] = None,
-        additional_secret_outputs: Optional[List[str]] = None,
+        additional_secret_outputs: Optional[list[str]] = None,
         id: Optional["Input[str]"] = None,
         import_: Optional[str] = None,
         custom_timeouts: Optional["CustomTimeouts"] = None,
-        transformations: Optional[List[ResourceTransformation]] = None,
-        transforms: Optional[List[ResourceTransform]] = None,
+        transformations: Optional[list[ResourceTransformation]] = None,
+        transforms: Optional[list[ResourceTransform]] = None,
+        hooks: Optional[ResourceHookBinding] = None,
         urn: Optional[str] = None,
-        replace_on_changes: Optional[List[str]] = None,
+        replace_on_changes: Optional[list[str]] = None,
+        replacement_trigger: Optional["Input[Any]"] = None,
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
         deleted_with: Optional["Resource"] = None,
+        replace_with: Optional[list["Resource"]] = None,
+        hide_diffs: Optional[list[str]] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -534,6 +563,9 @@ class ResourceOptions:
         :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
         :param Optional[Resource] deleted_with: If set, the providers Delete method will not be called for this resource
                if specified resource is being deleted as well.
+        :param Optional[List[Resource]] replace_with: If set, this resource will also be replaced whenever any of the provided resources are replaced.
+        :param Optional[ResourceHookBinding] hooks: Optional resource hooks to bind to this resource. The hooks will be
+                invoked during certain step of the lifecycle of the resource.
         """
 
         self.parent = parent
@@ -551,11 +583,15 @@ class ResourceOptions:
         self.import_ = import_
         self.transformations = transformations
         self.transforms = transforms
+        self.hooks = hooks
         self.urn = urn
         self.replace_on_changes = replace_on_changes
+        self.replacement_trigger = replacement_trigger
         self.depends_on = depends_on
         self.retain_on_delete = retain_on_delete
         self.deleted_with = deleted_with
+        self.replace_with = replace_with
+        self.hide_diffs = hide_diffs
 
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
@@ -568,7 +604,7 @@ class ResourceOptions:
                         f"'depends_on' was passed a value {dep} that was not a Resource."
                     )
 
-    def _depends_on_list(self) -> "Input[List[Input[Resource]]]":
+    def _depends_on_list(self) -> "Input[list[Input[Resource]]]":
         if self.depends_on is None:
             return []
 
@@ -678,6 +714,11 @@ class ResourceOptions:
         dest.replace_on_changes = _merge_lists(
             dest.replace_on_changes, source.replace_on_changes
         )
+        dest.replacement_trigger = (
+            dest.replacement_trigger
+            if source.replacement_trigger is None
+            else source.replacement_trigger
+        )
         dest.aliases = _merge_lists(dest.aliases, source.aliases)
         dest.additional_secret_outputs = _merge_lists(
             dest.additional_secret_outputs, source.additional_secret_outputs
@@ -686,7 +727,7 @@ class ResourceOptions:
             dest.transformations, source.transformations
         )
         dest.transforms = _merge_lists(dest.transforms, source.transforms)
-
+        dest.hooks = ResourceHookBinding.merge(dest.hooks, source.hooks)
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect
         dest.delete_before_replace = (
@@ -717,6 +758,8 @@ class ResourceOptions:
         dest.deleted_with = (
             dest.deleted_with if source.deleted_with is None else source.deleted_with
         )
+        dest.replace_with = _merge_lists(dest.replace_with, source.replace_with)
+        dest.hide_diffs = _merge_lists(dest.hide_diffs, source.hide_diffs)
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.
@@ -784,12 +827,12 @@ class Resource:
     When set to true, protect ensures this resource cannot be deleted.
     """
 
-    _transformations: "List[ResourceTransformation]"
+    _transformations: list["ResourceTransformation"]
     """
     A collection of transformations to apply as part of resource registration.
     """
 
-    _aliases: "List[Input[str]]"
+    _aliases: "list[Input[str]]"
     """
     A list of aliases applied to this resource.
     """
@@ -809,7 +852,7 @@ class Resource:
     The specified download URL associated with the provider or None.
     """
 
-    _childResources: Set["Resource"]
+    _childResources: set["Resource"]
 
     # !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that ResourceOptions.merge
     # works properly for it.
@@ -842,6 +885,8 @@ class Resource:
 
         if dependency:
             self._providers = {}
+            self._transformations = []
+            self._childResources = set()
             return
 
         if props is None:
@@ -977,7 +1022,7 @@ class Resource:
 
     def _get_providers(
         self, t: str, pkg: Optional[str], opts: ResourceOptions
-    ) -> Tuple[Optional["ProviderResource"], Mapping[str, "ProviderResource"]]:
+    ) -> tuple[Optional["ProviderResource"], Mapping[str, "ProviderResource"]]:
         """
         Fetches the correct provider and providers for this resource.
 
@@ -1312,7 +1357,7 @@ def create_urn(
     return create_urn_internal(name, type_, parent, project, stack)
 
 
-def _parse_resource_reference(ref: str) -> Tuple[str, str]:
+def _parse_resource_reference(ref: str) -> tuple[str, str]:
     """
     Parses the URN and ID out of the provider reference.
     """

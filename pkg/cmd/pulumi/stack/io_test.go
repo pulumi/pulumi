@@ -21,12 +21,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -45,7 +47,6 @@ func TestStackLoadOption(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprint(tt.give), func(t *testing.T) {
 			t.Parallel()
 
@@ -66,7 +67,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 
 	// Arrange.
 	_, expectedSm, err := passphrase.NewPassphraseSecretsManager("test-passphrase")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var actualDeployment apitype.DeploymentV3
 
@@ -86,7 +87,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 			opts *backend.CreateStackOptions,
 		) (backend.Stack, error) {
 			err := json.Unmarshal(initialState.Deployment, &actualDeployment)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil, nil
 		},
 		DefaultSecretManagerF: func(*workspace.ProjectStack) (secrets.Manager, error) {
@@ -100,6 +101,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 	//nolint:errcheck
 	CreateStack(
 		context.Background(),
+		cmdutil.Diag(),
 		pkgWorkspace.Instance,
 		mockBackend,
 		stackRef,
@@ -107,6 +109,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 		nil,   /*opts*/
 		false, /*setCurrent*/
 		"",    /*secretsProvider*/
+		false, /* useRemoteConfig */
 	)
 
 	// Assert.

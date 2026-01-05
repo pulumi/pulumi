@@ -27,7 +27,7 @@ type Resource struct {
 }
 
 type resourceArgs struct {
-	Echo interface{} `pulumi:"echo"`
+	Echo any `pulumi:"echo"`
 }
 
 type ResourceArgs struct {
@@ -227,12 +227,6 @@ func (p *Provider) Invoke(ctx context.Context,
 	req *pulumirpc.InvokeRequest,
 ) (*pulumirpc.InvokeResponse, error) {
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", req.GetTok())
-}
-
-func (p *Provider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	return fmt.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
 }
 
 func (p *Provider) Call(ctx context.Context,

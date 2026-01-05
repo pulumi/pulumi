@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -26,12 +27,15 @@ import (
 func init() {
 	LanguageTests["l2-provider-grpc-config-schema-secret"] = LanguageTest{
 		// This test checks how SDKs propagate properties marked as secret to the provider Configure on the gRPC level.
-		Providers: []plugin.Provider{&providers.ConfigGrpcProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ConfigGrpcProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					g := &grpcTestContext{l: l, s: snap}
 

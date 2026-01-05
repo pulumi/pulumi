@@ -23,6 +23,7 @@ import * as config from "../runtime/config";
 import * as rpc from "../runtime/rpc";
 import * as settings from "../runtime/settings";
 import * as localState from "../runtime/state";
+import { hookBindingFromProto } from "../runtime/resource";
 import { parseArgs } from "./internals";
 import { InputPropertyError, InputPropertiesError, InputPropertyErrorDetails } from "../errors";
 
@@ -85,7 +86,7 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 
     public getSchema(call: any, callback: any): void {
-        const req: any = call.request;
+        const req: provproto.GetSchemaRequest = call.request;
         if (req.getVersion() !== 0) {
             callback(new Error(`unsupported schema version ${req.getVersion()}`), undefined);
             return;
@@ -173,11 +174,11 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async check(call: any, callback: any): Promise<void> {
         try {
-            const req: any = call.request;
+            const req: provproto.CheckRequest = call.request;
             const resp = new provproto.CheckResponse();
 
-            const olds = req.getOlds().toJavaScript();
-            const news = req.getNews().toJavaScript();
+            const olds = req.getOlds()!.toJavaScript();
+            const news = req.getNews()!.toJavaScript();
 
             let inputs: any = news;
             let failures: any[] = [];
@@ -216,11 +217,11 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async diff(call: any, callback: any): Promise<void> {
         try {
-            const req: any = call.request;
+            const req: provproto.DiffRequest = call.request;
             const resp = new provproto.DiffResponse();
 
-            const olds = req.getOlds().toJavaScript();
-            const news = req.getNews().toJavaScript();
+            const olds = req.getOlds()!.toJavaScript();
+            const news = req.getNews()!.toJavaScript();
             if (this.provider.diff) {
                 const result: any = await this.provider.diff(req.getId(), req.getUrn(), olds, news);
 
@@ -249,14 +250,14 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async create(call: any, callback: any): Promise<void> {
         try {
-            const req: any = call.request;
+            const req: provproto.CreateRequest = call.request;
             if (!this.provider.create) {
                 callback(new Error(`unknown resource type ${req.getUrn()}`), undefined);
                 return;
             }
 
             const resp = new provproto.CreateResponse();
-            const props = req.getProperties().toJavaScript();
+            const props = req.getProperties()!.toJavaScript();
             const result = await this.provider.create(req.getUrn(), props);
             resp.setId(result.id);
             resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
@@ -270,11 +271,11 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async read(call: any, callback: any): Promise<void> {
         try {
-            const req: any = call.request;
+            const req: provproto.ReadRequest = call.request;
             const resp = new provproto.ReadResponse();
 
             const id = req.getId();
-            const props = req.getProperties().toJavaScript();
+            const props = req.getProperties()!.toJavaScript();
             if (this.provider.read) {
                 const result: any = await this.provider.read(id, req.getUrn(), props);
                 resp.setId(result.id);
@@ -297,11 +298,11 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async update(call: any, callback: any): Promise<void> {
         try {
-            const req: any = call.request;
+            const req: provproto.UpdateRequest = call.request;
             const resp = new provproto.UpdateResponse();
 
-            const olds = req.getOlds().toJavaScript();
-            const news = req.getNews().toJavaScript();
+            const olds = req.getOlds()!.toJavaScript();
+            const news = req.getNews()!.toJavaScript();
 
             let result: any = {};
             if (this.provider.update) {
@@ -319,8 +320,8 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async delete(call: any, callback: any): Promise<void> {
         try {
-            const req: any = call.request;
-            const props: any = req.getProperties().toJavaScript();
+            const req: provproto.DeleteRequest = call.request;
+            const props: any = req.getProperties()!.toJavaScript();
             if (this.provider.delete) {
                 await this.provider.delete(req.getId(), req.getUrn(), props);
             }
@@ -364,12 +365,11 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async construct(call: any, callback: any): Promise<void> {
         // Setup a new async state store for this run
-        const store = new localState.LocalStore();
-        return localState.asyncLocalStorage.run(store, async () => {
+        return localState.withLocalStorage(async () => {
             const callbackId = Symbol("id");
             this._callbacks.set(callbackId, callback);
             try {
-                const req: any = call.request;
+                const req: provproto.ConstructRequest = call.request;
                 const type = req.getType();
                 const name = req.getName();
 
@@ -380,7 +380,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
                 await configureRuntime(req, this.engineAddr);
 
-                const inputs = await deserializeInputs(req.getInputs(), req.getInputdependenciesMap());
+                const inputs = await deserializeInputs(req.getInputs()!, req.getInputdependenciesMap());
 
                 // Rebuild the resource options.
                 const dependsOn: resource.Resource[] = [];
@@ -394,13 +394,24 @@ class Server implements grpc.UntypedServiceImplementation {
                         providers[pkg] = createProviderResource(ref);
                     }
                 }
+
                 const opts: resource.ComponentResourceOptions = {
                     aliases: req.getAliasesList(),
                     dependsOn: dependsOn,
                     protect: req.getProtect(),
                     providers: providers,
                     parent: req.getParent() ? new resource.DependencyResource(req.getParent()) : undefined,
+                    ignoreChanges: req.getIgnorechangesList(),
+                    replaceOnChanges: req.getReplaceonchangesList(),
+                    customTimeouts: req.getCustomtimeouts()?.toObject(),
+                    retainOnDelete: req.getRetainondelete(),
+                    hooks: hookBindingFromProto(req.getResourceHooks()),
                 };
+
+                const deletedWith = req.getDeletedwith();
+                if (deletedWith !== "") {
+                    opts.deletedWith = createProviderResource(deletedWith);
+                }
 
                 const result = await this.provider.construct(name, type, inputs, opts);
 
@@ -446,12 +457,11 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async call(call: any, callback: any): Promise<void> {
         // Setup a new async state store for this run
-        const store = new localState.LocalStore();
-        return localState.asyncLocalStorage.run(store, async () => {
+        return localState.withLocalStorage(async () => {
             const callbackId = Symbol("id");
             this._callbacks.set(callbackId, callback);
             try {
-                const req: any = call.request;
+                const req: provproto.CallRequest = call.request;
                 if (!this.provider.call) {
                     callback(new Error(`unknown function ${req.getTok()}`), undefined);
                     return;
@@ -459,7 +469,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
                 await configureRuntime(req, this.engineAddr);
 
-                const args = await deserializeInputs(req.getArgs(), req.getArgdependenciesMap());
+                const args = await deserializeInputs(req.getArgs()!, req.getArgdependenciesMap());
 
                 const result = await this.provider.call(req.getTok(), args);
 
@@ -516,13 +526,13 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public async invoke(call: any, callback: any): Promise<void> {
         try {
-            const req: any = call.request;
+            const req: provproto.InvokeRequest = call.request;
             if (!this.provider.invoke) {
                 callback(new Error(`unknown function ${req.getTok()}`), undefined);
                 return;
             }
 
-            const args: any = req.getArgs().toJavaScript();
+            const args: any = req.getArgs()!.toJavaScript();
             const result = await this.provider.invoke(req.getTok(), args);
 
             const resp = new provproto.InvokeResponse();
@@ -544,16 +554,6 @@ class Server implements grpc.UntypedServiceImplementation {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         }
-    }
-
-    public async streamInvoke(call: any, callback: any): Promise<void> {
-        callback(
-            {
-                code: grpc.status.UNIMPLEMENTED,
-                details: "Not yet implemented: StreamInvoke",
-            },
-            undefined,
-        );
     }
 }
 
@@ -746,7 +746,7 @@ export async function main(provider: Provider, args: string[]) {
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
-        "grpc.max_receive_message_length": settings.maxRPCMessageSize,
+        ...settings.grpcChannelOptions,
     });
 
     // The program receives a single optional argument: the address of the RPC endpoint for the engine.  It

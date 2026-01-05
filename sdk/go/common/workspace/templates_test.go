@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,8 +21,158 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// TestGetTemplateGitRepository tests that environment variables correctly override
+// the compile-time defaults for template repository URLs.
+func TestGetTemplateGitRepository(t *testing.T) {
+	tests := []struct {
+		name            string
+		templateKind    TemplateKind
+		envVar          string
+		envValue        string
+		setEmptyString  bool
+		expectedDefault string
+	}{
+		{
+			name:            "PulumiProject without env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/pulumi/templates.git",
+		},
+		{
+			name:            "PulumiProject with empty string env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "https://github.com/pulumi/templates.git",
+		},
+		{
+			name:            "PulumiProject with env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateGitRepository.Var().Name(),
+			envValue:        "https://github.com/custom/templates.git",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/custom/templates.git",
+		},
+		{
+			name:            "PolicyPack without env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/pulumi/templates-policy.git",
+		},
+		{
+			name:            "PolicyPack with empty string env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "https://github.com/pulumi/templates-policy.git",
+		},
+		{
+			name:            "PolicyPack with env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateGitRepository.Var().Name(),
+			envValue:        "https://github.com/custom/templates-policy.git",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/custom/templates-policy.git",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up environment variable if specified
+			if tt.envValue != "" || tt.setEmptyString {
+				t.Setenv(tt.envVar, tt.envValue)
+			}
+
+			result := getTemplateGitRepository(tt.templateKind)
+			assert.Equal(t, tt.expectedDefault, result)
+		})
+	}
+}
+
+// TestGetTemplateBranch tests that environment variables correctly override
+// the compile-time defaults for template branch names.
+func TestGetTemplateBranch(t *testing.T) {
+	tests := []struct {
+		name            string
+		templateKind    TemplateKind
+		envVar          string
+		envValue        string
+		setEmptyString  bool
+		expectedDefault string
+	}{
+		{
+			name:            "PulumiProject without env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PulumiProject with empty string env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PulumiProject with env var",
+			templateKind:    TemplateKindPulumiProject,
+			envVar:          env.TemplateBranch.Var().Name(),
+			envValue:        "custom-branch",
+			setEmptyString:  false,
+			expectedDefault: "custom-branch",
+		},
+		{
+			name:            "PolicyPack without env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PolicyPack with empty string env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: "master",
+		},
+		{
+			name:            "PolicyPack with env var",
+			templateKind:    TemplateKindPolicyPack,
+			envVar:          env.PolicyTemplateBranch.Var().Name(),
+			envValue:        "custom-branch",
+			setEmptyString:  false,
+			expectedDefault: "custom-branch",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up environment variable if specified
+			if tt.envValue != "" || tt.setEmptyString {
+				t.Setenv(tt.envVar, tt.envValue)
+			}
+
+			result := getTemplateBranch(tt.templateKind)
+			assert.Equal(t, tt.expectedDefault, result)
+		})
+	}
+}
 
 //nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveNonExistingTemplate(t *testing.T) {
@@ -42,7 +192,6 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 
 	templateName := "not-the-template-that-exists-in-pulumi-repo-nor-on-disk"
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 
@@ -79,7 +228,6 @@ Did you mean this?
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.templateName, func(t *testing.T) {
 			_, err := RetrieveTemplates(context.Background(), tt.templateName, false, TemplateKindPulumiProject)
 			assert.ErrorAs(t, err, &TemplateNotFoundError{})
@@ -108,10 +256,9 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), tt.templateName, false, tt.templateKind)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 
 			// Root should point to Pulumi templates directory
@@ -152,10 +299,9 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), tt.templateURL, false, tt.templateKind)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, true, repository.ShouldDelete)
 
 			// Root should point to a subfolder of a Temp Dir
@@ -172,11 +318,11 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 			// SubDirectory should exist and contain the template files
 			yamlPath := filepath.Join(repository.SubDirectory, tt.yamlFile)
 			_, err = os.Stat(yamlPath)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Clean Up
 			err = repository.Delete()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -202,7 +348,6 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 
@@ -229,10 +374,9 @@ func TestRetrieveFileTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(context.Background(), ".", false, tt.templateKind)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 
 			// Both Root and SubDirectory just point to the (existing) specified folder
@@ -263,77 +407,74 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	setupTestData := func(t *testing.T, testDataDir string, files []string, directories []string) (string, string) {
 		err := os.MkdirAll(testDataDir, 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		projectDir := testDataDir + "/project"
 		err = os.MkdirAll(projectDir, 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		copyDestDir := testDataDir + "/tmp"
 		err = os.MkdirAll(copyDestDir, 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		for _, dirName := range directories {
 			err := os.MkdirAll(projectDir+"/"+dirName, 0o700)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		for _, fileName := range files {
 			err := os.WriteFile(projectDir+"/"+fileName, []byte("testing"), 0o600)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return projectDir, copyDestDir
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Copy "+tt.testName+": force=false", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-Copy"
 
 			defer func() {
 				err := os.RemoveAll(testDataDir)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Copy "+tt.testName+": force=true", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-CopyForce"
 
 			defer func() {
 				err := os.RemoveAll(testDataDir)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Overwrite "+tt.testName+": force=false", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-Overwrite"
 
 			defer func() {
 				err := os.RemoveAll(testDataDir)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// copy the same files again to test overwriting - expect error
 			err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
 			assert.Error(t, err)
@@ -341,22 +482,21 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run("Overwrite "+tt.testName+": force=true", func(t *testing.T) {
 			testDataDir := "CopyTemplateFilesTestData-OverwriteForce"
 
 			defer func() {
 				err := os.RemoveAll(testDataDir)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
 			err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// copy the same files again to test overwriting - expect no error with force
 			err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 
@@ -365,7 +505,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		directories := []string{"src"}
@@ -374,14 +514,14 @@ func TestCopyTemplateFiles(t *testing.T) {
 		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
 
 		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// change the src directory in the destination dir to a file
 		err = os.RemoveAll(copyDestDir + "/src")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = os.WriteFile(copyDestDir+"/src", []byte("testing"), 0o600)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect error
 		err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
@@ -393,7 +533,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		directories := []string{"src"}
@@ -402,18 +542,18 @@ func TestCopyTemplateFiles(t *testing.T) {
 		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
 
 		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// change the src directory in the destination dir to a file
 		err = os.RemoveAll(copyDestDir + "/src")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = os.WriteFile(copyDestDir+"/src", []byte("testing"), 0o600)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect no error with force
 		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Overwrite file over empty directory: force=false", func(t *testing.T) {
@@ -421,7 +561,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		directories := []string{"src"}
@@ -430,14 +570,14 @@ func TestCopyTemplateFiles(t *testing.T) {
 		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
 
 		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// change the Pulumi.dev.yaml file in the destination dir to a dir
 		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect error
 		err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
@@ -449,7 +589,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		directories := []string{"src"}
@@ -458,18 +598,18 @@ func TestCopyTemplateFiles(t *testing.T) {
 		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
 
 		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// change the Pulumi.dev.yaml file in the destination dir to a dir
 		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect no error with force
 		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Overwrite file over non-empty directory: force=true", func(t *testing.T) {
@@ -477,7 +617,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		defer func() {
 			err := os.RemoveAll(testDataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		directories := []string{"src"}
@@ -486,21 +626,21 @@ func TestCopyTemplateFiles(t *testing.T) {
 		projectDir, copyDestDir := setupTestData(t, testDataDir, files, directories)
 
 		err := CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// change the Pulumi.dev.yaml file in the destination dir to a dir
 		err = os.RemoveAll(copyDestDir + "/Pulumi.dev.yaml")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = os.Mkdir(copyDestDir+"/Pulumi.dev.yaml", 0o700)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// add a file to the dir
 		err = os.WriteFile(copyDestDir+"/Pulumi.dev.yaml/README.md", []byte("testing"), 0o600)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// copy the same files again to test overwriting - expect no error with force
 		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

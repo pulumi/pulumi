@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:revive // Legacy package name we don't want to change
 package util
 
 import (
@@ -26,7 +27,7 @@ import (
 func TestUrlAlreadySet(t *testing.T) {
 	t.Parallel()
 
-	spec := workspace.PluginSpec{
+	spec := workspace.PluginDescriptor{
 		Name:              "acme",
 		Kind:              apitype.ResourcePlugin,
 		PluginDownloadURL: "github://api.github.com/pulumiverse",
@@ -38,7 +39,7 @@ func TestUrlAlreadySet(t *testing.T) {
 func TestKnownProvider(t *testing.T) {
 	t.Parallel()
 
-	spec := workspace.PluginSpec{
+	spec := workspace.PluginDescriptor{
 		Name: "acme",
 		Kind: apitype.ResourcePlugin,
 	}

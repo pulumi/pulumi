@@ -41,13 +41,13 @@ for i in \
   OUTDIR="$(mktemp -d)"
   case "${EXT}" in
     "tar.gz")
-      curl -OL --fail "https://github.com/pulumi/watchutil-rs/releases/download/${TAG}/${FILENAME}"
+      curl -OL --fail --retry 3 "https://github.com/pulumi/watchutil-rs/releases/download/${TAG}/${FILENAME}"
       tar -xzvf "${FILENAME}" --strip-components=1 -C "${OUTDIR}"
       mv "${OUTDIR}/pulumi-watch" "${DIST_DIR}"
       rm "${FILENAME}"
       ;;
     "zip")
-      curl -OL --fail "https://github.com/pulumi/watchutil-rs/releases/download/${TAG}/${FILENAME}"
+      curl -OL --fail --retry 3 "https://github.com/pulumi/watchutil-rs/releases/download/${TAG}/${FILENAME}"
       unzip -j "${FILENAME}" -d "${OUTDIR}"
       mv "${OUTDIR}/pulumi-watch.exe" "${DIST_DIR}"
       rm "${FILENAME}"

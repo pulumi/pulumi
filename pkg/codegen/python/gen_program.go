@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -161,14 +162,14 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 	hasAnyInputVariables := len(configVars) > 0
 	if hasAnyInputVariables {
 		objectTypedConfigs := collectObjectTypedConfigVariables(component)
-		variableNames := pcl.SortedStringKeys(objectTypedConfigs)
+		variableNames := maputil.SortedKeys(objectTypedConfigs)
 		// generate resource args for this component
 		for _, variableName := range variableNames {
 			objectType := objectTypedConfigs[variableName]
 			objectTypeName := title(variableName)
 			g.Fprintf(w, "class %s(TypedDict, total=False):\n", objectTypeName)
 			g.Indented(func() {
-				propertyNames := pcl.SortedStringKeys(objectType.Properties)
+				propertyNames := maputil.SortedKeys(objectType.Properties)
 				for _, propertyName := range propertyNames {
 					propertyType := objectType.Properties[propertyName]
 					inputType := componentInputElementType(propertyType)
@@ -303,7 +304,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
-	typechecker string,
+	typechecker, toolchain string,
 ) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
@@ -324,18 +325,25 @@ func GenerateProject(
 		}
 	}
 
-	var options map[string]interface{}
+	var options map[string]any
 	if _, ok := localDependencies["pulumi"]; ok {
-		options = map[string]interface{}{
+		options = map[string]any{
 			"virtualenv": "venv",
 		}
 	}
 
 	if typechecker != "" {
 		if options == nil {
-			options = map[string]interface{}{}
+			options = map[string]any{}
 		}
 		options["typechecker"] = typechecker
+	}
+
+	if toolchain != "" {
+		if options == nil {
+			options = map[string]any{}
+		}
+		options["toolchain"] = toolchain
 	}
 
 	// Set the runtime to "python" then marshal to Pulumi.yaml
@@ -572,7 +580,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		}
 		control := importSet[pkg]
 		if control.ImportAs {
-			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, EnsureKeywordSafe(control.Pkg)))
+			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, EnsureKeywordSafe(PyName(control.Pkg))))
 		} else {
 			imports = append(imports, "import "+pkg)
 		}
@@ -626,7 +634,7 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 }
 
 func tokenToQualifiedName(pkg, module, member string) string {
-	components := strings.Split(module, "/")
+	components := strings.Split(strings.ToLower(module), "/")
 	for i, component := range components {
 		components[i] = PyName(component)
 	}
@@ -635,7 +643,7 @@ func tokenToQualifiedName(pkg, module, member string) string {
 		module = "." + module
 	}
 
-	return fmt.Sprintf("%s%s.%s", PyName(pkg), module, title(member))
+	return fmt.Sprintf("%s%s.%s", EnsureKeywordSafe(PyName(pkg)), module, title(member))
 }
 
 // resourceTypeName computes the qualified name of a python resource.
@@ -771,11 +779,15 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 		})
 	}
 
+	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}
 	if opts.Provider != nil {
 		appendOption("provider", opts.Provider)
+	}
+	if opts.Providers != nil {
+		appendOption("providers", opts.Providers)
 	}
 	if opts.DependsOn != nil {
 		appendOption("depends_on", opts.DependsOn)
@@ -791,6 +803,18 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	}
 	if opts.DeletedWith != nil {
 		appendOption("deleted_with", opts.DeletedWith)
+	}
+	if opts.ReplaceWith != nil {
+		appendOption("replace_with", opts.ReplaceWith)
+	}
+	if opts.ReplacementTrigger != nil {
+		appendOption("replacement_trigger", opts.ReplacementTrigger)
+	}
+	if opts.ImportID != nil {
+		appendOption("import_", opts.ImportID)
+	}
+	if opts.HideDiffs != nil {
+		appendOption("hide_diffs", opts.HideDiffs)
 	}
 
 	return block, temps
@@ -1216,7 +1240,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.LogicalName(), value)
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,

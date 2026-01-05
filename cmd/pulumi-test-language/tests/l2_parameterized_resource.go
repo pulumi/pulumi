@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -25,21 +26,24 @@ import (
 
 func init() {
 	LanguageTests["l2-parameterized-resource"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ParameterizedProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ParameterizedProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l,
-						resource.NewStringProperty("HelloWorld"),
+						resource.NewProperty("HelloWorld"),
 						stack.Outputs["parameterValue"],
 						"parameter value should be correct")
 					require.Equal(l,
-						resource.NewStringProperty("HelloWorldComponent"),
+						resource.NewProperty("HelloWorldComponent"),
 						stack.Outputs["parameterValueFromComponent"],
 						"parameter value from component should be correct")
 				},

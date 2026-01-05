@@ -15,12 +15,11 @@
 import { OutputInstance } from "../index";
 import { Resource } from "../resource";
 
+// Note: The @pulumi/policy npm package depends on ResolvedResource.
+
 /**
  * {@link ResolvedResource} is a {@link Resource} with all fields containing
- * {@link Output} values fully resolved. This is useful primarily when we're
- * querying over resource outputs (e.g., using
- * `pulumi.runtime.listResourceOutputs`), and we expect all values to be present
- * and fully-resolved.
+ * {@link Output} values fully resolved.
  */
 export type ResolvedResource<T extends Resource> = Omit<Resolved<T>, "urn" | "getProvider">;
 

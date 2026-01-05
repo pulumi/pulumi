@@ -79,7 +79,7 @@ func TestAutonaming(t *testing.T) {
 	deleteBeforeReplace := false
 	plan, err := lt.TestOp(Update).Plan(project, target, p.Options, p.BackendClient, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, plan)
+	require.NotNil(t, plan)
 	for _, r := range plan.ResourcePlans {
 		if r.Goal == nil {
 			continue

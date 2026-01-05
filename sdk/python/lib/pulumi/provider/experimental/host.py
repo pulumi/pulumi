@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from inspect import isclass
 import sys
+from types import ModuleType
 from typing import Optional
 
 from ...resource import ComponentResource
 from ...provider import main
-from .provider import ComponentProvider
+from .component import ComponentProvider
 
 is_hosting = False
 
@@ -26,6 +28,7 @@ def component_provider_host(
     components: list[type[ComponentResource]],
     name: str,
     namespace: Optional[str] = None,
+    version: Optional[str] = None,
 ):
     """
     component_provider_host starts the provider and hosts the passed in components.
@@ -50,5 +53,14 @@ def component_provider_host(
     args = sys.argv[1:]
     # Default the version to "0.0.0" for now, otherwise SDK codegen gets
     # confused without a version.
-    version = "0.0.0"
+    if version is None:
+        version = "0.0.0"
     main(ComponentProvider(components, name, namespace, version), args)
+
+
+def components_from_module(mod: ModuleType) -> list[type[ComponentResource]]:
+    components: list[type[ComponentResource]] = []
+    for _, v in mod.__dict__.items():
+        if isclass(v) and issubclass(v, ComponentResource):
+            components.append(v)
+    return components

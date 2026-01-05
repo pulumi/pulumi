@@ -32,7 +32,9 @@ func TestGeneratePackage(t *testing.T) {
 
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language: "dotnet",
-		GenPackage: func(t string, p *schema.Package, e map[string][]byte) (map[string][]byte, error) {
+		GenPackage: func(
+			t string, p *schema.Package, e map[string][]byte, l schema.ReferenceLoader,
+		) (map[string][]byte, error) {
 			return GeneratePackage(t, p, e, nil)
 		},
 		Checks: map[string]test.CodegenCheck{
@@ -109,7 +111,6 @@ func TestGenerateType(t *testing.T) {
 	mod := &modContext{mod: "main"}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, c := range cases {
-		c := c
 		t.Run(c.typ.String(), func(t *testing.T) {
 			t.Parallel()
 

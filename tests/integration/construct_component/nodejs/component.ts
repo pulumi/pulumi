@@ -7,8 +7,8 @@ interface ComponentArgs {
 }
 
 export class Component extends pulumi.ComponentResource {
-    public readonly echo!: pulumi.Output<any>;
-    public readonly childId!: pulumi.Output<pulumi.ID>;
+    declare public readonly echo: pulumi.Output<any>;
+    declare public readonly childId: pulumi.Output<pulumi.ID>;
 
     constructor(name: string, args: ComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         const inputs: any = {};

@@ -18,9 +18,10 @@ import (
 	"math"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -30,19 +31,20 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 6, "expected 6 outputs")
-					AssertPropertyMapMember(l, outputs, "zero", resource.NewNumberProperty(0))
-					AssertPropertyMapMember(l, outputs, "one", resource.NewNumberProperty(1))
-					AssertPropertyMapMember(l, outputs, "e", resource.NewNumberProperty(2.718))
-					AssertPropertyMapMember(l, outputs, "minInt32", resource.NewNumberProperty(math.MinInt32))
-					AssertPropertyMapMember(l, outputs, "max", resource.NewNumberProperty(math.MaxFloat64))
-					AssertPropertyMapMember(l, outputs, "min", resource.NewNumberProperty(math.SmallestNonzeroFloat64))
+					require.Len(l, outputs, 6, "expected 6 outputs")
+					AssertPropertyMapMember(l, outputs, "zero", resource.NewProperty(0.0))
+					AssertPropertyMapMember(l, outputs, "one", resource.NewProperty(1.0))
+					AssertPropertyMapMember(l, outputs, "e", resource.NewProperty(2.718))
+					AssertPropertyMapMember(l, outputs, "minInt32", resource.NewProperty(float64(math.MinInt32)))
+					AssertPropertyMapMember(l, outputs, "max", resource.NewProperty(math.MaxFloat64))
+					AssertPropertyMapMember(l, outputs, "min", resource.NewProperty(math.SmallestNonzeroFloat64))
 				},
 			},
 		},

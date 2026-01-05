@@ -14,12 +14,32 @@
 
 package plugin
 
-type DebugEventEmitter interface {
+type DebugType int
+
+const (
+	// DebugTypeProgram indicates that the debug session is for a program.
+	DebugTypeProgram DebugType = iota
+	// DebugTypePlugin indicates that the debug session is for a plugin.
+	DebugTypePlugin
+)
+
+type DebugSpec struct {
+	// Type is the type of the thing to debug. Can be "program" or "plugin".
+	Type DebugType
+
+	// Name is the name of the plugin. Only used if Type is DebugTypePlugin.
+	Name string
+}
+
+type DebugContext interface {
 	// StartDebugging asks the host to start a debug session for the given configuration.
 	StartDebugging(info DebuggingInfo) error
+
+	// AttachDebugger returns true if debugging is enabled.
+	AttachDebugger(spec DebugSpec) bool
 }
 
 type DebuggingInfo struct {
 	// Config is the debug configuration (language-specific, see Debug Adapter Protocol)
-	Config map[string]interface{}
+	Config map[string]any
 }

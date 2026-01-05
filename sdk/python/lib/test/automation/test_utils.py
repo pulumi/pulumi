@@ -13,26 +13,26 @@
 # limitations under the License.
 
 import os
-from random import random
+import uuid
 
 from pulumi.automation import fully_qualified_stack_name
 
 
 def get_test_org():
+    env_var = os.getenv("PULUMI_TEST_ORG")
+    if env_var is not None:
+        return env_var
     if os.getenv("PULUMI_ACCESS_TOKEN") is None:
         return "organization"
     test_org = "moolumi"
-    env_var = os.getenv("PULUMI_TEST_ORG")
-    if env_var is not None:
-        test_org = env_var
     return test_org
 
 
-def get_test_suffix() -> int:
-    return int(100000 + random() * 900000)
+def get_test_suffix() -> str:
+    return str(uuid.uuid4())
 
 
-def stack_namer(project_name):
+def stack_namer(project_name: str) -> str:
     return fully_qualified_stack_name(
         get_test_org(), project_name, f"int_test_{get_test_suffix()}"
     )

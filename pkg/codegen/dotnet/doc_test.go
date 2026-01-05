@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testPackageSpec = schema.PackageSpec{
@@ -62,8 +63,10 @@ var testPackageSpec = schema.PackageSpec{
 func getTestPackage(t *testing.T) *schema.Package {
 	t.Helper()
 
-	pkg, err := schema.ImportSpec(testPackageSpec, nil)
-	assert.NoError(t, err, "could not import the test package spec")
+	pkg, err := schema.ImportSpec(testPackageSpec, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err, "could not import the test package spec")
 	return pkg
 }
 
@@ -82,17 +85,16 @@ func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
 	t.Parallel()
 
 	pkg := getTestPackage(t)
+	var d DocLanguageHelper
+	pkg.Language["csharp"] = CSharpPackageInfo{
+		Namespaces: map[string]string{
+			"s3": "S3",
+		},
+	}
 
-	namespaces := map[string]string{
-		"s3": "S3",
-	}
-	d := DocLanguageHelper{
-		Namespaces: namespaces,
-	}
-	expected := "/docs/reference/pkg/dotnet/Pulumi.Aws/Pulumi.Aws.S3.Inputs.BucketCorsRuleArgs.html"
 	// Generate the type string for the property type and use that to generate the doc link.
 	propertyType := codegen.UnwrapType(pkg.Resources[0].InputProperties[0].Type)
-	typeString := d.GetLanguageTypeString(pkg, "S3", propertyType, true)
+	typeString := d.GetTypeName(pkg.Reference(), propertyType, true, pkg.TokenToModule("aws:s3/BucketCorsRule:BucketCorsRule"))
 	link := d.GetDocLinkForResourceInputOrOutputType(pkg, "doesNotMatter", typeString, true)
-	assert.Equal(t, expected, link)
+	assert.Equal(t, "/docs/reference/pkg/dotnet/Pulumi.Aws/Pulumi.Aws.S3.Inputs.BucketCorsRuleArgs.html", link)
 }

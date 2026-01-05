@@ -41,7 +41,7 @@ type eqOpts struct {
 //     equality: a.IsComputed() => (a.Equals(b) <=> b.IsComputed()) (up to secrets and
 //     dependencies).
 //
-//     If EqualRelaxComputed is passed, then computed values are considered equal to all
+//     If [EqualRelaxComputed] is passed, then computed values are considered equal to all
 //     other values. (up to secrets and dependencies)
 func (v Value) Equals(other Value, opts ...EqualOption) bool {
 	var eqOpts eqOpts
@@ -78,32 +78,32 @@ func (v Value) equals(other Value, opts eqOpts) bool {
 		return v.AsString() == other.AsString()
 	case v.IsArray() && other.IsArray():
 		a1, a2 := v.AsArray(), other.AsArray()
-		if len(a1) != len(a2) {
+		if a1.Len() != a2.Len() {
 			return false
 		}
-		for i := range a1 {
-			if !a1[i].equals(a2[i], opts) {
+		for i := range a1.arr {
+			if !a1.arr[i].equals(a2.arr[i], opts) {
 				return false
 			}
 		}
 		return true
 	case v.IsMap() && other.IsMap():
 		m1, m2 := v.AsMap(), other.AsMap()
-		if len(m1) != len(m2) {
+		if m1.Len() != m2.Len() {
 			return false
 		}
-		for k, v1 := range m1 {
-			v2, ok := m2[k]
+		for k, v1 := range m1.m {
+			v2, ok := m2.m[k]
 			if !ok || !v1.equals(v2, opts) {
 				return false
 			}
 		}
 		return true
 	case v.IsAsset() && other.IsAsset():
-		a1, a2 := v.AsAsset(), other.AsAsset()
+		a1, a2 := v.asAssetMut(), other.asAssetMut()
 		return a1.Equals(a2)
 	case v.IsArchive() && other.IsArchive():
-		a1, a2 := v.AsArchive(), other.AsArchive()
+		a1, a2 := v.asArchiveMut(), other.asArchiveMut()
 		return a1.Equals(a2)
 	case v.IsResourceReference() && other.IsResourceReference():
 		r1, r2 := v.AsResourceReference(), other.AsResourceReference()

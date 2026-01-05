@@ -18,7 +18,12 @@ Support for automatic stack components.
 
 import asyncio
 from inspect import isawaitable
-from typing import Any, Callable, Dict, List, Awaitable, Optional
+from typing import Any, Optional
+from collections.abc import Callable
+from collections.abc import Awaitable
+from google.protobuf import empty_pb2
+import grpc
+
 
 from . import settings
 from .. import log
@@ -39,6 +44,7 @@ from .settings import (
     _shutdown_callbacks,
     _sync_monitor_supports_transforms,
     _sync_monitor_supports_invoke_transforms,
+    get_monitor,
     get_project,
     get_root_resource,
     get_stack,
@@ -48,15 +54,47 @@ from .settings import (
 from .sync_await import _sync_await
 
 
+async def _wait_for_shutdown() -> None:
+    try:
+        monitor = get_monitor()
+        if monitor is None:
+            return
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: monitor.SignalAndWaitForShutdown(empty_pb2.Empty())
+        )
+    except grpc.RpcError as exn:
+        # If we are running against an older version of the CLI,
+        # SignalAndWaitForShutdown might not be implemented. This is mostly
+        # fine, but means that delete hooks do not work. Since we check if the
+        # CLI supports the `resourceHook` feature when registering hooks, it's
+        # fine to ignore the `UNIMPLEMENTED` error here.
+        if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
+            log.debug("Monitor does not implement `SignalAndWaitForShutdown`")
+
+
 async def run_pulumi_func(func: Callable[[], None]):
+    # Run the function and grab any exception it generates
+    ex = None
     try:
         func()
-    finally:
+    except Exception as e:  # noqa # We re-raise this below
+        ex = e
+
+    # Wait for RPCs to complete, then signal and wait for shutdown.
+    try:
         await wait_for_rpcs()
+        # If func succeeded, let the monitor decide when we should shutdown.
+        if not ex:
+            await _wait_for_shutdown()
+    finally:
+        # Finally, we must always shutdown the callbacks server when we're done.
         await _shutdown_callbacks()
 
-        # By now, all tasks have exited and we're good to go.
-        log.debug("run_pulumi_func completed")
+    # By now, all tasks have exited and we're good to go.
+    log.debug("run_pulumi_func completed")
+    if ex:
+        # Re-raise ex so the language runtime can report the error.
+        raise ex
 
 
 async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
@@ -148,7 +186,7 @@ class Stack(ComponentResource):
     A synthetic stack component that automatically parents resources as the program runs.
     """
 
-    outputs: Dict[str, Any]
+    outputs: dict[str, Any]
 
     def __init__(self, func: Callable[[], Optional[Awaitable[None]]]) -> None:
         # Ensure we don't already have a stack registered.
@@ -184,7 +222,7 @@ class Stack(ComponentResource):
 
 # Note: we use a List here instead of a set as many objects are unhashable.  This is inefficient,
 # but python seems to offer no alternative.
-def massage(attr: Any, seen: List[Any]):
+def massage(attr: Any, seen: list[Any]):
     """
     massage takes an arbitrary python value and attempts to *deeply* convert it into
     plain-old-python-value that can registered as an output.  In general, this means leaving alone
@@ -223,12 +261,12 @@ def massage(attr: Any, seen: List[Any]):
             raise Exception("Invariant broken when processing stack outputs")
 
 
-def massage_complex(attr: Any, seen: List[Any]) -> Any:
+def massage_complex(attr: Any, seen: list[Any]) -> Any:
     def is_public_key(key: str) -> bool:
         return not key.startswith("_")
 
     def serialize_all_keys(include: Callable[[str], bool]):
-        plain_object: Dict[str, Any] = {}
+        plain_object: dict[str, Any] = {}
         for key in attr.__dict__.keys():
             if include(key):
                 plain_object[key] = massage(attr.__dict__[key], seen)
@@ -261,7 +299,7 @@ def massage_complex(attr: Any, seen: List[Any]) -> Any:
     return serialize_all_keys(is_public_key)
 
 
-def reference_contains(val1: Any, seen: List[Any]) -> bool:
+def reference_contains(val1: Any, seen: list[Any]) -> bool:
     for val2 in seen:
         if val1 is val2:
             return True

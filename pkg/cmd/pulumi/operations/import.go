@@ -27,11 +27,14 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
@@ -44,20 +47,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
@@ -184,6 +185,24 @@ func readImportFile(p string) (importFile, error) {
 	return result, nil
 }
 
+// getImportFile takes a path and returns an *os.File suitable for writing JSON-encoded resources to. If the provided
+// path is empty, it attempts to create a temporary file in the current working directory.
+func getImportFile(path string) (*os.File, error) {
+	if path == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("working directory: %w", err)
+		}
+		f, err := os.CreateTemp(wd, "pulumi-import-*.json")
+		if err != nil {
+			return nil, fmt.Errorf("create temp file: %w", err)
+		}
+		return f, nil
+	}
+
+	return os.Create(path)
+}
+
 func writeImportFile(v importFile, f io.Writer) error {
 	enc := json.NewEncoder(f)
 	enc.SetEscapeHTML(false)
@@ -192,17 +211,17 @@ func writeImportFile(v importFile, f io.Writer) error {
 	return err
 }
 
-func writeImportFileToTemp(v importFile) (string, error) {
-	wd, err := os.Getwd()
+// writeImportFileTo writes the import file to the given path, creating a temporary file in the current working
+// directory if the path is empty. It returns the path to the file written to, or an error if it failed to write the
+// file.
+func writeImportFileTo(v importFile, path string) (string, error) {
+	f, err := getImportFile(path)
 	if err != nil {
-		return "", fmt.Errorf("working directory: %w", err)
+		return "", err
 	}
-	f, err := os.CreateTemp(wd, "pulumi-import-*.json")
-	if err != nil {
-		return "", fmt.Errorf("create temp file: %w", err)
-	}
-	path := f.Name()
+
 	defer contract.IgnoreClose(f)
+	path = f.Name()
 
 	err = writeImportFile(v, f)
 	if err != nil {
@@ -227,7 +246,7 @@ func parseImportFile(
 
 	// TODO: When Go 1.21 is released, switch to errors.Join.
 	var errs error
-	pusherrf := func(format string, args ...interface{}) {
+	pusherrf := func(format string, args ...any) {
 		errs = multierror.Append(errs, fmt.Errorf(format, args...))
 	}
 
@@ -377,9 +396,37 @@ func parseImportFile(
 			}
 			urnMapping[spec.Name] = urn
 			takenURNs[urn] = struct{}{}
-			// This might clash with earlier entries in the name table (unique urn, but duplicate name) that's
-			// fine and the code generators should deal with it.
-			names[urn] = spec.Name
+
+			nameExists := false
+			for _, n := range names {
+				if n == spec.Name {
+					nameExists = true
+					break
+				}
+			}
+
+			uniqueName := func(name string, typ tokens.Type) string {
+				caser := cases.Title(language.English, cases.NoLower)
+				typeSuffix := caser.String(string(typ.Name()))
+				baseName := fmt.Sprintf("%s%s", name, typeSuffix)
+				name = baseName
+
+				counter := 2
+				for _, has := takenNames[name]; has; _, has = takenNames[name] {
+					name = fmt.Sprintf("%s%d", baseName, counter)
+					counter++
+				}
+				takenNames[name] = true
+				return name
+			}
+
+			if nameExists {
+				names[urn] = uniqueName(spec.Name, spec.Type)
+			} else {
+				// If the name is not taken, we can just use it as is.
+				names[urn] = spec.Name
+			}
+
 			// Mark this resource as done
 			dones[i] = true
 		}
@@ -445,21 +492,13 @@ func getCurrentDeploymentForStack(
 	ctx context.Context,
 	s backend.Stack,
 ) (*deploy.Snapshot, error) {
-	deployment, err := s.ExportDeployment(ctx)
+	deployment, err := backend.ExportStackDeployment(ctx, s)
 	if err != nil {
 		return nil, err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
 	if err != nil {
-		switch err {
-		case stack.ErrDeploymentSchemaVersionTooOld:
-			return nil, fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-				s.Ref().Name())
-		case stack.ErrDeploymentSchemaVersionTooNew:
-			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-				"Please update your version of the Pulumi CLI", s.Ref().Name())
-		}
-		return nil, fmt.Errorf("could not deserialize deployment: %w", err)
+		return nil, stack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
 	}
 	return snap, err
 }
@@ -571,6 +610,7 @@ func NewImportCmd() *cobra.Command {
 	var properties []string
 
 	var from string
+	var generateResources string
 
 	cmd := &cobra.Command{
 		Use:   "import [type] [name] [id]",
@@ -601,31 +641,19 @@ func NewImportCmd() *cobra.Command {
 			"\n" +
 			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
 			"\n" +
-			"If using the JSON file format to define the imported resource(s), use this instead:\n" +
+			"When importing multiple resources at once the `--file` option can be used to pass a JSON file\n" +
+			"containing multiple resources: " +
 			"\n" +
-			"     pulumi import -f import.json\n" +
+			"     pulumi import --file import.json\n" +
 			"\n" +
 			"Where import.json is a file that matches the following JSON format:\n" +
 			"\n" +
 			"    {\n" +
-			"        \"nameTable\": {\n" +
-			"            \"provider-or-parent-name-0\": \"provider-or-parent-urn-0\",\n" +
-			"            ...\n" +
-			"            \"provider-or-parent-name-n\": \"provider-or-parent-urn-n\",\n" +
-			"        },\n" +
 			"        \"resources\": [\n" +
 			"            {\n" +
-			"                \"type\": \"type-token\",\n" +
-			"                \"name\": \"name\",\n" +
-			"                \"id\": \"resource-id\",\n" +
-			"                \"parent\": \"optional-parent-name\",\n" +
-			"                \"provider\": \"optional-provider-name\",\n" +
-			"                \"version\": \"optional-provider-version\",\n" +
-			"                \"pluginDownloadUrl\": \"optional-provider-plugin-url\",\n" +
-			"                \"logicalName\": \"optionalLogicalName\",\n" +
-			"                \"properties\": [\"optional-property-names\"],\n" +
-			"                \"component\": false,\n" +
-			"                \"remote\": false,\n" +
+			"                \"type\": \"aws:ec2/vpc:Vpc\",\n" +
+			"                \"name\": \"application-vpc\",\n" +
+			"                \"id\": \"vpc-0ad77710973388316\"\n" +
 			"            },\n" +
 			"            ...\n" +
 			"            {\n" +
@@ -634,34 +662,16 @@ func NewImportCmd() *cobra.Command {
 			"        ],\n" +
 			"    }\n" +
 			"\n" +
-			"The name table maps language names to parent and provider URNs. These names are\n" +
-			"used in the generated definitions, and should match the corresponding declarations\n" +
-			"in the source program. This table is required if any parents or providers are\n" +
-			"specified by the resources to import.\n" +
+			"The full import file schema references can be found in the " +
+			"[import documentation](https://www.pulumi.com/docs/iac/adopting-pulumi/import/#bulk-import-operations).\n" +
 			"\n" +
-			"The resources list contains the set of resources to import. Each resource is\n" +
-			"specified as a triple of its type, name, and ID. The format of the ID is specific\n" +
-			"to the resource type. Each resource may specify the name of a parent or provider;\n" +
-			"these names must correspond to entries in the name table. If a resource does not\n" +
-			"specify a provider, it will be imported using the default provider for its type. A\n" +
-			"resource that does specify a provider may specify the version of the provider\n" +
-			"that will be used for its import.\n" +
+			"The import JSON file can be generated from a Pulumi program by running\n" +
 			"\n" +
-			"A resource can define a logical name as well as its name for the name table.\n" +
-			"If a logical name is given, it will be used to name the resource in the Pulumi state.\n" +
+			"    pulumi preview --import-file import.json\n" +
 			"\n" +
-			"A resource can also be declared as a \"component\" (and optionally as \"remote\"). These resources\n" +
-			"don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.\n" +
-			"\n" +
-			"Each resource may specify which input properties to import with;\n" +
-			"\n" +
-			"If a resource does not specify any properties the default behaviour is to\n" +
-			"import using all required properties.\n" +
-			"\n" +
-			"You can use `pulumi preview` with the `--import-file` option to emit an import file\n" +
-			"for all resources that need creating from the preview. This will fill in all the name,\n" +
-			"type, parent and provider information for you and just require you to fill in resource\n" +
-			"IDs and any properties.\n",
+			"This will create entries for all resources that need creating from the preview, filling\n" +
+			"in the name, type, parent and provider information and just requiring you to fill in the\n" +
+			"resource IDs.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -672,7 +682,7 @@ func NewImportCmd() *cobra.Command {
 				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
-			pCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -712,7 +722,7 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 					}
 
-					pluginSpec, err := workspace.NewPluginSpec(pluginName, apitype.ResourcePlugin, nil, "", nil)
+					pluginSpec, err := workspace.NewPluginDescriptor(ctx, pluginName, apitype.ResourcePlugin, nil, "", nil)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
@@ -861,6 +871,7 @@ func NewImportCmd() *cobra.Command {
 			// Fetch the current stack.
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
@@ -876,60 +887,45 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
-			wrapper := func(
-				f func(*pcl.Program) (map[string][]byte, hcl.Diagnostics, error),
-			) func(*pcl.Program, schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
-				return func(p *pcl.Program, loader schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
-					return f(p)
+			programGenerator := func(
+				program *pcl.Program, loader schema.ReferenceLoader,
+			) (map[string][]byte, hcl.Diagnostics, error) {
+				cwd, err := os.Getwd()
+				if err != nil {
+					return nil, nil, err
 				}
+				sink := cmdutil.Diag()
+
+				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil)
+				if err != nil {
+					return nil, nil, err
+				}
+				defer contract.IgnoreClose(pCtx.Host)
+				languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
+				if err != nil {
+					return nil, nil, err
+				}
+
+				loaderServer := schema.NewLoaderServer(loader)
+				grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
+				if err != nil {
+					return nil, nil, err
+				}
+				defer contract.IgnoreClose(grpcServer)
+
+				// by default, binding the PCL program for generating import definition is not strict
+				// this is because we might generate unbound variables in the generated code that reference
+				// a parent resource or a provider
+				strict := false
+				files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				return files, diagnostics, nil
 			}
 
-			var programGenerator programGeneratorFunc
-			switch proj.Runtime.Name() {
-			case "dotnet":
-				programGenerator = wrapper(dotnet.GenerateProgram)
-			default:
-				programGenerator = func(
-					program *pcl.Program, loader schema.ReferenceLoader,
-				) (map[string][]byte, hcl.Diagnostics, error) {
-					cwd, err := os.Getwd()
-					if err != nil {
-						return nil, nil, err
-					}
-					sink := cmdutil.Diag()
-
-					ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
-					if err != nil {
-						return nil, nil, err
-					}
-					defer contract.IgnoreClose(pCtx.Host)
-					programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
-					languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					loaderServer := schema.NewLoaderServer(loader)
-					grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
-					if err != nil {
-						return nil, nil, err
-					}
-					defer contract.IgnoreClose(grpcServer)
-
-					// by default, binding the PCL program for generating import definition is not strict
-					// this is because we might generate unbound variables in the generated code that reference
-					// a parent resource or a provider
-					strict := false
-					files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					return files, diagnostics, nil
-				}
-			}
-
-			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -963,14 +959,14 @@ func NewImportCmd() *cobra.Command {
 				Experimental:         env.Experimental.Value(),
 			}
 
-			_, err = s.Import(ctx, backend.UpdateOperation{
+			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    stack.DefaultSecretsProvider,
+				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			}, imports)
 
@@ -1010,26 +1006,33 @@ func NewImportCmd() *cobra.Command {
 				}
 			}
 
-			if err != nil {
-				if err == context.Canceled {
-					return errors.New("import cancelled")
+			if err == context.Canceled {
+				return errors.New("import cancelled")
+			}
+
+			// If we did a conversion import (i.e. from!="") then we'll write the file we've built out to the local
+			// directory when:
+			//
+			// * there's an error, so that users can manually edit the file and try again; or
+			// * the user passed the --generate-resources flag, so that we always write the file out.
+			if from != "" && (err != nil || generateResources != "") {
+				path, werr := writeImportFileTo(importFile, generateResources)
+				if werr != nil {
+					return werr
 				}
 
-				// If we did a conversion import (i.e. from!="") then lets write the file we've built out to the local
-				// directory so if there's any issues users can manually edit the file and try again with --file
-				if from != "" {
-					path, err := writeImportFileToTemp(importFile)
-					if err != nil {
-						return err
-					}
+				if err != nil {
 					pCtx.Diag.Infof(diag.Message("",
 						"Generated import file written out, edit and rerun import with --file %s"),
-						path, path)
+						path)
+				} else {
+					pCtx.Diag.Infof(diag.Message("",
+						"Generated import file written out to %s"),
+						path)
 				}
-
-				return err
 			}
-			return nil
+
+			return err
 		},
 	}
 
@@ -1097,6 +1100,10 @@ func NewImportCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&from, "from", "",
 		"Invoke a converter to import the resources")
+	cmd.PersistentFlags().StringVar(
+		&generateResources, "generate-resources", "",
+		//nolint:lll
+		"When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path")
 
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(

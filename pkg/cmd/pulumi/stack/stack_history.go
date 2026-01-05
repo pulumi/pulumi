@@ -63,6 +63,7 @@ This command displays data about previous updates for a stack.`,
 			}
 			s, err := RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stack,
@@ -83,7 +84,7 @@ This command displays data about previous updates for a stack.`,
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
 				}
-				ps, err := LoadProjectStack(project, s)
+				ps, err := LoadProjectStack(ctx, cmdutil.Diag(), project, s)
 				if err != nil {
 					return fmt.Errorf("getting stack config: %w", err)
 				}
@@ -92,7 +93,7 @@ This command displays data about previous updates for a stack.`,
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}
 				if state != SecretsManagerUnchanged {
-					if err = SaveProjectStack(s, ps); err != nil {
+					if err = SaveProjectStack(ctx, s, ps); err != nil {
 						return fmt.Errorf("saving stack config: %w", err)
 					}
 				}
@@ -147,9 +148,9 @@ type updateInfoJSON struct {
 // configValueJSON is the shape of the --json output for a configuration value in an update in a stack history. While we
 // can add fields to this structure in the future, we should not change existing fields.
 type configValueJSON struct {
-	Value       *string     `json:"value,omitempty"`
-	ObjectValue interface{} `json:"objectValue,omitempty"`
-	Secret      bool        `json:"secret"`
+	Value       *string `json:"value,omitempty"`
+	ObjectValue any     `json:"objectValue,omitempty"`
+	Secret      bool    `json:"secret"`
 }
 
 func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) ([]updateInfoJSON, error) {
@@ -182,7 +183,7 @@ func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) 
 					configValue.Value = makeStringRef(value)
 
 					if value != "" && v.Object() {
-						var obj interface{}
+						var obj any
 						if err := json.Unmarshal([]byte(value), &obj); err != nil {
 							return nil, err
 						}

@@ -137,16 +137,13 @@ func getDocsForPackage(pkg *Package) []doc {
 	return allDocs
 }
 
-//nolint:paralleltest // needs to set plugin acquisition env var
 func TestParseAndRenderDocs(t *testing.T) {
 	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
 
-	//nolint:paralleltest // needs to set plugin acquisition env var
 	for _, f := range files {
-		f := f
 		if filepath.Ext(f.Name()) != ".json" || strings.Contains(f.Name(), "awsx") {
 			continue
 		}
@@ -164,14 +161,15 @@ func TestParseAndRenderDocs(t *testing.T) {
 			if err = json.Unmarshal(contents, &spec); err != nil {
 				t.Fatalf("could not unmarshal package spec: %v", err)
 			}
-			pkg, err := ImportSpec(spec, nil)
+			pkg, err := ImportSpec(spec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			if err != nil {
 				t.Fatalf("could not import package: %v", err)
 			}
 
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
-				doc := doc
 				original := []byte(doc.content)
 				expected := ParseDocs(original)
 				rendered := []byte(RenderDocsToString(original, expected))
@@ -187,8 +185,8 @@ func TestParseAndRenderDocs(t *testing.T) {
 
 func pkgInfo(t *testing.T, filename string) (string, *semver.Version) {
 	filename = strings.TrimSuffix(filename, ".json")
-	idx := 0
-	for {
+
+	for idx := range len(filename) {
 		i := strings.IndexByte(filename[idx:], '-') + idx
 		require.Truef(t, i != -1, "Could not parse %q into (pkg, version)", filename)
 		name := filename[:i]
@@ -196,8 +194,10 @@ func pkgInfo(t *testing.T, filename string) (string, *semver.Version) {
 		if v, err := semver.Parse(version); err == nil {
 			return name, &v
 		}
-		idx = i + 1
 	}
+
+	require.Failf(t, "invalid filename", "%q is not suffixed with a semver version", filename)
+	return "", nil
 }
 
 func TestReferenceRenderer(t *testing.T) {
@@ -212,7 +212,6 @@ func TestReferenceRenderer(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, f := range files {
-		f := f
 		if filepath.Ext(f.Name()) != ".json" || f.Name() == "types.json" {
 			continue
 		}
@@ -236,8 +235,6 @@ func TestReferenceRenderer(t *testing.T) {
 
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
-				doc := doc
-
 				text := []byte(fmt.Sprintf("[entity](%s)", doc.entity))
 				expected := strings.ReplaceAll(doc.entity, "/", "_") + "\n"
 
@@ -248,7 +245,7 @@ func TestReferenceRenderer(t *testing.T) {
 							return ast.WalkContinue, nil
 						}
 
-						replaced := bytes.Replace(l.Destination, []byte{'/'}, []byte{'_'}, -1)
+						replaced := bytes.ReplaceAll(l.Destination, []byte{'/'}, []byte{'_'})
 						if _, err := r.MarkdownRenderer().Write(w, replaced); err != nil {
 							return ast.WalkStop, err
 						}

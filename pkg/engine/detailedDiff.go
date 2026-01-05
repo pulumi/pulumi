@@ -15,6 +15,9 @@
 package engine
 
 import (
+	"cmp"
+	"slices"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -22,7 +25,7 @@ import (
 
 // getProperty fetches the child property with the indicated key from the given property value. If the key does not
 // exist, it returns an empty `PropertyValue`.
-func getProperty(key interface{}, v resource.PropertyValue) resource.PropertyValue {
+func getProperty(key any, v resource.PropertyValue) resource.PropertyValue {
 	switch {
 	case v.IsArray():
 		index, ok := key.(int)
@@ -145,32 +148,58 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 
 // TranslateDetailedDiff converts the detailed diff stored in the step event into an ObjectDiff that is appropriate
 // for display.
-func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) *resource.ObjectDiff {
+//
+// The second returned argument is the list of hidden diffs.
+func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.ObjectDiff, []resource.PropertyPath) {
 	contract.Assertf(step.DetailedDiff != nil, "%v step has no detailed diff", step.Op)
 
 	// The rich diff is presented as a list of simple JS property paths and corresponding diffs. We translate this to
 	// an ObjectDiff by iterating the list and inserting ValueDiffs that reflect the changes in the detailed diff. Old
 	// values are always taken from a step's Outputs; new values are always taken from its Inputs.
 
+	var hiddenPaths []resource.PropertyPath
+	var hiddenDiffs []resource.PropertyPath
+	if step.New != nil {
+		hiddenPaths = step.New.HideDiffs
+	} else if step.Old != nil {
+		hiddenPaths = step.Old.HideDiffs
+	}
+
 	var diff resource.ValueDiff
+diffs:
 	for path, pdiff := range step.DetailedDiff {
 		elements, err := resource.ParsePropertyPath(path)
 		if err != nil {
-			elements = []interface{}{path}
+			elements = []any{path}
 		}
 
-		olds := resource.NewObjectProperty(step.Old.Outputs)
+		for _, hiddenPath := range hiddenPaths {
+			if hiddenPath.Contains(elements) {
+				hiddenDiffs = append(hiddenDiffs, hiddenPath)
+				continue diffs
+			}
+		}
+
+		olds := resource.NewProperty(step.Old.Outputs)
 		if pdiff.InputDiff {
-			olds = resource.NewObjectProperty(step.Old.Inputs)
+			olds = resource.NewProperty(step.Old.Inputs)
 		}
 
-		news := resource.NewObjectProperty(step.New.Inputs)
+		news := resource.NewProperty(step.New.Inputs)
 		if refresh {
-			news = resource.NewObjectProperty(step.New.Outputs)
+			news = resource.NewProperty(step.New.Outputs)
 		}
 
 		addDiff(elements, pdiff.Kind, &diff, olds, news)
 	}
 
-	return diff.Object
+	// Ensure that our paths are unique and sorted
+	slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
+		return cmp.Compare(a.String(), b.String())
+	})
+	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
+		return a.String() == b.String()
+	})
+
+	return diff.Object, hiddenDiffs
 }

@@ -1,0 +1,10 @@
+{
+    "resource": true,
+    "name": "terraform-provider",
+    "version": "0.10.0",
+    "parameterization": {
+        "name": "parameterized",
+        "version": "0.2.2",
+        "value": "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL25ldGxpZnkvbmV0bGlmeSIsInZlcnNpb24iOiIwLjIuMiJ9fQ=="
+    }
+}

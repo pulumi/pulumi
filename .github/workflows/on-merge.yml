@@ -61,7 +61,7 @@ jobs:
       test-version-sets: 'minimum current'
       fail-fast: true
       test-retries: 2
-      performance-test-platforms: ubuntu-22.04
+      performance-test-platforms: ubuntu-latest
     secrets: inherit
 
   prepare-release:
@@ -83,7 +83,7 @@ jobs:
     name: ci-ok
     needs: [ci, performance-gate, prepare-release]
     if: always() # always report a status
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: CI failed
         if: ${{ needs.ci.result != 'success' }}

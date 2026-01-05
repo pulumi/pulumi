@@ -52,6 +52,20 @@ func TargetDependents() Option {
 	})
 }
 
+// Exclude specifies an exclusive list of resource URNs to ignore
+func Exclude(urns []string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Exclude = urns
+	})
+}
+
+// ExcludeDependents allows ignoring of dependent targets discovered but not specified in the Exclude list
+func ExcludeDependents() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ExcludeDependents = true
+	})
+}
+
 // ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
@@ -144,6 +158,13 @@ func ConfigFile(path string) Option {
 	})
 }
 
+// RunProgram runs the program in the workspace to perform the destroy.
+func RunProgram(f bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.RunProgram = &f
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -162,6 +183,10 @@ type Options struct {
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
+	// Specify an exclusive list of resource URNs to ignore
+	Exclude []string
+	// Allows ignoring of dependent targets discovered but not specified in the Exclude list
+	ExcludeDependents bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 	ProgressStreams []io.Writer
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
@@ -189,6 +214,8 @@ type Options struct {
 	Remove bool
 	// Run using the configuration values in the specified file rather than detecting the file name
 	ConfigFile string
+	// When set to true, run the program in the workspace to perform the destroy.
+	RunProgram *bool
 }
 
 type optionFunc func(*Options)

@@ -16,6 +16,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as pathlib from "path";
 import * as readline from "readline";
+import * as semver from "semver";
 import * as upath from "upath";
 
 import * as grpc from "@grpc/grpc-js";
@@ -27,11 +28,15 @@ import { ConfigMap, ConfigValue } from "./config";
 import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
 import { LocalWorkspace } from "./localWorkspace";
-import { LanguageServer, maxRPCMessageSize } from "./server";
+import { LanguageServer } from "./server";
 import { TagMap } from "./tag";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
+import { Empty } from "google-protobuf/google/protobuf/empty_pb";
+import * as eventsrpc from "../proto/events_grpc_pb";
+import * as events from "../proto/events_pb";
 import * as langrpc from "../proto/language_grpc_pb";
+import { grpcChannelOptions } from "../runtime";
 
 /**
  * {@link Stack} is an isolated, independently configurable instance of a Pulumi
@@ -47,7 +52,7 @@ export class Stack {
     /**
      * The name identifying the stack.
      */
-    readonly name: string;
+    name: string;
 
     /**
      * The {@link Workspace} the stack was created from.
@@ -126,6 +131,36 @@ export class Stack {
         }
     }
 
+    private async setupEventLog(
+        command: string,
+        onEvent: (event: EngineEvent) => void,
+        pulumiVersion: string,
+    ): Promise<{ logFile: string; logPromise: Promise<ReadlineResult> | undefined; server?: grpc.Server }> {
+        const ver = semver.parse(pulumiVersion) ?? semver.parse("3.0.0")!;
+        if (semver.gt(ver, "3.205.0")) {
+            const eventsServer = new grpc.Server({
+                ...grpcChannelOptions,
+            });
+            const eventsService = new EventsServer(onEvent);
+            eventsServer.addService(eventsrpc.EventsService, eventsService);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                eventsServer.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            const file = `tcp://127.0.0.1:${port}`;
+            return { logFile: file, logPromise: undefined, server: eventsServer };
+        } else {
+            const file = createLogFile(command);
+            const logPromise = this.readLines(file, onEvent);
+            return { logFile: file, logPromise: logPromise };
+        }
+    }
+
     private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
         const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 }).on("tail_error", (err) => {
             throw err;
@@ -188,6 +223,11 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--replace", rURN);
                 }
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
@@ -202,6 +242,9 @@ Event: ${line}\n${e.toString()}`);
                 for (const packConfig of opts.policyPackConfigs) {
                     args.push("--policy-pack-config", packConfig);
                 }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
             }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
@@ -221,6 +264,13 @@ Event: ${line}\n${e.toString()}`);
             if (opts.attachDebugger) {
                 args.push("--attach-debugger");
             }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -232,7 +282,7 @@ Event: ${line}\n${e.toString()}`);
         if (program) {
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -256,26 +306,26 @@ Event: ${line}\n${e.toString()}`);
 
         let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
+        let eventsServer: grpc.Server | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
-            const onEvent = opts.onEvent;
-            logFile = createLogFile("up");
+            ({
+                logFile,
+                logPromise,
+                server: eventsServer,
+            } = await this.setupEventLog("up", opts.onEvent, this.workspace.pulumiVersion));
             args.push("--event-log", logFile);
-
-            logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
-            });
         }
 
         let upResult: CommandResult;
         try {
-            upResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            upResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, await logPromise);
+            await cleanUp(logFile, await logPromise, eventsServer);
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
@@ -327,6 +377,11 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--replace", rURN);
                 }
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
@@ -341,6 +396,9 @@ Event: ${line}\n${e.toString()}`);
                 for (const packConfig of opts.policyPackConfigs) {
                     args.push("--policy-pack-config", packConfig);
                 }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
             }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
@@ -360,6 +418,13 @@ Event: ${line}\n${e.toString()}`);
             if (opts.attachDebugger) {
                 args.push("--attach-debugger");
             }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -371,7 +436,7 @@ Event: ${line}\n${e.toString()}`);
         if (program) {
             kind = execKind.inline;
             const server = new grpc.Server({
-                "grpc.max_receive_message_length": maxRPCMessageSize,
+                ...grpcChannelOptions,
             });
             const languageServer = new LanguageServer(program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
@@ -393,29 +458,32 @@ Event: ${line}\n${e.toString()}`);
 
         args.push("--exec-kind", kind);
 
-        // Set up event log tailing
-        const logFile = createLogFile("preview");
-        args.push("--event-log", logFile);
         let summaryEvent: SummaryEvent | undefined;
-        const logPromise = this.readLines(logFile, (event) => {
+        const onEvent = (event: EngineEvent) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
             if (opts?.onEvent) {
-                const onEvent = opts.onEvent;
-                onEvent(event);
+                opts.onEvent(event);
             }
-        });
+        };
+
+        const {
+            logFile,
+            logPromise,
+            server: eventsServer,
+        } = await this.setupEventLog("preview", onEvent, this.workspace.pulumiVersion);
+        args.push("--event-log", logFile);
 
         let previewResult: CommandResult;
         try {
-            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, await logPromise);
+            await cleanUp(logFile, await logPromise, eventsServer);
         }
 
         if (!summaryEvent) {
@@ -432,6 +500,17 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Check the installed version of the Pulumi CLI supports inline programs for refresh and destroy operations.
+     */
+    private checkInlineSupport(): void {
+        const ver = semver.parse(this.workspace.pulumiVersion) ?? semver.parse("3.0.0")!;
+        // 3.181 added support for --client (https://github.com/pulumi/pulumi/releases/tag/v3.181.0)
+        if (semver.lt(ver, "3.181.0")) {
+            throw new Error(`destroy with inline programs requires Pulumi version >= 3.181.0`);
+        }
+    }
+
+    /**
      * Compares the current stack’s resource state with the state known to exist
      * in the actual cloud provider. Any such changes are adopted into the
      * current stack.
@@ -440,9 +519,14 @@ Event: ${line}\n${e.toString()}`);
      *  Options to customize the behavior of the refresh.
      */
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
-        const args = ["refresh", "--yes"];
+        const args = ["refresh"];
 
-        args.push(opts?.previewOnly ? "--preview-only" : "--skip-preview");
+        if (opts?.previewOnly) {
+            args.push("--preview-only");
+        } else {
+            args.push("--skip-preview", "--yes");
+        }
+
         args.push(...this.remoteArgs());
 
         if (opts) {
@@ -455,10 +539,21 @@ Event: ${line}\n${e.toString()}`);
             if (opts.clearPendingCreates) {
                 args.push("--clear-pending-creates");
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
                 }
+            }
+            if (opts.targetDependents) {
+                args.push("--target-dependents");
             }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
@@ -466,30 +561,70 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
+            }
             applyGlobalOpts(opts, args);
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
+        let eventsServer: grpc.Server | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
-            const onEvent = opts.onEvent;
-            logFile = createLogFile("refresh");
+            ({
+                logFile,
+                logPromise,
+                server: eventsServer,
+            } = await this.setupEventLog("refresh", opts.onEvent, this.workspace.pulumiVersion));
             args.push("--event-log", logFile);
-
-            logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
-            });
         }
 
-        const kind = this.workspace.program ? execKind.inline : execKind.local;
+        let onExit = (hasError: boolean) => {
+            return;
+        };
+        let didError = false;
+
+        let kind = execKind.local;
+        if (this.workspace.program !== undefined) {
+            this.checkInlineSupport();
+
+            kind = execKind.inline;
+            const server = new grpc.Server({
+                ...grpcChannelOptions,
+            });
+            const languageServer = new LanguageServer(this.workspace.program);
+            server.addService(langrpc.LanguageRuntimeService, languageServer);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            onExit = (hasError: boolean) => {
+                languageServer.onPulumiExit(hasError);
+                server.forceShutdown();
+            };
+            args.push(`--client=127.0.0.1:${port}`);
+        }
         args.push("--exec-kind", kind);
 
         let refResult: CommandResult;
         try {
-            refResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            refResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
+        } catch (e) {
+            didError = true;
+            throw e;
         } finally {
-            await cleanUp(logFile, await logPromise);
+            onExit(didError);
+            await cleanUp(logFile, await logPromise, eventsServer);
         }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
@@ -499,6 +634,99 @@ Event: ${line}\n${e.toString()}`);
             stdout: refResult.stdout,
             stderr: refResult.stderr,
             summary: summary!,
+        };
+    }
+
+    /**
+     * Performs a dry-run refresh of the stack, returning pending changes.
+     *
+     * @param opts
+     *  Options to customize the behavior of the refresh.
+     */
+    async previewRefresh(opts?: RefreshOptions): Promise<PreviewResult> {
+        const args = ["refresh", "--preview-only"];
+        args.push(...this.remoteArgs());
+
+        if (opts) {
+            if (opts.message) {
+                args.push("--message", opts.message);
+            }
+            if (opts.expectNoChanges) {
+                args.push("--expect-no-changes");
+            }
+            if (opts.clearPendingCreates) {
+                args.push("--clear-pending-creates");
+            }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
+            }
+            if (opts.target) {
+                for (const tURN of opts.target) {
+                    args.push("--target", tURN);
+                }
+            }
+            if (opts.targetDependents) {
+                args.push("--target-dependents");
+            }
+            if (opts.parallel) {
+                args.push("--parallel", opts.parallel.toString());
+            }
+            if (opts.userAgent) {
+                args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
+            }
+            applyGlobalOpts(opts, args);
+        }
+
+        args.push("--exec-kind", execKind.local);
+
+        let summaryEvent: SummaryEvent | undefined;
+        const onEvent = (event: EngineEvent) => {
+            if (event.summaryEvent) {
+                summaryEvent = event.summaryEvent;
+            }
+            if (opts?.onEvent) {
+                opts.onEvent(event);
+            }
+        };
+
+        const { logFile, logPromise, server } = await this.setupEventLog(
+            "preview-refresh",
+            onEvent,
+            this.workspace.pulumiVersion,
+        );
+        args.push("--event-log", logFile);
+
+        let previewResult: CommandResult;
+        try {
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
+        } catch (e) {
+            throw e;
+        } finally {
+            await cleanUp(logFile, await logPromise, server);
+        }
+
+        if (!summaryEvent) {
+            log.warn(
+                "Failed to parse summary event, but preview succeeded. PreviewResult `changeSummary` will be empty.",
+            );
+        }
+
+        return {
+            stdout: previewResult.stdout,
+            stderr: previewResult.stderr,
+            changeSummary: summaryEvent?.resourceChanges || {},
         };
     }
 
@@ -525,10 +753,18 @@ Event: ${line}\n${e.toString()}`);
             if (opts.message) {
                 args.push("--message", opts.message);
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
                 }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
             }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
@@ -548,30 +784,70 @@ Event: ${line}\n${e.toString()}`);
             if (opts.refresh) {
                 args.push("--refresh");
             }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
+            }
             applyGlobalOpts(opts, args);
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
+        let eventsServer: grpc.Server | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
-            const onEvent = opts.onEvent;
-            logFile = createLogFile("destroy");
+            ({
+                logFile,
+                logPromise,
+                server: eventsServer,
+            } = await this.setupEventLog("destroy", opts.onEvent, this.workspace.pulumiVersion));
             args.push("--event-log", logFile);
-
-            logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
-            });
         }
 
-        const kind = this.workspace.program ? execKind.inline : execKind.local;
+        let onExit = (hasError: boolean) => {
+            return;
+        };
+        let didError = false;
+
+        let kind = execKind.local;
+        if (this.workspace.program !== undefined) {
+            this.checkInlineSupport();
+
+            kind = execKind.inline;
+            const server = new grpc.Server({
+                ...grpcChannelOptions,
+            });
+            const languageServer = new LanguageServer(this.workspace.program);
+            server.addService(langrpc.LanguageRuntimeService, languageServer);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            onExit = (hasError: boolean) => {
+                languageServer.onPulumiExit(hasError);
+                server.forceShutdown();
+            };
+            args.push(`--client=127.0.0.1:${port}`);
+        }
         args.push("--exec-kind", kind);
 
         let desResult: CommandResult;
         try {
-            desResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            desResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
+        } catch (e) {
+            didError = true;
+            throw e;
         } finally {
-            await cleanUp(logFile, await logPromise);
+            onExit(didError);
+            await cleanUp(logFile, await logPromise, eventsServer);
         }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
@@ -594,6 +870,134 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Performs a dry-run destroy of the stack, returning pending changes.
+     *
+     * @param opts
+     *  Options to customize the behavior of the destroy.
+     */
+    async previewDestroy(opts?: DestroyOptions): Promise<PreviewResult> {
+        const args = ["destroy", "--preview-only"];
+        args.push(...this.remoteArgs());
+
+        if (opts) {
+            if (opts.message) {
+                args.push("--message", opts.message);
+            }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
+            if (opts.target) {
+                for (const tURN of opts.target) {
+                    args.push("--target", tURN);
+                }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
+            }
+            if (opts.targetDependents) {
+                args.push("--target-dependents");
+            }
+            if (opts.excludeProtected) {
+                args.push("--exclude-protected");
+            }
+            if (opts.continueOnError) {
+                args.push("--continue-on-error");
+            }
+            if (opts.parallel) {
+                args.push("--parallel", opts.parallel.toString());
+            }
+            if (opts.userAgent) {
+                args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.refresh) {
+                args.push("--refresh");
+            }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
+            }
+            applyGlobalOpts(opts, args);
+        }
+
+        let onExit = (hasError: boolean) => {
+            return;
+        };
+        let didError = false;
+
+        let kind = execKind.local;
+        if (this.workspace.program !== undefined) {
+            this.checkInlineSupport();
+
+            kind = execKind.inline;
+            const server = new grpc.Server({
+                ...grpcChannelOptions,
+            });
+            const languageServer = new LanguageServer(this.workspace.program);
+            server.addService(langrpc.LanguageRuntimeService, languageServer);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            onExit = (hasError: boolean) => {
+                languageServer.onPulumiExit(hasError);
+                server.forceShutdown();
+            };
+            args.push(`--client=127.0.0.1:${port}`);
+        }
+        args.push("--exec-kind", kind);
+
+        let summaryEvent: SummaryEvent | undefined;
+        const onEvent = (event: EngineEvent) => {
+            if (event.summaryEvent) {
+                summaryEvent = event.summaryEvent;
+            }
+            if (opts?.onEvent) {
+                opts.onEvent(event);
+            }
+        };
+
+        const {
+            logFile,
+            logPromise,
+            server: eventsServer,
+        } = await this.setupEventLog("preview-destroy", onEvent, this.workspace.pulumiVersion);
+        args.push("--event-log", logFile);
+
+        let previewResult: CommandResult;
+        try {
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
+        } catch (e) {
+            didError = true;
+            throw e;
+        } finally {
+            onExit(didError);
+            await cleanUp(logFile, await logPromise, eventsServer);
+        }
+
+        if (!summaryEvent) {
+            log.warn(
+                "Failed to parse summary event, but preview succeeded. PreviewResult `changeSummary` will be empty.",
+            );
+        }
+
+        return {
+            stdout: previewResult.stdout,
+            stderr: previewResult.stderr,
+            changeSummary: summaryEvent?.resourceChanges || {},
+        };
+    }
+
+    /**
      * Rename an existing stack
      */
     async rename(options: RenameOptions): Promise<RenameResult> {
@@ -602,11 +1006,13 @@ Event: ${line}\n${e.toString()}`);
 
         applyGlobalOpts(options, args);
 
-        const renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.signal);
+        const renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.onError, options?.signal);
 
         if (this.isRemote && options?.showSecrets) {
             throw new Error("can't enable `showSecrets` for remote workspaces");
         }
+
+        this.name = options.stackName;
 
         const summary = await this.info(!this.isRemote && options?.showSecrets);
 
@@ -784,6 +1190,17 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Sets all config values from a JSON string for the stack in the associated workspace.
+     * The JSON string should be in the format produced by "pulumi config --json".
+     *
+     * @param configJson
+     *  A JSON string containing the configuration values to set
+     */
+    async setAllConfigJson(configJson: string): Promise<void> {
+        return this.workspace.setAllConfigJson(this.name, configJson);
+    }
+
+    /**
      * Removes the specified config key from the stack in the associated workspace.
      *
      * @param key
@@ -926,6 +1343,7 @@ Event: ${line}\n${e.toString()}`);
     private async runPulumiCmd(
         args: string[],
         onOutput?: (out: string) => void,
+        onError?: (err: string) => void,
         signal?: AbortSignal,
     ): Promise<CommandResult> {
         let envs: { [key: string]: string } = {
@@ -941,7 +1359,14 @@ Event: ${line}\n${e.toString()}`);
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, "--stack", this.name, ...additionalArgs];
-        const result = await this.workspace.pulumiCommand.run(args, this.workspace.workDir, envs, onOutput, signal);
+        const result = await this.workspace.pulumiCommand.run(
+            args,
+            this.workspace.workDir,
+            envs,
+            onOutput,
+            onError,
+            signal,
+        );
         await this.workspace.postCommandCallback(this.name);
         return result;
     }
@@ -986,6 +1411,9 @@ function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
     }
     if (opts.suppressProgress) {
         args.push("--suppress-progress");
+    }
+    if (opts.configFile) {
+        args.push("--config-file", opts.configFile);
     }
 }
 
@@ -1295,6 +1723,11 @@ export interface GlobalOpts {
     suppressProgress?: boolean;
 
     /**
+     * Use the configuration values in the specified file rather than detecting the file name.
+     */
+    configFile?: string;
+
+    /**
      * Save any creates seen during the preview into an import file to use with `pulumi import`.
      */
     importFile?: string;
@@ -1345,6 +1778,16 @@ export interface UpOptions extends GlobalOpts {
     policyPackConfigs?: string[];
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
@@ -1360,7 +1803,12 @@ export interface UpOptions extends GlobalOpts {
     userAgent?: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
@@ -1398,6 +1846,11 @@ export interface UpOptions extends GlobalOpts {
      * A signal to abort an ongoing operation.
      */
     signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the refresh.
+     */
+    runProgram?: boolean;
 }
 
 /**
@@ -1445,6 +1898,16 @@ export interface PreviewOptions extends GlobalOpts {
     policyPackConfigs?: string[];
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
@@ -1465,9 +1928,14 @@ export interface PreviewOptions extends GlobalOpts {
     program?: PulumiFn;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
 
     /**
      * A callback to be executed when the operation yields an event.
@@ -1488,6 +1956,11 @@ export interface PreviewOptions extends GlobalOpts {
      * A signal to abort an ongoing operation.
      */
     signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the refresh.
+     */
+    runProgram?: boolean;
 }
 
 /**
@@ -1506,6 +1979,7 @@ export interface RefreshOptions extends GlobalOpts {
 
     /**
      * Only show a preview of the refresh, but don't perform the refresh itself.
+     * @deprecated Use `previewRefresh` instead.
      */
     previewOnly?: boolean;
 
@@ -1520,9 +1994,24 @@ export interface RefreshOptions extends GlobalOpts {
     clearPendingCreates?: boolean;
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
+
+    /**
+     * Operate on dependent targets discovered but not specified in `targets`.
+     */
+    targetDependents?: boolean;
 
     /**
      * A custom user agent to use when executing the operation.
@@ -1530,7 +2019,12 @@ export interface RefreshOptions extends GlobalOpts {
     userAgent?: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
@@ -1547,6 +2041,11 @@ export interface RefreshOptions extends GlobalOpts {
      * A signal to abort an ongoing operation.
      */
     signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the refresh.
+     */
+    runProgram?: boolean;
 }
 
 /**
@@ -1569,6 +2068,16 @@ export interface DestroyOptions extends GlobalOpts {
     refresh?: boolean;
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
@@ -1584,7 +2093,12 @@ export interface DestroyOptions extends GlobalOpts {
     userAgent?: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
@@ -1610,6 +2124,7 @@ export interface DestroyOptions extends GlobalOpts {
 
     /**
      * Only show a preview of the destroy, but don't perform the destroy itself.
+     * @deprecated Use `previewDestroy` instead.
      */
     previewOnly?: boolean;
 
@@ -1621,6 +2136,11 @@ export interface DestroyOptions extends GlobalOpts {
      * A signal to abort an ongoing operation.
      */
     signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the destroy.
+     */
+    runProgram?: boolean;
 }
 
 /**
@@ -1633,7 +2153,12 @@ export interface RenameOptions extends GlobalOpts {
     stackName: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
@@ -1713,6 +2238,38 @@ export interface ImportOptions extends GlobalOpts {
     onOutput?: (out: string) => void;
 }
 
+class EventsServer implements eventsrpc.IEventsServer {
+    [method: string]: grpc.UntypedHandleCall;
+
+    constructor(private onEvent: any) {
+        this.onEvent = onEvent;
+    }
+
+    streamEvents(
+        call: grpc.ServerReadableStream<events.EventRequest, Empty>,
+        callback: grpc.sendUnaryData<Empty>,
+    ): void {
+        call.on("data", (request: events.EventRequest) => {
+            const eventStr = request.getEvent();
+            try {
+                const event: EngineEvent = JSON.parse(eventStr);
+                this.onEvent(event);
+            } catch (e) {
+                log.warn(`Failed to parse engine event: ${e.toString()}`);
+            }
+        });
+
+        call.on("end", () => {
+            callback(null, new Empty());
+        });
+
+        call.on("error", (err: Error) => {
+            log.warn(`Error in event stream: ${err.toString()}`);
+            callback(err, null);
+        });
+    }
+}
+
 const execKind = {
     local: "auto.local",
     inline: "auto.inline",
@@ -1728,12 +2285,15 @@ const createLogFile = (command: string) => {
     return logFile;
 };
 
-const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
+const cleanUp = async (logFile?: string, rl?: ReadlineResult, server?: grpc.Server) => {
     if (rl) {
         // stop tailing
         await rl.tail.quit();
         // close the readline interface
         rl.rl.close();
+    }
+    if (server) {
+        server.forceShutdown();
     }
     if (logFile) {
         // remove the logfile

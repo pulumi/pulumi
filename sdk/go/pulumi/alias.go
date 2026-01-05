@@ -89,7 +89,7 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 		parent = a.ParentURN.ToURNOutput()
 	}
 	if a.NoParent != nil {
-		parent = All(a.NoParent.ToBoolOutput(), parent).ApplyT(func(a []interface{}) string {
+		parent = All(a.NoParent.ToBoolOutput(), parent).ApplyT(func(a []any) string {
 			if a[0].(bool) {
 				return ""
 			}
@@ -130,7 +130,7 @@ func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 	// The explicit call to `ToStringOutput` is necessary because `URNOutput`
 	// conforms to `StringInput` so `parent.(string)` can fail without the
 	// explicit conversion.
-	return All(parent.ToStringOutput(), stack, project, t, name).ApplyT(func(a []interface{}) URN {
+	return All(parent.ToStringOutput(), stack, project, t, name).ApplyT(func(a []any) URN {
 		return createURN(a[0].(string), a[1].(string), a[2].(string), a[3].(string), a[4].(string))
 	}).(URNOutput)
 }

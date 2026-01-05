@@ -1,4 +1,4 @@
-// Copyright 2018-2024, Pulumi Corporation.
+// Copyright 2018-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,8 +23,10 @@ import (
 	"testing"
 
 	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,25 +36,25 @@ import (
 func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 	t.Parallel()
 
-	doTest := func(marshal func(interface{}) ([]byte, error), unmarshal func([]byte, interface{}) error) {
+	doTest := func(marshal func(any) ([]byte, error), unmarshal func([]byte, any) error) {
 		ri := NewProjectRuntimeInfo("nodejs", nil)
 		byts, err := marshal(ri)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var riRountrip ProjectRuntimeInfo
 		err = unmarshal(byts, &riRountrip)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "nodejs", riRountrip.Name())
 		assert.Nil(t, riRountrip.Options())
 
-		ri = NewProjectRuntimeInfo("nodejs", map[string]interface{}{
+		ri = NewProjectRuntimeInfo("nodejs", map[string]any{
 			"typescript":   true,
 			"stringOption": "hello",
 		})
 		byts, err = marshal(ri)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = unmarshal(byts, &riRountrip)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "nodejs", riRountrip.Name())
 		assert.Equal(t, true, riRountrip.Options()["typescript"])
 		assert.Equal(t, "hello", riRountrip.Options()["stringOption"])
@@ -77,7 +80,22 @@ func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	// Test success
 	proj.Runtime = NewProjectRuntimeInfo("test", nil)
 	err = proj.Validate()
-	assert.NoError(t, err)
+	require.NoError(t, err)
+}
+
+func TestProjectValidationSucceedsForObjectConfigType(t *testing.T) {
+	t.Parallel()
+	project := Project{Name: "test", Runtime: NewProjectRuntimeInfo("dotnet", nil)}
+	config := make(map[string]ProjectConfigType)
+	objectType := "object"
+	config["example"] = ProjectConfigType{
+		Type:    &objectType,
+		Default: map[string]any{"hello": "world"},
+	}
+
+	project.Config = config
+	err := project.Validate()
+	require.NoError(t, err)
 }
 
 func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
@@ -96,7 +114,7 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	assert.ErrorContains(t, err,
 		"The default value specified for configuration key 'instanceSize' is not of the expected type 'integer'")
 
-	invalidValues := make([]interface{}, 0)
+	invalidValues := make([]any, 0)
 	invalidValues = append(invalidValues, "hello")
 	// default value here has type array<string>
 	// config type specified is array<array<string>>
@@ -132,13 +150,13 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 
 	project.Config = validConfig
 	err := project.Validate()
-	assert.NoError(t, err, "There should be no validation error")
+	require.NoError(t, err, "There should be no validation error")
 
 	// validValues = ["hello"]
-	validValues := make([]interface{}, 0)
+	validValues := make([]any, 0)
 	validValues = append(validValues, "hello")
 	// validValuesArray = [["hello"]]
-	validValuesArray := make([]interface{}, 0)
+	validValuesArray := make([]any, 0)
 	validValuesArray = append(validValuesArray, validValues)
 
 	// default value here has type array<array<string>>
@@ -158,15 +176,15 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 	}
 	project.Config = validConfigWithArray
 	err = project.Validate()
-	assert.NoError(t, err, "There should be no validation error")
+	require.NoError(t, err, "There should be no validation error")
 }
 
 func writeAndLoad(t *testing.T, str string) (*Project, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(str), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return LoadProject(path)
 }
 
@@ -260,7 +278,7 @@ func TestProjectLoadJSON(t *testing.T) {
 		proj, err := writeAndLoad(t, "{\"name\": \"project\", \"runtime\": \"test\"}")
 
 		// Assert.
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, tokens.PackageName("project"), proj.Name)
 		assert.Equal(t, "test", proj.Runtime.Name())
 	})
@@ -273,7 +291,7 @@ func TestProjectLoadJSON(t *testing.T) {
 			"\"description\": null, \"main\": null, \"backend\": null}")
 
 		// Assert.
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, proj.Description)
 		assert.Equal(t, "", proj.Main)
 	})
@@ -402,38 +420,43 @@ func TestProjectLoadJSONInformativeErrors(t *testing.T) {
 func deleteFile(t *testing.T, file *os.File) {
 	if file != nil {
 		err := os.Remove(file.Name())
-		assert.NoError(t, err, "Error while deleting file")
+		require.NoError(t, err, "Error while deleting file")
 	}
 }
 
 func loadProjectFromText(t *testing.T, content string) (*Project, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer deleteFile(t, tmp)
 	return LoadProject(path)
 }
 
-func loadProjectStackFromText(t *testing.T, project *Project, content string) (*ProjectStack, error) {
+func loadProjectStackFromText(t *testing.T, sink diag.Sink, project *Project, content string) (*ProjectStack, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer deleteFile(t, tmp)
-	return LoadProjectStack(project, path)
+	return LoadProjectStack(sink, project, path)
 }
 
-func loadProjectStackFromJSONText(t *testing.T, project *Project, content string) (*ProjectStack, error) {
+func loadProjectStackFromJSONText(
+	t *testing.T,
+	sink diag.Sink,
+	project *Project,
+	content string,
+) (*ProjectStack, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer deleteFile(t, tmp)
-	return LoadProjectStack(project, path)
+	return LoadProjectStack(sink, project, path)
 }
 
 func TestProjectLoadsConfigSchemas(t *testing.T) {
@@ -472,8 +495,8 @@ config:
   `
 
 	project, err := loadProjectFromText(t, projectContent)
-	assert.NoError(t, err, "Should be able to load the project")
-	assert.Equal(t, 9, len(project.Config), "There are 9 config type definition")
+	require.NoError(t, err, "Should be able to load the project")
+	require.Len(t, project.Config, 9, "There are 9 config type definition")
 	// full integer config schema
 	integerSchemFull, ok := project.Config["integerSchemaFull"]
 	assert.True(t, ok, "should be able to read integerSchemaFull")
@@ -521,18 +544,18 @@ config:
 	assert.True(t, ok, "should be able to read simpleArrayOfStrings")
 	assert.Equal(t, "array", simpleArrayOfStrings.TypeName())
 	assert.False(t, simpleArrayOfStrings.Secret)
-	assert.NotNil(t, simpleArrayOfStrings.Items)
+	require.NotNil(t, simpleArrayOfStrings.Items)
 	assert.Equal(t, "string", simpleArrayOfStrings.Items.Type)
-	arrayValues := simpleArrayOfStrings.Default.([]interface{})
+	arrayValues := simpleArrayOfStrings.Default.([]any)
 	assert.Equal(t, "hello", arrayValues[0])
 
 	arrayOfArrays, ok := project.Config["arrayOfArrays"]
 	assert.True(t, ok, "should be able to read arrayOfArrays")
 	assert.Equal(t, "array", arrayOfArrays.TypeName())
 	assert.False(t, arrayOfArrays.Secret)
-	assert.NotNil(t, arrayOfArrays.Items)
+	require.NotNil(t, arrayOfArrays.Items)
 	assert.Equal(t, "array", arrayOfArrays.Items.Type)
-	assert.NotNil(t, arrayOfArrays.Items.Items)
+	require.NotNil(t, arrayOfArrays.Items.Items)
 	assert.Equal(t, "string", arrayOfArrays.Items.Items.Type)
 
 	secretString, ok := project.Config["secretString"]
@@ -546,24 +569,24 @@ config:
 
 func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
 	parsedKey, err := config.ParseKey(key)
-	assert.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
+	require.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
 	configValue, foundValue := stackConfig[parsedKey]
 	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
 	value, valueError := configValue.Value(config.NopDecrypter)
-	assert.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
+	require.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
 	return value
 }
 
-func getConfigValueUnmarshalled(t *testing.T, stackConfig config.Map, key string) interface{} {
+func getConfigValueUnmarshalled(t *testing.T, stackConfig config.Map, key string) any {
 	parsedKey, err := config.ParseKey(key)
-	assert.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
+	require.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
 	configValue, foundValue := stackConfig[parsedKey]
 	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
 	valueJSON, valueError := configValue.Value(config.NopDecrypter)
-	assert.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
-	var value interface{}
+	require.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
+	var value any
 	err = json.Unmarshal([]byte(valueJSON), &value)
-	assert.NoErrorf(t, err, "Error while unmarshalling value for key %v", key)
+	require.NoErrorf(t, err, "Error while unmarshalling value for key %v", key)
 	return value
 }
 
@@ -582,9 +605,13 @@ config:
   test:instanceSize: t4.large`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -593,9 +620,9 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 
-	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 3, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
 	// instanceCount and protect are inherited from the project
@@ -618,9 +645,13 @@ config:
   test:instanceSize: t4.large`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -629,14 +660,14 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
-	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	require.NoError(t, configError, "Config override should be valid")
+	require.Len(t, stack.Config, 3, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
 	// aws:region is namespaced and is inherited from the project
 	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "aws:region"))
 	assert.Equal(t, "[\"*\"]", getConfigValue(t, stack.Config, "pulumi:disable-default-providers"))
-	assert.Equal(t, []interface{}{"*"}, getConfigValueUnmarshalled(t, stack.Config, "pulumi:disable-default-providers"))
+	assert.Equal(t, []any{"*"}, getConfigValueUnmarshalled(t, stack.Config, "pulumi:disable-default-providers"))
 }
 
 func TestLoadingStackConfigWithoutNamespacingTheProject(t *testing.T) {
@@ -653,9 +684,13 @@ config:
   instanceSize: t4.large`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -664,9 +699,9 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 
-	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 2, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
 	// aws:region is namespaced and is inherited from the project
@@ -688,9 +723,13 @@ config:
   aws:region: 42`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -699,8 +738,8 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
-	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
+	require.NoError(t, configError, "Config override should be valid")
+	require.Len(t, stack.Config, 2, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "9999", getConfigValue(t, stack.Config, "test:instanceSize"))
 	assert.Equal(t, "42", getConfigValue(t, stack.Config, "aws:region"))
@@ -722,9 +761,13 @@ config:
   aws:answer: 42`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -733,8 +776,8 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
-	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	require.NoError(t, configError, "Config override should be valid")
+	require.Len(t, stack.Config, 3, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t3.micro", getConfigValue(t, stack.Config, "test:instanceSize"))
 	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "test:region"))
@@ -754,9 +797,13 @@ config:
   instanceSize: 42`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -765,8 +812,8 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
-	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
+	require.NoError(t, configError, "Config override should be valid")
+	require.Len(t, stack.Config, 2, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "42", getConfigValue(t, stack.Config, "test:instanceSize"))
 	assert.Equal(t, "true", getConfigValue(t, stack.Config, "test:createVpc"))
@@ -854,9 +901,13 @@ config:
   aws:whatever: 42`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -865,8 +916,8 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
-	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	require.NoError(t, configError, "Config override should be valid")
+	require.Len(t, stack.Config, 3, "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "{\"hello\":\"world\"}", getConfigValue(t, stack.Config, "test:instanceSize"))
 	assert.Equal(t, "{\"region\":\"us-west-1\"}", getConfigValue(t, stack.Config, "aws:config"))
@@ -891,9 +942,13 @@ config:
 `
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -913,9 +968,9 @@ runtime: dotnet
 config: ./some/path`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
+	require.NoError(t, projectError, "Shold be able to load the project")
 	assert.Equal(t, "./some/path", project.StackConfigDir, "Stack config dir is read from the config property")
-	assert.Equal(t, 0, len(project.Config), "Config should be empty")
+	assert.Empty(t, project.Config, "Config should be empty")
 }
 
 func TestDefningBothConfigAndStackConfigDirErrorsOut(t *testing.T) {
@@ -943,9 +998,9 @@ config:
 
 	project, projectError := loadProjectFromText(t, projectYaml)
 	assert.Nil(t, projectError, "There is no error")
-	assert.NotNil(t, project, "The project can be loaded correctly")
+	require.NotNil(t, project, "The project can be loaded correctly")
 	assert.Equal(t, "./some/other/path", project.StackConfigDir)
-	assert.Equal(t, 1, len(project.Config), "there is one config value")
+	require.Len(t, project.Config, 1, "there is one config value")
 }
 
 func TestStackConfigIntegerTypeIsCorrectlyValidated(t *testing.T) {
@@ -970,9 +1025,13 @@ config:
 
 	ctx := context.Background()
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYamlValid)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlValid)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		ctx,
 		"dev",
@@ -981,10 +1040,12 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "there should no config type error")
+	require.NoError(t, configError, "there should no config type error")
 
-	invalidStackConfig, stackError := loadProjectStackFromText(t, project, projectStackYamlInvalid)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	invalidStackConfig, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlInvalid)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError = ValidateStackConfigAndApplyProjectConfig(
 		ctx,
 		"dev",
@@ -1011,9 +1072,13 @@ config:
 	projectStackYaml := ``
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -1041,9 +1106,13 @@ config:
 	projectStackYaml := ``
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -1073,9 +1142,13 @@ config:
 	projectStackYaml := ``
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -1100,9 +1173,13 @@ config:
   another: 42`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -1127,7 +1204,7 @@ config:
 
 	crypter := config.Base64Crypter
 	encryptedValue, err := crypter.EncryptValue(context.Background(), "20")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	projectStackYamlValid := fmt.Sprintf(`
 config:
@@ -1142,9 +1219,13 @@ config:
 
 	ctx := context.Background()
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYamlValid)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlValid)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		ctx,
 		"dev",
@@ -1153,10 +1234,12 @@ config:
 		stack.Config,
 		crypter,
 		crypter)
-	assert.NoError(t, configError, "there should no config type error")
+	require.NoError(t, configError, "there should no config type error")
 
-	invalidStackConfig, stackError := loadProjectStackFromText(t, project, projectStackYamlInvalid)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	invalidStackConfig, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlInvalid)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError = ValidateStackConfigAndApplyProjectConfig(
 		ctx,
 		"dev",
@@ -1208,7 +1291,11 @@ config:
 
 	project, projectError := loadProjectFromText(t, projectYAML)
 	require.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, stackYAML)
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, stackYAML)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 
 	configError := ValidateStackConfigAndApplyProjectConfig(
@@ -1290,13 +1377,13 @@ func TestProjectLoadYAML(t *testing.T) {
 
 	// Test success
 	proj, err := loadProjectFromText(t, "name: project\nruntime: test")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, tokens.PackageName("project"), proj.Name)
 	assert.Equal(t, "test", proj.Runtime.Name())
 
 	// Test null optionals should work
 	proj, err = loadProjectFromText(t, "name: project\nruntime: test\ndescription:\nmain: null\nbackend:\n")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, proj.Description)
 	assert.Equal(t, "", proj.Main)
 }
@@ -1318,7 +1405,6 @@ func TestProjectSaveLoadRoundtrip(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1363,7 +1449,7 @@ func TestProjectEditRoundtrip(t *testing.T) {
 			edit: func(proj *Project) {
 				proj.Runtime = NewProjectRuntimeInfo(
 					proj.Runtime.Name(),
-					map[string]interface{}{
+					map[string]any{
 						"setting": "test",
 					})
 			},
@@ -1372,7 +1458,6 @@ func TestProjectEditRoundtrip(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1413,9 +1498,12 @@ runtime: yaml`
 
 		project, err := loadProjectFromText(t, projectYaml)
 		require.NoError(t, err)
-		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, projectStackJSON)
 		require.NoError(t, err)
-
+		assert.Empty(t, stdout)
+		assert.Empty(t, stderr)
 		stack.Environment = stack.Environment.Append("env")
 		marshaled, err := encoding.JSON.Marshal(stack)
 		require.NoError(t, err)
@@ -1446,7 +1534,11 @@ runtime: yaml`
 
 		project, err := loadProjectFromText(t, projectYaml)
 		require.NoError(t, err)
-		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, projectStackJSON)
+		assert.Empty(t, stdout)
+		assert.Empty(t, stderr)
 		require.NoError(t, err)
 
 		expected := `{
@@ -1499,7 +1591,11 @@ runtime: yaml`
 
 		project, err := loadProjectFromText(t, projectYaml)
 		require.NoError(t, err)
-		stack, err := loadProjectStackFromText(t, project, projectStackYaml)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
+		assert.Empty(t, stdout)
+		assert.Empty(t, stderr)
 		require.NoError(t, err)
 
 		stack.Environment = stack.Environment.Append("env")
@@ -1526,7 +1622,11 @@ runtime: yaml`
 
 		project, err := loadProjectFromText(t, projectYaml)
 		require.NoError(t, err)
-		stack, err := loadProjectStackFromText(t, project, projectStackYaml)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
+		assert.Empty(t, stdout)
+		assert.Empty(t, stderr)
 		require.NoError(t, err)
 
 		expected := `environment:
@@ -1578,7 +1678,11 @@ runtime: yaml`
 
 		project, err := loadProjectFromText(t, projectYaml)
 		require.NoError(t, err)
-		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, projectStackJSON)
+		assert.Empty(t, stdout)
+		assert.Empty(t, stderr)
 		require.NoError(t, err)
 
 		expected := `{
@@ -1640,7 +1744,11 @@ runtime: yaml`
 
 		project, err := loadProjectFromText(t, projectYaml)
 		require.NoError(t, err)
-		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, projectStackJSON)
+		assert.Empty(t, stdout)
+		assert.Empty(t, stderr)
 		require.NoError(t, err)
 
 		expected := `{
@@ -1718,7 +1826,11 @@ runtime: yaml`
 
 		project, err := loadProjectFromText(t, projectYaml)
 		require.NoError(t, err)
-		stack, err := loadProjectStackFromText(t, project, projectStackYaml)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
+		assert.Empty(t, stdout)
+		assert.Empty(t, stderr)
 		require.NoError(t, err)
 
 		expected := `environment:
@@ -1759,7 +1871,11 @@ runtime: yaml`
 
 		project, err := loadProjectFromText(t, projectYaml)
 		require.NoError(t, err)
-		stack, err := loadProjectStackFromText(t, project, projectStackYaml)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
+		assert.Empty(t, stdout)
+		assert.Empty(t, stderr)
 		require.NoError(t, err)
 
 		expected := `environment:
@@ -1814,9 +1930,13 @@ config:
   test:instanceSize: 18446744073709551615`
 
 	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
+	require.NoError(t, projectError, "Shold be able to load the project")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
+	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
 		context.Background(),
 		"dev",
@@ -1825,109 +1945,82 @@ config:
 		stack.Config,
 		config.NewPanicCrypter(),
 		config.NewPanicCrypter())
-	assert.NoError(t, configError, "Config override should be valid")
+	require.NoError(t, configError, "Config override should be valid")
 
-	assert.Equal(t, 1, len(stack.Config), "Stack config now has three values")
+	require.Len(t, stack.Config, 1, "Stack config now has three values")
 	assert.Equal(t, "18446744073709551615", getConfigValue(t, stack.Config, "test:instanceSize"))
 }
 
 func TestPackageValueSerialization(t *testing.T) {
 	t.Parallel()
 
-	t.Run("JSON", func(t *testing.T) {
-		t.Parallel()
-
-		// Test both simple string and complex object packages in the same Project
-		proj := &Project{
+	proj := func() *Project {
+		return &Project{
 			Name:    "test-project",
 			Runtime: NewProjectRuntimeInfo("nodejs", nil),
-			Packages: map[string]packageValue{
-				"simple": {value: "github.com/example/simple-package"},
-				"complex": {value: PackageSpec{
+			Packages: map[string]PackageSpec{
+				"simple": {
+					Source: "github.com/example/simple-package",
+				},
+				"less-simple": {
+					Source:  "github.com/example/simple-package",
+					Version: "1.0.0",
+				},
+				"complex": {
 					Source:     "github.com/example/complex-package",
 					Version:    "1.0.0",
 					Parameters: []string{"arg1", "arg2"},
-				}},
+				},
+				"complex-without-version": {
+					Source:     "github.com/example/simple-package",
+					Parameters: []string{"arg1"},
+				},
 			},
 		}
+	}
 
-		// Serialize to JSON
-		bytes, err := json.Marshal(proj)
-		assert.NoError(t, err)
+	test := func(
+		t *testing.T,
+		marshal func(any) ([]byte, error),
+		unmarshal func([]byte, any) error,
+		checkMarshalled func(t *testing.T, s string),
+	) {
+		bytes, err := marshal(proj())
+		require.NoError(t, err)
 
-		// Verify JSON contains the expected package formats
-		jsonStr := string(bytes)
-		assert.Contains(t, jsonStr, `"packages":`)
-		assert.Contains(t, jsonStr, `"simple":"github.com/example/simple-package"`)
-		assert.Contains(t, jsonStr,
-			`"complex":{"source":"github.com/example/complex-package","version":"1.0.0","parameters":["arg1","arg2"]}`)
+		checkMarshalled(t, string(bytes))
 
-		// Deserialize back
-		var newProj Project
-		err = json.Unmarshal(bytes, &newProj)
-		assert.NoError(t, err)
+		newProj := new(Project)
+		require.NoError(t, unmarshal(bytes, newProj))
+		assert.EqualExportedValues(t, proj(), newProj)
+	}
 
-		// Verify packages were correctly deserialized
-		specs := newProj.GetPackageSpecs()
-		assert.Equal(t, 2, len(specs))
+	t.Run("JSON", func(t *testing.T) {
+		t.Parallel()
 
-		assert.Equal(t, "github.com/example/simple-package", specs["simple"].Source)
-		assert.Empty(t, specs["simple"].Version)
-		assert.Empty(t, specs["simple"].Parameters)
-
-		assert.Equal(t, "github.com/example/complex-package", specs["complex"].Source)
-		assert.Equal(t, "1.0.0", specs["complex"].Version)
-		assert.Equal(t, []string{"arg1", "arg2"}, specs["complex"].Parameters)
+		test(t, json.Marshal, json.Unmarshal, func(t *testing.T, jsonStr string) {
+			assert.Contains(t, jsonStr, `"packages":`)
+			assert.Contains(t, jsonStr, `"simple":"github.com/example/simple-package"`)
+			assert.Contains(t, jsonStr,
+				`"complex":{"source":"github.com/example/complex-package","version":"1.0.0","parameters":["arg1","arg2"]}`)
+			assert.NotContains(t, jsonStr, `"version":""`)
+		})
 	})
 
 	t.Run("YAML", func(t *testing.T) {
 		t.Parallel()
 
-		// Test both simple string and complex object packages in the same Project
-		proj := &Project{
-			Name:    "test-project",
-			Runtime: NewProjectRuntimeInfo("nodejs", nil),
-			Packages: map[string]packageValue{
-				"simple": {value: "github.com/example/simple-package"},
-				"complex": {value: PackageSpec{
-					Source:     "github.com/example/complex-package",
-					Version:    "1.0.0",
-					Parameters: []string{"arg1", "arg2"},
-				}},
-			},
-		}
-
-		// Serialize to YAML
-		bytes, err := yaml.Marshal(proj)
-		assert.NoError(t, err)
-
-		// Verify YAML contains the expected package formats
-		yamlStr := string(bytes)
-		assert.Contains(t, yamlStr, "packages:")
-		assert.Contains(t, yamlStr, "simple: github.com/example/simple-package")
-		assert.Contains(t, yamlStr, "complex:")
-		assert.Contains(t, yamlStr, "source: github.com/example/complex-package")
-		assert.Contains(t, yamlStr, "version: 1.0.0")
-		assert.Contains(t, yamlStr, "parameters:")
-		assert.Contains(t, yamlStr, "- arg1")
-		assert.Contains(t, yamlStr, "- arg2")
-
-		// Deserialize back
-		var newProj Project
-		err = yaml.Unmarshal(bytes, &newProj)
-		assert.NoError(t, err)
-
-		// Verify packages were correctly deserialized
-		specs := newProj.GetPackageSpecs()
-		assert.Equal(t, 2, len(specs))
-
-		assert.Equal(t, "github.com/example/simple-package", specs["simple"].Source)
-		assert.Empty(t, specs["simple"].Version)
-		assert.Empty(t, specs["simple"].Parameters)
-
-		assert.Equal(t, "github.com/example/complex-package", specs["complex"].Source)
-		assert.Equal(t, "1.0.0", specs["complex"].Version)
-		assert.Equal(t, []string{"arg1", "arg2"}, specs["complex"].Parameters)
+		test(t, yaml.Marshal, yaml.Unmarshal, func(t *testing.T, yamlStr string) {
+			assert.Contains(t, yamlStr, "packages:")
+			assert.Contains(t, yamlStr, "simple: github.com/example/simple-package")
+			assert.Contains(t, yamlStr, "complex:")
+			assert.Contains(t, yamlStr, "source: github.com/example/complex-package")
+			assert.Contains(t, yamlStr, "version: 1.0.0")
+			assert.Contains(t, yamlStr, "parameters:")
+			assert.Contains(t, yamlStr, "- arg1")
+			assert.Contains(t, yamlStr, "- arg2")
+			assert.NotContains(t, yamlStr, `version: ""`)
+		})
 	})
 
 	t.Run("Deserialization Edge Cases", func(t *testing.T) {
@@ -1939,6 +2032,37 @@ func TestPackageValueSerialization(t *testing.T) {
 		err := json.Unmarshal([]byte(jsonData), &proj)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "package must be either a string or a package specification object")
+	})
+}
+
+func TestPackageValueDeserialization(t *testing.T) {
+	t.Parallel()
+
+	t.Run("short form for non-nil empty collections", func(t *testing.T) {
+		spec := PackageSpec{
+			Source:               "github.com/pulumi/component-test-providers",
+			Version:              "0.0.0-xd47cf0",
+			Parameters:           []string{},
+			Checksums:            map[string][]byte{},
+			PluginDownloadURL:    "",
+			unmarshalledFromFull: false,
+		}
+
+		p := Project{
+			Name:    "test",
+			Runtime: NewProjectRuntimeInfo("nodejs", nil),
+			Packages: map[string]PackageSpec{
+				"tls-self-signed-cert": spec,
+			},
+		}
+
+		b, err := yaml.Marshal(p)
+		require.NoError(t, err)
+		assert.Equal(t, `name: test
+runtime: nodejs
+packages:
+  tls-self-signed-cert: github.com/pulumi/component-test-providers@0.0.0-xd47cf0
+`, string(b))
 	})
 }
 
@@ -1958,7 +2082,7 @@ func TestGetPackageSpecs(t *testing.T) {
 	proj = &Project{
 		Name:     "test-project",
 		Runtime:  NewProjectRuntimeInfo("nodejs", nil),
-		Packages: map[string]packageValue{},
+		Packages: map[string]PackageSpec{},
 	}
 	specs = proj.GetPackageSpecs()
 	assert.Empty(t, specs)
@@ -1967,17 +2091,17 @@ func TestGetPackageSpecs(t *testing.T) {
 	proj = &Project{
 		Name:    "test-project",
 		Runtime: NewProjectRuntimeInfo("nodejs", nil),
-		Packages: map[string]packageValue{
-			"str": {value: "github.com/example/string-package@0.1.2"},
-			"obj": {value: PackageSpec{
+		Packages: map[string]PackageSpec{
+			"str": {Source: "github.com/example/string-package", Version: "0.1.2"},
+			"obj": {
 				Source:     "github.com/example/object-package",
 				Version:    "1.2.3",
 				Parameters: []string{"--arg1", "--arg2"},
-			}},
+			},
 		},
 	}
 	specs = proj.GetPackageSpecs()
-	assert.Equal(t, 2, len(specs))
+	require.Len(t, specs, 2)
 
 	assert.Equal(t, "github.com/example/string-package", specs["str"].Source)
 	assert.Equal(t, "0.1.2", specs["str"].Version)
@@ -1986,4 +2110,288 @@ func TestGetPackageSpecs(t *testing.T) {
 	assert.Equal(t, "github.com/example/object-package", specs["obj"].Source)
 	assert.Equal(t, "1.2.3", specs["obj"].Version)
 	assert.Equal(t, []string{"--arg1", "--arg2"}, specs["obj"].Parameters)
+}
+
+func requireTextualRepresentationIsString(t *testing.T, ps PackageSpec) string {
+	t.Helper()
+	b, err := json.Marshal(ps)
+	require.NoError(t, err)
+	var s string
+	err = json.Unmarshal(b, &s)
+	require.NoError(t, err)
+	return s
+}
+
+func requireTextualRepresentationIsSpec(t *testing.T, ps PackageSpec) PackageSpec {
+	t.Helper()
+	b, err := json.Marshal(ps)
+	require.NoError(t, err)
+	var v packageSpecMarshalled
+	err = json.Unmarshal(b, &v)
+	require.NoError(t, err)
+	return PackageSpec{
+		Source:            v.Source,
+		Version:           v.Version,
+		Parameters:        v.Parameters,
+		Checksums:         v.Checksums,
+		PluginDownloadURL: v.PluginDownloadURL,
+	}
+}
+
+func TestAddPackage(t *testing.T) {
+	t.Parallel()
+
+	// Test adding the first package with only source
+	t.Run("AddFirstPackage", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+		}
+
+		proj.AddPackage("simple-package", PackageSpec{
+			Source: "github.com/org/simple-package",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "simple-package")
+		require.Equal(t, "github.com/org/simple-package", specs["simple-package"].Source)
+		require.Empty(t, specs["simple-package"].Version)
+		require.Empty(t, specs["simple-package"].Parameters)
+
+		// The internal representation should be a string for the new package
+		requireTextualRepresentationIsString(t, proj.Packages["simple-package"])
+	})
+
+	// Test adding a package with source and version
+	t.Run("AddFirstPackageWithVersion", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+		}
+
+		proj.AddPackage("versioned-package", PackageSpec{
+			Source:  "github.com/org/versioned-package",
+			Version: "v1.2.3",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "versioned-package")
+		require.Equal(t, "github.com/org/versioned-package", specs["versioned-package"].Source)
+		require.Equal(t, "v1.2.3", specs["versioned-package"].Version)
+		require.Empty(t, specs["versioned-package"].Parameters)
+
+		// The internal representation should be a string for the new package
+		requireTextualRepresentationIsString(t, proj.Packages["versioned-package"])
+	})
+
+	// Test adding a package with parameters (should use PackageSpec format)
+	t.Run("AddPackageWithParameters", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+		}
+
+		proj.AddPackage("param-package", PackageSpec{
+			Source:     "github.com/org/param-package",
+			Parameters: []string{"param1", "param2"},
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "param-package")
+		require.Equal(t, "github.com/org/param-package", specs["param-package"].Source)
+		require.Empty(t, specs["param-package"].Version)
+		require.Equal(t, []string{"param1", "param2"}, specs["param-package"].Parameters)
+
+		// The internal representation should be a PackageSpec for the new package
+		requireTextualRepresentationIsSpec(t, proj.Packages["param-package"])
+	})
+
+	// Test maintaining the format consistency when adding multiple packages
+	t.Run("MaintainFormatConsistency", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+			Packages: map[string]PackageSpec{
+				"existing-package": {
+					Source:               "github.com/org/existing-package",
+					Version:              "v1.0.0",
+					unmarshalledFromFull: true,
+				},
+			},
+		}
+
+		// Adding a new package should use the same format as existing packages
+		proj.AddPackage("new-package", PackageSpec{
+			Source: "github.com/org/new-package",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "existing-package")
+		require.Contains(t, specs, "new-package")
+		require.Equal(t, "github.com/org/existing-package", specs["existing-package"].Source)
+		require.Equal(t, "v1.0.0", specs["existing-package"].Version)
+
+		// The internal representation should be a PackageSpec for the new package
+		val := requireTextualRepresentationIsSpec(t, proj.Packages["new-package"])
+		require.Equal(t, "github.com/org/new-package", val.Source)
+		require.Empty(t, val.Version)
+		require.Empty(t, val.Parameters)
+	})
+
+	// Test replacing an existing package
+	t.Run("ReplaceExistingPackage", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+			Packages: map[string]PackageSpec{
+				"existing-package": {Source: "github.com/org/existing-package@v1.0.0"},
+			},
+		}
+
+		// Replace the existing package with a new version
+		proj.AddPackage("existing-package", PackageSpec{
+			Source:  "github.com/org/existing-package",
+			Version: "v2.0.0",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "existing-package")
+		require.Equal(t, "github.com/org/existing-package", specs["existing-package"].Source)
+		require.Equal(t, "v2.0.0", specs["existing-package"].Version)
+
+		// The internal representation should be a string for the new package
+		requireTextualRepresentationIsString(t, proj.Packages["existing-package"])
+	})
+
+	// One existing package as string, one as spec - new one should be added as string
+	t.Run("MixedFormatDefaultsToString", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+			Packages: map[string]PackageSpec{
+				"string-package": {Source: "github.com/org/string-package@v1.0.0"},
+				"spec-package": {
+					Source:     "github.com/org/spec-package",
+					Version:    "v1.0.0",
+					Parameters: []string{"--param"},
+				},
+			},
+		}
+
+		// Adding a new simple package should default to string format when there's a mix
+		proj.AddPackage("new-package", PackageSpec{
+			Source:  "github.com/org/new-package",
+			Version: "v1.2.3",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "new-package")
+		require.Equal(t, "github.com/org/new-package", specs["new-package"].Source)
+		require.Equal(t, "v1.2.3", specs["new-package"].Version)
+
+		// The internal representation should be a string for the new package
+		requireTextualRepresentationIsString(t, proj.Packages["new-package"])
+	})
+
+	// Existing package format is preserved when replacing
+	t.Run("PreserveFormatWhenReplacing", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+			Packages: map[string]PackageSpec{
+				"string-package": {
+					Source:  "github.com/org/string-package",
+					Version: "v1.0.0",
+				},
+				"spec-package": {
+					Source:               "github.com/org/spec-package",
+					Version:              "v1.0.0",
+					unmarshalledFromFull: true,
+				},
+			},
+		}
+
+		// Replace the string package with a new version (should stay as string)
+		proj.AddPackage("string-package", PackageSpec{
+			Source:  "github.com/org/string-package",
+			Version: "v2.0.0",
+		})
+
+		// Replace the spec package with a new version (should stay as spec)
+		proj.AddPackage("spec-package", PackageSpec{
+			Source:  "github.com/org/spec-package",
+			Version: "v2.0.0",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "string-package")
+		require.Contains(t, specs, "spec-package")
+		require.Equal(t, "github.com/org/string-package", specs["string-package"].Source)
+		require.Equal(t, "v2.0.0", specs["string-package"].Version)
+		require.Equal(t, "github.com/org/spec-package", specs["spec-package"].Source)
+		require.Equal(t, "v2.0.0", specs["spec-package"].Version)
+
+		// Verify the internal representation is maintained
+		requireTextualRepresentationIsString(t, proj.Packages["string-package"])
+		requireTextualRepresentationIsSpec(t, proj.Packages["spec-package"])
+	})
+
+	// Format conversion when parameters added to existing string package
+	t.Run("FormatConversionWhenParametersAdded", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+			Packages: map[string]PackageSpec{
+				"string-package": {Source: "github.com/org/string-package@v1.0.0"},
+			},
+		}
+
+		// Add parameters to an existing string package - should convert to PackageSpec
+		proj.AddPackage("string-package", PackageSpec{
+			Source:     "github.com/org/string-package",
+			Version:    "v1.0.0",
+			Parameters: []string{"--new-param"},
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "string-package")
+		require.Equal(t, "github.com/org/string-package", specs["string-package"].Source)
+		require.Equal(t, "v1.0.0", specs["string-package"].Version)
+		require.Equal(t, []string{"--new-param"}, specs["string-package"].Parameters)
+
+		// Verify the internal representation was converted to PackageSpec
+		requireTextualRepresentationIsSpec(t, proj.Packages["string-package"])
+	})
 }

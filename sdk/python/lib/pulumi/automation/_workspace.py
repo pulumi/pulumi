@@ -14,7 +14,9 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Callable, List, Mapping, Optional, Awaitable
+from typing import Any, Optional
+from collections.abc import Callable
+from collections.abc import Mapping, Awaitable
 from dataclasses import dataclass
 
 from ._cmd import PulumiCommand
@@ -68,14 +70,14 @@ class WhoAmIResult:
 
     user: str
     url: Optional[str]
-    organizations: Optional[List[str]]
+    organizations: Optional[list[str]]
     token_information: Optional[TokenInformation]
 
     def __init__(
         self,
         user: str,
         url: Optional[str] = None,
-        organizations: Optional[List[str]] = None,
+        organizations: Optional[list[str]] = None,
         token_information: Optional[TokenInformation] = None,
     ) -> None:
         self.user = user
@@ -206,7 +208,7 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def serialize_args_for_op(self, stack_name: str) -> List[str]:
+    def serialize_args_for_op(self, stack_name: str) -> list[str]:
         """
         A hook to provide additional args to CLI commands before they are executed.
         Provided with stack name, returns a list of args to append to an invoked command ["--config=...", ]
@@ -238,7 +240,7 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def list_environments(self, stack_name: str) -> List[str]:
+    def list_environments(self, stack_name: str) -> list[str]:
         """
         Returns the list of environments specified in a stack's configuration.
 
@@ -304,6 +306,16 @@ class Workspace(ABC):
         """
 
     @abstractmethod
+    def set_all_config_json(self, stack_name: str, config_json: str) -> None:
+        """
+        Sets all config values from a JSON string for the specified stack name.
+        The JSON string should be in the format produced by "pulumi config --json".
+
+        :param stack_name: The name of the stack.
+        :param config_json: A JSON string containing the configuration values to set.
+        """
+
+    @abstractmethod
     def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:
         """
         Removes the specified key-value pair on the provided stack name.
@@ -315,7 +327,7 @@ class Workspace(ABC):
 
     @abstractmethod
     def remove_all_config(
-        self, stack_name: str, keys: List[str], *, path: bool = False
+        self, stack_name: str, keys: list[str], *, path: bool = False
     ) -> None:
         """
         Removes all values in the provided key list for the specified stack name.
@@ -395,7 +407,7 @@ class Workspace(ABC):
 
         :param str stack_name: The name of the stack to create
         :returns: None
-        :raises CommandError Raised if a stack with the same name exists.
+        :raises CommandError: Raised if a stack with the same name exists.
         """
 
     @abstractmethod
@@ -405,7 +417,7 @@ class Workspace(ABC):
 
         :param stack_name: The name of the stack to select
         :returns: None
-        :raises CommandError Raised if no matching stack exists.
+        :raises CommandError: Raised if no matching stack exists.
         """
 
     @abstractmethod
@@ -422,7 +434,7 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def list_stacks(self, include_all: Optional[bool] = None) -> List[StackSummary]:
+    def list_stacks(self, include_all: Optional[bool] = None) -> list[StackSummary]:
         """
         Returns all Stacks created under the current Project.
         This queries underlying backend and may return stacks not present in the Workspace
@@ -468,7 +480,7 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def list_plugins(self) -> List[PluginInfo]:
+    def list_plugins(self) -> list[PluginInfo]:
         """
         Returns a list of all plugins installed in the Workspace.
 

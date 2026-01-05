@@ -50,6 +50,21 @@ class AnalyzerStub(object):
                 request_serializer=pulumi_dot_analyzer__pb2.ConfigureAnalyzerRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.Handshake = channel.unary_unary(
+                '/pulumirpc.Analyzer/Handshake',
+                request_serializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeResponse.FromString,
+                )
+        self.ConfigureStack = channel.unary_unary(
+                '/pulumirpc.Analyzer/ConfigureStack',
+                request_serializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureRequest.SerializeToString,
+                response_deserializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureResponse.FromString,
+                )
+        self.Cancel = channel.unary_unary(
+                '/pulumirpc.Analyzer/Cancel',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
 
 
 class AnalyzerServicer(object):
@@ -105,6 +120,34 @@ class AnalyzerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Handshake(self, request, context):
+        """`Handshake` is the first call made by the engine to an analyzer. It is used to pass the engine's address to the
+        analyzer so that it may establish its own connections back, and to establish protocol configuration that will be
+        used to communicate between the two parties.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ConfigureStack(self, request, context):
+        """`ConfigureStack` is always called if the engine is using the analyzer to analyze resources in a specific stack.
+        This method is not always called, for example if the engine is just booting the analyzer up to call
+        GetAnalyzerInfo.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Cancel(self, request, context):
+        """Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+        Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+        it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+        hard-closing any gRPC connection.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_AnalyzerServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -136,6 +179,21 @@ def add_AnalyzerServicer_to_server(servicer, server):
             'Configure': grpc.unary_unary_rpc_method_handler(
                     servicer.Configure,
                     request_deserializer=pulumi_dot_analyzer__pb2.ConfigureAnalyzerRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'Handshake': grpc.unary_unary_rpc_method_handler(
+                    servicer.Handshake,
+                    request_deserializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeRequest.FromString,
+                    response_serializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeResponse.SerializeToString,
+            ),
+            'ConfigureStack': grpc.unary_unary_rpc_method_handler(
+                    servicer.ConfigureStack,
+                    request_deserializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureRequest.FromString,
+                    response_serializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureResponse.SerializeToString,
+            ),
+            'Cancel': grpc.unary_unary_rpc_method_handler(
+                    servicer.Cancel,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -250,6 +308,57 @@ class Analyzer(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/Configure',
             pulumi_dot_analyzer__pb2.ConfigureAnalyzerRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Handshake(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/Handshake',
+            pulumi_dot_analyzer__pb2.AnalyzerHandshakeRequest.SerializeToString,
+            pulumi_dot_analyzer__pb2.AnalyzerHandshakeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ConfigureStack(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/ConfigureStack',
+            pulumi_dot_analyzer__pb2.AnalyzerStackConfigureRequest.SerializeToString,
+            pulumi_dot_analyzer__pb2.AnalyzerStackConfigureResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Cancel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/Cancel',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

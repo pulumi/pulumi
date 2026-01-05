@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -25,15 +26,16 @@ import (
 
 func init() {
 	LanguageTests["l2-invoke-secrets"] = LanguageTest{
-		Providers: []plugin.Provider{
-			&providers.SimpleInvokeProvider{},
-			&providers.SimpleProvider{},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleInvokeProvider{} },
+			func() plugin.Provider { return &providers.SimpleProvider{} },
 		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 					var stack *resource.State
@@ -48,11 +50,11 @@ func init() {
 
 					outputs := stack.Outputs
 					AssertPropertyMapMember(l, outputs, "nonSecret",
-						resource.NewStringProperty("hello world"))
+						resource.NewProperty("hello world"))
 					AssertPropertyMapMember(l, outputs, "firstSecret",
-						resource.MakeSecret(resource.NewStringProperty("hello world")))
+						resource.MakeSecret(resource.NewProperty("hello world")))
 					AssertPropertyMapMember(l, outputs, "secondSecret",
-						resource.MakeSecret(resource.NewStringProperty("goodbye world")))
+						resource.MakeSecret(resource.NewProperty("goodbye world")))
 				},
 			},
 		},

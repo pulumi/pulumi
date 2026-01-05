@@ -47,7 +47,7 @@ test_auto:: $(TEST_ALL_DEPS)
 
 dist:: ../../bin/pulumi-language-go
 ifneq (${GOBIN},)
-	@# We need to do this dance instead of just calling `cp` because `make build_local`
+	@# We need to do this dance instead of just calling `cp` because `make build`
 	@# (from root) sets ${GOBIN} such that the copy is a no op.
 	@bash -c ' \
 	if ! [[ "$<" -ef ${GOBIN}/pulumi-language-go ]]; then \

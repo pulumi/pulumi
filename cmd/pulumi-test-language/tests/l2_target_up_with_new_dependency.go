@@ -25,12 +25,15 @@ import (
 
 func init() {
 	LanguageTests["l2-target-up-with-new-dependency"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
@@ -42,7 +45,7 @@ func init() {
 
 					unrelated := RequireSingleNamedResource(l, snap.Resources, "unrelated")
 					require.Equal(l, "simple:index:Resource", unrelated.Type.String(), "expected simple resource")
-					require.Equal(l, 0, len(unrelated.Dependencies), "expected no dependencies")
+					require.Empty(l, unrelated.Dependencies, "expected no dependencies")
 				},
 			},
 			{
@@ -54,6 +57,7 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
@@ -61,7 +65,7 @@ func init() {
 					require.Equal(l, "simple:index:Resource", target.Type.String(), "expected simple resource")
 					unrelated := RequireSingleNamedResource(l, snap.Resources, "unrelated")
 					require.Equal(l, "simple:index:Resource", unrelated.Type.String(), "expected simple resource")
-					require.Equal(l, 0, len(unrelated.Dependencies), "expected still no dependencies")
+					require.Empty(l, unrelated.Dependencies, "expected still no dependencies")
 				},
 			},
 		},

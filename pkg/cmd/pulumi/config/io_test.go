@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -63,6 +64,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 	// Don't check return values. Just check that GetLatestConfiguration() is not called.
 	_, _, _ = GetStackConfiguration(
 		context.Background(),
+		nil, /*sink*/
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
@@ -72,6 +74,12 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 					ProjectV:            "project",
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
+			},
+			LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+				return workspace.LoadProjectStack(cmdutil.Diag(), project, "Pulumi.name.yaml")
+			},
+			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+				return nil, nil
 			},
 			BackendF: func() backend.Backend {
 				return &backend.MockBackend{
@@ -92,6 +100,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 	called := false
 	_, _, _ = GetStackConfigurationOrLatest(
 		context.Background(),
+		nil, /*sink*/
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
@@ -101,6 +110,9 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 					ProjectV:            "project",
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
+			},
+			LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+				return nil, workspace.ErrProjectNotFound
 			},
 			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
 				return nil, nil
@@ -176,7 +188,7 @@ func TestOpenStackEnvNoEnv(t *testing.T) {
 	require.NoError(t, err)
 
 	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestOpenStackEnvUnsupportedBackend(t *testing.T) {
@@ -243,7 +255,7 @@ func TestOpenStackEnv(t *testing.T) {
 
 	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
 }
 
@@ -270,7 +282,7 @@ func TestOpenStackEnvLiteral(t *testing.T) {
 
 	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
 }
 
@@ -294,15 +306,15 @@ func TestStackEnvConfig(t *testing.T) {
 
 	mockSecretsManager := &secrets.MockSecretsManager{
 		EncrypterF: func() config.Encrypter {
-			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
+			encrypter := &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "ciphertext" }}
 			return encrypter
 		},
 		DecrypterF: func() config.Decrypter {
 			decrypter := &secrets.MockDecrypter{
-				DecryptValueF: func() string {
+				DecryptValueF: func(_ string) string {
 					return "plaintext"
 				},
-				BatchDecryptF: func() []string {
+				BatchDecryptF: func(_ []string) []string {
 					return []string{
 						"whatiamdoing",
 					}
@@ -379,15 +391,15 @@ func TestCopyConfig(t *testing.T) {
 
 	mockSecretsManager := &secrets.MockSecretsManager{
 		EncrypterF: func() config.Encrypter {
-			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
+			encrypter := &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "ciphertext" }}
 			return encrypter
 		},
 		DecrypterF: func() config.Decrypter {
 			decrypter := &secrets.MockDecrypter{
-				DecryptValueF: func() string {
+				DecryptValueF: func(_ string) string {
 					return "plaintext"
 				},
-				BatchDecryptF: func() []string {
+				BatchDecryptF: func(_ []string) []string {
 					return []string{
 						"whatiamdoing",
 					}
@@ -474,7 +486,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 
 	_, diags, err := openStackEnv(context.Background(), stack, &projectStack)
 	require.NoError(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 }
 
 func TestOpenStackEnvError(t *testing.T) {
@@ -641,7 +653,6 @@ func TestParseConfigKey(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := ParseConfigKey(ws, tt.input, tt.path)

@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "Foo.cs",
     "FuncWithAllOptionalInputs.cs",
     "Inputs/HelmReleaseSettings.cs",

@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -29,43 +30,34 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
+
+type StackConfigLocation struct {
+	// IsRemote indicates if the stack's configuration is stored remotely instead of in a local file.
+	IsRemote bool
+	// EscEnv is the optional name of an ESC Environment being used to store the stack's configuration.
+	EscEnv *string
+}
 
 // Stack is used to manage stacks of resources against a pluggable backend.
 type Stack interface {
 	// Ref returns this stack's identity.
 	Ref() StackReference
+	// ConfigLocation indicates if the backend has configuration stored independent of the local file stack config.
+	ConfigLocation() StackConfigLocation
+	// LoadRemoteConfig the stack's configuration remotely from the backend.
+	LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	// SaveRemoteConfig the stack's configuration remotely to the backend.
+	SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	// SnapshotStackOutputs returns the stack outputs of the latest deployment snapshot.
+	SnapshotStackOutputs(ctx context.Context, secretsProvider secrets.Provider) (property.Map, error)
 	// Backend returns the backend this stack belongs to.
 	Backend() Backend
 	// Tags return the stack's existing tags.
 	Tags() map[apitype.StackTagName]string
-	// Preview changes to this stack if an Update was run.
-	Preview(
-		ctx context.Context, op UpdateOperation, events chan<- engine.Event,
-	) (*deploy.Plan, display.ResourceChanges, error)
-	// Update this stack.
-	Update(ctx context.Context, op UpdateOperation) (display.ResourceChanges, error)
-	// Import resources into this stack.
-	Import(ctx context.Context, op UpdateOperation, imports []deploy.Import) (display.ResourceChanges, error)
-	// Refresh this stack's state from the cloud provider.
-	Refresh(ctx context.Context, op UpdateOperation) (display.ResourceChanges, error)
-	Destroy(ctx context.Context, op UpdateOperation) (display.ResourceChanges, error)
-	// Watch this stack.
-	Watch(ctx context.Context, op UpdateOperation, paths []string) error
-
-	// Remove this stack.
-	Remove(ctx context.Context, force bool) (bool, error)
-	// Rename this stack.
-	Rename(ctx context.Context, newName tokens.QName) (StackReference, error)
-	// GetLogs lists log entries for this stack.
-	GetLogs(ctx context.Context, secretsProvider secrets.Provider,
-		cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error)
-	// ExportDeployment exports this stack's deployment.
-	ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error)
-	// ImportDeployment imports the given deployment into this stack.
-	ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error
 
 	// DefaultSecretManager returns the default secrets manager to use for this stack. This may be more specific than
 	// Backend.DefaultSecretManager.
@@ -73,8 +65,8 @@ type Stack interface {
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.
-func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
-	return s.Backend().RemoveStack(ctx, s, force)
+func RemoveStack(ctx context.Context, s Stack, force, removeBackups bool) (bool, error) {
+	return s.Backend().RemoveStack(ctx, s, force, removeBackups)
 }
 
 // RenameStack renames the stack, or returns an error if it cannot.
@@ -93,8 +85,13 @@ func PreviewStack(
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, error) {
-	return s.Backend().Update(ctx, s, op)
+func UpdateStack(
+	ctx context.Context,
+	s Stack,
+	op UpdateOperation,
+	events chan<- engine.Event,
+) (display.ResourceChanges, error) {
+	return s.Backend().Update(ctx, s, op, events)
 }
 
 // ImportStack updates the target stack with the current workspace's contents (config and code).
@@ -200,7 +197,7 @@ func GetEnvironmentTagsForCurrentStack(root string,
 		if err != nil {
 			return nil, fmt.Errorf("%s must be an object of strings", apitype.PulumiTagsConfigKey)
 		}
-		configTagObject, ok := configTagInterface.(map[string]interface{})
+		configTagObject, ok := configTagInterface.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("%s must be an object of strings", apitype.PulumiTagsConfigKey)
 		}
@@ -233,6 +230,13 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 	}
 	if err != nil {
 		return err
+	}
+
+	if wt, err := repo.Worktree(); err == nil {
+		repoRelPath, err := filepath.Rel(wt.Filesystem.Root(), projPath)
+		if err == nil && filepath.IsLocal(repoRelPath) {
+			tags[apitype.VCSRepositoryRootTag] = filepath.ToSlash(repoRelPath)
+		}
 	}
 
 	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")

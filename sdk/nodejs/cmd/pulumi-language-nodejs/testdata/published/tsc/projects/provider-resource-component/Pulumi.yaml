@@ -1,0 +1,5 @@
+name: provider-resource-component
+runtime:
+  name: nodejs
+  options:
+    typescript: false

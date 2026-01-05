@@ -12,292 +12,727 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Optional
+from abc import ABC
+from enum import Enum
 
-from pulumi.provider.server import ComponentInitError
+import pulumi
 
-from ...errors import InputPropertyError
-from ...output import Input, Inputs, Output
-from ...resource import ComponentResource, ResourceOptions
-from ..provider import ConstructResult, Provider
-from .analyzer import Analyzer
-from .component import ComponentDefinition, PropertyDefinition, TypeDefinition
-from .schema import generate_schema
+from .property_value import PropertyValue
 
 
-class ComponentProvider(Provider):
+def _extract_type(urn: str) -> str:
     """
-    ComponentProvider is a Pulumi provider that finds components from Python
-    source code and infers a schema.
+    Helper method to extract the type from a URN.
     """
+    parts = urn.split("::")
+    return parts[-2] if len(parts) > 1 else ""
 
-    path: Path
-    """The path to the Python source code."""
 
-    _type_defs: dict[str, TypeDefinition]
-    _component_defs: dict[str, ComponentDefinition]
-    _components: dict[str, type[ComponentResource]]
-    _name: str
+def _extract_name(urn: str) -> str:
+    """
+    Helper method to extract the name from a URN.
+    """
+    parts = urn.split("::")
+    return parts[-1] if len(parts) > 1 else ""
+
+
+class Parameters:
+    """Base class for parameters."""
+
+    pass
+
+
+class ParametersArgs(Parameters):
+    """A parameter value represented as an array of strings."""
+
+    def __init__(self, args: list[str]) -> None:
+        self.args = args
+
+
+class ParametersValue(Parameters):
+    """A parameter value represented by an arbitrary array of bytes with a name and version."""
+
+    def __init__(self, name: str, version: str, value: bytes) -> None:
+        self.name = name
+        self.version = version
+        self.value = value
+
+
+class ParameterizeRequest:
+    """Represents a parameterization request."""
+
+    def __init__(self, parameters: Parameters) -> None:
+        self.parameters = parameters
+
+
+class ParameterizeResponse:
+    """Represents a parameterization response."""
+
+    def __init__(self, name: str, version: str) -> None:
+        self.name = name
+        self.version = version
+
+
+class CheckRequest:
+    """
+    Represents a request to check the configuration of a resource.
+    """
 
     def __init__(
         self,
-        components: list[type[ComponentResource]],
-        name: str,
-        namespace: Optional[str] = None,
-        version: str = "0.0.0",
+        urn: str,
+        old_inputs: dict[str, PropertyValue],
+        new_inputs: dict[str, PropertyValue],
+        random_seed: bytes,
     ) -> None:
-        self._name = name
-        self.analyzer = Analyzer(name)
-        (components_defs, type_definitions) = self.analyzer.analyze(components)
-        self._components = {component.__name__: component for component in components}
-        self._component_defs = components_defs
-        self._type_defs = type_definitions
-        schema = generate_schema(
-            name,
-            version,
-            namespace,
-            self._component_defs,
-            self._type_defs,
-        )
-        super().__init__(version, json.dumps(schema.to_json()))
+        """
+        :param urn: The unique resource name (URN) of the resource.
+        :param old_inputs: The previous inputs of the resource.
+        :param new_inputs: The new inputs of the resource.
+        :param random_seed: A random seed for the request.
+        """
+        self.urn = urn
+        self.old_inputs = old_inputs
+        self.new_inputs = new_inputs
+        self.random_seed = random_seed
 
-    def construct(
+    @property
+    def type(self) -> str:
+        """
+        Extracts the type from the URN.
+        """
+        return _extract_type(self.urn)
+
+    @property
+    def name(self) -> str:
+        """
+        Extracts the name from the URN.
+        """
+        return _extract_name(self.urn)
+
+
+class CheckFailure:
+    """Represents a single failure in a check operation."""
+
+    def __init__(self, property: str, reason: str) -> None:
+        self.property = property
+        self.reason = reason
+
+
+class CheckResponse:
+    """Represents the response of a check operation."""
+
+    def __init__(
         self,
-        name: str,
+        inputs: Optional[dict[str, PropertyValue]] = None,
+        failures: Optional[list[CheckFailure]] = None,
+    ) -> None:
+        self.inputs = inputs
+        self.failures = failures
+
+
+class DiffRequest:
+    """
+    Represents a request to compute the difference between the old and new states of a resource.
+    """
+
+    def __init__(
+        self,
+        urn: str,
+        resource_id: str,
+        old_state: dict[str, PropertyValue],
+        new_inputs: dict[str, PropertyValue],
+        ignore_changes: list[str],
+    ) -> None:
+        """
+        :param urn: The unique resource name (URN) of the resource.
+        :param resource_id: The ID of the resource.
+        :param old_state: The previous state of the resource.
+        :param new_inputs: The new inputs for the resource.
+        :param ignore_changes: A list of properties to ignore when computing the difference.
+        """
+        self.urn = urn
+        self.resource_id = resource_id
+        self.old_state = old_state
+        self.new_inputs = new_inputs
+        self.ignore_changes = ignore_changes
+
+    @property
+    def type(self) -> str:
+        """
+        Extracts the type from the URN.
+        """
+        return _extract_type(self.urn)
+
+    @property
+    def name(self) -> str:
+        """
+        Extracts the name from the URN.
+        """
+        return _extract_name(self.urn)
+
+
+class PropertyDiffKind(Enum):
+    """
+    Represents the kind of difference for a property.
+    """
+
+    ADD = 0
+    ADD_REPLACE = 1
+    DELETE = 2
+    DELETE_REPLACE = 3
+    UPDATE = 4
+    UPDATE_REPLACE = 5
+
+
+class PropertyDiff:
+    """
+    Represents a difference in a property.
+    """
+
+    def __init__(self, kind: PropertyDiffKind, input_diff: bool) -> None:
+        """
+        :param kind: The kind of difference.
+        :param input_diff: Whether the difference is in the input.
+        """
+        self.kind = kind
+        self.input_diff = input_diff
+
+
+class DiffResponse:
+    """
+    Represents the response of a diff operation.
+    """
+
+    def __init__(
+        self,
+        changes: Optional[bool] = None,
+        replaces: Optional[list[str]] = None,
+        stables: Optional[list[str]] = None,
+        delete_before_replace: bool = False,
+        diffs: Optional[list[str]] = None,
+        detailed_diff: Optional[dict[str, PropertyDiff]] = None,
+    ) -> None:
+        """
+        :param changes: Whether there are changes.
+        :param replaces: List of properties that require replacement.
+        :param stables: List of stable properties.
+        :param delete_before_replace: Whether to delete before replacement.
+        :param diffs: List of properties that have differences.
+        :param detailed_diff: Detailed differences for properties.
+        """
+        self.changes = changes
+        self.replaces = replaces or []
+        self.stables = stables or []
+        self.delete_before_replace = delete_before_replace
+        self.diffs = diffs or []
+        self.detailed_diff = detailed_diff or {}
+
+
+class InvokeRequest:
+    """
+    Represents a request to invoke a provider function.
+    """
+
+    def __init__(self, tok: str, args: dict[str, PropertyValue]) -> None:
+        """
+        :param tok: The token identifying the function to invoke.
+        :param args: The arguments for the function.
+        """
+        self.tok = tok
+        self.args = args
+
+
+class InvokeResponse:
+    """
+    Represents the response from invoking a provider function.
+    """
+
+    def __init__(
+        self,
+        return_value: Optional[dict[str, PropertyValue]] = None,
+        failures: Optional[list[CheckFailure]] = None,
+    ) -> None:
+        """
+        :param return_value: The return value of the function, if any.
+        :param failures: A list of failures, if any occurred.
+        """
+        self.return_value = return_value
+        self.failures = failures or []
+
+
+class GetSchemaRequest:
+    """
+    Represents a request to retrieve the schema of a provider.
+    """
+
+    def __init__(
+        self,
+        version: int,
+        subpackage_name: Optional[str] = None,
+        subpackage_version: Optional[str] = None,
+    ) -> None:
+        """
+        :param version: The version of the schema.
+        :param subpackage_name: The name of the sub-package, if any.
+        :param subpackage_version: The version of the sub-package, if any.
+        """
+        self.version = version
+        self.subpackage_name = subpackage_name
+        self.subpackage_version = subpackage_version
+
+
+class GetSchemaResponse:
+    """
+    Represents the response containing the schema of a provider.
+    """
+
+    def __init__(self, schema: Optional[str] = None) -> None:
+        """
+        :param schema: The schema as a string, if available.
+        """
+        self.schema = schema
+
+
+class ConfigureRequest:
+    """
+    Represents a request to configure the provider.
+    """
+
+    def __init__(
+        self,
+        variables: dict[str, str],
+        args: dict[str, PropertyValue],
+        accept_secrets: bool,
+        accept_resources: bool,
+    ) -> None:
+        """
+        :param variables: A dictionary of configuration variables.
+        :param args: A dictionary of arguments.
+        :param accept_secrets: Whether the provider accepts secrets.
+        :param accept_resources: Whether the provider accepts resources.
+        """
+        self.variables = variables
+        self.args = args
+        self.accept_secrets = accept_secrets
+        self.accept_resources = accept_resources
+
+
+class ConfigureResponse:
+    """
+    Represents the response to a configure request.
+    """
+
+    def __init__(
+        self,
+        accept_secrets: bool = False,
+        supports_preview: bool = False,
+        accept_resources: bool = False,
+        accept_outputs: bool = False,
+    ) -> None:
+        """
+        :param accept_secrets: Whether the provider accepts secrets.
+        :param supports_preview: Whether the provider supports preview.
+        :param accept_resources: Whether the provider accepts resources.
+        :param accept_outputs: Whether the provider accepts outputs.
+        """
+        self.accept_secrets = accept_secrets
+        self.supports_preview = supports_preview
+        self.accept_resources = accept_resources
+        self.accept_outputs = accept_outputs
+
+
+class CreateRequest:
+    """
+    Represents a request to create a resource.
+    """
+
+    def __init__(
+        self,
+        urn: str,
+        properties: dict[str, PropertyValue],
+        timeout: float,
+        preview: bool,
+    ) -> None:
+        """
+        :param urn: The unique resource name (URN) of the resource.
+        :param properties: The properties of the resource to create.
+        :param timeout: The timeout for the creation operation, in seconds.
+        :param preview: Whether this is a preview operation.
+        """
+        self.urn = urn
+        self.properties = properties
+        self.timeout = timeout
+        self.preview = preview
+
+    @property
+    def type(self) -> str:
+        """
+        Extracts the type from the URN.
+        """
+        return _extract_type(self.urn)
+
+    @property
+    def name(self) -> str:
+        """
+        Extracts the name from the URN.
+        """
+        return _extract_name(self.urn)
+
+
+class CreateResponse:
+    """
+    Represents the response to a create request.
+    """
+
+    def __init__(
+        self,
+        resource_id: Optional[str] = None,
+        properties: Optional[dict[str, PropertyValue]] = None,
+    ) -> None:
+        """
+        :param resource_id: The ID of the created resource.
+        :param properties: The properties of the created resource.
+        """
+        self.resource_id = resource_id
+        self.properties = properties or {}
+
+
+class ReadRequest:
+    """
+    Represents a request to read the state of a resource.
+    """
+
+    def __init__(
+        self,
+        urn: str,
+        resource_id: str,
+        properties: dict[str, PropertyValue],
+        inputs: dict[str, PropertyValue],
+    ) -> None:
+        """
+        :param urn: The unique resource name (URN) of the resource.
+        :param resource_id: The ID of the resource.
+        :param properties: The properties of the resource.
+        :param inputs: The inputs of the resource.
+        """
+        self.urn = urn
+        self.resource_id = resource_id
+        self.properties = properties
+        self.inputs = inputs
+
+    @property
+    def type(self) -> str:
+        """
+        Extracts the type from the URN.
+        """
+        return _extract_type(self.urn)
+
+    @property
+    def name(self) -> str:
+        """
+        Extracts the name from the URN.
+        """
+        return _extract_name(self.urn)
+
+
+class ReadResponse:
+    """
+    Represents the response to a read request.
+    """
+
+    def __init__(
+        self,
+        resource_id: Optional[str] = None,
+        properties: Optional[dict[str, PropertyValue]] = None,
+        inputs: Optional[dict[str, PropertyValue]] = None,
+    ) -> None:
+        """
+        :param resource_id: The ID of the resource.
+        :param properties: The properties of the resource.
+        :param inputs: The inputs of the resource.
+        """
+        self.resource_id = resource_id
+        self.properties = properties or {}
+        self.inputs = inputs or {}
+
+
+class UpdateRequest:
+    """
+    Represents a request to update a resource.
+    """
+
+    def __init__(
+        self,
+        urn: str,
+        resource_id: str,
+        olds: dict[str, PropertyValue],
+        news: dict[str, PropertyValue],
+        timeout: float,
+        ignore_changes: list[str],
+        preview: bool,
+    ) -> None:
+        """
+        :param urn: The unique resource name (URN) of the resource.
+        :param resource_id: The ID of the resource.
+        :param olds: The old properties of the resource.
+        :param news: The new properties of the resource.
+        :param timeout: The timeout for the update operation, in seconds.
+        :param ignore_changes: A list of properties to ignore during the update.
+        :param preview: Whether this is a preview operation.
+        """
+        self.urn = urn
+        self.resource_id = resource_id
+        self.olds = olds
+        self.news = news
+        self.timeout = timeout
+        self.ignore_changes = ignore_changes
+        self.preview = preview
+
+    @property
+    def type(self) -> str:
+        """
+        Extracts the type from the URN.
+        """
+        return _extract_type(self.urn)
+
+    @property
+    def name(self) -> str:
+        """
+        Extracts the name from the URN.
+        """
+        return _extract_name(self.urn)
+
+
+class UpdateResponse:
+    """
+    Represents the response to an update request.
+    """
+
+    def __init__(self, properties: Optional[dict[str, PropertyValue]] = None) -> None:
+        """
+        :param properties: The updated properties of the resource.
+        """
+        self.properties = properties or {}
+
+
+class DeleteRequest:
+    """
+    Represents a request to delete a resource.
+    """
+
+    def __init__(
+        self,
+        urn: str,
+        resource_id: str,
+        properties: dict[str, PropertyValue],
+        timeout: float,
+    ) -> None:
+        """
+        :param urn: The unique resource name (URN) of the resource.
+        :param resource_id: The ID of the resource.
+        :param properties: The properties of the resource to delete.
+        :param timeout: The timeout for the delete operation, in seconds.
+        """
+        self.urn = urn
+        self.resource_id = resource_id
+        self.properties = properties
+        self.timeout = timeout
+
+    @property
+    def type(self) -> str:
+        """
+        Extracts the type from the URN.
+        """
+        return _extract_type(self.urn)
+
+    @property
+    def name(self) -> str:
+        """
+        Extracts the name from the URN.
+        """
+        return _extract_name(self.urn)
+
+
+class ConstructRequest:
+    """
+    Represents a request to construct a new resource.
+    """
+
+    def __init__(
+        self,
         resource_type: str,
-        inputs: Inputs,
-        options: Optional[ResourceOptions] = None,
-    ) -> ConstructResult:
-        self.validate_resource_type(self._name, resource_type)
-        component_name = resource_type.split(":")[-1]
-        constructor = self._components[component_name]
-        component_def = self._component_defs[component_name]
-        mapped_args = self.map_inputs(inputs, component_def)
-        # Wrap the call to the component constuctor in a try except block to
-        # catch any exceptions, so that we can re-raise a ComponentInitError.
-        # This allows us to detect and report errors that occur within the user
-        # code vs errors that occur in the SDK.
-        try:
-            # ComponentResource's init signature is different from the derived class signature.
-            comp_instance = constructor(name, mapped_args, options)  # type: ignore
-        except Exception as e:  # noqa
-            raise ComponentInitError(e)
-        state = self.get_state(comp_instance, component_def)
-        return ConstructResult(comp_instance.urn, state)
-
-    def get_type_definition(self, prop: PropertyDefinition) -> Optional[TypeDefinition]:
+        name: str,
+        inputs: dict[str, PropertyValue],
+        options: pulumi.ResourceOptions,
+    ) -> None:
         """
-        Gets the type definition for a property with a type reference.
-
-        Returns None for built-in types like Asset and Archive.
+        :param resource_type: The type of the resource to construct.
+        :param name: The name of the resource.
+        :param inputs: The input properties for the resource.
+        :param options: The options for the resource.
         """
-        if not prop.ref:
-            raise ValueError(f"property {prop} is not a complex type")
+        self.resource_type = resource_type
+        self.name = name
+        self.inputs = inputs
+        self.options = options
 
-        # Handle built-in types that don't have a colon in their reference
-        # This includes types like Any, Asset, Archive, etc. (e.g. pulumi.json#/Asset)
-        if ":" not in prop.ref:
-            return None
 
-        name = prop.ref.split(":")[-1]
-        return self._type_defs[name]
+class ConstructResponse:
+    """
+    Represents the response to a construct request.
+    """
 
-    def map_inputs(self, inputs: Inputs, component_def: ComponentDefinition) -> Inputs:
+    def __init__(
+        self,
+        urn: str,
+        state: dict[str, PropertyValue],
+        state_dependencies: dict[str, set[str]],
+    ) -> None:
         """
-        Maps the input's names from the schema into Python names and
-        validates that required inputs are present.
+        :param urn: The URN of the constructed resource.
+        :param state: The state of the constructed resource.
+        :param state_dependencies: The dependencies of the resource's state.
         """
-        return self.map_input_properties(
-            inputs,
-            component_def.inputs,
-            component_def.inputs_mapping,
-            component_def.name,
-            "",
+        self.urn = urn
+        self.state = state
+        self.state_dependencies = state_dependencies
+
+
+class CallRequest:
+    """
+    Represents a request to call a provider function.
+    """
+
+    def __init__(
+        self,
+        tok: str,
+        args: dict[str, PropertyValue],
+    ) -> None:
+        """
+        :param tok: The token identifying the function to call.
+        :param args: The arguments for the function.
+        """
+        self.tok = tok
+        self.args = args
+
+
+class CallResponse:
+    """
+    Represents the response to a call request.
+    """
+
+    def __init__(
+        self,
+        return_value: Optional[dict[str, PropertyValue]] = None,
+        return_dependencies: Optional[dict[str, set[str]]] = None,
+        failures: Optional[list[CheckFailure]] = None,
+    ) -> None:
+        """
+        :param return_value: The return value of the function, if any.
+        :param return_dependencies: The dependencies of the return value.
+        :param failures: A list of failures, if any occurred.
+        """
+        self.return_value = return_value or {}
+        self.return_dependencies = return_dependencies or {}
+        self.failures = failures or []
+
+
+class Provider(ABC):
+    """
+    Abstract base class for a Pulumi provider.
+    """
+
+    async def parameterize(self, request: ParameterizeRequest) -> ParameterizeResponse:
+        """
+        Handle the parameterize request.
+        """
+        raise NotImplementedError("The method 'parameterize' is not implemented")
+
+    async def get_schema(self, request: GetSchemaRequest) -> GetSchemaResponse:
+        """
+        Handle the get_schema request.
+        """
+        raise NotImplementedError("The method 'get_schema' is not implemented")
+
+    async def check_config(self, request: CheckRequest) -> CheckResponse:
+        """
+        Handle the check_config request.
+        """
+        return CheckResponse(inputs=request.new_inputs)
+
+    async def diff_config(self, request: DiffRequest) -> DiffResponse:
+        """
+        Handle the diff_config request.
+        """
+        return DiffResponse()
+
+    async def configure(self, request: ConfigureRequest) -> ConfigureResponse:
+        """
+        Handle the configure request.
+        """
+        return ConfigureResponse(
+            accept_secrets=True,
+            supports_preview=True,
+            accept_outputs=True,
+            accept_resources=True,
         )
 
-    def map_input_properties(
-        self,
-        inputs: Inputs,
-        properties: dict[str, PropertyDefinition],
-        mapping: dict[str, str],
-        component_name: str,
-        property_path: str,
-    ) -> Inputs:
+    async def invoke(self, request: InvokeRequest) -> InvokeResponse:
         """
-        Generic helper to map property names from schema to Python names
-        and validate required properties are present.
-
-        This handles both top-level inputs and nested complex types.
-
-        :param inputs: The inputs to map.
-        :param properties: The property definitions that define the shape of the inputs.
-        :param mapping: The mapping from schema property names to Python property names.
-        :param component_name: The name of the component these inputs belong to.
-        :param property_path: The path to the current property being mapped, used for error messages.
+        Handle the invoke request.
         """
-        mapped_value: dict[str, Input[Any]] = {}
-        for schema_name, prop in properties.items():
-            input_val = (
-                inputs.get(schema_name, None) if isinstance(inputs, dict) else None
-            )
-            if input_val is None:
-                if not prop.optional:
-                    full_path = (
-                        schema_name
-                        if not property_path
-                        else f"{property_path}.{schema_name}"
-                    )
-                    raise InputPropertyError(
-                        full_path,
-                        f"Missing required input '{full_path}' on '{component_name}'",
-                    )
-                continue
+        raise NotImplementedError("The method 'invoke' is not implemented")
 
-            py_name = mapping[schema_name]
+    async def create(self, request: CreateRequest) -> CreateResponse:
+        """
+        Handle the create request.
+        """
+        raise NotImplementedError("The method 'create' is not implemented")
 
-            # Handle complex types (named types)
-            if prop.ref:
-                # Get the type definition for the complex type
-                type_def = self.get_type_definition(prop)
-                if type_def is None:
-                    mapped_value[py_name] = input_val
-                    continue
+    async def read(self, request: ReadRequest) -> ReadResponse:
+        """
+        Handle the read request.
+        """
+        return ReadResponse(
+            resource_id=request.resource_id,
+            properties=request.properties,
+            inputs=request.inputs,
+        )
 
-                # Recursively map the complex type
-                next_path = (
-                    f"{property_path}.{schema_name}" if property_path else schema_name
-                )
-                mapped_value[py_name] = self.map_input_properties(
-                    input_val if isinstance(input_val, dict) else {},
-                    type_def.properties,
-                    type_def.properties_mapping,
-                    component_name,
-                    next_path,
-                )
-                continue
+    async def check(self, request: CheckRequest) -> CheckResponse:
+        """
+        Handle the check request.
+        """
+        return CheckResponse(inputs=request.new_inputs)
 
-            # Special handling for arrays of complex types
-            if isinstance(input_val, list) and prop.items and prop.items.ref:
-                type_def = self.get_type_definition(prop.items)
-                if type_def is None:
-                    mapped_value[py_name] = input_val
-                    continue
+    async def diff(self, request: DiffRequest) -> DiffResponse:
+        """
+        Handle the diff request.
+        """
+        return DiffResponse()
 
-                mapped_list = []
-                for i, item in enumerate(input_val):
-                    item_path = (
-                        f"{property_path}.{schema_name}[{i}]"
-                        if property_path
-                        else f"{schema_name}[{i}]"
-                    )
-                    mapped_item = self.map_input_properties(
-                        item,
-                        type_def.properties,
-                        type_def.properties_mapping,
-                        component_name,
-                        item_path,
-                    )
-                    mapped_list.append(mapped_item)
+    async def update(self, request: UpdateRequest) -> UpdateResponse:
+        """
+        Handle the update request.
+        """
+        raise NotImplementedError("The method 'update' is not implemented")
 
-                mapped_value[py_name] = mapped_list
-                continue
+    async def delete(self, request: DeleteRequest) -> None:
+        """
+        Handle the delete request.
+        """
+        raise NotImplementedError("The method 'delete' is not implemented")
 
-            # Handle dictionary of complex types
-            if (
-                isinstance(input_val, dict)
-                and prop.additional_properties
-                and prop.additional_properties.ref
-            ):
-                type_def = self.get_type_definition(prop.additional_properties)
-                if type_def is None:
-                    mapped_value[py_name] = input_val
-                    continue
+    async def construct(self, request: ConstructRequest) -> ConstructResponse:
+        """
+        Handle the construct request.
+        """
+        raise NotImplementedError("The method 'construct' is not implemented")
 
-                mapped_dict = {}
-                for key, value in input_val.items():
-                    item_path = (
-                        f"{property_path}.{schema_name}.{key}"
-                        if property_path
-                        else f"{schema_name}.{key}"
-                    )
-                    mapped_dict[key] = self.map_input_properties(
-                        value,
-                        type_def.properties,
-                        type_def.properties_mapping,
-                        component_name,
-                        item_path,
-                    )
-                mapped_value[py_name] = mapped_dict
-                continue
-
-            # Simple type, just map the name
-            mapped_value[py_name] = input_val
-
-        return mapped_value
-
-    def get_state(
-        self, instance: ComponentResource, component_def: ComponentDefinition
-    ) -> dict[str, Any]:
-        state: dict[str, Any] = {}
-        for k, prop in component_def.outputs.items():
-            py_name = component_def.outputs_mapping[k]
-            instance_val = getattr(instance, py_name, None)
-            if instance_val is None:
-                continue
-            if prop.ref:
-                # Get the type definition for the complex type
-                type_def = self.get_type_definition(prop)
-                if type_def is None:
-                    state[k] = instance_val
-                    continue
-
-                # It's a complex type, map it
-                state[k] = self.map_complex_output(instance_val, type_def)  # type: ignore
-            else:
-                state[k] = instance_val
-        return state
-
-    def map_complex_output(
-        self,
-        instance_val: Union[dict[str, Any], Output[dict[str, Any]]],
-        type_def: TypeDefinition,
-    ) -> Union[dict[str, Any], Output[dict[str, Any]]]:
-        """Recursively maps the names of a complex type from Python to schema names."""
-        # The complex type might be an Output. If so, we call the mapping
-        # function in an apply.
-        if isinstance(instance_val, Output):
-            return instance_val.apply(lambda v: self.map_complex_output(v, type_def))
-
-        r: dict[str, Any] = {}
-        for schema_name, prop in type_def.properties.items():
-            py_name = type_def.properties_mapping[schema_name]
-            val = instance_val.get(py_name, None)
-            if val is None:
-                continue
-            if prop.ref:
-                nested_type_def = self.get_type_definition(prop)
-                if nested_type_def is None:
-                    r[schema_name] = val
-                    continue
-                r[schema_name] = self.map_complex_output(val, nested_type_def)
-            else:
-                r[schema_name] = val
-        return r
-
-    @staticmethod
-    def validate_resource_type(pkg_name: str, resource_type: str) -> None:
-        parts = resource_type.split(":")
-        if len(parts) != 3:
-            raise ValueError(f"invalid resource type: {resource_type}")
-        if parts[0] != pkg_name:
-            raise ValueError(f"invalid provider: {parts[0]}, expected {pkg_name}")
-        # We might want to relax this limitation, but for now we only support the "index" module.
-        if parts[1] not in ["index", ""]:
-            raise ValueError(
-                f"invalid modle '{parts[1]}' in resource type: {resource_type}, expected index or empty string"
-            )
-        component_name = parts[2]
-        if len(component_name) == 0:
-            raise ValueError(f"empty component name in resource type: {resource_type}")
+    async def call(self, request: CallRequest) -> CallResponse:
+        """
+        Handle the call request.
+        """
+        raise NotImplementedError("The method 'call' is not implemented")

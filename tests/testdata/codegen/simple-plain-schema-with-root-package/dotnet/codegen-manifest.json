@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "Component.cs",
     "Inputs/FooArgs.cs",
     "Outputs/Foo.cs",

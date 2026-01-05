@@ -73,6 +73,11 @@ service LanguageRuntime {
     // ask during `pulumi new`.
     rpc RuntimeOptionsPrompts(RuntimeOptionsRequest) returns (RuntimeOptionsResponse) {}
 
+    // `Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+    // For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+    // with uv or poetry.
+    rpc Template(TemplateRequest) returns (TemplateResponse) {}
+
     // `About` returns information about the language runtime being used.
     rpc About(AboutRequest) returns (AboutResponse) {}
 
@@ -112,6 +117,16 @@ service LanguageRuntime {
     // [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
     // to standardise e.g. provider publishing workflows.
     rpc Pack(PackRequest) returns (PackResponse) {}
+
+    // `Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+    // as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+    // `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+    // user on how to use the linked package in the project.
+    rpc Link(LinkRequest) returns (LinkResponse) {}
+
+    // `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+    // Operations aborted in this way will return an error.
+    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 // A `ProgramInfo` struct specifies a Pulumi program, and is built typically based on the location of a `Pulumi.yaml`
@@ -300,8 +315,8 @@ message RunRequest {
     // registrations](resource-registration) and other calls to.
     string monitor_address = 9;
 
-    // True if and only if we are only performing a query.
-    bool queryMode = 10;
+    // This is deprecated, query mode is no longer a supported feature.
+    bool queryMode = 10 [deprecated = true];
 
     // A list of configuration keys whose values should be treated as secrets.
     repeated string configSecretKeys = 11;
@@ -309,8 +324,9 @@ message RunRequest {
     // The organization of the stack being deployed into.
     string organization = 12;
 
-    // Configuration variables to apply before running the program.
-    google.protobuf.Struct configPropertyMap = 13;
+    // This is deprecated, runtimes should look at the string based config as that maintains the full textual data from
+    // the users config file.
+    google.protobuf.Struct configPropertyMap = 13 [deprecated = true];
 
     // The program to use.
     ProgramInfo info = 14;
@@ -354,6 +370,9 @@ message InstallDependenciesRequest {
     // True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
     // of the language toolchain used.
     bool use_language_version_tools = 4;
+
+    // True if this install is for a plugin, as opposed to a top level Pulumi program.
+    bool is_plugin = 5;
 }
 
 // `InstallDependenciesResponse` is the type of responses streamed by an
@@ -423,6 +442,18 @@ message RuntimeOptionsResponse {
     repeated RuntimeOptionPrompt prompts = 1;
 }
 
+// `TemplateRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Template) call.
+message TemplateRequest {
+    // The [plugin program](pulumirpc.ProgramInfo) to use.
+    ProgramInfo info = 1;
+
+    // The name of the project we are templating.
+    string project_name = 2;
+}
+
+// `TemplateResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Template) call.
+message TemplateResponse {}
+
 // `RunPluginRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.RunPlugin) call.
 message RunPluginRequest{
     // The plugin program's working directory.
@@ -444,6 +475,15 @@ message RunPluginRequest{
 
     // The [plugin program](pulumirpc.ProgramInfo) to use.
     ProgramInfo info = 5;
+
+    // The kind of plugin to run (resource/analyzer/etc).
+    string kind = 6;
+
+    // The name of the plugin (for display purposes)
+    string name = 7;
+
+    // True if a plugin should be started under a debugger.
+    bool attach_debugger = 8;
 }
 
 // `RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call.
@@ -583,4 +623,31 @@ message LanguageHandshakeRequest {
 
 // `LanguageHandshakeResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Handshake) call.
 message LanguageHandshakeResponse {
+}
+
+// `LinkRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Link) call.
+message LinkRequest {
+    // The program to use.
+    ProgramInfo info = 1;
+
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 2;
+
+    message LinkDependency {
+        PackageDependency package = 1;
+        string path = 2;
+    }
+
+    // Local dependencies that should be linked into the program or plugin's language specific project files.
+    // Each dependency has a path to a a language specific artifact. This can be a binary artifact like a
+    // Python wheel or a tar.gz for Node.js, or a source directory.
+    repeated LinkDependency packages = 3;
+}
+
+// `LinkResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Link) call.
+message LinkResponse {
+    // The instructions on how to use a linked package in a program or plugin. These instructions are meant
+    // to be displayed to the user. For example when linking a local Python dependency, this might return
+    // `import my_namespace_mypkg as mypkg`.
+    string import_instructions = 1;
 }

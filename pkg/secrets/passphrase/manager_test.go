@@ -16,7 +16,9 @@ package passphrase
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +30,18 @@ const (
 	brokenState = `{"salt":"fozI5u6B030=:v1:F+6ZduL:PGMFeIzwobWRKmEAzUdaQHqC5mMRIQ=="}`
 )
 
-//nolint:paralleltest // mutates environment variables
+func TestMain(m *testing.M) {
+	if runtime.GOOS == "windows" {
+		// These tests are skipped as part of enabling running unit tests on windows and MacOS in
+		// https://github.com/pulumi/pulumi/pull/19653. These tests currently fail on Windows, and
+		// re-enabling them is left as future work.
+		// TODO[pulumi/pulumi#19675]: Re-enable tests on windows once they are fixed.
+		fmt.Println("Skip tests on windows until they are fixed")
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
+
 func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -54,7 +67,6 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -70,7 +82,6 @@ func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -83,11 +94,10 @@ func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.NoError(t, err)
-	assert.NotNil(t, sm)
+	require.NoError(t, err)
+	require.NotNil(t, sm)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -104,7 +114,6 @@ func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 		"PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -117,19 +126,18 @@ func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.NoError(t, err)
-	assert.NotNil(t, sm)
+	require.NoError(t, err)
+	require.NotNil(t, sm)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	clearCachedSecretsManagers()
 
 	tmpFile, err := os.CreateTemp(t.TempDir(), "pulumi-secret-test")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 	_, err = tmpFile.WriteString("password")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// There is no t.Unsetenv, so for variables we want to genuinely unset (and not just set to ""), we set the
 	// environment variables to empty strings using t.Setenv and then unset them using os.Unsetenv. In doing do, the
@@ -140,11 +148,10 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", tmpFile.Name())
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.NoError(t, err)
-	assert.NotNil(t, sm)
+	require.NoError(t, err)
+	require.NotNil(t, sm)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerEmptyPassfileReturnsError(t *testing.T) {
 	clearCachedSecretsManagers()
 

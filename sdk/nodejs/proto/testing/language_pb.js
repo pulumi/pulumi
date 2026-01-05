@@ -331,7 +331,7 @@ proto.pulumirpc.testing.GetLanguageTestsResponse.prototype.toObject = function(o
  */
 proto.pulumirpc.testing.GetLanguageTestsResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    testsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+testsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -487,16 +487,19 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.toObject = functio
  */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    languagePluginName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    languagePluginTarget: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    snapshotDirectory: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    temporaryDirectory: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    coreSdkDirectory: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    coreSdkVersion: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    snapshotEditsList: jspb.Message.toObjectList(msg.getSnapshotEditsList(),
+languagePluginName: jspb.Message.getFieldWithDefault(msg, 1, ""),
+languagePluginTarget: jspb.Message.getFieldWithDefault(msg, 2, ""),
+snapshotDirectory: jspb.Message.getFieldWithDefault(msg, 3, ""),
+temporaryDirectory: jspb.Message.getFieldWithDefault(msg, 4, ""),
+coreSdkDirectory: jspb.Message.getFieldWithDefault(msg, 5, ""),
+coreSdkVersion: jspb.Message.getFieldWithDefault(msg, 6, ""),
+snapshotEditsList: jspb.Message.toObjectList(msg.getSnapshotEditsList(),
     proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.toObject, includeInstance),
-    languageInfo: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    programOverridesMap: (f = msg.getProgramOverridesMap()) ? f.toObject(includeInstance, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.toObject) : []
+languageInfo: jspb.Message.getFieldWithDefault(msg, 8, ""),
+programOverridesMap: (f = msg.getProgramOverridesMap()) ? f.toObject(includeInstance, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.toObject) : [],
+policyPackDirectory: jspb.Message.getFieldWithDefault(msg, 10, ""),
+local: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
+providersDirectory: jspb.Message.getFieldWithDefault(msg, 12, "")
   };
 
   if (includeInstance) {
@@ -571,6 +574,18 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.deserializeBinaryFromReader 
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.deserializeBinaryFromReader, "", new proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride());
          });
+      break;
+    case 10:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPolicyPackDirectory(value);
+      break;
+    case 11:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setLocal(value);
+      break;
+    case 12:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setProvidersDirectory(value);
       break;
     default:
       reader.skipField();
@@ -662,6 +677,27 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.serializeBinaryToWriter = fu
   if (f && f.getLength() > 0) {
     f.serializeBinary(9, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.serializeBinaryToWriter);
   }
+  f = message.getPolicyPackDirectory();
+  if (f.length > 0) {
+    writer.writeString(
+      10,
+      f
+    );
+  }
+  f = message.getLocal();
+  if (f) {
+    writer.writeBool(
+      11,
+      f
+    );
+  }
+  f = message.getProvidersDirectory();
+  if (f.length > 0) {
+    writer.writeString(
+      12,
+      f
+    );
+  }
 };
 
 
@@ -697,9 +733,9 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.prototype.toObje
  */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.toObject = function(includeInstance, msg) {
   var f, obj = {
-    path: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    pattern: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    replacement: jspb.Message.getFieldWithDefault(msg, 3, "")
+path: jspb.Message.getFieldWithDefault(msg, 1, ""),
+pattern: jspb.Message.getFieldWithDefault(msg, 2, ""),
+replacement: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -894,7 +930,7 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.prototype.to
  */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.toObject = function(includeInstance, msg) {
   var f, obj = {
-    pathsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+pathsList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -1194,7 +1230,62 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getProgramOverride
  */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.clearProgramOverridesMap = function() {
   this.getProgramOverridesMap().clear();
-  return this;};
+  return this;
+};
+
+
+/**
+ * optional string policy_pack_directory = 10;
+ * @return {string}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getPolicyPackDirectory = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 10, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setPolicyPackDirectory = function(value) {
+  return jspb.Message.setProto3StringField(this, 10, value);
+};
+
+
+/**
+ * optional bool local = 11;
+ * @return {boolean}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getLocal = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 11, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setLocal = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 11, value);
+};
+
+
+/**
+ * optional string providers_directory = 12;
+ * @return {string}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getProvidersDirectory = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 12, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setProvidersDirectory = function(value) {
+  return jspb.Message.setProto3StringField(this, 12, value);
+};
 
 
 
@@ -1229,7 +1320,7 @@ proto.pulumirpc.testing.PrepareLanguageTestsResponse.prototype.toObject = functi
  */
 proto.pulumirpc.testing.PrepareLanguageTestsResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    token: jspb.Message.getFieldWithDefault(msg, 1, "")
+token: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -1359,8 +1450,8 @@ proto.pulumirpc.testing.RunLanguageTestRequest.prototype.toObject = function(opt
  */
 proto.pulumirpc.testing.RunLanguageTestRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    test: jspb.Message.getFieldWithDefault(msg, 2, "")
+token: jspb.Message.getFieldWithDefault(msg, 1, ""),
+test: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -1526,10 +1617,10 @@ proto.pulumirpc.testing.RunLanguageTestResponse.prototype.toObject = function(op
  */
 proto.pulumirpc.testing.RunLanguageTestResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    success: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
-    messagesList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
-    stdout: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    stderr: jspb.Message.getFieldWithDefault(msg, 4, "")
+success: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
+messagesList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
+stdout: jspb.Message.getFieldWithDefault(msg, 3, ""),
+stderr: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {

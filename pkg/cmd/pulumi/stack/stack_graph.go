@@ -20,11 +20,11 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/graph"
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -75,6 +75,7 @@ func newStackGraphCmd() *cobra.Command {
 
 			s, err := RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				backend.DefaultLoginManager,
 				cmdOpts.stackName,
@@ -84,7 +85,7 @@ func newStackGraphCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 			if err != nil {
 				return err
 			}
@@ -143,7 +144,7 @@ type dependencyEdge struct {
 }
 
 // In this simple case, edges have no data.
-func (edge *dependencyEdge) Data() interface{} {
+func (edge *dependencyEdge) Data() any {
 	return nil
 }
 
@@ -172,7 +173,7 @@ type parentEdge struct {
 	color string
 }
 
-func (edge *parentEdge) Data() interface{} {
+func (edge *parentEdge) Data() any {
 	return nil
 }
 
@@ -204,7 +205,7 @@ type dependencyVertex struct {
 	useShortName  bool
 }
 
-func (vertex *dependencyVertex) Data() interface{} {
+func (vertex *dependencyVertex) Data() any {
 	return vertex.resource
 }
 

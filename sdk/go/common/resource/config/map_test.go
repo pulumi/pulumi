@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -85,22 +86,21 @@ func TestMarshalMap(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.ExpectedYAML, func(t *testing.T) {
 			t.Parallel()
 
 			yamlBytes, err := yaml.Marshal(test.Value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.ExpectedYAML, string(yamlBytes))
 			newYAMLMap, err := roundtripMapYAML(test.Value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Value, newYAMLMap)
 
 			jsonBytes, err := json.Marshal(test.Value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.ExpectedJSON, string(jsonBytes))
 			newJSONMap, err := roundtripMapJSON(test.Value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Value, newJSONMap)
 		})
 	}
@@ -110,11 +110,11 @@ func TestMarshalling(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Value    map[string]interface{}
+		Value    map[string]any
 		Expected Map
 	}{
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"my:anotherTestKey": "anotherTestValue",
 				"my:testKey":        "testValue",
 			},
@@ -124,8 +124,8 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:secureTestKey": map[string]interface{}{
+			Value: map[string]any{
+				"my:secureTestKey": map[string]any{
 					"secure": "securevalue",
 				},
 			},
@@ -134,7 +134,7 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"my:arrayKey": []string{"a", "b", "c"},
 			},
 			Expected: Map{
@@ -142,8 +142,8 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:mapKey": map[string]interface{}{
+			Value: map[string]any{
+				"my:mapKey": map[string]any{
 					"a": "b",
 					"c": "d",
 				},
@@ -153,9 +153,9 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:servers": []interface{}{
-					map[string]interface{}{"port": 80, "host": "example"},
+			Value: map[string]any{
+				"my:servers": []any{
+					map[string]any{"port": 80, "host": "example"},
 				},
 			},
 			Expected: Map{
@@ -163,7 +163,7 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
+			Value: map[string]any{
 				"my:mapKey": map[string][]int{
 					"nums": {1, 2, 3},
 				},
@@ -173,9 +173,9 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:mapKey": map[string]interface{}{
-					"a": map[string]interface{}{"secure": "securevalue"},
+			Value: map[string]any{
+				"my:mapKey": map[string]any{
+					"a": map[string]any{"secure": "securevalue"},
 					"c": "d",
 				},
 			},
@@ -184,12 +184,12 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:servers": []interface{}{
-					map[string]interface{}{
+			Value: map[string]any{
+				"my:servers": []any{
+					map[string]any{
 						"port": 80,
 						"host": "example",
-						"token": map[string]interface{}{
+						"token": map[string]any{
 							"secure": "securevalue",
 						},
 					},
@@ -203,9 +203,9 @@ func TestMarshalling(t *testing.T) {
 			},
 		},
 		{
-			Value: map[string]interface{}{
-				"my:mapKey": map[string]interface{}{
-					"a": map[string]interface{}{"secure": "foo", "bar": "blah"},
+			Value: map[string]any{
+				"my:mapKey": map[string]any{
+					"a": map[string]any{"secure": "foo", "bar": "blah"},
 					"c": "d",
 				},
 			},
@@ -217,36 +217,35 @@ func TestMarshalling(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		yamlBytes, err := yaml.Marshal(test.Value)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		t.Run(fmt.Sprintf("YAML: %s", yamlBytes), func(t *testing.T) {
 			t.Parallel()
 
 			var m Map
 			err := yaml.Unmarshal(yamlBytes, &m)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, m)
 
 			newM, err := roundtripMapYAML(m)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, m, newM)
 		})
 
 		jsonBytes, err := json.Marshal(test.Value)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		t.Run(fmt.Sprintf("JSON: %s", jsonBytes), func(t *testing.T) {
 			t.Parallel()
 
 			var m Map
 			err := json.Unmarshal(jsonBytes, &m)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, m)
 
 			newM, err := roundtripMapJSON(m)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, m, newM)
 		})
 	}
@@ -308,13 +307,12 @@ func TestDecrypt(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
 			decrypter := NewBlindingDecrypter()
 			actual, err := test.Config.Decrypt(decrypter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
 
 			assert.Equal(t, len(test.SecureKeys) != 0, test.Config.HasSecureValue())
@@ -510,15 +508,14 @@ func TestGetSuccess(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			v, ok, err := test.Config.Get(key, test.Path)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			if test.ExpectNotFound {
 				assert.False(t, ok)
 				assert.Equal(t, Value{}, v)
@@ -545,14 +542,13 @@ func TestGetFail(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(test.Key, func(t *testing.T) {
 			t.Parallel()
 
 			config := make(Map)
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, found, err := config.Get(key, true /*path*/)
 			assert.False(t, found)
@@ -690,14 +686,13 @@ func TestRemoveSuccess(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = test.Config.Remove(key, test.Path)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.Expected, test.Config)
 		})
 	}
@@ -727,12 +722,11 @@ func TestRemoveFail(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = test.Config.Remove(key, true /*path*/)
 			assert.EqualError(t, err, test.ExpectedError)
@@ -1229,7 +1223,6 @@ func TestSetSuccess(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -1238,10 +1231,10 @@ func TestSetSuccess(t *testing.T) {
 			}
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = test.Config.Set(key, test.Value, test.Path)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, test.Config)
 		})
@@ -1342,7 +1335,6 @@ func TestSetFail(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
@@ -1351,7 +1343,7 @@ func TestSetFail(t *testing.T) {
 			}
 
 			key, err := ParseKey(test.Key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = test.Config.Set(key, NewValue("value"), true /*path*/)
 			assert.EqualError(t, err, test.ExpectedError)
@@ -1428,12 +1420,11 @@ func TestCopyMap(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
 			newConfig, err := test.Config.Copy(newPrefixCrypter("stackA"), newPrefixCrypter("stackB"))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, newConfig)
 		})
@@ -1445,104 +1436,103 @@ func TestPropertyMap(t *testing.T) {
 
 	tests := []struct {
 		Config   Map
-		Expected resource.PropertyMap
+		Expected property.Map
 	}{
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("testValue"),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewStringProperty("testValue"),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New("testValue"),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("1"),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewNumberProperty(1.0),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New(1.0),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("18446744073709551615"),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewNumberProperty(1.8446744073709552e+19),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New(1.8446744073709552e+19),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewValue("true"),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewBoolProperty(true),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New(true),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewSecureValue("stackAsecurevalue"),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue")),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New("stackAsecurevalue").WithSecret(true),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "testKey"): NewObjectValue(`{"inner":"value"}`),
 			},
-			Expected: resource.PropertyMap{
-				"my:testKey": resource.NewObjectProperty(resource.PropertyMap{
-					"inner": resource.NewStringProperty("value"),
+			Expected: property.NewMap(map[string]property.Value{
+				"my:testKey": property.New(map[string]property.Value{
+					"inner": property.New("value"),
 				}),
-			},
+			}),
 		},
 		{
 			Config: Map{
 				//nolint:lll
 				MustMakeKey("my", "testKey"): NewSecureObjectValue(`[{"inner":{"secure":"stackAsecurevalue"}},{"secure":"stackAsecurevalue2"}]`),
 			},
-			Expected: resource.PropertyMap{
+			Expected: property.NewMap(map[string]property.Value{
 				//nolint:lll
-				"my:testKey": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewObjectProperty(resource.PropertyMap{
-						"inner": resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue")),
+				"my:testKey": property.New([]property.Value{
+					property.New(map[string]property.Value{
+						"inner": property.New("stackAsecurevalue").WithSecret(true),
 					}),
-					resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue2")),
+					property.New("stackAsecurevalue2").WithSecret(true),
 				}),
-			},
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "test.Key"): NewValue("testValue"),
 			},
-			Expected: resource.PropertyMap{
-				"my:test.Key": resource.NewStringProperty("testValue"),
-			},
+			Expected: property.NewMap(map[string]property.Value{
+				"my:test.Key": property.New("testValue"),
+			}),
 		},
 		{
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`[["value"]]`),
 			},
-			Expected: resource.PropertyMap{
-				"my:name": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewArrayProperty([]resource.PropertyValue{
-						resource.NewStringProperty("value"),
+			Expected: property.NewMap(map[string]property.Value{
+				"my:name": property.New([]property.Value{
+					property.New([]property.Value{
+						property.New("value"),
 					}),
 				}),
-			},
+			}),
 		},
 	}
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
 			decrypter := nopCrypter{}
 			propMap, err := test.Config.AsDecryptedPropertyMap(context.Background(), decrypter)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, propMap)
 		})
@@ -1557,8 +1547,8 @@ func roundtripMapJSON(m Map) (Map, error) {
 	return roundtripMap(m, json.Marshal, json.Unmarshal)
 }
 
-func roundtripMap(m Map, marshal func(v interface{}) ([]byte, error),
-	unmarshal func([]byte, interface{}) error,
+func roundtripMap(m Map, marshal func(v any) ([]byte, error),
+	unmarshal func([]byte, any) error,
 ) (Map, error) {
 	b, err := marshal(m)
 	if err != nil {

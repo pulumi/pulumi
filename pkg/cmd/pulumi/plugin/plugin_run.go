@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,26 +17,55 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
-	"os/exec"
-	"syscall"
+	"sync"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPluginRunCmd() *cobra.Command {
+// preparePluginEnv prepares environment variables for the plugin including
+// RPC target, cloud URL, and access token from the workspace.
+func preparePluginEnv(ws pkgWorkspace.Context, grpcServer *plugin.GrpcServer) []string {
+	pluginEnv := os.Environ()
+	pluginEnv = append(pluginEnv, "PULUMI_RPC_TARGET="+grpcServer.Addr())
+
+	// Get current cloud URL from workspace
+	project, _, err := ws.ReadProject()
+	if err == nil {
+		cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+		if err == nil {
+			cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
+			pluginEnv = append(pluginEnv, "PULUMI_API="+cloudURL)
+
+			// Get account credentials for this cloud URL
+			creds, err := ws.GetStoredCredentials()
+			if err == nil {
+				if token, ok := creds.AccessTokens[cloudURL]; ok && token != "" {
+					pluginEnv = append(pluginEnv, "PULUMI_ACCESS_TOKEN="+token)
+				}
+			}
+		}
+	}
+
+	return pluginEnv
+}
+
+func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
-		Use:    "run NAME[@VERSION] [ARGS]",
+		Use:    "run PATH|NAME[@VERSION] [ARGS]",
 		Args:   cmdutil.MinimumNArgs(1),
 		Hidden: !env.Dev.Value(),
 		Short:  "Run a command on a plugin binary",
@@ -51,70 +80,113 @@ func newPluginRunCmd() *cobra.Command {
 			}
 			kind := apitype.PluginKind(kind)
 
-			// TODO: Add support for --server and --checksums.
-			pluginSpec, err := workspace.NewPluginSpec(args[0], kind, nil, "", nil)
-			if err != nil {
-				return err
-			}
-
-			if !tokens.IsName(pluginSpec.Name) {
-				return fmt.Errorf("invalid plugin name %q", pluginSpec.Name)
-			}
-
-			pluginDesc := fmt.Sprintf("%s %s", pluginSpec.Kind, pluginSpec.Name)
-			if pluginSpec.Version != nil {
-				pluginDesc = fmt.Sprintf("%s@%s", pluginDesc, pluginSpec.Version)
-			}
-
-			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
-
-			path, err := workspace.GetPluginPath(d, pluginSpec, nil)
-			if err != nil {
-				// Try to install the plugin, unless auto plugin installs are turned off.
-				var me *workspace.MissingError
-				if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
-					// Not a MissingError, return the original error.
-					return fmt.Errorf("could not get plugin path: %w", err)
-				}
-
-				log := func(sev diag.Severity, msg string) {
-					d.Logf(sev, diag.RawMessage("", msg))
-				}
-
-				_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
+			source := args[0]
+			var pluginPath string
+			if plugin.IsLocalPluginPath(ctx, source) {
+				pluginPath = source
+			} else {
+				// TODO: Add support for --server and --checksums.
+				pluginSpec, err := workspace.NewPluginDescriptor(ctx, args[0], kind, nil, "", nil)
 				if err != nil {
 					return err
 				}
 
-				path, err = workspace.GetPluginPath(d, pluginSpec, nil)
+				if !tokens.IsName(pluginSpec.Name) {
+					return fmt.Errorf("invalid plugin name %q", pluginSpec.Name)
+				}
+
+				source = fmt.Sprintf("%s %s", pluginSpec.Kind, pluginSpec.Name)
+				if pluginSpec.Version != nil {
+					source = fmt.Sprintf("%s@%s", source, pluginSpec.Version)
+				}
+
+				d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
+
+				pluginPath, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
 				if err != nil {
-					return fmt.Errorf("could not get plugin path: %w", err)
+					// Try to install the plugin, unless auto plugin installs are turned off.
+					var me *workspace.MissingError
+					if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
+						// Not a MissingError, return the original error.
+						return fmt.Errorf("could not get plugin path: %w", err)
+					}
+
+					log := func(sev diag.Severity, msg string) {
+						d.Logf(sev, diag.RawMessage("", msg))
+					}
+
+					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
+					if err != nil {
+						return err
+					}
+
+					pluginPath, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
+					if err != nil {
+						return fmt.Errorf("could not get plugin path: %w", err)
+					}
 				}
 			}
 
 			pluginArgs := args[1:]
 
-			pluginCmd := exec.Command(path, pluginArgs...)
-			pluginCmd.Stdout = os.Stdout
-			pluginCmd.Stderr = os.Stderr
-			pluginCmd.Stdin = os.Stdin
-			if err := pluginCmd.Run(); err != nil {
-				var pathErr *os.PathError
-				if errors.As(err, &pathErr) {
-					syscallErr, ok := pathErr.Err.(syscall.Errno)
-					if ok && syscallErr == syscall.ENOENT {
-						return fmt.Errorf("could not find execute plugin %s, binary not found at %s", pluginDesc, path)
-					}
-				}
+			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil)
+			if err != nil {
+				return fmt.Errorf("could not create plugin context: %w", err)
+			}
+			defer pctx.Close()
 
-				var exitErr *exec.ExitError
-				if errors.As(err, &exitErr) {
-					os.Exit(exitErr.ExitCode())
-				}
+			// Always create RPC server for tool plugins
+			grpcServer, err := createPluginRPCServer(ctx, pctx)
+			if err != nil {
+				return fmt.Errorf("create RPC server: %w", err)
+			}
+			defer grpcServer.Close()
 
-				return fmt.Errorf("could not execute plugin %s (%s): %w", pluginDesc, path, err)
+			// Prepare environment variables for the plugin
+			pluginEnv := preparePluginEnv(ws, grpcServer)
+
+			plugin, err := plugin.ExecPlugin(pctx, pluginPath, source, kind, pluginArgs, "", pluginEnv, false)
+			if err != nil {
+				return fmt.Errorf("could not execute plugin %s (%s): %w", source, pluginPath, err)
 			}
 
+			// Copy the plugin's stdout and stderr to the current process's stdout and stderr.
+			// For stdin, we start a copy goroutine but don't wait for it since it will block
+			// indefinitely if there's no stdin input.
+
+			var wg sync.WaitGroup
+			wg.Add(2) // Only wait for stdout and stderr, not stdin
+			go func() {
+				defer wg.Done()
+				_, err := io.Copy(os.Stdout, plugin.Stdout)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error reading plugin stdout: %v\n", err)
+				}
+			}()
+			go func() {
+				defer wg.Done()
+				_, err := io.Copy(os.Stderr, plugin.Stderr)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error reading plugin stderr: %v\n", err)
+				}
+			}()
+			// Copy stdin in a separate goroutine but don't wait for it.
+			// It will either complete if stdin has data, or be interrupted when plugin.Stdin is closed.
+			go func() {
+				_, _ = io.Copy(plugin.Stdin, os.Stdin)
+				// Don't report error since stdin pipe closure is expected
+			}()
+
+			// Wait for the plugin and IO to finish.
+			code, err := plugin.Wait(ctx)
+			wg.Wait()
+
+			if err != nil {
+				return fmt.Errorf("plugin %s exited with error: %w", source, err)
+			}
+			if code != 0 {
+				os.Exit(code)
+			}
 			return nil
 		},
 	}

@@ -115,7 +115,6 @@ func TestErrorIncompatibleVersion(t *testing.T) {
 	require.NoError(t, err)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestNoGlobalPulumi(t *testing.T) {
 	dir := t.TempDir()
 	version := semver.Version{Major: 3, Minor: 98, Patch: 0}
@@ -251,7 +250,6 @@ func TestMinimumVersion(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range minVersionTests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -287,11 +285,12 @@ func TestRunCanceled(t *testing.T) {
 
 	go func() {
 		path := filepath.Join(e.RootPath, "ready")
-		for i := 0; i < 100; i++ {
+		for range 60 {
 			if _, err := os.Stat(path); err == nil {
+				t.Logf("Found %s", path)
 				break
 			}
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 		}
 		cancel()
 	}()

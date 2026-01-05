@@ -17,7 +17,8 @@ The config module contains all configuration management functionality.
 """
 
 import json
-from typing import Any, Callable, Optional, overload
+from typing import Any, Optional, overload
+from collections.abc import Callable
 
 from . import errors
 from .metadata import get_project

@@ -22,14 +22,15 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestImportDeployment(t *testing.T) {
@@ -86,7 +87,7 @@ func TestImporter(t *testing.T) {
 					},
 				},
 			}
-			_, _, err := i.registerProviders(context.Background())
+			_, err := i.registerProviders(context.Background())
 			assert.ErrorContains(t, err, "incorrect package type specified")
 		})
 		t.Run("ensure provider is called correctly", func(t *testing.T) {
@@ -102,7 +103,7 @@ func TestImporter(t *testing.T) {
 					},
 					source: &nullSource{},
 					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+						ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 							assert.Equal(t, "foo", descriptor.Name)
 							assert.Equal(t, "1.0.0", descriptor.Version.String())
 							return nil, expectedErr
@@ -122,7 +123,7 @@ func TestImporter(t *testing.T) {
 					},
 				},
 			}
-			_, _, err := i.registerProviders(context.Background())
+			_, err := i.registerProviders(context.Background())
 			assert.ErrorIs(t, err, expectedErr)
 		})
 	})
@@ -154,7 +155,7 @@ func TestImporter(t *testing.T) {
 						},
 					},
 				}
-				assert.NoError(t, i.importResources(ctx))
+				require.NoError(t, i.importResources(ctx))
 			})
 		})
 		t.Run("getOrCreateStackResource", func(t *testing.T) {
@@ -177,7 +178,7 @@ func TestImporter(t *testing.T) {
 						},
 					},
 				}
-				assert.NoError(t, i.importResources(ctx))
+				require.NoError(t, i.importResources(ctx))
 			})
 			t.Run("ignore existing delete resources", func(t *testing.T) {
 				t.Parallel()
@@ -206,7 +207,7 @@ func TestImporter(t *testing.T) {
 						},
 					},
 				}
-				assert.NoError(t, i.importResources(ctx))
+				require.NoError(t, i.importResources(ctx))
 			})
 		})
 	})
@@ -250,13 +251,10 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			},
 			source: &nullSource{},
 			providers: providers.NewRegistry(&plugin.MockHost{
-				ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+				ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 					assert.Equal(t, "foo", descriptor.Name)
 					assert.Equal(t, "1.0.0", descriptor.Version.String())
 					return &mockProvider, nil
-				},
-				CloseProviderF: func(provider plugin.Provider) error {
-					return nil
 				},
 			}, true, nil),
 			imports: []Import{
@@ -278,6 +276,6 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			},
 		},
 	}
-	_, _, err := i.registerProviders(context.Background())
-	assert.NoError(t, err)
+	_, err := i.registerProviders(context.Background())
+	require.NoError(t, err)
 }

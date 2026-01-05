@@ -68,17 +68,27 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return d.GetDocLinkForResourceInputOrOutputType(pkg, modName, typeName, input)
 }
 
+func (d DocLanguageHelper) GetModuleName(pkg schema.PackageReference, module string) string {
+	return moduleName(module, pkg)
+}
+
 // GetLanguageTypeString returns the language-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
+func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
 	// Remove the union with `undefined` for optional types,
 	// since we will show that information separately anyway.
 	if optional, ok := t.(*schema.OptionalType); ok {
 		t = optional.ElementType
 	}
 
+	var info NodePackageInfo
+	if a, err := pkg.Language("nodejs"); err == nil {
+		info, _ = a.(NodePackageInfo)
+	}
+
 	modCtx := &modContext{
-		pkg: pkg.Reference(),
-		mod: moduleName,
+		pkg:      pkg,
+		modToPkg: info.ModuleToPackage,
+		mod:      moduleName(relativeToModule, pkg),
 	}
 	typeName := modCtx.typeString(t, input, nil)
 
@@ -93,14 +103,18 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return typeName
 }
 
-func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
+	return resourceName(r)
+}
+
+func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 	return tokenToFunctionName(f.Token)
 }
 
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
-	funcName := d.GetFunctionName(modName, f)
+	funcName := d.GetFunctionName(f)
 	return title(funcName) + "Result"
 }
 
@@ -108,7 +122,7 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return camel(m.Name)
 }
 
-func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,
 	m *schema.Method,
 ) string {
 	var objectReturnType *schema.ObjectType
@@ -117,21 +131,24 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 			objectReturnType = objectType
 		} else {
 			modCtx := &modContext{
-				pkg: pkg.Reference(),
+				pkg: pkg,
 				mod: modName,
 			}
 			return modCtx.typeString(m.Function.ReturnType, false, nil)
 		}
 	}
 
-	if info, ok := pkg.Language["nodejs"].(NodePackageInfo); ok {
-		if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
-			modCtx := &modContext{
-				pkg: pkg.Reference(),
-				mod: modName,
-			}
-			return modCtx.typeString(objectReturnType.Properties[0].Type, false, nil)
+	var info NodePackageInfo
+	if i, err := pkg.Language("nodejs"); err == nil {
+		info, _ = i.(NodePackageInfo)
+	}
+
+	if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
+		modCtx := &modContext{
+			pkg: pkg,
+			mod: modName,
 		}
+		return modCtx.typeString(objectReturnType.Properties[0].Type, false, nil)
 	}
 	return fmt.Sprintf("%s.%sResult", resourceName(r), title(d.GetMethodName(m)))
 }
@@ -144,21 +161,4 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 // GetEnumName returns the enum name specific to NodeJS.
 func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string, error) {
 	return enumMemberName(typeName, e)
-}
-
-// GetModuleDocLink returns the display name and the link for a module.
-func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
-	var displayName string
-	var link string
-	namespace := "@pulumi"
-	if pkg.Namespace != "" {
-		namespace = "@" + pkg.Namespace
-	}
-	if modName == "" {
-		displayName = fmt.Sprintf("%s/%s", namespace, pkg.Name)
-	} else {
-		displayName = fmt.Sprintf("%s/%s/%s", namespace, pkg.Name, strings.ToLower(modName))
-	}
-	link = d.GetDocLinkForResourceType(pkg, modName, "")
-	return displayName, link
 }

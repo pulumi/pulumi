@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +43,6 @@ func TestValidateVenv(t *testing.T) {
 			Toolchain: Poetry,
 		},
 	} {
-		opts := opts
 		t.Run("Doesnt-exist-"+Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(opts)
@@ -70,8 +70,11 @@ func TestValidateVenv(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows
+		t.Skip("Skipping tests on Windows")
+	}
 	// Poetry with `in-project = true` uses `.venv` as the default virtualenv directory.
 	// Use the same for pip to keep the tests consistent.
 	venvDir := ".venv"
@@ -85,7 +88,6 @@ func TestCommand(t *testing.T) {
 			Toolchain: Poetry,
 		},
 	} {
-		opts := opts
 		t.Run("empty/"+Name(opts.Toolchain), func(t *testing.T) {
 			opts := copyOptions(opts)
 			opts.Root = t.TempDir()
@@ -128,6 +130,11 @@ func TestCommand(t *testing.T) {
 }
 
 func TestListPackages(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows
+		t.Skip("Skipping tests on Windows")
+	}
+
 	t.Parallel()
 
 	// Build the mock package before running the tests, so parallel tests don't
@@ -175,8 +182,6 @@ func TestListPackages(t *testing.T) {
 			expectedPackages: []string{},
 		},
 	} {
-		test := test
-
 		t.Run("empty/"+Name(test.opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(test.opts)
@@ -242,6 +247,10 @@ func TestListPackages(t *testing.T) {
 }
 
 func TestAbout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows
+		t.Skip("Skipping tests on Windows")
+	}
 	t.Parallel()
 
 	for _, opts := range []PythonOptions{
@@ -252,8 +261,10 @@ func TestAbout(t *testing.T) {
 		{
 			Toolchain: Poetry,
 		},
+		{
+			Toolchain: Uv,
+		},
 	} {
-		opts := opts
 		t.Run(Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(opts)
@@ -264,13 +275,131 @@ func TestAbout(t *testing.T) {
 			require.NoError(t, err)
 			info, err := tc.About(context.Background())
 			require.NoError(t, err)
-			require.Regexp(t, "[0-9]+\\.[0-9]+\\.[0-9]+", info.Version)
-			require.Regexp(t, "python$", info.Executable)
+			require.NotEqual(t, semver.Version{}, info.PythonVersion)
+			require.True(t, info.PythonVersion.Major > 0)
+			require.False(t, info.ToolchainVersion.EQ(semver.Version{}),
+				"the toolchain version should not be empty")
+			require.Regexp(t, "python$", info.PythonExecutable)
 		})
 	}
 }
 
-//nolint:paralleltest // mutates environment variables
+func TestParsePythonVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		versionString  string
+		expectedSemver string
+		expectError    bool
+	}{
+		{
+			name:           "standard version format",
+			versionString:  "3.11.4",
+			expectedSemver: "3.11.4",
+			expectError:    false,
+		},
+		{
+			name:           "python --version output",
+			versionString:  "Python 3.11.4",
+			expectedSemver: "3.11.4",
+			expectError:    false,
+		},
+		{
+			name:           "version without patch",
+			versionString:  "3.11",
+			expectedSemver: "3.11.0",
+			expectError:    false,
+		},
+		{
+			name:           "python --version without patch",
+			versionString:  "Python 3.11",
+			expectedSemver: "3.11.0",
+			expectError:    false,
+		},
+		{
+			name:           "version with extra spaces",
+			versionString:  "  Python 3.9.16  ",
+			expectedSemver: "3.9.16",
+			expectError:    false,
+		},
+		{
+			name:          "invalid format",
+			versionString: "invalid version",
+			expectError:   true,
+		},
+		{
+			name:          "empty string",
+			versionString: "",
+			expectError:   true,
+		},
+		{
+			name:           "alpha pre-release",
+			versionString:  "3.15.0a1",
+			expectedSemver: "3.15.0-alpha.1",
+			expectError:    false,
+		},
+		{
+			name:           "beta pre-release",
+			versionString:  "3.11.0b3",
+			expectedSemver: "3.11.0-beta.3",
+			expectError:    false,
+		},
+		{
+			name:           "release candidate",
+			versionString:  "3.10.0rc2",
+			expectedSemver: "3.10.0-rc.2",
+			expectError:    false,
+		},
+		{
+			name:           "python --version with alpha",
+			versionString:  "Python 3.15.0a1",
+			expectedSemver: "3.15.0-alpha.1",
+			expectError:    false,
+		},
+		{
+			name:           "python --version with rc",
+			versionString:  "Python 3.12.0rc1",
+			expectedSemver: "3.12.0-rc.1",
+			expectError:    false,
+		},
+		{
+			name:           "alpha without patch version",
+			versionString:  "3.14a5",
+			expectedSemver: "3.14.0-alpha.5",
+			expectError:    false,
+		},
+		{
+			name:           "development version",
+			versionString:  "3.13.0dev1",
+			expectedSemver: "3.13.0-dev.1",
+			expectError:    false,
+		},
+		{
+			name:           "pre-release with extra text",
+			versionString:  "3.11.0a7+ (default, Oct 10 2022, 12:34:56)",
+			expectedSemver: "3.11.0-alpha.7",
+			expectError:    false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			version, err := ParsePythonVersion(test.versionString)
+
+			if test.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				expected := semver.MustParse(test.expectedSemver)
+				require.Equal(t, expected, version)
+			}
+		})
+	}
+}
+
 func TestPyenv(t *testing.T) {
 	if runtime.GOOS == windows {
 		t.Skip("pyenv is not supported on Windows")
@@ -304,7 +433,6 @@ func TestPyenv(t *testing.T) {
 	require.Equal(t, filepath.Join(tmpDir, "bin", "pyenv"), pyenvPath)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPyenvInstall(t *testing.T) {
 	if runtime.GOOS == windows {
 		t.Skip("pyenv is not supported on Windows")
@@ -339,7 +467,8 @@ func TestPyenvInstall(t *testing.T) {
 func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 	t.Helper()
 
-	if opts.Toolchain == Pip {
+	switch opts.Toolchain {
+	case Pip:
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
 		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
@@ -352,7 +481,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, string(out))
 		}
-	} else if opts.Toolchain == Poetry {
+	case Poetry:
 		writePyprojectForPoetry(t, opts.Root)
 		// Write poetry.toml file to enable in-project virtualenvs. This ensures we delete the
 		// virtualenv with the tmp directory after the test is done.
@@ -369,7 +498,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, string(out))
 		}
-	} else if opts.Toolchain == Uv {
+	case Uv:
 		writePyprojectForUv(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
@@ -395,7 +524,7 @@ func writePyprojectForUv(t *testing.T, root string) {
 [project]
 name = "list-packages-test"
 version = "0.0.1"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 `)
 	err = f.Close()
@@ -422,7 +551,7 @@ package-mode = false
 packages = [{include = "test_pulumi_venv"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 `)
 	err = f.Close()
 	require.NoError(t, err)

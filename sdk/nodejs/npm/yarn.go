@@ -23,8 +23,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
 // yarnClassic is an implementation of PackageManager that uses Yarn Classic,
@@ -52,6 +55,20 @@ func newYarnClassic() (*yarnClassic, error) {
 
 func (yarn *yarnClassic) Name() string {
 	return "yarn"
+}
+
+func (yarn *yarnClassic) Version() (semver.Version, error) {
+	cmd := exec.Command(yarn.executable, "--version") //nolint:gosec
+	output, err := cmd.Output()
+	if err != nil {
+		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
+	}
+	versionStr := strings.TrimSpace(string(output))
+	version, err := semver.Parse(versionStr)
+	if err != nil {
+		return semver.Version{}, err
+	}
+	return version, nil
 }
 
 func (yarn *yarnClassic) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
@@ -85,6 +102,19 @@ func (yarn *yarnClassic) runCmd(command *exec.Cmd, stderr io.Writer) error {
 		stderr.Write(stderrBuffer.Bytes())
 	}
 	return err
+}
+
+func (yarn *yarnClassic) Link(ctx context.Context, dir, packageName, path string) error {
+	// Yarn doesn't have a `pkg` command. Currently, however, we only support Yarn Classic, for which the
+	// recommended install method is through `npm`. Consequently, we can use `npm pkg set` for Yarn as well, since
+	// this will only modify the package.json file and not actually perform any dependency management.
+	packageSpecifier := getLinkPackageProperty(packageName, path)
+	cmd := exec.CommandContext(ctx, "npm", "pkg", "set", packageSpecifier)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error executing yarn command %s: %w, output: %s", cmd.String(), err, out)
+	}
+	return nil
 }
 
 // Pack runs `yarn pack` in the given directory, packaging the Node.js app located

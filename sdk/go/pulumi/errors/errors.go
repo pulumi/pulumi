@@ -14,7 +14,10 @@
 
 package errors
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // InputPropertyErrorDetails contains the error details for an input property error.
 type InputPropertyErrorDetails struct {
@@ -42,7 +45,7 @@ func NewInputPropertyError(propertyPath string, reason string) *InputPropertiesE
 }
 
 // Create a new InputPropertiesError with a single property error.
-func InputPropertyErrorf(propertyPath string, format string, args ...interface{}) *InputPropertiesError {
+func InputPropertyErrorf(propertyPath string, format string, args ...any) *InputPropertiesError {
 	return NewInputPropertiesError("", InputPropertyErrorDetails{
 		PropertyPath: propertyPath,
 		Reason:       fmt.Sprintf(format, args...),
@@ -58,22 +61,23 @@ func NewInputPropertiesError(message string, details ...InputPropertyErrorDetail
 }
 
 // Create a new InputPropertiesError with a message.
-func InputPropertiesErrorf(format string, args ...interface{}) *InputPropertiesError {
+func InputPropertiesErrorf(format string, args ...any) *InputPropertiesError {
 	return NewInputPropertiesError(fmt.Sprintf(format, args...))
 }
 
 func (ipe *InputPropertiesError) Error() string {
-	message := ipe.Message
-	if message != "" && len(ipe.Errors) > 0 {
-		message += ": "
+	var message strings.Builder
+	message.WriteString(ipe.Message)
+	if ipe.Message != "" && len(ipe.Errors) > 0 {
+		message.WriteString(": ")
 	}
 	for i, err := range ipe.Errors {
 		if i == 0 {
-			message += "\n "
+			message.WriteString("\n ")
 		}
-		message += err.String()
+		message.WriteString(err.String())
 	}
-	return message
+	return message.String()
 }
 
 // WithDetails adds additional property errors to an existing InputPropertiesError.

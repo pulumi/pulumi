@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -28,8 +29,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/exp/maps"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type treeRenderer struct {
@@ -192,17 +194,23 @@ func (r *treeRenderer) render(termWidth int) {
 		r.systemMessages = append(r.systemMessages, splitIntoDisplayableLines(msg)...)
 	}
 
-	if len(r.systemMessages) == 0 && len(r.display.progressEventPayloads) > 0 {
+	keys := []string{}
+	if r.display.progressEventPayloads != nil {
+		r.display.progressEventPayloads.Range(func(key string, value engine.ProgressEventPayload) bool {
+			keys = append(keys, key)
+			return true
+		})
+	}
+	if len(r.systemMessages) == 0 && len(keys) > 0 {
 		// If we don't have system messages, but we do have progress events, show
 		// the progress. For the most part, we shouldn't have both at the same time,
 		// since the most common system messages refer to cancellation/SIGINT
 		// handling, at which point the program will be terminating. That said, if
 		// we do, we'll give the system messages priority.
-		keys := maps.Keys(r.display.progressEventPayloads)
 		slices.Sort(keys)
 
 		for _, key := range keys {
-			payload := r.display.progressEventPayloads[key]
+			payload, _ := r.display.progressEventPayloads.Load(key)
 			r.systemMessages = append(r.systemMessages, renderProgress(
 				renderUnicodeProgressBar,
 				termWidth-4,
@@ -478,7 +486,10 @@ func (r *treeRenderer) handleEvents() {
 func (r *treeRenderer) handleKey(key string) {
 	switch key {
 	case terminal.KeyCtrlC:
-		sigint()
+		if err := cmdutil.Interrupt(os.Getpid()); err != nil {
+			logging.V(6).Infof("failed to interrupt process %d", os.Getpid())
+		}
+
 	case terminal.KeyCtrlO:
 		if r.permalink != "" {
 			if err := browser.OpenURL(r.permalink); err != nil {

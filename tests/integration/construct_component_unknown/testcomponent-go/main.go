@@ -198,12 +198,6 @@ func (p *testcomponentProvider) Invoke(ctx context.Context,
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", req.GetTok())
 }
 
-func (p *testcomponentProvider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	return fmt.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
-}
-
 func (p *testcomponentProvider) Call(ctx context.Context,
 	req *pulumirpc.CallRequest,
 ) (*pulumirpc.CallResponse, error) {

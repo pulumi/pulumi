@@ -9,6 +9,116 @@ import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
+export class AnalyzerStackConfigureRequest extends jspb.Message { 
+    getStack(): string;
+    setStack(value: string): AnalyzerStackConfigureRequest;
+    getProject(): string;
+    setProject(value: string): AnalyzerStackConfigureRequest;
+    getOrganization(): string;
+    setOrganization(value: string): AnalyzerStackConfigureRequest;
+    getDryRun(): boolean;
+    setDryRun(value: boolean): AnalyzerStackConfigureRequest;
+    clearConfigSecretKeysList(): void;
+    getConfigSecretKeysList(): Array<string>;
+    setConfigSecretKeysList(value: Array<string>): AnalyzerStackConfigureRequest;
+    addConfigSecretKeys(value: string, index?: number): string;
+
+    getConfigMap(): jspb.Map<string, string>;
+    clearConfigMap(): void;
+
+    getTagsMap(): jspb.Map<string, string>;
+    clearTagsMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AnalyzerStackConfigureRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: AnalyzerStackConfigureRequest): AnalyzerStackConfigureRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AnalyzerStackConfigureRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AnalyzerStackConfigureRequest;
+    static deserializeBinaryFromReader(message: AnalyzerStackConfigureRequest, reader: jspb.BinaryReader): AnalyzerStackConfigureRequest;
+}
+
+export namespace AnalyzerStackConfigureRequest {
+    export type AsObject = {
+        stack: string,
+        project: string,
+        organization: string,
+        dryRun: boolean,
+        configSecretKeysList: Array<string>,
+
+        configMap: Array<[string, string]>,
+
+        tagsMap: Array<[string, string]>,
+    }
+}
+
+export class AnalyzerStackConfigureResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AnalyzerStackConfigureResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: AnalyzerStackConfigureResponse): AnalyzerStackConfigureResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AnalyzerStackConfigureResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AnalyzerStackConfigureResponse;
+    static deserializeBinaryFromReader(message: AnalyzerStackConfigureResponse, reader: jspb.BinaryReader): AnalyzerStackConfigureResponse;
+}
+
+export namespace AnalyzerStackConfigureResponse {
+    export type AsObject = {
+    }
+}
+
+export class AnalyzerHandshakeRequest extends jspb.Message { 
+    getEngineAddress(): string;
+    setEngineAddress(value: string): AnalyzerHandshakeRequest;
+
+    hasRootDirectory(): boolean;
+    clearRootDirectory(): void;
+    getRootDirectory(): string | undefined;
+    setRootDirectory(value: string): AnalyzerHandshakeRequest;
+
+    hasProgramDirectory(): boolean;
+    clearProgramDirectory(): void;
+    getProgramDirectory(): string | undefined;
+    setProgramDirectory(value: string): AnalyzerHandshakeRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AnalyzerHandshakeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: AnalyzerHandshakeRequest): AnalyzerHandshakeRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AnalyzerHandshakeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AnalyzerHandshakeRequest;
+    static deserializeBinaryFromReader(message: AnalyzerHandshakeRequest, reader: jspb.BinaryReader): AnalyzerHandshakeRequest;
+}
+
+export namespace AnalyzerHandshakeRequest {
+    export type AsObject = {
+        engineAddress: string,
+        rootDirectory?: string,
+        programDirectory?: string,
+    }
+}
+
+export class AnalyzerHandshakeResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AnalyzerHandshakeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: AnalyzerHandshakeResponse): AnalyzerHandshakeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AnalyzerHandshakeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AnalyzerHandshakeResponse;
+    static deserializeBinaryFromReader(message: AnalyzerHandshakeResponse, reader: jspb.BinaryReader): AnalyzerHandshakeResponse;
+}
+
+export namespace AnalyzerHandshakeResponse {
+    export type AsObject = {
+    }
+}
+
 export class AnalyzeRequest extends jspb.Message { 
     getType(): string;
     setType(value: string): AnalyzeRequest;
@@ -269,6 +379,10 @@ export class AnalyzeResponse extends jspb.Message {
     getDiagnosticsList(): Array<AnalyzeDiagnostic>;
     setDiagnosticsList(value: Array<AnalyzeDiagnostic>): AnalyzeResponse;
     addDiagnostics(value?: AnalyzeDiagnostic, index?: number): AnalyzeDiagnostic;
+    clearNotApplicableList(): void;
+    getNotApplicableList(): Array<PolicyNotApplicable>;
+    setNotApplicableList(value: Array<PolicyNotApplicable>): AnalyzeResponse;
+    addNotApplicable(value?: PolicyNotApplicable, index?: number): PolicyNotApplicable;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzeResponse.AsObject;
@@ -283,6 +397,7 @@ export class AnalyzeResponse extends jspb.Message {
 export namespace AnalyzeResponse {
     export type AsObject = {
         diagnosticsList: Array<AnalyzeDiagnostic.AsObject>,
+        notApplicableList: Array<PolicyNotApplicable.AsObject>,
     }
 }
 
@@ -297,14 +412,12 @@ export class AnalyzeDiagnostic extends jspb.Message {
     setDescription(value: string): AnalyzeDiagnostic;
     getMessage(): string;
     setMessage(value: string): AnalyzeDiagnostic;
-    clearTagsList(): void;
-    getTagsList(): Array<string>;
-    setTagsList(value: Array<string>): AnalyzeDiagnostic;
-    addTags(value: string, index?: number): string;
     getEnforcementlevel(): EnforcementLevel;
     setEnforcementlevel(value: EnforcementLevel): AnalyzeDiagnostic;
     getUrn(): string;
     setUrn(value: string): AnalyzeDiagnostic;
+    getSeverity(): PolicySeverity;
+    setSeverity(value: PolicySeverity): AnalyzeDiagnostic;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzeDiagnostic.AsObject;
@@ -323,9 +436,9 @@ export namespace AnalyzeDiagnostic {
         policypackversion: string,
         description: string,
         message: string,
-        tagsList: Array<string>,
         enforcementlevel: EnforcementLevel,
         urn: string,
+        severity: PolicySeverity,
     }
 }
 
@@ -372,6 +485,10 @@ export class RemediateResponse extends jspb.Message {
     getRemediationsList(): Array<Remediation>;
     setRemediationsList(value: Array<Remediation>): RemediateResponse;
     addRemediations(value?: Remediation, index?: number): Remediation;
+    clearNotApplicableList(): void;
+    getNotApplicableList(): Array<PolicyNotApplicable>;
+    setNotApplicableList(value: Array<PolicyNotApplicable>): RemediateResponse;
+    addNotApplicable(value?: PolicyNotApplicable, index?: number): PolicyNotApplicable;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RemediateResponse.AsObject;
@@ -386,6 +503,7 @@ export class RemediateResponse extends jspb.Message {
 export namespace RemediateResponse {
     export type AsObject = {
         remediationsList: Array<Remediation.AsObject>,
+        notApplicableList: Array<PolicyNotApplicable.AsObject>,
     }
 }
 
@@ -405,6 +523,18 @@ export class AnalyzerInfo extends jspb.Message {
 
     getInitialconfigMap(): jspb.Map<string, PolicyConfig>;
     clearInitialconfigMap(): void;
+    getDescription(): string;
+    setDescription(value: string): AnalyzerInfo;
+    getReadme(): string;
+    setReadme(value: string): AnalyzerInfo;
+    getProvider(): string;
+    setProvider(value: string): AnalyzerInfo;
+    clearTagsList(): void;
+    getTagsList(): Array<string>;
+    setTagsList(value: Array<string>): AnalyzerInfo;
+    addTags(value: string, index?: number): string;
+    getRepository(): string;
+    setRepository(value: string): AnalyzerInfo;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzerInfo.AsObject;
@@ -425,6 +555,11 @@ export namespace AnalyzerInfo {
         supportsconfig: boolean,
 
         initialconfigMap: Array<[string, PolicyConfig.AsObject]>,
+        description: string,
+        readme: string,
+        provider: string,
+        tagsList: Array<string>,
+        repository: string,
     }
 }
 
@@ -444,6 +579,23 @@ export class PolicyInfo extends jspb.Message {
     clearConfigschema(): void;
     getConfigschema(): PolicyConfigSchema | undefined;
     setConfigschema(value?: PolicyConfigSchema): PolicyInfo;
+    getPolicyType(): PolicyType;
+    setPolicyType(value: PolicyType): PolicyInfo;
+    getSeverity(): PolicySeverity;
+    setSeverity(value: PolicySeverity): PolicyInfo;
+
+    hasFramework(): boolean;
+    clearFramework(): void;
+    getFramework(): PolicyComplianceFramework | undefined;
+    setFramework(value?: PolicyComplianceFramework): PolicyInfo;
+    clearTagsList(): void;
+    getTagsList(): Array<string>;
+    setTagsList(value: Array<string>): PolicyInfo;
+    addTags(value: string, index?: number): string;
+    getRemediationSteps(): string;
+    setRemediationSteps(value: string): PolicyInfo;
+    getUrl(): string;
+    setUrl(value: string): PolicyInfo;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PolicyInfo.AsObject;
@@ -463,6 +615,12 @@ export namespace PolicyInfo {
         message: string,
         enforcementlevel: EnforcementLevel,
         configschema?: PolicyConfigSchema.AsObject,
+        policyType: PolicyType,
+        severity: PolicySeverity,
+        framework?: PolicyComplianceFramework.AsObject,
+        tagsList: Array<string>,
+        remediationSteps: string,
+        url: string,
     }
 }
 
@@ -542,9 +700,75 @@ export namespace ConfigureAnalyzerRequest {
     }
 }
 
+export class PolicyComplianceFramework extends jspb.Message { 
+    getName(): string;
+    setName(value: string): PolicyComplianceFramework;
+    getVersion(): string;
+    setVersion(value: string): PolicyComplianceFramework;
+    getReference(): string;
+    setReference(value: string): PolicyComplianceFramework;
+    getSpecification(): string;
+    setSpecification(value: string): PolicyComplianceFramework;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PolicyComplianceFramework.AsObject;
+    static toObject(includeInstance: boolean, msg: PolicyComplianceFramework): PolicyComplianceFramework.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PolicyComplianceFramework, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PolicyComplianceFramework;
+    static deserializeBinaryFromReader(message: PolicyComplianceFramework, reader: jspb.BinaryReader): PolicyComplianceFramework;
+}
+
+export namespace PolicyComplianceFramework {
+    export type AsObject = {
+        name: string,
+        version: string,
+        reference: string,
+        specification: string,
+    }
+}
+
+export class PolicyNotApplicable extends jspb.Message { 
+    getPolicyName(): string;
+    setPolicyName(value: string): PolicyNotApplicable;
+    getReason(): string;
+    setReason(value: string): PolicyNotApplicable;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PolicyNotApplicable.AsObject;
+    static toObject(includeInstance: boolean, msg: PolicyNotApplicable): PolicyNotApplicable.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PolicyNotApplicable, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PolicyNotApplicable;
+    static deserializeBinaryFromReader(message: PolicyNotApplicable, reader: jspb.BinaryReader): PolicyNotApplicable;
+}
+
+export namespace PolicyNotApplicable {
+    export type AsObject = {
+        policyName: string,
+        reason: string,
+    }
+}
+
 export enum EnforcementLevel {
     ADVISORY = 0,
     MANDATORY = 1,
     DISABLED = 2,
     REMEDIATE = 3,
+}
+
+export enum PolicyType {
+    POLICY_TYPE_UNKNOWN = 0,
+    POLICY_TYPE_RESOURCE = 1,
+    POLICY_TYPE_STACK = 2,
+}
+
+export enum PolicySeverity {
+    POLICY_SEVERITY_UNSPECIFIED = 0,
+    POLICY_SEVERITY_LOW = 1,
+    POLICY_SEVERITY_MEDIUM = 2,
+    POLICY_SEVERITY_HIGH = 3,
+    POLICY_SEVERITY_CRITICAL = 4,
 }

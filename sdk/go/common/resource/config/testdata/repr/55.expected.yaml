@@ -9,7 +9,7 @@ paths:
     - - value
     string: '["a","b","c",["value"]]'
     redacted: '["a","b","c",["value"]]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAATf+ESgAEBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFjDltdaW50ZXJmYWNlIHt9/4QSAAEGc3RyaW5nDAcABXZhbHVl
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAATf+CSgAEBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFjDltdaW50ZXJmYWNlIHt9/4ISAAEGc3RyaW5nDAcABXZhbHVl
     secure: false
     isObject: true
   my:name[0]:
@@ -38,7 +38,7 @@ paths:
     - value
     string: '["value"]'
     redacted: '["value"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAFf+EEgABBnN0cmluZwwHAAV2YWx1ZQ==
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAFf+CEgABBnN0cmluZwwHAAV2YWx1ZQ==
     secure: false
     isObject: true
   my:name[3][0]:

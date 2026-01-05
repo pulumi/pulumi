@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCapabilities(t *testing.T) {
@@ -26,7 +27,7 @@ func TestCapabilities(t *testing.T) {
 	t.Run("parse empty", func(t *testing.T) {
 		t.Parallel()
 		actual, err := CapabilitiesResponse{}.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{}, actual)
 	})
 	t.Run("parse delta v1", func(t *testing.T) {
@@ -40,7 +41,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{},
 		}, actual)
@@ -56,7 +57,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{
 				CheckpointCutoffSizeBytes: 1024,
@@ -75,7 +76,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{},
 		}, actual)
@@ -92,7 +93,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{
 				CheckpointCutoffSizeBytes: 1024,
@@ -107,9 +108,53 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		actual, err := response.Parse()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			BatchEncryption: true,
+		}, actual)
+	})
+
+	t.Run("parse copilot summarize error v1", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{Capability: CopilotSummarizeError, Version: 1},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			CopilotSummarizeErrorV1: true,
+		}, actual)
+	})
+
+	t.Run("parse copilot summarize error with newer version", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{Capability: CopilotSummarizeError, Version: 2},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{}, actual)
+	})
+
+	t.Run("parse deployment schema v4", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    DeploymentSchemaVersion,
+					Version:       1,
+					Configuration: json.RawMessage(`{"version": 4}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			DeploymentSchemaVersion: 4,
 		}, actual)
 	})
 }

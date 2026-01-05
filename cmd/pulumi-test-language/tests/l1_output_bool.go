@@ -16,6 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -27,6 +28,7 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
@@ -35,8 +37,8 @@ func init() {
 
 					outputs := stack.Outputs
 
-					AssertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
-					AssertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
+					AssertPropertyMapMember(l, outputs, "output_true", resource.NewProperty(true))
+					AssertPropertyMapMember(l, outputs, "output_false", resource.NewProperty(false))
 				},
 			},
 		},

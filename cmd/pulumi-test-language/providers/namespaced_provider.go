@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type NamespacedProvider struct {
@@ -57,9 +56,15 @@ func (p *NamespacedProvider) GetSchema(
 				Type: "boolean",
 			},
 		},
+		"resourceRef": {
+			TypeSpec: schema.TypeSpec{
+				Ref: "/component/v13.3.7/schema.json#/resources/component:index:Custom",
+			},
+		},
 	}
 	resourceRequired := []string{"value"}
 
+	componentVersion := semver.MustParse("13.3.7")
 	pkg := schema.PackageSpec{
 		Name:      "namespaced",
 		Version:   "16.0.0",
@@ -75,6 +80,10 @@ func (p *NamespacedProvider) GetSchema(
 				RequiredInputs:  resourceRequired,
 			},
 		},
+		Dependencies: []schema.PackageDescriptor{{
+			Name:    "component",
+			Version: &componentVersion,
+		}},
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
@@ -102,7 +111,7 @@ func (p *NamespacedProvider) CheckConfig(
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(req.News) > 2 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -133,7 +142,7 @@ func (p *NamespacedProvider) Check(
 			Failures: makeCheckFailure("value", "value is not a boolean"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	if len(req.News) > 2 {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -164,9 +173,9 @@ func (p *NamespacedProvider) Create(
 	}, nil
 }
 
-func (p *NamespacedProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *NamespacedProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("16.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

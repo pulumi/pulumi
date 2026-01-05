@@ -107,7 +107,6 @@ func TestLogWriter(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -116,7 +115,7 @@ func TestLogWriter(t *testing.T) {
 
 			for _, input := range tt.writes {
 				n, err := w.Write([]byte(input))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, len(input), n)
 			}
 
@@ -163,7 +162,7 @@ type fakeT struct {
 	cleanups []func()
 }
 
-func (t *fakeT) Logf(msg string, args ...interface{}) {
+func (t *fakeT) Logf(msg string, args ...any) {
 	t.msgs = append(t.msgs, fmt.Sprintf(msg, args...))
 }
 

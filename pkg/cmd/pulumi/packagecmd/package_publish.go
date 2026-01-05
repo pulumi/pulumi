@@ -17,6 +17,7 @@ package packagecmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -28,10 +29,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -40,10 +43,12 @@ import (
 )
 
 const (
-	// The default package source is "pulumi" for packages published to the Pulumi Registry.
-	// This is the source that will be used if none is specified on the command line.
-	// Examples of other sources include "opentofu" for packages published to the OpenTofu Registry.
-	defaultPackageSource = "pulumi"
+	// The default package source is "private" for packages published to the
+	// Private Registry. This corresponds to an organization's own packages
+	// inaccessible to others. Examples of other sources include "pulumi" for
+	// public packages and "opentofu" for packages published to the OpenTofu
+	// registry, but available through an organization's Private Registry.
+	defaultPackageSource = "private"
 )
 
 type publishPackageArgs struct {
@@ -54,9 +59,11 @@ type publishPackageArgs struct {
 }
 
 type packagePublishCmd struct {
-	defaultOrg    func(*workspace.Project) (string, error)
-	extractSchema func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error)
-	pluginDir     string
+	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
+	extractSchema func(
+		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
+		registry registry.Registry, e env.Env,
+	) (*schema.PackageSpec, *workspace.PackageSpec, error)
 }
 
 func newPackagePublishCmd() *cobra.Command {
@@ -66,9 +73,9 @@ func newPackagePublishCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "publish <provider|schema> --readme <path> [--] [provider-parameter...]",
 		Args:  cmdutil.MinimumNArgs(1),
-		Short: "Publish a package to the Pulumi Registry",
-		Long: "Publish a package to the Pulumi Registry.\n\n" +
-			"This command publishes a package to the Pulumi Registry. The package can be a provider " +
+		Short: "Publish a package to the Private Registry",
+		Long: "Publish a package to the Private Registry.\n\n" +
+			"This command publishes a package to the Private Registry. The package can be a provider " +
 			"or a schema.\n\n" +
 			"When <provider> is specified as a PLUGIN[@VERSION] reference, Pulumi attempts to " +
 			"resolve a resource plugin first, installing it on-demand, similarly to:\n\n" +
@@ -84,18 +91,24 @@ func newPackagePublishCmd() *cobra.Command {
 			"When <schema> is a path to a local file with a '.json', '.yml' or '.yaml' " +
 			"extension, Pulumi package schema is read from it directly:\n\n" +
 			"  pulumi package publish ./my/schema.json --readme ./README.md",
-		Hidden: !env.Experimental.Value(),
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
-			pkgPublishCmd.defaultOrg = pkgWorkspace.GetBackendConfigDefaultOrg
-			pkgPublishCmd.extractSchema = SchemaFromSchemaSource
-			return pkgPublishCmd.Run(ctx, args, cliArgs[0], cliArgs[1:])
+			pkgPublishCmd.defaultOrg = backend.GetDefaultOrg
+			pkgPublishCmd.extractSchema = packages.SchemaFromSchemaSource
+			parameters := &plugin.ParameterizeArgs{Args: cliArgs[1:]}
+			return pkgPublishCmd.Run(ctx, args, cliArgs[0], parameters)
 		},
 	}
 
 	cmd.Flags().StringVar(
 		&args.source, "source", defaultPackageSource,
-		"The origin of the package (e.g., 'pulumi', 'opentofu'). Defaults to the current registry.")
+		"The origin of the package (e.g., 'pulumi', 'private', 'opentofu'). Defaults to 'private'.")
+	if !env.Dev.Value() {
+		// hide the source flag from the help output. Only registry administrators can set the source. Regular users can only
+		// publish private packages.
+		// ignore err, only happens if flag does not exist
+		_ = cmd.Flags().MarkHidden("source")
+	}
 
 	cmd.Flags().StringVar(
 		&args.publisher, "publisher", "",
@@ -116,7 +129,7 @@ func (cmd *packagePublishCmd) Run(
 	ctx context.Context,
 	args publishPackageArgs,
 	packageSrc string,
-	packageParams []string,
+	packageParams plugin.ParameterizeParameters,
 ) error {
 	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
@@ -133,20 +146,20 @@ func (cmd *packagePublishCmd) Run(
 		return err
 	}
 	sink := cmdutil.Diag()
-	pctx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, wd, nil, false, nil)
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(pctx)
 
-	pkg, err := cmd.extractSchema(pctx, packageSrc, packageParams)
+	pkg, _, err := cmd.extractSchema(pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(), env.Global())
 	if err != nil {
 		return fmt.Errorf("failed to get schema: %w", err)
 	}
 
 	// If no readme path is provided, check if there's a readme in the package source or plugin directory we can slurp up.
 	if args.readmePath == "" {
-		readmePath, err := cmd.findReadme(packageSrc)
+		readmePath, err := cmd.findReadme(ctx, packageSrc)
 		if err != nil {
 			return fmt.Errorf("failed to find readme: %w", err)
 		}
@@ -164,7 +177,7 @@ func (cmd *packagePublishCmd) Run(
 	} else if pkg.Publisher != "" { // Otherwise, fall back to the publisher set in the package schema.
 		publisher = pkg.Publisher
 	} else { // As a last resort, try to determine the publisher from the default organization or fail if none is found.
-		publisher, err = cmd.defaultOrg(project)
+		publisher, err = cmd.defaultOrg(ctx, b, project)
 		if err != nil {
 			return fmt.Errorf("failed to determine default organization: %w", err)
 		}
@@ -179,20 +192,23 @@ func (cmd *packagePublishCmd) Run(
 		return errors.New("no package name specified, please set one in the package schema")
 	}
 	var version semver.Version
-	if pkg.Version != nil {
-		version = *pkg.Version
+	if pkg.Version != "" {
+		version, err = semver.Parse(pkg.Version)
+		if err != nil {
+			return fmt.Errorf("invalid version %q in package schema: %w", pkg.Version, err)
+		}
 	} else {
 		return errors.New("no version specified, please set a version in the package schema")
 	}
 
-	json, err := pkg.MarshalJSON()
+	jsonData, err := json.Marshal(pkg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal schema: %w", err)
 	}
 
-	registry, err := b.GetPackageRegistry()
+	registry, err := b.GetCloudRegistry()
 	if err != nil {
-		return fmt.Errorf("failed to get package registry: %w", err)
+		return fmt.Errorf("failed to get the Private Registry backend: %w", err)
 	}
 
 	// We need to set the content-size header for S3 puts. For byte buffers (or deterministic readers)
@@ -221,7 +237,7 @@ func (cmd *packagePublishCmd) Run(
 		Publisher: publisher,
 		Name:      name,
 		Version:   version,
-		Schema:    bytes.NewReader(json),
+		Schema:    bytes.NewReader(jsonData),
 		Readme:    readmeBytes,
 	}
 
@@ -238,7 +254,7 @@ func (cmd *packagePublishCmd) Run(
 		publishInput.InstallDocs = installDocsBytes
 	}
 
-	err = registry.Publish(ctx, publishInput)
+	err = registry.PublishPackage(ctx, publishInput)
 	if err != nil {
 		return fmt.Errorf("failed to publish package: %w", err)
 	}
@@ -264,7 +280,7 @@ func login(ctx context.Context, project *workspace.Project) (backend.Backend, er
 // 1. The package source if it is a directory
 // 2. The installed plugin directory
 // If no readme is found, an empty string is returned.
-func (cmd *packagePublishCmd) findReadme(packageSrc string) (string, error) {
+func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string) (string, error) {
 	findReadmeInDir := func(dir string) string {
 		info, err := os.Stat(dir)
 		if err != nil && errors.Is(err, os.ErrNotExist) {
@@ -299,16 +315,17 @@ func (cmd *packagePublishCmd) findReadme(packageSrc string) (string, error) {
 	}
 
 	// Otherwise, try to retrieve the readme from the installed plugin.
-	pluginSpec, err := workspace.NewPluginSpec(packageSrc, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(ctx, packageSrc, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create plugin spec: %w", err)
 	}
-	pluginSpec.PluginDir = cmd.pluginDir
 
-	dir, err := pluginSpec.DirPath()
+	pluginDir, err := pluginSpec.DirPath()
 	if err != nil {
 		return "", fmt.Errorf("failed to get plugin directory: %w", err)
 	}
+	path := pluginSpec.SubDir()
+	dir := filepath.Join(pluginDir, path)
 
 	if readmeFromPlugin := findReadmeInDir(dir); readmeFromPlugin != "" {
 		return readmeFromPlugin, nil

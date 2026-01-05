@@ -35,19 +35,27 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// ParameterizationDescriptor is the serializable description of a dependency's parameterization.
 type ParameterizationDescriptor struct {
-	Name    string         // the name of the package.
-	Version semver.Version // the version of the package.
-	Value   []byte         // the parameter value of the package.
+	// Name is the name of the package.
+	Name string `json:"name" yaml:"name"`
+	// Version is the version of the package.
+	Version semver.Version `json:"version" yaml:"version"`
+	// Value is the parameter value of the package.
+	Value []byte `json:"value" yaml:"value"`
 }
 
 // PackageDescriptor is a descriptor for a package, this is similar to a plugin spec but also contains parameterization
 // info.
 type PackageDescriptor struct {
-	Name             string                      // the simple name of the plugin.
-	Version          *semver.Version             // the plugin's semantic version, if present.
-	DownloadURL      string                      // an optional server to use when downloading this plugin.
-	Parameterization *ParameterizationDescriptor // the optional parameterization of the package.
+	// Name is the simple name of the plugin.
+	Name string `json:"name" yaml:"name"`
+	// Version is the optional version of the plugin.
+	Version *semver.Version `json:"version,omitempty" yaml:"version,omitempty"`
+	// DownloadURL is the optional URL to use when downloading the provider plugin binary.
+	DownloadURL string `json:"downloadURL,omitempty" yaml:"downloadURL,omitempty"`
+	// Parameterization is the optional parameterization of the package.
+	Parameterization *ParameterizationDescriptor `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 }
 
 // PackageName returns the name of the package.
@@ -80,7 +88,7 @@ func (pd *PackageDescriptor) String() string {
 }
 
 type Loader interface {
-	// deprecated: use LoadPackageV2
+	// Deprecated: use LoadPackageV2
 	LoadPackage(pkg string, version *semver.Version) (*Package, error)
 
 	LoadPackageV2(ctx context.Context, descriptor *PackageDescriptor) (*Package, error)
@@ -89,7 +97,7 @@ type Loader interface {
 type ReferenceLoader interface {
 	Loader
 
-	// deprecated: use LoadPackageReferenceV2
+	// Deprecated: use LoadPackageReferenceV2
 	LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error)
 
 	LoadPackageReferenceV2(ctx context.Context, descriptor *PackageDescriptor) (PackageReference, error)
@@ -203,8 +211,8 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 	// 0.1.0. We thus guard against this case, though in theory this is unnecessary -- schema versions are required for
 	// parameterized providers, so we should expect not to hit this case and overwrite a (parameterized) package version
 	// with an almost certainly different plugin version.
-	if pluginVersion != nil && descriptor.Parameterization == nil && spec.PackageInfoSpec.Version == "" {
-		spec.PackageInfoSpec.Version = pluginVersion.String()
+	if pluginVersion != nil && descriptor.Parameterization == nil && spec.Version == "" {
+		spec.Version = pluginVersion.String()
 	}
 
 	p, err := ImportPartialSpec(spec, nil, l)
@@ -214,7 +222,10 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 	return p, nil
 }
 
-// deprecated: use LoadPackageReferenceV2
+// LoadPackageReference loads a package reference for the given pkg+version using the
+// given loader.
+//
+// Deprecated: use LoadPackageReferenceV2
 func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (PackageReference, error) {
 	return LoadPackageReferenceV2(
 		context.TODO(),
@@ -349,8 +360,8 @@ func (e *PackageReferenceVersionMismatchError) Error() string {
 	)
 }
 
-func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginSpec {
-	return workspace.PluginSpec{
+func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginDescriptor {
+	return workspace.PluginDescriptor{
 		Name:              descriptor.Name,
 		Version:           descriptor.Version,
 		PluginDownloadURL: descriptor.DownloadURL,
@@ -394,7 +405,7 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, err
 		}
 
-		spec := workspace.PluginSpec{
+		spec := workspace.PluginDescriptor{
 			Kind:              apitype.ResourcePlugin,
 			Name:              descriptor.Name,
 			Version:           descriptor.Version,
@@ -454,20 +465,11 @@ func (l *pluginLoader) loadSchemaBytes(
 func (l *pluginLoader) loadPluginSchemaBytes(
 	ctx context.Context, descriptor *PackageDescriptor,
 ) ([]byte, plugin.Provider, error) {
-	wsDescriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
-			Name:              descriptor.Name,
-			Version:           descriptor.Version,
-			PluginDownloadURL: descriptor.DownloadURL,
-			Kind:              apitype.ResourcePlugin,
-		},
-	}
-	if descriptor.Parameterization != nil {
-		wsDescriptor.Parameterization = &workspace.Parameterization{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version,
-			Value:   descriptor.Parameterization.Value,
-		}
+	wsDescriptor := workspace.PluginDescriptor{
+		Name:              descriptor.Name,
+		Version:           descriptor.Version,
+		PluginDownloadURL: descriptor.DownloadURL,
+		Kind:              apitype.ResourcePlugin,
 	}
 
 	provider, err := l.host.Provider(wsDescriptor)

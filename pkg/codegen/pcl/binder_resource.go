@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -33,10 +35,10 @@ func getResourceToken(node *Resource) (string, hcl.Range) {
 	return node.syntax.Labels[1], node.syntax.LabelRanges[1]
 }
 
-func (b *binder) bindResource(node *Resource) hcl.Diagnostics {
+func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
-	typeDiags := b.bindResourceTypes(node)
+	typeDiags := b.bindResourceTypes(ctx, node)
 	diagnostics = append(diagnostics, typeDiags...)
 
 	bodyDiags := b.bindResourceBody(node)
@@ -264,7 +266,7 @@ func (b *binder) reduceInputUnionTypes(node *Resource, inputProperties []*schema
 }
 
 // bindResourceTypes binds the input and output types for a resource.
-func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
+func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diagnostics {
 	// Set the input and output types to dynamic by default.
 	node.InputType, node.OutputType = model.DynamicType, model.DynamicType
 
@@ -300,7 +302,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
 		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
 	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(b.options.loader, pkg, "")
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
 	}
 
 	if err != nil {
@@ -443,7 +445,7 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 }
 
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
-	if attr.Name == "ignoreChanges" {
+	if attr.Name == "ignoreChanges" || attr.Name == "hideDiffs" {
 		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
 		if !ok {
 			return nil, nil
@@ -478,6 +480,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "provider":
 				t = model.DynamicType
 				resourceOptions.Provider = item.Value
+			case "providers":
+				t = model.NewUnionType(model.NewMapType(model.DynamicType), model.NewListType(model.DynamicType))
+				resourceOptions.Providers = item.Value
 			case "dependsOn":
 				t = model.NewListType(model.DynamicType)
 				resourceOptions.DependsOn = item.Value
@@ -490,6 +495,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "ignoreChanges":
 				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.IgnoreChanges = item.Value
+			case "hideDiffs":
+				t = model.NewListType(ResourcePropertyType) // Property paths
+				resourceOptions.HideDiffs = item.Value
 			case "version":
 				t = model.StringType
 				resourceOptions.Version = item.Value
@@ -499,6 +507,15 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "deletedWith":
 				t = model.DynamicType
 				resourceOptions.DeletedWith = item.Value
+			case "replaceWith":
+				t = model.NewListType(model.DynamicType)
+				resourceOptions.ReplaceWith = item.Value
+			case "import":
+				t = model.StringType
+				resourceOptions.ImportID = item.Value
+			case "replacementTrigger":
+				t = model.DynamicType
+				resourceOptions.ReplacementTrigger = NewConvertCall(item.Value, t)
 			default:
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 				continue
@@ -564,7 +581,11 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						}),
 					}
 					diags := condExpr.Typecheck(false)
-					contract.Assertf(len(diags) == 0, "failed to typecheck conditional expression: %v", diags)
+					checkDiagnostics := len(diags) == 0
+					if b.options.skipResourceTypecheck {
+						checkDiagnostics = !diags.HasErrors()
+					}
+					contract.Assertf(checkDiagnostics, "failed to typecheck conditional expression: %v", diags)
 
 					node.VariableType = condExpr.Type()
 				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
@@ -585,7 +606,11 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						Value: model.VariableReference(resourceVar),
 					}
 					diags := rangeExpr.Typecheck(false)
-					contract.Assertf(len(diags) == 0, "failed to typecheck range expression: %v", diags)
+					checkDiagnostics := len(diags) == 0
+					if b.options.skipResourceTypecheck {
+						checkDiagnostics = !diags.HasErrors()
+					}
+					contract.Assertf(checkDiagnostics, "failed to typecheck range expression: %v", diags)
 
 					rangeValue = model.IntType
 
@@ -594,7 +619,6 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					strictCollectionType := !b.options.skipRangeTypecheck
 					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range(), strictCollectionType)
 					rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
-
 					iterationExpr := &model.ForExpression{
 						ValueVariable: &model.Variable{
 							Name:         "_",
@@ -616,6 +640,12 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	// Bind the resource's body.
 	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
 	block, blockDiags := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
+	for _, diag := range blockDiags {
+		if b.options.skipResourceTypecheck && diag.Severity == hcl.DiagError {
+			// If we are skipping resource type-checking, convert errors to warnings.
+			diag.Severity = hcl.DiagWarning
+		}
+	}
 	diagnostics = append(diagnostics, blockDiags...)
 
 	var options *model.Block
@@ -685,7 +715,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 			}
 		}
 
-		for _, k := range codegen.SortedKeys(objectType.Properties) {
+		for _, k := range maputil.SortedKeys(objectType.Properties) {
 			typ := objectType.Properties[k]
 			if model.IsOptionalType(typ) || attrNames.Has(k) {
 				// The type is present or optional. No error.

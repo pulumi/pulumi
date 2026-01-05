@@ -17,18 +17,29 @@ package deploytest
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // BackendClient provides a simple implementation of deploy.BackendClient that defers to a function value.
 type BackendClient struct {
-	GetStackOutputsF         func(ctx context.Context, name string) (resource.PropertyMap, error)
-	GetStackResourceOutputsF func(ctx context.Context, name string) (resource.PropertyMap, error)
+	GetStackOutputsF func(
+		ctx context.Context,
+		name string,
+		onDecryptError func(error) error,
+	) (property.Map, error)
+
+	GetStackResourceOutputsF func(ctx context.Context, name string) (property.Map, error)
 }
 
-// GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
-func (b *BackendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
-	return b.GetStackOutputsF(ctx, name)
+// GetStackOutputs returns the outputs (if any) for the named stack, returning an error if the stack cannot be found or
+// loaded. If the stack contains secrets that cannot be decrypted, the onDecryptError callback will be called with the
+// error. The callback should return a new error to be returned to the caller, or nil to ignore the error.
+func (b *BackendClient) GetStackOutputs(
+	ctx context.Context,
+	name string,
+	onDecryptError func(error) error,
+) (property.Map, error) {
+	return b.GetStackOutputsF(ctx, name, onDecryptError)
 }
 
 // GetStackResourceOutputs returns the resource outputs for a stack, or an error if the stack
@@ -38,6 +49,6 @@ func (b *BackendClient) GetStackOutputs(ctx context.Context, name string) (resou
 // `outputs` (containing the resource outputs themselves).
 func (b *BackendClient) GetStackResourceOutputs(
 	ctx context.Context, name string,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	return b.GetStackResourceOutputsF(ctx, name)
 }

@@ -25,15 +25,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type AlphaProvider struct {
 	plugin.UnimplementedProvider
 }
 
-// TODO: Ideally this would test with build metadata parts as well but blang/semver has issues with that currently.
-var alphaVersion = semver.MustParse("3.0.0-alpha.1.internal")
+var alphaVersion = semver.MustParse("3.0.0-alpha.1.internal+exp.sha.12345678")
 
 var _ plugin.Provider = (*AlphaProvider)(nil)
 
@@ -167,8 +165,8 @@ func (p *AlphaProvider) Create(
 	}, nil
 }
 
-func (p *AlphaProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{
+func (p *AlphaProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
+	return plugin.PluginInfo{
 		Version: &alphaVersion,
 	}, nil
 }

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build js
-// +build js
 
 package cmdutil
 
@@ -36,5 +35,9 @@ func processExistsWithParent(pid int, ppid int) (bool, error) {
 }
 
 func RegisterProcessGroup(cmd *exec.Cmd) {
+	panic(errors.New("unsupported"))
+}
+
+func InterruptChildren(pid int) error {
 	panic(errors.New("unsupported"))
 }

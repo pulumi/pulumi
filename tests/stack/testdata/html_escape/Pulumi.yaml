@@ -1,0 +1,3 @@
+name: html_escape
+description: A program that exports a string that contains HTML characters
+runtime: nodejs

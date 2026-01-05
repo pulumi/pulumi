@@ -39,8 +39,8 @@ type grpcCapturingProviderServer struct {
 }
 
 func (p *grpcCapturingProviderServer) logMessage(method RPCMethod, msg proto.Message) error {
-	p.Mutex.Lock()
-	defer p.Mutex.Unlock()
+	p.Lock()
+	defer p.Unlock()
 	r := newRPCRequest(method, msg)
 	p.onRequest(r)
 	return nil

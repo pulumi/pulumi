@@ -24,8 +24,9 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	structpb "google.golang.org/protobuf/types/known/structpb"
@@ -103,8 +104,12 @@ func (info ProgramInfo) Marshal() (*pulumirpc.ProgramInfo, error) {
 }
 
 type InstallDependenciesRequest struct {
-	Info                    ProgramInfo
+	Info ProgramInfo
+	// True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
+	// of the language toolchain used.
 	UseLanguageVersionTools bool
+	// True if this install is for a plugin, as opposed to a top level Pulumi program.
+	IsPlugin bool
 }
 
 func (options InstallDependenciesRequest) String() string {
@@ -127,7 +132,7 @@ type LanguageRuntime interface {
 	// return result.Bail immediately and not print any further messages to the user.
 	Run(info RunInfo) (string, bool, error)
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (workspace.PluginInfo, error)
+	GetPluginInfo() (PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	// It returns io.Readers for stdout and stderr as well as a channel that will be closed when the operation is
@@ -138,6 +143,9 @@ type LanguageRuntime interface {
 	// RuntimeOptionsPrompts returns additional options that can be set for the runtime.
 	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)
 
+	// Template allows the language runtime to perform additional templating on a newly instantiated project template.
+	Template(info ProgramInfo, projectName tokens.PackageName) error
+
 	// About returns information about the language runtime.
 	About(info ProgramInfo) (AboutInfo, error)
 
@@ -145,7 +153,7 @@ type LanguageRuntime interface {
 	GetProgramDependencies(info ProgramInfo, transitiveDependencies bool) ([]DependencyInfo, error)
 
 	// RunPlugin executes a plugin program and returns its result asynchronously.
-	RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error)
+	RunPlugin(ctx context.Context, info RunPluginInfo) (io.Reader, io.Reader, *promise.Promise[int32], error)
 
 	// GenerateProject generates a program project in the given directory. This will include metadata files such
 	// as Pulumi.yaml and package.json.
@@ -166,6 +174,13 @@ type LanguageRuntime interface {
 
 	// Pack packs a library package into a language specific artifact in the given destination directory.
 	Pack(packageDirectory string, destinationDirectory string) (string, error)
+
+	// Link links a set of local dependencies into the given program directory.
+	Link(info ProgramInfo, localDependencies []workspace.LinkablePackageDescriptor, loaderTarget string) (string, error)
+
+	// Cancel signals the language runtime to gracefully shut down and abort any ongoing operations.
+	// Operations aborted in this way will return an error.
+	Cancel() error
 }
 
 // DependencyInfo contains information about a dependency reported by a language runtime.
@@ -189,25 +204,26 @@ type RunPluginInfo struct {
 	WorkingDirectory string
 	Args             []string
 	Env              []string
+	Kind             string
+	AttachDebugger   bool
 }
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
 type RunInfo struct {
-	Info              ProgramInfo           // the information about the program to run.
-	MonitorAddress    string                // the RPC address to the host resource monitor.
-	Project           string                // the project name housing the program being run.
-	Stack             string                // the stack name being evaluated.
-	Pwd               string                // the program's working directory.
-	Args              []string              // any arguments to pass to the program.
-	Config            map[config.Key]string // the configuration variables to apply before running.
-	ConfigSecretKeys  []config.Key          // the configuration keys that have secret values.
-	ConfigPropertyMap resource.PropertyMap  // the configuration as a property map.
-	DryRun            bool                  // true if we are performing a dry-run (preview).
-	QueryMode         bool                  // true if we're only doing a query.
-	Parallel          int32                 // the degree of parallelism for resource operations (<=1 for serial).
-	Organization      string                // the organization name housing the program being run (might be empty).
-	LoaderAddress     string                // the RPC address of the host's schema loader.
-	AttachDebugger    bool                  // true if we are starting the program under a debugger.
+	Info             ProgramInfo           // the information about the program to run.
+	MonitorAddress   string                // the RPC address to the host resource monitor.
+	Project          string                // the project name housing the program being run.
+	Stack            string                // the stack name being evaluated.
+	Pwd              string                // the program's working directory.
+	Args             []string              // any arguments to pass to the program.
+	Config           map[config.Key]string // the configuration variables to apply before running.
+	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
+	DryRun           bool                  // true if we are performing a dry-run (preview).
+	QueryMode        bool                  // true if we're only doing a query.
+	Parallel         int32                 // the degree of parallelism for resource operations (<=1 for serial).
+	Organization     string                // the organization name housing the program being run (might be empty).
+	LoaderAddress    string                // the RPC address of the host's schema loader.
+	AttachDebugger   bool                  // true if we are starting the program under a debugger.
 }
 
 type RuntimeOptionType int
@@ -226,7 +242,7 @@ type RuntimeOptionValue struct {
 	DisplayName string
 }
 
-func (v RuntimeOptionValue) Value() interface{} {
+func (v RuntimeOptionValue) Value() any {
 	if v.PromptType == PromptTypeString {
 		return v.StringValue
 	}

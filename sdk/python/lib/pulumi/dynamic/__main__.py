@@ -16,7 +16,7 @@ import asyncio
 import base64
 from concurrent import futures
 from threading import Event, Lock
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 import os
 import sys
 import dill
@@ -25,18 +25,15 @@ from google.protobuf import empty_pb2
 from pulumi.metadata import get_project
 from pulumi.runtime._serialization import _deserialize
 from pulumi.runtime import configure, proto, rpc, Settings
+from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.dynamic import ResourceProvider, ConfigureRequest, Config
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 PROVIDER_KEY = "__provider"
 
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
-
-_PROVIDER_CACHE: Dict[str, ResourceProvider] = {}
+_PROVIDER_CACHE: dict[str, ResourceProvider] = {}
 _PROVIDER_LOCK = Lock()
 
 
@@ -45,7 +42,7 @@ _PROVIDER_LOCK = Lock()
 # deserialized and configured provider is stored in `_PROVIDER_CACHE`. This
 # guarantees that the provider is only deserialized and configured once per
 # process.
-def get_provider(props: Dict[str, Any], config: Dict[str, Any]) -> ResourceProvider:
+def get_provider(props: dict[str, Any], config: dict[str, Any]) -> ResourceProvider:
     # Ensure Settings are configured in the thread that calls get_provider
     configure(
         Settings(
@@ -81,7 +78,7 @@ def get_provider(props: Dict[str, Any], config: Dict[str, Any]) -> ResourceProvi
 
 
 class DynamicResourceProviderServicer(ResourceProviderServicer):
-    _config: Dict[str, Any] = {}
+    _config: dict[str, Any] = {}
 
     def CheckConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)

@@ -17,6 +17,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -57,6 +58,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			yes = yes || env.SkipConfirmations.Value()
 			var urn resource.URN
 			if all {
@@ -70,7 +72,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					}
 
 					var err error
-					urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil,
+					urn, err = getURNFromState(ctx, sink, ws, backend.DefaultLoginManager, stack, nil,
 						"Select the resource to delete")
 					if err != nil {
 						return fmt.Errorf("failed to select resource: %w", err)
@@ -87,40 +89,43 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				handleProtected = func(res *resource.State) error {
 					cmdutil.Diag().Warningf(diag.Message(res.URN,
 						"deleting protected resource %s due to presence of --force"), res.URN)
-					return edit.UnprotectResource(nil, res)
+					res.Protect = false
+					return nil
 				}
 			}
 
 			// If we're deleting everything then run a total state edit, else run on just the resource given.
 			var err error
 			if all {
-				err = runTotalStateEdit(ctx, ws, lm, stack, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
-					// Iterate the resources backwards (so we delete dependents first) and delete them.
-					for i := len(snap.Resources) - 1; i >= 0; i-- {
-						res := snap.Resources[i]
-						if err := edit.DeleteResource(snap, res, handleProtected, targetDependents); err != nil {
-							return err
+				err = runTotalStateEdit(ctx, sink, ws, lm, stack, showPrompt,
+					func(opts display.Options, snap *deploy.Snapshot) error {
+						// Iterate the resources backwards (so we delete dependents first) and delete them.
+						for i := len(snap.Resources) - 1; i >= 0; i-- {
+							res := snap.Resources[i]
+							if err := edit.DeleteResource(snap, res, handleProtected, targetDependents); err != nil {
+								return err
+							}
 						}
-					}
-					return nil
-				})
+						return nil
+					})
 			} else {
 				err = runStateEdit(
-					ctx, ws, lm, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+					ctx, sink, ws, lm, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
 						return edit.DeleteResource(snap, res, handleProtected, targetDependents)
 					})
 			}
 			if err != nil {
 				switch e := err.(type) {
 				case edit.ResourceHasDependenciesError:
-					message := string(e.Condemned.URN) + " can't be safely deleted because the following resources depend on it:\n"
+					var message strings.Builder
+					message.WriteString(string(e.Condemned.URN))
+					message.WriteString(" can't be safely deleted because the following resources depend on it:\n")
 					for _, dependentResource := range e.Dependencies {
 						depUrn := dependentResource.URN
-						message += fmt.Sprintf(" * %-15q (%s)\n", depUrn.Name(), depUrn)
+						message.WriteString(fmt.Sprintf(" * %-15q (%s)\n", depUrn.Name(), depUrn))
 					}
-
-					message += "\nDelete those resources first or pass --target-dependents."
-					return errors.New(message)
+					message.WriteString("\nDelete those resources first or pass --target-dependents.")
+					return errors.New(message.String())
 				case edit.ResourceProtectedError:
 					return fmt.Errorf(
 						"%s can't be safely deleted because it is protected. "+

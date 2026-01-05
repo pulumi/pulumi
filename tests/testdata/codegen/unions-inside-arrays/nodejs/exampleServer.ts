@@ -33,7 +33,7 @@ export class ExampleServer extends pulumi.CustomResource {
         return obj['__pulumiType'] === ExampleServer.__pulumiType;
     }
 
-    public /*out*/ readonly name!: pulumi.Output<string | undefined>;
+    declare public /*out*/ readonly name: pulumi.Output<string | undefined>;
 
     /**
      * Create a ExampleServer resource with the given unique name, arguments, and options.
@@ -46,7 +46,7 @@ export class ExampleServer extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["propertiesCollection"] = args ? args.propertiesCollection : undefined;
+            resourceInputs["propertiesCollection"] = args?.propertiesCollection;
             resourceInputs["name"] = undefined /*out*/;
         } else {
             resourceInputs["name"] = undefined /*out*/;

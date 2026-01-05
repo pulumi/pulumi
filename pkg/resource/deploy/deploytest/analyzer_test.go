@@ -17,10 +17,11 @@ package deploytest
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAnalyzer(t *testing.T) {
@@ -28,9 +29,9 @@ func TestAnalyzer(t *testing.T) {
 	t.Run("Close", func(t *testing.T) {
 		t.Parallel()
 		a := &Analyzer{}
-		assert.NoError(t, a.Close())
+		require.NoError(t, a.Close())
 		// Ensure Idempotent.
-		assert.NoError(t, a.Close())
+		require.NoError(t, a.Close())
 	})
 	t.Run("Name", func(t *testing.T) {
 		t.Parallel()
@@ -48,23 +49,23 @@ func TestAnalyzer(t *testing.T) {
 
 			var called bool
 			a := &Analyzer{
-				AnalyzeF: func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error) {
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 					called = true
-					return nil, nil
+					return plugin.AnalyzeResponse{}, nil
 				},
 			}
 			res, err := a.Analyze(plugin.AnalyzerResource{})
 			assert.True(t, called)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
+			require.NoError(t, err)
+			assert.Nil(t, res.Diagnostics)
 		})
 		t.Run("no AnalyzeF", func(t *testing.T) {
 			t.Parallel()
 
 			a := &Analyzer{}
 			res, err := a.Analyze(plugin.AnalyzerResource{})
-			assert.NoError(t, err)
-			assert.Nil(t, res)
+			require.NoError(t, err)
+			assert.Nil(t, res.Diagnostics)
 		})
 	})
 	t.Run("AnalyzeStack", func(t *testing.T) {
@@ -74,23 +75,23 @@ func TestAnalyzer(t *testing.T) {
 
 			var called bool
 			a := &Analyzer{
-				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 					called = true
-					return nil, nil
+					return plugin.AnalyzeResponse{}, nil
 				},
 			}
 			res, err := a.AnalyzeStack(nil)
 			assert.True(t, called)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
+			require.NoError(t, err)
+			assert.Nil(t, res.Diagnostics)
 		})
 		t.Run("no AnalyzeStackF", func(t *testing.T) {
 			t.Parallel()
 
 			a := &Analyzer{}
 			res, err := a.AnalyzeStack(nil)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
+			require.NoError(t, err)
+			assert.Nil(t, res.Diagnostics)
 		})
 	})
 	t.Run("Remediate", func(t *testing.T) {
@@ -100,36 +101,35 @@ func TestAnalyzer(t *testing.T) {
 
 			var called bool
 			a := &Analyzer{
-				RemediateF: func(r plugin.AnalyzerResource) ([]plugin.Remediation, error) {
+				RemediateF: func(r plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 					called = true
-					return nil, nil
+					return plugin.RemediateResponse{}, nil
 				},
 			}
 			res, err := a.Remediate(plugin.AnalyzerResource{})
 			assert.True(t, called)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
+			require.NoError(t, err)
+			assert.Nil(t, res.Remediations)
 		})
 		t.Run("no RemediateF", func(t *testing.T) {
 			t.Parallel()
 
 			a := &Analyzer{}
 			res, err := a.Remediate(plugin.AnalyzerResource{})
-			assert.NoError(t, err)
-			assert.Nil(t, res)
+			require.NoError(t, err)
+			assert.Nil(t, res.Remediations)
 		})
 	})
 	t.Run("GetPluginInfo", func(t *testing.T) {
 		t.Parallel()
 		a := &Analyzer{
 			Info: plugin.AnalyzerInfo{
-				Name: "my-analyzer",
+				Version: "2.0.0",
 			},
 		}
 		info, err := a.GetPluginInfo()
-		assert.NoError(t, err)
-		assert.Equal(t, "my-analyzer", info.Name)
-		assert.Equal(t, apitype.AnalyzerPlugin, info.Kind)
+		require.NoError(t, err)
+		assert.Equal(t, &semver.Version{Major: 2}, info.Version)
 	})
 	t.Run("Configure", func(t *testing.T) {
 		t.Parallel()
@@ -143,14 +143,14 @@ func TestAnalyzer(t *testing.T) {
 					return nil
 				},
 			}
-			assert.NoError(t, a.Configure(nil))
+			require.NoError(t, a.Configure(nil))
 			assert.True(t, called)
 		})
 		t.Run("no ConfigureF", func(t *testing.T) {
 			t.Parallel()
 
 			a := &Analyzer{}
-			assert.NoError(t, a.Configure(nil))
+			require.NoError(t, a.Configure(nil))
 		})
 	})
 }

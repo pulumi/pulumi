@@ -23,21 +23,18 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// intentionally disabling here for cleaner err declaration/assignment.
-//
-//nolint:vetshadow
 func NewWatchCmd() *cobra.Command {
 	var debug bool
 	var message string
@@ -88,7 +85,7 @@ func NewWatchCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				SuppressOutputs:      true,
 				SuppressProgress:     true,
-				SuppressPermalink:    true,
+				SuppressPermalink:    false,
 				IsInteractive:        false,
 				Type:                 display.DisplayWatch,
 				Debug:                debug,
@@ -100,6 +97,7 @@ func NewWatchCmd() *cobra.Command {
 
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
@@ -111,7 +109,7 @@ func NewWatchCmd() *cobra.Command {
 			}
 
 			// Save any config values passed via flags.
-			if err := parseAndSaveConfigArray(ws, s, configArray, configPath); err != nil {
+			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath); err != nil {
 				return err
 			}
 
@@ -120,7 +118,7 @@ func NewWatchCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -160,14 +158,14 @@ func NewWatchCmd() *cobra.Command {
 				Experimental:              env.Experimental.Value(),
 			}
 
-			err = s.Watch(ctx, backend.UpdateOperation{
+			err = backend.WatchStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    stack.DefaultSecretsProvider,
+				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			}, pathArray)
 

@@ -78,8 +78,8 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 	}
 
 	var tracer opentracing.Tracer
-	switch {
-	case endpointURL.Scheme == "file":
+	switch endpointURL.Scheme {
+	case "file":
 		// If the endpoint is a file:// URL, use a local tracer.
 		TracingToFile = true
 
@@ -113,7 +113,7 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 		// process.
 		TracingEndpoint = proxyEndpoint
 
-	case endpointURL.Scheme == "tcp":
+	case "tcp":
 		// Store the tracing endpoint
 		TracingEndpoint = tracingEndpoint
 

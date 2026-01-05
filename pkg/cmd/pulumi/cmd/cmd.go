@@ -24,8 +24,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -65,7 +65,7 @@ func processCmdErrors(err error) error {
 	if de, ok := engine.AsDecryptError(err); ok {
 		printDecryptError(*de)
 		return nil
-	} else if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
+	} else if sie, ok := snapshot.AsSnapshotIntegrityError(err); ok {
 		printSnapshotIntegrityError(err, *sie)
 
 		// Having printed out a specific error, we don't want RunFunc to print out
@@ -100,7 +100,7 @@ func printDecryptError(e engine.DecryptError) {
 // Pulumi engine. This function is a type-specific handler for these errors that
 // prints out a panic-like banner with information about the error and how to
 // report it.
-func printSnapshotIntegrityError(err error, sie deploy.SnapshotIntegrityError) {
+func printSnapshotIntegrityError(err error, sie snapshot.SnapshotIntegrityError) {
 	var message strings.Builder
 	message.WriteString(`The Pulumi CLI encountered a snapshot integrity error. This is a bug!
 
@@ -116,7 +116,7 @@ You can try to repair your snapshot as follows:
 We would appreciate a report: https://github.com/pulumi/pulumi/issues/
 `)
 
-	if sie.Op == deploy.SnapshotIntegrityRead && sie.Metadata == nil {
+	if sie.Op == snapshot.SnapshotIntegrityRead && sie.Metadata == nil {
 		message.WriteString(`
 NOTE: This error occurred while reading a snaphot. This error was introduced by
 a previous operation when it wrote the snapshot. If you have details about that
@@ -137,7 +137,7 @@ Operating System:  %s`,
 		runtime.GOOS,
 	))
 
-	if sie.Op == deploy.SnapshotIntegrityRead && sie.Metadata != nil {
+	if sie.Op == snapshot.SnapshotIntegrityRead && sie.Metadata != nil {
 		message.WriteString(fmt.Sprintf(`
 
 Write Version:     %s

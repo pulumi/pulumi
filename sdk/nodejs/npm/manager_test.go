@@ -31,26 +31,12 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/blang/semver"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// chdir temporarily changes the current directory of the program.
-// It restores it to the original directory when the test is done.
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		if assert.NoError(t, err) {
-			assert.Equal(t, cwd, restoredDir)
-		}
-	})
-}
 
 //nolint:paralleltest // changes working directory
 func TestNPMInstall(t *testing.T) {
@@ -85,6 +71,21 @@ func TestPnpmInstall(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // changes working directory
+func TestBunInstall(t *testing.T) {
+	t.Run("development", func(t *testing.T) {
+		testInstall(t, "bun", false /*production*/)
+	})
+
+	/*
+		Commenting this out because Bun has a bug where --production
+		enforces "frozen lockfile" when it probably shouldn't: https://github.com/oven-sh/bun/issues/10949
+	*/
+	// t.Run("production", func(t *testing.T) {
+	// 	testInstall(t, "bun", true /*production*/)
+	// })
+}
+
 func TestResolvePackageManager(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -97,13 +98,15 @@ func TestResolvePackageManager(t *testing.T) {
 		{"picks npm", NpmPackageManager, []string{}, "npm"},
 		{"picks yarn", YarnPackageManager, []string{}, "yarn"},
 		{"picks pnpm", PnpmPackageManager, []string{}, "pnpm"},
+		{"picks bun", BunPackageManager, []string{}, "bun"},
 		{"picks npm based on lockfile", AutoPackageManager, []string{"npm"}, "npm"},
 		{"picks yarn based on lockfile", AutoPackageManager, []string{"yarn"}, "yarn"},
 		{"picks pnpm based on lockfile", AutoPackageManager, []string{"pnpm"}, "pnpm"},
+		{"picks bun based on lockfile", AutoPackageManager, []string{"bun"}, "bun"},
 		{"yarn > pnpm > npm", AutoPackageManager, []string{"yarn", "pnpm", "npm"}, "yarn"},
-		{"pnpm > npm", AutoPackageManager, []string{"pnpm", "npm"}, "pnpm"},
+		{"pnpm > bun > npm", AutoPackageManager, []string{"pnpm", "bun", "npm"}, "pnpm"},
+		{"bun > npm", AutoPackageManager, []string{"bun", "npm"}, "bun"},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
@@ -125,8 +128,7 @@ func TestPack(t *testing.T) {
 		"version": "1.0"
 	}`)
 
-	for _, pm := range []string{"npm", "yarn", "pnpm"} {
-		pm := pm
+	for _, pm := range []string{"npm", "yarn", "pnpm", "bun"} {
 		t.Run(pm, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
@@ -169,8 +171,8 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 		{"npm", "Invalid package, must have name and version"},
 		{"yarn", "Package doesn't have a version"},
 		{"pnpm", "Package version is not defined in the package.json"},
+		{"bun", "error: package.json must have `name` and `version` fields"},
 	} {
-		tt := tt
 		t.Run(tt.packageManager, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
@@ -180,11 +182,46 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 			stderr := new(bytes.Buffer)
 
 			_, err := Pack(context.Background(), AutoPackageManager, dir, stderr)
-
 			exitErr := new(exec.ExitError)
 			require.ErrorAs(t, err, &exitErr)
 			assert.NotZero(t, exitErr.ExitCode())
 			require.Contains(t, stderr.String(), tt.expectedErrorMessage)
+		})
+	}
+}
+
+//nolint:paralleltest
+func TestBunPackNonExistentPackageJSON(t *testing.T) {
+	dir := t.TempDir()
+	stderr := new(bytes.Buffer)
+	errorMessage := "error: No package.json was found for directory"
+
+	_, err := Pack(context.Background(), "bun", dir, stderr)
+	exitErr := new(exec.ExitError)
+	require.ErrorAs(t, err, &exitErr)
+	assert.NotZero(t, exitErr.ExitCode())
+	require.Contains(t, stderr.String(), errorMessage)
+}
+
+//nolint:paralleltest // chdir
+func TestManagerVersion(t *testing.T) {
+	for _, pmType := range []PackageManagerType{
+		NpmPackageManager,
+		YarnPackageManager,
+		PnpmPackageManager,
+		BunPackageManager,
+	} {
+		t.Run(string(pmType), func(t *testing.T) {
+			//nolint:paralleltest // chdir
+			dir := t.TempDir()
+			t.Chdir(dir)
+
+			pm, err := ResolvePackageManager(pmType, dir)
+			require.NoError(t, err)
+
+			version, err := pm.Version()
+			require.NoError(t, err)
+			require.NotEqual(t, version, semver.Version{})
 		})
 	}
 }
@@ -199,6 +236,9 @@ func writeLockFile(t *testing.T, dir string, packageManager string) {
 		writeFile(t, filepath.Join(dir, "yarn.lock"), "# yarn lockfile v1")
 	case "pnpm":
 		writeFile(t, filepath.Join(dir, "pnpm-lock.yaml"), "lockfileVersion: '6.0'")
+	case "bun":
+		writeFile(t, filepath.Join(dir, "bun.lock"), "{\"lockfileVersion\": 1, \"workspaces\": "+
+			"{\"\": {\"name\": \"test-package\",},}}")
 	}
 }
 
@@ -228,11 +268,11 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 
 	// Create a new empty test directory and change the current working directory to it.
 	tempdir := t.TempDir()
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	// Create a package directory to install dependencies into.
 	pkgdir := filepath.Join(tempdir, "package")
-	assert.NoError(t, os.Mkdir(pkgdir, 0o700))
+	require.NoError(t, os.Mkdir(pkgdir, 0o700))
 
 	// Write out a minimal package.json file that has at least one dependency.
 	packageJSONFilename := filepath.Join(pkgdir, "package.json")
@@ -243,7 +283,7 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 	        "@pulumi/pulumi": "latest"
 	    }
 	}`)
-	assert.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
+	require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 
 	writeLockFile(t, pkgdir, packageManager)
 
@@ -253,7 +293,7 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 	defer ptesting.YarnInstallMutex.Unlock()
 	out := iotest.LogWriter(t)
 	bin, err := Install(context.Background(), AutoPackageManager, pkgdir, production, out, out)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, packageManager, bin)
 }
 
@@ -311,9 +351,7 @@ func fakeNPMRegistry(t testing.TB) string {
 			w.Header().Set("Content-Type", "application/octet-stream")
 			w.Header().Set("Content-Length", strconv.Itoa(len(tarball)))
 			_, err := w.Write(tarball)
-			if !assert.NoError(t, err) {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			require.NoError(t, err)
 
 		default:
 			w.WriteHeader(http.StatusNotFound)

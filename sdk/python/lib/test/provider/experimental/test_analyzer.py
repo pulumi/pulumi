@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
+from enum import Enum
 from importlib.machinery import SourceFileLoader
 from collections import abc
 import collections
@@ -30,13 +32,17 @@ from pulumi.provider.experimental.analyzer import (
     InvalidMapKeyError,
     InvalidMapTypeError,
     TypeNotFoundError,
+    enum_value_type,
     is_dict,
     is_list,
     unwrap_input,
     unwrap_output,
 )
-from pulumi.provider.experimental.component import (
+from pulumi.provider.experimental.analyzer import (
     ComponentDefinition,
+    Dependency,
+    EnumValueDefinition,
+    Parameterization,
     PropertyDefinition,
     PropertyType,
     TypeDefinition,
@@ -119,8 +125,12 @@ def test_analyze_component_empty():
 
 
 def test_analyze_component_plain_types():
-    class ComplexType(TypedDict):
+    class ComplexTypeInput(TypedDict):
         a_input_list_str: Optional[pulumi.Input[list[str]]]
+        a_str: str
+
+    class ComplexTypeOutput(TypedDict):
+        a_output_list_str: Optional[pulumi.Output[list[str]]]
         a_str: str
 
     class Args(TypedDict):
@@ -137,8 +147,8 @@ def test_analyze_component_plain_types():
         a_dict_input: dict[str, pulumi.Input[int]]
         a_input_dict: pulumi.Input[dict[str, int]]
         a_input_dict_input: pulumi.Input[dict[str, pulumi.Input[int]]]
-        a_complex_type: ComplexType
-        a_input_complex_type: pulumi.Input[ComplexType]
+        a_complex_type: ComplexTypeInput
+        a_input_complex_type: pulumi.Input[ComplexTypeInput]
 
     class Component(pulumi.ComponentResource):
         a_int: int
@@ -147,8 +157,8 @@ def test_analyze_component_plain_types():
         a_bool: bool
         a_optional: Optional[str]
         a_output_list: pulumi.Output[list[str]]
-        a_output_complex: pulumi.Output[ComplexType]
-        a_optional_output_complex: Optional[pulumi.Output[ComplexType]]
+        a_output_complex: pulumi.Output[ComplexTypeOutput]
+        a_optional_output_complex: Optional[pulumi.Output[ComplexTypeOutput]]
 
         def __init__(self, args: Args): ...
 
@@ -173,17 +183,15 @@ def test_analyze_component_plain_types():
             "aInputList": PropertyDefinition(
                 type=PropertyType.ARRAY,
                 items=PropertyDefinition(type=PropertyType.STRING, plain=True),
-                plain=False,
             ),
             "aListInput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, plain=False),
+                items=PropertyDefinition(type=PropertyType.STRING),
                 plain=True,
             ),
             "aInputListInput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, plain=False),
-                plain=False,
+                items=PropertyDefinition(type=PropertyType.STRING),
             ),
             "aDict": PropertyDefinition(
                 type=PropertyType.OBJECT,
@@ -194,9 +202,7 @@ def test_analyze_component_plain_types():
             ),
             "aDictInput": PropertyDefinition(
                 type=PropertyType.OBJECT,
-                additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, plain=False
-                ),
+                additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
                 plain=True,
             ),
             "aInputDict": PropertyDefinition(
@@ -204,22 +210,17 @@ def test_analyze_component_plain_types():
                 additional_properties=PropertyDefinition(
                     type=PropertyType.INTEGER, plain=True
                 ),
-                plain=False,
             ),
             "aInputDictInput": PropertyDefinition(
                 type=PropertyType.OBJECT,
-                additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, plain=False
-                ),
-                plain=False,
+                additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
             ),
             "aComplexType": PropertyDefinition(
-                ref="#/types/plain-types:index:ComplexType",
+                ref="#/types/plain-types:index:ComplexTypeInput",
                 plain=True,
             ),
             "aInputComplexType": PropertyDefinition(
-                ref="#/types/plain-types:index:ComplexType",
-                plain=False,
+                ref="#/types/plain-types:index:ComplexTypeInput"
             ),
         },
         inputs_mapping={
@@ -240,23 +241,20 @@ def test_analyze_component_plain_types():
             "aInputComplexType": "a_input_complex_type",
         },
         outputs={
-            "aInt": PropertyDefinition(type=PropertyType.INTEGER, plain=False),
-            "aStr": PropertyDefinition(type=PropertyType.STRING, plain=False),
-            "aFloat": PropertyDefinition(type=PropertyType.NUMBER, plain=False),
-            "aBool": PropertyDefinition(type=PropertyType.BOOLEAN, plain=False),
-            "aOptional": PropertyDefinition(
-                type=PropertyType.STRING, plain=True, optional=True
-            ),
+            "aInt": PropertyDefinition(type=PropertyType.INTEGER),
+            "aStr": PropertyDefinition(type=PropertyType.STRING),
+            "aFloat": PropertyDefinition(type=PropertyType.NUMBER),
+            "aBool": PropertyDefinition(type=PropertyType.BOOLEAN),
+            "aOptional": PropertyDefinition(type=PropertyType.STRING, optional=True),
             "aOutputList": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
-                plain=False,
+                items=PropertyDefinition(type=PropertyType.STRING),
             ),
             "aOutputComplex": PropertyDefinition(
-                ref="#/types/plain-types:index:ComplexType", plain=False
+                ref="#/types/plain-types:index:ComplexTypeOutput",
             ),
             "aOptionalOutputComplex": PropertyDefinition(
-                ref="#/types/plain-types:index:ComplexType", plain=False, optional=True
+                ref="#/types/plain-types:index:ComplexTypeOutput", optional=True
             ),
         },
         outputs_mapping={
@@ -271,10 +269,10 @@ def test_analyze_component_plain_types():
         },
     )
     assert analyzer.type_definitions == {
-        "ComplexType": TypeDefinition(
-            name="ComplexType",
+        "ComplexTypeInput": TypeDefinition(
+            name="ComplexTypeInput",
             module="test_analyzer",
-            type="object",
+            type=PropertyType.OBJECT,
             properties={
                 "aInputListStr": PropertyDefinition(
                     type=PropertyType.ARRAY,
@@ -284,8 +282,61 @@ def test_analyze_component_plain_types():
                 "aStr": PropertyDefinition(type=PropertyType.STRING, plain=True),
             },
             properties_mapping={"aInputListStr": "a_input_list_str", "aStr": "a_str"},
-        )
+            python_type=ComplexTypeInput,
+        ),
+        "ComplexTypeOutput": TypeDefinition(
+            name="ComplexTypeOutput",
+            module="test_analyzer",
+            type=PropertyType.OBJECT,
+            properties={
+                "aOutputListStr": PropertyDefinition(
+                    type=PropertyType.ARRAY,
+                    items=PropertyDefinition(type=PropertyType.STRING),
+                    optional=True,
+                ),
+                "aStr": PropertyDefinition(type=PropertyType.STRING),
+            },
+            properties_mapping={"aOutputListStr": "a_output_list_str", "aStr": "a_str"},
+            python_type=ComplexTypeOutput,
+        ),
     }
+
+
+def test_analyze_optional_3_10_syntax():
+    if sys.version_info < (3, 10):
+        pytest.skip(f"requires Python 3.10 or above, running on {sys.version_info}")
+
+    class Args(TypedDict):
+        optional_syntax: str | None
+        optional_typing: Optional[str]
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer("optional")
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "optionalSyntax": PropertyDefinition(
+                type=PropertyType.STRING,
+                optional=True,
+                plain=True,
+            ),
+            "optionalTyping": PropertyDefinition(
+                type=PropertyType.STRING,
+                optional=True,
+                plain=True,
+            ),
+        },
+        inputs_mapping={
+            "optionalSyntax": "optional_syntax",
+            "optionalTyping": "optional_typing",
+        },
+        outputs={},
+        outputs_mapping={},
+    )
 
 
 def test_analyze_list_simple():
@@ -328,18 +379,16 @@ def test_analyze_list_simple():
         outputs={
             "listOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(
-                    type=PropertyType.STRING, optional=True, plain=True
-                ),
+                items=PropertyDefinition(type=PropertyType.STRING, optional=True),
                 optional=True,
             ),
             "typingListOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                items=PropertyDefinition(type=PropertyType.STRING),
             ),
             "abcSequenceOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                items=PropertyDefinition(type=PropertyType.STRING),
             ),
         },
         outputs_mapping={
@@ -351,14 +400,17 @@ def test_analyze_list_simple():
 
 
 def test_analyze_list_complex():
-    class ComplexType(TypedDict):
+    class ComplexTypeInput(TypedDict):
         name: Optional[pulumi.Input[list[str]]]
 
+    class ComplexTypeOutput(TypedDict):
+        name: Optional[pulumi.Output[list[str]]]
+
     class Args(TypedDict):
-        list_input: pulumi.Input[list[ComplexType]]
+        list_input: pulumi.Input[list[ComplexTypeInput]]
 
     class Component(pulumi.ComponentResource):
-        list_output: pulumi.Output[list[ComplexType]]
+        list_output: pulumi.Output[list[ComplexTypeOutput]]
 
         def __init__(self, args: Args): ...
 
@@ -371,7 +423,7 @@ def test_analyze_list_complex():
             "listInput": PropertyDefinition(
                 type=PropertyType.ARRAY,
                 items=PropertyDefinition(
-                    ref="#/types/list-complex:index:ComplexType", plain=True
+                    ref="#/types/list-complex:index:ComplexTypeInput", plain=True
                 ),
             )
         },
@@ -380,17 +432,17 @@ def test_analyze_list_complex():
             "listOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
                 items=PropertyDefinition(
-                    ref="#/types/list-complex:index:ComplexType", plain=True
+                    ref="#/types/list-complex:index:ComplexTypeOutput"
                 ),
             )
         },
         outputs_mapping={"listOutput": "list_output"},
     )
     assert analyzer.type_definitions == {
-        "ComplexType": TypeDefinition(
-            name="ComplexType",
+        "ComplexTypeInput": TypeDefinition(
+            name="ComplexTypeInput",
             module="test_analyzer",
-            type="object",
+            type=PropertyType.OBJECT,
             properties={
                 "name": PropertyDefinition(
                     type=PropertyType.ARRAY,
@@ -401,7 +453,24 @@ def test_analyze_list_complex():
             properties_mapping={
                 "name": "name",
             },
-        )
+            python_type=ComplexTypeInput,
+        ),
+        "ComplexTypeOutput": TypeDefinition(
+            name="ComplexTypeOutput",
+            module="test_analyzer",
+            type=PropertyType.OBJECT,
+            properties={
+                "name": PropertyDefinition(
+                    type=PropertyType.ARRAY,
+                    items=PropertyDefinition(type=PropertyType.STRING),
+                    optional=True,
+                ),
+            },
+            properties_mapping={
+                "name": "name",
+            },
+            python_type=ComplexTypeOutput,
+        ),
     }
 
 
@@ -500,21 +569,17 @@ def test_analyze_dict_simple():
             "dictOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, optional=True, plain=True
+                    type=PropertyType.INTEGER, optional=True
                 ),
                 optional=True,
             ),
             "typingDictOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
-                additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, plain=True
-                ),
+                additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
             ),
             "abcMappingOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
-                additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, plain=True
-                ),
+                additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
             ),
         },
         outputs_mapping={
@@ -526,14 +591,17 @@ def test_analyze_dict_simple():
 
 
 def test_analyze_dict_complex():
-    class ComplexType(TypedDict):
+    class ComplexTypeInput(TypedDict):
         name: Optional[pulumi.Input[dict[str, int]]]
 
+    class ComplexTypeOutput(TypedDict):
+        name: Optional[pulumi.Output[dict[str, int]]]
+
     class Args(TypedDict):
-        dict_input: pulumi.Input[dict[str, ComplexType]]
+        dict_input: pulumi.Input[dict[str, ComplexTypeInput]]
 
     class Component(pulumi.ComponentResource):
-        dict_output: Optional[pulumi.Output[dict[str, Optional[ComplexType]]]]
+        dict_output: Optional[pulumi.Output[dict[str, Optional[ComplexTypeOutput]]]]
 
         def __init__(self, args: Args): ...
 
@@ -546,7 +614,7 @@ def test_analyze_dict_complex():
             "dictInput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    ref="#/types/dict-complex:index:ComplexType", plain=True
+                    ref="#/types/dict-complex:index:ComplexTypeInput", plain=True
                 ),
             )
         },
@@ -555,9 +623,8 @@ def test_analyze_dict_complex():
             "dictOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    ref="#/types/dict-complex:index:ComplexType",
+                    ref="#/types/dict-complex:index:ComplexTypeOutput",
                     optional=True,
-                    plain=True,
                 ),
                 optional=True,
             ),
@@ -565,10 +632,10 @@ def test_analyze_dict_complex():
         outputs_mapping={"dictOutput": "dict_output"},
     )
     assert analyzer.type_definitions == {
-        "ComplexType": TypeDefinition(
-            name="ComplexType",
+        "ComplexTypeInput": TypeDefinition(
+            name="ComplexTypeInput",
             module="test_analyzer",
-            type="object",
+            type=PropertyType.OBJECT,
             properties={
                 "name": PropertyDefinition(
                     type=PropertyType.OBJECT,
@@ -582,7 +649,26 @@ def test_analyze_dict_complex():
             properties_mapping={
                 "name": "name",
             },
-        )
+            python_type=ComplexTypeInput,
+        ),
+        "ComplexTypeOutput": TypeDefinition(
+            name="ComplexTypeOutput",
+            module="test_analyzer",
+            type=PropertyType.OBJECT,
+            properties={
+                "name": PropertyDefinition(
+                    type=PropertyType.OBJECT,
+                    additional_properties=PropertyDefinition(
+                        type=PropertyType.INTEGER,
+                    ),
+                    optional=True,
+                ),
+            },
+            properties_mapping={
+                "name": "name",
+            },
+            python_type=ComplexTypeOutput,
+        ),
     }
 
 
@@ -621,7 +707,7 @@ def test_analyze_component_complex_type():
         "ComplexType": TypeDefinition(
             name="ComplexType",
             module="test_analyzer",
-            type="object",
+            type=PropertyType.OBJECT,
             properties={
                 "value": PropertyDefinition(type=PropertyType.STRING),
                 "optionalValue": PropertyDefinition(
@@ -632,6 +718,7 @@ def test_analyze_component_complex_type():
                 "value": "value",
                 "optionalValue": "optional_value",
             },
+            python_type=ComplexType,
         )
     }
 
@@ -705,11 +792,11 @@ def test_analyze_any():
 
 def test_analyze_descriptions():
     analyzer = Analyzer("descriptions")
-    (components, type_definitions) = analyzer.analyze(
-        components=load_components(Path("testdata", "docstrings")),
+    result = analyzer.analyze(
+        components=load_components(Path("testdata", "docstrings"))
     )
-    print(analyzer.docstrings)
-    assert components == {
+
+    assert result["component_definitions"] == {
         "Component": ComponentDefinition(
             description="Component doc string",
             name="Component",
@@ -723,26 +810,30 @@ def test_analyze_descriptions():
                     description="input_with_comment_and_description doc string",
                     type=PropertyType.STRING,
                 ),
+                "enu": PropertyDefinition(
+                    ref="#/types/descriptions:index:Enu",
+                ),
             },
             inputs_mapping={
                 "someComplexType": "some_complex_type",
                 "inputWithCommentAndDescription": "input_with_comment_and_description",
+                "enu": "enu",
             },
             outputs={
                 "complexOutput": PropertyDefinition(
                     description="complex_output doc string",
-                    ref="#/types/descriptions:index:ComplexType",
+                    ref="#/types/descriptions:index:ComplexTypeOutput",
                 )
             },
             outputs_mapping={"complexOutput": "complex_output"},
         )
     }
-    assert type_definitions == {
+    assert result["type_definitions"] == {
         "ComplexType": TypeDefinition(
             description="ComplexType doc string",
             name="ComplexType",
             module="docstrings",
-            type="object",
+            type=PropertyType.OBJECT,
             properties={
                 "value": PropertyDefinition(
                     description="value doc string",
@@ -755,12 +846,27 @@ def test_analyze_descriptions():
                 ),
             },
             properties_mapping={"value": "value", "anotherValue": "another_value"},
+            python_type=load_type(Path("testdata", "docstrings"), "ComplexType"),
+        ),
+        "ComplexTypeOutput": TypeDefinition(
+            description="ComplexTypeOutput doc string",
+            name="ComplexTypeOutput",
+            module="docstrings",
+            type=PropertyType.OBJECT,
+            properties={
+                "value": PropertyDefinition(
+                    description="value doc string",
+                    type=PropertyType.STRING,
+                ),
+            },
+            properties_mapping={"value": "value"},
+            python_type=load_type(Path("testdata", "docstrings"), "ComplexTypeOutput"),
         ),
         "NestedComplexType": TypeDefinition(
             description="NestedComplexType doc string",
             name="NestedComplexType",
             module="docstrings",
-            type="object",
+            type=PropertyType.OBJECT,
             properties={
                 "nestedValue": PropertyDefinition(
                     type=PropertyType.STRING,
@@ -768,12 +874,80 @@ def test_analyze_descriptions():
                 )
             },
             properties_mapping={"nestedValue": "nested_value"},
+            python_type=load_type(Path("testdata", "docstrings"), "NestedComplexType"),
+        ),
+        "Enu": TypeDefinition(
+            name="Enu",
+            module="docstrings",
+            description="This is an enum",
+            properties={},
+            properties_mapping={},
+            type=PropertyType.STRING,
+            enum=[
+                EnumValueDefinition(
+                    name="A", value="a", description="Docstring for Enu.A"
+                ),
+            ],
+            python_type=load_type(Path("testdata", "docstrings"), "Enu"),
         ),
     }
 
 
 def test_analyze_resource_ref():
-    class MyResource(pulumi.CustomResource): ...
+    analyzer = Analyzer("resource-ref")
+
+    result = analyzer.analyze(
+        components=load_components(Path("testdata", "resource-ref")),
+    )
+    assert result["component_definitions"] == {
+        "Component": ComponentDefinition(
+            name="Component",
+            module="resource_ref",
+            inputs={
+                "res": PropertyDefinition(
+                    ref="/mock_package/v1.2.3/schema.json#/resources/mock_package:index:MyResource",
+                ),
+                "resPara": PropertyDefinition(
+                    ref="/terraform-provider/v0.10.0/schema.json#/resources/parameterized:index:MyResource",
+                ),
+                "enum": PropertyDefinition(
+                    ref="/mock_package/v1.2.3/schema.json#/types/mock_package:index:MyEnum"
+                ),
+                "enumPara": PropertyDefinition(
+                    ref="/terraform-provider/v0.10.0/schema.json#/types/parameterized:index:MyEnum"
+                ),
+            },
+            inputs_mapping={
+                "res": "res",
+                "resPara": "res_para",
+                "enum": "enum",
+                "enumPara": "enum_para",
+            },
+            outputs={},
+            outputs_mapping={},
+        )
+    }
+    assert sorted(result["dependencies"], key=lambda d: d.name) == [
+        Dependency(
+            name="mock_package",
+            version="1.2.3",
+            downloadURL="example.com/download",
+        ),
+        Dependency(
+            name="terraform-provider",
+            version="0.10.0",
+            parameterization=Parameterization(
+                name="parameterized",
+                version="0.2.2",
+                value="eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL25ldGxpZnkvbmV0bGlmeSIsInZlcnNpb24iOiIwLjIuMiJ9fQ==",
+            ),
+        ),
+    ]
+
+
+def test_analyze_resource_ref_no_resource_type():
+    class MyResource(pulumi.CustomResource):
+        pass
 
     class Args(TypedDict):
         password: pulumi.Input[MyResource]
@@ -784,10 +958,12 @@ def test_analyze_resource_ref():
     analyzer = Analyzer("resource-ref")
     try:
         analyzer.analyze_component(Component)
+        assert False, "expected an exception"
     except Exception as e:
         assert (
             str(e)
-            == "Resource references are not supported yet: found type 'MyResource' for 'Args.password'"
+            == "Can not determine resource reference for type 'MyResource' used in 'Args.password': 'MyResource.pulumi_type' is not defined. "
+            + "This may be due to an outdated version of 'test_analyzer'."
         )
 
 
@@ -817,26 +993,162 @@ def test_analyze_union_type():
         )
         assert False, "expected an exception"
     except Exception as e:
-        assert (
-            str(e)
-            == "Union types are not supported: found type 'typing.Union[str, int]' for 'Args.uni'"
-        )
+        if sys.version_info >= (3, 14):
+            assert (
+                str(e)
+                == "Union types are not supported: found type 'str | int' for 'Args.uni'"
+            )
+        else:
+            assert (
+                str(e)
+                == "Union types are not supported: found type 'typing.Union[str, int]' for 'Args.uni'"
+            )
 
 
-def test_analyze_enum_type():
-    analyzer = Analyzer("enum-type")
+def test_analyze_union_type_3_10_syntax():
+    if sys.version_info < (3, 10):
+        pytest.skip(f"requires Python 3.10 or above, running on {sys.version_info}")
+
+    analyzer = Analyzer("union-type-3-10-syntax")
 
     try:
         analyzer.analyze(
             components=load_components(
-                Path("testdata", "analyzer-errors", "enum-type")
+                Path("testdata", "analyzer-errors", "union-type-3-10-syntax")
             ),
         )
         assert False, "expected an exception"
     except Exception as e:
         assert (
-            str(e) == "Enum types are not supported: found type 'MyEnum' for 'Args.enu'"
+            str(e)
+            == "Union types are not supported: found type 'str | int' for 'Args.uni'"
         )
+
+
+def test_analyze_enum_type():
+    """Test enums defined within the component package."""
+
+    class MyEnumStr(Enum):
+        """string enum"""
+
+        A = "a"
+        B = "b"
+
+    class MyEnumBool(Enum):
+        """bool enum"""
+
+        A = True
+        B = False
+
+    class MyEnumFloat(Enum):
+        """float enum"""
+
+        A = 1.1
+        B = 2.2
+
+    class MyEnumInt(Enum):
+        """int enum"""
+
+        A = 1
+        B = 2
+
+    class Args(TypedDict):
+        enu_str: MyEnumStr
+        enu_bool: MyEnumBool
+        enu_float: MyEnumFloat
+        enu_int: MyEnumInt
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer("enum")
+    result = analyzer.analyze(components=[Component])
+    assert result["component_definitions"] == {
+        "Component": ComponentDefinition(
+            name="Component",
+            module="test_analyzer",
+            inputs={
+                "enuStr": PropertyDefinition(
+                    ref="#/types/enum:index:MyEnumStr",
+                    plain=True,
+                ),
+                "enuBool": PropertyDefinition(
+                    ref="#/types/enum:index:MyEnumBool",
+                    plain=True,
+                ),
+                "enuFloat": PropertyDefinition(
+                    ref="#/types/enum:index:MyEnumFloat",
+                    plain=True,
+                ),
+                "enuInt": PropertyDefinition(
+                    ref="#/types/enum:index:MyEnumInt",
+                    plain=True,
+                ),
+            },
+            inputs_mapping={
+                "enuStr": "enu_str",
+                "enuBool": "enu_bool",
+                "enuFloat": "enu_float",
+                "enuInt": "enu_int",
+            },
+            outputs={},
+            outputs_mapping={},
+        )
+    }
+    assert result["type_definitions"] == {
+        "MyEnumStr": TypeDefinition(
+            name="MyEnumStr",
+            description="string enum",
+            module="test_analyzer",
+            properties={},
+            properties_mapping={},
+            type=PropertyType.STRING,
+            enum=[
+                EnumValueDefinition(name="A", value="a"),
+                EnumValueDefinition(name="B", value="b"),
+            ],
+            python_type=MyEnumStr,
+        ),
+        "MyEnumBool": TypeDefinition(
+            name="MyEnumBool",
+            description="bool enum",
+            module="test_analyzer",
+            properties={},
+            properties_mapping={},
+            type=PropertyType.BOOLEAN,
+            enum=[
+                EnumValueDefinition(name="A", value=True),
+                EnumValueDefinition(name="B", value=False),
+            ],
+            python_type=MyEnumBool,
+        ),
+        "MyEnumFloat": TypeDefinition(
+            name="MyEnumFloat",
+            description="float enum",
+            module="test_analyzer",
+            properties={},
+            properties_mapping={},
+            type=PropertyType.NUMBER,
+            enum=[
+                EnumValueDefinition(name="A", value=1.1),
+                EnumValueDefinition(name="B", value=2.2),
+            ],
+            python_type=MyEnumFloat,
+        ),
+        "MyEnumInt": TypeDefinition(
+            name="MyEnumInt",
+            description="int enum",
+            module="test_analyzer",
+            properties={},
+            properties_mapping={},
+            type=PropertyType.INTEGER,
+            enum=[
+                EnumValueDefinition(name="A", value=1),
+                EnumValueDefinition(name="B", value=2),
+            ],
+            python_type=MyEnumInt,
+        ),
+    }
 
 
 def test_analyze_syntax_error():
@@ -850,12 +1162,11 @@ def test_analyze_syntax_error():
         )
         assert False, "expected an exception"
     except Exception as e:
-        print(e)
         import traceback
 
         stack = traceback.extract_tb(e.__traceback__)[:]
-        print(stack)
-        assert str(e) == "invalid syntax (component.py, line 13)"
+        # The error message can be slightly different depending on the Python version.
+        assert "invalid syntax" in str(e) and "component.py, line 13)" in str(e)
 
 
 def test_analyze_duplicate_type():
@@ -909,12 +1220,17 @@ def test_analyze_no_components():
 def test_analyze_component_self_recursive_complex_type():
     class RecursiveType(TypedDict):
         rec: Optional[pulumi.Input["RecursiveType"]]
+        value: str
+
+    class RecursiveTypeOutput(TypedDict):
+        rec: Optional[pulumi.Output["RecursiveTypeOutput"]]
+        value: str
 
     class Args(TypedDict):
         rec: pulumi.Input[RecursiveType]
 
     class Component(pulumi.ComponentResource):
-        rec: pulumi.Output[RecursiveType]
+        rec: pulumi.Output[RecursiveTypeOutput]
 
         def __init__(self, args: Args): ...
 
@@ -924,14 +1240,30 @@ def test_analyze_component_self_recursive_complex_type():
         "RecursiveType": TypeDefinition(
             name="RecursiveType",
             module="test_analyzer",
-            type="object",
+            type=PropertyType.OBJECT,
             properties={
                 "rec": PropertyDefinition(
                     optional=True,
                     ref="#/types/recursive:index:RecursiveType",
-                )
+                ),
+                "value": PropertyDefinition(type=PropertyType.STRING, plain=True),
             },
-            properties_mapping={"rec": "rec"},
+            properties_mapping={"rec": "rec", "value": "value"},
+            python_type=RecursiveType,
+        ),
+        "RecursiveTypeOutput": TypeDefinition(
+            name="RecursiveTypeOutput",
+            module="test_analyzer",
+            type=PropertyType.OBJECT,
+            properties={
+                "rec": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/recursive:index:RecursiveTypeOutput",
+                ),
+                "value": PropertyDefinition(type=PropertyType.STRING),
+            },
+            properties_mapping={"rec": "rec", "value": "value"},
+            python_type=RecursiveTypeOutput,
         ),
     }
     assert component == ComponentDefinition(
@@ -940,75 +1272,7 @@ def test_analyze_component_self_recursive_complex_type():
         inputs={"rec": PropertyDefinition(ref="#/types/recursive:index:RecursiveType")},
         inputs_mapping={"rec": "rec"},
         outputs={
-            "rec": PropertyDefinition(ref="#/types/recursive:index:RecursiveType")
-        },
-        outputs_mapping={"rec": "rec"},
-    )
-
-
-def test_analyze_component_mutually_recursive_complex_types_inline():
-    class RecursiveTypeA(TypedDict):
-        b: Optional[pulumi.Input["RecursiveTypeB"]]
-
-    class RecursiveTypeB(TypedDict):
-        a: Optional[pulumi.Input[RecursiveTypeA]]
-
-    class Args(TypedDict):
-        rec: pulumi.Input[RecursiveTypeA]
-
-    class Component(pulumi.ComponentResource):
-        rec: pulumi.Output[RecursiveTypeB]
-        # rec: pulumi.Output["RecursiveTypeB"]
-        # Using a forward ref instead here causes the test to fail because we
-        # would never encounter the type as we walk the tree of types that
-        # starts with the Component.
-        # When doing full analysis via Analyser.analyze, we can handle this case.
-        # See test_analyze_component_mutually_recursive_complex_types_file for
-        # an example of this.
-
-        def __init__(self, args: Args): ...
-
-    analyzer = Analyzer("mutually-recursive")
-    component = analyzer.analyze_component(Component)
-    assert analyzer.type_definitions == {
-        "RecursiveTypeA": TypeDefinition(
-            name="RecursiveTypeA",
-            module="test_analyzer",
-            type="object",
-            properties={
-                "b": PropertyDefinition(
-                    optional=True,
-                    ref="#/types/mutually-recursive:index:RecursiveTypeB",
-                )
-            },
-            properties_mapping={"b": "b"},
-        ),
-        "RecursiveTypeB": TypeDefinition(
-            name="RecursiveTypeB",
-            module="test_analyzer",
-            type="object",
-            properties={
-                "a": PropertyDefinition(
-                    optional=True,
-                    ref="#/types/mutually-recursive:index:RecursiveTypeA",
-                )
-            },
-            properties_mapping={"a": "a"},
-        ),
-    }
-    assert component == ComponentDefinition(
-        name="Component",
-        module="test_analyzer",
-        inputs={
-            "rec": PropertyDefinition(
-                ref="#/types/mutually-recursive:index:RecursiveTypeA"
-            )
-        },
-        inputs_mapping={"rec": "rec"},
-        outputs={
-            "rec": PropertyDefinition(
-                ref="#/types/mutually-recursive:index:RecursiveTypeB"
-            )
+            "rec": PropertyDefinition(ref="#/types/recursive:index:RecursiveTypeOutput")
         },
         outputs_mapping={"rec": "rec"},
     )
@@ -1017,14 +1281,14 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
 def test_analyze_component_mutually_recursive_complex_types_file():
     analyzer = Analyzer("mutually-recursive")
 
-    (components, type_definitions) = analyzer.analyze(
+    result = analyzer.analyze(
         components=load_components(Path("testdata", "mutually-recursive")),
     )
-    assert type_definitions == {
+    assert result["type_definitions"] == {
         "RecursiveTypeA": TypeDefinition(
             name="RecursiveTypeA",
             module="mutually_recursive",
-            type="object",
+            type=PropertyType.OBJECT,
             properties={
                 "b": PropertyDefinition(
                     optional=True,
@@ -1032,11 +1296,14 @@ def test_analyze_component_mutually_recursive_complex_types_file():
                 )
             },
             properties_mapping={"b": "b"},
+            python_type=load_type(
+                Path("testdata", "mutually-recursive"), "RecursiveTypeA"
+            ),
         ),
         "RecursiveTypeB": TypeDefinition(
             name="RecursiveTypeB",
             module="mutually_recursive",
-            type="object",
+            type=PropertyType.OBJECT,
             properties={
                 "a": PropertyDefinition(
                     optional=True,
@@ -1044,9 +1311,12 @@ def test_analyze_component_mutually_recursive_complex_types_file():
                 )
             },
             properties_mapping={"a": "a"},
+            python_type=load_type(
+                Path("testdata", "mutually-recursive"), "RecursiveTypeB"
+            ),
         ),
     }
-    assert components == {
+    assert result["component_definitions"] == {
         "Component": ComponentDefinition(
             name="Component",
             module="mutually_recursive",
@@ -1125,6 +1395,45 @@ def test_is_list():
     assert is_list(typing.MutableSequence[str])
 
 
+def test_enum_value_type():
+    class Enu(Enum):
+        A = "A"
+        B = "B"
+
+    assert PropertyType.STRING == enum_value_type(Enu)
+
+    class FloatEnum(Enum):
+        A = 1.0
+        B = 2.0
+
+    assert PropertyType.NUMBER == enum_value_type(FloatEnum)
+
+    class IntEnum(Enum):
+        A = 1
+        B = 2
+
+    assert PropertyType.INTEGER == enum_value_type(IntEnum)
+
+    class BoolEnum(Enum):
+        A = True
+        B = False
+
+    assert PropertyType.BOOLEAN == enum_value_type(BoolEnum)
+
+    class UnsupportedEnum(Enum):
+        A = [1, 2, 3]
+        B = [4, 5, 6]
+
+    try:
+        enum_value_type(UnsupportedEnum)
+        assert False, "expected an exception"
+    except Exception as e:
+        assert (
+            str(e)
+            == "Invalid type for enum value 'UnsupportedEnum.A': '<class 'list'>'. Supported enum value types are bool, str, float and int."
+        )
+
+
 def load_components(p: Path) -> list[type[ComponentResource]]:
     """
     Load all the components from `component.py` if present, or from `__init__.py`.
@@ -1146,3 +1455,13 @@ def load_components(p: Path) -> list[type[ComponentResource]]:
         if isclass(v) and issubclass(v, ComponentResource):
             components.append(v)
     return components
+
+
+def load_type(p: Path, type_name: str) -> type:
+    mod_name = p.name.replace("-", "_")
+    mod = sys.modules[mod_name]
+    if not mod:
+        raise Exception(
+            f"failed to load {mod_name}. Expected {mod_name} to already be loaded."
+        )
+    return getattr(mod, type_name)

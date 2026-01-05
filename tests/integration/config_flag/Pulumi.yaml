@@ -1,0 +1,8 @@
+name: config-flag
+description: Issue-demonstrating project
+runtime:
+  name: nodejs
+config:
+  config-flag:example:
+    description: Example dynamic configuration parameter
+    type: string

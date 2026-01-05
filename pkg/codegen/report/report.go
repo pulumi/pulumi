@@ -130,9 +130,9 @@ func (r *reporter) Report(title, language string, files []*syntax.File, diags hc
 		}
 	}
 	failed := diags.HasErrors() || err != nil
-	r.data.Stats.update(!failed)
+	r.data.update(!failed)
 	lang := r.getLanguage(language)
-	lang.Stats.update(!failed)
+	lang.update(!failed)
 
 	if failed {
 		var txts []File

@@ -23,16 +23,16 @@ import (
 )
 
 // UpdateInfo handles information common to resource operations (update, preview, destroy, import, refresh).
-type UpdateInfo interface {
-	// GetRoot returns the root directory for this update. This defines the scope for any filesystem resources
-	// accessed by this update.
-	GetRoot() string
-	// GetProject returns information about the project associated with this update. This includes information such as
-	// the runtime that will be used to execute the Pulumi program and the program's relative working directory.
-	GetProject() *workspace.Project
-	// GetTarget returns information about the target of this update. This includes the name of the stack being
-	// updated, the configuration values associated with the target and the target's latest snapshot.
-	GetTarget() *deploy.Target
+type UpdateInfo struct {
+	// Root is the root directory for this update. This defines the scope for any filesystem resources accessed by this
+	// update.
+	Root string
+	// Project is the project associated with this update. This includes information such as the runtime that will be used
+	// to execute the Pulumi program and the program's relative working directory.
+	Project *workspace.Project
+	// Target is the target of this update. This includes the name of the stack being updated, the configuration values
+	// associated with the target and the target's latest snapshot.
+	Target *deploy.Target
 }
 
 // Context provides cancellation, termination, and eventing options for an engine operation. It also provides
@@ -43,4 +43,8 @@ type Context struct {
 	SnapshotManager SnapshotManager
 	BackendClient   deploy.BackendClient
 	ParentSpan      opentracing.SpanContext
+	PluginManager   PluginManager
+	// FinalizeUpdateFunc is an optional function that is called at the end of an update. It can be used to
+	// perform any finalization steps, including sending engine events.
+	FinalizeUpdateFunc func()
 }

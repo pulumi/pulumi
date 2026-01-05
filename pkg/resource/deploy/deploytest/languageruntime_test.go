@@ -15,11 +15,12 @@
 package deploytest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLanguageRuntime(t *testing.T) {
@@ -27,10 +28,10 @@ func TestLanguageRuntime(t *testing.T) {
 	t.Run("Close", func(t *testing.T) {
 		t.Parallel()
 		p := &languageRuntime{}
-		assert.NoError(t, p.Close())
+		require.NoError(t, p.Close())
 		assert.True(t, p.closed)
 		// Ensure idempotent.
-		assert.NoError(t, p.Close())
+		require.NoError(t, p.Close())
 		assert.True(t, p.closed)
 	})
 	t.Run("error: language runtime is shutting down", func(t *testing.T) {
@@ -93,34 +94,34 @@ func TestLanguageRuntime(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
 			res, err := p.GetPluginInfo()
-			assert.NoError(t, err)
-			assert.Equal(t, workspace.PluginInfo{Name: "TestLanguage"}, res)
+			require.NoError(t, err)
+			assert.Equal(t, plugin.PluginInfo{}, res)
 		})
 		t.Run("InstallDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
 			_, _, _, err := p.InstallDependencies(plugin.InstallDependenciesRequest{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("RuntimeOptionsPrompts", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
 			options, err := p.RuntimeOptionsPrompts(plugin.ProgramInfo{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, []plugin.RuntimeOptionPrompt{}, options)
 		})
 		t.Run("About", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
 			about, err := p.About(plugin.ProgramInfo{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, plugin.AboutInfo{}, about)
 		})
 		t.Run("GetProgramDependencies", func(t *testing.T) {
 			t.Parallel()
 			p := &languageRuntime{}
 			res, err := p.GetProgramDependencies(plugin.ProgramInfo{}, false)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Nil(t, res)
 		})
 	})
@@ -128,7 +129,7 @@ func TestLanguageRuntime(t *testing.T) {
 		p := &languageRuntime{}
 		t.Run("RunPlugin", func(t *testing.T) {
 			t.Parallel()
-			_, _, _, err := p.RunPlugin(plugin.RunPluginInfo{})
+			_, _, _, err := p.RunPlugin(context.Background(), plugin.RunPluginInfo{})
 			assert.ErrorContains(t, err, "are not currently supported")
 		})
 		t.Run("GenerateProject", func(t *testing.T) {

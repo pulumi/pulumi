@@ -70,78 +70,78 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		{
 			desc: "pux.String/pu.String",
 			give: &testResourceInputs{PuxString: pulumi.String("a")},
-			want: resource.PropertyMap{"puxString": resource.NewStringProperty("a")},
+			want: resource.PropertyMap{"puxString": resource.NewProperty("a")},
 		},
 		{
 			desc: "pux.String/pu.StringOutput",
 			give: &testResourceInputs{PuxString: pulumi.String("b").ToStringOutput()},
-			want: resource.PropertyMap{"puxString": resource.NewStringProperty("b")},
+			want: resource.PropertyMap{"puxString": resource.NewProperty("b")},
 		},
 		{
 			desc: "pux.String/pux.Output[string]",
 			give: &testResourceInputs{PuxString: pulumix.Val("c")},
-			want: resource.PropertyMap{"puxString": resource.NewStringProperty("c")},
+			want: resource.PropertyMap{"puxString": resource.NewProperty("c")},
 		},
 
 		// --- pulumi.StringInput ---
 		{
 			desc: "pu.String/pu.String",
 			give: &testResourceInputs{PuString: pulumi.String("d")},
-			want: resource.PropertyMap{"puString": resource.NewStringProperty("d")},
+			want: resource.PropertyMap{"puString": resource.NewProperty("d")},
 		},
 		{
 			desc: "pu.String/pu.StringOutput",
 			give: &testResourceInputs{PuString: pulumi.String("e").ToStringOutput()},
-			want: resource.PropertyMap{"puString": resource.NewStringProperty("e")},
+			want: resource.PropertyMap{"puString": resource.NewProperty("e")},
 		},
 		{
 			desc: "pu.String/pux.Output[string] untyped",
 			give: &testResourceInputs{PuString: pulumix.Val("f").Untyped().(pulumi.StringOutput)},
-			want: resource.PropertyMap{"puString": resource.NewStringProperty("f")},
+			want: resource.PropertyMap{"puString": resource.NewProperty("f")},
 		},
 
 		// --- pulumix.Input[*string] ---
 		{
 			desc: "pux.StringPtr/pu.String PtrOf",
 			give: &testResourceInputs{PuxStringPtr: pulumix.PtrOf[string](pulumi.String("g"))},
-			want: resource.PropertyMap{"puxStringPtr": resource.NewStringProperty("g")},
+			want: resource.PropertyMap{"puxStringPtr": resource.NewProperty("g")},
 		},
 		{
 			desc: "pux.StringPtr/pu.StringPtrOutput",
 			give: &testResourceInputs{PuxStringPtr: pulumi.String("h").ToStringPtrOutput()},
-			want: resource.PropertyMap{"puxStringPtr": resource.NewStringProperty("h")},
+			want: resource.PropertyMap{"puxStringPtr": resource.NewProperty("h")},
 		},
 		{
 			desc: "pux.StringPtr/pux.PtrOutput[string]",
 			give: &testResourceInputs{PuxStringPtr: pulumix.Ptr("i")},
-			want: resource.PropertyMap{"puxStringPtr": resource.NewStringProperty("i")},
+			want: resource.PropertyMap{"puxStringPtr": resource.NewProperty("i")},
 		},
 		{
 			desc: "pux.StringPtr/pux.Output[*string]",
 			give: &testResourceInputs{PuxStringPtr: pulumix.Val[*string](&j)},
-			want: resource.PropertyMap{"puxStringPtr": resource.NewStringProperty("j")},
+			want: resource.PropertyMap{"puxStringPtr": resource.NewProperty("j")},
 		},
 
 		// --- pulumi.StringPtrInput ---
 		{
 			desc: "pu.StringPtr/pu.StringPtr",
 			give: &testResourceInputs{PuStringPtr: pulumi.StringPtr("j")},
-			want: resource.PropertyMap{"puStringPtr": resource.NewStringProperty("j")},
+			want: resource.PropertyMap{"puStringPtr": resource.NewProperty("j")},
 		},
 		{
 			desc: "pu.StringPtr/pu.String",
 			give: &testResourceInputs{PuStringPtr: pulumi.String("k")},
-			want: resource.PropertyMap{"puStringPtr": resource.NewStringProperty("k")},
+			want: resource.PropertyMap{"puStringPtr": resource.NewProperty("k")},
 		},
 		{
 			desc: "pu.StringPtr/pu.StringPtrOutput",
 			give: &testResourceInputs{PuStringPtr: pulumi.String("l").ToStringPtrOutput()},
-			want: resource.PropertyMap{"puStringPtr": resource.NewStringProperty("l")},
+			want: resource.PropertyMap{"puStringPtr": resource.NewProperty("l")},
 		},
 		{
 			desc: "pu.StringPtr/pux.PtrOutput[string] untyped",
 			give: &testResourceInputs{PuStringPtr: pulumix.Ptr("m").Untyped().(pulumi.StringPtrOutput)},
-			want: resource.PropertyMap{"puStringPtr": resource.NewStringProperty("m")},
+			want: resource.PropertyMap{"puStringPtr": resource.NewProperty("m")},
 		},
 		{
 			desc: "pu.StringPtr/pux.GPtrOutput[string] untyped",
@@ -150,7 +150,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 					pulumix.Ptr("n"),
 				).Untyped().(pulumi.StringPtrOutput),
 			},
-			want: resource.PropertyMap{"puStringPtr": resource.NewStringProperty("n")},
+			want: resource.PropertyMap{"puStringPtr": resource.NewProperty("n")},
 		},
 
 		// --- pulumix.Input[[]int] ---
@@ -164,11 +164,11 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				},
 			},
 			want: resource.PropertyMap{
-				"puxIntArray": resource.NewArrayProperty(
+				"puxIntArray": resource.NewProperty(
 					[]resource.PropertyValue{
-						resource.NewNumberProperty(1),
-						resource.NewNumberProperty(2),
-						resource.NewNumberProperty(3),
+						resource.NewProperty(1.0),
+						resource.NewProperty(2.0),
+						resource.NewProperty(3.0),
 					},
 				),
 			},
@@ -183,11 +183,11 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				}.ToIntArrayOutput(),
 			},
 			want: resource.PropertyMap{
-				"puxIntArray": resource.NewArrayProperty(
+				"puxIntArray": resource.NewProperty(
 					[]resource.PropertyValue{
-						resource.NewNumberProperty(4),
-						resource.NewNumberProperty(5),
-						resource.NewNumberProperty(6),
+						resource.NewProperty(4.0),
+						resource.NewProperty(5.0),
+						resource.NewProperty(6.0),
 					},
 				),
 			},
@@ -198,11 +198,11 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				PuxIntArray: pulumix.Val([]int{7, 8, 9}),
 			},
 			want: resource.PropertyMap{
-				"puxIntArray": resource.NewArrayProperty(
+				"puxIntArray": resource.NewProperty(
 					[]resource.PropertyValue{
-						resource.NewNumberProperty(7),
-						resource.NewNumberProperty(8),
-						resource.NewNumberProperty(9),
+						resource.NewProperty(7.0),
+						resource.NewProperty(8.0),
+						resource.NewProperty(9.0),
 					},
 				),
 			},
@@ -215,11 +215,11 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				),
 			},
 			want: resource.PropertyMap{
-				"puxIntArray": resource.NewArrayProperty(
+				"puxIntArray": resource.NewProperty(
 					[]resource.PropertyValue{
-						resource.NewNumberProperty(10),
-						resource.NewNumberProperty(11),
-						resource.NewNumberProperty(12),
+						resource.NewProperty(10.0),
+						resource.NewProperty(11.0),
+						resource.NewProperty(12.0),
 					},
 				),
 			},
@@ -232,11 +232,11 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				),
 			},
 			want: resource.PropertyMap{
-				"puxIntArray": resource.NewArrayProperty(
+				"puxIntArray": resource.NewProperty(
 					[]resource.PropertyValue{
-						resource.NewNumberProperty(13),
-						resource.NewNumberProperty(14),
-						resource.NewNumberProperty(15),
+						resource.NewProperty(13.0),
+						resource.NewProperty(14.0),
+						resource.NewProperty(15.0),
 					},
 				),
 			},
@@ -249,11 +249,11 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				PuIntArray: pulumix.Val([]int{1, 2, 3}).Untyped().(pulumi.IntArrayOutput),
 			},
 			want: resource.PropertyMap{
-				"puIntArray": resource.NewArrayProperty(
+				"puIntArray": resource.NewProperty(
 					[]resource.PropertyValue{
-						resource.NewNumberProperty(1),
-						resource.NewNumberProperty(2),
-						resource.NewNumberProperty(3),
+						resource.NewProperty(1.0),
+						resource.NewProperty(2.0),
+						resource.NewProperty(3.0),
 					},
 				),
 			},
@@ -266,11 +266,11 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				).Untyped().(pulumi.IntArrayOutput),
 			},
 			want: resource.PropertyMap{
-				"puIntArray": resource.NewArrayProperty(
+				"puIntArray": resource.NewProperty(
 					[]resource.PropertyValue{
-						resource.NewNumberProperty(4),
-						resource.NewNumberProperty(5),
-						resource.NewNumberProperty(6),
+						resource.NewProperty(4.0),
+						resource.NewProperty(5.0),
+						resource.NewProperty(6.0),
 					},
 				),
 			},
@@ -283,11 +283,11 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				).Untyped().(pulumi.IntArrayOutput),
 			},
 			want: resource.PropertyMap{
-				"puIntArray": resource.NewArrayProperty(
+				"puIntArray": resource.NewProperty(
 					[]resource.PropertyValue{
-						resource.NewNumberProperty(7),
-						resource.NewNumberProperty(8),
-						resource.NewNumberProperty(9),
+						resource.NewProperty(7.0),
+						resource.NewProperty(8.0),
+						resource.NewProperty(9.0),
 					},
 				),
 			},
@@ -300,10 +300,10 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				PuxIntMap: pulumi.IntMap{"a": pulumi.Int(1), "b": pulumi.Int(2)},
 			},
 			want: resource.PropertyMap{
-				"puxIntMap": resource.NewObjectProperty(
+				"puxIntMap": resource.NewProperty(
 					resource.PropertyMap{
-						"a": resource.NewNumberProperty(1),
-						"b": resource.NewNumberProperty(2),
+						"a": resource.NewProperty(1.0),
+						"b": resource.NewProperty(2.0),
 					},
 				),
 			},
@@ -314,10 +314,10 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				PuxIntMap: pulumi.IntMap{"c": pulumi.Int(3), "d": pulumi.Int(4)}.ToIntMapOutput(),
 			},
 			want: resource.PropertyMap{
-				"puxIntMap": resource.NewObjectProperty(
+				"puxIntMap": resource.NewProperty(
 					resource.PropertyMap{
-						"c": resource.NewNumberProperty(3),
-						"d": resource.NewNumberProperty(4),
+						"c": resource.NewProperty(3.0),
+						"d": resource.NewProperty(4.0),
 					},
 				),
 			},
@@ -328,10 +328,10 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				PuxIntMap: pulumix.Val(map[string]int{"e": 5, "f": 6}),
 			},
 			want: resource.PropertyMap{
-				"puxIntMap": resource.NewObjectProperty(
+				"puxIntMap": resource.NewProperty(
 					resource.PropertyMap{
-						"e": resource.NewNumberProperty(5),
-						"f": resource.NewNumberProperty(6),
+						"e": resource.NewProperty(5.0),
+						"f": resource.NewProperty(6.0),
 					},
 				),
 			},
@@ -344,10 +344,10 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				),
 			},
 			want: resource.PropertyMap{
-				"puxIntMap": resource.NewObjectProperty(
+				"puxIntMap": resource.NewProperty(
 					resource.PropertyMap{
-						"g": resource.NewNumberProperty(7),
-						"h": resource.NewNumberProperty(8),
+						"g": resource.NewProperty(7.0),
+						"h": resource.NewProperty(8.0),
 					},
 				),
 			},
@@ -360,10 +360,10 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				),
 			},
 			want: resource.PropertyMap{
-				"puxIntMap": resource.NewObjectProperty(
+				"puxIntMap": resource.NewProperty(
 					resource.PropertyMap{
-						"i": resource.NewNumberProperty(9),
-						"j": resource.NewNumberProperty(10),
+						"i": resource.NewProperty(9.0),
+						"j": resource.NewProperty(10.0),
 					},
 				),
 			},
@@ -376,10 +376,10 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				PuIntMap: pulumi.IntMap{"a": pulumi.Int(1), "b": pulumi.Int(2)},
 			},
 			want: resource.PropertyMap{
-				"puIntMap": resource.NewObjectProperty(
+				"puIntMap": resource.NewProperty(
 					resource.PropertyMap{
-						"a": resource.NewNumberProperty(1),
-						"b": resource.NewNumberProperty(2),
+						"a": resource.NewProperty(1.0),
+						"b": resource.NewProperty(2.0),
 					},
 				),
 			},
@@ -390,10 +390,10 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				PuIntMap: pulumix.Val(map[string]int{"c": 3, "d": 4}).Untyped().(pulumi.IntMapOutput),
 			},
 			want: resource.PropertyMap{
-				"puIntMap": resource.NewObjectProperty(
+				"puIntMap": resource.NewProperty(
 					resource.PropertyMap{
-						"c": resource.NewNumberProperty(3),
-						"d": resource.NewNumberProperty(4),
+						"c": resource.NewProperty(3.0),
+						"d": resource.NewProperty(4.0),
 					},
 				),
 			},
@@ -406,10 +406,10 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				).Untyped().(pulumi.IntMapOutput),
 			},
 			want: resource.PropertyMap{
-				"puIntMap": resource.NewObjectProperty(
+				"puIntMap": resource.NewProperty(
 					resource.PropertyMap{
-						"e": resource.NewNumberProperty(5),
-						"f": resource.NewNumberProperty(6),
+						"e": resource.NewProperty(5.0),
+						"f": resource.NewProperty(6.0),
 					},
 				),
 			},
@@ -422,10 +422,10 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 				).Untyped().(pulumi.IntMapOutput),
 			},
 			want: resource.PropertyMap{
-				"puIntMap": resource.NewObjectProperty(
+				"puIntMap": resource.NewProperty(
 					resource.PropertyMap{
-						"g": resource.NewNumberProperty(7),
-						"h": resource.NewNumberProperty(8),
+						"g": resource.NewProperty(7.0),
+						"h": resource.NewProperty(8.0),
 					},
 				),
 			},
@@ -433,7 +433,6 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -502,7 +501,6 @@ func TestRegisterResourceOutputs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -516,14 +514,25 @@ func TestRegisterResourceOutputs(t *testing.T) {
 }
 
 type mockResourceMonitor struct {
-	CallF        func(pulumi.MockCallArgs) (resource.PropertyMap, error)
+	// Actually an "Invoke" by provider parlance, but is named so to be consistent with the interface.
+	CallF func(pulumi.MockCallArgs) (resource.PropertyMap, error)
+	// Actually an "Call" by provider parlance, but is named so to be consistent with the interface.
+	MethodCallF  func(pulumi.MockCallArgs) (resource.PropertyMap, error)
 	NewResourceF func(pulumi.MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
-var _ pulumi.MockResourceMonitor = (*mockResourceMonitor)(nil)
+var (
+	// Ensure we implement the appropriate interfaces for testing.
+	_ pulumi.MockResourceMonitor               = (*mockResourceMonitor)(nil)
+	_ pulumi.MockResourceMonitorWithMethodCall = (*mockResourceMonitor)(nil)
+)
 
 func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	return m.CallF(args)
+}
+
+func (m *mockResourceMonitor) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	return m.MethodCallF(args)
 }
 
 func (m *mockResourceMonitor) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {

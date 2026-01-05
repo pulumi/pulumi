@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseEnv(t *testing.T) {
@@ -38,7 +39,6 @@ func TestParseEnv(t *testing.T) {
 	}
 
 	for name, tc := range tests {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -46,7 +46,7 @@ func TestParseEnv(t *testing.T) {
 			if tc.errString != "" {
 				assert.EqualError(t, err, tc.errString)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			assert.Equal(t, tc.name, name)
 			assert.Equal(t, tc.value, value)

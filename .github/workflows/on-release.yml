@@ -15,11 +15,11 @@ concurrency: release
 jobs:
   info:
     name: gather
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     outputs:
       version: "${{ fromJSON(steps.version.outputs.version) }}"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         # Uses release ref (tag)
       - name: Info
         id: version

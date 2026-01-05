@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
@@ -65,8 +66,6 @@ func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			fx := newStateRepairCmdFixture(t, []*resource.State{})
 
@@ -74,7 +73,7 @@ func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 			err := fx.cmd.run(context.Background())
 
 			// Assert.
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Contains(t, fx.stdout.String(), "already valid")
 			assert.Nil(t, fx.imported, "Import should not have proceeded")
 		})
@@ -91,8 +90,8 @@ func TestStateRepair_ConfirmationIncludesReorderSummary(t *testing.T) {
 
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
 	})
 
 	fx.stdin.buf.WriteString("no\r\n")
@@ -101,7 +100,7 @@ func TestStateRepair_ConfirmationIncludesReorderSummary(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "will be reordered")
 	assert.NotContains(t, fx.stdout.String(), "will be modified")
 }
@@ -116,7 +115,7 @@ func TestStateRepair_ConfirmationIncludesModificationSummary(t *testing.T) {
 
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "c", Dependencies: []resource.URN{"d"}},
+		{URN: "c", Type: "simple:index:Resource", Dependencies: []resource.URN{"d"}},
 	})
 
 	fx.stdin.buf.WriteString("no\r\n")
@@ -125,7 +124,7 @@ func TestStateRepair_ConfirmationIncludesModificationSummary(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotContains(t, fx.stdout.String(), "will be reordered")
 	assert.Contains(t, fx.stdout.String(), "will be modified")
 }
@@ -140,9 +139,9 @@ func TestStateRepair_ConfirmationIncludesCombinedSummaries(t *testing.T) {
 
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
-		{URN: "c", Dependencies: []resource.URN{"d"}},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
+		{URN: "c", Type: "simple:index:Resource", Dependencies: []resource.URN{"d"}},
 	})
 
 	fx.stdin.buf.WriteString("no\r\n")
@@ -151,7 +150,7 @@ func TestStateRepair_ConfirmationIncludesCombinedSummaries(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "will be reordered")
 	assert.Contains(t, fx.stdout.String(), "will be modified")
 }
@@ -166,8 +165,8 @@ func TestStateRepair_PromptsForConfirmationAndCancels(t *testing.T) {
 
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
 	})
 
 	fx.stdin.buf.WriteString("no\r\n")
@@ -176,7 +175,7 @@ func TestStateRepair_PromptsForConfirmationAndCancels(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "Confirm?")
 	assert.Nil(t, fx.imported, "Import should not have proceeded")
 }
@@ -191,8 +190,8 @@ func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
 	})
 
 	fx.stdin.buf.WriteString("yes\r\n")
@@ -201,17 +200,17 @@ func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "Confirm?")
-	assert.NotNil(t, fx.imported, "Import should have proceeded")
+	require.NotNil(t, fx.imported, "Import should have proceeded")
 }
 
 //nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
 func TestStateRepair_SkipsConfirmationIfYesFlagIsSet(t *testing.T) {
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
 	})
 	fx.cmd.Args.Yes = true
 
@@ -219,9 +218,9 @@ func TestStateRepair_SkipsConfirmationIfYesFlagIsSet(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotContains(t, fx.stdout.String(), "Confirm?")
-	assert.NotNil(t, fx.imported, "Import should have proceeded")
+	require.NotNil(t, fx.imported, "Import should have proceeded")
 }
 
 //nolint:paralleltest // State repairing modifies the DisableIntegrityChecking global variable
@@ -230,7 +229,11 @@ func TestStateRepair_DoesNotWriteIfRepairFails(t *testing.T) {
 	//
 	// Dangling provider references can't be fixed, so this snapshot should fail to repair.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "a", Provider: "urn:pulumi:stack::project::pulumi:providers:p::x::id"},
+		{
+			URN:      "a",
+			Type:     "simple:index:Resource",
+			Provider: "urn:pulumi:stack::project::pulumi:providers:p::x::id",
+		},
 	})
 	fx.cmd.Args.Yes = true
 
@@ -247,8 +250,8 @@ func TestStateRepair_DoesNotWriteIfRepairFails(t *testing.T) {
 func TestStateRepair_RepairsSnapshots(t *testing.T) {
 	// Arrange.
 	fx := newStateRepairCmdFixture(t, []*resource.State{
-		{URN: "b", Dependencies: []resource.URN{"a"}},
-		{URN: "a"},
+		{URN: "b", Type: "simple:index:Resource", Dependencies: []resource.URN{"a"}},
+		{URN: "a", Type: "simple:index:Resource"},
 	})
 	fx.cmd.Args.Yes = true
 
@@ -256,7 +259,7 @@ func TestStateRepair_RepairsSnapshots(t *testing.T) {
 	err := fx.cmd.run(context.Background())
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, fx.stdout.String(), "State repaired successfully")
 	assert.Equal(t, "a", string(fx.imported.Resources[0].URN))
 	assert.Equal(t, "b", string(fx.imported.Resources[1].URN))
@@ -282,21 +285,26 @@ func newStateRepairCmdFixture(
 		stderr: &bytes.Buffer{},
 	}
 
-	s := &backend.MockStack{
-		ImportDeploymentF: func(_ context.Context, d *apitype.UntypedDeployment) error {
-			err := json.Unmarshal(d.Deployment, &fx.imported)
-			assert.NoError(t, err)
-			return nil
-		},
-		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
-			sm := b64.NewBase64SecretsManager()
-			return deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}), nil
-		},
-	}
+	var s backend.Stack
 
 	b := &backend.MockBackend{
 		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
 			return s, nil
+		},
+		ImportDeploymentF: func(_ context.Context, _ backend.Stack, d *apitype.UntypedDeployment) error {
+			err := json.Unmarshal(d.Deployment, &fx.imported)
+			require.NoError(t, err)
+			return nil
+		},
+	}
+
+	s = &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return b
+		},
+		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+			sm := b64.NewBase64SecretsManager()
+			return deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}), nil
 		},
 	}
 
@@ -323,6 +331,7 @@ func newStateRepairCmdFixture(
 			diag.Sink,
 			string,
 			*workspace.Project,
+			bool,
 			bool,
 			colors.Colorization,
 		) (backend.Backend, error) {

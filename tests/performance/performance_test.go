@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build all
-
 package perf
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/stretchr/testify/require"
 )
 
 // TODO: add tests using other languages https://github.com/pulumi/pulumi/issues/17669
@@ -95,9 +95,10 @@ func TestPerfParentChainUpdate(t *testing.T) {
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfSecretsBatchUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
-		T:                  t,
-		MaxPreviewDuration: 5 * time.Second,
-		MaxUpdateDuration:  5 * time.Second,
+		T: t,
+		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
+		MaxPreviewDuration: 10 * time.Second,
+		MaxUpdateDuration:  10 * time.Second,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -109,5 +110,73 @@ func TestPerfSecretsBatchUpdate(t *testing.T) {
 		Quick:          false,
 		RequireService: true,
 		ReportStats:    benchmarkEnforcer,
+	})
+}
+
+//nolint:paralleltest // Do not run in parallel to avoid resource contention
+func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
+	benchmarkEnforcer := &integration.AssertPerfBenchmark{
+		T: t,
+		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
+		MaxPreviewDuration: 10 * time.Second,
+		MaxUpdateDuration:  10 * time.Second,
+	}
+
+	// Create an initial stack that contains secrets.
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		NoParallel: true,
+		Dir:        filepath.Join("python", "secrets"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick:          true,
+		RequireService: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			// Get the fully qualified stack for the above stack, so we can reference it in the benchmark below.
+			organizationName := stack.Outputs["organization"].(string)
+			projectName := stack.Outputs["project"].(string)
+			stackName := stack.Outputs["stack"].(string)
+			fullyQualifiedStackName := fmt.Sprintf("%s/%s/%s", organizationName, projectName, stackName)
+
+			// Now run the actual benchmark that references the above stack.
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				NoParallel: true,
+				Dir:        filepath.Join("python", "stack_reference_secrets"),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "python"),
+				},
+				Config: map[string]string{
+					"stack": fullyQualifiedStackName,
+				},
+				Quick:          false,
+				RequireService: true,
+				ReportStats:    benchmarkEnforcer,
+			})
+		},
+	})
+}
+
+//nolint:paralleltest // Do not run in parallel to avoid resource contention
+func TestPerfManyResourcesWithJournaling(t *testing.T) {
+	initialBenchmark := &integration.AssertPerfBenchmark{
+		T:                      t,
+		MaxUpdateDuration:      90 * time.Second,
+		MaxEmptyUpdateDuration: 50 * time.Second,
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		NoParallel:     true,
+		Dir:            filepath.Join("typescript", "many_resources"),
+		Dependencies:   []string{"@pulumi/pulumi"},
+		RequireService: true,
+		ReportStats:    initialBenchmark,
+		SkipPreview:    true,
+		Env: []string{
+			"PULUMI_ENABLE_JOURNALING=true",
+		},
+		DestroyOnCleanup: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Greater(t, len(stack.Deployment.Resources), 2000)
+		},
 	})
 }

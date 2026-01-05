@@ -33,6 +33,8 @@ type ResourceOptions struct {
 	Parent model.Expression
 	// The provider to use.
 	Provider model.Expression
+	// The providers (plural) to use in the case of a component resource.
+	Providers model.Expression
 	// The explicit dependencies of the resource.
 	DependsOn model.Expression
 	// Whether or not the resource is protected.
@@ -42,6 +44,8 @@ type ResourceOptions struct {
 	RetainOnDelete model.Expression
 	// A list of properties that are not considered when diffing the resource.
 	IgnoreChanges model.Expression
+	// A list of properties where the diff is not displayed.
+	HideDiffs model.Expression
 	// The version of the provider for this resource.
 	Version model.Expression
 	// The plugin download URL for this resource.
@@ -49,6 +53,12 @@ type ResourceOptions struct {
 	// If set, the provider's Delete method will not be called for this resource if the specified resource is being
 	// deleted as well.
 	DeletedWith model.Expression
+	// If set, the resource will be replaced if one of the specified resources is replaced.
+	ReplaceWith model.Expression
+	// If the resource was imported, the id that was imported.
+	ImportID model.Expression
+	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger model.Expression
 }
 
 // Resource represents a resource instantiation inside of a program or component.

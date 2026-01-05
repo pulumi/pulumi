@@ -20,7 +20,7 @@ export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 ensure:: .make/ensure/yarn .make/ensure/node .make/ensure/phony
 .make/ensure/phony: package.json
-	yarn install --frozen-lockfile
+	../../scripts/retry yarn install --frozen-lockfile
 	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 format:: ensure
@@ -48,9 +48,16 @@ build_package:: ensure
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
-build_plugin::
-	cd cmd/pulumi-language-nodejs && \
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+build_plugin: ../../bin/pulumi-language-nodejs
+	cp ./dist/pulumi-resource-pulumi-nodejs ../../bin
+	cp ./dist/pulumi-analyzer-policy ../../bin
+
+.PHONY: ../../bin/pulumi-language-nodejs
+../../bin/pulumi-language-nodejs:
+	go build -C cmd/pulumi-language-nodejs \
+	-o ../../$@ \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+		${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
@@ -59,8 +66,8 @@ install_package:: build
 	cp dist/pulumi-analyzer-policy* "$(PULUMI_BIN)"
 
 install_plugin:: build
-	cd cmd/pulumi-language-nodejs && \
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-nodejs \
+	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
 
@@ -123,14 +130,17 @@ TEST_GREP ?= .*
 test_watch::
 	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 300000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
 
-dist:: build
-	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
-	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
+dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
+dist::
+	go install -C cmd/pulumi-language-nodejs \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	cp dist/pulumi-resource-pulumi-nodejs "${GOBIN}"
+	cp dist/pulumi-analyzer-policy "${GOBIN}"
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
-	cd cmd/pulumi-language-nodejs && \
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go install -C cmd/pulumi-language-nodejs \
+	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 

@@ -16,7 +16,6 @@ package state
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -27,12 +26,12 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -126,6 +125,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	}
 	s, err := cmdStack.RequireStack(
 		ctx,
+		cmdutil.Diag(),
 		cmd.Workspace,
 		cmd.LoginManager,
 		cmd.Args.Stack,
@@ -136,7 +136,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 		return err
 	}
 
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return err
 	} else if snap == nil {
@@ -212,20 +212,12 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	}
 
 	// We've managed to repair the snapshot -- import it back into the backend.
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /*showSecrets*/)
-	if err != nil {
-		return fmt.Errorf("serializing deployment: %w", err)
-	}
-
-	bytes, err := json.Marshal(sdep)
+	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return err
 	}
 
-	err = s.ImportDeployment(ctx, &apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
-	})
+	err = backend.ImportStackDeployment(ctx, s, dep)
 	if err != nil {
 		return err
 	}

@@ -346,12 +346,12 @@ func getAuthForURL(url string) (string, transport.AuthMethod, error) {
 	}
 	// If we have no auth, try to get it from the environment.
 	if auth == nil {
-		if strings.Contains(endpoint, GitHubHostName) && os.Getenv("GITHUB_TOKEN") != "" {
+		if strings.Contains(endpoint, "github") && os.Getenv("GITHUB_TOKEN") != "" {
 			auth = &http.BasicAuth{
 				Username: "x-access-token",
 				Password: os.Getenv("GITHUB_TOKEN"),
 			}
-		} else if strings.Contains(endpoint, GitLabHostName) && os.Getenv("GITLAB_TOKEN") != "" {
+		} else if strings.Contains(endpoint, "gitlab") && os.Getenv("GITLAB_TOKEN") != "" {
 			auth = &http.BasicAuth{
 				Username: "oauth2",
 				Password: os.Getenv("GITLAB_TOKEN"),

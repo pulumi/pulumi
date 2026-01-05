@@ -22,6 +22,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -115,12 +116,15 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{resA.URN},
-		})
-		assert.NoError(t, err)
+		if err == nil {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{resA.URN},
+			})
+			require.NoError(t, err)
+		} else {
+			require.Fail(t, "RegisterResource should not return")
+		}
 
 		return nil
 	})
@@ -130,9 +134,9 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 
 	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, upSnap.Resources, 3)
+	require.Len(t, upSnap.Resources, 3)
 	assert.Equal(t, "default", upSnap.Resources[0].URN.Name())
 	assert.Equal(t, "resA", upSnap.Resources[1].URN.Name())
 	assert.Equal(t, "resB", upSnap.Resources[2].URN.Name())
@@ -155,7 +159,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, replaceSnap.Resources, 3)
+	require.Len(t, replaceSnap.Resources, 3)
 	assert.Equal(t, "default", replaceSnap.Resources[0].URN.Name())
 
 	assert.Equal(t, "resA", replaceSnap.Resources[1].URN.Name())
@@ -190,9 +194,9 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 
 	retrySnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), retryOptions, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, retrySnap.Resources, 3)
+	require.Len(t, retrySnap.Resources, 3)
 	assert.Equal(t, "default", retrySnap.Resources[0].URN.Name())
 
 	assert.True(t, diffsCalled["resA"], "Diff should be called on resA")
@@ -279,10 +283,14 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		}),
 	}
 
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
-
+		if expectError {
+			require.Fail(t, "RegisterResource should not return")
+		} else {
+			require.NoError(t, err)
+		}
 		return nil
 	})
 
@@ -291,14 +299,15 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 
 	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, upSnap.Resources, 2)
+	require.Len(t, upSnap.Resources, 2)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
 
 	// Operation 2 -- return a replacing diff and interrupt it with a failing
 	// create.
+	expectError = true
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -316,13 +325,14 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, replaceSnap.Resources, 2)
+	require.Len(t, replaceSnap.Resources, 2)
 	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
 	assert.True(t, deleteCalled, "Delete should be called as part of replacement")
 	assert.True(t, replaceSnap.Resources[1].PendingReplacement)
 
 	// Operation 3 -- resume the replacement with the same program.
+	expectError = false
 	deleteCalled = false
 	createCalled = false
 
@@ -341,10 +351,163 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 
 	removeSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert.
-	assert.Len(t, removeSnap.Resources, 2)
+	require.Len(t, removeSnap.Resources, 2)
+	assert.Equal(t, removeSnap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, removeSnap.Resources[1].URN.Name(), "resA")
+	assert.False(t, deleteCalled, "Delete shouldn't be called a second time when resuming a replacement (same goals)")
+	assert.True(t, createCalled, "Create should be called when resuming a replacement (same goals)")
+	assert.False(t, removeSnap.Resources[1].PendingReplacement)
+}
+
+// Tests that a delete-before-replace operation:
+//
+// * that is interrupted after the deletion (e.g. with a failed create)
+// * and then resumed, with the same original program, using --refresh --run-program
+//
+// will:
+//
+// * not call delete (again) on the old resource
+// * remove the PendingReplacement flag from the resource in state
+// * call create on the new resource
+// * remove the old resource from the state
+func TestPendingReplaceResumeWithSameGoalsRefreshRunProgram(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	returnReplaceDiff := func(
+		_ context.Context,
+		req plugin.DiffRequest,
+	) (plugin.DiffResult, error) {
+		if req.URN.Name() == "resA" {
+			return plugin.DiffResult{
+				Changes:             plugin.DiffSome,
+				ReplaceKeys:         []resource.PropertyKey{"key"},
+				DeleteBeforeReplace: true,
+			}, nil
+		}
+
+		return plugin.DiffResult{}, nil
+	}
+
+	deleteCalled := false
+	trackedDelete := func(
+		_ context.Context,
+		req plugin.DeleteRequest,
+	) (plugin.DeleteResponse, error) {
+		deleteCalled = true
+		return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+	}
+
+	createCalled := false
+	throwingCreate := func(
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
+		createCalled = true
+		return plugin.CreateResponse{
+			Properties: req.Properties,
+			Status:     resource.StatusUnknown,
+		}, errors.New("interrupt replace")
+	}
+
+	trackedCreate := func(
+		_ context.Context,
+		req plugin.CreateRequest,
+	) (plugin.CreateResponse, error) {
+		createCalled = true
+		return plugin.CreateResponse{
+			ID:         "created-id",
+			Properties: req.Properties,
+			Status:     resource.StatusOK,
+		}, nil
+	}
+
+	// Operation 1 -- initialise the state with a resource.
+	upLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	expectError := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		if expectError {
+			require.Fail(t, "RegisterResource should not return")
+		} else {
+			require.NoError(t, err)
+		}
+		return nil
+	})
+
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upOptions := lt.TestUpdateOptions{T: t, HostF: upHostF}
+
+	upSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, upSnap.Resources, 2)
+	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
+
+	// Operation 2 -- return a replacing diff and interrupt it with a failing
+	// create.
+	expectError = true
+	replaceLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF:   returnReplaceDiff,
+				DeleteF: trackedDelete,
+				CreateF: throwingCreate,
+			}, nil
+		}),
+	}
+
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceOptions := lt.TestUpdateOptions{T: t, HostF: replaceHostF}
+
+	replaceSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "interrupt replace")
+
+	require.Len(t, replaceSnap.Resources, 2)
+	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
+	assert.True(t, deleteCalled, "Delete should be called as part of replacement")
+	assert.True(t, replaceSnap.Resources[1].PendingReplacement)
+
+	// Operation 3 -- resume the replacement with the same program.
+	expectError = false
+	deleteCalled = false
+	createCalled = false
+
+	removeLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF:   returnReplaceDiff,
+				DeleteF: trackedDelete,
+				CreateF: trackedCreate,
+			}, nil
+		}),
+	}
+
+	removeHostF := deploytest.NewPluginHostF(nil, nil, programF, removeLoaders...)
+	removeOptions := lt.TestUpdateOptions{T: t, HostF: removeHostF}
+
+	removeOptions.Refresh = true
+	removeOptions.RefreshProgram = true
+
+	removeSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+
+	require.Len(t, removeSnap.Resources, 2)
 	assert.Equal(t, removeSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, removeSnap.Resources[1].URN.Name(), "resA")
 	assert.False(t, deleteCalled, "Delete shouldn't be called a second time when resuming a replacement (same goals)")
@@ -425,9 +588,14 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 		}),
 	}
 
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		if expectError {
+			require.Fail(t, "RegisterResource should not return")
+		} else {
+			require.NoError(t, err)
+		}
 
 		return nil
 	})
@@ -437,14 +605,15 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 
 	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, upSnap.Resources, 2)
+	require.Len(t, upSnap.Resources, 2)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
 
 	// Operation 2 -- return a replacing diff and interrupt it with a failing
 	// create.
+	expectError = true
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -462,7 +631,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, replaceSnap.Resources, 2)
+	require.Len(t, replaceSnap.Resources, 2)
 	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
 	assert.True(t, deleteCalled, "Delete should be called as part of replacement")
@@ -470,6 +639,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 
 	// Operation 3 -- resume the replacement with a program that removes the
 	// resource.
+	expectError = false
 	deleteCalled = false
 	createCalled = false
 
@@ -494,10 +664,10 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 
 	removeSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert.
-	assert.Len(t, removeSnap.Resources, 0)
+	require.Len(t, removeSnap.Resources, 0)
 	assert.False(t, deleteCalled, "Delete shouldn't be called a second time when resuming a replacement (deleted goals)")
 	assert.False(t, createCalled, "Create shouldn't be called when resuming a replacement (deleted goals)")
 }
@@ -595,10 +765,14 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 		}),
 	}
 
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
-
+		if expectError {
+			require.Fail(t, "RegisterResource should not return")
+		} else {
+			require.NoError(t, err)
+		}
 		return nil
 	})
 
@@ -607,14 +781,15 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 
 	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, upSnap.Resources, 2)
+	require.Len(t, upSnap.Resources, 2)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
 
 	// Operation 2 -- return a replacing diff and interrupt it with a failing
 	// create.
+	expectError = true
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -632,7 +807,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 		RunStep(project, p.GetTarget(t, upSnap), replaceOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, replaceSnap.Resources, 2)
+	require.Len(t, replaceSnap.Resources, 2)
 	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
 	assert.True(t, deleteCalled, "Delete should be called as part of replacement")
@@ -642,6 +817,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	// non-replacing diff (for the purposes of the test we do this by mocking the
 	// Diff call rather than updating the program, but the effect should be the
 	// same).
+	expectError = false
 	deleteCalled = false
 	createCalled = false
 
@@ -660,10 +836,10 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 
 	removeSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, replaceSnap), removeOptions, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert.
-	assert.Len(t, removeSnap.Resources, 2)
+	require.Len(t, removeSnap.Resources, 2)
 	assert.Equal(t, removeSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, removeSnap.Resources[1].URN.Name(), "resA")
 	assert.False(t, deleteCalled, "Delete shouldn't be called a second time when resuming a replacement (updated goals)")
@@ -694,12 +870,15 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		a, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			DeleteBeforeReplace: &dbr,
 		})
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{a.URN},
-		})
-		assert.NoError(t, err)
+		if err == nil {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{a.URN},
+			})
+			require.NoError(t, err)
+		} else {
+			require.Fail(t, "RegisterResource should not return")
+		}
 
 		return nil
 	})
@@ -709,9 +888,9 @@ func TestInteruptedPendingReplace(t *testing.T) {
 
 	upSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, nil), upOptions, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, upSnap.Resources, 3)
+	require.Len(t, upSnap.Resources, 3)
 	assert.Equal(t, upSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, upSnap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, upSnap.Resources[2].URN.Name(), "resB")
@@ -744,7 +923,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		RunStep(project, p.GetTarget(t, upSnap), upOptions, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, replaceSnap.Resources, 3)
+	require.Len(t, replaceSnap.Resources, 3)
 	assert.Equal(t, replaceSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, replaceSnap.Resources[1].URN.Name(), "resA")
 	assert.True(t, replaceSnap.Resources[1].PendingReplacement)
@@ -756,7 +935,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		RunStep(project, p.GetTarget(t, replaceSnap), upOptions, false, p.BackendClient, nil, "2")
 	assert.ErrorContains(t, err, "interrupt replace")
 
-	assert.Len(t, secondReplaceSnap.Resources, 3)
+	require.Len(t, secondReplaceSnap.Resources, 3)
 	assert.Equal(t, secondReplaceSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, secondReplaceSnap.Resources[1].URN.Name(), "resA")
 	assert.True(t, secondReplaceSnap.Resources[1].PendingReplacement)
@@ -788,9 +967,9 @@ func TestInteruptedPendingReplace(t *testing.T) {
 
 	secondUpSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, secondReplaceSnap), upOptions, false, p.BackendClient, nil, "3")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, secondUpSnap.Resources, 3)
+	require.Len(t, secondUpSnap.Resources, 3)
 	assert.Equal(t, secondUpSnap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, secondUpSnap.Resources[1].URN.Name(), "resA")
 	assert.False(t, secondUpSnap.Resources[1].PendingReplacement)

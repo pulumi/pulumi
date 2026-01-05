@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, TypedDict
+from typing import Optional, TypedDict
 
 
 class RunError(Exception):
@@ -42,7 +42,7 @@ class InputPropertyErrorDetails(TypedDict):
 
 class InputPropertiesError(Exception):
     def __init__(
-        self, message: str, errors: Optional[List[InputPropertyErrorDetails]] = None
+        self, message: str, errors: Optional[list[InputPropertyErrorDetails]] = None
     ):
         """
         Can be used to indicate that the client has made a request with bad input properties.

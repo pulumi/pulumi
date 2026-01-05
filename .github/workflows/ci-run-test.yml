@@ -15,7 +15,7 @@ on:
         description: "Version to produce"
         type: string
       platform:
-        description: "OS to run tests on, e.g.: ubuntu-22.04"
+        description: "OS to run tests on, e.g.: ubuntu-latest"
         required: true
         type: string
 
@@ -47,6 +47,11 @@ on:
         default: 0
         required: false
         type: number
+      enable-journaling:
+        description: "Whether journaling is enabled for running the tests"
+        required: false
+        default: true
+        type: boolean
 
       version-set:
         required: false
@@ -57,7 +62,7 @@ on:
           {
             "dotnet": "8.0.x",
             "go": "1.18.x",
-            "nodejs": "16.x",
+            "nodejs": "20.x",
             "python": "3.9.x"
           }
       continue-on-error:
@@ -79,6 +84,7 @@ env:
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
   # We're hitting a lot of github limits because of deploytest trying to auto install plugins, skip that for now.
   PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION: "true"
+  PULUMI_ENABLE_JOURNALING: "${{ inputs.enable-journaling }}"
   PYTHON: python
   GO_TEST_PARALLELISM: 8
   GO_TEST_PKG_PARALLELISM: 2
@@ -102,7 +108,7 @@ jobs:
     steps:
       - if: contains(inputs.platform, 'ubuntu')
         name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
         with:
           tool-cache: false
           swap-storage: false
@@ -152,7 +158,7 @@ jobs:
           echo "/usr/local/opt/coreutils/libexec/gnubin" | tee -a "$GITHUB_PATH"
           command -v bash
           bash --version
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -165,13 +171,22 @@ jobs:
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
           # Post integration test coverage to a temporary directory.
-          # This will be merged at a later step.
-          echo "GOCOVERDIR=$(mktemp -d)" >> "$GITHUB_ENV"
+          # This will be merged at a later step. Note that we can't
+          # use $GOCOVERDIR here, because Go overwrites that env
+          # variable when the '-cover' flag is used. Use
+          # $PULUMI_GOCOVERDIR instead, which the integration tests
+          # then turn into $GOCOVERDIR.  See also https://github.com/golang/go/issues/66225.
+          #
+          # Also set `GOCOVERDIR` for tests that don't use `go test` (e.g.
+          # automation API tests)
+          coverdir="$(mktemp -d)"
+          echo "PULUMI_GOCOVERDIR=$coverdir" >> "$GITHUB_ENV"
+          echo "GOCOVERDIR=$coverdir" >> "$GITHUB_ENV"
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         id: setup-go
         env:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
@@ -192,32 +207,32 @@ jobs:
         run: |
           go install github.com/go-delve/delve/cmd/dlv@latest
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
           cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
       - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
           dotnet-quality: ga
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
           cache-dependency-path: sdk/nodejs/yarn.lock
       - name: Set up JDK 11
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           java-version: '11'
           distribution: 'temurin'
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@d9c87d481d55275bb5441eef3fe0e46805f9ef70 # v3
         with:
           gradle-version: "7.6"
       - name: Uninstall pre-installed Pulumi (windows)
@@ -230,6 +245,10 @@ jobs:
       - name: Install yarn and pnpm
         run: |
           npm install -g yarn pnpm
+      - name: Install bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+        with:
+          bun-version: 1.2.23
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
@@ -243,7 +262,7 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" | tee -a "${GITHUB_ENV}"
       - name: Install gotestsum
-        uses: jaxxstorm/action-install-gh-release@v1.11.0
+        uses: jaxxstorm/action-install-gh-release@71d17cb091aa850acb2a1a4cf87258d183eb941b # v1.11.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -251,7 +270,7 @@ jobs:
           tag: v1.8.1
           cache: enable
       - name: Install goteststats
-        uses: jaxxstorm/action-install-gh-release@v1.11.0
+        uses: jaxxstorm/action-install-gh-release@71d17cb091aa850acb2a1a4cf87258d183eb941b # v1.11.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -285,13 +304,13 @@ jobs:
       # Integration and performance test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-integration-test }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
           path: artifacts/cli
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-performance-test }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
           path: artifacts/cli
@@ -350,7 +369,7 @@ jobs:
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
       - name: Create GCP service account key file
         run: |
-          echo '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
+          echo -n '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
       - name: run tests "${{ inputs.test-command }}"
         id: test
         run: ${{ inputs.test-command }}
@@ -365,6 +384,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/application_default_credentials.json
           AWS_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_SECRET }}
+          DOTNET_VERSION: ${{ fromJson(inputs.version-set).dotnet }}
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |
@@ -380,34 +400,21 @@ jobs:
         run: |
           # Merge coverage data from coverage-instrumented binaries
           # if available.
-          if [ -n "$(ls -A "$GOCOVERDIR")" ]; then
+          if [ -n "$(ls -A "$PULUMI_GOCOVERDIR")" ]; then
             # Cross-platform way to get milliseconds since Unix epoch.
             UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
-            go tool covdata textfmt -i="$GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov"
+            go tool covdata textfmt -i="$PULUMI_GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov"
           fi
       - name: Upload code coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ inputs.enable-coverage }}
         with:
           name: coverage-${{ env.TEST_HASH_ID }}
           path: |
             coverage/*
             !coverage/.gitkeep
-      - name: Debug branch name
-        env:
-          REF: ${{ github.ref }}
-          REF_NAME: ${{ github.ref_name }}
-          HEAD_REF: ${{ github.head_ref }}
-          EVENT_NAME: ${{ github.event_name }}
-          BRANCH_NAME: ${{ github.event_name == 'merge_group' && 'master' || github.head_ref }}
-        run: |
-          echo REF="${REF}"
-          echo REF_NAME="${REF_NAME}"
-          echo HEAD_REF="${HEAD_REF}"
-          echo EVENT_NAME="${EVENT_NAME}"
-          echo BRANCH_NAME="${BRANCH_NAME}"
       - name: Upload codecov test results
-        uses: codecov/test-results-action@v1
+        uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1
         with:
           directory: junit/
           fail_ci_if_error: false
@@ -433,11 +440,13 @@ jobs:
       - name: Summarize Test Times by Individual Test
         continue-on-error: true
         run: |
-          goteststats -statistic test-time test-results/*.json | head -n 100 || \
-                      if [[ $? -eq 141 ]]; then true; else exit $?; fi
+          goteststats -statistic test-time test-results/*.json | head -n 100
+          exit_status=$?
+          # Ignore SIGPIPE (exit status 141)
+          if [[ exit_status -eq 0 || exit_status -eq 141 ]]; then true; else exit $exit_status; fi
       - name: Upload artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
           path: test-results/*.json

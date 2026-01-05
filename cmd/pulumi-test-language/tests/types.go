@@ -95,13 +95,13 @@ func (l *L) Failed() bool {
 }
 
 // Errorf records the given error message and marks this test as failed.
-func (l *L) Errorf(format string, args ...interface{}) {
+func (l *L) Errorf(format string, args ...any) {
 	l.log(1, fmt.Sprintf(format, args...))
 	l.Fail()
 }
 
 // Logf records the given message in the L's logs.
-func (l *L) Logf(format string, args ...interface{}) {
+func (l *L) Logf(format string, args ...any) {
 	l.log(1, fmt.Sprintf(format, args...))
 }
 
@@ -209,8 +209,8 @@ type TestingT interface {
 	FailNow()
 	Fail()
 	Failed() bool
-	Errorf(string, ...interface{})
-	Logf(string, ...interface{})
+	Errorf(string, ...any)
+	Logf(string, ...any)
 }
 
 var (
@@ -219,14 +219,19 @@ var (
 )
 
 type LanguageTest struct {
-	// TODO: This should be a function so we don't have to load all providers in memory all the time.
-	Providers []plugin.Provider
+	Providers []func() plugin.Provider
+
+	// A list of provider names that should be loaded from the languages providers directory.
+	LanguageProviders []string
 
 	// stackReferences specifies other stack data that this test depends on.
 	StackReferences map[string]resource.PropertyMap
 
 	// runs is a list of test runs to execute.
 	Runs []TestRun
+
+	// RunsShareSource indicates whether all runs share the same source code.
+	RunsShareSource bool
 }
 
 type TestRun struct {
@@ -234,9 +239,11 @@ type TestRun struct {
 	// This can be used to set a main value for the test.
 	Main string
 	// TODO: This should just return "string", if == "" then ok, else fail
-	Assert func(*L, string, error, *deploy.Snapshot, display.ResourceChanges)
+	Assert func(*L, string, error, *deploy.Snapshot, display.ResourceChanges, []engine.Event)
 	// Assert resource changes during preview runs.
-	AssertPreview func(*L, string, error, *deploy.Plan, display.ResourceChanges)
-	// updateOptions can be used to set the update options for the engine.
+	AssertPreview func(*L, string, error, *deploy.Plan, display.ResourceChanges, []engine.Event)
+	// UpdateOptions can be used to set the update options for the engine.
 	UpdateOptions engine.UpdateOptions
+	// PolicyPacks is a map of policy packs to use for this test and their config.
+	PolicyPacks map[string]map[string]any
 }

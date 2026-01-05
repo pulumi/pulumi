@@ -19,6 +19,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
+// Translate a [property.Map] into a [PropertyMap].
+//
+// This is a lossless transition, such that this will be true:
+//
+//	FromResourcePropertyMap(ToResourcePropertyMap(m)).Equals(m)
+func ToResourcePropertyMap(v property.Map) PropertyMap {
+	vMap := v.AsMap()
+	rMap := make(PropertyMap, len(vMap))
+	for k, vElem := range vMap {
+		rMap[PropertyKey(k)] = ToResourcePropertyValue(vElem)
+	}
+	return rMap
+}
+
 // Translate a Value into a PropertyValue.
 //
 // This is a lossless transition, such that this will be true:
@@ -28,32 +42,27 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 	var r PropertyValue
 	switch {
 	case v.IsBool():
-		r = NewBoolProperty(v.AsBool())
+		r = NewProperty(v.AsBool())
 	case v.IsNumber():
-		r = NewNumberProperty(v.AsNumber())
+		r = NewProperty(v.AsNumber())
 	case v.IsString():
-		r = NewStringProperty(v.AsString())
+		r = NewProperty(v.AsString())
 	case v.IsArray():
-		vArr := v.AsArray()
+		vArr := v.AsArray().AsSlice()
 		arr := make([]PropertyValue, len(vArr))
 		for i, vElem := range vArr {
 			arr[i] = ToResourcePropertyValue(vElem)
 		}
-		r = NewArrayProperty(arr)
+		r = NewProperty(arr)
 	case v.IsMap():
-		vMap := v.AsMap()
-		rMap := make(PropertyMap, len(vMap))
-		for k, vElem := range vMap {
-			rMap[PropertyKey(k)] = ToResourcePropertyValue(vElem)
-		}
-		r = NewObjectProperty(rMap)
+		r = NewProperty(ToResourcePropertyMap(v.AsMap()))
 	case v.IsAsset():
-		r = NewAssetProperty(v.AsAsset())
+		r = NewProperty(v.AsAsset())
 	case v.IsArchive():
-		r = NewArchiveProperty(v.AsArchive())
+		r = NewProperty(v.AsArchive())
 	case v.IsResourceReference():
 		ref := v.AsResourceReference()
-		r = NewResourceReferenceProperty(ResourceReference{
+		r = NewProperty(ResourceReference{
 			URN:            ref.URN,
 			ID:             ToResourcePropertyValue(ref.ID),
 			PackageVersion: ref.PackageVersion,
@@ -64,7 +73,7 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 
 	switch {
 	case len(v.Dependencies()) > 0 || (v.Secret() && v.IsComputed()):
-		r = NewOutputProperty(Output{
+		r = NewProperty(Output{
 			Element:      r,
 			Known:        !v.IsComputed(),
 			Secret:       v.Secret(),
@@ -73,10 +82,24 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 	case v.Secret():
 		r = MakeSecret(r)
 	case v.IsComputed():
-		r = MakeComputed(r)
+		r = MakeComputed(NewProperty(""))
 	}
 
 	return r
+}
+
+// Translate a [PropertyValue] into a [property.Value].
+//
+// This is a normalizing transition, such that the last expression will be true:
+//
+//	normalized := ToResourcePropertyMap(FromResourcePropertyMap(m))
+//	normalized.DeepEquals(ToResourcePropertyMap(FromResourcePropertyMap(m)))
+func FromResourcePropertyMap(v PropertyMap) property.Map {
+	rMap := make(map[string]property.Value, len(v))
+	for k, v := range v {
+		rMap[string(k)] = FromResourcePropertyValue(v)
+	}
+	return property.NewMap(rMap)
 }
 
 // Translate a PropertyValue into a Value.
@@ -96,18 +119,13 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		return property.New(v.StringValue())
 	case v.IsArray():
 		vArr := v.ArrayValue()
-		arr := make(property.Array, len(vArr))
+		arr := make([]property.Value, len(vArr))
 		for i, v := range vArr {
 			arr[i] = FromResourcePropertyValue(v)
 		}
 		return property.New(arr)
 	case v.IsObject():
-		vMap := v.ObjectValue()
-		rMap := make(property.Map, len(vMap))
-		for k, v := range vMap {
-			rMap[string(k)] = FromResourcePropertyValue(v)
-		}
-		return property.New(rMap)
+		return property.New(FromResourcePropertyMap(v.ObjectValue()))
 	case v.IsAsset():
 		return property.New(v.AssetValue())
 	case v.IsArchive():

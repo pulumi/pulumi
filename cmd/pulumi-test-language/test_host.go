@@ -15,11 +15,13 @@
 package main
 
 import (
-	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
 	"strings"
+	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"google.golang.org/grpc"
@@ -39,27 +41,50 @@ import (
 )
 
 type testHost struct {
-	stderr      *bytes.Buffer
+	engine      *languageTestServer
+	ctx         *plugin.Context
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
 	runtimeName string
-	providers   map[string]plugin.Provider
+	providers   map[string]func() (plugin.Provider, error)
 
 	connections map[plugin.Provider]io.Closer
+
+	policies []plugin.Analyzer
+
+	closeMutex sync.Mutex
 }
 
 var _ plugin.Host = (*testHost)(nil)
 
 func (h *testHost) ServerAddr() string {
-	panic("not implemented")
+	return h.engine.addr
 }
 
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	prefix := ""
-	if urn != "" {
-		prefix = fmt.Sprintf(" %s: ", urn)
+	var rpcsev pulumirpc.LogSeverity
+	switch sev {
+	case diag.Debug:
+		rpcsev = pulumirpc.LogSeverity_DEBUG
+	case diag.Info:
+		rpcsev = pulumirpc.LogSeverity_INFO
+	case diag.Infoerr:
+		rpcsev = pulumirpc.LogSeverity_INFO
+	case diag.Warning:
+		rpcsev = pulumirpc.LogSeverity_WARNING
+	case diag.Error:
+		rpcsev = pulumirpc.LogSeverity_ERROR
+	default:
+		contract.Failf("unexpected severity %v", sev)
 	}
-	_, err := fmt.Fprintf(h.stderr, "[%s]%s\n", prefix, msg)
+
+	_, err := h.engine.Log(context.TODO(),
+		&pulumirpc.LogRequest{
+			Severity: rpcsev,
+			Urn:      string(urn),
+			Message:  msg,
+			StreamId: streamID,
+		})
 	contract.IgnoreError(err)
 }
 
@@ -74,15 +99,23 @@ func (h *testHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 func (h *testHost) PolicyAnalyzer(
 	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
-	panic("not implemented")
+	hasPlugin := func(spec workspace.PluginDescriptor) bool {
+		// This is only called for the language runtime, so we can just do a simple check.
+		return spec.Kind == apitype.LanguagePlugin && spec.Name == h.runtimeName
+	}
+	analyzer, err := plugin.NewPolicyAnalyzer(h, h.ctx, name, path, opts, hasPlugin)
+	if err != nil {
+		return nil, err
+	}
+	h.policies = append(h.policies, analyzer)
+	return analyzer, nil
 }
 
 func (h *testHost) ListAnalyzers() []plugin.Analyzer {
-	// We're not using analyzers for matrix tests, yet.
-	return nil
+	return h.policies
 }
 
-func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+func (h *testHost) Provider(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 	// If we've not been given a version, we'll try and find the provider by name alone, picking the latest if there are
 	// multiple versions of the named provider. Otherwise, we can attempt to find an exact match.
 	var key string
@@ -100,14 +133,27 @@ func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Prov
 			if parts[0] == key {
 				v := semver.MustParse(parts[1])
 				if provider == nil || v.GT(version) {
-					provider = p
+					var err error
+					provider, err = p()
+					if err != nil {
+						return nil, fmt.Errorf("initializing provider %s: %w", k, err)
+					}
 					version = v
 				}
 			}
 		}
 	} else {
 		key = fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
-		provider = h.providers[key]
+		var err error
+		providerFactory, ok := h.providers[key]
+		if !ok {
+			return nil, fmt.Errorf("unknown provider %s", key)
+		}
+
+		provider, err = providerFactory()
+		if err != nil {
+			return nil, fmt.Errorf("initializing provider %s: %w", key, err)
+		}
 	}
 
 	if provider == nil {
@@ -123,31 +169,36 @@ func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Prov
 	return grpcProvider, nil
 }
 
-func (h *testHost) CloseProvider(provider plugin.Provider) error {
-	closer, ok := h.connections[provider]
-	if !ok {
-		return fmt.Errorf("unknown provider %v", provider)
-	}
-	delete(h.connections, provider)
-	return closer.Close()
-}
-
 // LanguageRuntime returns the language runtime initialized by the test host.
 // ProgramInfo is only used here for compatibility reasons and will be removed from this function.
-func (h *testHost) LanguageRuntime(runtime string, info plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+func (h *testHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
 	if runtime != h.runtimeName {
 		return nil, fmt.Errorf("unexpected runtime %s", runtime)
 	}
 	return h.runtime, nil
 }
 
-func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+func (h *testHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
+	// Remove the builtin "pulumi" provider, as that's always available.
+	filtered := make([]workspace.PluginDescriptor, 0, len(plugins))
+	for _, plugin := range plugins {
+		if plugin.Kind == apitype.ResourcePlugin && plugin.Name == "pulumi" {
+			continue
+		}
+		filtered = append(filtered, plugin)
+	}
+	plugins = filtered
+
 	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
 	// that that returned the expected plugins (with expected versions).
 	expected := mapset.NewSet[string]()
-	for _, provider := range h.providers {
-		pkg := provider.Pkg()
-		version, err := getProviderVersion(provider)
+	for name, provider := range h.providers {
+		p, err := provider()
+		if err != nil {
+			return fmt.Errorf("initializing provider %s for ensure plugins: %w", name, err)
+		}
+		pkg := p.Pkg()
+		version, err := getProviderVersion(p)
 		if err != nil {
 			return fmt.Errorf("get provider version %s: %w", pkg, err)
 		}
@@ -173,12 +224,16 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 }
 
 func (h *testHost) ResolvePlugin(
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
-		for _, provider := range h.providers {
-			pkg := provider.Pkg()
-			providerVersion, err := getProviderVersion(provider)
+		for name, provider := range h.providers {
+			p, err := provider()
+			if err != nil {
+				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", name, err)
+			}
+			pkg := p.Pkg()
+			providerVersion, err := getProviderVersion(p)
 			if err != nil {
 				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
 			}
@@ -211,11 +266,36 @@ func (h *testHost) SignalCancellation() error {
 }
 
 func (h *testHost) Close() error {
+	h.closeMutex.Lock()
+	defer h.closeMutex.Unlock()
+	errs := make([]error, 0)
+	for _, closer := range h.connections {
+		if err := closer.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	h.connections = make(map[plugin.Provider]io.Closer)
+
+	for _, policy := range h.policies {
+		if err := policy.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	h.policies = nil
+
+	err := errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("failed to close plugins: %w", err)
+	}
 	return nil
 }
 
 func (h *testHost) StartDebugging(plugin.DebuggingInfo) error {
 	panic("not implemented")
+}
+
+func (h *testHost) AttachDebugger(plugin.DebugSpec) bool {
+	return false
 }
 
 type grpcWrapper struct {

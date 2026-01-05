@@ -20,6 +20,7 @@ package nodejs
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
@@ -205,7 +206,7 @@ func (mod *modContext) namingContext(pkg schema.PackageReference) (namingCtx *mo
 			compatibility: info.Compatibility,
 		}
 	}
-	return
+	return namingCtx, pkgName, external
 }
 
 func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDetails, tok string, input, args, enum bool) string {
@@ -293,7 +294,7 @@ func tokenToFunctionName(tok string) string {
 	return camel(tokenToName(tok))
 }
 
-func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}) tstypes.TypeAst {
+func (mod *modContext) typeAst(t schema.Type, input bool, constValue any) tstypes.TypeAst {
 	switch t := t.(type) {
 	case *schema.OptionalType:
 		return tstypes.Union(
@@ -359,7 +360,7 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}
 	panic(fmt.Errorf("unexpected type %T", t))
 }
 
-func (mod *modContext) typeString(t schema.Type, input bool, constValue interface{}) string {
+func (mod *modContext) typeString(t schema.Type, input bool, constValue any) string {
 	return tstypes.TypeLiteral(tstypes.Normalize(mod.typeAst(t, input, constValue)))
 }
 
@@ -527,7 +528,7 @@ func (mod *modContext) provideDefaultsFuncName(typ schema.Type, input bool) stri
 	return provideDefaultsFuncNameFromName(typeName)
 }
 
-func tsPrimitiveValue(value interface{}) (string, error) {
+func tsPrimitiveValue(value any) (string, error) {
 	v := reflect.ValueOf(value)
 	if v.Kind() == reflect.Interface {
 		v = v.Elem()
@@ -553,7 +554,7 @@ func tsPrimitiveValue(value interface{}) (string, error) {
 	}
 }
 
-func (mod *modContext) getConstValue(cv interface{}) (string, error) {
+func (mod *modContext) getConstValue(cv any) (string, error) {
 	if cv == nil {
 		return "", nil
 	}
@@ -579,9 +580,10 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 			getType = "Number"
 		}
 
-		envVars := fmt.Sprintf("%q", dv.Environment[0])
+		var envVars strings.Builder
+		envVars.WriteString(fmt.Sprintf("%q", dv.Environment[0]))
 		for _, e := range dv.Environment[1:] {
-			envVars += fmt.Sprintf(", %q", e)
+			envVars.WriteString(fmt.Sprintf(", %q", e))
 		}
 
 		cast := ""
@@ -589,7 +591,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 			cast = "<any>"
 		}
 
-		getEnv := fmt.Sprintf("%sutilities.getEnv%s(%s)", cast, getType, envVars)
+		getEnv := fmt.Sprintf("%sutilities.getEnv%s(%s)", cast, getType, envVars.String())
 		if val != "" {
 			val = fmt.Sprintf("(%s || %s)", getEnv, val)
 		} else {
@@ -705,7 +707,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if mod.compatibility == kubernetes20 {
 			propertyType = codegen.RequiredType(prop)
 		}
-		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(propertyType, false, prop.ConstValue))
+		fmt.Fprintf(w, "    declare public %sreadonly %s: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(propertyType, false, prop.ConstValue))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -749,7 +751,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	genInputProps := func() error {
 		for _, prop := range r.InputProperties {
 			if prop.IsRequired() {
-				fmt.Fprintf(w, "            if ((!args || args.%s === undefined) && !opts.urn) {\n", prop.Name)
+				fmt.Fprintf(w, "            if (args?.%s === undefined && !opts.urn) {\n", prop.Name)
 				fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
 				fmt.Fprintf(w, "            }\n")
 			}
@@ -769,11 +771,16 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				return arg
 			}
 
-			argValue := applyDefaults("args." + prop.Name)
+			argRef := "args." + prop.Name
+			argValue := applyDefaults(argRef)
 			if prop.Secret {
 				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(%[2]s) : undefined", prop.Name, argValue)
 			} else {
-				arg = fmt.Sprintf("args ? %[1]s : undefined", argValue)
+				if argRef == argValue {
+					arg = "args?." + prop.Name
+				} else {
+					arg = fmt.Sprintf("args ? %[1]s : undefined", argValue)
+				}
 			}
 
 			prefix := "            "
@@ -834,7 +841,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			fmt.Fprintf(w, "        if (opts.id) {\n")
 			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
 			for _, prop := range r.StateInputs.Properties {
-				fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
+				fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = state?.%[1]s;\n", prop.Name)
 			}
 			// The creation case (with args):
 			fmt.Fprintf(w, "        } else {\n")
@@ -1170,10 +1177,6 @@ func runtimeInvokeFunction(fun *schema.Function, plain bool) string {
 	// If the function has an object return type, it is a normal invoke function.
 	case *schema.ObjectType:
 		functionName = "invoke"
-	// If the function has an object return type, it is also a normal invoke function.
-	// because the deserialization can handle it
-	case *schema.MapType:
-		functionName = "invoke"
 	default:
 		// Anything else needs to be handled by InvokeSingle
 		// which expects an object with a single property to be returned
@@ -1190,7 +1193,7 @@ func runtimeInvokeFunction(fun *schema.Function, plain bool) string {
 
 func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, plain bool) (functionFileInfo, error) {
 	name := tokenToFunctionName(fun.Token)
-	info := functionFileInfo{functionName: name}
+	info := functionFileInfo{}
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
@@ -1228,85 +1231,90 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		fullFunctionName += "Output"
 		info.functionOutputVersionName = fullFunctionName
 	}
-
-	fmt.Fprintf(w, "export function %s(", fullFunctionName)
-	if fun.MultiArgumentInputs {
-		for _, prop := range fun.Inputs.Properties {
-			propertyType := codegen.UnwrapType(prop.Type)
-			isInput := false
-			if !plain {
-				isInput = true
-				propertyType = &schema.InputType{ElementType: prop.Type}
-			}
-			fmt.Fprintf(w, "%s", prop.Name)
-			if prop.IsRequired() {
-				fmt.Fprintf(w, ": ")
-			} else {
-				fmt.Fprintf(w, "?: ")
-			}
-			fmt.Fprintf(w, "%s, ", mod.typeString(propertyType, isInput, nil))
-		}
-	} else {
-		fmt.Fprintf(w, "%s", argsig)
+	if fun.Plain {
+		info.functionName = name
 	}
 
-	returnType := fmt.Sprintf("Promise<%s>", funReturnType)
-	if !plain {
-		returnType = fmt.Sprintf("pulumi.Output<%s>", funReturnType)
-	}
-
-	invokeOptionsType := "pulumi.InvokeOptions"
-	if !plain {
-		invokeOptionsType = "pulumi.InvokeOutputOptions"
-	}
-	fmt.Fprintf(w, "opts?: %s): %s {\n", invokeOptionsType, returnType)
-	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
-	}
-
-	// Zero initialize the args if empty and necessary.
-	if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs && argsig != "" {
-		fmt.Fprintf(w, "    args = args || {};\n")
-	}
-
-	// If the caller didn't request a specific version, supply one using the version of this library.
-	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
-	invokeCall := runtimeInvokeFunction(fun, plain)
-	// Now simply invoke the runtime function with the arguments, returning the results.
-	fmt.Fprintf(w, "    return pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
-	if fun.Inputs != nil {
-		for _, p := range fun.Inputs.Properties {
-			// Pass the argument to the invocation.
-			body := "args." + p.Name
-			if fun.MultiArgumentInputs {
-				body = p.Name
-			}
-
-			if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
-				if codegen.IsNOptionalInput(p.Type) || !plain {
-					body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
+	if !plain || fun.Plain {
+		fmt.Fprintf(w, "export function %s(", fullFunctionName)
+		if fun.MultiArgumentInputs {
+			for _, prop := range fun.Inputs.Properties {
+				propertyType := codegen.UnwrapType(prop.Type)
+				isInput := false
+				if !plain {
+					isInput = true
+					propertyType = &schema.InputType{ElementType: prop.Type}
+				}
+				fmt.Fprintf(w, "%s", prop.Name)
+				if prop.IsRequired() {
+					fmt.Fprintf(w, ": ")
 				} else {
-					body = fmt.Sprintf("%s(%s)", name, body)
+					fmt.Fprintf(w, "?: ")
+				}
+				fmt.Fprintf(w, "%s, ", mod.typeString(propertyType, isInput, nil))
+			}
+		} else {
+			fmt.Fprintf(w, "%s", argsig)
+		}
+
+		returnType := fmt.Sprintf("Promise<%s>", funReturnType)
+		if !plain {
+			returnType = fmt.Sprintf("pulumi.Output<%s>", funReturnType)
+		}
+
+		invokeOptionsType := "pulumi.InvokeOptions"
+		if !plain {
+			invokeOptionsType = "pulumi.InvokeOutputOptions"
+		}
+		fmt.Fprintf(w, "opts?: %s): %s {\n", invokeOptionsType, returnType)
+		if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
+			fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
+		}
+
+		// Zero initialize the args if empty and necessary.
+		if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs && argsig != "" {
+			fmt.Fprintf(w, "    args = args || {};\n")
+		}
+
+		// If the caller didn't request a specific version, supply one using the version of this library.
+		fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
+		invokeCall := runtimeInvokeFunction(fun, plain)
+		// Now simply invoke the runtime function with the arguments, returning the results.
+		fmt.Fprintf(w, "    return pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
+		if fun.Inputs != nil {
+			for _, p := range fun.Inputs.Properties {
+				// Pass the argument to the invocation.
+				body := "args." + p.Name
+				if fun.MultiArgumentInputs {
+					body = p.Name
 				}
 
-				body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
+				if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
+					if codegen.IsNOptionalInput(p.Type) || !plain {
+						body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
+					} else {
+						body = fmt.Sprintf("%s(%s)", name, body)
+					}
+
+					body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
+				}
+				fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 			}
-			fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 		}
-	}
 
-	fmt.Fprintf(w, "    }, opts")
+		fmt.Fprintf(w, "    }, opts")
 
-	// If the invoke is on a parameterized package, make sure we pass the parameter.
-	pkg, err := fun.PackageReference.Definition()
-	if err != nil {
-		return info, err
-	}
-	if pkg.Parameterization != nil {
-		fmt.Fprintf(w, ", utilities.getPackage()")
-	}
+		// If the invoke is on a parameterized package, make sure we pass the parameter.
+		pkg, err := fun.PackageReference.Definition()
+		if err != nil {
+			return info, err
+		}
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", utilities.getPackage()")
+		}
 
-	fmt.Fprintf(w, ");\n}\n")
+		fmt.Fprintf(w, ");\n}\n")
+	}
 
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil && !fun.MultiArgumentInputs {
@@ -1366,7 +1374,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		return functionFileInfo{}, err
 	}
 
-	if fun.ReturnType == nil {
+	if fun.ReturnType == nil && fun.Plain {
 		// no need to generate the output-versioned invoke
 		return plainFunctionInfo, nil
 	}
@@ -1487,11 +1495,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
 			externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", externalModuleName(pkg), imp))
 		} else {
-			namespace := "@pulumi"
-			if res != nil && res.PackageReference != nil && res.PackageReference.Namespace() != "" {
-				namespace = "@" + res.PackageReference.Namespace()
-			}
-			externalImports.Add(fmt.Sprintf("import * as %s from \"%s/%s\";", externalModuleName(pkg), namespace, pkg))
+			externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", externalModuleName(pkg), pkg))
 		}
 	}
 
@@ -1551,11 +1555,11 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	}
 }
 
-func (mod *modContext) getImports(member interface{}, externalImports codegen.StringSet, imports map[string]codegen.StringSet) bool {
+func (mod *modContext) getImports(member any, externalImports codegen.StringSet, imports map[string]codegen.StringSet) bool {
 	return mod.getImportsForResource(member, externalImports, imports, nil)
 }
 
-func (mod *modContext) getImportsForResource(member interface{}, externalImports codegen.StringSet, imports map[string]codegen.StringSet, res *schema.Resource) bool {
+func (mod *modContext) getImportsForResource(member any, externalImports codegen.StringSet, imports map[string]codegen.StringSet, res *schema.Resource) bool {
 	seen := codegen.Set{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
@@ -2360,11 +2364,14 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string, localSDK bool) error {
+func genPackageMetadata(
+	pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string, localSDK bool,
+	loader schema.ReferenceLoader,
+) error {
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies, localSDK)
+	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies, localSDK, loader)
 	if err != nil {
 		return err
 	}
@@ -2373,6 +2380,8 @@ func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs
 	if localSDK {
 		fs.Add("scripts/postinstall.js", genPostInstallScript())
 	}
+	fs.Add(".gitignore", genGitignoreFile())
+	fs.Add(".gitattributes", codegen.GenGitAttributesFile())
 	return nil
 }
 
@@ -2394,7 +2403,10 @@ type npmPackage struct {
 	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
-func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string, localSDK bool) (string, error) {
+func genNPMPackageMetadata(
+	pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string, localSDK bool,
+	loader schema.ReferenceLoader,
+) (string, error) {
 	packageName := info.PackageName
 	if packageName == "" {
 		if pkg.Namespace != "" {
@@ -2404,13 +2416,25 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		}
 	}
 
-	devDependencies := map[string]string{}
-	if info.TypeScriptVersion != "" {
-		devDependencies["typescript"] = info.TypeScriptVersion
-	} else {
-		devDependencies["typescript"] = MinimumTypescriptVersion
+	typescriptVersion := info.TypeScriptVersion
+	if typescriptVersion == "" {
+		typescriptVersion = MinimumTypescriptVersion
 	}
-	devDependencies["@types/node"] = MinimumNodeTypesVersion
+
+	dependencies := map[string]string{}
+	if pkg.Parameterization != nil {
+		dependencies["async-mutex"] = "^0.5.0"
+	}
+	devDependencies := map[string]string{}
+	// Local SDKs require typescript as a normal dependency, so that we can
+	// compile the SDK in the postinstall script.
+	if localSDK {
+		dependencies["typescript"] = typescriptVersion
+		dependencies["@types/node"] = MinimumNodeTypesVersion
+	} else {
+		devDependencies["typescript"] = typescriptVersion
+		devDependencies["@types/node"] = MinimumNodeTypesVersion
+	}
 
 	version := "${VERSION}"
 	pluginVersion := ""
@@ -2446,11 +2470,6 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 			Name:     pkg.Name,
 			Version:  pluginVersion,
 		}
-	}
-
-	dependencies := map[string]string{}
-	if pkg.Parameterization != nil {
-		dependencies["async-mutex"] = "^0.5.0"
 	}
 
 	// Create info that will get serialized into an NPM package.json.
@@ -2505,6 +2524,26 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		npminfo.Resolutions[resk] = resv
 	}
 
+	for _, dep := range pkg.Dependencies {
+		ref, err := loader.LoadPackageReferenceV2(context.TODO(), &dep)
+		if err != nil {
+			return "", err
+		}
+		if npminfo.Dependencies == nil {
+			npminfo.Dependencies = make(map[string]string)
+		}
+		namespace := "pulumi"
+		if ref.Namespace() != "" {
+			namespace = ref.Namespace()
+		}
+		depName := "@" + namespace + "/" + ref.Name()
+		if path, ok := localDependencies[dep.Name]; ok {
+			npminfo.Dependencies[depName] = path
+		} else {
+			npminfo.Dependencies[depName] = dep.Version.String()
+		}
+	}
+
 	// If there is no @pulumi/pulumi, add "latest" as a peer dependency (for npm linking style usage).
 	sdkPack := "@pulumi/pulumi"
 	if npminfo.Dependencies[sdkPack] == "" &&
@@ -2526,20 +2565,41 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 	return string(npmjson) + "\n", nil
 }
 
+// genPostInstallScript generates the postinstall script for local SDKs. The
+// local SDKs declare typescript as a dependencies. When the script is run via a
+// package manager, the package manager will add `node_modules/.bin` to the
+// path, ensuring we run the intended version of `tsc`.
+// We also limit the `@types` packages that are used to those the SDK itself
+// depends on. Otherwise typescript will use all `@types` packages in the
+// project, which can lead to it trying to use type packages that are not
+// compatible with the SDK's typescript version.
 func genPostInstallScript() []byte {
 	return []byte(`const fs = require("node:fs");
-const path = require("node:path")
-const process = require("node:process")
+const path = require("node:path");
+const process = require("node:process");
 const { execSync } = require('node:child_process');
+// We want to run "tsc --types node --types something-else ..." for each @types package.
+const packageJSON = JSON.parse(fs.readFileSync("package.json") ?? "{}");
+const deps = Object.keys(packageJSON.dependencies ?? []).concat(Object.keys(packageJSON.devDependencies ?? []));
+const types = deps.filter(d => d.startsWith("@types/")).map(d => d.slice("@types/".length)).join(",");
+const typesFlag = types.length > 0 ? " --types " + types : "";
 try {
-  const out = execSync('tsc')
-  console.log(out.toString())
+  execSync("tsc"+typesFlag, { cwd: path.join(__dirname, "..") });
 } catch (error) {
-  console.error(error.message + ": " + error.stdout.toString() + "\n" + error.stderr.toString())
-  process.exit(1)
+  console.error("Failed to run 'tsc'", {
+    stdout: error.stdout.toString(),
+    stderr: error.stderr.toString(),
+  });
+  process.exit(1);
 }
 // TypeScript is compiled to "./bin", copy package.json to that directory so it can be read in "getVersion".
 fs.copyFileSync(path.join(__dirname, "..", "package.json"), path.join(__dirname, "..", "bin", "package.json"));
+`)
+}
+
+func genGitignoreFile() []byte {
+	return []byte(`node_modules/
+bin/
 `)
 }
 
@@ -2549,7 +2609,7 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
 	fmt.Fprintf(w, `{
     "compilerOptions": {
         "outDir": "bin",
-        "target": "es2016",
+        "target": "ES2020",
         "module": "commonjs",
         "moduleResolution": "node",
         "declaration": true,
@@ -2812,6 +2872,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 
 func GeneratePackage(tool string, pkg *schema.Package,
 	extraFiles map[string][]byte, localDependencies map[string]string, localSDK bool,
+	loader schema.ReferenceLoader,
 ) (map[string][]byte, error) {
 	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
 	if err != nil {
@@ -2830,7 +2891,7 @@ func GeneratePackage(tool string, pkg *schema.Package,
 	}
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	if err = genPackageMetadata(pkg, info, files, localDependencies, localSDK); err != nil {
+	if err = genPackageMetadata(pkg, info, files, localDependencies, localSDK, loader); err != nil {
 		return nil, err
 	}
 	return files, nil

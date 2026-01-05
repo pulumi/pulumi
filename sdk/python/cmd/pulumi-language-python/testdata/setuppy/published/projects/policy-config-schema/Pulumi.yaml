@@ -1,0 +1,7 @@
+name: policy-config-schema
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: mypy
+    virtualenv: venv

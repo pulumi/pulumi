@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type nameInfo int
@@ -189,15 +190,14 @@ func TestApplyRewriter(t *testing.T) {
 	}))
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.input, func(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := model.BindExpressionText(c.input, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 
 			expr, diags = RewriteApplies(expr, nameInfo(0), !c.skipPromises)
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 
 			assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
 		})
@@ -225,12 +225,40 @@ func TestApplyRewriter(t *testing.T) {
 })`
 
 		expr, diags := model.BindExpressionText(input, scope, hcl.Pos{})
-		assert.Len(t, diags, 0)
+		require.Len(t, diags, 0)
 
 		expr, diags = RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, true /* skiToJson */)
-		assert.Len(t, diags, 0)
+		require.Len(t, diags, 0)
 
 		output := fmt.Sprintf("%v", expr)
 		assert.Equal(t, expectedOutput, output)
 	})
+}
+
+func TestRewriteInvalidTraversal(t *testing.T) {
+	t.Parallel()
+
+	resourceType := model.NewObjectType(map[string]model.Type{
+		"objectOutput": model.NewOutputType(model.NewObjectType(map[string]model.Type{
+			"someProperty": model.StringType,
+		})),
+	})
+
+	scope := model.NewRootScope(syntax.None)
+	scope.Define("resource", &model.Variable{
+		Name:         "resource",
+		VariableType: resourceType,
+	})
+	functions := pulumiBuiltins(bindOptions{})
+	scope.DefineFunction("toJSON", functions["toJSON"])
+
+	expr, diags := model.BindExpressionText(`resource.objectOutput.doesNotExist`, scope, hcl.InitialPos)
+	require.True(t, diags.HasErrors())
+
+	expr, diags = RewriteApplies(expr, nameInfo(0), true)
+	require.Empty(t, diags)
+	assert.Equal(t,
+		"__apply(resource.objectOutput, eval(objectOutput, objectOutput.doesNotExist))",
+		fmt.Sprintf("%v", expr),
+	)
 }

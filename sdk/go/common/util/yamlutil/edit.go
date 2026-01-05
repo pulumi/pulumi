@@ -26,7 +26,7 @@ type HasRawValue interface {
 
 // Edit does a deep comparison on original and new and returns a YAML document that modifies only
 // the nodes changed between original and new.
-func Edit(original []byte, newValue interface{}) ([]byte, error) {
+func Edit(original []byte, newValue any) ([]byte, error) {
 	var err error
 	var oldDoc yaml.Node
 	err = yaml.Unmarshal(original, &oldDoc)

@@ -166,8 +166,8 @@ proto.pulumirpc.ConvertStateRequest.prototype.toObject = function(opt_includeIns
  */
 proto.pulumirpc.ConvertStateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    mapperTarget: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    argsList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f
+mapperTarget: jspb.Message.getFieldWithDefault(msg, 1, ""),
+argsList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -345,14 +345,14 @@ proto.pulumirpc.ResourceImport.prototype.toObject = function(opt_includeInstance
  */
 proto.pulumirpc.ResourceImport.toObject = function(includeInstance, msg) {
   var f, obj = {
-    type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    name: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    id: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    logicalName: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    isComponent: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
-    isRemote: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
+type: jspb.Message.getFieldWithDefault(msg, 1, ""),
+name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+id: jspb.Message.getFieldWithDefault(msg, 3, ""),
+version: jspb.Message.getFieldWithDefault(msg, 4, ""),
+plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 5, ""),
+logicalName: jspb.Message.getFieldWithDefault(msg, 6, ""),
+isComponent: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
+isRemote: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
   };
 
   if (includeInstance) {
@@ -692,9 +692,9 @@ proto.pulumirpc.ConvertStateResponse.prototype.toObject = function(opt_includeIn
  */
 proto.pulumirpc.ConvertStateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    resourcesList: jspb.Message.toObjectList(msg.getResourcesList(),
+resourcesList: jspb.Message.toObjectList(msg.getResourcesList(),
     proto.pulumirpc.ResourceImport.toObject, includeInstance),
-    diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
+diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
     pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance)
   };
 
@@ -905,11 +905,12 @@ proto.pulumirpc.ConvertProgramRequest.prototype.toObject = function(opt_includeI
  */
 proto.pulumirpc.ConvertProgramRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    sourceDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    mapperTarget: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    argsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f
+sourceDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
+targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
+mapperTarget: jspb.Message.getFieldWithDefault(msg, 3, ""),
+loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, ""),
+argsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
+generatedProjectDirectory: jspb.Message.getFieldWithDefault(msg, 6, "")
   };
 
   if (includeInstance) {
@@ -965,6 +966,10 @@ proto.pulumirpc.ConvertProgramRequest.deserializeBinaryFromReader = function(msg
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.addArgs(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setGeneratedProjectDirectory(value);
       break;
     default:
       reader.skipField();
@@ -1027,6 +1032,13 @@ proto.pulumirpc.ConvertProgramRequest.serializeBinaryToWriter = function(message
   if (f.length > 0) {
     writer.writeRepeatedString(
       5,
+      f
+    );
+  }
+  f = message.getGeneratedProjectDirectory();
+  if (f.length > 0) {
+    writer.writeString(
+      6,
       f
     );
   }
@@ -1142,6 +1154,24 @@ proto.pulumirpc.ConvertProgramRequest.prototype.clearArgsList = function() {
 };
 
 
+/**
+ * optional string generated_project_directory = 6;
+ * @return {string}
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.getGeneratedProjectDirectory = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConvertProgramRequest} returns this
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.setGeneratedProjectDirectory = function(value) {
+  return jspb.Message.setProto3StringField(this, 6, value);
+};
+
+
 
 /**
  * List of repeated fields within this message type.
@@ -1181,7 +1211,7 @@ proto.pulumirpc.ConvertProgramResponse.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.ConvertProgramResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
+diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
     pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance)
   };
 

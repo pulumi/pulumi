@@ -18,7 +18,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -53,7 +53,8 @@ type Source interface {
 
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
 type SourceIterator interface {
-	io.Closer
+	// Cancel the iterator. This will cancel the SourceResourceMonitor monitor attached to the iterator.
+	Cancel(context.Context) error
 
 	// Next returns the next event from the source.
 	Next() (SourceEvent, error)
@@ -66,7 +67,7 @@ type SourceResourceMonitor interface {
 	// query implementations of `Source` do not implement precisely the same signatures.
 
 	Address() string
-	Cancel() error
+	Cancel(ctx context.Context) error
 	AbortChan() <-chan bool
 	Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
 	Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
@@ -134,6 +135,8 @@ type ReadResourceEvent interface {
 	AdditionalSecretOutputs() []resource.PropertyKey
 	// The source position of the resource read
 	SourcePosition() string
+	// The stack grace at the time of the read
+	StackTrace() []resource.StackFrame
 }
 
 type ReadResult struct {

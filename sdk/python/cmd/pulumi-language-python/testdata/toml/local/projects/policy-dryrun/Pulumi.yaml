@@ -1,0 +1,7 @@
+name: policy-dryrun
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

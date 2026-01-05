@@ -16,15 +16,15 @@ package fuzzing
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
 	"github.com/mitchellh/copystructure"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"golang.org/x/exp/maps"
 	"pgregory.net/rapid"
 )
 
@@ -47,6 +47,7 @@ type ResourceSpec struct {
 	Dependencies         []resource.URN
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	DeletedWith          resource.URN
+	ReplaceWith          []resource.URN
 	Aliases              []resource.URN
 
 	// A set of tags associated with the resource. These have no bearing on any tests but are included to aid in debugging
@@ -166,9 +167,7 @@ func (r *ResourceSpec) AsResource() *resource.State {
 	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
 	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
 
-	tags := maps.Keys(r.Tags)
-	slices.Sort(tags)
-
+	tags := strings.Join(slices.Sorted(maps.Keys(r.Tags)), ", ")
 	s := &resource.State{
 		Type:                 r.Type,
 		URN:                  r.URN(),
@@ -184,14 +183,15 @@ func (r *ResourceSpec) AsResource() *resource.State {
 		PropertyDependencies: propDeps,
 		DeletedWith:          r.DeletedWith,
 		Aliases:              aliases,
-		SourcePosition:       strings.Join(tags, ", "),
+		SourcePosition:       tags,
+		StackTrace:           []resource.StackFrame{{SourcePosition: tags}},
 	}
 
 	// In order to allow us to control generated resource IDs (e.g. such as those returned by a provider Create call),
 	// we'll set the ResourceSpec's ID field as an input property.
 	if !providers.IsProviderType(r.Type) {
 		s.Inputs = resource.PropertyMap{
-			"__id": resource.NewStringProperty(r.ID.String()),
+			"__id": resource.NewProperty(r.ID.String()),
 		}
 	}
 
@@ -233,8 +233,7 @@ func (r *ResourceSpec) Pretty(indent string) string {
 	b.WriteRune(']')
 
 	if len(r.Tags) > 0 {
-		ks := maps.Keys(r.Tags)
-		slices.Sort(ks)
+		ks := slices.Sorted(maps.Keys(r.Tags))
 		b.WriteString(fmt.Sprintf("\n%s  Tags:                %s", indent, strings.Join(ks, ", ")))
 	}
 
@@ -415,12 +414,16 @@ func GeneratedResourceSpec(
 	rso = defaultResourceSpecOptions.With(rso)
 
 	return rapid.Custom(func(t *rapid.T) *ResourceSpec {
-		pkg := rapid.SampledFrom(maps.Keys(provs)).Draw(t, "ResourceSpec.Package")
+		pkg := rapid.SampledFrom(slices.Sorted(maps.Keys(provs))).Draw(t, "ResourceSpec.Package")
 		provider := provs[pkg]
 
 		typ := GeneratedResourceType(pkg).Draw(t, "ResourceSpec.Type")
 		name := GeneratedResourceName.Draw(t, "ResourceSpec.Name")
-		id := GeneratedResourceID.Draw(t, "ResourceSpec.ID")
+		custom := rso.Custom.Draw(t, "ResourceSpec.Custom")
+		id := resource.ID("")
+		if custom {
+			id = GeneratedResourceID.Draw(t, "ResourceSpec.ID")
+		}
 
 		r := &ResourceSpec{
 			Project: tokens.PackageName(sso.Project),
@@ -429,7 +432,7 @@ func GeneratedResourceSpec(
 			Name:    name,
 			ID:      id,
 
-			Custom:             rso.Custom.Draw(t, "ResourceSpec.Custom"),
+			Custom:             custom,
 			Delete:             false,
 			Protect:            rso.Protect.Draw(t, "ResourceSpec.Protect"),
 			PendingReplacement: rso.PendingReplacement.Draw(t, "ResourceSpec.PendingReplacement"),

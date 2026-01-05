@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -44,7 +45,10 @@ func TestTestNames(t *testing.T) {
 		isl1 := strings.HasPrefix(name, "l1-")
 		isl2 := strings.HasPrefix(name, "l2-")
 		isl3 := strings.HasPrefix(name, "l3-")
-		assert.True(t, isInternal || isl1 || isl2 || isl3, "test name %s must start with internal-, l1-, l2-, or l3-", name)
+		isPolicy := strings.HasPrefix(name, "policy-")
+		isProvider := strings.HasPrefix(name, "provider-")
+		assert.True(t, isInternal || isl1 || isl2 || isl3 || isPolicy || isProvider,
+			"test %s must start with internal-, l1-, l2-, l3-, policy-, or provider-", name)
 	}
 }
 
@@ -54,7 +58,47 @@ func TestL1NoProviders(t *testing.T) {
 
 	for name, test := range tests.LanguageTests {
 		if strings.HasPrefix(name, "l1-") {
-			assert.Empty(t, test.Providers, "test name %s must not use providers", name)
+			assert.Empty(t, test.Providers, "test %s must not use providers", name)
+		}
+	}
+}
+
+// Ensure policy tests do use policy packs and no other test does.
+func TestPolicyPacks(t *testing.T) {
+	t.Parallel()
+
+	for name, test := range tests.LanguageTests {
+		isPolicy := strings.HasPrefix(name, "policy-")
+		// A policy test must use a policy pack in at least one run, a non-policy test must not use a policy pack in any run.
+		policies := []string{}
+		for _, run := range test.Runs {
+			for policy := range run.PolicyPacks {
+				policies = append(policies, policy)
+			}
+		}
+
+		if isPolicy {
+			assert.NotEmpty(t, policies,
+				"test %s must use policy packs", name)
+		} else {
+			assert.Empty(t, policies,
+				"test %s must not use policy packs", name)
+		}
+	}
+}
+
+// Ensure provider tests do use language providers and no other test does.
+func TestLanguageProviders(t *testing.T) {
+	t.Parallel()
+
+	for name, test := range tests.LanguageTests {
+		isProvider := strings.HasPrefix(name, "provider-")
+		if isProvider {
+			assert.NotEmpty(t, test.LanguageProviders,
+				"test %s must use language providers", name)
+		} else {
+			assert.Empty(t, test.LanguageProviders,
+				"test %s must not use language providers", name)
 		}
 	}
 }
@@ -64,14 +108,14 @@ func TestNoInternalTests(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 
 	response, err := engine.GetLanguageTests(ctx, &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
 	for _, name := range response.Tests {
 		if strings.HasPrefix(name, "internal-") {
-			assert.Fail(t, "test name %s must not be returned by GetLanguageTests", name)
+			assert.Fail(t, "test %s must not be returned by GetLanguageTests", name)
 		}
 	}
 }
@@ -84,7 +128,7 @@ func TestUniqueProviderVersions(t *testing.T) {
 	highestVersion := semver.Version{Major: 0, Minor: 0, Patch: 0}
 	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
-			version, _ := getProviderVersion(provider)
+			version, _ := getProviderVersion(provider())
 			if version.GT(highestVersion) {
 				highestVersion = version
 			}
@@ -98,6 +142,8 @@ func TestUniqueProviderVersions(t *testing.T) {
 
 	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
+			provider := provider()
+
 			pkg := string(provider.Pkg())
 			version, err := getProviderVersion(provider)
 			require.NoError(t, err)
@@ -127,6 +173,7 @@ func TestProviderVersions(t *testing.T) {
 
 	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
+			provider := provider()
 			pkg := string(provider.Pkg())
 			if pkg == "parameterized" {
 				// for parameterized provider, the version is set in the parameterization
@@ -164,6 +211,8 @@ func TestProviderSchemas(t *testing.T) {
 		loader := &inMemoryProviderLoader{providers: test.Providers}
 
 		for _, provider := range test.Providers {
+			provider := provider()
+
 			if provider.Pkg() == "parameterized" {
 				// We don't currently support testing the schemas of parameterized providers.
 				continue
@@ -172,16 +221,50 @@ func TestProviderSchemas(t *testing.T) {
 			resp, err := provider.GetSchema(t.Context(), plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 
-			var pkg schema.PackageSpec
-			err = json.Unmarshal(resp.Schema, &pkg)
+			var spec schema.PackageSpec
+			err = json.Unmarshal(resp.Schema, &spec)
 			require.NoError(t, err)
 
-			_, diags, err := schema.BindSpec(pkg, loader)
+			pkg, diags, err := schema.BindSpec(spec, loader, schema.ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			for _, diag := range diags {
-				t.Logf("%s: %v", pkg.Name, diag)
+				t.Logf("%s: %v", spec.Name, diag)
 			}
-			require.NoError(t, err, "bind schema for provider %s: %v", pkg.Name, err)
-			require.False(t, diags.HasErrors(), "bind schema for provider %s: %v", pkg.Name, diags)
+			require.NoError(t, err, "bind schema for provider %s: %v", spec.Name, err)
+			require.False(t, diags.HasErrors(), "bind schema for provider %s: %v", spec.Name, diags)
+
+			// Ensure that none of the language options are set, conformance tests are supposed to be language
+			// agnostic.
+			assert.Empty(t, pkg.Language,
+				"provider %s has language options set in schema", pkg.Name)
+			for name, res := range pkg.Resources {
+				assert.Empty(t, res.Language,
+					"provider %s resource %s has language options set in schema", pkg.Name, name)
+				for propertyName, prop := range res.Properties {
+					assert.Empty(t, prop.Language,
+						"provider %s resource %s property %s has language options set in schema", pkg.Name, name, propertyName)
+				}
+				for propertyName, prop := range res.InputProperties {
+					assert.Empty(t, prop.Language,
+						"provider %s resource %s input property %s has language options set in schema", pkg.Name, name, propertyName)
+				}
+			}
+			for name, data := range pkg.Functions {
+				assert.Empty(t, data.Language,
+					"provider %s data source %s has language options set in schema", pkg.Name, name)
+
+				check := func(obj *schema.ObjectType) {
+					if obj != nil {
+						for propertyName, prop := range obj.Properties {
+							assert.Empty(t, prop.Language,
+								"provider %s resource %s property %s has language options set in schema", pkg.Name, name, propertyName)
+						}
+					}
+				}
+				check(data.Inputs)
+				check(data.Outputs)
+			}
 		}
 	}
 }
@@ -198,18 +281,26 @@ func TestBindPrograms(t *testing.T) {
 
 		src := filepath.Join("tests/testdata", name)
 		loader := &inMemoryProviderLoader{providers: test.Providers}
-		_, diags, err := pcl.BindDirectory(src, loader)
-		for _, diag := range diags {
-			t.Logf("%s: %v", name, diag)
+
+		for i := range test.Runs {
+			path := filepath.Join(src, strconv.Itoa(i))
+			if len(test.Runs) == 1 || test.RunsShareSource {
+				path = src
+			}
+
+			_, diags, err := pcl.BindDirectory(path, loader)
+			for _, diag := range diags {
+				t.Logf("%s: %v", name, diag)
+			}
+			require.NoError(t, err, "bind program for test %s: %v", name, err)
+			require.False(t, diags.HasErrors(), "bind program for test %s: %v", name, diags)
 		}
-		require.NoError(t, err, "bind program for test %s: %v", name, err)
-		require.False(t, diags.HasErrors(), "bind program for test %s: %v", name, diags)
 	}
 }
 
 // inMemoryProviderLoader is a schema.ReferenceLoader that loads schema from memory.
 type inMemoryProviderLoader struct {
-	providers []plugin.Provider
+	providers []func() plugin.Provider
 }
 
 func (l *inMemoryProviderLoader) LoadPackageReference(
@@ -232,6 +323,7 @@ func (l *inMemoryProviderLoader) LoadPackageReferenceV2(
 	// Find the provider with the given package name.
 	var provider plugin.Provider
 	for _, p := range l.providers {
+		p := p()
 		if string(p.Pkg()) == descriptor.Name {
 			info, err := p.GetPluginInfo(context.TODO())
 			if err != nil {

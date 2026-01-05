@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"strings"
 
@@ -42,6 +43,7 @@ const (
 
 var providerSchema = pschema.PackageSpec{
 	Name:        "testprovider",
+	Version:     "0.0.1", // So that this provider can be installed without additional arguments
 	Description: "A test provider.",
 	DisplayName: "testprovider",
 
@@ -95,8 +97,11 @@ func providerForURN(urn string) (testProvider, string, bool) {
 	return provider, ty, ok
 }
 
-//nolint:unused,deadcode
+//nolint:unused
 func main() {
+	// Basic --help support, used for some `plugin run` tests.
+	flag.Parse()
+
 	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
 	}); err != nil {
@@ -182,15 +187,6 @@ func (p *testproviderProvider) Invoke(_ context.Context, req *rpc.InvokeRequest)
 		}, nil
 	}
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", tok)
-}
-
-// StreamInvoke dynamically executes a built-in function in the provider. The result is streamed
-// back as a series of messages.
-func (p *testproviderProvider) StreamInvoke(req *rpc.InvokeRequest,
-	server rpc.ResourceProvider_StreamInvokeServer,
-) error {
-	tok := req.GetTok()
-	return fmt.Errorf("Unknown StreamInvoke token '%s'", tok)
 }
 
 func (p *testproviderProvider) Call(_ context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {

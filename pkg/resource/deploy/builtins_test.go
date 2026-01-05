@@ -19,13 +19,14 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBuiltinProvider(t *testing.T) {
@@ -33,7 +34,7 @@ func TestBuiltinProvider(t *testing.T) {
 	t.Run("Close", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
-		assert.NoError(t, p.Close())
+		require.NoError(t, p.Close())
 	})
 	t.Run("Pkg", func(t *testing.T) {
 		t.Parallel()
@@ -44,14 +45,14 @@ func TestBuiltinProvider(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
 		b, err := p.GetSchema(context.Background(), plugin.GetSchemaRequest{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, []byte("{}"), b.Schema)
 	})
 	t.Run("GetMapping", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
 		m, err := p.GetMapping(context.Background(), plugin.GetMappingRequest{Key: "key", Provider: "provider"})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, m.Data)
 		assert.Equal(t, "", m.Provider)
 	})
@@ -59,7 +60,7 @@ func TestBuiltinProvider(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
 		strs, err := p.GetMappings(context.Background(), plugin.GetMappingsRequest{Key: "key"})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, strs)
 	})
 	t.Run("Check", func(t *testing.T) {
@@ -92,7 +93,7 @@ func TestBuiltinProvider(t *testing.T) {
 					Reason:   `missing required property "name"`,
 				},
 			}, resp.Failures)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run(`property "name" must be a string`, func(t *testing.T) {
 			t.Parallel()
@@ -103,7 +104,7 @@ func TestBuiltinProvider(t *testing.T) {
 				URN:  resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
 				Olds: resource.PropertyMap{},
 				News: resource.PropertyMap{
-					"name": resource.NewNumberProperty(10),
+					"name": resource.NewProperty(10.0),
 				},
 				AllowUnknowns: true,
 			})
@@ -113,7 +114,7 @@ func TestBuiltinProvider(t *testing.T) {
 					Reason:   `property "name" must be a string`,
 				},
 			}, resp.Failures)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 		t.Run("ok", func(t *testing.T) {
 			t.Parallel()
@@ -123,32 +124,29 @@ func TestBuiltinProvider(t *testing.T) {
 			resp, err := p.Check(context.Background(), plugin.CheckRequest{
 				URN: resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
 				News: resource.PropertyMap{
-					"name": resource.NewStringProperty("res-name"),
+					"name": resource.NewProperty("res-name"),
 				},
 				AllowUnknowns: true,
 			})
 			assert.Nil(t, resp.Failures)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, resource.PropertyMap{
-				"name": resource.NewStringProperty("res-name"),
+				"name": resource.NewProperty("res-name"),
 			}, resp.Properties)
 		})
 	})
 	t.Run("Update (always fails)", func(t *testing.T) {
 		t.Parallel()
-		assert.Panics(t, func() {
-			p := &builtinProvider{}
-
-			oldOutputs := resource.PropertyMap{"cookie": resource.NewStringProperty("yum")}
-			_, err := p.Update(context.Background(), plugin.UpdateRequest{
-				URN:        resource.CreateURN("foo", "not-stack-reference-type", "", "proj", "stack"),
-				ID:         "some-id",
-				OldInputs:  nil,
-				OldOutputs: oldOutputs,
-				NewInputs:  resource.PropertyMap{},
-			})
-			contract.Ignore(err)
+		p := &builtinProvider{}
+		oldOutputs := resource.PropertyMap{"cookie": resource.NewProperty("yum")}
+		_, err := p.Update(context.Background(), plugin.UpdateRequest{
+			URN:        resource.CreateURN("foo", "not-stack-reference-type", "", "proj", "stack"),
+			ID:         "some-id",
+			OldInputs:  nil,
+			OldOutputs: oldOutputs,
+			NewInputs:  resource.PropertyMap{},
 		})
+		require.ErrorContains(t, err, "unrecognized resource type 'not-stack-reference-type'")
 	})
 	t.Run("Construct (always fails)", func(t *testing.T) {
 		t.Parallel()
@@ -166,7 +164,7 @@ func TestBuiltinProvider(t *testing.T) {
 				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: readStackOutputs,
 					Args: resource.PropertyMap{
-						"name": resource.NewStringProperty("res-name"),
+						"name": resource.NewProperty("res-name"),
 					},
 				})
 				assert.ErrorContains(t, err, "no backend client is available")
@@ -176,29 +174,29 @@ func TestBuiltinProvider(t *testing.T) {
 				var called bool
 				p := &builtinProvider{
 					backendClient: &deploytest.BackendClient{
-						GetStackOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+						GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (property.Map, error) {
 							called = true
-							return resource.PropertyMap{
-								"normal": resource.NewStringProperty("foo"),
-								"secret": resource.MakeSecret(resource.NewStringProperty("bar")),
-							}, nil
+							return property.NewMap(map[string]property.Value{
+								"normal": property.New("foo"),
+								"secret": property.New("bar").WithSecret(true),
+							}), nil
 						},
 					},
 				}
 				resp, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: readStackOutputs,
 					Args: resource.PropertyMap{
-						"name": resource.NewStringProperty("res-name"),
+						"name": resource.NewProperty("res-name"),
 					},
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.True(t, called)
 				assert.Nil(t, resp.Failures)
 
 				assert.Equal(t, "res-name", resp.Properties["name"].V)
 
 				assert.Equal(t, "foo", resp.Properties["outputs"].ObjectValue()["normal"].StringValue())
-				assert.Len(t, resp.Properties["secretOutputNames"].V, 1)
+				require.Len(t, resp.Properties["secretOutputNames"].V, 1)
 			})
 		})
 		t.Run(readStackResourceOutputs, func(t *testing.T) {
@@ -209,7 +207,7 @@ func TestBuiltinProvider(t *testing.T) {
 				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: readStackResourceOutputs,
 					Args: resource.PropertyMap{
-						"stackName": resource.NewStringProperty("res-name"),
+						"stackName": resource.NewProperty("res-name"),
 					},
 				})
 				assert.ErrorContains(t, err, "no backend client is available")
@@ -219,19 +217,19 @@ func TestBuiltinProvider(t *testing.T) {
 				var called bool
 				p := &builtinProvider{
 					backendClient: &deploytest.BackendClient{
-						GetStackResourceOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+						GetStackResourceOutputsF: func(ctx context.Context, name string) (property.Map, error) {
 							called = true
-							return resource.PropertyMap{}, nil
+							return property.Map{}, nil
 						},
 					},
 				}
 				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: readStackResourceOutputs,
 					Args: resource.PropertyMap{
-						"stackName": resource.NewStringProperty("res-name"),
+						"stackName": resource.NewProperty("res-name"),
 					},
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.True(t, called)
 			})
 		})
@@ -248,7 +246,7 @@ func TestBuiltinProvider(t *testing.T) {
 
 				expected := &resource.State{
 					Outputs: resource.PropertyMap{
-						"foo": resource.NewStringProperty("bar"),
+						"foo": resource.NewProperty("bar"),
 					},
 				}
 
@@ -257,11 +255,11 @@ func TestBuiltinProvider(t *testing.T) {
 				actual, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: getResource,
 					Args: resource.PropertyMap{
-						"urn": resource.NewStringProperty("res-name"),
+						"urn": resource.NewProperty("res-name"),
 					},
 				})
 
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, expected.Outputs, actual.Properties["state"].ObjectValue())
 			})
 
@@ -275,7 +273,7 @@ func TestBuiltinProvider(t *testing.T) {
 
 				expected := &resource.State{
 					Outputs: resource.PropertyMap{
-						"foo": resource.NewStringProperty("bar"),
+						"foo": resource.NewProperty("bar"),
 					},
 				}
 
@@ -284,11 +282,11 @@ func TestBuiltinProvider(t *testing.T) {
 				actual, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: getResource,
 					Args: resource.PropertyMap{
-						"urn": resource.NewStringProperty("res-name"),
+						"urn": resource.NewProperty("res-name"),
 					},
 				})
 
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, expected.Outputs, actual.Properties["state"].ObjectValue())
 			})
 
@@ -301,18 +299,12 @@ func TestBuiltinProvider(t *testing.T) {
 				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
 					Tok: getResource,
 					Args: resource.PropertyMap{
-						"urn": resource.NewStringProperty("res-name"),
+						"urn": resource.NewProperty("res-name"),
 					},
 				})
 				assert.ErrorContains(t, err, "unknown resource")
 			})
 		})
-	})
-	t.Run("StreamInvoke (unimplemented)", func(t *testing.T) {
-		t.Parallel()
-		p := &builtinProvider{}
-		_, err := p.StreamInvoke(context.Background(), plugin.StreamInvokeRequest{})
-		assert.ErrorContains(t, err, "the builtin provider does not implement streaming invokes")
 	})
 	t.Run("Call (unimplemented)", func(t *testing.T) {
 		t.Parallel()
@@ -334,9 +326,9 @@ func TestBuiltinProvider(t *testing.T) {
 				called = true
 			},
 		}
-		assert.NoError(t, p.SignalCancellation(context.Background()))
+		require.NoError(t, p.SignalCancellation(context.Background()))
 		assert.True(t, called)
 		// Ensure idempotent.
-		assert.NoError(t, p.SignalCancellation(context.Background()))
+		require.NoError(t, p.SignalCancellation(context.Background()))
 	})
 }

@@ -40,7 +40,7 @@ venv/
 # Likewise, we don't want to keep the typechecked version of our codegen tests.
 tests/testdata/codegen/*/typecheck/**
 
-# We don't need to keep testing python __pycache__ either either
+# We don't need to keep testing python __pycache__ either
 tests/testdata/codegen/*-pp/*/*.csproj
 tests/testdata/codegen/*-pp/*/go.mod
 tests/testdata/codegen/*-pp/*/go.sum
@@ -49,8 +49,13 @@ tests/testdata/codegen/*-pp/*/package.json
 tests/testdata/codegen/*-pp/*/go.sum
 tests/testdata/codegen/*-pp/*/tsconfig.json
 
-# By default, we don't check in yarn.lock files
+# We don't need to keep fuzzing failures around
+pkg/engine/lifecycletest/testdata/rapid/
+
+# By default, we don't check in lock files
 **/yarn.lock
+**/package-lock.json
+**/pnpm-lock.yaml
 
 # By default, we don't check in Pipfile.lock files
 **/Pipfile.lock
@@ -68,8 +73,6 @@ pulumi-analyzer-policy-python
 pulumi-language-python-exec
 pulumi-resource-pulumi-nodejs.cmd
 pulumi-resource-pulumi-python.cmd
-pulumi-python3-shim.cmd
-pulumi-python-shim.cmd
 pulumi-analyzer-policy.cmd
 pulumi-analyzer-policy-python.cmd
 artifacts/
@@ -94,3 +97,4 @@ yarn-error.log
 
 # Local environment settings
 .env
+.claude/settings.local.json

@@ -33,8 +33,6 @@ describe("settings", () => {
         runtime._setStack(testStack);
         const isDryRun = true;
         runtime._setIsDryRun(isDryRun);
-        const isQueryMode = true;
-        runtime._setQueryMode(isQueryMode);
         const key = "k";
         const val = "v";
         runtime.setConfig(key, val);
@@ -43,7 +41,6 @@ describe("settings", () => {
         assert.strictEqual(runtime.getProject(), testProject);
         assert.strictEqual(runtime.getStack(), testStack);
         assert.strictEqual(runtime.isDryRun(), isDryRun);
-        assert.strictEqual(runtime.isQueryMode(), isQueryMode);
         assert.strictEqual(runtime.getConfig(key), val);
         assert.strictEqual(runtime.cacheDynamicProviders(), true);
     });

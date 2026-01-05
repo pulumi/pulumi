@@ -20,10 +20,12 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
+	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -43,14 +45,13 @@ type Context struct {
 
 	// If non-nil, configures custom gRPC client options. Receives pluginInfo which is a JSON-serializable bit of
 	// metadata describing the plugin.
-	DialOptions func(pluginInfo interface{}) []grpc.DialOption
+	DialOptions func(pluginInfo any) []grpc.DialOption
 
 	DebugTraceMutex *sync.Mutex // used internally to syncronize debug tracing
 
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
 
-	cancelFuncs []context.CancelFunc
-	cancelLock  *sync.Mutex // Guards cancelFuncs.
+	cancel      context.CancelFunc
 	baseContext context.Context
 }
 
@@ -58,8 +59,8 @@ type Context struct {
 // that the host is "owned" by this context from here forwards, such
 // that when the context's resources are reclaimed, so too are the
 // host's.
-func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
-	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
+func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSource,
+	pwd string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span,
 ) (*Context, error) {
 	// TODO: really this ought to just take plugins *workspace.Plugins and packages map[string]workspace.PackageSpec
@@ -76,28 +77,15 @@ func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 		}
 	}
 
-	return NewContextWithRoot(d, statusD, host, pwd, pwd, runtimeOptions,
+	return NewContextWithRoot(ctx, d, statusD, host, pwd, pwd, runtimeOptions,
 		disableProviderPreview, parentSpan, plugins, packages, nil, nil)
 }
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
-func NewContextWithRoot(d, statusD diag.Sink, host Host,
-	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
+func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
+	pwd, root string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugEventEmitter,
-) (*Context, error) {
-	return NewContextWithContext(
-		context.Background(), d, statusD, host, pwd, root,
-		runtimeOptions, disableProviderPreview, parentSpan, plugins, packages, config, debugging)
-}
-
-// NewContextWithContext is a variation of NewContextWithRoot that also sets the base context.
-func NewContextWithContext(
-	ctx context.Context,
-	d, statusD diag.Sink, host Host,
-	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
-	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugEventEmitter,
+	config map[config.Key]string, debugging DebugContext,
 ) (*Context, error) {
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
@@ -115,6 +103,8 @@ func NewContextWithContext(
 		}
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+
 	pctx := &Context{
 		Diag:            d,
 		StatusDiag:      statusD,
@@ -123,8 +113,8 @@ func NewContextWithContext(
 		Root:            root,
 		tracingSpan:     parentSpan,
 		DebugTraceMutex: &sync.Mutex{},
-		cancelLock:      &sync.Mutex{},
 		baseContext:     ctx,
+		cancel:          cancel,
 	}
 	if host == nil {
 		h, err := NewDefaultHost(
@@ -135,6 +125,22 @@ func NewContextWithContext(
 		}
 		pctx.Host = h
 	}
+
+	if logFile := env.DebugGRPC.Value(); logFile != "" {
+		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
+			LogFile: logFile,
+			Mutex:   pctx.DebugTraceMutex,
+		})
+		if err != nil {
+			return nil, err
+		}
+		pctx.DialOptions = func(metadata any) []grpc.DialOption {
+			return di.DialOptions(interceptors.LogOptions{
+				Metadata: metadata,
+			})
+		}
+	}
+
 	return pctx, nil
 }
 
@@ -145,30 +151,13 @@ func (ctx *Context) Base() context.Context {
 
 // Request allocates a request sub-context.
 func (ctx *Context) Request() context.Context {
-	c := ctx.baseContext
-	contract.Assertf(c != nil, "Context must have a base context")
-	c = opentracing.ContextWithSpan(c, ctx.tracingSpan)
-	c, cancel := context.WithCancel(c)
-	ctx.cancelLock.Lock()
-	ctx.cancelFuncs = append(ctx.cancelFuncs, cancel)
-	ctx.cancelLock.Unlock()
-	return c
+	contract.Assertf(ctx.baseContext != nil, "Context must have a base context")
+	return opentracing.ContextWithSpan(ctx.baseContext, ctx.tracingSpan)
 }
 
 // Close reclaims all resources associated with this context.
 func (ctx *Context) Close() error {
-	defer func() {
-		// It is possible that cancelFuncs may be appended while this function is running.
-		// Capture the current value of cancelFuncs and set cancelFuncs to nil to prevent cancelFuncs
-		// from being appended to while we are iterating over it.
-		ctx.cancelLock.Lock()
-		cancelFuncs := ctx.cancelFuncs
-		ctx.cancelFuncs = nil
-		ctx.cancelLock.Unlock()
-		for _, cancel := range cancelFuncs {
-			cancel()
-		}
-	}()
+	defer ctx.cancel()
 	if ctx.tracingSpan != nil {
 		ctx.tracingSpan.Finish()
 	}
@@ -177,17 +166,4 @@ func (ctx *Context) Close() error {
 		return err
 	}
 	return nil
-}
-
-// WithCancelChannel registers a close channel which will close the returned Context when
-// the channel is closed.
-//
-// WARNING: Calling this function without ever closing `c` will leak go routines.
-func (ctx *Context) WithCancelChannel(c <-chan struct{}) *Context {
-	newCtx := *ctx
-	go func() {
-		<-c
-		newCtx.Close()
-	}()
-	return &newCtx
 }

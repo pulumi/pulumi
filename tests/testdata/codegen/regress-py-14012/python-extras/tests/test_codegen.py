@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import pytest
 
 import pulumi
@@ -19,8 +20,18 @@ import pulumi
 from pulumi_foo import Provider, ProviderCertmanagerArgs
 
 
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        yield loop
+    finally:
+        loop.close()
+
+
 @pytest.fixture
-def my_mocks():
+def my_mocks(event_loop):
     old_settings = pulumi.runtime.settings.SETTINGS
     try:
         mocks = MyMocks()

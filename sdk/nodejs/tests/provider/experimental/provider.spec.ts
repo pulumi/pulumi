@@ -39,17 +39,11 @@ describe("validateResourceType", function () {
 
 describe("getSchema", function () {
     it("generates schema for provider-component", async function () {
-        // Define a stub for MyComponent because importing testdata directly will conflict on type versions.
-        class MyComponent extends ComponentResource {
-            constructor(name: string, args: any, opts?: ComponentResourceOptions) {
-                super("provider:index:MyComponent", name, args, opts);
-            }
-        }
-
         // Set up a test provider with the simple-types test data
         const testDir = path.join(__dirname, "testdata", "provider-component");
+        const { TestComponent } = require(testDir);
         const provider = new ComponentProvider({
-            components: [MyComponent],
+            components: [TestComponent],
             dirname: testDir,
             name: "provider-component",
         });
@@ -64,35 +58,22 @@ describe("getSchema", function () {
         assert.strictEqual(schema.name, "provider-component");
 
         // Verify the component definition is in the schema
-        const componentType = "provider-component:index:MyComponent";
+        const componentType = "provider-component:index:TestComponent";
         assert.ok(schema.resources?.[componentType], "Component should be in schema resources");
 
         // Verify the component properties
         const component = schema.resources[componentType];
         assert.strictEqual(component.inputProperties.message.type, "string");
-        assert.strictEqual(component.properties.formattedMessage.type, "string");
+        assert.strictEqual(component.properties.messageBack.type, "string");
+        assert.strictEqual(component.properties.notAnOutput.type, "string");
     });
 });
 
 describe("construct", function () {
     it("creates component instance with provided inputs", async function () {
-        // Define a simple component with properties we can verify
-        class TestComponent extends ComponentResource {
-            public readonly messageBack: Output<string>;
-
-            constructor(name: string, args: { message: Input<string> }, opts?: ComponentResourceOptions) {
-                super("provider-component:index:TestComponent", name, args, opts);
-
-                this.messageBack = Output.create(`Hello, ${args.message}!`);
-
-                this.registerOutputs({
-                    message: this.messageBack,
-                });
-            }
-        }
-
         // Set up a test provider
         const testDir = path.join(__dirname, "testdata", "provider-component");
+        const { TestComponent } = require(testDir);
         const provider = new ComponentProvider({
             components: [TestComponent],
             dirname: testDir,
@@ -113,6 +94,8 @@ describe("construct", function () {
 
         // Verify the output properties in the state
         assert.ok(result.state.messageBack, "messageBack output should exist");
+        assert.ok(result.state.notAnOutput, "notAnOutput should exist");
+        assert.strictEqual(result.state.notAnOutput, "Hello, world!");
 
         // Resolve the output values to verify them
         const messageValue = await new Promise((resolve) => result.state.messageBack.apply((m: string) => resolve(m)));

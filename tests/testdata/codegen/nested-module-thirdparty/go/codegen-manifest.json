@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "foo/deeply/nested/module/init.go",
     "foo/deeply/nested/module/resource.go",
     "foo/doc.go",

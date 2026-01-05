@@ -98,30 +98,19 @@ func (ss StringSet) Union(other StringSet) StringSet {
 	return result
 }
 
-type Set map[interface{}]struct{}
+type Set map[any]struct{}
 
-func (s Set) Add(v interface{}) {
+func (s Set) Add(v any) {
 	s[v] = struct{}{}
 }
 
-func (s Set) Delete(v interface{}) {
+func (s Set) Delete(v any) {
 	delete(s, v)
 }
 
-func (s Set) Has(v interface{}) bool {
+func (s Set) Has(v any) bool {
 	_, ok := s[v]
 	return ok
-}
-
-// SortedKeys returns a sorted list of keys for the given map.
-func SortedKeys[T any](m map[string]T) []string {
-	keys := slice.Prealloc[string](len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	return keys
 }
 
 // CleanDir removes all existing files from a directory except those in the exclusions list.
@@ -200,4 +189,10 @@ func PkgEquals(p1, p2 schema.PackageReference) bool {
 		return false
 	}
 	return v1.Equals(*v2)
+}
+
+// A .gitattributes file allows us to mark filepath patterns as containing generated content. This enables git tools to
+// treat these files differently, for example GitHub will show these files as collapsed by default.
+func GenGitAttributesFile() []byte {
+	return []byte("* linguist-generated\n")
 }

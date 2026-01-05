@@ -1,0 +1,3 @@
+name: resource_hooks_python_transform
+description: A program with a resource hook set by a transform
+runtime: python

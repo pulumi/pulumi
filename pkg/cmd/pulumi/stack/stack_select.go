@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,6 +47,7 @@ func newStackSelectCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -71,6 +72,10 @@ func newStackSelectCmd() *cobra.Command {
 				stack = args[0]
 			}
 
+			if stack == "" && !cmdutil.Interactive() {
+				return errors.New("no stack name given, use --stack to specify a stack name")
+			}
+
 			if stack != "" {
 				// A stack was given, ask the backend about it.
 				stackRef, stackErr := b.ParseStackReference(stack)
@@ -82,15 +87,15 @@ func newStackSelectCmd() *cobra.Command {
 				if stackErr != nil {
 					return stackErr
 				} else if s != nil {
-					return state.SetCurrentStack(stackRef.String())
+					return state.SetCurrentStack(ws, stackRef.FullyQualifiedName().String())
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
-					s, err := InitStack(ctx, ws, b, stack, root, false, secretsProvider)
+					s, err := InitStack(ctx, sink, ws, b, stack, root, false, secretsProvider, false /*useRemoteConfig*/)
 					if err != nil {
 						return err
 					}
-					return state.SetCurrentStack(s.Ref().String())
+					return state.SetCurrentStack(ws, s.Ref().FullyQualifiedName().String())
 				}
 
 				return fmt.Errorf("no stack named '%s' found", stackRef)
@@ -99,6 +104,7 @@ func newStackSelectCmd() *cobra.Command {
 			// If no stack was given, prompt the user to select a name from the available ones.
 			stack, err := ChooseStack(
 				ctx,
+				sink,
 				ws,
 				b,
 				OfferNew|SetCurrent,
@@ -109,7 +115,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			contract.Assertf(stack != nil, "must select a stack")
-			return state.SetCurrentStack(stack.Ref().String())
+			return state.SetCurrentStack(ws, stack.Ref().FullyQualifiedName().String())
 		},
 	}
 	cmd.PersistentFlags().StringVarP(

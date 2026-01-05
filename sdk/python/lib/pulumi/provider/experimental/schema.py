@@ -15,12 +15,39 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
-from .component import (
+from .analyzer import (
     ComponentDefinition,
+    Dependency,
+    EnumValueDefinition,
+    Parameterization,
     PropertyDefinition,
     PropertyType,
     TypeDefinition,
 )
+
+
+@dataclass
+class EnumValue:
+    """https://www.pulumi.com/docs/iac/using-pulumi/extending-pulumi/schema/#enumvalue"""
+
+    name: str
+    value: Union[str, float, int, bool]
+    description: Optional[str] = None
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "value": self.value,
+            "description": self.description,
+        }
+
+    @staticmethod
+    def from_definition(definition: EnumValueDefinition) -> "EnumValue":
+        return EnumValue(
+            name=definition.name,
+            value=definition.value,
+            description=definition.description,
+        )
 
 
 @dataclass
@@ -85,15 +112,17 @@ class ComplexType(ObjectType):
     """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#complextype"""
 
     description: Optional[str] = None
-    enum: Optional[list[Any]] = None
+    enum: Optional[list[EnumValue]] = None
 
     def to_json(self) -> dict[str, Any]:
         return {
             "type": self.type.value,
-            "properties": {k: v.to_json() for k, v in self.properties.items()},
-            "required": self.required,
+            "properties": {k: v.to_json() for k, v in self.properties.items()}
+            if self.properties
+            else None,
+            "required": self.required if self.required else None,
             "description": self.description,
-            "enum": self.enum,
+            "enum": [v.to_json() for v in self.enum] if self.enum else None,
         }
 
     @staticmethod
@@ -101,7 +130,7 @@ class ComplexType(ObjectType):
         type_def: TypeDefinition,
     ) -> "ComplexType":
         return ComplexType(
-            type=PropertyType.OBJECT,
+            type=type_def.type,
             properties={
                 k: Property.from_definition(v) for k, v in type_def.properties.items()
             },
@@ -109,6 +138,9 @@ class ComplexType(ObjectType):
                 [k for k, prop in type_def.properties.items() if not prop.optional]
             ),
             description=type_def.description,
+            enum=[EnumValue.from_definition(v) for v in type_def.enum]
+            if type_def.enum
+            else None,
         )
 
 
@@ -153,6 +185,64 @@ class Resource(ObjectType):
             required=sorted(
                 [k for k, prop in component.outputs.items() if not prop.optional]
             ),
+            description=component.description,
+        )
+
+
+@dataclass
+class ParameterizationDescriptor:
+    name: str
+    version: str
+    value: str  # base64 encoded string
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "version": self.version,
+            "value": self.value,
+        }
+
+    @staticmethod
+    def from_definition(
+        parameterization: Parameterization,
+    ) -> "ParameterizationDescriptor":
+        return ParameterizationDescriptor(
+            name=parameterization.name,
+            version=parameterization.version,
+            value=parameterization.value,
+        )
+
+
+@dataclass
+class PackageDescriptor:
+    name: str
+    version: Optional[str] = None
+    downloadURL: Optional[str] = None
+    parameterization: Optional[ParameterizationDescriptor] = None
+
+    def to_json(self) -> dict[str, Any]:
+        return remove_none(
+            {
+                "name": self.name,
+                "version": self.version,
+                "downloadURL": self.downloadURL,
+                "parameterization": self.parameterization.to_json()
+                if self.parameterization
+                else None,
+            }
+        )
+
+    @staticmethod
+    def from_definition(dep: Dependency) -> "PackageDescriptor":
+        return PackageDescriptor(
+            name=dep.name,
+            version=dep.version,
+            downloadURL=dep.downloadURL,
+            parameterization=ParameterizationDescriptor.from_definition(
+                dep.parameterization
+            )
+            if dep.parameterization
+            else None,
         )
 
 
@@ -167,6 +257,7 @@ class PackageSpec:
     resources: dict[str, Resource]
     types: dict[str, ComplexType]
     language: dict[str, dict[str, Any]]
+    dependencies: Optional[list[PackageDescriptor]]
 
     def to_json(self) -> dict[str, Any]:
         return remove_none(
@@ -178,6 +269,7 @@ class PackageSpec:
                 "resources": {k: v.to_json() for k, v in self.resources.items()},
                 "types": {k: v.to_json() for k, v in self.types.items()},
                 "language": self.language,
+                "dependencies": [dep.to_json() for dep in self.dependencies or []],
             }
         )
 
@@ -188,7 +280,11 @@ def generate_schema(
     namespace: Optional[str],
     components: dict[str, ComponentDefinition],
     type_definitions: dict[str, TypeDefinition],
+    dependencies: list[Dependency],
 ) -> PackageSpec:
+    """
+    Build a serializable `PackageSpec` that represents a complete Pulumi schema.
+    """
     pkg = PackageSpec(
         name=name,
         version=version,
@@ -213,6 +309,7 @@ def generate_schema(
                 "respectSchemaVersion": True,
             },
         },
+        dependencies=[PackageDescriptor.from_definition(dep) for dep in dependencies],
     )
     for component_name, component in components.items():
         pkg.resources[f"{name}:index:{component_name}"] = Resource.from_definition(
@@ -228,4 +325,4 @@ def generate_schema(
 def remove_none(d: Union[dict[str, Any], Any]) -> dict[str, Any]:
     if not isinstance(d, dict):
         return d
-    return dict((k, remove_none(v)) for k, v in d.items() if v is not None)  # type: ignore
+    return {k: remove_none(v) for k, v in d.items() if v is not None}  # type: ignore

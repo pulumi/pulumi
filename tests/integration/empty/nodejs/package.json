@@ -3,9 +3,9 @@
     "license": "Apache-2.0",
     "version": "0.0.9",
     "devDependencies": {
-        "typescript": "^2.5.3"
+        "typescript": "2.9.2"
     },
     "peerDependencies": {
-        "pulumi": "*"
+        "@pulumi/pulumi": "*"
     }
 }

@@ -31,7 +31,7 @@ import {
     PulumiCommand,
     Stack,
 } from "../../automation";
-import { CustomResource, ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
+import { CustomResource, ComponentResource, ComponentResourceOptions, Config, output, ResourceHook } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
@@ -487,6 +487,47 @@ describe("LocalWorkspace", () => {
 
         await ws.removeStack(stackName);
     });
+    it(`setAllConfigJson`, async () => {
+        const projectName = "config_json_test";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
+        const ws = await LocalWorkspace.create(withTestBackend({ projectSettings }));
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await Stack.create(stackName, ws);
+
+        // Set config using JSON format
+        const configJson = JSON.stringify({
+            [`${projectName}:plainKey`]: {
+                value: "plainValue",
+                secret: false,
+            },
+            [`${projectName}:secretKey`]: {
+                value: "secretValue",
+                secret: true,
+            },
+            [`${projectName}:numberKey`]: {
+                value: "42",
+                secret: false,
+            },
+        });
+
+        await stack.setAllConfigJson(configJson);
+
+        // Verify the config was set correctly
+        const allConfig = await stack.getAllConfig();
+
+        assert.strictEqual(allConfig[`${projectName}:plainKey`].value, "plainValue");
+        assert.strictEqual(allConfig[`${projectName}:plainKey`].secret, false);
+
+        assert.strictEqual(allConfig[`${projectName}:secretKey`].secret, true);
+
+        assert.strictEqual(allConfig[`${projectName}:numberKey`].value, "42");
+        assert.strictEqual(allConfig[`${projectName}:numberKey`].secret, false);
+
+        await ws.removeStack(stackName);
+    });
     // This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
     // config from the file. This means we can't remove the stack at the end of the test.
     // We should also not include secrets in this config, because the secret encryption is only valid within
@@ -605,6 +646,72 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
+    it(`previews a refresh without executing it`, async () => {
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            {
+                stackName,
+                projectName,
+                program: async () => {
+                    return;
+                },
+            },
+            withTestBackend({}, "inline_node"),
+        );
+
+        // pulumi up
+        const upRes = await stack.up({ userAgent });
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi refresh
+        const refRes = await stack.previewRefresh({ userAgent });
+        assert.deepStrictEqual(refRes.changeSummary, { same: 1 });
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
+    it(`previews a refresh with resources without executing it`, async () => {
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            {
+                stackName,
+                projectName,
+                program: async () => {
+                    class MyResource extends ComponentResource {
+                        constructor(name: string, opts?: ComponentResourceOptions) {
+                            super("my:module:MyResource", name, {}, opts);
+                        }
+                    }
+                    new MyResource("res");
+                    return {};
+                },
+            },
+            withTestBackend({}, "inline_node"),
+        );
+
+        // pulumi up
+        const upRes = await stack.up({ userAgent });
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi refresh
+        const refRes = await stack.previewRefresh({ userAgent });
+        assert.deepStrictEqual(refRes.changeSummary, { same: 2 });
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
     it(`previews a destroy without executing it`, async () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), "testproj_dotnet", `int_test${getTestSuffix()}`);
         const workDir = upath.joinSafe(__dirname, "data", "testproj_dotnet");
@@ -618,9 +725,48 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.kind, "update");
         assert.strictEqual(upRes.summary.result, "succeeded");
 
+        // pulumi destroy --preview-only
+        const previewDestroyRes = await stack.previewDestroy({ userAgent });
+        assert.deepStrictEqual(previewDestroyRes.changeSummary, { delete: 1 });
+
         // pulumi destroy
-        const destroyRes = await stack.destroy({ userAgent, previewOnly: true });
-        assert.strictEqual(destroyRes.summary.kind, "update");
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.deepStrictEqual(destroyRes.summary.resourceChanges, { delete: 1 });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
+    it(`previews a destroy with inline program`, async () => {
+        const program = async () => {
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            new MyResource("res");
+            return {};
+        };
+
+        const stackName = fullyQualifiedStackName(getTestOrg(), "inline_node", `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName: "inline_node", program },
+            withTestBackend({}, "inline_node"),
+        );
+
+        // pulumi up
+        const upRes = await stack.up({ userAgent });
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi destroy --preview-only
+        const previewDestroyRes = await stack.previewDestroy({ userAgent });
+        assert.deepStrictEqual(previewDestroyRes.changeSummary, { delete: 2 });
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.deepStrictEqual(destroyRes.summary.resourceChanges, { delete: 2 });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
 
         await stack.workspace.removeStack(stackName);
@@ -701,6 +847,103 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(refRes.summary.result, "succeeded");
 
         // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
+    it(`listens for error output`, async () => {
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            {
+                stackName,
+                projectName,
+                program: async () => {
+                    return;
+                },
+            },
+            withTestBackend({}, "inline_node"),
+        );
+
+        // We need to come up with some creative ways to make these commands
+        // produce error output. These are the least elaborate ideas I could
+        // come up with.
+
+        let error = "";
+
+        // pulumi up
+        try {
+            await stack.up({
+                plan: "halloumi",
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
+
+        assert.match(error, /error: open halloumi/);
+        error = "";
+
+        const upRes = await stack.up();
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi preview
+        try {
+            await stack.preview({
+                parallel: 1.1,
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
+
+        assert.match(error, /error: invalid argument/);
+        error = "";
+
+        const preRes = await stack.preview({ userAgent });
+        assert.strictEqual(preRes.changeSummary.same, 1);
+
+        // pulumi refresh
+        try {
+            await stack.refresh({
+                parallel: 2.2,
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
+
+        assert.match(error, /error: invalid argument/);
+        error = "";
+
+        const refRes = await stack.refresh({ userAgent });
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+
+        // pulumi destroy
+        try {
+            await stack.destroy({
+                parallel: 3.3,
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
+
+        assert.match(error, /error: invalid argument/);
+        error = "";
+
         const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
@@ -804,7 +1047,11 @@ describe("LocalWorkspace", () => {
         const suffix = `int_test${getTestSuffix()}`;
 
         const stackName = fullyQualifiedStackName(getTestOrg(), "inline_node", suffix);
-        const shortName = getTestOrg() + "/" + suffix;
+        let shortName = getTestOrg() + "/" + suffix;
+        if (!process.env.PULUMI_ACCESS_TOKEN) {
+            // If we are running with a filestate backend, there's no prefix in the name
+            shortName = suffix;
+        }
 
         const stackRenamed = stackName + "_renamed";
         const shortRenamed = shortName + "_renamed";
@@ -830,13 +1077,18 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(returned, `Renamed ${shortName} to ${shortRenamed}\n`);
         assert.strictEqual(after?.name, shortRenamed);
 
-        assert.strictEqual(renameRes.summary.kind, "rename");
+        if (process.env.PULUMI_ACCESS_TOKEN) {
+            // TODO: We don't have the right summary.kind for rename operations in the filestate backend.
+            assert.strictEqual(renameRes.summary.kind, "rename");
+        }
         assert.strictEqual(renameRes.summary.result, "succeeded");
 
         // pulumi destroy
         const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackRenamed);
     });
     it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication
@@ -865,6 +1117,36 @@ describe("LocalWorkspace", () => {
 
         const destroyRes = await stack.destroy({ userAgent, refresh });
         assert.match(destroyRes.stdout, /refreshing/);
+    });
+    it(`operations accept configFile option`, async () => {
+        // We are testing that the configFile option is accepted by the operations.
+
+        const configPath = upath.joinSafe(__dirname, "data", "yaml", "Pulumi.local.yaml");
+
+        const program = async () => {
+            const config = new Config();
+            return {
+                plain: config.get("plain"),
+            };
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `configfile_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTestBackend({}, "inline_node"),
+        );
+        await stack.up({ userAgent, configFile: configPath });
+        const outputs = await stack.outputs();
+        assert.strictEqual(outputs["plain"].value, "plain");
+        const previewRes = await stack.preview({ userAgent, configFile: configPath });
+        assert.strictEqual(previewRes.changeSummary.same, 1);
+        const refRes = await stack.refresh({ userAgent, configFile: configPath });
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+        const destroyRes = await stack.destroy({ userAgent, configFile: configPath });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+        await stack.workspace.removeStack(stackName);
     });
     it(`destroys an inline program with excludeProtected`, async () => {
         const program = async () => {
@@ -1682,6 +1964,50 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
+
+    it("hooks", async function () {
+        let beforeCreateCalled = false;
+        let beforeDeleteCalled = false;
+
+        const program = async () => {
+            const beforeDelete = new ResourceHook("beforeDelete", async (args) => {
+                beforeDeleteCalled = true;
+            });
+            const beforeCreate = new ResourceHook("beforeCreate", async (args) => {
+                beforeCreateCalled = true;
+            });
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            new MyResource("res", {
+                hooks: {
+                    beforeCreate: [beforeCreate],
+                    beforeDelete: [beforeDelete],
+                },
+            });
+        };
+
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTestBackend({}, "inline_node"),
+        );
+
+        await stack.up();
+        assert.strictEqual(true, beforeCreateCalled);
+        let state = await stack.exportStack();
+        assert.strictEqual(state.deployment.resources.length, 2);
+        const res = state.deployment.resources[1];
+        assert.strictEqual(res.type, "my:module:MyResource");
+
+        await stack.destroy({ runProgram: true });
+        assert.strictEqual(true, beforeDeleteCalled);
+        state = await stack.exportStack();
+        assert.strictEqual(state.deployment.resources, undefined);
+    });
 });
 
 const normalizeConfigKey = (key: string, projectName: string) => {
@@ -1715,8 +2041,12 @@ function withCloudBackend(
     description?: string,
     runtime?: string,
 ): LocalWorkspaceOptions {
+    let url = "https://api.pulumi.com";
+    if (process.env.PULUMI_BACKEND_URL) {
+        url = process.env.PULUMI_BACKEND_URL;
+    }
     const backend = {
-        url: "https://api.pulumi.com",
+        url: url,
     };
     if (name === undefined) {
         name = "node_test";

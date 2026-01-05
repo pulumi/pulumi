@@ -35,7 +35,7 @@ import (
 )
 
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
-type GenPkgSignature func(string, *schema.Package, map[string][]byte) (map[string][]byte, error)
+type GenPkgSignature func(string, *schema.Package, map[string][]byte, schema.ReferenceLoader) (map[string][]byte, error)
 
 // GeneratePackageFilesFromSchema loads a schema and generates files using the provided GeneratePackage function.
 func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSignature) (map[string][]byte, error) {
@@ -58,14 +58,16 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 	}
 
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	} else if diags.HasErrors() {
 		return nil, diags
 	}
 
-	return genPackageFunc("test", pkg, nil)
+	return genPackageFunc("test", pkg, nil, nil)
 }
 
 // LoadFiles loads the provided list of files from a directory.
@@ -349,6 +351,7 @@ func RunCommandWithOptions(
 		append([]string{exec}, args...),
 		wd,
 		opts)
+	//nolint:forbidigo // We enhance the error message show if the test fails
 	if !assert.NoError(t, err) {
 		stdout := stdout.String()
 		stderr := stderr.String()
@@ -378,4 +381,4 @@ const (
 )
 
 // PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests
-const PulumiDotnetSDKVersion = "3.77.0"
+const PulumiDotnetSDKVersion = "3.96.0"

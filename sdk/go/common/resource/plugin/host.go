@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -67,19 +68,17 @@ type Host interface {
 
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
-	Provider(descriptor workspace.PackageDescriptor) (Provider, error)
-	// CloseProvider closes the given provider plugin and deregisters it from this host.
-	CloseProvider(provider Provider) error
+	Provider(descriptor workspace.PluginDescriptor) (Provider, error)
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
-	LanguageRuntime(runtime string, info ProgramInfo) (LanguageRuntime, error)
+	LanguageRuntime(runtime string) (LanguageRuntime, error)
 
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
-	EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error
+	EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error
 
 	// ResolvePlugin resolves a pluginspec to a candidate plugin to load.
-	ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error)
+	ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
 
 	GetProjectPlugins() []workspace.ProjectPlugin
 
@@ -91,7 +90,10 @@ type Host interface {
 	SignalCancellation() error
 
 	// StartDebugging asks the host to start a debugging session with the given configuration.
-	StartDebugging(DebuggingInfo) error
+	StartDebugging(info DebuggingInfo) error
+
+	// AttachDebugger returns true if debugging is enabled.
+	AttachDebugger(spec DebugSpec) bool
 
 	// Close reclaims any resources associated with the host.
 	Close() error
@@ -99,7 +101,7 @@ type Host interface {
 
 // IsLocalPluginPath determines if a plugin source refers to a local path rather than a downloadable plugin.
 // A plugin is considered local if it doesn't match the plugin name regexp and doesn't have a download URL.
-func IsLocalPluginPath(source string) bool {
+func IsLocalPluginPath(ctx context.Context, source string) bool {
 	// If the source starts with ./ or ../ or / it's definitely a local path
 	if strings.HasPrefix(source, "./") || strings.HasPrefix(source, "..") || strings.HasPrefix(source, "/") {
 		return true
@@ -107,8 +109,9 @@ func IsLocalPluginPath(source string) bool {
 
 	// For other cases, we need to be careful about how we interpret the source, so let's parse the spec
 	// and check if it has a download URL.
-	pluginSpec, err := workspace.NewPluginSpec(source, apitype.ResourcePlugin, nil, "", nil)
-	if err != nil {
+	pluginSpec, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
+	var pluginErr workspace.PluginVersionNotFoundError
+	if err != nil && !errors.As(err, &pluginErr) {
 		// If we can't parse it as a plugin spec, assume it's a local path
 		return true
 	}
@@ -122,10 +125,62 @@ func IsLocalPluginPath(source string) bool {
 	return pluginSpec.PluginDownloadURL == "" && !workspace.PluginNameRegexp.MatchString(pluginSpec.Name)
 }
 
+// collectPluginsFromPackages recursively processes packages to get a complete list of plugins
+func collectPluginsFromPackages(
+	ctx *Context, packages map[string]workspace.PackageSpec, visited map[string]bool,
+) ([]workspace.ProjectPlugin, error) {
+	result := []workspace.ProjectPlugin{}
+
+	for name, pkg := range packages {
+		// Skip downloadable plugins, so that only local folder paths remain.
+		if !IsLocalPluginPath(ctx.baseContext, pkg.Source) {
+			continue
+		}
+
+		if visited[name] {
+			continue
+		}
+		visited[name] = true
+
+		path, err := resolvePluginPath(ctx.Root, pkg.Source)
+		if err != nil {
+			return nil, err
+		}
+		pluginProjectFile, err := workspace.DetectPluginPathFrom(path)
+		pluginProjectFileNotFound := errors.Is(err, workspace.ErrPluginNotFound)
+		if err != nil && !pluginProjectFileNotFound {
+			return nil, err
+		}
+		if !pluginProjectFileNotFound {
+			pp, err := workspace.LoadPluginProject(pluginProjectFile)
+			if err != nil {
+				return nil, err
+			}
+
+			subPackages := pp.GetPackageSpecs()
+			if len(subPackages) > 0 {
+				subPlugins, err := collectPluginsFromPackages(ctx, subPackages, visited)
+				if err != nil {
+					return nil, err
+				}
+				result = append(result, subPlugins...)
+			}
+		}
+
+		result = append(result, workspace.ProjectPlugin{
+			Kind: apitype.ResourcePlugin,
+			Name: name,
+			Path: path,
+		})
+	}
+
+	return result, nil
+}
+
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
+func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugEventEmitter, projectName tokens.PackageName,
+	config map[config.Key]string, debugging DebugContext, projectName tokens.PackageName,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -153,25 +208,11 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		}
 	}
 
-	for name, pkg := range packages {
-		// Skip downloadable plugins, so that only local folder paths remain.
-		if !IsLocalPluginPath(pkg.Source) {
-			continue
-		}
-
-		// Resolve the absolute path to the plugin folder.
-		path, err := resolvePluginPath(ctx.Root, pkg.Source)
-		if err != nil {
-			return nil, err
-		}
-
-		// Add the plugin to the project plugins list.
-		projectPlugins = append(projectPlugins, workspace.ProjectPlugin{
-			Kind: apitype.ResourcePlugin,
-			Name: name,
-			Path: path,
-		})
+	pluginsFromPackages, err := collectPluginsFromPackages(ctx, packages, make(map[string]bool))
+	if err != nil {
+		return nil, err
 	}
+	projectPlugins = append(projectPlugins, pluginsFromPackages...)
 
 	host := &defaultHost{
 		ctx:                     ctx,
@@ -186,7 +227,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		config:                  config,
 		closer:                  new(sync.Once),
 		projectPlugins:          projectPlugins,
-		debugging:               debugging,
+		debugContext:            debugging,
 		projectName:             projectName,
 	}
 
@@ -241,7 +282,7 @@ func resolvePluginPath(root string, path string) (string, error) {
 func parsePluginOpts(
 	root string, providerOpts workspace.PluginOptions, k apitype.PluginKind,
 ) (workspace.ProjectPlugin, error) {
-	handleErr := func(msg string, a ...interface{}) (workspace.ProjectPlugin, error) {
+	handleErr := func(msg string, a ...any) (workspace.ProjectPlugin, error) {
 		return workspace.ProjectPlugin{},
 			fmt.Errorf("parsing plugin options for '%s': %w", providerOpts.Name, fmt.Errorf(msg, a...))
 	}
@@ -259,7 +300,7 @@ func parsePluginOpts(
 
 	path, err := resolvePluginPath(root, providerOpts.Path)
 	if err != nil {
-		return handleErr(err.Error())
+		return handleErr("%s", err.Error())
 	}
 
 	pluginInfo := workspace.ProjectPlugin{
@@ -273,11 +314,13 @@ func parsePluginOpts(
 
 // PolicyAnalyzerOptions includes a bag of options to pass along to a policy analyzer.
 type PolicyAnalyzerOptions struct {
-	Organization string
-	Project      string
-	Stack        string
-	Config       map[config.Key]string
-	DryRun       bool
+	Organization     string
+	Project          string
+	Stack            string
+	Config           map[config.Key]string
+	ConfigSecretKeys []config.Key
+	DryRun           bool
+	Tags             map[string]string // Tags for the current stack.
 }
 
 type pluginLoadRequest struct {
@@ -289,7 +332,7 @@ type defaultHost struct {
 	ctx *Context // the shared context for this host.
 
 	// the runtime options for the project, passed to resource providers to support dynamic providers.
-	runtimeOptions          map[string]interface{}
+	runtimeOptions          map[string]any
 	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
 	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
 	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
@@ -300,7 +343,7 @@ type defaultHost struct {
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 	config                  map[config.Key]string            // the configuration map for the stack, if any.
 	projectName             tokens.PackageName               // name of the project
-	debugging               DebugEventEmitter
+	debugContext            DebugContext
 
 	// Used to synchronize shutdown with in-progress plugin loads.
 	pluginLock sync.RWMutex
@@ -313,17 +356,20 @@ var _ Host = (*defaultHost)(nil)
 
 type analyzerPlugin struct {
 	Plugin Analyzer
-	Info   workspace.PluginInfo
+	Info   PluginInfo
+	Name   string
 }
 
 type languagePlugin struct {
 	Plugin LanguageRuntime
-	Info   workspace.PluginInfo
+	Info   PluginInfo
+	Name   string
 }
 
 type resourcePlugin struct {
 	Plugin Provider
-	Info   workspace.PluginInfo
+	Info   PluginInfo
+	Name   string
 }
 
 func (host *defaultHost) ServerAddr() string {
@@ -339,15 +385,21 @@ func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg stri
 }
 
 func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
-	contract.Assertf(host.debugging != nil, "expected host.debugging to be non-nil")
-	return host.debugging.StartDebugging(info)
+	if host.debugContext == nil {
+		return errors.New("debugging is not enabled")
+	}
+	return host.debugContext.StartDebugging(info)
+}
+
+func (host *defaultHost) AttachDebugger(spec DebugSpec) bool {
+	return host.debugContext != nil && host.debugContext.AttachDebugger(spec)
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.
 func (host *defaultHost) loadPlugin(
-	loadRequestChannel chan pluginLoadRequest, load func() (interface{}, error),
-) (interface{}, error) {
-	var plugin interface{}
+	loadRequestChannel chan pluginLoadRequest, load func() (any, error),
+) (any, error) {
+	var plugin any
 
 	locked := host.pluginLock.TryRLock()
 	if !locked {
@@ -369,7 +421,7 @@ func (host *defaultHost) loadPlugin(
 }
 
 func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
-	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
+	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[name]; has {
 			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
@@ -385,7 +437,7 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 			}
 
 			// Memoize the result.
-			host.analyzerPlugins[name] = &analyzerPlugin{Plugin: plug, Info: info}
+			host.analyzerPlugins[name] = &analyzerPlugin{Plugin: plug, Info: info, Name: string(name)}
 		}
 
 		return plug, err
@@ -397,7 +449,7 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 }
 
 func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
-	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
+	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[name]; has {
 			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
@@ -405,7 +457,7 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *Po
 		}
 
 		// If not, try to load and bind to a plugin.
-		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts)
+		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts, nil)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
@@ -432,8 +484,8 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 	return analyzers
 }
 
-func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provider, error) {
-	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
+func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor) (Provider, error) {
+	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		pkg := descriptor.Name
 		version := descriptor.Version
 
@@ -452,7 +504,7 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 		}
 
 		plug, err := NewProvider(
-			host, host.ctx, descriptor.PluginSpec,
+			host, host.ctx, descriptor,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
@@ -471,13 +523,13 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 						diag.Message("", /*urn*/
 							"resource plugin %s is expected to have version >=%s, but has %s; "+
 								"the wrong version may be on your path, or this may be a bug in the plugin"),
-						info.Name, version.String(), v)
+						pkg, version.String(), v)
 				}
 			}
 
 			// Record the result and add the plugin's info to our list of loaded plugins if it's the first copy of its
 			// kind.
-			key := info.Name
+			key := pkg
 			if info.Version != nil {
 				key += info.Version.String()
 			}
@@ -485,7 +537,7 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 			if !alreadyReported {
 				host.reportedResourcePlugins[key] = struct{}{}
 			}
-			host.resourcePlugins[plug] = &resourcePlugin{Plugin: plug, Info: info}
+			host.resourcePlugins[plug] = &resourcePlugin{Plugin: plug, Info: info, Name: pkg}
 		}
 
 		return plug, err
@@ -495,29 +547,42 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 	}
 
 	provider := plugin.(Provider)
-	return provider, nil
+	return hostManagedProvider{provider, host}, nil
 }
 
-func (host *defaultHost) LanguageRuntime(runtime string, info ProgramInfo,
+// hostManagedProvider wraps a Provider such that it can be closed by the host that created it.
+type hostManagedProvider struct {
+	Provider
+
+	host *defaultHost
+}
+
+// Overrides the wrapped provider's implementation of Provider.Close to ask the managing plugin host to close the
+// provider.
+func (pc hostManagedProvider) Close() error {
+	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
+	_, err := pc.host.loadPlugin(pc.host.loadRequests, func() (any, error) {
+		if err := pc.Provider.Close(); err != nil {
+			return nil, err
+		}
+		delete(pc.host.resourcePlugins, pc.Provider)
+		return nil, nil
+	})
+	return err
+}
+
+func (host *defaultHost) LanguageRuntime(runtime string,
 ) (LanguageRuntime, error) {
 	// Language runtimes use their own loading channel not the main one
-	plugin, err := host.loadPlugin(host.languageLoadRequests, func() (interface{}, error) {
-		// Key our cached runtime plugins by the runtime name and the options
-		jsonOptions, err := json.Marshal(info.Options())
-		if err != nil {
-			return nil, fmt.Errorf("could not marshal runtime options to JSON: %w", err)
-		}
-
-		key := runtime + ":" + info.RootDirectory() + ":" + info.ProgramDirectory() + ":" + string(jsonOptions)
-
+	plugin, err := host.loadPlugin(host.languageLoadRequests, func() (any, error) {
 		// First see if we already loaded this plugin.
-		if plug, has := host.languagePlugins[key]; has {
-			contract.Assertf(plug != nil, "language plugin %v was loaded but is nil", key)
+		if plug, has := host.languagePlugins[runtime]; has {
+			contract.Assertf(plug != nil, "language plugin %v was loaded but is nil", runtime)
 			return plug.Plugin, nil
 		}
 
 		// If not, allocate a new one.
-		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.ctx.Pwd, info)
+		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.ctx.Pwd)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
@@ -525,7 +590,7 @@ func (host *defaultHost) LanguageRuntime(runtime string, info ProgramInfo,
 			}
 
 			// Memoize the result.
-			host.languagePlugins[key] = &languagePlugin{Plugin: plug, Info: info}
+			host.languagePlugins[runtime] = &languagePlugin{Plugin: plug, Info: info, Name: runtime}
 		}
 
 		return plug, err
@@ -538,7 +603,7 @@ func (host *defaultHost) LanguageRuntime(runtime string, info ProgramInfo,
 
 // EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 // and/or there are errors loading one or more plugins, a non-nil error is returned.
-func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error {
+func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error {
 	// Use a multieerror to track failures so we can return one big list of all failures at the end.
 	var result error
 	for _, plugin := range plugins {
@@ -552,20 +617,14 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 			}
 		case apitype.LanguagePlugin:
 			if kinds&LanguagePlugins != 0 {
-				// Pass nil options here, we just need to check the language plugin is loadable. We can't use
-				// host.runtimePlugins because there might be other language plugins reported here (e.g
-				// shimless multi-language providers). Pass the host root for the plugin directory, it
-				// shouldn't matter because we're starting with no options but it's a directory we've already
-				// got hold of.
-				info := NewProgramInfo(host.ctx.Root, host.ctx.Pwd, ".", nil)
-				if _, err := host.LanguageRuntime(plugin.Name, info); err != nil {
+				if _, err := host.LanguageRuntime(plugin.Name); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load language plugin %s: %w", plugin.Name, err))
 				}
 			}
 		case apitype.ResourcePlugin:
 			if kinds&ResourcePlugins != 0 {
-				if _, err := host.Provider(workspace.PackageDescriptor{PluginSpec: plugin}); err != nil {
+				if _, err := host.Provider(plugin); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load resource plugin %s: %w", plugin.Name, err))
 				}
@@ -578,8 +637,8 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 	return result
 }
 
-func (host *defaultHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
-	return workspace.GetPluginInfo(host.ctx.Diag, spec, host.GetProjectPlugins())
+func (host *defaultHost) ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+	return workspace.GetPluginInfo(host.ctx.baseContext, host.ctx.Diag, spec, host.GetProjectPlugins())
 }
 
 func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {
@@ -588,27 +647,29 @@ func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {
 
 func (host *defaultHost) SignalCancellation() error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
-	_, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
+	_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		var result error
 		for _, plug := range host.resourcePlugins {
 			if err := plug.Plugin.SignalCancellation(host.ctx.Request()); err != nil {
 				result = multierror.Append(result, fmt.Errorf(
-					"Error signaling cancellation to resource provider '%s': %w", plug.Info.Name, err))
+					"Error signaling cancellation to resource provider '%s': %w", plug.Name, err))
+			}
+		}
+
+		for _, plug := range host.analyzerPlugins {
+			if err := plug.Plugin.Cancel(host.ctx.Request()); err != nil {
+				result = multierror.Append(result, fmt.Errorf(
+					"Error signaling cancellation to analyzer '%s': %w", plug.Name, err))
+			}
+		}
+
+		for _, plug := range host.languagePlugins {
+			if err := plug.Plugin.Cancel(); err != nil {
+				result = multierror.Append(result, fmt.Errorf(
+					"Error signaling cancellation to language runtime '%s': %w", plug.Name, err))
 			}
 		}
 		return nil, result
-	})
-	return err
-}
-
-func (host *defaultHost) CloseProvider(provider Provider) error {
-	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
-	_, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
-		if err := provider.Close(); err != nil {
-			return nil, err
-		}
-		delete(host.resourcePlugins, provider)
-		return nil, nil
 	})
 	return err
 }
@@ -624,17 +685,17 @@ func (host *defaultHost) Close() (err error) {
 		// Close all plugins.
 		for _, plug := range host.analyzerPlugins {
 			if err := plug.Plugin.Close(); err != nil {
-				logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+				logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Name, err)
 			}
 		}
 		for _, plug := range host.resourcePlugins {
 			if err := plug.Plugin.Close(); err != nil {
-				logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+				logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Name, err)
 			}
 		}
 		for _, plug := range host.languagePlugins {
 			if err := plug.Plugin.Close(); err != nil {
-				logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+				logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Name, err)
 			}
 		}
 

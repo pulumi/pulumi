@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -26,12 +27,15 @@ import (
 
 func init() {
 	LanguageTests["l2-rtti"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 
@@ -49,8 +53,8 @@ func init() {
 					require.NotNil(l, stack)
 					assert.Equal(l, "pulumi:pulumi:Stack", stack.Type.String(), "expected stack resource")
 					// Check we have to two expected outputs name and type
-					assert.Equal(l, resource.NewStringProperty("res"), stack.Outputs["name"])
-					assert.Equal(l, resource.NewStringProperty("simple:index:Resource"), stack.Outputs["type"])
+					assert.Equal(l, resource.NewProperty("res"), stack.Outputs["name"])
+					assert.Equal(l, resource.NewProperty("simple:index:Resource"), stack.Outputs["type"])
 				},
 			},
 		},

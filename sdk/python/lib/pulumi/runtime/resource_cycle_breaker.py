@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Set, Iterable
+from typing import TYPE_CHECKING
+from collections.abc import Iterable
 
 if TYPE_CHECKING:
     from .. import Resource
@@ -36,18 +37,18 @@ def declare_dependency(from_resource: "Resource", to_resource: "Resource") -> bo
     return True
 
 
-def _deps(res: "Resource") -> Set["Resource"]:
+def _deps(res: "Resource") -> set["Resource"]:
     return getattr(res, _DEPENDENCIES_PROPERTY, set())
 
 
 def _add_dep(from_resource: "Resource", to_resource: "Resource") -> None:
     return setattr(
-        from_resource, _DEPENDENCIES_PROPERTY, _deps(from_resource) | set([to_resource])
+        from_resource, _DEPENDENCIES_PROPERTY, _deps(from_resource) | {to_resource}
     )
 
 
 def _reachable(from_resource: "Resource", to_resource: "Resource") -> bool:
-    visited: Set["Resource"] = set()
+    visited: set[Resource] = set()
 
     for x in _with_transitive_deps(from_resource, visited):
         if x == to_resource:
@@ -57,7 +58,7 @@ def _reachable(from_resource: "Resource", to_resource: "Resource") -> bool:
 
 
 def _with_transitive_deps(
-    r: "Resource", visited: Set["Resource"]
+    r: "Resource", visited: set["Resource"]
 ) -> Iterable["Resource"]:
     if r in visited:
         return

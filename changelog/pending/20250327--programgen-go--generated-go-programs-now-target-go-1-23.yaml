@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/go
-  description: Generated Go programs now target Go 1.23

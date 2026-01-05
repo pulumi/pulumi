@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:revive // Legacy package name we don't want to change
 package util
 
 import (
@@ -25,7 +26,7 @@ import (
 
 // SetKnownPluginDownloadURL sets the PluginDownloadURL for the given PluginSpec if it's a known plugin.
 // Returns true if it filled in the URL.
-func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
+func SetKnownPluginDownloadURL(spec *workspace.PluginDescriptor) bool {
 	// If the download url is already set don't touch it
 	if spec.PluginDownloadURL != "" {
 		return false
@@ -45,7 +46,7 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
 
 // SetKnownPluginVersion sets the Version for the given PluginSpec if it's a known plugin.
 // Returns true if it filled in the version.
-func SetKnownPluginVersion(spec *workspace.PluginSpec) bool {
+func SetKnownPluginVersion(spec *workspace.PluginDescriptor) bool {
 	// If the version is already set don't touch it
 	if spec.Version != nil {
 		return false

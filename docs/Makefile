@@ -4,9 +4,9 @@ VENV = venv
 
 ensure-python:: .ensure-python.phony
 .ensure-python.phony: requirements.txt
-	python -m $(VENV) $(VENV)
-	. $(VENV)/*/activate && python -m pip install --upgrade pip setuptools wheel
-	. $(VENV)/*/activate && python -m pip install -r requirements.txt
+	../scripts/retry python -m $(VENV) $(VENV)
+	. $(VENV)/*/activate && ../scripts/retry python -m pip install --upgrade pip setuptools wheel
+	. $(VENV)/*/activate && ../scripts/retry python -m pip install -r requirements.txt
 	@touch .ensure-python.phony
 
 ensure-proto:: .ensure-proto.phony

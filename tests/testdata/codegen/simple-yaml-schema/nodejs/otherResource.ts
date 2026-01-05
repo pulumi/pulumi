@@ -21,7 +21,7 @@ export class OtherResource extends pulumi.ComponentResource {
         return obj['__pulumiType'] === OtherResource.__pulumiType;
     }
 
-    public readonly foo!: pulumi.Output<Resource | undefined>;
+    declare public readonly foo: pulumi.Output<Resource | undefined>;
 
     /**
      * Create a OtherResource resource with the given unique name, arguments, and options.
@@ -34,8 +34,8 @@ export class OtherResource extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["bar"] = args ? args.bar : undefined;
-            resourceInputs["foo"] = args ? args.foo : undefined;
+            resourceInputs["bar"] = args?.bar;
+            resourceInputs["foo"] = args?.foo;
         } else {
             resourceInputs["foo"] = undefined /*out*/;
         }

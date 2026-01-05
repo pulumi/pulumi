@@ -1,0 +1,17 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA provA <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 2%}>+input<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA provA <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 2%}>+input<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>The provider for this resource has inputs that are not known during preview.
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>updating<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>The provider for this resource has inputs that are not known during preview.
+ <{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%fg 3%}>updated<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>The provider for this resource has inputs that are not known during preview.
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pkgA:m:typA (resA):<{%reset%}>
+    <{%fg 3%}>warning: <{%reset%}><{%reset%}>The provider for this resource has inputs that are not known during preview.
+    This preview may not correctly represent the changes that will be applied during an update.<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 2 to update<{%reset%}>
+

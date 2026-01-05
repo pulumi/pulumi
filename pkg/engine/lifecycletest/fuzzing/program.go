@@ -16,9 +16,10 @@ package fuzzing
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
@@ -122,9 +123,9 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 			opts.PropertyDeps = propDeps
 
 			res, err := monitor.RegisterResource(r.Type, r.Name, r.Custom, opts)
-			require.NoError(t, err)
-
-			actuals[r.URN()] = res
+			if err == nil {
+				actuals[r.URN()] = res
+			}
 		}
 
 		return nil
@@ -134,27 +135,28 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 // Implements PrettySpec.Pretty. Returns a human-readable representation of this ProgramSpec, suitable for use in
 // debugging output and error messages.
 func (ps *ProgramSpec) Pretty(indent string) string {
-	rendered := fmt.Sprintf("%sProgram %p", indent, ps)
+	var rendered strings.Builder
+	rendered.WriteString(fmt.Sprintf("%sProgram %p", indent, ps))
 
 	if len(ps.ResourceRegistrations) == 0 {
-		rendered += fmt.Sprintf("\n%s  No registrations", indent)
+		rendered.WriteString(fmt.Sprintf("\n%s  No registrations", indent))
 	} else {
-		rendered += fmt.Sprintf("\n%s  Registrations (%d):", indent, len(ps.ResourceRegistrations))
+		rendered.WriteString(fmt.Sprintf("\n%s  Registrations (%d):", indent, len(ps.ResourceRegistrations)))
 		for _, r := range ps.ResourceRegistrations {
-			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
+			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    ")))
 		}
 	}
 
 	if len(ps.Drops) == 0 {
-		rendered += fmt.Sprintf("\n%s  No drops", indent)
+		rendered.WriteString(fmt.Sprintf("\n%s  No drops", indent))
 	} else {
-		rendered += fmt.Sprintf("\n%s  Drops (%d):", indent, len(ps.Drops))
+		rendered.WriteString(fmt.Sprintf("\n%s  Drops (%d):", indent, len(ps.Drops)))
 		for _, r := range ps.Drops {
-			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
+			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    ")))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // The type of tags that may be added to resources in a ProgramSpec.
@@ -288,6 +290,21 @@ func GeneratedProgramSpec(
 		updateDependencies := func(r *ResourceSpec) {
 			deps := []resource.URN{}
 			propDeps := map[resource.PropertyKey][]resource.URN{}
+
+			// If our provider was dropped, we'll have to drop our reference to it and end up with a default provider.
+			if r.Provider != "" {
+				ref, err := providers.ParseReference(r.Provider)
+				require.NoError(t, err)
+
+				if dropped[ref.URN()] {
+					r.Provider = ""
+				} else if newURN, hasNewURN := rewritten[ref.URN()]; hasNewURN {
+					newRef, err := providers.NewReference(newURN, ref.ID())
+					require.NoError(t, err)
+
+					r.Provider = newRef.String()
+				}
+			}
 
 			// We'll start with parents first. If our parent was dropped, we'll need to remove them from our parent reference.
 			// If they were rewritten, we'll update the reference to point to the new URN.

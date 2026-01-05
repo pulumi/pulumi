@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ComponentDefinition, TypeDefinition, PropertyDefinition } from "./analyzer";
+import { ComponentDefinition, TypeDefinition, PropertyDefinition, Dependency } from "./analyzer";
 
 export type PropertyType = "string" | "integer" | "number" | "boolean" | "array" | "object";
 
@@ -58,6 +58,12 @@ export interface Resource extends ObjectType {
     requiredInputs?: string[];
 }
 
+export interface PackageDescriptor {
+    name: string;
+    version?: string;
+    downloadURL?: string;
+}
+
 /**
  * https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#package
  */
@@ -69,6 +75,7 @@ export interface PackageSpec {
     resources: { [key: string]: Resource };
     types: { [key: string]: ComplexType };
     language?: { [key: string]: any };
+    dependencies?: PackageDescriptor[];
 }
 
 export function generateSchema(
@@ -77,7 +84,7 @@ export function generateSchema(
     description: string,
     components: Record<string, ComponentDefinition>,
     typeDefinitions: Record<string, TypeDefinition>,
-    packageReferences: Record<string, string>,
+    dependencies: Dependency[],
     namespace?: string,
 ): PackageSpec {
     const result: PackageSpec = {
@@ -89,10 +96,6 @@ export function generateSchema(
         types: {},
         language: {
             nodejs: {
-                dependencies: {},
-                devDependencies: {
-                    typescript: "^5.0.0",
-                },
                 respectSchemaVersion: true,
             },
             python: {
@@ -108,6 +111,7 @@ export function generateSchema(
                 respectSchemaVersion: true,
             },
         },
+        dependencies,
     };
 
     for (const [name, component] of Object.entries(components)) {
@@ -128,28 +132,6 @@ export function generateSchema(
             properties: type.properties,
             required: required(type.properties),
         };
-    }
-
-    for (const [packageName, packageVersion] of Object.entries(packageReferences)) {
-        result.language!.nodejs.dependencies[`@pulumi/${packageName}`] = packageVersion;
-        if (!result.language!.python.requires) {
-            result.language!.python.requires = {};
-        }
-        if (!result.language!.csharp.packageReferences) {
-            result.language!.csharp.packageReferences = {};
-        }
-        if (!result.language!.java.dependencies) {
-            result.language!.java.dependencies = {};
-        }
-        result.language!.python.requires[`pulumi-${packageName}`] = `==${packageVersion}`;
-
-        const csharpPackageName = packageName
-            .split("-")
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-            .join("");
-        result.language!.csharp.packageReferences[`Pulumi.${csharpPackageName}`] = packageVersion;
-
-        result.language!.java.dependencies[`com.pulumi:${packageName}`] = packageVersion;
     }
 
     return result;

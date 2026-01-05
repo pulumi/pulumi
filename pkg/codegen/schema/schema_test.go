@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,7 +73,9 @@ func TestRoundtripRemoteTypeRef(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("remoteref-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader)
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	newSpec, err := pkg.MarshalSpec()
@@ -81,7 +83,9 @@ func TestRoundtripRemoteTypeRef(t *testing.T) {
 	require.NotNil(t, newSpec)
 
 	// Try and bind again
-	_, diags, err = BindSpec(*newSpec, loader)
+	_, diags, err = BindSpec(*newSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 }
@@ -93,7 +97,9 @@ func TestRoundtripLocalTypeRef(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("localref-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader)
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	newSpec, err := pkg.MarshalSpec()
@@ -101,7 +107,9 @@ func TestRoundtripLocalTypeRef(t *testing.T) {
 	require.NotNil(t, newSpec)
 
 	// Try and bind again
-	_, diags, err = BindSpec(*newSpec, loader)
+	_, diags, err = BindSpec(*newSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 }
@@ -126,7 +134,9 @@ func TestRoundtripEnum(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("enum-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader)
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	assertEnum(t, pkg)
@@ -136,7 +146,9 @@ func TestRoundtripEnum(t *testing.T) {
 	require.NotNil(t, newSpec)
 
 	// Try and bind again
-	pkg, diags, err = BindSpec(*newSpec, loader)
+	pkg, diags, err = BindSpec(*newSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	assertEnum(t, pkg)
@@ -151,7 +163,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		exampleObjectType, ok := exampleType.(*ObjectType)
 		assert.True(t, ok)
 
-		assert.Equal(t, 3, len(exampleObjectType.Properties))
+		require.Len(t, exampleObjectType.Properties, 3)
 		var exampleProperty *Property
 		var nonPlainProperty *Property
 		var nestedProperty *Property
@@ -169,9 +181,9 @@ func TestRoundtripPlainProperties(t *testing.T) {
 			}
 		}
 
-		assert.NotNil(t, exampleProperty)
-		assert.NotNil(t, nonPlainProperty)
-		assert.NotNil(t, nestedProperty)
+		require.NotNil(t, exampleProperty)
+		require.NotNil(t, nonPlainProperty)
+		require.NotNil(t, nestedProperty)
 
 		assert.True(t, exampleProperty.Plain)
 		assert.False(t, nonPlainProperty.Plain)
@@ -191,7 +203,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		assert.True(t, ok)
 
 		check := func(properties []*Property) {
-			assert.Equal(t, 3, len(properties))
+			require.Len(t, properties, 3)
 
 			var exampleProperty *Property
 			var nonPlainProperty *Property
@@ -210,9 +222,9 @@ func TestRoundtripPlainProperties(t *testing.T) {
 				}
 			}
 
-			assert.NotNil(t, exampleProperty)
-			assert.NotNil(t, nonPlainProperty)
-			assert.NotNil(t, nestedProperty)
+			require.NotNil(t, exampleProperty)
+			require.NotNil(t, nonPlainProperty)
+			require.NotNil(t, nestedProperty)
 
 			assert.True(t, exampleProperty.Plain)
 			assert.False(t, nonPlainProperty.Plain)
@@ -234,7 +246,9 @@ func TestRoundtripPlainProperties(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("plain-properties-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader)
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	assertPlainnessFromType(t, pkg)
@@ -245,7 +259,9 @@ func TestRoundtripPlainProperties(t *testing.T) {
 	require.NotNil(t, newSpec)
 
 	// Try and bind again
-	pkg, diags, err = BindSpec(*newSpec, loader)
+	pkg, diags, err = BindSpec(*newSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	assertPlainnessFromType(t, pkg)
@@ -258,13 +274,15 @@ func TestImportSpec(t *testing.T) {
 	// Read in, decode, and import the schema.
 	pkgSpec := readSchemaFile("kubernetes-3.7.2.json")
 
-	pkg, err := ImportSpec(pkgSpec, nil)
+	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		t.Errorf("ImportSpec() error = %v", err)
 	}
 
 	for _, r := range pkg.Resources {
-		assert.NotNil(t, r.PackageReference, "expected resource %s to have an associated Package", r.Token)
+		require.NotNil(t, r.PackageReference, "expected resource %s to have an associated Package", r.Token)
 	}
 }
 
@@ -329,8 +347,8 @@ outputs:
 	err := yaml.Unmarshal([]byte(fnYaml), &functionSpec)
 	assert.Nil(t, err, "Unmarshalling should work")
 	assert.Equal(t, "Test function", functionSpec.Description)
-	assert.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
-	assert.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
+	require.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
+	require.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
 	assert.Equal(t, "number", functionSpec.ReturnType.TypeSpec.Type, "Return type is a number")
 }
 
@@ -341,8 +359,8 @@ func TestUnmarshalJSONFunctionSpec(t *testing.T) {
 	err := json.Unmarshal([]byte(fnJSON), &functionSpec)
 	assert.Nil(t, err, "Unmarshalling should work")
 	assert.Equal(t, "Test function", functionSpec.Description)
-	assert.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
-	assert.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
+	require.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
+	require.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
 	assert.Equal(t, "number", functionSpec.ReturnType.TypeSpec.Type, "Return type is a number")
 }
 
@@ -417,13 +435,14 @@ func TestInvalidTypes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
 			t.Parallel()
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			_, err := ImportSpec(pkgSpec, nil)
+			_, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			assert.ErrorContains(t, err, tt.expected)
 		})
 	}
@@ -433,13 +452,14 @@ func TestEnums(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range enumTests {
-		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
 			t.Parallel()
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			pkg, err := ImportSpec(pkgSpec, nil)
+			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			if tt.shouldError {
 				assert.Error(t, err)
 			} else {
@@ -579,11 +599,12 @@ func TestRejectDuplicateNames(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, diags, err := BindSpec(tt.spec, NewPluginLoader(utils.NewHost(testdataPath)))
+			_, diags, err := BindSpec(tt.spec, NewPluginLoader(utils.NewHost(testdataPath)), ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.expected, diags)
@@ -591,7 +612,6 @@ func TestRejectDuplicateNames(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // needs to set plugin acquisition env var
 func TestImportResourceRef(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -628,7 +648,7 @@ func TestImportResourceRef(t *testing.T) {
 				assert.True(t, ok)
 				assert.IsType(t, &ResourceType{}, plainType(name.Type))
 				resource := plainType(name.Type).(*ResourceType)
-				assert.NotNil(t, resource.Resource)
+				require.NotNil(t, resource.Resource)
 
 				for _, r := range pkg.Resources {
 					switch r.Token {
@@ -644,7 +664,7 @@ func TestImportResourceRef(t *testing.T) {
 								assert.IsType(t, &ObjectType{}, plainType(p.Type))
 
 								obj := plainType(p.Type).(*ObjectType)
-								assert.NotNil(t, obj.Properties)
+								require.NotNil(t, obj.Properties)
 							}
 						}
 					}
@@ -652,22 +672,22 @@ func TestImportResourceRef(t *testing.T) {
 			},
 		},
 	}
-	//nolint:paralleltest // needs to set plugin acquisition env var
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 			// Read in, decode, and import the schema.
 			schemaBytes, err := os.ReadFile(
 				filepath.Join("..", "testing", "test", "testdata", tt.schemaFile))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			var pkgSpec PackageSpec
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			pkg, err := ImportSpec(pkgSpec, nil)
+			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ImportSpec() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -683,7 +703,7 @@ func Test_parseTypeSpecRef(t *testing.T) {
 	toVersionPtr := func(version string) *semver.Version { v := semver.MustParse(version); return &v }
 	toURL := func(rawurl string) *url.URL {
 		parsed, err := url.Parse(rawurl)
-		assert.NoError(t, err, "failed to parse ref")
+		require.NoError(t, err, "failed to parse ref")
 
 		return parsed
 	}
@@ -796,7 +816,6 @@ func Test_parseTypeSpecRef(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -812,7 +831,7 @@ func Test_parseTypeSpecRef(t *testing.T) {
 	}
 }
 
-func TestUsingUrnInResourcePropertiesEmitsWarning(t *testing.T) {
+func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
@@ -845,16 +864,256 @@ func TestUsingUrnInResourcePropertiesEmitsWarning(t *testing.T) {
 		},
 	}
 
-	pkg, diags, err := BindSpec(pkgSpec, loader)
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	// No error as binding should work fine even with warnings
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// assert that there are 2 warnings in the diagnostics because of using URN as a property
-	assert.Len(t, diags, 2)
+	require.Len(t, diags, 2)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagWarning)
-		assert.Contains(t, diag.Summary, "urn is a reserved property name")
+		assert.True(
+			t,
+			strings.Contains(diag.Summary, "urn is a reserved property name") ||
+				strings.Contains(diag.Summary, "pulumi is a reserved property name"),
+		)
 	}
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
+}
+
+func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"version": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+			"test:index:TestComponent": {
+				IsComponent: true,
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"version": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	// No error as binding should work fine even with warnings
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
+	require.NotNil(t, pkg)
+}
+
+func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Functions: map[string]FunctionSpec{
+			"test:index:pulumi": {
+				Inputs: &ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	assert.Error(t, err)
+	require.Len(t, diags, 1)
+	for _, diag := range diags {
+		assert.Equal(t, diag.Severity, hcl.DiagError)
+		fmt.Println(diag.Summary)
+		assert.True(
+			t,
+			strings.Contains(diag.Summary, "pulumi is a reserved name, cannot name function"),
+		)
+	}
+	assert.Nil(t, pkg)
+}
+
+func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Functions: map[string]FunctionSpec{
+			"test:index:fake": {
+				Inputs: &ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"version": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
+	require.NotNil(t, pkg)
+}
+
+func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Functions: map[string]FunctionSpec{
+			"test:index:fake": {
+				Inputs: &ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	assert.Error(t, err)
+	require.Len(t, diags, 1)
+	assert.Nil(t, pkg)
+}
+
+func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Types: map[string]ComplexTypeSpec{
+			"test:index:pulumi": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	assert.Error(t, err)
+	require.Len(t, diags, 1)
+	for _, diag := range diags {
+		assert.Equal(t, diag.Severity, hcl.DiagError)
+		assert.True(
+			t,
+			strings.Contains(diag.Summary, "pulumi is a reserved name, cannot name type"),
+		)
+	}
+	assert.Nil(t, pkg)
+}
+
+func TestUsingVersionPropertyNameIsOk(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Types: map[string]ComplexTypeSpec{
+			"test:index:fake": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"version": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
+	require.NotNil(t, pkg)
+}
+
+func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Types: map[string]ComplexTypeSpec{
+			"test:index:fake": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	assert.Error(t, err)
+	require.Len(t, diags, 1)
+	assert.Nil(t, pkg)
 }
 
 func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
@@ -878,12 +1137,14 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 		},
 	}
 
-	pkg, diags, err := BindSpec(pkgSpec, loader)
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	// No error as binding should work fine even with warnings
-	assert.NoError(t, err)
-	assert.NotNil(t, pkg)
+	require.NoError(t, err)
+	require.NotNil(t, pkg)
 	// assert that there is 1 warning in the diagnostics because of using ID as a property
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 	assert.Equal(t, diags[0].Severity, hcl.DiagWarning)
 	assert.Contains(t, diags[0].Summary, "id is a reserved property name")
 }
@@ -899,8 +1160,10 @@ func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 		Resources: map[string]ResourceSpec{},
 	}
 
-	_, diags, _ := BindSpec(pkgSpec, loader)
-	assert.Len(t, diags, 1)
+	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.Len(t, diags, 1)
 	assert.Equal(t, diags[0].Severity, hcl.DiagError)
 	assert.Contains(t, diags[0].Summary, "version must be provided when package supports packing")
 }
@@ -927,10 +1190,12 @@ func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
 		},
 	}
 
-	pkg, diags, err := BindSpec(pkgSpec, loader)
-	assert.NoError(t, err)
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
 	assert.Empty(t, diags)
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
 }
 
 func TestMethods(t *testing.T) {
@@ -944,11 +1209,11 @@ func TestMethods(t *testing.T) {
 		{
 			filename: "good-methods-1.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Resources, 1)
-				assert.Len(t, pkg.Resources[0].Methods, 1)
+				require.Len(t, pkg.Resources, 1)
+				require.Len(t, pkg.Resources[0].Methods, 1)
 
-				assert.NotNil(t, pkg.Resources[0].Methods[0].Function.Inputs)
-				assert.Len(t, pkg.Resources[0].Methods[0].Function.Inputs.Properties, 1)
+				require.NotNil(t, pkg.Resources[0].Methods[0].Function.Inputs)
+				require.Len(t, pkg.Resources[0].Methods[0].Function.Inputs.Properties, 1)
 				inputs := pkg.Resources[0].Methods[0].Function.Inputs.Properties
 				assert.Equal(t, "__self__", inputs[0].Name)
 				assert.Equal(t, &ResourceType{
@@ -961,13 +1226,13 @@ func TestMethods(t *testing.T) {
 					objectReturnType = objectType
 				}
 
-				assert.NotNil(t, objectReturnType)
-				assert.Len(t, objectReturnType.Properties, 1)
+				require.NotNil(t, objectReturnType)
+				require.Len(t, objectReturnType.Properties, 1)
 				outputs := objectReturnType.Properties
 				assert.Equal(t, "someValue", outputs[0].Name)
 				assert.Equal(t, StringType, outputs[0].Type)
 
-				assert.Len(t, pkg.Functions, 1)
+				require.Len(t, pkg.Functions, 1)
 				assert.True(t, pkg.Functions[0].IsMethod)
 				assert.Same(t, pkg.Resources[0].Methods[0].Function, pkg.Functions[0])
 			},
@@ -975,16 +1240,16 @@ func TestMethods(t *testing.T) {
 		{
 			filename: "good-simplified-methods.json",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 1)
-				assert.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
+				require.Len(t, pkg.Functions, 1)
+				require.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
 				assert.Equal(t, pkg.Functions[0].ReturnType, NumberType)
 			},
 		},
 		{
 			filename: "good-simplified-methods.yml",
 			validator: func(pkg *Package) {
-				assert.Len(t, pkg.Functions, 1)
-				assert.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
+				require.Len(t, pkg.Functions, 1)
+				require.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
 				assert.Equal(t, pkg.Functions[0].ReturnType, NumberType)
 			},
 		},
@@ -1012,15 +1277,39 @@ func TestMethods(t *testing.T) {
 			filename:      "bad-methods-6.json",
 			expectedError: "xyz:index:Foo already has a property named bar",
 		},
+
+		// Tests for schemata which define methods on provider resources. For these to work, Pulumi needs to accept
+		// pulumi:providers:... URNs as valid types for function definitions. The following tests check this with various
+		// combinations of package names, resources, and allowed package names.
+
+		{
+			filename: "provider-methods-1.json",
+			validator: func(pkg *Package) {
+				require.Len(t, pkg.Functions, 1)
+			},
+		},
+		{
+			filename: "provider-methods-2.json",
+			validator: func(pkg *Package) {
+				require.Len(t, pkg.Functions, 2)
+			},
+		},
+		{
+			filename: "provider-methods-3.json",
+			validator: func(pkg *Package) {
+				require.Len(t, pkg.Functions, 2)
+			},
+		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
 			t.Parallel()
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			pkg, err := ImportSpec(pkgSpec, nil)
+			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			if tt.expectedError != "" {
 				assert.ErrorContains(t, err, tt.expectedError)
 			} else {
@@ -1043,7 +1332,9 @@ func TestIsOverlay(t *testing.T) {
 
 		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay.json"))
 
-		pkg, err := ImportSpec(pkgSpec, nil)
+		pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 		if err != nil {
 			t.Error(err)
 		}
@@ -1084,7 +1375,9 @@ func TestOverlaySupportedLanguages(t *testing.T) {
 
 		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay-supported-languages.json"))
 
-		pkg, err := ImportSpec(pkgSpec, nil)
+		pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 		if err != nil {
 			t.Error(err)
 		}
@@ -1159,12 +1452,14 @@ func TestBindingOutputsPopulatesReturnType(t *testing.T) {
 		},
 	}
 
-	pkg, err := ImportSpec(pkgSpec, nil)
+	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		t.Error(err)
 	}
 
-	assert.NotNil(t, pkg.Functions[0].ReturnType)
+	require.NotNil(t, pkg.Functions[0].ReturnType)
 	objectType, ok := pkg.Functions[0].ReturnType.(*ObjectType)
 	assert.True(t, ok)
 	assert.Equal(t, NumberType, objectType.Properties[0].Type)
@@ -1229,7 +1524,6 @@ func TestReplaceOnChanges(t *testing.T) {
 			errors:   []string{},
 		},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1239,8 +1533,10 @@ func TestReplaceOnChanges(t *testing.T) {
 			sort.Strings(tt.errors)
 			pkgSpec := readSchemaFile(
 				filepath.Join("schema", tt.filePath))
-			pkg, err := ImportSpec(pkgSpec, nil)
-			assert.NoError(t, err, "Import should be successful")
+			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
+			require.NoError(t, err, "Import should be successful")
 			resource, found := pkg.GetResource(tt.resource)
 			assert.True(t, found, "The resource should exist")
 			replaceOnChanges, errListErrors := resource.ReplaceOnChanges()
@@ -1270,7 +1566,7 @@ func TestValidateTypeToken(t *testing.T) {
 		name          string
 		input         string
 		expectError   bool
-		allowedExtras []string
+		allowedExtras map[string][]string
 	}{
 		{
 			name:  "valid",
@@ -1291,20 +1587,60 @@ func TestValidateTypeToken(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:          "allowed-extras-valid",
-			input:         "other:index:typename",
-			allowedExtras: []string{"other"},
+			name:  "allowed-extras-valid",
+			input: "other:index:typename",
+			allowedExtras: map[string][]string{
+				"other": nil,
+			},
+		},
+		{
+			name:        "allowed-extras-invalid-module",
+			input:       "other:foo:typename",
+			expectError: true,
+			allowedExtras: map[string][]string{
+				"other": {"bar"},
+			},
+		},
+		{
+			name:        "allowed-extras-invalid-module-multiple",
+			input:       "other:baz:typename",
+			expectError: true,
+			allowedExtras: map[string][]string{
+				"other": {"foo", "bar"},
+			},
+		},
+		{
+			name:  "allowed-extras-valid-module",
+			input: "other:foo:typename",
+			allowedExtras: map[string][]string{
+				"other": {"foo"},
+			},
+		},
+		{
+			name:  "allowed-extras-valid-module-multiple",
+			input: "other:bar:typename",
+			allowedExtras: map[string][]string{
+				"other": {"foo", "bar"},
+			},
+		},
+		{
+			name:        "reserved-provider-token-invalid",
+			input:       "example:index:provider",
+			expectError: true,
+		},
+		{
+			name:  "non-reserved-provider-token-valid",
+			input: "example:other:provider",
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
 			spec := &PackageSpec{Name: "example"}
-			allowed := map[string]bool{"example": true}
-			for _, e := range c.allowedExtras {
-				allowed[e] = true
+			allowed := map[string][]string{"example": nil}
+			for pkg, mods := range c.allowedExtras {
+				allowed[pkg] = mods
 			}
 			errors := spec.validateTypeToken(allowed, "type", c.input)
 			if c.expectError {
@@ -1344,7 +1680,6 @@ func TestTypeString(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.output, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, c.output, c.input.String())
@@ -1412,7 +1747,6 @@ func TestPackageIdentity(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.nameA, func(t *testing.T) {
 			t.Parallel()
 
@@ -1466,7 +1800,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 
 	prop := &Property{
 		Name: "prop1",
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"csharp": map[string]string{
 				"name": "CSharpProp1",
 			},
@@ -1478,7 +1812,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 		Properties: []*Property{
 			prop,
 		},
-		Language: map[string]interface{}{
+		Language: map[string]any{
 			"csharp": map[string]string{
 				"name": "CSharpResource",
 			},
@@ -1501,7 +1835,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 		},
 	}
 	pspec, err := p.MarshalSpec()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	res, ok := pspec.Resources[r.Token]
 	assert.True(t, ok)
 	assert.Contains(t, res.Language, "csharp")
@@ -1555,10 +1889,10 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 			fspec: FunctionSpec{
 				Outputs: ots,
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -1576,14 +1910,14 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 			fspec: FunctionSpec{
 				Outputs: otsPlain,
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
-					"plain": []interface{}{"x"},
+					"plain": []any{"x"},
 					"type":  "object",
 				},
 			},
@@ -1603,8 +1937,8 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					},
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
 					"plain": true,
 					"type":  "integer",
 				},
@@ -1619,8 +1953,8 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					},
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
 					"type": "integer",
 				},
 			},
@@ -1633,11 +1967,11 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					ObjectTypeSpecIsPlain: true,
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
 					"plain": true,
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -1652,10 +1986,10 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					ObjectTypeSpec: ots,
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -1670,11 +2004,11 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 					ObjectTypeSpec: otsPlain,
 				},
 			},
-			serial: map[string]interface{}{
-				"outputs": map[string]interface{}{
-					"plain": []interface{}{"x"},
-					"properties": map[string]interface{}{
-						"x": map[string]interface{}{
+			serial: map[string]any{
+				"outputs": map[string]any{
+					"plain": []any{"x"},
+					"properties": map[string]any{
+						"x": map[string]any{
 							"type": "integer",
 						},
 					},
@@ -1685,7 +2019,6 @@ func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		fspec := tc.fspec
 		expectSerial := tc.serial
 		expectFSpec := fspec
@@ -1748,7 +2081,7 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 				Token:            "token",
 				ReturnType:       IntType,
 				ReturnTypePlain:  true,
-				Language:         map[string]interface{}{},
+				Plain:            true,
 			},
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{
@@ -1762,7 +2095,6 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name+"/marshalFunction", func(t *testing.T) {
 			t.Parallel()
 			pkg := Package{}
@@ -1782,7 +2114,9 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 				},
 				functionDefs: map[string]*Function{},
 			}
-			fn, diags, err := ts.bindFunctionDef("token")
+			fn, diags, err := ts.bindFunctionDef("token", ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			require.NoError(t, err)
 			require.False(t, diags.HasErrors())
 			require.Equal(t, tc.fn, fn)
@@ -1790,7 +2124,6 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // using t.Setenv which is incompatible with t.Parallel
 func TestLoaderRespectsDebugProviders(t *testing.T) {
 	host := debugProvidersHelperHost(t)
 	loader := NewPluginLoader(host)
@@ -1857,24 +2190,24 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil)
 	require.NoError(t, err)
 	return pluginCtx.Host
 }
 
-func TestProviderVersionIsAnError(t *testing.T) {
+func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	// c.f. https://github.com/pulumi/pulumi/issues/16757
 	t.Parallel()
 
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 
-	// Test that "version" isn't allowed as a property in the package config.
+	// Test that certain names aren't allowed as a property in the package config.
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
 		Config: ConfigSpec{
 			Variables: map[string]PropertySpec{
-				"version": {
+				"pulumi": {
 					TypeSpec: TypeSpec{
 						Type: "string",
 					},
@@ -1883,12 +2216,35 @@ func TestProviderVersionIsAnError(t *testing.T) {
 		},
 	}
 
-	_, diags, err := BindSpec(pkgSpec, loader)
-	require.NoError(t, err)
+	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.Error(t, err)
 	require.True(t, diags.HasErrors())
-	assert.Equal(t, diags[0].Summary, "#/config/variables/version: version is a reserved configuration key")
+	assert.Equal(t, diags[0].Summary, "#/config/variables/pulumi: pulumi is a reserved property name")
 
-	// Test that "version" isn't allowed as an input property on the provider object.
+	// Test that certain words aren't allowed as an input property on the provider object.
+	pkgSpec = PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			InputProperties: map[string]PropertySpec{
+				"pulumi": {
+					TypeSpec: TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+	}
+
+	_, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.Error(t, err)
+	require.True(t, diags.HasErrors())
+	assert.Equal(t, diags[0].Summary, "#/provider/inputProperties/pulumi: pulumi is a reserved property name")
+
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
@@ -1903,13 +2259,38 @@ func TestProviderVersionIsAnError(t *testing.T) {
 		},
 	}
 
-	_, diags, err = BindSpec(pkgSpec, loader)
-	require.NoError(t, err)
+	_, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.Error(t, err)
 	require.True(t, diags.HasErrors())
-	assert.Equal(t, diags[0].Summary, "#/provider/properties/version: version is a reserved property name")
+	assert.Equal(t, diags[0].Summary, "#/provider/properties/version: version is a reserved provider input property name")
 
-	// Test that "version" is allowed as an output property on the provider object. Most providers probably won't add
-	// this, but it's there if they want to expose it.
+	// Test that reserved words are not allowed as an output property on the provider object.
+	pkgSpec = PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{
+				Properties: map[string]PropertySpec{
+					"pulumi": {
+						TypeSpec: TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.Error(t, err)
+	assert.True(t, diags.HasErrors())
+	assert.Nil(t, pkg)
+
+	// Version is, however only banned on input names.
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
@@ -1926,10 +2307,87 @@ func TestProviderVersionIsAnError(t *testing.T) {
 		},
 	}
 
-	pkg, diags, err := BindSpec(pkgSpec, loader)
+	pkg, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.False(t, diags.HasErrors())
-	assert.NotNil(t, pkg)
+	require.NotNil(t, pkg)
+}
+
+func TestResourceWithKeynameOverlapFunction(t *testing.T) {
+	t.Parallel()
+
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
+	pkgSpec := PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{},
+		},
+		Functions: map[string]FunctionSpec{
+			"xyz:index:pulumi": {},
+		},
+	}
+
+	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	require.ErrorContains(t, err, "is a reserved name, cannot name function")
+	require.Len(t, diags, 1)
+}
+
+func TestResourceWithKeynameOverlapResource(t *testing.T) {
+	t.Parallel()
+
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
+	pkgSpec := PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{},
+		},
+		Resources: map[string]ResourceSpec{
+			"xyz:index:pulumi": {},
+		},
+	}
+
+	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
+	require.Len(t, diags, 1)
+	assert.Contains(t, diags[0].Summary, "is a reserved name, cannot name resource")
+}
+
+func TestResourceWithKeynameOverlapType(t *testing.T) {
+	t.Parallel()
+
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
+	pkgSpec := PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"xyz:index:pulumi": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"abc": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	assert.Error(t, err)
+	require.Len(t, diags, 1)
+	assert.Contains(t, diags[0].Summary, "pulumi is a reserved name, cannot name type")
 }
 
 func TestRoundtripAliasesJSON(t *testing.T) {
@@ -1938,7 +2396,9 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("aliases-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader)
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	newSpec, err := pkg.MarshalSpec()
@@ -1960,7 +2420,9 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("aliases-1.0.0.yaml")
-	pkg, diags, err := BindSpec(pkgSpec, loader)
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	newSpec, err := pkg.MarshalSpec()
@@ -1974,4 +2436,179 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, string(schemaBytes), string(yamlData))
+}
+
+func TestDanglingReferences(t *testing.T) {
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("dangling-reference-bad-0.1.0.json")
+	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
+
+	require.Len(t, diags, 1)
+	require.Equal(t, diags[0].Summary, "#/provider/inputProperties/p/$ref: type dangling-reference:a:b not found in package dangling-reference")
+
+	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{AllowDanglingReferences: true})
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+}
+
+func TestNoDanglingReferences(t *testing.T) {
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("dangling-reference-good-0.1.0.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+}
+
+func TestFunctionToken(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		token    string
+		expected hcl.Diagnostics
+	}{
+		{
+			name:     "valid_token_for_provider_method",
+			token:    "pulumi:providers:terraform-provider/providerMethod",
+			expected: hcl.Diagnostics(nil),
+		},
+		{
+			name:     "valid_token_without_hyphens",
+			token:    "test:index:getFunction",
+			expected: hcl.Diagnostics(nil),
+		},
+		{
+			name:     "valid_token_with_hyphens",
+			token:    "test:index:get-function-data",
+			expected: hcl.Diagnostics(nil),
+		},
+		{
+			name:     "valid_token_with_leading_hyphen",
+			token:    "test:index:-getFunction",
+			expected: hcl.Diagnostics(nil),
+		},
+		{
+			name:     "valid_token_with_consecutive_hyphens",
+			token:    "test:index:get--function",
+			expected: hcl.Diagnostics(nil),
+		},
+		{
+			name:  "invalid_token_with_invalid_package",
+			token: "123:index:getFunction",
+			expected: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/123:index:getFunction: doesn't validate with '/$defs/functionToken'",
+					Detail:   "",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/123:index:getFunction: does not match pattern '^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$'",
+					Detail:   "",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/123:index:getFunction: invalid token '123:index:getFunction' (must have package name 'test')",
+					Detail:   "",
+				},
+			},
+		},
+		{
+			name:  "invalid_token_with_invalid_module",
+			token: "test:123:getFunction",
+			expected: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/test:123:getFunction: doesn't validate with '/$defs/functionToken'",
+					Detail:   "",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/test:123:getFunction: does not match pattern '^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$'",
+					Detail:   "",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			// Create a minimal package spec with the function token
+			spec := PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					tt.token: {
+						Description: "Test function",
+					},
+				},
+			}
+
+			// Try to bind the spec
+			pkg, diags, err := BindSpec(spec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, diags)
+
+			// Test marshaling
+			newSpec, err := pkg.MarshalSpec()
+			require.NoError(t, err)
+			require.NotNil(t, newSpec)
+
+			// Try and bind again
+			_, diags, err = BindSpec(*newSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, diags)
+
+			// Verify the function token is preserved
+			_, exists := newSpec.Functions[tt.token]
+			assert.True(t, exists)
+		})
+	}
+}
+
+func TestProviderRefWarning(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name: "test",
+		Resources: map[string]ResourceSpec{
+			"test:index:SomeResource": {
+				InputProperties: map[string]PropertySpec{
+					"provider": {
+						TypeSpec: TypeSpec{
+							Ref: "#/resources/pulumi:providers:test",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Try to bind the spec
+	_, diags, err := BindSpec(spec, nil, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+
+	require.NoError(t, err)
+	expectedWarning := hcl.Diagnostics{
+		{
+			Severity: hcl.DiagWarning,
+			Summary: "#/resources/test:index:SomeResource/inputProperties/provider/$ref: " +
+				"reference to provider resource '/resources/pulumi:providers:test' is deprecated, use '#/provider' instead",
+		},
+	}
+	assert.Equal(t, expectedWarning, diags)
 }

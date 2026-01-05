@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -26,12 +27,15 @@ import (
 
 func init() {
 	LanguageTests["l3-component-simple"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 
@@ -39,15 +43,16 @@ func init() {
 					// stack.
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
+					assert.Empty(l, stack.Inputs, "expected stack to have no inputs")
+
 					component := RequireSingleResource(l, snap.Resources, "components:index:MyComponent")
 
-					// TODO(https://github.com/pulumi/pulumi/issues/10533): Languages are inconsistent in whether they
-					// send inputs for components.
-					// want := resource.NewPropertyMapFromMap(map[string]any{
-					// 	"input": true,
-					// })
-					// assert.Equal(l, want, component.Inputs, "expected component inputs to be %v", want)
 					want := resource.NewPropertyMapFromMap(map[string]any{
+						"input": true,
+					})
+					assert.Equal(l, want, component.Inputs, "expected component inputs to be %v", want)
+					want = resource.NewPropertyMapFromMap(map[string]any{
 						"output": true,
 					})
 					assert.Equal(l, want, component.Outputs, "expected component outputs to be %v", want)

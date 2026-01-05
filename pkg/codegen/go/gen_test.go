@@ -82,7 +82,9 @@ func TestGoPackageName(t *testing.T) {
 func TestGeneratePackage(t *testing.T) {
 	t.Parallel()
 
-	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
+	generatePackage := func(
+		tool string, pkg *schema.Package, files map[string][]byte, _ schema.ReferenceLoader,
+	) (map[string][]byte, error) {
 		for f := range files {
 			t.Logf("Ignoring extraFile %s", f)
 		}
@@ -208,7 +210,9 @@ func readSchemaFile(file string) *schema.Package {
 		panic(err)
 	}
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -231,7 +235,9 @@ func readYamlSchemaFile(file string) *schema.Package {
 		panic(err)
 	}
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -247,7 +253,6 @@ func TestLanguageResources(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range test.PulumiPulumiSDKTests {
-		test := test
 		t.Run(test.Directory, func(t *testing.T) {
 			t.Parallel()
 			var pkg *schema.Package
@@ -291,7 +296,6 @@ func TestPackageNaming(t *testing.T) {
 		},
 	}
 	for _, tt := range testCases {
-		tt := tt
 		t.Run(tt.expectedRoot, func(t *testing.T) {
 			t.Parallel()
 
@@ -304,7 +308,7 @@ func TestPackageNaming(t *testing.T) {
 				// default to the schema.
 				schema.Name = tt.name
 			}
-			schema.Language = map[string]interface{}{
+			schema.Language = map[string]any{
 				"go": GoPackageInfo{
 					ImportBasePath:  tt.importBasePath,
 					RootPackageName: tt.rootPackageName,
@@ -319,6 +323,9 @@ func TestPackageNaming(t *testing.T) {
 			sort.Strings(ordering)
 			require.NotEmpty(t, files, "This test only works when files are generated")
 			for _, k := range ordering {
+				if k == ".gitattributes" {
+					continue
+				}
 				root := strings.Split(k, "/")[0]
 				if tt.expectedRoot != "" {
 					require.Equal(t, tt.expectedRoot, root, "Root should precede all cases. Got file %s", k)
@@ -383,7 +390,6 @@ func TestTokenToType(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -447,7 +453,6 @@ func TestTokenToResource(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -458,8 +463,10 @@ func TestTokenToResource(t *testing.T) {
 }
 
 func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
-	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{})
-	assert.NoError(t, err)
+	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{}, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
 	return importedPkg
 }
 
@@ -585,7 +592,9 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 	}
 
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	t.Logf("%v", diags)
 	require.False(t, diags.HasErrors())

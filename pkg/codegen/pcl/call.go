@@ -118,7 +118,7 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 				Type: sigArgsType,
 			},
 		},
-		ReturnType: b.schemaTypeToType(method.Function.ReturnType),
+		ReturnType: model.NewOutputType(b.schemaTypeToType(method.Function.ReturnType)),
 	}
 
 	if argsObject, isObjectExpression := args[1].(*model.ObjectConsExpression); isObjectExpression {

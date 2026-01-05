@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "Inputs/FooArgs.cs",
     "Provider.cs",
     "Pulumi.Xyz.csproj",

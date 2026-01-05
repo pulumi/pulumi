@@ -29,6 +29,7 @@ import (
 	"sync"
 	"unicode"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/iancoleman/strcase"
 	"golang.org/x/mod/modfile"
@@ -42,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -227,14 +229,14 @@ func (g *generator) genComponentArgs(w io.Writer, componentName string, componen
 	argsTypeName := Title(componentName) + "Args"
 
 	objectTypedConfigVars := collectObjectTypedConfigVariables(component)
-	variableNames := pcl.SortedStringKeys(objectTypedConfigVars)
+	variableNames := maputil.SortedKeys(objectTypedConfigVars)
 	// generate resource args for this component
 	for _, variableName := range variableNames {
 		objectType := objectTypedConfigVars[variableName]
 		objectTypeName := configObjectTypeName(variableName)
 		g.Fprintf(w, "type %s struct {\n", objectTypeName)
 		g.Indented(func() {
-			propertyNames := pcl.SortedStringKeys(objectType.Properties)
+			propertyNames := maputil.SortedKeys(objectType.Properties)
 			for _, propertyName := range propertyNames {
 				propertyType := objectType.Properties[propertyName]
 				inputType := componentInputType(propertyType)
@@ -545,6 +547,16 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.30.0")
 	contract.AssertNoErrorf(err, "could not add require statement for github.com/pulumi/pulumi/sdk/v3 to go.mod")
 
+	// build metadata seems to cause issues for mod tidy so we strip it when converting to a Go string
+	cleanVersion := func(version *semver.Version) string {
+		if version == nil {
+			return ""
+		}
+		cleanVersion := *version
+		cleanVersion.Build = nil
+		return "v" + cleanVersion.String()
+	}
+
 	// For each package add a PackageReference line
 	packages, err := programPackageDefs(program)
 	if err != nil {
@@ -589,7 +601,8 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 			if info, ok := p.Language["go"]; ok {
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
 					packagePaths[p.Name] = info.ModulePath
-					err = gomod.AddRequire(info.ModulePath, p.Version.String())
+
+					err = gomod.AddRequire(info.ModulePath, cleanVersion(p.Version))
 					contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", info.ModulePath)
 				}
 			}
@@ -601,7 +614,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 		if p.Version != nil && p.Version.Major > 1 {
 			vPath = fmt.Sprintf("/v%d", p.Version.Major)
 		}
-		packageName := extractModulePath(p.Reference())
+		packageName := ExtractModulePath(p.Reference())
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ImportBasePath != "" {
@@ -613,10 +626,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 			}
 		}
 
-		version := ""
-		if p.Version != nil {
-			version = "v" + p.Version.String()
-		}
+		version := cleanVersion(p.Version)
 		if packageName != "" {
 			packagePaths[p.Name] = packageName
 			err = gomod.AddRequire(packageName, version)
@@ -626,7 +636,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 
 	// For any local dependencies, add a replace statement. Make sure we iter this in sorted order (c.f.
 	// https://github.com/pulumi/pulumi/issues/16859).
-	pkgs := codegen.SortedKeys(localDependencies)
+	pkgs := maputil.SortedKeys(localDependencies)
 	for _, pkg := range pkgs {
 		path := localDependencies[pkg]
 		// pkg is the package name, we transformed these into Go paths above so use the map generated there
@@ -845,7 +855,8 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if call.Name == pcl.Invoke {
+				switch call.Name {
+				case pcl.Invoke:
 					tokenArg := call.Args[0]
 					token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 					tokenRange := tokenArg.SyntaxNode().Range()
@@ -864,7 +875,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 						panic(err)
 					}
 					g.addPulumiImport(pkg, vPath, mod, name)
-				} else if call.Name == pcl.IntrinsicConvert {
+				case pcl.IntrinsicConvert:
 					g.collectConvertImports(program, call)
 				}
 
@@ -974,7 +985,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		} else {
 			p, ok := g.packages[pkg]
 			if ok {
-				importBasePath = extractImportBasePath(p.Reference())
+				importBasePath = ExtractImportBasePath(p.Reference())
 			}
 		}
 
@@ -998,12 +1009,12 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 		}
 
 		if strings.Contains(mod, "-") {
-			alias := ""
+			var alias strings.Builder
 			for _, part := range strings.Split(mod, "-") {
-				alias += strcase.ToLowerCamel(part)
+				alias.WriteString(strcase.ToLowerCamel(part))
 			}
 			// convert the dashed package such as package-name into packagename
-			mod = alias
+			mod = alias.String()
 		}
 		g.importer.Import(path, mod)
 		return
@@ -1067,13 +1078,15 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 
 var resourceType = model.NewOpaqueType("pulumi.Resource")
 
-func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []interface{}) {
+var providerResourceType = model.NewOpaqueType("pulumi.ProviderResource")
+
+func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []any) {
 	if opts == nil {
 		return nil, nil
 	}
 
 	var block *model.Block
-	var temps []interface{}
+	var temps []any
 	appendOption := func(name string, value model.Expression, destType model.Type) {
 		if block == nil {
 			block = &model.Block{
@@ -1092,11 +1105,46 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 		})
 	}
 
+	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
 	if opts.Parent != nil {
 		appendOption("Parent", opts.Parent, model.DynamicType)
 	}
 	if opts.Provider != nil {
 		appendOption("Provider", opts.Provider, model.DynamicType)
+	}
+	if opts.Providers != nil {
+		// If the providers (plural) resource option was passed, it could be either a list of provider resources, or a map
+		// whose values are provider resources. We first work out which by asking whether the type of the expression passed
+		// is convertible to a list or map of provider resources.
+		//
+		// In the case where it's a list, we deconstruct the list and repeatedly call the Provider(...) function of the SDK,
+		// which in the Go SDK may be passed multiple times (setting the singular provider option if passed once and the
+		// plural providers option if passed more than once).
+		//
+		// If it's a map, we use the ProviderMap function of the SDK. This takes a single map[string]ProviderResource. In
+		// order to ensure that we generate the right type, we wrap the map expression in a __convert intrinsic with that
+		// explicit type, to avoid cases where e.g. we'll see dynamic types and generate map[string]interface{} (which the
+		// Go compiler will not like).
+		providersType := opts.Providers.Type()
+
+		listType := model.NewListType(model.DynamicType)
+		mapType := model.NewMapType(model.DynamicType)
+
+		if listType.ConversionFrom(providersType) == model.SafeConversion {
+			// It's a list of providers. Iterate over the expressions in the list and generate a call to Provider(...) for
+			// each.
+			providersList, ok := opts.Providers.(*model.TupleConsExpression)
+			contract.Assertf(ok, "Expected a list of providers, got %T", opts.Providers)
+
+			for _, p := range providersList.Expressions {
+				appendOption("Provider", p, providerResourceType)
+			}
+		} else if mapType.ConversionFrom(providersType) == model.SafeConversion {
+			// It's a map of providers. Build the explicit destination type map[string]ProviderResource and convert the given
+			// expression to that before generating the call to ProviderMap(...).
+			destMapType := model.NewMapType(providerResourceType)
+			appendOption("ProviderMap", pcl.NewConvertCall(opts.Providers, destMapType), destMapType)
+		}
 	}
 	if opts.DependsOn != nil {
 		appendOption("DependsOn", opts.DependsOn, model.NewListType(resourceType))
@@ -1110,8 +1158,21 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.IgnoreChanges != nil {
 		appendOption("IgnoreChanges", opts.IgnoreChanges, model.NewListType(model.StringType))
 	}
+	if opts.HideDiffs != nil {
+		appendOption("HideDiffs", opts.HideDiffs, model.NewListType(model.StringType))
+	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
+	}
+	if opts.ReplaceWith != nil {
+		appendOption("ReplaceWith", opts.ReplaceWith, model.NewListType(resourceType))
+	}
+	if opts.ReplacementTrigger != nil {
+		destType := model.NewOutputType(model.DynamicType)
+		appendOption("ReplacementTrigger", opts.ReplacementTrigger, destType)
+	}
+	if opts.ImportID != nil {
+		appendOption("Import", opts.ImportID, model.StringType)
 	}
 
 	return block, temps
@@ -1124,7 +1185,29 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 
 	for _, item := range block.Body.Items {
 		attr := item.(*model.Attribute)
-		g.Fgenf(w, ", pulumi.%s(%v)", attr.Name, attr.Value)
+
+		// Some resource options have syntactic/type transformations.
+		valBuffer := &bytes.Buffer{}
+		switch attr.Name {
+		case "Import":
+			g.Fgenf(valBuffer, "pulumi.ID(%v)", attr.Value)
+		case "ReplacementTrigger":
+			// Non-Input values can be lifted using `pulumi.Any`
+			if isInputty(attr.Value.Type()) {
+				g.Fgenf(valBuffer, "%v", attr.Value)
+			} else {
+				wrapperFunc := g.argumentTypeName(attr.Value.Type(), true)
+				if wrapperFunc != "" {
+					g.Fgenf(valBuffer, "%s(%v)", wrapperFunc, attr.Value)
+				} else {
+					g.Fgenf(valBuffer, "pulumi.Any(%v)", attr.Value)
+				}
+			}
+		default:
+			g.Fgenf(valBuffer, "%v", attr.Value)
+		}
+
+		g.Fgenf(w, ", pulumi.%s(%s)", attr.Name, valBuffer)
 	}
 }
 
@@ -1159,9 +1242,11 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			input.Value = expr
 			g.genTemps(w, temps)
 		}
-	}
-
-	if r.Schema == nil {
+		pkg, mod, _, _ := r.DecomposeToken()
+		if pkgCtx := g.contexts[pkg][mod]; pkgCtx != nil {
+			typ = disambiguatedResourceName(r.Schema, pkgCtx)
+		}
+	} else {
 		// for unknown resource the type name of the resource should be upper-case
 		typ = Title(typ)
 	}
@@ -1582,19 +1667,39 @@ func liftValueToOutput(value model.Expression) (model.Expression, model.Type) {
 	switch expr := value.(type) {
 	case *model.TupleConsExpression:
 		// if the value is a tuple, then lift each element to Output[T] as well
+		// Create a new tuple instead of mutating the original
+		liftedExprs := make([]model.Expression, len(expr.Expressions))
 		for i, elem := range expr.Expressions {
 			lifted, _ := liftValueToOutput(elem)
-			expr.Expressions[i] = lifted
+			liftedExprs[i] = lifted
 		}
+		newTuple := &model.TupleConsExpression{
+			Syntax:      expr.Syntax,
+			Tokens:      expr.Tokens,
+			Expressions: liftedExprs,
+		}
+		// Typecheck the new tuple to set its type
+		_ = newTuple.Typecheck(false)
+		value = newTuple
 	case *model.ObjectConsExpression:
 		// if the value is a map, then lift each value to Output[T] as well
+		// Create a new object instead of mutating the original
+		liftedItems := make([]model.ObjectConsItem, len(expr.Items))
 		for i, item := range expr.Items {
 			lifted, _ := liftValueToOutput(item.Value)
-			expr.Items[i] = model.ObjectConsItem{
+			liftedItems[i] = model.ObjectConsItem{
 				Key:   item.Key,
 				Value: lifted,
 			}
 		}
+		newObj := &model.ObjectConsExpression{
+			Syntax: expr.Syntax,
+			Tokens: expr.Tokens,
+			Items:  liftedItems,
+		}
+		// Typecheck the new object to set its type
+		_ = newObj.Typecheck(false)
+		value = newObj
 	}
 
 	return pcl.NewConvertCall(value, destType), destType
@@ -1609,12 +1714,12 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
 }
 
-func (g *generator) genTemps(w io.Writer, temps []interface{}) {
+func (g *generator) genTemps(w io.Writer, temps []any) {
 	singleReturn := ""
 	g.genTempsMultiReturn(w, temps, singleReturn)
 }
 
-func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroValueType string) {
+func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType string) {
 	genZeroValueDecl := false
 
 	if zeroValueType != "" {
@@ -1875,17 +1980,20 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	if !ok {
 		needsAliasing := strings.Contains(mod, "-")
 		if needsAliasing {
-			moduleAlias := ""
-			for _, part := range strings.Split(mod, "-") {
-				moduleAlias += strcase.ToLowerCamel(part)
+			var moduleAlias strings.Builder
+			for part := range strings.SplitSeq(mod, "-") {
+				moduleAlias.WriteString(strcase.ToLowerCamel(part))
 			}
-			return moduleAlias
+			return moduleAlias.String()
 		}
 		return strings.ToLower(mod)
 	}
 
 	importPath := func(mod string) string {
 		importBasePath := info.ImportBasePath
+		if importBasePath == "" {
+			importBasePath = ExtractImportBasePath(g.packages[pkg].Reference())
+		}
 		if mod != "" && mod != IndexToken {
 			if info.ImportPathPattern != "" {
 				importedPath := strings.ReplaceAll(info.ImportPathPattern, "{module}", mod)

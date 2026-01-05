@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,12 +18,14 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -53,8 +55,26 @@ func newMockServerRequestProcessor(statusCode int, processor func(req *http.Requ
 		}))
 }
 
+func newHTTPClient() *http.Client {
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	return &http.Client{
+		// Copy of http.DefaultTransport settings except Proxy
+		Transport: &http.Transport{
+			DialContext:           dialer.DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+}
+
 func newMockClient(server *httptest.Server) *Client {
-	httpClient := http.DefaultClient
+	httpClient := newHTTPClient()
 
 	return &Client{
 		apiURL:     server.URL,
@@ -81,7 +101,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		unauthorizedClient := newMockClient(unauthorizedServer)
-		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background())
+		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, unauthorizedErr, "this command requires logging in; try running `pulumi login` first")
 	})
@@ -93,7 +113,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer rateLimitedServer.Close()
 
 		rateLimitedClient := newMockClient(rateLimitedServer)
-		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background())
+		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, rateLimitErr, "pulumi service: request rate-limit exceeded")
 	})
@@ -105,7 +125,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer defaultErrorServer.Close()
 
 		defaultErrorClient := newMockClient(defaultErrorServer)
-		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background())
+		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.Error(t, defaultErrorErr)
 	})
@@ -121,12 +141,37 @@ func TestAPIVersionResponses(t *testing.T) {
 	defer versionServer.Close()
 
 	versionClient := newMockClient(versionServer)
-	latestVersion, oldestWithoutWarning, latestDevVersion, err := versionClient.GetCLIVersionInfo(context.Background())
+	latestVersion, oldestWithoutWarning, latestDevVersion, err := versionClient.GetCLIVersionInfo(
+		context.Background(), nil,
+	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, latestVersion.String(), "1.0.0")
 	assert.Equal(t, oldestWithoutWarning.String(), "0.1.0")
 	assert.Equal(t, latestDevVersion.String(), "1.0.0-11-gdeadbeef")
+}
+
+func TestAPIVersionMetadataHeaders(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "foo", req.Header.Get("X-Pulumi-First"))
+		assert.Equal(t, "bar", req.Header.Get("X-Pulumi-Second"))
+		assert.Empty(t, req.Header.Get("X-Pulumi-Third"))
+		return `{"latestVersion": "1.0.0", "oldestWithoutWarning": "0.1.0", "latestDevVersion": "1.0.0-11-gdeadbeef"}`
+	})
+	defer server.Close()
+	client := newMockClient(server)
+
+	// Act.
+	_, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
+		"First":  "foo",
+		"Second": "bar",
+	})
+
+	// Assert.
+	require.NoError(t, err)
 }
 
 func TestGzip(t *testing.T) {
@@ -146,25 +191,28 @@ func TestGzip(t *testing.T) {
 
 	// POST /import
 	_, err := client.ImportStackDeployment(context.Background(), identifier, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tok := updateTokenStaticSource("")
 
 	// PATCH /checkpoint
 	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{
 		StackIdentifier: identifier,
-	}, nil, tok)
-	assert.NoError(t, err)
+	}, &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage("{}"),
+	}, tok)
+	require.NoError(t, err)
 
 	// POST /events/batch
 	err = client.RecordEngineEvents(context.Background(), UpdateIdentifier{
 		StackIdentifier: identifier,
 	}, apitype.EngineEventBatch{}, tok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// POST /events/batch
 	_, err = client.BatchDecryptValue(context.Background(), identifier, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
@@ -179,23 +227,23 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 
 	var serializedDeployment json.RawMessage
 	serializedDeployment, err := json.Marshal(deployment)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	untypedDeployment, err := json.Marshal(apitype.UntypedDeployment{
 		Version:    3,
 		Deployment: serializedDeployment,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var request apitype.PatchUpdateVerbatimCheckpointRequest
 
 	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
 		reader, err := gzip.NewReader(req.Body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer reader.Close()
 
 		err = json.NewDecoder(reader).Decode(&request)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return "{}"
 	})
@@ -214,18 +262,18 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 			StackIdentifier: StackIdentifier{
 				Stack: tokens.MustParseStackName("stack"),
 			},
-		}, sequenceNumber, indented, updateTokenStaticSource("token"))
-	assert.NoError(t, err)
+		}, sequenceNumber, indented, 3, updateTokenStaticSource("token"))
+	require.NoError(t, err)
 
 	compacted := func(raw json.RawMessage) string {
 		var buf bytes.Buffer
 		err := json.Compact(&buf, []byte(raw))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return buf.String()
 	}
 
 	// It should have more than one line as json.Marshal would produce.
-	assert.Equal(t, newlines+1, len(strings.Split(string(request.UntypedDeployment), "\n")))
+	require.Len(t, strings.Split(string(request.UntypedDeployment), "\n"), newlines+1)
 
 	// Compacting should recover the same form as json.Marshal would produce.
 	assert.Equal(t, string(untypedDeployment), compacted(request.UntypedDeployment))
@@ -240,8 +288,8 @@ func TestGetCapabilities(t *testing.T) {
 
 		c := newMockClient(s)
 		resp, err := c.GetCapabilities(context.Background())
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
 		assert.Empty(t, resp.Capabilities)
 	})
 	t.Run("updated-service-with-delta-checkpoint-capability", func(t *testing.T) {
@@ -267,9 +315,9 @@ func TestGetCapabilities(t *testing.T) {
 
 		c := newMockClient(s)
 		resp, err := c.GetCapabilities(context.Background())
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.Len(t, resp.Capabilities, 2)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Len(t, resp.Capabilities, 2)
 		assert.Equal(t, apitype.DeltaCheckpointUploads, resp.Capabilities[0].Capability)
 		assert.Equal(t, `{"checkpointCutoffSizeBytes":4194304}`,
 			string(resp.Capabilities[0].Configuration))
@@ -335,30 +383,30 @@ func TestDeploymentSettingsApi(t *testing.T) {
 			Project: "project",
 			Stack:   stack,
 		})
-		assert.NoError(t, err)
-		assert.NotNil(t, resp)
-		assert.NotNil(t, resp.SourceContext)
-		assert.NotNil(t, resp.SourceContext.Git)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.SourceContext)
+		require.NotNil(t, resp.SourceContext.Git)
 		assert.Equal(t, "main", resp.SourceContext.Git.Branch)
 		assert.Equal(t, "git@github.com:pulumi/test-repo.git", resp.SourceContext.Git.RepoURL)
 		assert.Equal(t, ".", resp.SourceContext.Git.RepoDir)
-		assert.NotNil(t, resp.SourceContext.Git.GitAuth)
-		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth)
-		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.UserName)
+		require.NotNil(t, resp.SourceContext.Git.GitAuth)
+		require.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth)
+		require.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.UserName)
 		assert.Equal(t, "jdoe", resp.SourceContext.Git.GitAuth.BasicAuth.UserName.Value)
-		assert.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.Password)
+		require.NotNil(t, resp.SourceContext.Git.GitAuth.BasicAuth.Password)
 		assert.Equal(t, "AAABAMcGtHDraogfM3Qk4WyaNp3F/syk2cjHPQTb6Hu6ps8=",
 			resp.SourceContext.Git.GitAuth.BasicAuth.Password.Ciphertext)
-		assert.NotNil(t, resp.Operation)
-		assert.NotNil(t, resp.Operation.Options)
+		require.NotNil(t, resp.Operation)
+		require.NotNil(t, resp.Operation.Options)
 		assert.True(t, resp.Operation.Options.SkipIntermediateDeployments)
 		assert.False(t, resp.Operation.Options.DeleteAfterDestroy)
 		assert.False(t, resp.Operation.Options.RemediateIfDriftDetected)
 		assert.False(t, resp.Operation.Options.SkipInstallDependencies)
-		assert.NotNil(t, resp.Operation.OIDC)
+		require.NotNil(t, resp.Operation.OIDC)
 		assert.Nil(t, resp.Operation.OIDC.Azure)
 		assert.Nil(t, resp.Operation.OIDC.GCP)
-		assert.NotNil(t, resp.Operation.OIDC.AWS)
+		require.NotNil(t, resp.Operation.OIDC.AWS)
 		assert.Equal(t, "the_session_name", resp.Operation.OIDC.AWS.SessionName)
 		assert.Equal(t, "the_role", resp.Operation.OIDC.AWS.RoleARN)
 		duration, _ := time.ParseDuration("1h0m0s")
@@ -368,7 +416,7 @@ func TestDeploymentSettingsApi(t *testing.T) {
 	})
 }
 
-func TestListTemplates(t *testing.T) {
+func TestListOrgTemplates(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
@@ -427,5 +475,382 @@ func TestListTemplates(t *testing.T) {
 		assert.Equal(t, apitype.ListOrgTemplatesResponse{
 			HasAccessError: true,
 		}, actual)
+	})
+}
+
+func TestGetDefaultOrg(t *testing.T) {
+	t.Parallel()
+	t.Run("legacy-service-404", func(t *testing.T) {
+		t.Parallel()
+		// GIVEN
+		s := newMockServer(404, "NOT FOUND")
+		defer s.Close()
+
+		// WHEN
+		c := newMockClient(s)
+		resp, err := c.GetDefaultOrg(context.Background())
+
+		// THEN
+		// We should gracefully handle the 404
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Empty(t, resp.GitHubLogin)
+	})
+}
+
+func TestGetPackage(t *testing.T) {
+	t.Parallel()
+
+	const metadataJSON = `{
+  "name": "my-package",
+  "publisher": "my-publisher",
+  "source": "my-source",
+  "version": "1.0.0",
+  "title": "Example Package",
+  "description": "This is an example package.",
+  "logoUrl": "https://example.com/logo.png",
+  "repoUrl": "https://github.com/example/package",
+  "category": "utilities",
+  "isFeatured": true,
+  "packageTypes": ["native", "component"],
+  "packageStatus": "ga",
+  "readmeURL": "https://example.com/readme",
+  "schemaURL": "https://example.com/schema",
+  "pluginDownloadURL": "https://example.com/download",
+  "createdAt": "2023-10-01T12:00:00Z",
+  "visibility": "public"
+}`
+
+	metadata := func() apitype.PackageMetadata {
+		return apitype.PackageMetadata{
+			Name:              "my-package",
+			Publisher:         "my-publisher",
+			Source:            "my-source",
+			Version:           semver.Version{Major: 1},
+			Title:             "Example Package",
+			Description:       "This is an example package.",
+			LogoURL:           "https://example.com/logo.png",
+			RepoURL:           "https://github.com/example/package",
+			Category:          "utilities",
+			IsFeatured:        true,
+			PackageTypes:      []apitype.PackageType{"native", "component"},
+			PackageStatus:     apitype.PackageStatusGA,
+			ReadmeURL:         "https://example.com/readme",
+			SchemaURL:         "https://example.com/schema",
+			PluginDownloadURL: "https://example.com/download",
+			CreatedAt:         time.Date(2023, time.October, 1, 12, 0, 0, 0, time.UTC),
+			Visibility:        apitype.VisibilityPublic,
+		}
+	}
+
+	t.Run("latest-latest", func(t *testing.T) {
+		t.Parallel()
+		s := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Contains(t, req.URL.String(), "my-source/my-publisher/my-package/versions/latest")
+			return metadataJSON
+		})
+		defer s.Close()
+
+		c := newMockClient(s)
+
+		resp, err := c.GetPackage(context.Background(), "my-source", "my-publisher", "my-package", nil)
+		require.NoError(t, err)
+		assert.Equal(t, metadata(), resp)
+	})
+
+	t.Run("404", func(t *testing.T) {
+		t.Parallel()
+		s := newMockServer(404, ``)
+		defer s.Close()
+
+		c := newMockClient(s)
+
+		_, err := c.GetPackage(context.Background(), "my-source", "my-publisher", "my-package", nil)
+		var apiError *apitype.ErrorResponse
+		require.ErrorAs(t, err, &apiError, "actual error type %T", err)
+		assert.Equal(t, 404, apiError.Code)
+	})
+
+	t.Run("specific-version", func(t *testing.T) {
+		t.Parallel()
+		s := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Contains(t, req.URL.String(), "my-source/my-publisher/my-package/versions/1.0.0")
+			return metadataJSON
+		})
+		defer s.Close()
+
+		c := newMockClient(s)
+
+		resp, err := c.GetPackage(context.Background(), "my-source", "my-publisher", "my-package", &semver.Version{
+			Major: 1,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, metadata(), resp)
+	})
+}
+
+func TestListPackages(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no-continuation-token", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a mock response with package metadata
+		expectedPackages := []apitype.PackageMetadata{
+			{
+				Name:          "my-package-1",
+				Publisher:     "my-publisher",
+				Source:        "my-source",
+				Version:       semver.Version{Major: 1},
+				PackageStatus: apitype.PackageStatusGA,
+				Visibility:    apitype.VisibilityPrivate,
+			},
+			{
+				Name:          "my-package-2",
+				Publisher:     "my-publisher",
+				Source:        "my-source",
+				Version:       semver.Version{Major: 2},
+				PackageStatus: apitype.PackageStatusGA,
+				Visibility:    apitype.VisibilityPrivate,
+			},
+		}
+
+		mockResponse := apitype.ListPackagesResponse{
+			Packages: expectedPackages,
+		}
+
+		// Set up mock server
+		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Contains(t, req.URL.String(), "/api/preview/registry/packages?limit=499")
+			assert.Equal(t, "GET", req.Method)
+
+			data, err := json.Marshal(mockResponse)
+			require.NoError(t, err)
+			return string(data)
+		})
+		defer mockServer.Close()
+
+		mockClient := newMockClient(mockServer)
+
+		// Call ListPackages and collect results
+		searchName := "my-package"
+		searchResults := []apitype.PackageMetadata{}
+		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
+			require.NoError(t, err)
+			searchResults = append(searchResults, pkg)
+		}
+		assert.Equal(t, expectedPackages, searchResults)
+	})
+
+	t.Run("with-continuation-token", func(t *testing.T) {
+		t.Parallel()
+
+		// First page response
+		firstPagePackages := []apitype.PackageMetadata{
+			{
+				Name:          "my-package-1",
+				Publisher:     "my-publisher",
+				Source:        "my-source",
+				Version:       semver.Version{Major: 1},
+				PackageStatus: apitype.PackageStatusGA,
+				Visibility:    apitype.VisibilityPrivate,
+			},
+		}
+
+		secondPagePackages := []apitype.PackageMetadata{
+			{
+				Name:          "my-package-2",
+				Publisher:     "my-publisher",
+				Source:        "my-source",
+				Version:       semver.Version{Major: 2},
+				PackageStatus: apitype.PackageStatusGA,
+				Visibility:    apitype.VisibilityPrivate,
+			},
+		}
+
+		thirdPagePackages := []apitype.PackageMetadata{
+			{
+				Name:          "my-package-3",
+				Publisher:     "my-publisher",
+				Source:        "my-source",
+				Version:       semver.Version{Major: 3},
+				PackageStatus: apitype.PackageStatusGA,
+				Visibility:    apitype.VisibilityPrivate,
+			},
+		}
+
+		// Track which request is being made
+		requestCount := 0
+
+		// Set up mock server
+		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Equal(t, "GET", req.Method)
+
+			var responseData []byte
+			var err error
+
+			switch requestCount {
+			case 0:
+				assert.Equal(t, "/api/preview/registry/packages?limit=499&name=my-package", req.URL.String())
+				assert.NotContains(t, "continuationToken", req.URL.String())
+
+				responseData, err = json.Marshal(apitype.ListPackagesResponse{
+					Packages:          firstPagePackages,
+					ContinuationToken: ptr("next-page-token-1"),
+				})
+				require.NoError(t, err)
+			case 1:
+				assert.Equal(t,
+					"/api/preview/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-1",
+					req.URL.String())
+
+				responseData, err = json.Marshal(apitype.ListPackagesResponse{
+					Packages:          secondPagePackages,
+					ContinuationToken: ptr("next-page-token-2"),
+				})
+				require.NoError(t, err)
+			case 2:
+				assert.Equal(t,
+					"/api/preview/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-2",
+					req.URL.String())
+
+				responseData, err = json.Marshal(apitype.ListPackagesResponse{
+					Packages: thirdPagePackages,
+				})
+				require.NoError(t, err)
+			}
+
+			requestCount++
+			return string(responseData)
+		})
+		defer mockServer.Close()
+
+		mockClient := newMockClient(mockServer)
+
+		searchName := "my-package"
+		searchResults := []apitype.PackageMetadata{}
+		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
+			require.NoError(t, err)
+			searchResults = append(searchResults, pkg)
+		}
+
+		expectedPackages := append(append(firstPagePackages, secondPagePackages...), thirdPagePackages...)
+		assert.Equal(t, expectedPackages, searchResults)
+		assert.Equal(t, 3, requestCount) // Ensure both requests were made
+	})
+}
+
+func ptr[T any](v T) *T { return &v }
+
+func TestCallCopilot(t *testing.T) {
+	t.Parallel()
+
+	t.Run("StatusNoContent", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns 204 No Content, it should return an empty string without error
+		noContentServer := newMockServer(http.StatusNoContent, "")
+		defer noContentServer.Close()
+
+		client := newMockClient(noContentServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.NoError(t, err)
+		require.Empty(t, response)
+	})
+
+	t.Run("StatusPaymentRequired", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns 402 Payment Required (usage limit), it should return an error with the body message
+		usageLimitServer := newMockServer(http.StatusPaymentRequired, "Usage limit reached")
+		defer usageLimitServer.Close()
+
+		client := newMockClient(usageLimitServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.EqualError(t, err, "Usage limit reached")
+		require.Empty(t, response)
+	})
+
+	t.Run("OtherErrorStatus", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns other error status codes, it should return an error with the body message
+		errorServer := newMockServer(http.StatusInternalServerError, "Internal server error")
+		defer errorServer.Close()
+
+		client := newMockClient(errorServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.EqualError(t, err, "Internal server error")
+		require.Empty(t, response)
+	})
+
+	t.Run("EmptyErrorBody", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns error status with empty body, it should return a generic error
+		emptyBodyServer := newMockServer(http.StatusBadRequest, "")
+		defer emptyBodyServer.Close()
+
+		client := newMockClient(emptyBodyServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.ErrorContains(t, err, "Copilot API returned error status: 400")
+		require.Empty(t, response)
+	})
+
+	t.Run("InvalidJSON", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns a non-JSON response with status 200, it should return an error
+		invalidJSONServer := newMockServer(http.StatusOK, "This is not JSON")
+		defer invalidJSONServer.Close()
+
+		client := newMockClient(invalidJSONServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.EqualError(t, err, "unable to parse Copilot response: This is not JSON")
+		require.Empty(t, response)
+	})
+
+	t.Run("ValidJSON", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns a valid JSON response, it should process it correctly
+		validJSONServer := newMockServer(http.StatusOK, `{
+			"messages": [
+				{
+					"role": "assistant",
+					"kind": "response",
+					"content": "\"This is a valid response\""
+				}
+			]
+		}`)
+		defer validJSONServer.Close()
+
+		client := newMockClient(validJSONServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.NoError(t, err)
+		require.Equal(t, "\"This is a valid response\"", response)
+	})
+
+	t.Run("JSONWithError", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns a JSON response with an error field, it should return that error
+		errorJSONServer := newMockServer(http.StatusOK, `{
+			"error": "API error message",
+			"details": "Detailed error information"
+		}`)
+		defer errorJSONServer.Close()
+
+		client := newMockClient(errorJSONServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.EqualError(t, err, "copilot API error: API error message\nDetailed error information")
+		require.Empty(t, response)
 	})
 }

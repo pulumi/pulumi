@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -25,12 +26,15 @@ import (
 
 func init() {
 	LanguageTests["l2-component-call-simple"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ComponentProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ComponentProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 
@@ -74,8 +78,8 @@ func init() {
 					// * from_prefixed, whose value should be the value output of component1, prefixed with "foo-".
 					outputs := stack.Outputs
 					require.Len(l, outputs, 2, "expected 2 outputs")
-					AssertPropertyMapMember(l, outputs, "from_identity", resource.NewStringProperty("bar"))
-					AssertPropertyMapMember(l, outputs, "from_prefixed", resource.NewStringProperty("foo-bar"))
+					AssertPropertyMapMember(l, outputs, "from_identity", resource.NewProperty("bar"))
+					AssertPropertyMapMember(l, outputs, "from_prefixed", resource.NewProperty("foo-bar"))
 				},
 			},
 		},

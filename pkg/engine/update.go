@@ -45,7 +45,7 @@ type RequiredPolicy interface {
 	// Version of the PolicyPack.
 	Version() string
 	// Install will install the PolicyPack locally, returning the path it was installed to.
-	Install(ctx context.Context) (string, error)
+	Install(ctx *plugin.Context) (string, error)
 	// Config returns the PolicyPack's configuration.
 	Config() map[string]*json.RawMessage
 }
@@ -136,6 +136,9 @@ type UpdateOptions struct {
 	// true if the plan should refresh before executing.
 	Refresh bool
 
+	// true if the plan should run the program as part of refresh.
+	RefreshProgram bool
+
 	// true if the plan should run the program as part of destroy.
 	DestroyProgram bool
 
@@ -186,8 +189,8 @@ type UpdateOptions struct {
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
-	// AttachDebugger to launch the language host in debug mode.
-	AttachDebugger bool
+	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
+	AttachDebugger []string
 
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
@@ -216,7 +219,6 @@ func HasChanges(changes display.ResourceChanges) bool {
 func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	*deploy.Plan, display.ResourceChanges, error,
 ) {
-	contract.Requiref(u != nil, "update", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
@@ -244,6 +246,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 		Diag:          newEventSink(emitter, false),
 		StatusDiag:    newEventSink(emitter, true),
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }
 
@@ -304,7 +307,7 @@ func installPlugins(
 
 // installAndLoadPolicyPlugins loads and installs all requird policy plugins and packages as well as any
 // local policy packs. It returns fully populated metadata about those policy plugins.
-func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
+func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 	deployOpts *deploymentOptions, analyzerOpts *plugin.PolicyAnalyzerOptions,
 ) error {
 	var allValidationErrors []string
@@ -321,7 +324,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 	// Install and load required policy packs.
 	for _, policy := range deployOpts.RequiredPolicies {
 		deployOpts.Events.PolicyLoadEvent()
-		policyPath, err := policy.Install(ctx)
+		policyPath, err := policy.Install(plugctx)
 		if err != nil {
 			return err
 		}
@@ -412,6 +415,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 				configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
 				if err != nil {
 					errs <- err
+					plugctx.Diag.Infof(diag.Message("", "LoadPolicyPackConfigFromFile %s"), err.Error())
 					return
 				}
 			}
@@ -419,11 +423,13 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 				analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
 			if err != nil {
 				errs <- fmt.Errorf("reconciling policy config for %q at %q: %w", analyzerInfo.Name, pack.Path, err)
+				plugctx.Diag.Infof(diag.Message("", "ReconcilePolicyPackConfig %s"), err.Error())
 				return
 			}
 			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
 			if err = analyzer.Configure(config); err != nil {
 				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
+				plugctx.Diag.Infof(diag.Message("", "Configure %s"), err.Error())
 				return
 			}
 		}(i, pack)
@@ -451,7 +457,7 @@ func installAndLoadPolicyPlugins(ctx context.Context, plugctx *plugin.Context,
 
 func newUpdateSource(ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context,
+	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks, panicErrs chan<- error,
 ) (deploy.Source, error) {
 	//
 	// Step 1: Install and load plugins.
@@ -489,13 +495,15 @@ func newUpdateSource(ctx context.Context,
 		return nil, err
 	}
 	analyzerOpts := &plugin.PolicyAnalyzerOptions{
-		Organization: target.Organization.String(),
-		Project:      proj.Name.String(),
-		Stack:        target.Name.String(),
-		Config:       config,
-		DryRun:       opts.DryRun,
+		Organization:     target.Organization.String(),
+		Project:          proj.Name.String(),
+		Stack:            target.Name.String(),
+		Config:           config,
+		ConfigSecretKeys: target.Config.SecureKeys(),
+		DryRun:           opts.DryRun,
+		Tags:             target.Tags,
 	}
-	if err := installAndLoadPolicyPlugins(ctx, plugctx, opts, analyzerOpts); err != nil {
+	if err := installAndLoadPolicyPlugins(plugctx, opts, analyzerOpts); err != nil {
 		return nil, err
 	}
 
@@ -513,13 +521,13 @@ func newUpdateSource(ctx context.Context,
 		ProjectRoot: projectRoot,
 		Args:        args,
 		Target:      target,
-	}, defaultProviderVersions, deploy.EvalSourceOptions{
+	}, defaultProviderVersions, resourceHooks, deploy.EvalSourceOptions{
 		DryRun:                    opts.DryRun,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
-	}), nil
+	}, panicErrs), nil
 }
 
 func update(
@@ -530,7 +538,7 @@ func update(
 	// Create an appropriate set of event listeners.
 	var actions runActions
 	if opts.DryRun {
-		actions = newPreviewActions(opts)
+		actions = newPreviewActions(ctx, opts)
 	} else {
 		actions = newUpdateActions(ctx, info.Update, opts)
 	}
@@ -543,7 +551,13 @@ func update(
 	defer contract.IgnoreClose(deployment)
 
 	// Execute the deployment.
-	return deployment.run(ctx)
+	plan, changes, err := deployment.run(ctx)
+
+	if ctx.FinalizeUpdateFunc != nil {
+		ctx.FinalizeUpdateFunc()
+	}
+
+	return plan, changes, err
 }
 
 // abbreviateFilePath is a helper function that cleans up and shortens a provided file path.
@@ -595,7 +609,15 @@ func newUpdateActions(context *Context, u UpdateInfo, opts *deploymentOptions) *
 	}
 }
 
-func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+func (acts *updateActions) OnSnapshotWrite(step *deploy.Snapshot) error {
+	return acts.Context.SnapshotManager.Write(step)
+}
+
+func (acts *updateActions) OnRebuiltBaseState() error {
+	return acts.Context.SnapshotManager.RebuiltBaseState()
+}
+
+func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
@@ -612,7 +634,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 }
 
 func (acts *updateActions) OnResourceStepPost(
-	ctx interface{}, step deploy.Step,
+	ctx any, step deploy.Step,
 	status resource.Status, err error,
 ) error {
 	acts.MapLock.Lock()
@@ -646,11 +668,18 @@ func (acts *updateActions) OnResourceStepPost(
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+			switch s := step.(type) {
+			case *deploy.RefreshStep:
+				op, record = s.ResultOp(), true
+			case *deploy.ViewStep:
+				op, record = s.ResultOp(), true
+			default:
+				contract.Failf("step should implement ResultOp() for refreshes")
+			}
 		}
 
 		if step.Op() == deploy.OpRead {
-			record = ShouldRecordReadStep(step)
+			record = shouldRecordReadStep(step)
 		}
 
 		if record && !isInternalStep {
@@ -665,7 +694,11 @@ func (acts *updateActions) OnResourceStepPost(
 		// not show outputs for component resources at this point: any that exist must be from a previous execution of
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		// Deletions emit the resourceOutputEvent so the display knows when to stop the time elapsed counter.
-		if step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh || step.Op() == deploy.OpDelete {
+		// Additionally, emit the event for views with outputs.
+		if step.Res().Custom ||
+			acts.Opts.Refresh && step.Op() == deploy.OpRefresh ||
+			step.Op() == deploy.OpDelete ||
+			step.Res().ViewOf != "" {
 			acts.Opts.Events.resourceOutputsEvent(
 				op,
 				step,
@@ -738,6 +771,18 @@ func (acts *updateActions) OnPolicyRemediation(urn resource.URN, t plugin.Remedi
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }
 
+func (acts *updateActions) OnPolicyAnalyzeSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeSummaryEvent(s)
+}
+
+func (acts *updateActions) OnPolicyRemediateSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyRemediateSummaryEvent(s)
+}
+
+func (acts *updateActions) OnPolicyAnalyzeStackSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeStackSummaryEvent(s)
+}
+
 func (acts *updateActions) MaybeCorrupt() bool {
 	return acts.maybeCorrupt
 }
@@ -747,6 +792,7 @@ func (acts *updateActions) Changes() display.ResourceChanges {
 }
 
 type previewActions struct {
+	Context *Context
 	Ops     map[display.StepOp]int
 	Opts    *deploymentOptions
 	Seen    map[resource.URN]deploy.Step
@@ -757,7 +803,7 @@ func isInternalStep(step deploy.Step) bool {
 	return step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step)
 }
 
-func ShouldRecordReadStep(step deploy.Step) bool {
+func shouldRecordReadStep(step deploy.Step) bool {
 	contract.Assertf(step.Op() == deploy.OpRead, "Only call this on a Read step")
 
 	// If reading a resource didn't result in any change to the resource, we then want to
@@ -770,15 +816,24 @@ func ShouldRecordReadStep(step deploy.Step) bool {
 		step.Old().Outputs.Diff(step.New().Outputs) != nil
 }
 
-func newPreviewActions(opts *deploymentOptions) *previewActions {
+func newPreviewActions(ctx *Context, opts *deploymentOptions) *previewActions {
 	return &previewActions{
-		Ops:  make(map[display.StepOp]int),
-		Opts: opts,
-		Seen: make(map[resource.URN]deploy.Step),
+		Context: ctx,
+		Ops:     make(map[display.StepOp]int),
+		Opts:    opts,
+		Seen:    make(map[resource.URN]deploy.Step),
 	}
 }
 
-func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
+	return nil
+}
+
+func (acts *previewActions) OnRebuiltBaseState() error {
+	return nil
+}
+
+func (acts *previewActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
 	acts.MapLock.Unlock()
@@ -793,7 +848,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 	return nil, nil
 }
 
-func (acts *previewActions) OnResourceStepPost(ctx interface{},
+func (acts *previewActions) OnResourceStepPost(ctx any,
 	step deploy.Step, status resource.Status, err error,
 ) error {
 	acts.MapLock.Lock()
@@ -815,11 +870,18 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+			switch s := step.(type) {
+			case *deploy.RefreshStep:
+				op, record = s.ResultOp(), true
+			case *deploy.ViewStep:
+				op, record = s.ResultOp(), true
+			default:
+				contract.Failf("step should implement ResultOp() for refreshes")
+			}
 		}
 
 		if step.Op() == deploy.OpRead {
-			record = ShouldRecordReadStep(step)
+			record = shouldRecordReadStep(step)
 		}
 
 		// Track the operation if shown and/or if it is a logically meaningful operation.
@@ -868,6 +930,18 @@ func (acts *previewActions) OnPolicyRemediation(urn resource.URN, t plugin.Remed
 	before resource.PropertyMap, after resource.PropertyMap,
 ) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
+}
+
+func (acts *previewActions) OnPolicyAnalyzeSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeSummaryEvent(s)
+}
+
+func (acts *previewActions) OnPolicyRemediateSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyRemediateSummaryEvent(s)
+}
+
+func (acts *previewActions) OnPolicyAnalyzeStackSummary(s plugin.PolicySummary) {
+	acts.Opts.Events.policyAnalyzeStackSummaryEvent(s)
 }
 
 func (acts *previewActions) MaybeCorrupt() bool {

@@ -28,7 +28,10 @@ import (
 
 func init() {
 	LanguageTests["l2-failed-create-continue-on-error"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleProvider{}, &providers.FailOnCreateProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+			func() plugin.Provider { return &providers.FailOnCreateProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				UpdateOptions: engine.UpdateOptions{
@@ -37,15 +40,43 @@ func init() {
 				AssertPreview: func(l *L,
 					projectDirectory string, err error,
 					plan *deploy.Plan, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					require.True(l, result.IsBail(err), "expected a bail result on preview")
+
+					// Expect the error diagnostic for the failed resource
+					found := false
+					for _, evt := range events {
+						if d, ok := evt.Payload().(engine.DiagEventPayload); ok {
+							if d.Severity == "error" && d.URN.Name() == "failing" {
+								require.Equal(l, "<{%reset%}>Preview failed: failed create<{%reset%}>\n", d.Message)
+								found = true
+								break
+							}
+						}
+					}
+					require.True(l, found, "expected to find error diagnostic for failing resource")
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
+					// Expect the error diagnostic for the failed resource
+					found := false
+					for _, evt := range events {
+						if d, ok := evt.Payload().(engine.DiagEventPayload); ok {
+							if d.Severity == "error" && d.URN.Name() == "failing" {
+								require.Equal(l, "<{%reset%}>failed create<{%reset%}>\n", d.Message)
+								found = true
+								break
+							}
+						}
+					}
+					require.True(l, found, "expected to find error diagnostic for failing resource")
+
 					require.True(l, result.IsBail(err), "expected a bail result")
-					require.Equal(l, 1, len(changes), "expected 1 StepOp")
+					require.Len(l, changes, 1, "expected 1 StepOp")
 					require.Equal(l, 2, changes[deploy.OpCreate], "expected 2 Creates")
 					require.NotNil(l, snap, "expected snapshot to be non-nil")
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot") // 1 stack, 2 providers, 1 resource

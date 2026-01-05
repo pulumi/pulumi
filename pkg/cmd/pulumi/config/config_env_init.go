@@ -25,17 +25,18 @@ import (
 	"text/template"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -109,6 +110,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	stack, err := cmd.parent.requireStack(
 		ctx,
+		cmd.parent.diags,
 		cmd.parent.ws,
 		cmdBackend.DefaultLoginManager,
 		*cmd.parent.stackRef,
@@ -141,7 +143,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v/%v for stack %v...\n", envProject, envName, stack.Ref().Name())
 
-	projectStack, config, err := cmd.getStackConfig(ctx, project, stack)
+	projectStack, config, err := cmd.getStackConfig(ctx, cmdutil.Diag(), project, stack)
 	if err != nil {
 		return err
 	}
@@ -163,12 +165,11 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	fmt.Fprint(cmd.parent.stdout, preview)
 
 	if !cmd.yes {
-		save, err := confirmation.New("Save?", confirmation.Yes).RunPrompt()
-		if err != nil {
-			return err
-		}
-		if !save {
+		response := ui.PromptUser("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
+		switch response {
+		case "no":
 			return errors.New("canceled")
+		case "yes":
 		}
 	}
 
@@ -192,7 +193,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.keepConfig {
 		projectStack.Config = nil
 	}
-	if err = cmd.parent.saveProjectStack(stack, projectStack); err != nil {
+	if err = cmd.parent.saveProjectStack(ctx, stack, projectStack); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil
@@ -200,58 +201,59 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 func (cmd *configEnvInitCmd) getStackConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	project *workspace.Project,
 	stack backend.Stack,
-) (*workspace.ProjectStack, resource.PropertyMap, error) {
-	ps, err := cmd.parent.loadProjectStack(project, stack)
+) (*workspace.ProjectStack, property.Map, error) {
+	ps, err := cmd.parent.loadProjectStack(ctx, sink, project, stack)
 	if err != nil {
-		return nil, nil, err
+		return nil, property.Map{}, err
 	}
 
 	decrypter, state, err := cmd.parent.ssml.GetDecrypter(ctx, stack, ps)
 	if err != nil {
-		return nil, nil, err
+		return nil, property.Map{}, err
 	}
 	// This may have setup the stack's secrets provider, so save the stack if needed.
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmd.parent.saveProjectStack(stack, ps); err != nil {
-			return nil, nil, fmt.Errorf("saving stack config: %w", err)
+		if err = cmd.parent.saveProjectStack(ctx, stack, ps); err != nil {
+			return nil, property.Map{}, fmt.Errorf("saving stack config: %w", err)
 		}
 	}
 
 	m, err := ps.Config.AsDecryptedPropertyMap(ctx, decrypter)
 	if err != nil {
-		return nil, nil, err
+		return nil, property.Map{}, err
 	}
 	return ps, m, nil
 }
 
-func (cmd *configEnvInitCmd) render(v resource.PropertyValue) any {
+func (cmd *configEnvInitCmd) render(v property.Value) any {
 	switch {
+	case v.Secret():
+		return map[string]any{
+			"fn::secret": cmd.render(v.WithSecret(false)),
+		}
 	case v.IsBool():
-		return v.BoolValue()
+		return v.AsBool()
 	case v.IsNumber():
-		return v.NumberValue()
+		return v.AsNumber()
 	case v.IsString():
-		return v.StringValue()
+		return v.AsString()
 	case v.IsArray():
-		arrV := v.ArrayValue()
-		rendered := make([]any, len(arrV))
-		for i, v := range arrV {
+		arrV := v.AsArray()
+		rendered := make([]any, arrV.Len())
+		for i, v := range arrV.All {
 			rendered[i] = cmd.render(v)
 		}
 		return rendered
-	case v.IsObject():
-		objV := v.ObjectValue()
-		rendered := make(map[string]any, len(objV))
-		for k, v := range objV {
-			rendered[string(k)] = cmd.render(v)
+	case v.IsMap():
+		objV := v.AsMap()
+		rendered := make(map[string]any, objV.Len())
+		for k, v := range objV.All {
+			rendered[k] = cmd.render(v)
 		}
 		return rendered
-	case v.IsSecret():
-		return map[string]any{
-			"fn::secret": cmd.render(v.SecretValue().Element),
-		}
 	default:
 		return nil
 	}
@@ -261,7 +263,7 @@ func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
 	ctx context.Context,
 	envName string,
 	encrypter eval.Encrypter,
-	config resource.PropertyMap,
+	config property.Map,
 	showSecrets bool,
 ) ([]byte, error) {
 	var b bytes.Buffer
@@ -269,7 +271,7 @@ func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
 	enc.SetIndent(2)
 	err := enc.Encode(map[string]any{
 		"values": map[string]any{
-			"pulumiConfig": cmd.render(resource.NewObjectProperty(config)),
+			"pulumiConfig": cmd.render(property.New(config)),
 		},
 	})
 	if err != nil {
@@ -347,7 +349,9 @@ func newConfigEnvInitCrypter() (evalCrypter, error) {
 	if _, err := rand.Read(key); err != nil {
 		return nil, fmt.Errorf("generating key: %w", err)
 	}
-	return &configEnvInitCrypter{crypter: config.NewSymmetricCrypter(key)}, nil
+	crypter := config.NewSymmetricCrypter(key)
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
+	return &configEnvInitCrypter{crypter: cachedCrypter}, nil
 }
 
 func (c configEnvInitCrypter) Encrypt(ctx context.Context, plaintext []byte) ([]byte, error) {

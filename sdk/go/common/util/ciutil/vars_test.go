@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//nolint:paralleltest // mutates environment variables
 func TestDetectVars(t *testing.T) {
 	buildNumber := "123"
 	buildID := "87638724"
@@ -100,7 +99,6 @@ func TestDetectVars(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestDetectVarsBaseCI(t *testing.T) {
 	systemAndEnvVars := map[SystemName]map[string]string{
 		// Since the `pulumi/pulumi` repo runs on Travis,
@@ -133,7 +131,6 @@ func TestDetectVarsBaseCI(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestDetectVarsDisableCIDetection(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "nonEmptyString")
 	t.Setenv("TRAVIS", "true")
@@ -141,4 +138,15 @@ func TestDetectVarsDisableCIDetection(t *testing.T) {
 
 	v := DetectVars()
 	assert.Equal(t, "", v.BuildID)
+}
+
+func TestDetectVarsPrefersGenericCI(t *testing.T) {
+	name := "generic-ci-system"
+
+	t.Setenv("PULUMI_CI_SYSTEM", name)
+	t.Setenv("TRAVIS", "true")
+
+	v := DetectVars()
+
+	assert.Equal(t, name, string(v.Name))
 }

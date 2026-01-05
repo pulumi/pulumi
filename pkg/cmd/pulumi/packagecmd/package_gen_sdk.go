@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,12 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -51,7 +56,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return err
 			}
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false, nil)
 			if err != nil {
 				return err
 			}
@@ -59,10 +64,18 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				contract.IgnoreError(pctx.Close())
 			}()
 
-			pkg, err := SchemaFromSchemaSource(pctx, source, args[1:])
+			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
+				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+				env.Global())
 			if err != nil {
 				return err
 			}
+			pkg, err := packages.BindSpec(*spec)
+			if err != nil {
+				return err
+			}
+
 			if version != "" {
 				pkgVersion, err := semver.Parse(version)
 				if err != nil {
@@ -83,7 +96,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					err := GenSDK(lang, out, pkg, overlays, local)
+					diags, err := packages.GenSDK(lang, out, pkg, overlays, local)
+					cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 					if err != nil {
 						return err
 					}
@@ -91,7 +105,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				fmt.Fprintf(os.Stderr, "SDKs have been written to %s\n", out)
 				return nil
 			}
-			err = GenSDK(language, out, pkg, overlays, local)
+			diags, err := packages.GenSDK(language, out, pkg, overlays, local)
+			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				return err
 			}

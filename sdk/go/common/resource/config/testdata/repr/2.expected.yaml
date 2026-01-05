@@ -7,7 +7,7 @@ paths:
       - 12321123131
     string: '{"nested":[12321123131]}'
     redacted: '{"nested":[12321123131]}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAA8/4IkAAEGbmVzdGVkDltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAFP+EEQABBWludDY0BAcA+wW8ytZ2
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAADz/gCQAAQZuZXN0ZWQOW11pbnRlcmZhY2Uge33/gQIBAv+CAAEQAAAU/4IRAAEFaW50NjQEBwD7BbzK1nY=
     secure: false
     isObject: true
   my:parent.nested:
@@ -15,7 +15,7 @@ paths:
     - 12321123131
     string: '[12321123131]'
     redacted: '[12321123131]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAFP+EEQABBWludDY0BAcA+wW8ytZ2
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAFP+CEQABBWludDY0BAcA+wW8ytZ2
     secure: false
     isObject: true
   my:parent.nested[0]:

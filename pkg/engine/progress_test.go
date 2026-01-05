@@ -15,13 +15,20 @@
 package engine
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProgressReportingCloser(t *testing.T) {
 	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows.
+		t.Skip("Skipping test on Windows")
+	}
 
 	// Arrange.
 	events := make(chan Event)
@@ -59,7 +66,7 @@ func TestProgressReportingCloser(t *testing.T) {
 	<-done
 
 	assert.Equal(t, read, n)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, PluginDownload, payload.Type)
 	assert.Equal(t, "test-id", payload.ID)

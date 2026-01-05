@@ -14,8 +14,6 @@
 
 import * as grpc from "@grpc/grpc-js";
 
-import { AsyncIterable } from "@pulumi/query/interfaces";
-
 import { InvokeOptions, InvokeOutputOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
@@ -172,53 +170,6 @@ export function invokeSingleOutput<T>(
     return output;
 }
 
-export async function streamInvoke(
-    tok: string,
-    props: Inputs,
-    opts: InvokeOptions = {},
-): Promise<StreamInvokeResponse<any>> {
-    const label = `StreamInvoking function: tok=${tok} asynchronously`;
-    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
-
-    // Wait for all values to be available, and then perform the RPC.
-    const done = rpcKeepAlive();
-    try {
-        const serialized = await serializeProperties(`streamInvoke:${tok}`, props);
-        log.debug(
-            `StreamInvoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
-        );
-
-        // Fetch the monitor and make an RPC request.
-        const monitor: any = getMonitor();
-
-        const provider = await ProviderResource.register(getProvider(tok, opts));
-        const req = await createInvokeRequest(tok, serialized, provider, opts);
-
-        // Call `streamInvoke`.
-        const result = monitor.streamInvoke(req, {});
-
-        const queue = new PushableAsyncIterable();
-        result.on("data", function (thing: any) {
-            const live = deserializeResponse(tok, thing);
-            queue.push(live);
-        });
-        result.on("error", (err: any) => {
-            if (err.code === 1) {
-                return;
-            }
-            throw err;
-        });
-        result.on("end", () => {
-            queue.complete();
-        });
-
-        // Return a cancellable handle to the stream.
-        return new StreamInvokeResponse(queue, () => result.cancel());
-    } finally {
-        done();
-    }
-}
-
 async function invokeAsync(
     tok: string,
     props: Inputs,
@@ -349,27 +300,6 @@ async function invokeAsync(
     }
 }
 
-/**
- * {@link StreamInvokeResponse} represents a (potentially infinite) streaming
- * response to `streamInvoke`, with facilities to gracefully cancel and clean up
- * the stream.
- */
-export class StreamInvokeResponse<T> implements AsyncIterable<T> {
-    constructor(
-        private source: AsyncIterable<T>,
-        private cancelSource: () => void,
-    ) {}
-
-    // cancel signals the `streamInvoke` should be cancelled and cleaned up gracefully.
-    public cancel() {
-        this.cancelSource();
-    }
-
-    [Symbol.asyncIterator]() {
-        return this.source[Symbol.asyncIterator]();
-    }
-}
-
 async function createInvokeRequest(
     tok: string,
     serialized: any,
@@ -451,20 +381,25 @@ function deserializeResponse(
 }
 
 /**
- * Dynamically calls the function `tok`, which is offered by a provider plugin.
- */
-export function call<T>(
+ * Helper function to call a method `tok`, which is offered by a provider plugin resource.
+ *
+ * May return a scalar as an object with a single key or a normal object.
+ **/
+function callAsync<T>(
     tok: string,
     props: Inputs,
     res?: Resource,
     packageRef?: Promise<string | undefined>,
-): Output<T> {
+): Promise<{
+    result: Inputs | undefined;
+    isKnown: boolean;
+    containsSecrets: boolean;
+    dependencies: Resource[];
+}> {
     const label = `Calling function: tok=${tok}`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
-    const [out, resolver] = createOutput<T>(`call(${tok})`);
-
-    debuggablePromise(
+    return debuggablePromise(
         Promise.resolve().then(async () => {
             const done = rpcKeepAlive();
             try {
@@ -553,20 +488,70 @@ export function call<T>(
                     }
                 }
 
-                // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
-                // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
-                // present during previews (i.e. isDryRun() will be true).
-                resolver(<any>result, true, containsSecrets, deps);
-            } catch (e) {
-                resolver(<any>undefined, true, false, undefined, e);
+                return {
+                    result: result,
+                    containsSecrets: containsSecrets,
+                    dependencies: deps,
+                    isKnown: true,
+                };
             } finally {
                 done();
             }
         }),
         label,
     );
+}
 
-    return out;
+/**
+ * Calls a method `tok` offered by a provider plugin resource.
+ */
+export function call<T>(
+    tok: string,
+    props: Inputs,
+    res?: Resource,
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
+    const [output, resolve] = createOutput<T>(`call(${tok})`);
+    callAsync(tok, props, res, packageRef)
+        .then((response) => {
+            const { result, isKnown, containsSecrets, dependencies } = response;
+
+            // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
+            // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
+            // present during previews (i.e. isDryRun() will be true).
+            resolve(<any>result, isKnown, containsSecrets, dependencies);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, true, false, [], err);
+        });
+
+    return output;
+}
+
+/**
+ * Calls a method `tok` offered by a provider plugin resource, but returns a single value.
+ *
+ * This method expects the result of `callAsync` to be a map containing a single value,
+ * which it unwraps.
+ */
+export function callSingle<T>(
+    tok: string,
+    props: Inputs,
+    res?: Resource,
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
+    const [output, resolve] = createOutput<T>(`callSingle(${tok})`);
+    callAsync(tok, props, res, packageRef)
+        .then((response) => {
+            const { result, isKnown, containsSecrets, dependencies } = response;
+            const value = extractSingleValue(result);
+            resolve(<T>value, isKnown, containsSecrets, dependencies, undefined);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, true, false, [], err);
+        });
+
+    return output;
 }
 
 function createOutput<T>(

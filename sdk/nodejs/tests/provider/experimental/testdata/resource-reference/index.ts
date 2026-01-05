@@ -2,6 +2,7 @@
 
 import * as pulumi from "@pulumi/pulumi";
 import * as tls from "@pulumi/tls";
+import * as netlify from "@pulumi/netlify";
 
 export interface MyComponentArgs {
     /**
@@ -16,6 +17,7 @@ export class MyComponent extends pulumi.ComponentResource {
     public readonly outputResource: pulumi.Output<tls.PrivateKey>;
     public readonly outputPlainResource: tls.PrivateKey;
     public readonly outputResourceOrUndefined: pulumi.Output<tls.PrivateKey | undefined>;
+    public readonly outputParameterized: pulumi.Output<netlify.DeployKey>;
     constructor(name: string, args: MyComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("provider:index:MyComponent", name, args, opts);
     }

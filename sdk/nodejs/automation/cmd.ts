@@ -83,7 +83,7 @@ export class PulumiCommand {
      */
     static async get(opts?: PulumiCommandOptions): Promise<PulumiCommand> {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
-        const { stdout } = await exec(command, ["version"]);
+        const { stdout } = await exec(command, ["version"], undefined, { PULUMI_SKIP_UPDATE_CHECK: "true" });
         const skipVersionCheck = !!opts?.skipVersionCheck || !!process.env[SKIP_VERSION_CHECK_VAR];
         let min = minimumVersion;
         if (opts?.version && semver.gt(opts.version, minimumVersion)) {
@@ -162,6 +162,7 @@ export class PulumiCommand {
         cwd: string,
         additionalEnv: { [key: string]: string },
         onOutput?: (data: string) => void,
+        onError?: (data: string) => void,
         signal?: AbortSignal,
     ): Promise<CommandResult> {
         // all commands should be run in non-interactive mode.
@@ -170,16 +171,18 @@ export class PulumiCommand {
             args.push("--non-interactive");
         }
 
+        const env = { ...additionalEnv };
         // Prepend the folder where the CLI is installed to the path to ensure
         // we pickup the matching bundled plugins.
         if (path.isAbsolute(this.command)) {
             const pulumiBin = path.dirname(this.command);
             const sep = os.platform() === "win32" ? ";" : ":";
             const envPath = pulumiBin + sep + (additionalEnv["PATH"] || process.env.PATH);
-            additionalEnv["PATH"] = envPath;
+            env["PATH"] = envPath;
         }
+        env["PULUMI_AUTOMATION_API"] = "true";
 
-        return exec(this.command, args, cwd, additionalEnv, onOutput, signal);
+        return exec(this.command, args, cwd, env, onOutput, onError, signal);
     }
 }
 
@@ -189,6 +192,7 @@ async function exec(
     cwd?: string,
     additionalEnv?: { [key: string]: string },
     onOutput?: (data: string) => void,
+    onError?: (data: string) => void,
     signal?: AbortSignal,
 ): Promise<CommandResult> {
     const unknownErrCode = -2;
@@ -197,6 +201,15 @@ async function exec(
 
     try {
         const proc = execa(command, args, { env, cwd });
+
+        if (onError && proc.stderr) {
+            proc.stderr!.on("data", (data: any) => {
+                if (data?.toString) {
+                    data = data.toString();
+                }
+                onError(data);
+            });
+        }
 
         if (onOutput && proc.stdout) {
             proc.stdout!.on("data", (data: any) => {

@@ -15,16 +15,16 @@
 package pulumi
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 
 	"github.com/blang/semver"
-	"golang.org/x/exp/maps"
-	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -129,7 +129,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 		return pmap, pdeps, nil, nil
 	}
 
-	marshalProperty := func(pname string, pv interface{}, pt reflect.Type) error {
+	marshalProperty := func(pname string, pv any, pt reflect.Type) error {
 		// Get the underlying value, possibly waiting for an output to arrive.
 		v, resourceDeps, err := marshalInputOptions(pv, pt, opts)
 		if err != nil {
@@ -225,19 +225,19 @@ const rpcTokenUnknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 const cannotAwaitFmt = "cannot marshal Output value of type %T; please use Apply to access the Output's value"
 
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
-func marshalInput(v interface{}, destType reflect.Type) (resource.PropertyValue, []Resource, error) {
+func marshalInput(v any, destType reflect.Type) (resource.PropertyValue, []Resource, error) {
 	return marshalInputOptions(v, destType, nil)
 }
 
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
 func marshalInputOptions(
-	v interface{}, destType reflect.Type, opts *marshalOptions,
+	v any, destType reflect.Type, opts *marshalOptions,
 ) (resource.PropertyValue, []Resource, error) {
 	return marshalInputOptionsImpl(v, destType, opts, false /*skipInputCheck*/)
 }
 
 // marshalInputImpl marshals an input value, returning its raw serializable value along with any dependencies.
-func marshalInputOptionsImpl(v interface{},
+func marshalInputOptionsImpl(v any,
 	destType reflect.Type,
 	opts *marshalOptions,
 	skipInputCheck bool,
@@ -262,7 +262,7 @@ func marshalInputOptionsImpl(v interface{},
 			}
 
 			// If the element type of the input is not identical to the type of the destination and the destination is
-			// not the any type (i.e. interface{}), attempt to convert the input to an appropriately-typed output.
+			// not the any type, attempt to convert the input to an appropriately-typed output.
 			if valueType != destType && destType != anyType {
 				if newOutput, ok := internal.CallToOutputMethod(context.TODO(), reflect.ValueOf(input), destType); ok {
 					// We were able to convert the input. Use the result as the new input value.
@@ -309,14 +309,13 @@ func marshalInputOptionsImpl(v interface{},
 				var dependencies []resource.URN
 				if len(depSet) > 0 {
 					dependencies = make([]resource.URN, len(depSet))
-					urns := maps.Keys(depSet)
-					sort.Slice(urns, func(i, j int) bool { return urns[i] < urns[j] })
+					urns := slices.Sorted(maps.Keys(depSet))
 					for i, urn := range urns {
 						dependencies[i] = resource.URN(urn)
 					}
 				}
 
-				return resource.NewOutputProperty(resource.Output{
+				return resource.NewProperty(resource.Output{
 					Element:      element,
 					Known:        known,
 					Secret:       secret,
@@ -348,7 +347,7 @@ func marshalInputOptionsImpl(v interface{},
 			if v.invalid {
 				return resource.PropertyValue{}, nil, errors.New("invalid asset")
 			}
-			return resource.NewAssetProperty(&rasset.Asset{
+			return resource.NewProperty(&rasset.Asset{
 				Path: v.Path(),
 				Text: v.Text(),
 				URI:  v.URI(),
@@ -358,9 +357,9 @@ func marshalInputOptionsImpl(v interface{},
 				return resource.PropertyValue{}, nil, errors.New("invalid archive")
 			}
 
-			var assets map[string]interface{}
+			var assets map[string]any
 			if as := v.Assets(); as != nil {
-				assets = make(map[string]interface{})
+				assets = make(map[string]any)
 				for k, a := range as {
 					aa, _, err := marshalInputOptions(a, anyType, opts)
 					if err != nil {
@@ -369,7 +368,7 @@ func marshalInputOptionsImpl(v interface{},
 					assets[k] = aa.V
 				}
 			}
-			return resource.NewArchiveProperty(&rarchive.Archive{
+			return resource.NewProperty(&rarchive.Archive{
 				Assets: assets,
 				Path:   v.Path(),
 				URI:    v.URI(),
@@ -421,13 +420,13 @@ func marshalInputOptionsImpl(v interface{},
 		//nolint:exhaustive // We only need to handle the types we care about.
 		switch rv.Type().Kind() {
 		case reflect.Bool:
-			return resource.NewBoolProperty(rv.Bool()), deps, nil
+			return resource.NewProperty(rv.Bool()), deps, nil
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return resource.NewNumberProperty(float64(rv.Int())), deps, nil
+			return resource.NewProperty(float64(rv.Int())), deps, nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			return resource.NewNumberProperty(float64(rv.Uint())), deps, nil
+			return resource.NewProperty(float64(rv.Uint())), deps, nil
 		case reflect.Float32, reflect.Float64:
-			return resource.NewNumberProperty(rv.Float()), deps, nil
+			return resource.NewProperty(rv.Float()), deps, nil
 		case reflect.Ptr, reflect.Interface:
 			// Dereference non-nil pointers and interfaces.
 			if rv.IsNil() {
@@ -439,7 +438,7 @@ func marshalInputOptionsImpl(v interface{},
 			v = rv.Elem().Interface()
 			continue
 		case reflect.String:
-			return resource.NewStringProperty(rv.String()), deps, nil
+			return resource.NewProperty(rv.String()), deps, nil
 		case reflect.Array, reflect.Slice:
 			if rv.IsNil() {
 				return resource.PropertyValue{}, deps, nil
@@ -455,12 +454,10 @@ func marshalInputOptionsImpl(v interface{},
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
-				if !e.IsNull() {
-					arr = append(arr, e)
-				}
+				arr = append(arr, e)
 				deps = append(deps, d...)
 			}
-			return resource.NewArrayProperty(arr), deps, nil
+			return resource.NewProperty(arr), deps, nil
 		case reflect.Map:
 			if rv.Type().Key().Kind() != reflect.String {
 				return resource.PropertyValue{}, nil,
@@ -486,7 +483,7 @@ func marshalInputOptionsImpl(v interface{},
 				}
 				deps = append(deps, d...)
 			}
-			return resource.NewObjectProperty(obj), deps, nil
+			return resource.NewProperty(obj), deps, nil
 		case reflect.Struct:
 			obj := resource.PropertyMap{}
 			typ := rv.Type()
@@ -509,7 +506,7 @@ func marshalInputOptionsImpl(v interface{},
 				}
 				deps = append(deps, d...)
 			}
-			return resource.NewObjectProperty(obj), deps, nil
+			return resource.NewProperty(obj), deps, nil
 		}
 		return resource.PropertyValue{}, nil, fmt.Errorf("unrecognized input property type: %v (%T)", v, v)
 	}
@@ -550,7 +547,7 @@ func unmarshalResourceReference(ctx *Context, ref resource.ResourceReference) (R
 	return ctx.newDependencyResource(URN(ref.URN)), nil
 }
 
-func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}, bool, error) {
+func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (any, bool, error) {
 	switch {
 	case v.IsComputed():
 		return nil, false, nil
@@ -571,7 +568,7 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 		return sv, true, nil
 	case v.IsArray():
 		arr := v.ArrayValue()
-		rv := make([]interface{}, len(arr))
+		rv := make([]any, len(arr))
 		secret := false
 		for i, e := range arr {
 			ev, esecret, err := unmarshalPropertyValue(ctx, e)
@@ -583,7 +580,7 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 		}
 		return rv, secret, nil
 	case v.IsObject():
-		m := make(map[string]interface{})
+		m := make(map[string]any)
 		secret := false
 		for k, e := range v.ObjectValue() {
 			ev, esecret, err := unmarshalPropertyValue(ctx, e)
@@ -610,7 +607,7 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 		secret := false
 		switch {
 		case archive.IsAssets():
-			as := make(map[string]interface{})
+			as := make(map[string]any)
 			for k, v := range archive.Assets {
 				a, asecret, err := unmarshalPropertyValue(ctx, resource.NewPropertyValue(v))
 				secret = secret || asecret
@@ -687,7 +684,7 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
 			secret := false
 			switch {
 			case archive.IsAssets():
-				as := make(map[string]interface{})
+				as := make(map[string]any)
 				for k, v := range archive.Assets {
 					a, asecret, err := unmarshalPropertyValue(ctx, resource.NewPropertyValue(v))
 					secret = secret || asecret
@@ -734,7 +731,7 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
 
 			// If the output is known, we can unmarshal it directly else it's nil
 			typ := anyOutputType
-			var element interface{}
+			var element any
 			if v.OutputValue().Known {
 				var err error
 				element, err = unmarshal(v.OutputValue().Element)

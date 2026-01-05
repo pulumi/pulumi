@@ -347,8 +347,20 @@ func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string 
 		return functionNamespaces[x.Name]
 	}
 
-	pkg, _ := g.functionName(x.Args[0])
-	return []string{fmt.Sprintf("%s = Pulumi.%[1]s", pkg)}
+	token := x.Args[0].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+	tokenRange := x.Args[0].SyntaxNode().Range()
+	pkg, _, _, diags := pcl.DecomposeToken(token, tokenRange)
+	if len(diags) > 0 {
+		return []string{}
+	}
+
+	pkgNamespace := namespaceName(g.namespaces[pkg], pkg)
+
+	if _, hasAlias := g.namespaceAliases[pkgNamespace]; hasAlias {
+		return []string{}
+	}
+
+	return []string{fmt.Sprintf("%s = Pulumi.%[1]s", pkgNamespace)}
 }
 
 func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *schema.Enum) {
@@ -530,6 +542,25 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					})
 				} else {
 					g.Fgenf(w, "%v", funcExpr.Args[1])
+				}
+			}
+
+			if len(funcExpr.Args) == 3 {
+				if invokeOptions, ok := funcExpr.Args[2].(*model.ObjectConsExpression); ok {
+					g.Fgen(w, ", new() {\n")
+					g.Indented(func() {
+						for _, item := range invokeOptions.Items {
+							key := pcl.LiteralValueString(item.Key)
+							switch key {
+							case "pluginDownloadUrl":
+								// in .NET SDK the field is PluginDownloadURL so we have to special-case it
+								g.Fgenf(w, "%sPluginDownloadURL = %v,\n", g.Indent, item.Value)
+							default:
+								g.Fgenf(w, "%s%s = %v,\n", g.Indent, Title(key), item.Value)
+							}
+						}
+					})
+					g.Fgenf(w, "%s}", g.Indent)
 				}
 			}
 

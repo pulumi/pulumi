@@ -232,6 +232,28 @@ function deserialize_pulumirpc_LanguageHandshakeResponse(buffer_arg) {
   return pulumi_language_pb.LanguageHandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_LinkRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.LinkRequest)) {
+    throw new Error('Expected argument of type pulumirpc.LinkRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_LinkRequest(buffer_arg) {
+  return pulumi_language_pb.LinkRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_LinkResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.LinkResponse)) {
+    throw new Error('Expected argument of type pulumirpc.LinkResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_LinkResponse(buffer_arg) {
+  return pulumi_language_pb.LinkResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PackRequest(arg) {
   if (!(arg instanceof pulumi_language_pb.PackRequest)) {
     throw new Error('Expected argument of type pulumirpc.PackRequest');
@@ -329,6 +351,28 @@ function serialize_pulumirpc_RuntimeOptionsResponse(arg) {
 
 function deserialize_pulumirpc_RuntimeOptionsResponse(buffer_arg) {
   return pulumi_language_pb.RuntimeOptionsResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_TemplateRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.TemplateRequest)) {
+    throw new Error('Expected argument of type pulumirpc.TemplateRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_TemplateRequest(buffer_arg) {
+  return pulumi_language_pb.TemplateRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_TemplateResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.TemplateResponse)) {
+    throw new Error('Expected argument of type pulumirpc.TemplateResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_TemplateResponse(buffer_arg) {
+  return pulumi_language_pb.TemplateResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -443,6 +487,20 @@ runtimeOptionsPrompts: {
     responseSerialize: serialize_pulumirpc_RuntimeOptionsResponse,
     responseDeserialize: deserialize_pulumirpc_RuntimeOptionsResponse,
   },
+  // `Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+// For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+// with uv or poetry.
+template: {
+    path: '/pulumirpc.LanguageRuntime/Template',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.TemplateRequest,
+    responseType: pulumi_language_pb.TemplateResponse,
+    requestSerialize: serialize_pulumirpc_TemplateRequest,
+    requestDeserialize: deserialize_pulumirpc_TemplateRequest,
+    responseSerialize: serialize_pulumirpc_TemplateResponse,
+    responseDeserialize: deserialize_pulumirpc_TemplateResponse,
+  },
   // `About` returns information about the language runtime being used.
 about: {
     path: '/pulumirpc.LanguageRuntime/About',
@@ -546,6 +604,34 @@ pack: {
     responseSerialize: serialize_pulumirpc_PackResponse,
     responseDeserialize: deserialize_pulumirpc_PackResponse,
   },
+  // `Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+// as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+// `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+// user on how to use the linked package in the project.
+link: {
+    path: '/pulumirpc.LanguageRuntime/Link',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.LinkRequest,
+    responseType: pulumi_language_pb.LinkResponse,
+    requestSerialize: serialize_pulumirpc_LinkRequest,
+    requestDeserialize: deserialize_pulumirpc_LinkRequest,
+    responseSerialize: serialize_pulumirpc_LinkResponse,
+    responseDeserialize: deserialize_pulumirpc_LinkResponse,
+  },
+  // `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+// Operations aborted in this way will return an error.
+cancel: {
+    path: '/pulumirpc.LanguageRuntime/Cancel',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
 };
 
-exports.LanguageRuntimeClient = grpc.makeGenericClientConstructor(LanguageRuntimeService);
+exports.LanguageRuntimeClient = grpc.makeGenericClientConstructor(LanguageRuntimeService, 'LanguageRuntime');

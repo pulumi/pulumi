@@ -49,7 +49,7 @@ type Error struct {
 	message               string
 	cause                 *ErrorCause
 	inputPropertiesErrors []perrors.InputPropertyErrorDetails
-	details               []interface{}
+	details               []any
 }
 
 var _ error = (*Error)(nil)
@@ -81,7 +81,7 @@ func (r *Error) Cause() *ErrorCause {
 // Details returns the list of all auxiliary protobuf objects that were
 // attached to this error by the server. It's up to the caller to try and
 // downcast them to look for the one they are interested in.
-func (r *Error) Details() []interface{} {
+func (r *Error) Details() []any {
 	return r.details
 }
 
@@ -123,7 +123,7 @@ func New(code codes.Code, message string) error {
 
 // Newf creates a new gRPC-compatible `error` with the given code and
 // formatted message.
-func Newf(code codes.Code, messageFormat string, args ...interface{}) error {
+func Newf(code codes.Code, messageFormat string, args ...any) error {
 	status := status.Newf(code, messageFormat, args...)
 	return status.Err()
 }
@@ -146,7 +146,7 @@ func Wrap(code codes.Code, err error, message string) error {
 //
 // It is a logic error to call this function on an error previously
 // returned by `rpcerrors.Wrap`.
-func Wrapf(code codes.Code, err error, messageFormat string, args ...interface{}) error {
+func Wrapf(code codes.Code, err error, messageFormat string, args ...any) error {
 	status := status.Newf(code, messageFormat, args...)
 	cause := serializeErrorCause(err)
 	status, newErr := status.WithDetails(cause)

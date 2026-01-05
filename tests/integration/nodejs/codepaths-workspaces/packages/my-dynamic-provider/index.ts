@@ -13,13 +13,13 @@
 // limitations under the License.
 
 import * as pulumi from "@pulumi/pulumi"; // @pulumi dependency is not included;
-import * as isFinite from "is-finite"; // npm dependency
+import * as isNumber from "is-number"; // npm dependency
 import * as relative from "./relative"; // local dependency
 
 const dynamicProvider: pulumi.dynamic.ResourceProvider = {
   async create(inputs) {
     return {
-      id: `dyn-${Math.ceil(Math.random() * 1000)}`, outs: { isFinite: isFinite(42), magic: relative.fun() }
+      id: `dyn-${Math.ceil(Math.random() * 1000)}`, outs: { isNumber: isNumber(42), magic: relative.fun() }
     };
   }
 }

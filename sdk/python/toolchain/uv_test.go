@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"syscall"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -86,49 +86,76 @@ func TestUvVirtualenvPath(t *testing.T) {
 func TestUvVersion(t *testing.T) {
 	t.Parallel()
 
-	uv, err := newUv(".", "")
-	require.NoError(t, err)
-
 	for _, versionString := range []string{
 		"uv 0.4.26",
 		"uv 0.4.26 (Homebrew 2024-10-23)",
 		"uv 0.4.26 (d2cd09bbd 2024-10-25)",
 	} {
-		v, err := uv.uvVersion(versionString)
+		v, err := ParseUvVersion(versionString)
 		require.NoError(t, err)
 		require.Equal(t, semver.MustParse("0.4.26"), v)
 	}
 
-	_, err = uv.uvVersion("uv 0.4.25")
+	_, err := ParseUvVersion("uv 0.4.25")
 	require.ErrorContains(t, err, "less than the minimum required version")
 }
 
-func TestEnsureVenv(t *testing.T) {
+func TestUvCommandSyncsEnvironment(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
+	pyproject, err := os.ReadFile(filepath.Join("testdata", "project", "pyproject.toml"))
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(root, "pyproject.toml"), pyproject, 0o600)
+	require.NoError(t, err)
+
 	uv, err := newUv(root, "")
 	require.NoError(t, err)
 
-	// Create a virtualenv and record the directory's inode.
-	err = uv.EnsureVenv(context.Background(), root, false /* useLanguageVersionTools */, false, /* showOutput */
-		nil /* infoWriter */, nil /* infoWriter */)
+	// Run a python command, this should run `uv sync` as side effect
+	cmd, err := uv.Command(context.Background(), "-c", "print('hello')")
 	require.NoError(t, err)
-	info, err := os.Stat(filepath.Join(root, ".venv"))
+	out, err := cmd.CombinedOutput()
 	require.NoError(t, err)
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	require.True(t, ok)
-	inode1 := stat.Ino
+	require.Equal(t, "hello", strings.TrimSpace(string(out)))
 
-	// Run EnsureVenv again and ensure the directory's inode is the same.
-	err = uv.EnsureVenv(context.Background(), root, false /* useLanguageVersionTools */, false, /* showOutput */
-		nil /* infoWriter */, nil /* infoWriter */)
-	require.NoError(t, err)
-	info, err = os.Stat(filepath.Join(root, ".venv"))
-	require.NoError(t, err)
-	stat, ok = info.Sys().(*syscall.Stat_t)
-	require.True(t, ok)
-	inode2 := stat.Ino
+	// check that .venv exists
+	require.DirExists(t, filepath.Join(root, ".venv"))
 
-	require.Equal(t, inode1, inode2)
+	// `wheel`, the project's dependency, should be installed
+	cmd, err = uv.ModuleCommand(context.Background(), "wheel", "version")
+	require.NoError(t, err)
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.True(t, strings.Contains(string(out), "wheel"), "unexpected output: %s", out)
+}
+
+func TestUvCommandSyncsEnvironmentCustomVenv(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject, err := os.ReadFile(filepath.Join("testdata", "project", "pyproject.toml"))
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(root, "pyproject.toml"), pyproject, 0o600)
+	require.NoError(t, err)
+
+	uv, err := newUv(root, "my_venv")
+	require.NoError(t, err)
+
+	// Run a python command, this should run `uv sync` as side effect
+	cmd, err := uv.Command(context.Background(), "-c", "print('hello')")
+	require.NoError(t, err)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.Equal(t, "hello", strings.TrimSpace(string(out)))
+
+	// check that my_venv exists
+	require.DirExists(t, filepath.Join(root, "my_venv"))
+
+	// `wheel`, the project's dependency, should be installed
+	cmd, err = uv.ModuleCommand(context.Background(), "wheel", "version")
+	require.NoError(t, err)
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.True(t, strings.Contains(string(out), "wheel"), "unexpected output: %s", out)
 }

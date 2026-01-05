@@ -33,14 +33,14 @@ jobs:
     secrets: inherit
 
   comment-notification:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     if: ${{ github.event_name == 'repository_dispatch' }}
     permissions:
       contents: read
       pull-requests: write
     steps:
       - name: Update with Result
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
@@ -62,7 +62,7 @@ jobs:
       version: ${{ needs.info.outputs.version }}
       lint: true
       test-version-sets: current
-      integration-test-platforms: ubuntu-22.04
+      integration-test-platforms: ubuntu-latest
       acceptance-test-platforms: 'windows-latest'
       # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
       enable-coverage: false

@@ -27,8 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -95,31 +95,13 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 	}
 
-	mockStack := &backend.MockStack{
-		RefF: func() backend.StackReference {
-			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
-			}
+	mockBackend := &backend.MockBackend{
+		ExportDeploymentF: func(ctx context.Context, _ backend.Stack) (*apitype.UntypedDeployment, error) {
+			return stack.SerializeUntypedDeployment(ctx, snapshot, &stack.SerializeOptions{
+				Pretty: true,
+			})
 		},
-		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
-			return snapshot, nil
-		},
-		ExportDeploymentF: func(ctx context.Context) (*apitype.UntypedDeployment, error) {
-			chk, err := stack.SerializeDeployment(ctx, snapshot, false)
-			if err != nil {
-				return nil, err
-			}
-			data, err := encoding.JSON.Marshal(chk)
-			if err != nil {
-				return nil, err
-			}
-			return &apitype.UntypedDeployment{
-				Version:    3,
-				Deployment: json.RawMessage(data),
-			}, nil
-		},
-		ImportDeploymentF: func(ctx context.Context, deployment *apitype.UntypedDeployment) error {
+		ImportDeploymentF: func(ctx context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
 			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secretsProvider)
 			if err != nil {
 				return err
@@ -129,14 +111,30 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 	}
 
-	mockBackendInstance(t, &backend.MockBackend{
+	mockStack := &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "testStack",
+				NameV:   tokens.MustParseStackName("testStack"),
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
+		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+			return snapshot, nil
+		},
+	}
+
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
 	})
 
 	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
+	t.Chdir(tmpDir)
 
 	// Setup a dummy project in this directory
 	err := os.WriteFile("Pulumi.yaml", []byte(`
@@ -156,7 +154,7 @@ runtime: mock
 	// Check the config has been updated with the salt
 	project, err := workspace.LoadProject("Pulumi.yaml")
 	require.NoError(t, err)
-	projectStack, err := workspace.LoadProjectStack(project, "Pulumi.testStack.yaml")
+	projectStack, err := workspace.LoadProjectStack(nil /*sink*/, project, "Pulumi.testStack.yaml")
 	require.NoError(t, err)
 	assert.NotEmpty(t, projectStack.EncryptionSalt)
 }
@@ -190,37 +188,19 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 				URN:  resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
 				Type: resource.RootStackType,
 				Outputs: resource.PropertyMap{
-					"foo": resource.MakeSecret(resource.NewStringProperty("bar")),
+					"foo": resource.MakeSecret(resource.NewProperty("bar")),
 				},
 			},
 		},
 	}
 
-	mockStack := &backend.MockStack{
-		RefF: func() backend.StackReference {
-			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
-			}
+	mockBackend := &backend.MockBackend{
+		ExportDeploymentF: func(ctx context.Context, _ backend.Stack) (*apitype.UntypedDeployment, error) {
+			return stack.SerializeUntypedDeployment(ctx, snapshot, &stack.SerializeOptions{
+				Pretty: true,
+			})
 		},
-		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
-			return snapshot, nil
-		},
-		ExportDeploymentF: func(ctx context.Context) (*apitype.UntypedDeployment, error) {
-			chk, err := stack.SerializeDeployment(ctx, snapshot, false)
-			if err != nil {
-				return nil, err
-			}
-			data, err := encoding.JSON.Marshal(chk)
-			if err != nil {
-				return nil, err
-			}
-			return &apitype.UntypedDeployment{
-				Version:    3,
-				Deployment: json.RawMessage(data),
-			}, nil
-		},
-		ImportDeploymentF: func(ctx context.Context, deployment *apitype.UntypedDeployment) error {
+		ImportDeploymentF: func(ctx context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
 			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secretsProvider)
 			if err != nil {
 				return err
@@ -228,19 +208,35 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 			snapshot = snap
 			return nil
 		},
+	}
+
+	mockStack := &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "testStack",
+				NameV:   tokens.MustParseStackName("testStack"),
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
+		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+			return snapshot, nil
+		},
 		DefaultSecretManagerF: func(_ *workspace.ProjectStack) (secrets.Manager, error) {
 			return secretsManager, nil
 		},
 	}
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
 	})
 
 	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
+	t.Chdir(tmpDir)
 
 	// Setup a dummy project in this directory
 	err := os.WriteFile("Pulumi.yaml", []byte(`
@@ -274,11 +270,11 @@ runtime: mock
 	// Check that the snapshot still records the secret value with the same value
 	foo := snapshot.Resources[0].Outputs["foo"]
 	assert.True(t, foo.IsSecret())
-	assert.Equal(t, resource.NewStringProperty("bar"), foo.SecretValue().Element)
+	assert.Equal(t, resource.NewProperty("bar"), foo.SecretValue().Element)
 	// Check the config has been updated to the new secret
 	project, err := workspace.LoadProject("Pulumi.yaml")
 	require.NoError(t, err)
-	projectStack, err := workspace.LoadProjectStack(project, "Pulumi.testStack.yaml")
+	projectStack, err := workspace.LoadProjectStack(nil /*sink*/, project, "Pulumi.testStack.yaml")
 	require.NoError(t, err)
 	cfgValue, ok := projectStack.Config[cfgKey]
 	require.True(t, ok)
@@ -286,16 +282,4 @@ runtime: mock
 	val, err := cfgValue.Value(passphraseDecrypter)
 	require.NoError(t, err)
 	assert.Equal(t, "bar", val)
-}
-
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		assert.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		assert.NoError(t, err)
-		assert.Equal(t, cwd, restoredDir)
-	})
 }

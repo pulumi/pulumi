@@ -30,24 +30,24 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewAboutCmd() *cobra.Command {
+func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var jsonOut bool
 	var transitiveDependencies bool
 	var stack string
@@ -68,7 +68,7 @@ func NewAboutCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
+			summary := getSummaryAbout(ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
 			if jsonOut {
 				return ui.PrintJSON(summary)
 			}
@@ -151,11 +151,11 @@ func getSummaryAbout(
 				result.Plugins = plugins
 			}
 
-			programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
-			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
 			if err != nil {
 				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 			} else {
+				programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
 				aboutResponse, err := lang.About(programInfo)
 				if err != nil {
 					addError(err, "Failed to get information about the project runtime")
@@ -190,7 +190,7 @@ func getSummaryAbout(
 		addError(err, "Could not access the backend")
 	} else if backend != nil {
 		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(ctx, backend, selectedStack); err != nil {
+		if stack, err = getCurrentStackAbout(ctx, ws, backend, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
@@ -219,6 +219,7 @@ func (summary *summaryAbout) Print() {
 	if summary.Backend != nil {
 		fmt.Println(summary.Backend)
 	}
+	formatEnvironmentVariables(declared.Variables())
 	if summary.Dependencies != nil {
 		fmt.Println(formatProgramDependenciesAbout(summary.Dependencies))
 	}
@@ -373,11 +374,13 @@ type aboutState struct {
 	URN  string `json:"urn"`
 }
 
-func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack string) (currentStackAbout, error) {
+func getCurrentStackAbout(
+	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, selectedStack string,
+) (currentStackAbout, error) {
 	var s backend.Stack
 	var err error
 	if selectedStack == "" {
-		s, err = state.CurrentStack(ctx, b)
+		s, err = state.CurrentStack(ctx, ws, b)
 	} else {
 		var ref backend.StackReference
 		ref, err = b.ParseStackReference(selectedStack)
@@ -395,14 +398,14 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 
 	name := s.Ref().String()
 	var snapshot *deploy.Snapshot
-	snapshot, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snapshot, err = s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return currentStackAbout{}, err
 	} else if snapshot == nil {
 		return currentStackAbout{}, errors.New("No current snapshot")
 	}
-	var resources []*resource.State = snapshot.Resources
-	var pendingOps []resource.Operation = snapshot.PendingOperations
+	resources := snapshot.Resources
+	pendingOps := snapshot.PendingOperations
 
 	aboutResources := make([]aboutState, len(resources))
 	for i, r := range resources {
@@ -477,6 +480,26 @@ func simpleTableRows(arr [][]string) []cmdutil.TableRow {
 type programDependencyAbout struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+}
+
+func formatEnvironmentVariables(vars []declared.Var) {
+	table := cmdutil.Table{
+		Headers: []string{"Name", "Value"},
+		Rows:    []cmdutil.TableRow{},
+	}
+
+	for _, v := range vars {
+		if _, present := v.Value.Underlying(); present {
+			table.Rows = append(table.Rows, cmdutil.TableRow{
+				Columns: []string{v.Name(), v.Value.String()},
+			})
+		}
+	}
+
+	if len(table.Rows) > 0 {
+		fmt.Println("Environment Variables:")
+		fmt.Println(table.String())
+	}
 }
 
 func formatProgramDependenciesAbout(deps []programDependencyAbout) string {
@@ -587,7 +610,7 @@ func (runtime projectRuntimeAbout) String() string {
 // getProjectPlugins.
 func getProjectPluginsSilently(
 	ctx *plugin.Context, proj *workspace.Project, pwd, main string,
-) ([]workspace.PluginSpec, error) {
+) ([]workspace.PluginDescriptor, error) {
 	_, w, err := os.Pipe()
 	if err != nil {
 		return nil, err

@@ -15,25 +15,27 @@
 package deploy
 
 import (
+	"context"
+	"errors"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRebuildBaseStateDanglingParentsSimple(t *testing.T) {
 	t.Parallel()
 
-	// Arrange.
 	steps, ex := makeStepsAndExecutor(
-		&resource.State{URN: "A", Delete: true},
 		&resource.State{URN: "B", Parent: "A"},
 	)
 
-	// Act.
 	ex.rebuildBaseState(steps)
 
-	// Assert.
 	assert.EqualValues(t, map[resource.URN]*resource.State{
 		"B": {URN: "B"},
 	}, ex.deployment.olds)
@@ -42,7 +44,6 @@ func TestRebuildBaseStateDanglingParentsSimple(t *testing.T) {
 func TestRebuildBaseStateDanglingParentsTree(t *testing.T) {
 	t.Parallel()
 
-	// Arrange.
 	steps, ex := makeStepsAndExecutor(
 		&resource.State{URN: "A"},
 		&resource.State{URN: "C", Parent: "A", Delete: true},
@@ -57,13 +58,11 @@ func TestRebuildBaseStateDanglingParentsTree(t *testing.T) {
 		&resource.State{URN: "I", Parent: "E"},
 	)
 
-	// Act.
 	ex.rebuildBaseState(steps)
 
-	// Assert.
 	assert.EqualValues(t, map[resource.URN]*resource.State{
 		"A": {URN: "A"},
-		"I": {URN: "I"},
+		"I": {URN: "I", Parent: "E"},
 		"F": {URN: "F", Parent: "A"},
 		"G": {URN: "G", Parent: "D"},
 		"D": {URN: "D", Parent: "A"},
@@ -186,4 +185,74 @@ func makeStepsAndExecutor(states ...*resource.State) (map[*resource.State]Step, 
 	}
 
 	return steps, ex
+}
+
+type source struct {
+	iterator SourceIterator
+}
+
+func (src *source) Close() error                { return nil }
+func (src *source) Project() tokens.PackageName { return "project" }
+func (src *source) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
+	return src.iterator, nil
+}
+
+type iterator struct {
+	closed      bool
+	returnError bool
+}
+
+func (iter *iterator) Cancel(context.Context) error {
+	iter.closed = true
+	return nil
+}
+
+func (iter *iterator) Next() (SourceEvent, error) {
+	if iter.returnError {
+		return nil, errors.New("error")
+	}
+	return nil, nil
+}
+
+func TestSourceIteratorClose(t *testing.T) {
+	t.Parallel()
+	iter := &iterator{}
+	ex := &deploymentExecutor{
+		deployment: &Deployment{
+			source: &source{iter},
+			opts:   &Options{},
+			ctx: &plugin.Context{
+				Diag: &deploytest.NoopSink{},
+				Host: deploytest.NewPluginHost(nil, nil, nil),
+			},
+			newPlans: &resourcePlans{},
+		},
+		stepGen: &stepGenerator{},
+	}
+
+	_, err := ex.Execute(context.Background())
+	require.NoError(t, err)
+	require.True(t, iter.closed, "The source iterator should be closed after execution")
+}
+
+// If we run into an error, bail out and don't attempt to close the iterator.
+func TestSourceIteratorNoCloseOnError(t *testing.T) {
+	t.Parallel()
+	iter := &iterator{returnError: true}
+	ex := &deploymentExecutor{
+		deployment: &Deployment{
+			source: &source{iter},
+			opts:   &Options{},
+			ctx: &plugin.Context{
+				Diag: &deploytest.NoopSink{},
+				Host: deploytest.NewPluginHost(nil, nil, nil),
+			},
+			newPlans: &resourcePlans{},
+		},
+		stepGen: &stepGenerator{},
+	}
+
+	_, err := ex.Execute(context.Background())
+	require.ErrorContains(t, err, "BAIL")
+	require.False(t, iter.closed)
 }

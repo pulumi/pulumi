@@ -38,9 +38,6 @@ install_file sdk/python/dist/pulumi-analyzer-policy-python.cmd              wind
 install_file sdk/python/dist/pulumi-resource-pulumi-python                  linux   darwin
 install_file sdk/python/dist/pulumi-resource-pulumi-python.cmd              windows
 
-install_file sdk/python/dist/pulumi-python-shim.cmd                         windows
-install_file sdk/python/dist/pulumi-python3-shim.cmd                        windows
-
 install_file sdk/python/cmd/pulumi-language-python-exec          linux darwin windows
 
 # Get pulumi-watch binaries

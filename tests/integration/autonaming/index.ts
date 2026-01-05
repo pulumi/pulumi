@@ -3,7 +3,7 @@
 import * as pulumi from "@pulumi/pulumi";
 
 class Named extends pulumi.CustomResource {
-    public readonly name!: pulumi.Output<string>;
+    declare public readonly name: pulumi.Output<string>;
     constructor(name: string, resourceName?: string) {
         super("testprovider:index:Named", name, { name: resourceName });
     }

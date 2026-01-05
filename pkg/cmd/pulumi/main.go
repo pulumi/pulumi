@@ -59,9 +59,13 @@ func main() {
 	finished := new(bool)
 	defer panicHandler(finished)
 
-	if err := NewPulumiCmd().Execute(); err != nil {
+	pulumiCmd, cleanup := NewPulumiCmd()
+
+	if err := pulumiCmd.Execute(); err != nil {
 		cmd.DisplayErrorMessage(err)
+		cleanup()
 		os.Exit(-1)
 	}
 	*finished = true
+	cleanup()
 }

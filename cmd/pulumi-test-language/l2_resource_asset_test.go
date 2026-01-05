@@ -277,7 +277,7 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 	}
 
 	assarc, err := plugin.MarshalArchive(&resource.Archive{
-		Assets: map[string]interface{}{
+		Assets: map[string]any{
 			"string": &resource.Asset{
 				Text: "file contents",
 			},
@@ -345,7 +345,7 @@ func TestL2ResourceAssetArchive(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L2ResourceAssetArchiveLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

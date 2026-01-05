@@ -7,7 +7,7 @@ interface ComponentArgs {
 }
 
 export class Component extends pulumi.ComponentResource {
-    public readonly foo!: pulumi.Output<string>;
+    declare public readonly foo: pulumi.Output<string>;
 
     constructor(name: string, args: ComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         const inputs: any = {};

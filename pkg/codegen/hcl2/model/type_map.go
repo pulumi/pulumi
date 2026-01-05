@@ -22,17 +22,20 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // MapType represents maps from strings to particular element types.
 type MapType struct {
 	// ElementType is the element type of the map.
 	ElementType Type
+
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewMapType creates a new map type with the given element type.
 func NewMapType(elementType Type) *MapType {
-	return &MapType{ElementType: elementType}
+	return &MapType{ElementType: elementType, cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 func (t *MapType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
@@ -116,7 +119,7 @@ func (t *MapType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *MapType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
@@ -124,8 +127,8 @@ func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}
 			conversionKind := SafeConversion
 			var diags lazyDiagnostics
 			for _, src := range src.Properties {
-				if ck, _ := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
 					if conversionKind == NoConversion {
 						break
 					}

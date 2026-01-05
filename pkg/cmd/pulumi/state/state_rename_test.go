@@ -31,15 +31,17 @@ func TestRenameProvider(t *testing.T) {
 	// Define a state with a single provider and a single resource dependent on that provider.
 	provURN := resource.URN("urn:pulumi:dev::prog-aws-typescript::pulumi:providers:random::my-provider")
 	prov := resource.State{
-		URN:  provURN,
-		ID:   "81cd12dd-2a90-4f21-a521-f4c71c1f11eb",
-		Type: "pulumi:providers:random",
+		URN:    provURN,
+		ID:     "81cd12dd-2a90-4f21-a521-f4c71c1f11eb",
+		Type:   "pulumi:providers:random",
+		Custom: true,
 	}
 
 	providerRefString := string(prov.URN) + "::" + string(prov.ID)
 
 	res1 := resource.State{
 		URN:      resource.URN("urn:pulumi:dev::prog-aws-typescript::random:index/randomPet:RandomPet::pet-0"),
+		Type:     "random:index/randomPet:RandomPet",
 		Provider: providerRefString,
 	}
 	snap := &deploy.Snapshot{
@@ -50,14 +52,14 @@ func TestRenameProvider(t *testing.T) {
 	}
 
 	// Ensure that the snapshot is valid before the rename.
-	assert.NoError(t, snap.VerifyIntegrity())
+	require.NoError(t, snap.VerifyIntegrity())
 
 	// Mutates the snapshot.
 	err := stateRenameOperation(provURN, "our-provider", display.Options{}, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Ensure that the snapshot is valid after the rename.
-	assert.NoError(t, snap.VerifyIntegrity())
+	require.NoError(t, snap.VerifyIntegrity())
 
 	// Check that the snapshot contains the renamed provider as `our-provider`.
 	for _, res := range snap.Resources {
@@ -82,20 +84,23 @@ func TestStateRename_updatesChildren(t *testing.T) {
 	snap := deploy.Snapshot{
 		Resources: []*resource.State{
 			{
-				URN:  provider,
-				ID:   "provider-id",
-				Type: "pulumi:provider:random",
+				URN:    provider,
+				ID:     "provider-id",
+				Type:   "pulumi:provider:random",
+				Custom: true,
 			},
 			{
-				URN:  parent,
-				ID:   "parent-id",
-				Type: "random:index/randomPet:RandomPet",
+				URN:    parent,
+				ID:     "parent-id",
+				Type:   "random:index/randomPet:RandomPet",
+				Custom: true,
 			},
 			{
 				URN:    child,
 				ID:     "child-id",
 				Type:   "random:index/randomPet:RandomPet",
 				Parent: parent,
+				Custom: true,
 			},
 		},
 	}

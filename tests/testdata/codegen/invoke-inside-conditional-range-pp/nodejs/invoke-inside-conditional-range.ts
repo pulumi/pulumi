@@ -42,7 +42,7 @@ export = async () => {
                 input: ipv6CidrBlock,
                 newbits: 8,
                 netnum: publicSubnetIpv6Prefixes[range.value],
-            })).apply(invoke => invoke.result) : undefined,
+            })).apply(invoke => invoke.result) : null,
             ipv6Native: enableIpv6 && publicSubnetIpv6Native,
             vpcId: currentVpc.id,
         }));

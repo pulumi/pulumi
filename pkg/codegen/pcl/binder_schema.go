@@ -147,7 +147,10 @@ func (c *PackageCache) getPackageSchema(pkg PackageInfo) (*packageSchema, bool) 
 // loadPackageSchema loads the schema for a given package by loading the corresponding provider and calling its
 // GetSchema method.
 // If a version is passed in, the cache will be bypassed and the package will be reloaded.
-func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version string) (*packageSchema, error) {
+func (c *PackageCache) loadPackageSchema(
+	ctx context.Context, loader schema.Loader,
+	name, version, pluginDownloadURL string,
+) (*packageSchema, error) {
 	pkgInfo := PackageInfo{
 		name:    name,
 		version: version,
@@ -161,7 +164,11 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version str
 		versionSemver = &v
 	}
 
-	pkg, err := schema.LoadPackageReference(loader, name, versionSemver)
+	pkg, err := schema.LoadPackageReferenceV2(ctx, loader, &schema.PackageDescriptor{
+		Name:        name,
+		Version:     versionSemver,
+		DownloadURL: pluginDownloadURL,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +277,7 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 }
 
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
-func (b *binder) loadReferencedPackageSchemas(n Node) error {
+func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error {
 	var pkgOpts packageOpts
 	packageNames := codegen.StringSet{}
 
@@ -314,7 +321,10 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
 			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
 		} else {
-			pkg, err = b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)
+			pkg, err = b.options.packageCache.loadPackageSchema(
+				ctx, b.options.loader,
+				name, pkgOpts.version, pkgOpts.pluginDownloadURL,
+			)
 		}
 		if err != nil {
 			if b.options.skipResourceTypecheck || b.options.skipInvokeTypecheck {
@@ -327,7 +337,7 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	return nil
 }
 
-func buildEnumValue(v interface{}) cty.Value {
+func buildEnumValue(v any) cty.Value {
 	switch v := v.(type) {
 	case string:
 		return cty.StringVal(v)
@@ -374,6 +384,9 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 
 		properties := map[string]model.Type{}
 		objType := model.NewObjectType(properties, src)
+		if b.options.skipResourceTypecheck || b.options.allowMissingProperties {
+			objType.Strict = false
+		}
 		b.schemaTypes[src] = objType
 		for _, prop := range src.Properties {
 			typ := prop.Type
@@ -415,6 +428,9 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 
 		properties := map[string]model.Type{}
 		objType := model.NewObjectType(properties, src)
+		if b.options.skipResourceTypecheck || b.options.allowMissingProperties {
+			objType.Strict = false
+		}
 		b.schemaTypes[src] = objType
 		for _, prop := range src.Resource.Properties {
 			typ := prop.Type
@@ -505,7 +521,7 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 				return a, true
 			}
 		}
-		schemas := codegen.Set{}
+		schemas := newOrderedSet[schema.Type]()
 		for _, t := range t.ElementTypes {
 			if s, ok := GetSchemaForType(t); ok {
 				if union, ok := s.(*schema.UnionType); ok {
@@ -517,12 +533,12 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 				}
 			}
 		}
-		if len(schemas) == 0 {
+		if schemas.Len() == 0 {
 			return nil, false
 		}
-		schemaTypes := slice.Prealloc[schema.Type](len(schemas))
-		for t := range schemas {
-			schemaTypes = append(schemaTypes, t.(schema.Type))
+		schemaTypes := slice.Prealloc[schema.Type](schemas.Len())
+		for t := range schemas.Iter() {
+			schemaTypes = append(schemaTypes, t)
 		}
 		if len(schemaTypes) == 1 {
 			return schemaTypes[0], true
@@ -667,20 +683,20 @@ func GenEnum(
 	return nil
 }
 
-func enumMemberValues(t *model.EnumType) []interface{} {
+func enumMemberValues(t *model.EnumType) []any {
 	srcBase, ok := GetSchemaForType(t)
 	if !ok {
 		return nil
 	}
 	src := srcBase.(*schema.EnumType)
-	members := make([]interface{}, len(src.Elements))
+	members := make([]any, len(src.Elements))
 	for i, el := range src.Elements {
 		members[i] = el.Value
 	}
 	return members
 }
 
-func listToString(l []interface{}) string {
+func listToString(l []any) string {
 	vals := ""
 	for i, v := range l {
 		if i == 0 {

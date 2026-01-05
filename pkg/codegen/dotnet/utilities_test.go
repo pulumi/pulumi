@@ -40,7 +40,6 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"Equals", "EqualsValue", false},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -67,12 +66,32 @@ func Test_makeValidIdentifier(t *testing.T) {
 		{"8", "_8"},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
 			if got := makeValidIdentifier(tt.input); got != tt.expected {
 				t.Errorf("makeValidIdentifier() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func Test_makeSafePulumiNamespace(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"Output", "PulumiOutput"},
+		{"InputUnion", "InputUnion"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
+			if got := makeSafePulumiNamespace(tt.input); got != tt.expected {
+				t.Errorf("makeSafePulumiNamespace() = %v, want %v", got, tt.expected)
 			}
 		})
 	}

@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func await(out pulumi.Output) (interface{}, bool, bool, []pulumi.Resource, error) {
+func await(out pulumi.Output) (any, bool, bool, []pulumi.Resource, error) {
 	result, err := UnsafeAwaitOutput(context.Background(), out)
 
 	return result.Value, result.Known, result.Secret, result.Dependencies, err
@@ -46,11 +46,11 @@ func TestBasicOutputs(t *testing.T) {
 			resolve(42)
 		}()
 		v, known, secret, deps, err := await(out)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
 		assert.Nil(t, deps)
-		assert.NotNil(t, v)
+		require.NotNil(t, v)
 		assert.Equal(t, 42, v.(int))
 	}
 	{

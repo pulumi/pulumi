@@ -17,6 +17,7 @@ package plugin
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +34,6 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -42,9 +42,11 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -99,7 +101,7 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 	return plugin, nil
 }
 
-type plugin struct {
+type Plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
 
@@ -120,6 +122,9 @@ type plugin struct {
 	Stdin  io.WriteCloser
 	Stdout io.ReadCloser
 	Stderr io.ReadCloser
+	// Function to wait for the plugin to exit, this will either return the exitcode from the process or an
+	// error if we didn't get a normal process exit.
+	Wait func(context.Context) (int, error)
 }
 
 type unstructuredOutput struct {
@@ -180,7 +185,8 @@ func dialPlugin[T any](
 	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
 	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
 	//     while this bug exists, we'll simply do a bit of waiting of our own up front.
-	timeout, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+	timeout, cancel := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+	defer cancel()
 	for {
 		s := conn.GetState()
 		if s == connectivity.Ready {
@@ -235,16 +241,17 @@ func newPlugin[T any](
 	env []string,
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
-) (*plugin, *T, error) {
+	attachDebugger bool,
+) (*Plugin, *T, error) {
 	if logging.V(9) {
-		var argstr string
+		var argstr strings.Builder
 		for i, arg := range args {
 			if i > 0 {
-				argstr += ","
+				argstr.WriteString(",")
 			}
-			argstr += arg
+			argstr.WriteString(arg)
 		}
-		logging.V(9).Infof("newPlugin(): Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr)
+		logging.V(9).Infof("newPlugin(): Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr.String())
 	}
 
 	// Create a span for the plugin initialization
@@ -260,7 +267,7 @@ func newPlugin[T any](
 	defer tracingSpan.Finish()
 
 	// Try to execute the binary.
-	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env)
+	plug, err := ExecPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
@@ -280,7 +287,7 @@ func newPlugin[T any](
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	var sawPolicyModuleNotFoundErr bool
 	if kind == apitype.ResourcePlugin && !isDynamicPluginBinary(bin) {
-		logging.Infof("Hiding logs from %q:%q", prefix, bin)
+		logging.V(9).Infof("Hiding logs from %q:%q", prefix, bin)
 		plug.unstructuredOutput = &unstructuredOutput{diag: ctx.Diag}
 	}
 	runtrace := func(t io.Reader, streamID streamID, done chan<- bool) {
@@ -304,7 +311,7 @@ func newPlugin[T any](
 					sawPolicyModuleNotFoundErr = true
 				}
 
-				var log func(*diag.Diag, ...interface{})
+				var log func(*diag.Diag, ...any)
 				if plug.unstructuredOutput != nil {
 					log = ctx.Diag.Debugf
 				} else if streamID == outStreamID {
@@ -345,12 +352,34 @@ func newPlugin[T any](
 				return nil, nil, errRunPolicyModuleNotFound
 			}
 
+			// If readerr is just EOF get the actual error from the plugin.
+			if errors.Is(readerr, io.EOF) {
+				var exitcode int
+				exitcode, readerr = plug.Wait(ctx.baseContext)
+				// If there's no error from waiting, but a non-zero exit code use that as the error.
+				if readerr == nil && exitcode != 0 {
+					readerr = fmt.Errorf("exit status %d", exitcode)
+				}
+
+				// If theres no error from waiting then just report the EOF
+				if readerr == nil {
+					readerr = io.EOF
+				}
+			}
+
+			var errMsg string
+			detailed, ok := rpcerror.FromError(readerr)
+			if ok {
+				errMsg = detailed.Error()
+			} else {
+				errMsg = readerr.Error()
+			}
 			// Fall back to a generic, opaque error.
 			if portString == "" {
-				return nil, nil, fmt.Errorf("could not read plugin [%v] stdout: %w", bin, readerr)
+				return nil, nil, fmt.Errorf("could not read plugin [%v]: %s", bin, errMsg)
 			}
-			return nil, nil, fmt.Errorf("failure reading plugin [%v] stdout (read '%v'): %w",
-				bin, portString, readerr)
+			return nil, nil, fmt.Errorf("failure reading plugin [%v] (read '%v'): %s",
+				bin, portString, errMsg)
 		}
 		if n > 0 && b[0] == '\n' {
 			break
@@ -407,10 +436,10 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
-// execPlugin starts the plugin executable.
-func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
-	pluginArgs []string, pwd string, env []string,
-) (*plugin, error) {
+// ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
+func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
+	pluginArgs []string, pwd string, env []string, attachDebugger bool,
+) (*Plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
 		tracingEndpoint: cmdutil.TracingEndpoint,
@@ -420,24 +449,29 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	})
 
 	// Check to see if we have a binary we can invoke directly
-	if _, err := os.Stat(bin); os.IsNotExist(err) {
+	stat, err := os.Stat(bin)
+	if (err == nil && stat.IsDir()) || os.IsNotExist(err) {
 		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml" or "PulumiPolicy.yaml"
-		pluginDir := filepath.Dir(bin)
+		pluginDir := bin
+		if stat == nil || !stat.IsDir() {
+			pluginDir = filepath.Dir(bin)
+		}
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
-		if kind == apitype.ResourcePlugin || kind == apitype.ConverterPlugin {
+		switch kind { //nolint:exhaustive // golangci-lint v2 upgrade
+		case apitype.ResourcePlugin, apitype.ConverterPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
-		} else if kind == apitype.AnalyzerPlugin {
+		case apitype.AnalyzerPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPolicy.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
-		} else {
+		default:
 			return nil, errors.New("language plugins must be executable binaries")
 		}
 
@@ -449,29 +483,40 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
 		}
 
-		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
-		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), info)
+		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name())
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
-		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
+		rctx, kill := context.WithCancel(ctx.Request()) //nolint:govet // lostcancel
+
+		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
+		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
 			Env:              env,
+			Kind:             string(kind),
+			AttachDebugger:   attachDebugger,
 		})
 		if err != nil {
-			return nil, err
+			return nil, err //nolint:govet // lostcancel
 		}
 
-		return &plugin{
+		return &Plugin{
 			Bin:    bin,
 			Args:   args,
 			Env:    env,
 			Kill:   func() error { kill(); return nil },
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
+			Wait: func(ctx context.Context) (int, error) {
+				exitcode, err := done.Result(ctx)
+				if err != nil {
+					return -1, err
+				}
+				return int(exitcode), nil
+			},
 		}, nil
 	}
 
@@ -482,9 +527,13 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		cmd.Env = env
 	}
 	in, _ := cmd.StdinPipe()
-	out, _ := cmd.StdoutPipe()
-	err, _ := cmd.StderrPipe()
+	outr, outw := io.Pipe()
+	errr, errw := io.Pipe()
+	cmd.Stdout = outw
+	cmd.Stderr = errw
 	if err := cmd.Start(); err != nil {
+		contract.IgnoreClose(outw)
+		contract.IgnoreClose(errw)
 		// If we try to run a plugin that isn't found, intercept the error
 		// and instead return a custom one so we can more easily check for
 		// it upstream
@@ -501,32 +550,71 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		return nil, err
 	}
 
-	kill := func() error {
-		var result *multierror.Error
+	wait := &promise.CompletionSource[struct{}]{}
+	go func() {
+		err := cmd.Wait()
+		contract.IgnoreClose(outw)
+		contract.IgnoreClose(errw)
+		if err != nil {
+			wait.Reject(err)
+		} else {
+			wait.Fulfill(struct{}{})
+		}
+	}()
 
+	kill := sync.OnceValue(func() error {
+		logging.V(9).Infof("killing plugin %s\n", bin)
 		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
 		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
 		// for the child processes to close.
+
+		// Try to shut down gracefully first, so the plugins have a chance to clean up.
+		// If that fails we'll just kill the process.
+		cmdutil.InterruptChildren(cmd.Process.Pid)
+
+		// Give the process 5 seconds to shut down, or kill it forcibly.
+		timeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, err := wait.Promise().Result(timeout)
+		if !errors.Is(err, context.DeadlineExceeded) {
+			return nil
+		}
+
+		// We failed to clean up the process within the allocated time.  Shut it down forcibly.
+		var result *multierror.Error
+
 		if err := cmdutil.KillChildren(cmd.Process.Pid); err != nil {
 			result = multierror.Append(result, err)
 		}
 
-		// IDEA: consider a more graceful termination than just SIGKILL.
 		if err := cmd.Process.Kill(); err != nil {
 			result = multierror.Append(result, err)
 		}
 
 		return result.ErrorOrNil()
-	}
+	})
 
-	return &plugin{
+	return &Plugin{
 		Bin:    bin,
 		Args:   args,
 		Env:    env,
 		Kill:   kill,
 		Stdin:  in,
-		Stdout: out,
-		Stderr: err,
+		Stdout: outr,
+		Stderr: errr,
+		Wait: func(ctx context.Context) (int, error) {
+			_, err := wait.Promise().Result(ctx)
+			if err != nil {
+				// If this is a non-zero exit code, we need to return it.
+				if exiterr, ok := err.(*exec.ExitError); ok {
+					// If the plugin is a process, we need to return the exit code.
+					if _, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+						return exiterr.ExitCode(), nil
+					}
+				}
+			}
+			return 0, err
+		},
 	}, nil
 }
 
@@ -555,7 +643,7 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 	return args
 }
 
-func (p *plugin) healthCheck() bool {
+func (p *Plugin) healthCheck() bool {
 	if p.Conn == nil {
 		return false
 	}
@@ -598,7 +686,7 @@ func (p *plugin) healthCheck() bool {
 	}
 }
 
-func (p *plugin) Close() error {
+func (p *Plugin) Close() error {
 	// Something has gone wrong with the plugin if it is not healthy and we have not yet
 	// shut it down.
 	pluginCrashed := !p.healthCheck()
@@ -635,15 +723,14 @@ func (p *plugin) Close() error {
 		//	To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:
 		//
 		//	<output>
-		d.Errorf(diag.StreamMessage("", fmt.Sprintf("\n\n         Detected that %s exited prematurely.\n", p.Bin), id))
-		d.Errorf(diag.StreamMessage("",
-			"         This is *always* a bug in the provider. "+
-				"Please report the issue to the provider author as appropriate.\n\n", id))
-		d.Errorf(diag.StreamMessage("",
-			"To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:\n\n", id))
 		p.unstructuredOutput.outputLock.Lock()
 		defer p.unstructuredOutput.outputLock.Unlock()
-		d.Errorf(diag.StreamMessage("", p.unstructuredOutput.output.String(), id))
+		d.Errorf(diag.StreamMessage("",
+			fmt.Sprintf("Detected that %s exited prematurely. \n"+
+				"       This is *always* a bug in the provider. "+
+				"Please report the issue to the provider author as appropriate.\n"+
+				"       To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:%s\n",
+				p.Bin, p.unstructuredOutput.output.String()), id))
 	}
 
 	return result

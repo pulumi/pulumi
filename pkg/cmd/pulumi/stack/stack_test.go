@@ -20,9 +20,9 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestShowStackName(t *testing.T) {
@@ -38,7 +38,6 @@ func TestShowStackName(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -54,7 +53,7 @@ func TestShowStackName(t *testing.T) {
 			}
 
 			err := runStack(context.Background(), &s, &output, args)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected+"\n", output.String())
 		})
 	}
@@ -113,7 +112,6 @@ func TestStringifyOutput(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -121,12 +119,4 @@ func TestStringifyOutput(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
-}
-
-// mockBackendInstance sets the backend instance for the test and cleans it up after.
-func mockBackendInstance(t *testing.T, b backend.Backend) {
-	t.Cleanup(func() {
-		cmdBackend.BackendInstance = nil
-	})
-	cmdBackend.BackendInstance = b
 }

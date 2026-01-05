@@ -1,0 +1,5 @@
+name: policy-enforcement-config
+runtime:
+  name: nodejs
+  options:
+    typescript: false

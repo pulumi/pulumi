@@ -45,10 +45,10 @@ export class Foo extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.auditConfig === undefined) && !opts.urn) {
+            if (args?.auditConfig === undefined && !opts.urn) {
                 throw new Error("Missing required property 'auditConfig'");
             }
-            resourceInputs["auditConfig"] = args ? args.auditConfig : undefined;
+            resourceInputs["auditConfig"] = args?.auditConfig;
         } else {
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);

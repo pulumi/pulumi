@@ -22,17 +22,20 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // ListType represents lists of particular element types.
 type ListType struct {
 	// ElementType is the element type of the list.
 	ElementType Type
+
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewListType creates a new list type with the given element type.
 func NewListType(elementType Type) *ListType {
-	return &ListType{ElementType: elementType}
+	return &ListType{ElementType: elementType, cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -121,7 +124,7 @@ func (t *ListType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ListType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)

@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // A small provider with a single resource "Resource" that has a single field "Data" which is a type with some primitive
@@ -51,9 +50,9 @@ func (p *RefRefProvider) Pkg() tokens.Package {
 	return "ref-ref"
 }
 
-func (p *RefRefProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *RefRefProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("12.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

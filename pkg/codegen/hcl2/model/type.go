@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 type lazyDiagnostics func() hcl.Diagnostics
@@ -32,8 +33,28 @@ const (
 	SafeConversion   ConversionKind = 2
 )
 
+func (k ConversionKind) GoString() string {
+	switch k {
+	case NoConversion:
+		return "model.NoConversion"
+	case UnsafeConversion:
+		return "model.UnsafeConversion"
+	case SafeConversion:
+		return "model.SafeConversion"
+	default:
+		return fmt.Sprintf("model.ConversionKind(%d)", int(k))
+	}
+}
+
 func (k ConversionKind) Exists() bool {
-	return k > NoConversion && k <= SafeConversion
+	switch k {
+	case UnsafeConversion, SafeConversion:
+		return true
+	case NoConversion:
+		return false
+	default:
+		panic("invalid conversion kind " + k.GoString())
+	}
 }
 
 // Type represents a datatype in the Pulumi Schema. Types created by this package are identical if they are
@@ -42,10 +63,30 @@ type Type interface {
 	fmt.Stringer
 	Definition
 
+	// Equals returns true if this type is equivalent to the given type.
 	Equals(other Type) bool
+	// AssignableFrom returns true if a value of the source type is assignable to a variable of
+	// this type.
+	//
+	// For example, if we have a map, the type of the elements of the source map have to match
+	// with the destination for it to be assignable.
 	AssignableFrom(src Type) bool
+	// ConversionFrom returns the kind of conversion from the source type to this type.
+	// If no conversion is possible, this returns NoConversion.
+	//
+	// The ConversionKind indicates whether the conversion is safe (will never fail) or
+	// unsafe (may fail at runtime). For example a conversions from a dynamic type to any type
+	// is always unsafe. Meanwhile a conversion from `int` to `number` is safe, as ints can
+	// always be represented as numbers.
+	//
+	// Another more complex example is enums. We can convert to an enum from a const type if
+	// the const type matches the type of the enums elements, and equals the value of one of
+	// the enum's elements.  In that case we have a safe conversion. It's also possible to
+	// have an unsafe conversion, in case the types match, but we can't confirm the value is
+	// valid.
 	ConversionFrom(src Type) ConversionKind
 	pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter
+	// Pretty returns a pretty-printer for the type.
 	Pretty() pretty.Formatter
 
 	equals(other Type, seen map[Type]struct{}) bool
@@ -56,7 +97,7 @@ type Type interface {
 }
 
 var (
-	// NoneType represents the undefined value.
+	// NoneType represents the undefined/null value.
 	NoneType Type = noneType(0)
 	// BoolType represents the set of boolean values.
 	BoolType = NewOpaqueType("boolean")
@@ -80,27 +121,57 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 	return assignableFromImpl()
 }
 
+type cacheEntry struct {
+	kind  ConversionKind
+	diags lazyDiagnostics
+}
+
 func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
+	cache *gsync.Map[Type, cacheEntry],
 	conversionFromImpl func() (ConversionKind, lazyDiagnostics),
 ) (ConversionKind, lazyDiagnostics) {
 	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion, nil
 	}
 
+	if c, ok := cache.Load(src); ok {
+		return c.kind, c.diags
+	}
+
 	switch src := src.(type) {
 	case *UnionType:
-		return src.conversionTo(dest, unifying, seen)
+		kind, diags := src.conversionTo(dest, unifying, seen)
+		if cache != nil {
+			cache.Store(src, cacheEntry{kind: kind, diags: diags})
+		}
+		return kind, diags
 	case *ConstType:
 		// We want `EnumType`s too see const types, since they allow safe
 		// conversions.
 		if _, ok := dest.(*EnumType); !ok {
-			return conversionFrom(dest, src.Type, unifying, seen, conversionFromImpl)
+			kind, diags := conversionFrom(dest, src.Type, unifying, seen, cache, conversionFromImpl)
+			if cache != nil {
+				cache.Store(src, cacheEntry{kind, diags})
+			}
+			return kind, diags
 		}
 	}
 	if src == DynamicType {
+		if cache != nil {
+			cache.Store(src, cacheEntry{UnsafeConversion, nil})
+		}
 		return UnsafeConversion, nil
 	}
-	return conversionFromImpl()
+	kind, diags := conversionFromImpl()
+	if cache != nil {
+		cache.Store(src, cacheEntry{kind, diags})
+	}
+
+	contract.Assertf(
+		kind.Exists() || diags != nil,
+		"%T:%v => %T:%v returns no explanation for %#v", dest, dest, src, src, kind,
+	)
+	return kind, diags
 }
 
 func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKind) {

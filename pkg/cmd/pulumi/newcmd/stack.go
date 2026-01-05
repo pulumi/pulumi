@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -57,19 +58,19 @@ func GetStack(ctx context.Context, b backend.Backend,
 }
 
 // PromptAndCreateStack creates and returns a new stack (prompting for the name as needed).
-func PromptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, prompt promptForValueFunc,
-	stack string, root string, setCurrent bool, yes bool, opts display.Options,
-	secretsProvider string,
+func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
+	b backend.Backend, prompt promptForValueFunc, stack string, root string, setCurrent bool,
+	yes bool, opts display.Options, secretsProvider string, useRemoteConfig bool,
 ) (backend.Stack, error) {
 	contract.Requiref(b != nil, "b", "must not be nil")
 	contract.Requiref(root != "", "root", "must not be empty")
 
 	if stack != "" {
-		stackName, err := buildStackName(stack)
+		stackName, err := buildStackName(ctx, b, stack)
 		if err != nil {
 			return nil, err
 		}
-		s, err := cmdStack.InitStack(ctx, ws, b, stackName, root, setCurrent, secretsProvider)
+		s, err := cmdStack.InitStack(ctx, sink, ws, b, stackName, root, setCurrent, secretsProvider, useRemoteConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -87,11 +88,11 @@ func PromptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backen
 		if err != nil {
 			return nil, err
 		}
-		formattedStackName, err := buildStackName(stackName)
+		formattedStackName, err := buildStackName(ctx, b, stackName)
 		if err != nil {
 			return nil, err
 		}
-		s, err := cmdStack.InitStack(ctx, ws, b, formattedStackName, root, setCurrent, secretsProvider)
+		s, err := cmdStack.InitStack(ctx, sink, ws, b, formattedStackName, root, setCurrent, secretsProvider, useRemoteConfig)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -104,7 +105,7 @@ func PromptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backen
 	}
 }
 
-func buildStackName(stackName string) (string, error) {
+func buildStackName(ctx context.Context, b backend.Backend, stackName string) (string, error) {
 	// If we already have a slash (e.g. org/stack, or org/proj/stack) don't add the default org.
 	if strings.Contains(stackName, "/") {
 		return stackName, nil
@@ -112,7 +113,7 @@ func buildStackName(stackName string) (string, error) {
 
 	// We never have a project at the point of calling buildStackName (only called from new), so we just pass
 	// nil for the project and only check the global settings.
-	defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(nil)
+	defaultOrg, err := backend.GetDefaultOrg(ctx, b, nil)
 	if err != nil {
 		return "", err
 	}

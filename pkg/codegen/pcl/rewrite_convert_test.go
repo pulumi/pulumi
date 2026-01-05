@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRewriteConversions(t *testing.T) {
@@ -128,14 +129,14 @@ func TestRewriteConversions(t *testing.T) {
 	})
 	for _, c := range cases {
 		expr, diags := model.BindExpressionText(c.input, scope, hcl.Pos{})
-		assert.Len(t, diags, 0)
+		require.Len(t, diags, 0)
 
 		to := c.to
 		if to == nil {
 			to = expr.Type()
 		}
 		expr, diags = RewriteConversions(expr, to)
-		assert.Len(t, diags, 0)
+		require.Len(t, diags, 0)
 		assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
 	}
 }
@@ -171,11 +172,11 @@ func TestRewriteConversionsAfterApply(t *testing.T) {
 
 	for _, c := range cases {
 		expr, diags := model.BindExpressionText(c.input, scope, hcl.Pos{})
-		assert.Len(t, diags, 0)
+		require.Len(t, diags, 0)
 
 		expr, _ = RewriteApplies(expr, nameInfo(0), false)
 		expr, diags = RewriteConversions(expr, expr.Type())
-		assert.Len(t, diags, 0)
+		require.Len(t, diags, 0)
 		assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
 	}
 }

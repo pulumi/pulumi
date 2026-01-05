@@ -30,11 +30,11 @@ type Acceptor struct {
 // It returns true when this condition has succeeded, and false otherwise
 // (to which we respond by waiting and retrying after a certain period of time).
 // If a non-nil error is returned, retrying halts.
-// The interface{} data may be used to return final values to the caller.
+// The any data may be used to return final values to the caller.
 //
 // Try specifies the attempt number,
 // zero indicating that this is the first attempt with no retries.
-type Acceptance func(try int, nextRetryTime time.Duration) (success bool, result interface{}, err error)
+type Acceptance func(try int, nextRetryTime time.Duration) (success bool, result any, err error)
 
 const (
 	DefaultDelay    time.Duration = 100 * time.Millisecond // by default, delay by 100ms
@@ -60,7 +60,7 @@ type Retryer struct {
 // Note that the number of attempts is not limited.
 // The Acceptance function is responsible for determining
 // when to stop retrying.
-func (r *Retryer) Until(ctx context.Context, acceptor Acceptor) (bool, interface{}, error) {
+func (r *Retryer) Until(ctx context.Context, acceptor Acceptor) (bool, any, error) {
 	timeAfter := time.After
 	if r.After != nil {
 		timeAfter = r.After
@@ -117,12 +117,12 @@ func (r *Retryer) Until(ctx context.Context, acceptor Acceptor) (bool, interface
 // If an acceptor accepts a condition after the context has expired, we ignore the expiration and return the condition.
 //
 // This uses [Retryer] with the default settings.
-func Until(ctx context.Context, acceptor Acceptor) (bool, interface{}, error) {
+func Until(ctx context.Context, acceptor Acceptor) (bool, any, error) {
 	return (&Retryer{}).Until(ctx, acceptor)
 }
 
 // UntilDeadline creates a child context with the given deadline, and then invokes the above Until function.
-func UntilDeadline(ctx context.Context, acceptor Acceptor, deadline time.Time) (bool, interface{}, error) {
+func UntilDeadline(ctx context.Context, acceptor Acceptor, deadline time.Time) (bool, any, error) {
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithDeadline(ctx, deadline)
 	b, data, err := Until(ctx, acceptor)
@@ -131,7 +131,7 @@ func UntilDeadline(ctx context.Context, acceptor Acceptor, deadline time.Time) (
 }
 
 // UntilTimeout creates a child context with the given timeout, and then invokes the above Until function.
-func UntilTimeout(ctx context.Context, acceptor Acceptor, timeout time.Duration) (bool, interface{}, error) {
+func UntilTimeout(ctx context.Context, acceptor Acceptor, timeout time.Duration) (bool, any, error) {
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, timeout)
 	b, data, err := Until(ctx, acceptor)

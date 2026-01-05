@@ -25,11 +25,13 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	pbempty "google.golang.org/protobuf/types/known/emptypb"
 )
 
 var ErrPlugins = errors.New("pulumi: plugins requested")
@@ -99,7 +101,23 @@ func runErrInner(body RunFunc, logError func(*Context, error), opts ...RunOption
 	// Log the error message
 	if err != nil {
 		logError(ctx, err)
+	} else {
+		if _, signalErr := ctx.state.monitor.SignalAndWaitForShutdown(ctx.ctx, &pbempty.Empty{}); signalErr != nil {
+			status, ok := status.FromError(signalErr)
+			if ok && status.Code() != codes.Unimplemented {
+				// If we are running against an older version of the CLI,
+				// SignalAndWaitForShutdown might not be implemented. This is
+				// mostly fine, but means that delete hooks do not work. Since
+				// we check if the CLI supports the `resourceHook` feature when
+				// registering hooks, it's fine to ignore the `UNIMPLEMENTED`
+				// error here.
+				err := fmt.Errorf("error waiting for shutdown: %v", signalErr)
+				logError(ctx, err)
+				return err
+			}
+		}
 	}
+
 	return err
 }
 
@@ -142,18 +160,17 @@ type RunFunc func(ctx *Context) error
 
 // RunInfo contains all the metadata about a run request.
 type RunInfo struct {
-	Project           string
-	RootDirectory     string
-	Stack             string
-	Config            map[string]string
-	ConfigSecretKeys  []string
-	ConfigPropertyMap resource.PropertyMap
-	Parallel          int32
-	DryRun            bool
-	MonitorAddr       string
-	EngineAddr        string
-	Organization      string
-	Mocks             MockResourceMonitor
+	Project          string
+	RootDirectory    string
+	Stack            string
+	Config           map[string]string
+	ConfigSecretKeys []string
+	Parallel         int32
+	DryRun           bool
+	MonitorAddr      string
+	EngineAddr       string
+	Organization     string
+	Mocks            MockResourceMonitor
 
 	getPlugins bool
 	engineConn *grpc.ClientConn // Pre-existing engine connection. If set this is used over EngineAddr.
@@ -240,6 +257,6 @@ func printRequiredPlugins() {
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetEscapeHTML(false)
-	err := enc.Encode(map[string]interface{}{"plugins": plugins})
+	err := enc.Encode(map[string]any{"plugins": plugins})
 	contract.IgnoreError(err)
 }

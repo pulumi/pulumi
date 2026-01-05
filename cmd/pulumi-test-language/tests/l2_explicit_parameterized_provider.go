@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -26,12 +27,15 @@ import (
 
 func init() {
 	LanguageTests["l2-explicit-parameterized-provider"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ParameterizedProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.ParameterizedProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 
@@ -40,7 +44,7 @@ func init() {
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l,
-						resource.NewStringProperty("Goodbye World"),
+						resource.NewProperty("Goodbye World"),
 						stack.Outputs["parameterValue"],
 						"parameter value and provider config should be correct")
 

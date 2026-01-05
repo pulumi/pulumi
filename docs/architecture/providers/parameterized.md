@@ -4,7 +4,8 @@
 *Parameterized providers* are a Pulumi feature that allows a user to change a
 provider's behaviour at runtime. The user generates an SDK by running
 `pulumi package add` or `pulumi package gen-sdk` with additional command-line
-arguments (`args`). The provider is passed the arguments and generates an SDK
+arguments (`args`). When using `pulumi package add`, the package is also added to
+the project configuration file (Pulumi.yaml). The provider is passed the arguments and generates an SDK
 for the user, which also includes custom provider metadata. When the SDK is used
 from a Pulumi program, the provider is "parameterized" with the metadata from
 within the generated SDK so it's ready to use.

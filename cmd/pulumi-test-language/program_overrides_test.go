@@ -139,7 +139,7 @@ func TestProgramOverrides_DontGenerateProgram(t *testing.T) {
 	tempDir := t.TempDir()
 
 	ctx := t.Context()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 
 	runtime := &ProgramOverridesLanguageHost{
 		tempDir: tempDir,
@@ -202,8 +202,8 @@ func TestProgramOverrides_DontGenerateProgram(t *testing.T) {
 	t.Logf("stderr: %s", runResponse.Stderr)
 
 	// Assert.
-	assert.NoError(t, err)
-	assert.NotNil(t, runResponse)
+	require.NoError(t, err)
+	require.NotNil(t, runResponse)
 
 	assert.Empty(t, runResponse.Messages)
 	assert.True(t, runResponse.Success)
@@ -220,7 +220,7 @@ func TestProgramOverrides_WorkWithMultipleRuns(t *testing.T) {
 	tempDir := t.TempDir()
 
 	ctx := t.Context()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 
 	runtime := &ProgramOverridesLanguageHost{
 		tempDir: tempDir,
@@ -377,8 +377,8 @@ func TestProgramOverrides_WorkWithMultipleRuns(t *testing.T) {
 	t.Logf("stderr: %s", runResponse.Stderr)
 
 	// Assert.
-	assert.NoError(t, err)
-	assert.NotNil(t, runResponse)
+	require.NoError(t, err)
+	require.NotNil(t, runResponse)
 
 	assert.Empty(t, runResponse.Messages)
 	assert.True(t, runResponse.Success)
@@ -396,7 +396,7 @@ func TestProgramOverrides_MustMatchRuns(t *testing.T) {
 	tempDir := t.TempDir()
 
 	ctx := t.Context()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 
 	runtime := &ProgramOverridesLanguageHost{tempDir: tempDir}
 

@@ -116,6 +116,10 @@ type StartUpdateRequest struct {
 	// Tags contains an updated set of Tags for the stack. If non-nil, will replace the current
 	// set of tags associated with the stack.
 	Tags map[StackTagName]string `json:"tags,omitempty"`
+
+	// JournalVersion indicates the maximum journal version the client supports.  If 0, journaling
+	// is not supported.
+	JournalVersion int64 `json:"journalVersion,omitempty"`
 }
 
 // StartUpdateResponse is the result of the command to start an update.
@@ -129,6 +133,11 @@ type StartUpdateResponse struct {
 
 	// TokenExpiration is a UNIX timestamp by which the token will expire.
 	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
+
+	// JournalVersion indicates the maximum version of journal entries that should be
+	// sent to the server. Is expected to be less or equal than the JournalVersion we
+	// sent in the update request.  If 0, journaling is disabled.
+	JournalVersion int64 `json:"journalVersion,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.
@@ -143,9 +152,9 @@ const (
 
 // UpdateEvent describes an event that happened on the Pulumi Cloud while processing an update.
 type UpdateEvent struct {
-	Index  string                 `json:"index"`
-	Kind   UpdateEventKind        `json:"kind"`
-	Fields map[string]interface{} `json:"fields"`
+	Index  string          `json:"index"`
+	Kind   UpdateEventKind `json:"kind"`
+	Fields map[string]any  `json:"fields"`
 }
 
 // UpdateStatus is an enum describing the current state during the lifecycle of an update.
@@ -244,6 +253,7 @@ type CompleteUpdateRequest struct {
 type PatchUpdateCheckpointRequest struct {
 	IsInvalid  bool            `json:"isInvalid"`
 	Version    int             `json:"version"`
+	Features   []string        `json:"features,omitempty"`
 	Deployment json.RawMessage `json:"deployment,omitempty"`
 }
 
@@ -282,8 +292,8 @@ type PatchUpdateCheckpointDeltaRequest struct {
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.
 // No longer sent from the CLI, but the type definition is still required for backwards compat with older clients.
 type AppendUpdateLogEntryRequest struct {
-	Kind   string                 `json:"kind"`
-	Fields map[string]interface{} `json:"fields"`
+	Kind   string         `json:"kind"`
+	Fields map[string]any `json:"fields"`
 }
 
 // StackRenameRequest is the shape of the request to change an existing stack's name.

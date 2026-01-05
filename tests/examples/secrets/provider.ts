@@ -10,7 +10,7 @@ class ReflectProvider implements dynamic.ResourceProvider {
 }
 
 export class ReflectResource<T> extends dynamic.Resource {
-    public readonly value!: pulumi.Output<T>;
+    declare public readonly value: pulumi.Output<T>;
 
     constructor(name: string, value: pulumi.Input<T>, opts?: pulumi.CustomResourceOptions) {
         super(new ReflectProvider(), name, {value: value}, opts);
@@ -26,7 +26,7 @@ class DummyProvider implements dynamic.ResourceProvider {
 }
 
 export class DummyResource extends dynamic.Resource {
-    public readonly value!: pulumi.Output<string>;
+    declare public readonly value: pulumi.Output<string>;
 
     constructor(name: string, opts?: pulumi.CustomResourceOptions) {
         super(new DummyProvider(), name, {}, opts);

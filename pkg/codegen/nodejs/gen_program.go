@@ -167,6 +167,98 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
+func generatePackageJSON(
+	program *pcl.Program,
+	projectName string,
+	localDependencies map[string]string,
+) ([]byte, error) {
+	// Build the package.json
+	var packageJSON bytes.Buffer
+	fmt.Fprintf(&packageJSON, `{
+	"name": "%s",
+	"devDependencies": {
+		"@types/node": "%s"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		`, projectName, MinimumNodeTypesVersion)
+
+	// Check if pulumi is a local dependency, else add it as a normal range dependency
+	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
+		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "%s"`, pulumiArtifact)
+	} else {
+		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "^3.0.0"`)
+	}
+
+	// For each package add a dependency line
+	packages, err := program.CollectNestedPackageSnapshots()
+	if err != nil {
+		return nil, err
+	}
+	// Sort the dependencies to ensure a deterministic package.json. Note that the typescript and
+	// @pulumi/pulumi dependencies are already added above and not sorted.
+	sortedPackageNames := make([]string, 0, len(packages))
+	for k := range packages {
+		sortedPackageNames = append(sortedPackageNames, k)
+	}
+	sort.Strings(sortedPackageNames)
+	for _, k := range sortedPackageNames {
+		p := packages[k]
+		if p.Name == PulumiToken {
+			continue
+		}
+		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
+			return nil, err
+		}
+
+		namespace := "@pulumi"
+		if p.Namespace != "" {
+			namespace = "@" + p.Namespace
+		}
+		packageName := namespace + "/" + p.Name
+		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
+		if err != nil {
+			return nil, err
+		}
+		if langInfo, found := p.Language["nodejs"]; found {
+			nodeInfo, ok := langInfo.(NodePackageInfo)
+			if ok && nodeInfo.PackageName != "" {
+				packageName = nodeInfo.PackageName
+			}
+		}
+
+		dependencyTemplate := ",\n		\"%s\": \"%s\""
+		if path, has := localDependencies[p.Name]; has {
+			// npm packages that are packed end up in a .tgz|.tar.gz file
+			isZippedArtifact := strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz")
+			if isZippedArtifact {
+				// local packaged dependency, use as-is:
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
+			} else {
+				// path to local source dependency, prefix with "file:" if not already present:
+				if !strings.HasPrefix(path, "file:") {
+					path = "file:" + path
+				}
+
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
+			}
+		} else {
+			// this is a package that is published to npm
+			// either use the version specified in the schema if available, or use "*"
+			if p.Version != nil {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
+			} else {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
+			}
+		}
+	}
+	packageJSON.WriteString(`
+	}
+}`)
+
+	return packageJSON.Bytes(), nil
+}
+
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
@@ -207,77 +299,11 @@ func GenerateProject(
 		return fmt.Errorf("write Pulumi.yaml: %w", err)
 	}
 
-	// Build the package.json
-	var packageJSON bytes.Buffer
-	fmt.Fprintf(&packageJSON, `{
-	"name": "%s",
-	"devDependencies": {
-		"@types/node": "%s"
-	},
-	"dependencies": {
-		"typescript": "^4.0.0",
-		`, project.Name.String(), MinimumNodeTypesVersion)
-
-	// Check if pulumi is a local dependency, else add it as a normal range dependency
-	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
-		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "%s"`, pulumiArtifact)
-	} else {
-		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "^3.0.0"`)
-	}
-
-	// For each package add a dependency line
-	packages, err := program.CollectNestedPackageSnapshots()
+	packageJSON, err := generatePackageJSON(program, project.Name.String(), localDependencies)
 	if err != nil {
 		return err
 	}
-	// Sort the dependencies to ensure a deterministic package.json. Note that the typescript and
-	// @pulumi/pulumi dependencies are already added above and not sorted.
-	sortedPackageNames := make([]string, 0, len(packages))
-	for k := range packages {
-		sortedPackageNames = append(sortedPackageNames, k)
-	}
-	sort.Strings(sortedPackageNames)
-	for _, k := range sortedPackageNames {
-		p := packages[k]
-		if p.Name == PulumiToken {
-			continue
-		}
-		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
-			return err
-		}
-
-		namespace := "@pulumi"
-		if p.Namespace != "" {
-			namespace = "@" + p.Namespace
-		}
-		packageName := namespace + "/" + p.Name
-		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
-		if err != nil {
-			return err
-		}
-		if langInfo, found := p.Language["nodejs"]; found {
-			nodeInfo, ok := langInfo.(NodePackageInfo)
-			if ok && nodeInfo.PackageName != "" {
-				packageName = nodeInfo.PackageName
-			}
-		}
-
-		dependencyTemplate := ",\n		\"%s\": \"%s\""
-		if path, has := localDependencies[p.Name]; has {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
-		} else {
-			if p.Version != nil {
-				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
-			} else {
-				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
-			}
-		}
-	}
-	packageJSON.WriteString(`
-	}
-}`)
-
-	files["package.json"] = packageJSON.Bytes()
+	files["package.json"] = packageJSON
 
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(`/bin/
@@ -376,31 +402,71 @@ type programImports struct {
 func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	importSet := codegen.NewStringSet("@pulumi/pulumi")
 	preambleHelperMethods := codegen.NewStringSet()
-	var componentImports []string
 
+	// This map tracks the package tokens by the associated import.
+	//
+	// It will have entries similar to the following:
+	//
+	// npmToPuPkgName["@pulumiverse/scaleway"] = "scaleway"
 	npmToPuPkgName := make(map[string]string)
+
+	var componentImports []string
 	seenComponentImports := map[string]bool{}
+
+	// Index known PackageReference by corresponding package name token.
+	knownPackageRefsByPkg := make(map[string]schema.PackageReference)
+	for _, pkgRef := range program.PackageReferences() {
+		// Can more than one package be bound to the same name? It seems possible in case of components.
+		knownPackageRefsByPkg[pkgRef.Name()] = pkgRef
+	}
+
+	// Collect imports for a package; optionally supply packageRef if handily available, otherwise pass nil.
+	visitPkg := func(pkg string, packageRef schema.PackageReference) {
+		if packageRef == nil {
+			packageRef = knownPackageRefsByPkg[pkg]
+		}
+		if pkg == PulumiToken {
+			return
+		}
+		namespace := "@pulumi"
+		if packageRef != nil && packageRef.Namespace() != "" {
+			namespace = "@" + packageRef.Namespace()
+		}
+		pkgName := namespace + "/" + pkg
+		if packageRef != nil {
+			def, err := packageRef.Definition()
+			contract.AssertNoErrorf(err, "Should be able to retrieve definition for %q", pkg)
+
+			if info, ok := def.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
+				pkgName = info.PackageName
+			}
+			npmToPuPkgName[pkgName] = pkg
+		}
+		importSet.Add(pkgName)
+	}
+
+	// Like visitPkg but PakckageReference is not handily available.
+	visitPkgWithoutRef := func(pkg string) {
+		visitPkg(pkg, nil)
+	}
+
+	// Notes direct npm imports.
+	visitDirectImport := func(nodeImportString string) {
+		if nodeImportString == "" {
+			return
+		}
+		importSet.Add(nodeImportString)
+	}
+
 	for _, n := range program.Nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
 			pkg, _, _, _ := n.DecomposeToken()
-			if pkg == PulumiToken {
-				continue
-			}
-			namespace := "@pulumi"
-			if n.Schema != nil && n.Schema.PackageReference != nil && n.Schema.PackageReference.Namespace() != "" {
-				namespace = "@" + n.Schema.PackageReference.Namespace()
-			}
-			pkgName := namespace + "/" + pkg
+			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
-				def, err := n.Schema.PackageReference.Definition()
-				contract.AssertNoErrorf(err, "Should be able to retrieve definition for %s", n.Schema.Token)
-				if info, ok := def.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
-					pkgName = info.PackageName
-				}
-				npmToPuPkgName[pkgName] = pkg
+				packageRef = n.Schema.PackageReference
 			}
-			importSet.Add(pkgName)
+			visitPkg(pkg, packageRef)
 		case *pcl.Component:
 			componentDir := filepath.Base(n.DirPath())
 			componentName := n.DeclarationName()
@@ -413,11 +479,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
-					for _, importPackage := range i {
-						importSet.Add(importPackage)
-					}
-				}
+				g.visitFunctionImports(call, visitDirectImport, visitPkgWithoutRef)
 				if helperMethodBody, ok := getHelperMethodIfNeeded(call, g.Indent); ok {
 					preambleHelperMethods.Add(helperMethodBody)
 				}
@@ -792,12 +854,8 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 func moduleName(module string, pkg schema.PackageReference) string {
 	// Normalize module.
 	if pkg != nil {
-		def, err := pkg.Definition()
-		contract.AssertNoErrorf(err, "error loading package definition for %q", pkg.Name())
-		err = def.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
-		contract.AssertNoErrorf(err, "error importing nodejs language for %q", pkg.Name())
-		if lang, ok := def.Language["nodejs"]; ok {
-			pkgInfo := lang.(NodePackageInfo)
+		if a, err := pkg.Language("nodejs"); err == nil {
+			pkgInfo, _ := a.(NodePackageInfo)
 			if m, ok := pkgInfo.ModuleToPackage[module]; ok {
 				module = m
 			}
@@ -842,11 +900,15 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 		})
 	}
 
+	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}
 	if opts.Provider != nil {
 		appendOption("provider", opts.Provider)
+	}
+	if opts.Providers != nil {
+		appendOption("providers", opts.Providers)
 	}
 	if opts.DependsOn != nil {
 		appendOption("dependsOn", opts.DependsOn)
@@ -860,8 +922,20 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.IgnoreChanges != nil {
 		appendOption("ignoreChanges", opts.IgnoreChanges)
 	}
+	if opts.HideDiffs != nil {
+		appendOption("hideDiffs", opts.HideDiffs)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
+	}
+	if opts.ReplaceWith != nil {
+		appendOption("replaceWith", opts.ReplaceWith)
+	}
+	if opts.ReplacementTrigger != nil {
+		appendOption("replacementTrigger", opts.ReplacementTrigger)
+	}
+	if opts.ImportID != nil {
+		appendOption("import", opts.ImportID)
 	}
 
 	if object == nil {
@@ -1332,7 +1406,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,

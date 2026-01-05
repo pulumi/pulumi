@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sync"
@@ -32,7 +33,7 @@ func TestClosePanic(t *testing.T) {
 	t.Parallel()
 
 	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(sink, sink, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), sink, sink, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
@@ -45,7 +46,7 @@ func TestClosePanic(t *testing.T) {
 			defer wg.Done()
 			// We expect some of these to error that the host is shutting down, that's fine this test is just
 			// checking nothing panics.
-			_, _ = host.loadPlugin(host.loadRequests, func() (interface{}, error) {
+			_, _ = host.loadPlugin(host.loadRequests, func() (any, error) {
 				return nil, nil
 			})
 		}()
@@ -58,6 +59,8 @@ func TestClosePanic(t *testing.T) {
 
 func TestIsLocalPluginPath(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	tests := []struct {
 		name     string
@@ -124,13 +127,23 @@ func TestIsLocalPluginPath(t *testing.T) {
 			path:     "", // Can't be a valid plugin name
 			expected: true,
 		},
+		{
+			name:     "private github URL",
+			path:     "github.com/pulumi/home",
+			expected: false,
+		},
+		{
+			name:     "non-existent repo URL",
+			path:     "example.com/no-repo-exists/here",
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := IsLocalPluginPath(tt.path)
+			result := IsLocalPluginPath(ctx, tt.path)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -178,7 +191,7 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (local-plugin and relative-plugin)
-	assert.Equal(t, 2, len(projectPlugins))
+	require.Len(t, projectPlugins, 2)
 
 	// Create a map of plugin names to paths for easier verification
 	pluginMap := make(map[string]string)
@@ -242,7 +255,7 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (1 from plugins, 1 from packages)
-	assert.Equal(t, 2, len(projectPlugins))
+	require.Len(t, projectPlugins, 2)
 
 	// Check that all expected plugins are present
 	pluginNames := map[string]bool{}

@@ -1,0 +1,5 @@
+name: l2-rtti
+runtime:
+  name: nodejs
+  options:
+    typescript: false

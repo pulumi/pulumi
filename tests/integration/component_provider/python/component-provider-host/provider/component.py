@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from typing import Optional, TypedDict
+from enum import Enum
 
 import pulumi
+
+
+class Emu(Enum):
+    """A or B"""
+
+    A = "a"
+    B = "b"
 
 
 class Nested(TypedDict):
@@ -32,6 +39,15 @@ class Complex(TypedDict):
     nested_input: pulumi.Input[Nested]
 
 
+class NestedOutput(TypedDict):
+    value: str
+
+
+class ComplexOutput(TypedDict):
+    str_value: str
+    nested_value: pulumi.Output[NestedOutput]
+
+
 class Args(TypedDict):
     str_input: pulumi.Input[str]
     """This is a string input"""
@@ -41,6 +57,7 @@ class Args(TypedDict):
     dict_input: pulumi.Input[dict[str, int]]
     asset_input: pulumi.Input[pulumi.Asset]
     archive_input: pulumi.Input[pulumi.Archive]
+    enum_input: pulumi.Input[Emu]
 
 
 class MyComponent(pulumi.ComponentResource):
@@ -49,11 +66,12 @@ class MyComponent(pulumi.ComponentResource):
     str_output: pulumi.Output[str]
     """This is a string output"""
     optional_int_output: Optional[pulumi.Output[int]]
-    complex_output: Optional[pulumi.Output[Complex]]
+    complex_output: Optional[pulumi.Output[ComplexOutput]]
     list_output: pulumi.Output[list[str]]
     dict_output: pulumi.Output[dict[str, int]]
     asset_output: pulumi.Output[pulumi.Asset]
     archive_output: pulumi.Output[pulumi.Archive]
+    enum_output: pulumi.Output[Emu]
 
     def __init__(self, name: str, args: Args, opts: pulumi.ResourceOptions):
         super().__init__("component:index:MyComponent", name, {}, opts)
@@ -65,10 +83,10 @@ class MyComponent(pulumi.ComponentResource):
         ).apply(lambda x: x * 2 if x else 7)
         self.complex_output = pulumi.Output.from_input(
             {
-                "str_input": "complex_str_input_value",
-                "nested_input": pulumi.Output.from_input(
+                "str_value": "complex_str_output_value",
+                "nested_value": pulumi.Output.from_input(
                     {
-                        "str_plain": "nested_str_plain_value",
+                        "value": "nested_str_plain_value",
                     }
                 ),
             }
@@ -84,6 +102,9 @@ class MyComponent(pulumi.ComponentResource):
         )
         self.archive_output = pulumi.Output.from_input(args.get("archive_input")).apply(
             self.transform_archive
+        )
+        self.enum_output = pulumi.Output.from_input(args.get("enum_input")).apply(
+            self.transform_enum
         )
         self.register_outputs(
             {
@@ -107,3 +128,10 @@ class MyComponent(pulumi.ComponentResource):
             return pulumi.AssetArchive({"asset1": self.transform_asset(asset)})  # type: ignore
         else:
             raise ValueError(f"Unexpected archive type {asset.__class__.__name__}")
+
+    def transform_enum(self, e: Emu) -> Emu:
+        if e == Emu.A:
+            return Emu.B
+        elif e == Emu.B:
+            return Emu.A
+        raise Exception(f"Unexpected enum value: {e}")

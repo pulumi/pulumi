@@ -22,13 +22,14 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -52,7 +53,7 @@ func newPolicyPublishCmd() *cobra.Command {
 
 type policyPublishCmd struct {
 	getwd      func() (string, error)
-	defaultOrg func(*workspace.Project) (string, error)
+	defaultOrg func(context.Context, backend.Backend, *workspace.Project) (string, error)
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
@@ -60,8 +61,14 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		cmd.getwd = os.Getwd
 	}
 	if cmd.defaultOrg == nil {
-		cmd.defaultOrg = pkgWorkspace.GetBackendConfigDefaultOrg
+		cmd.defaultOrg = backend.GetDefaultOrg
 	}
+
+	b, err := loginToCloudBackend(ctx, lm)
+	if err != nil {
+		return err
+	}
+
 	var orgName string
 	if len(args) > 0 {
 		orgName = args[0]
@@ -70,7 +77,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return err
 		}
-		org, err := cmd.defaultOrg(project)
+		org, err := cmd.defaultOrg(ctx, b, project)
 		if err != nil {
 			return err
 		}
@@ -93,7 +100,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 	//
 
-	policyPack, err := requirePolicyPack(ctx, policyPackRef, lm)
+	policyPack, err := requirePolicyPackForBackend(ctx, policyPackRef, b)
 	if err != nil {
 		return err
 	}
@@ -118,18 +125,27 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		return err
 	}
 
-	plugctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
+	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return err
 	}
+	defer contract.IgnoreClose(plugctx)
+
+	// Get optional data about the environment performing the publish operation,
+	// e.g. the current source code control commit information.
+	m := metadata.GetPolicyPublishMetadata(root)
 
 	//
 	// Attempt to publish the PolicyPack.
 	//
 
 	err = policyPack.Publish(ctx, backend.PublishOperation{
-		Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: backend.CancellationScopes,
+		Root:       root,
+		PlugCtx:    plugctx,
+		PolicyPack: proj,
+		Scopes:     backend.CancellationScopes,
+		Metadata:   m,
 	})
 	if err != nil {
 		return err
@@ -138,40 +154,45 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	return nil
 }
 
-func requirePolicyPack(
+func loginToCloudBackend(
 	ctx context.Context,
-	policyPack string,
 	lm cmdBackend.LoginManager,
-) (backend.PolicyPack, error) {
-	//
-	// Attempt to log into cloud backend.
-	//
-
+) (backend.Backend, error) {
 	// Try to read the current project
 	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
-
 	cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi Cloud: %w", err)
 	}
 
-	displayOptions := display.Options{
-		Color: cmdutil.GetGlobalColorization(),
-	}
+	return lm.Current(ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent*/)
+}
 
-	b, err := lm.Login(ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent*/, displayOptions.Color)
+// requirePolicyPack attempts to log into the cloud backend and retrieves the requested policy
+// pack.
+func requirePolicyPack(
+	ctx context.Context,
+	policyPack string,
+	lm cmdBackend.LoginManager,
+) (backend.PolicyPack, error) {
+	b, err := loginToCloudBackend(ctx, lm)
 	if err != nil {
 		return nil, err
 	}
 
-	//
-	// Obtain PolicyPackReference.
-	//
+	return requirePolicyPackForBackend(ctx, policyPack, b)
+}
 
+// requirePolicyPackForBackend retrieves a requested policy pack against a provided backend.
+func requirePolicyPackForBackend(
+	ctx context.Context,
+	policyPack string,
+	b backend.Backend,
+) (backend.PolicyPack, error) {
 	policy, err := b.GetPolicyPack(ctx, policyPack, cmdutil.Diag())
 	if err != nil {
 		return nil, err
@@ -180,5 +201,5 @@ func requirePolicyPack(
 		return policy, nil
 	}
 
-	return nil, fmt.Errorf("Could not find PolicyPack %q", policyPack)
+	return nil, fmt.Errorf("could not find PolicyPack %q", policyPack)
 }

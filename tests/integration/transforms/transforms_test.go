@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !xplatform_acceptance
-
 package ints
 
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -41,6 +39,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	foundRes6 := false
 	foundRes7 := false
 	foundRes8 := false
+	foundRes9 := false
 	for _, res := range stack.Deployment.Resources {
 		// "res1" has a transformation which adds additionalSecretOutputs
 		if res.URN.Name() == "res1" {
@@ -63,12 +62,12 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			foundRes3 = true
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			optionalPrefix := res.Inputs["prefix"]
-			assert.NotNil(t, optionalPrefix)
+			require.NotNil(t, optionalPrefix)
 			assert.Equal(t, "stackDefault", optionalPrefix)
 			length := res.Inputs["length"]
-			assert.NotNil(t, length)
+			require.NotNil(t, length)
 			// length should be secret
-			secret, ok := length.(map[string]interface{})
+			secret, ok := length.(map[string]any)
 			assert.True(t, ok, "length should be a secret")
 			assert.Equal(t, resource.SecretSig, secret[resource.SigKey])
 			assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("result"))
@@ -82,7 +81,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
 			optionalPrefix := res.Inputs["prefix"]
-			assert.NotNil(t, optionalPrefix)
+			require.NotNil(t, optionalPrefix)
 			assert.Equal(t, "stackDefault", optionalPrefix)
 		}
 		// "res5" should have mutated the length
@@ -90,7 +89,7 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			foundRes5 = true
 			assert.Equal(t, res.Type, tokens.Type(randomResName))
 			length := res.Inputs["length"]
-			assert.NotNil(t, length)
+			require.NotNil(t, length)
 			assert.Equal(t, 20.0, length)
 		}
 		// "res6" should have changed the provider
@@ -110,6 +109,10 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 		if res.URN.Name() == "res8" {
 			foundRes8 = true
 		}
+		if res.URN.Name() == "res9" {
+			foundRes9 = true
+			assert.Equal(t, resource.ID("stackDefault:test-id"), res.ImportID)
+		}
 	}
 	assert.True(t, foundRes1)
 	assert.True(t, foundRes2Child)
@@ -119,4 +122,5 @@ func Validator(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	assert.True(t, foundRes6)
 	assert.True(t, foundRes7)
 	assert.True(t, foundRes8)
+	assert.True(t, foundRes9)
 }

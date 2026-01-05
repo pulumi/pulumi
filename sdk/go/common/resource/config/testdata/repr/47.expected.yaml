@@ -7,7 +7,7 @@ paths:
       inner: value
     string: '{"existing":"existingValue","inner":"value"}'
     redacted: '{"existing":"existingValue","inner":"value"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAA8/4I5AAIIZXhpc3RpbmcGc3RyaW5nDA8ADWV4aXN0aW5nVmFsdWUFaW5uZXIGc3RyaW5nDAcABXZhbHVl
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAADz/gDkAAgVpbm5lcgZzdHJpbmcMBwAFdmFsdWUIZXhpc3RpbmcGc3RyaW5nDA8ADWV4aXN0aW5nVmFsdWU=
     secure: false
     isObject: true
   my:outer.existing:

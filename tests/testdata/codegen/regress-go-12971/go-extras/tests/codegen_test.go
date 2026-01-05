@@ -16,11 +16,10 @@ package codegentest
 
 import (
 	"context"
-	"testing"
-	"time"
-
 	"regress-go-12971/example"
 	"regress-go-12971/example/config"
+	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -192,6 +191,9 @@ func TestEnvironmentDefaults(t *testing.T) {
 }
 
 type mockResourceMonitor struct {
+	// Actually corresponds to a "Call" in provider parlance, but must be named such for consistency with the test interface.
+	MethodCallF func(pulumi.MockCallArgs) (resource.PropertyMap, error)
+	// Actually corresponds to a "Invoke" in provider parlance, but must be named such for consistency with the test interface.
 	CallF        func(pulumi.MockCallArgs) (resource.PropertyMap, error)
 	NewResourceF func(pulumi.MockResourceArgs) (string, resource.PropertyMap, error)
 }
@@ -199,6 +201,13 @@ type mockResourceMonitor struct {
 func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	if m.CallF != nil {
 		return m.CallF(args)
+	}
+	return args.Args, nil
+}
+
+func (m *mockResourceMonitor) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	if m.MethodCallF != nil {
+		return m.MethodCallF(args)
 	}
 	return args.Args, nil
 }

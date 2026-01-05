@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "FuncWithSecrets.cs",
     "Provider.cs",
     "Pulumi.Mypkg.csproj",

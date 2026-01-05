@@ -1,0 +1,5 @@
+name: policy-config-schema
+runtime:
+  name: nodejs
+  options:
+    typescript: false

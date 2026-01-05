@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type GetSchemaRequest struct {
@@ -55,6 +54,17 @@ type ProviderHandshakeRequest struct {
 
 	// If true the engine will send URN, Name, Type and ID to the provider as part of the configuration.
 	ConfigureWithUrn bool
+
+	// If true the engine supports views and can send an address of the resource status service that
+	// can be used to create or update view resources.
+	SupportsViews bool
+
+	// If true the engine supports letting the provider mark resource states as requiring refresh before update.
+	SupportsRefreshBeforeUpdate bool
+
+	// If true the engine will send `Preview` to `Invoke` methods to let them know if the current operation is a preview
+	// or up.
+	InvokeWithPreview bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -80,6 +90,9 @@ type ProviderHandshakeResponse struct {
 // a provider from either the command line or from within a Pulumi program, respectively.
 type ParameterizeParameters interface {
 	isParameterizeParameters()
+
+	// Empty returns true if the parameterization is empty or nil.
+	Empty() bool
 }
 
 type (
@@ -105,8 +118,18 @@ type (
 // isParameterizeParameters is a no-op method that marks ParameterizeArgs as implementing ParameterizeParameters.
 func (*ParameterizeArgs) isParameterizeParameters() {}
 
+// Empty returns true if the parameterization is empty or nil.
+func (p *ParameterizeArgs) Empty() bool {
+	return p == nil || len(p.Args) == 0
+}
+
 // isParameterizeParameters is a no-op method that marks ParameterizeValue as implementing ParameterizeParameters.
 func (*ParameterizeValue) isParameterizeParameters() {}
+
+// Empty returns true if the parameterization is empty or nil.
+func (p *ParameterizeValue) Empty() bool {
+	return p == nil || len(p.Value) == 0
+}
 
 // The type of requests sent as part of a Parameterize call.
 type ParameterizeRequest struct {
@@ -237,12 +260,18 @@ type CreateRequest struct {
 	Properties resource.PropertyMap
 	Timeout    float64
 	Preview    bool
+	// The gRPC address of the ResourceStatus service which can be used to create view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
 }
 
 type CreateResponse struct {
 	ID         resource.ID
 	Properties resource.PropertyMap
 	Status     resource.Status
+	// Indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool
 }
 
 type ReadRequest struct {
@@ -251,6 +280,13 @@ type ReadRequest struct {
 	Type          tokens.Type
 	ID            resource.ID
 	Inputs, State resource.PropertyMap
+	// The gRPC address of the ResourceStatus service which can be used to read view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views for the resource being read. These will only be populated when the Read call is being made as part
+	// of a refresh operation.
+	OldViews []View
 }
 
 type ReadResponse struct {
@@ -267,11 +303,19 @@ type UpdateRequest struct {
 	Timeout                          float64
 	IgnoreChanges                    []string
 	Preview                          bool
+	// The gRPC address of the ResourceStatus service which can be used to update view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views for the resource being updated.
+	OldViews []View
 }
 
 type UpdateResponse struct {
 	Properties resource.PropertyMap
 	Status     resource.Status
+	// Indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool
 }
 
 type DeleteRequest struct {
@@ -281,6 +325,12 @@ type DeleteRequest struct {
 	ID              resource.ID
 	Inputs, Outputs resource.PropertyMap
 	Timeout         float64
+	// The gRPC address of the ResourceStatus service which can be used to delete view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views of the resource being deleted.
+	OldViews []View
 }
 
 type DeleteResponse struct {
@@ -299,23 +349,14 @@ type ConstructRequest struct {
 type ConstructResponse = ConstructResult
 
 type InvokeRequest struct {
-	Tok  tokens.ModuleMember
-	Args resource.PropertyMap
+	Tok     tokens.ModuleMember
+	Args    resource.PropertyMap
+	Preview bool
 }
 
 type InvokeResponse struct {
 	Properties resource.PropertyMap
 	Failures   []CheckFailure
-}
-
-type StreamInvokeRequest struct {
-	Tok    tokens.ModuleMember
-	Args   resource.PropertyMap
-	OnNext func(resource.PropertyMap) error
-}
-
-type StreamInvokeResponse struct {
-	Failures []CheckFailure
 }
 
 type CallRequest struct {
@@ -411,14 +452,11 @@ type Provider interface {
 
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, InvokeRequest) (InvokeResponse, error)
-	// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-	// of responses.
-	StreamInvoke(context.Context, StreamInvokeRequest) (StreamInvokeResponse, error)
 	// Call dynamically executes a method in the provider associated with a component resource.
 	Call(context.Context, CallRequest) (CallResponse, error)
 
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo(context.Context) (workspace.PluginInfo, error)
+	GetPluginInfo(context.Context) (PluginInfo, error)
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -724,6 +762,8 @@ type ReadResult struct {
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
 	Outputs resource.PropertyMap
+	// Indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool
 }
 
 // ConstructInfo contains all of the information required to register resources as part of a call to Construct.
@@ -735,6 +775,9 @@ type ConstructInfo struct {
 	DryRun           bool                  // true if we are performing a dry-run (preview).
 	Parallel         int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	MonitorAddress   string                // the RPC address to the host resource monitor.
+
+	// A handle to the stack trace that originated the Construct. Used to stitch together stack traces across plugins.
+	StackTraceHandle string
 }
 
 // ConstructOptions captures options for a call to Construct.
@@ -765,6 +808,10 @@ type ConstructOptions struct {
 	// it will also delete this resource.
 	DeletedWith resource.URN
 
+	// ReplaceWith specifies that if any of the given resources are replaced,
+	// this resource will also be replaced.
+	ReplaceWith []resource.URN
+
 	// DeleteBeforeReplace specifies that replacements of this resource
 	// should delete the old resource before creating the new resource.
 	DeleteBeforeReplace *bool
@@ -777,9 +824,17 @@ type ConstructOptions struct {
 	// the resource to be replaced.
 	ReplaceOnChanges []string
 
+	// ReplacementTrigger specifies that if set, the engine will diff this with
+	// the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger resource.PropertyValue
+
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.
 	RetainOnDelete *bool
+
+	// ResourceHooks specifies hooks to be executed before and after
+	// resource operations.
+	ResourceHooks map[resource.HookType][]string
 }
 
 // CustomTimeouts overrides default timeouts for resource operations.
@@ -808,6 +863,9 @@ type CallInfo struct {
 	DryRun         bool                  // true if we are performing a dry-run (preview).
 	Parallel       int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	MonitorAddress string                // the RPC address to the host resource monitor.
+
+	// A handle to the stack trace that originated the Call. Used to stitch together stack traces across plugins.
+	StackTraceHandle string
 }
 
 // CallOptions captures options for a call to Call.
@@ -819,9 +877,32 @@ type CallOptions struct {
 // CallResult is the result of a call to Call.
 type CallResult struct {
 	// The returned values, if the call was successful.
+	// In the case of a scalar/non-map result, a single key with any name can be used to return the
+	// value.
 	Return resource.PropertyMap
 	// A map from return value keys to the dependencies of the return value.
 	ReturnDependencies map[resource.PropertyKey][]resource.URN
 	// The failures if any arguments didn't pass verification.
 	Failures []CheckFailure
+}
+
+// View represents the state of a view resource.
+type View struct {
+	// The type of the view resource.
+	Type tokens.Type
+
+	// The name of the view resource.
+	Name string
+
+	// An optional type of the parent view resource.
+	ParentType tokens.Type
+
+	// An optional name of the parent view resource.
+	ParentName string
+
+	// The view resource's inputs.
+	Inputs resource.PropertyMap
+
+	// The view resource's outputs.
+	Outputs resource.PropertyMap
 }

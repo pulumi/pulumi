@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,20 +15,22 @@
 package deploytest
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"context"
+
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type Analyzer struct {
 	Info plugin.AnalyzerInfo
 
-	AnalyzeF      func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error)
-	AnalyzeStackF func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error)
-	RemediateF    func(r plugin.AnalyzerResource) ([]plugin.Remediation, error)
+	AnalyzeF      func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error)
+	AnalyzeStackF func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error)
+	RemediateF    func(r plugin.AnalyzerResource) (plugin.RemediateResponse, error)
 
 	ConfigureF func(policyConfig map[string]plugin.AnalyzerPolicyConfig) error
+	CancelF    func() error
 }
 
 var _ = plugin.Analyzer((*Analyzer)(nil))
@@ -41,41 +43,56 @@ func (a *Analyzer) Name() tokens.QName {
 	return tokens.QName(a.Info.Name)
 }
 
-func (a *Analyzer) Analyze(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error) {
+func (a *Analyzer) Analyze(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 	if a.AnalyzeF != nil {
 		return a.AnalyzeF(r)
 	}
-	return nil, nil
+	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *Analyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
+func (a *Analyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 	if a.AnalyzeStackF != nil {
 		return a.AnalyzeStackF(resources)
 	}
-	return nil, nil
+	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *Analyzer) Remediate(r plugin.AnalyzerResource) ([]plugin.Remediation, error) {
+func (a *Analyzer) Remediate(r plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 	if a.RemediateF != nil {
 		return a.RemediateF(r)
 	}
-	return nil, nil
+	return plugin.RemediateResponse{}, nil
 }
 
 func (a *Analyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
 	return a.Info, nil
 }
 
-func (a *Analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{
-		Kind: apitype.AnalyzerPlugin,
-		Name: a.Info.Name,
+func (a *Analyzer) GetPluginInfo() (plugin.PluginInfo, error) {
+	var version *semver.Version
+	if a.Info.Version != "" {
+		sv, err := semver.ParseTolerant(a.Info.Version)
+		if err != nil {
+			return plugin.PluginInfo{}, err
+		}
+		version = &sv
+	}
+
+	return plugin.PluginInfo{
+		Version: version,
 	}, nil
 }
 
 func (a *Analyzer) Configure(policyConfig map[string]plugin.AnalyzerPolicyConfig) error {
 	if a.ConfigureF != nil {
 		return a.ConfigureF(policyConfig)
+	}
+	return nil
+}
+
+func (a *Analyzer) Cancel(ctx context.Context) error {
+	if a.CancelF != nil {
+		return a.CancelF()
 	}
 	return nil
 }

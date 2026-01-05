@@ -45,6 +45,7 @@ class InputValuesForOutputsTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         return {
             "urn": self.make_urn(ty, name),

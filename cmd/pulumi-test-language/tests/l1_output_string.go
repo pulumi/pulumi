@@ -18,9 +18,10 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -30,25 +31,26 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 6, "expected 6 outputs")
-					AssertPropertyMapMember(l, outputs, "empty", resource.NewStringProperty(""))
-					AssertPropertyMapMember(l, outputs, "small", resource.NewStringProperty("Hello world!"))
-					AssertPropertyMapMember(l, outputs, "emoji", resource.NewStringProperty("👋 \"Hello \U0001019b!\" 😊"))
-					AssertPropertyMapMember(l, outputs, "escape", resource.NewStringProperty(
+					require.Len(l, outputs, 6, "expected 6 outputs")
+					AssertPropertyMapMember(l, outputs, "empty", resource.NewProperty(""))
+					AssertPropertyMapMember(l, outputs, "small", resource.NewProperty("Hello world!"))
+					AssertPropertyMapMember(l, outputs, "emoji", resource.NewProperty("👋 \"Hello \U0001019b!\" 😊"))
+					AssertPropertyMapMember(l, outputs, "escape", resource.NewProperty(
 						"Some ${common} \"characters\" 'that' need escaping: "+
 							"\\ (backslash), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
-					AssertPropertyMapMember(l, outputs, "escapeNewline", resource.NewStringProperty(
+					AssertPropertyMapMember(l, outputs, "escapeNewline", resource.NewProperty(
 						"Some ${common} \"characters\" 'that' need escaping: "+
 							"\\ (backslash), \n (newline), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
 
 					large := strings.Repeat(lorem+"\n", 150)
-					AssertPropertyMapMember(l, outputs, "large", resource.NewStringProperty(large))
+					AssertPropertyMapMember(l, outputs, "large", resource.NewProperty(large))
 				},
 			},
 		},

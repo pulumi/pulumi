@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type SimpleInvokeProvider struct {
@@ -48,9 +47,9 @@ func (p *SimpleInvokeProvider) Pkg() tokens.Package {
 	return "simple-invoke"
 }
 
-func (p *SimpleInvokeProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *SimpleInvokeProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("10.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }
@@ -204,7 +203,8 @@ func (p *SimpleInvokeProvider) CheckConfig(
 func (p *SimpleInvokeProvider) Invoke(
 	_ context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
-	if req.Tok == "simple-invoke:index:myInvoke" {
+	switch req.Tok {
+	case "simple-invoke:index:myInvoke":
 		value, ok := req.Args["value"]
 		if !ok {
 			return plugin.InvokeResponse{
@@ -229,10 +229,40 @@ func (p *SimpleInvokeProvider) Invoke(
 
 		return plugin.InvokeResponse{
 			Properties: resource.PropertyMap{
-				"result": resource.NewStringProperty(value.StringValue() + " world"),
+				"result": resource.NewProperty(value.StringValue() + " world"),
 			},
 		}, nil
-	} else if req.Tok == "simple-invoke:index:unit" {
+	case "simple-invoke:index:myInvokeScalar":
+		value, ok := req.Args["value"]
+		if !ok {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("value", "missing value"),
+			}, nil
+		}
+
+		if value.IsComputed() {
+			return plugin.InvokeResponse{
+				// providers should not get computed values (during preview)
+				// since we bail out early in the core SDKs or generated provider SDKs
+				// when we encounter unknowns
+				Failures: makeCheckFailure("value", "value is unknown when calling myInvokeScalar"),
+			}, nil
+		}
+
+		if !value.IsString() {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("value", "is not a string"),
+			}, nil
+		}
+
+		// Single value returns work because SDKs automatically extract single value returns in their
+		// invoke implementations.
+		return plugin.InvokeResponse{
+			Properties: resource.PropertyMap{
+				"result": resource.NewProperty(true),
+			},
+		}, nil
+	case "simple-invoke:index:unit":
 		if len(req.Args) > 0 {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.Args)),
@@ -241,10 +271,10 @@ func (p *SimpleInvokeProvider) Invoke(
 
 		return plugin.InvokeResponse{
 			Properties: resource.PropertyMap{
-				"result": resource.NewStringProperty("Hello world"),
+				"result": resource.NewProperty("Hello world"),
 			},
 		}, nil
-	} else if req.Tok == "simple-invoke:index:secretInvoke" {
+	case "simple-invoke:index:secretInvoke":
 		value, ok := req.Args["value"]
 		if !ok {
 			return plugin.InvokeResponse{
@@ -278,7 +308,7 @@ func (p *SimpleInvokeProvider) Invoke(
 		}
 
 		// if the secretResponse is true, wrap the response as a secret
-		response := resource.NewStringProperty(value.StringValue() + " world")
+		response := resource.NewProperty(value.StringValue() + " world")
 		if secretResponse.BoolValue() {
 			response = resource.MakeSecret(response)
 		}
@@ -327,7 +357,7 @@ func (p *SimpleInvokeProvider) Create(
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
 		Properties: resource.PropertyMap{
-			"text": resource.NewStringProperty("Goodbye"),
+			"text": resource.NewProperty("Goodbye"),
 		},
 		Status: resource.StatusOK,
 	}, nil

@@ -23,12 +23,13 @@ import (
 	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -109,10 +110,10 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
 
 		// B::1 and A::4 will have changes. The latter will also have input changes.
-		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
+		"1": {Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")}, Inputs: resource.PropertyMap{}},
 		"4": {
-			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
-			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
+			Outputs: resource.PropertyMap{"baz": resource.NewProperty("qux")},
+			Inputs:  resource.PropertyMap{"oof": resource.NewProperty("zab")},
 		},
 
 		// C::2 and C::5 will be deleted.
@@ -130,6 +131,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					new, hasNewState := newStates[req.ID]
 					assert.True(t, hasNewState)
+					new.ID = req.ID
 					return plugin.ReadResponse{
 						ReadResult: new,
 						Status:     resource.StatusOK,
@@ -216,10 +218,10 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 
 		// The only resources left in the checkpoint should be those that were not deleted by the refresh.
 		expected := newStates[r.ID]
-		assert.NotNil(t, expected)
+		require.NotNil(t, expected)
 
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		targetedForRefresh := len(refreshTargets) == 0
 		for _, targetUrn := range refreshTargets {

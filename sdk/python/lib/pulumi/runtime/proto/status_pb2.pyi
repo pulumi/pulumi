@@ -15,22 +15,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import builtins
 import collections.abc
 import google.protobuf.any_pb2
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
-import sys
-
-if sys.version_info >= (3, 8):
-    import typing as typing_extensions
-else:
-    import typing_extensions
+import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-@typing_extensions.final
+@typing.final
 class Status(google.protobuf.message.Message):
     """The `Status` type defines a logical error model that is suitable for different
     programming environments, including REST APIs and RPC APIs. It is used by
@@ -103,6 +99,7 @@ class Status(google.protobuf.message.Message):
         """A list of messages that carry the error details.  There will be a
         common set of message types for APIs to use.
         """
+
     def __init__(
         self,
         *,
@@ -110,6 +107,6 @@ class Status(google.protobuf.message.Message):
         message: builtins.str = ...,
         details: collections.abc.Iterable[google.protobuf.any_pb2.Any] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["code", b"code", "details", b"details", "message", b"message"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["code", b"code", "details", b"details", "message", b"message"]) -> None: ...
 
 global___Status = Status

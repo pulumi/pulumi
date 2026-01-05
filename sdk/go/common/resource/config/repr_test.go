@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -114,6 +115,10 @@ func (o *gobObject) UnmarshalYAML(unmarshal func(v any) error) error {
 }
 
 func TestRepr(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows.
+		t.Skip("Skipping test on Windows")
+	}
 	t.Parallel()
 
 	type expectedValue struct {

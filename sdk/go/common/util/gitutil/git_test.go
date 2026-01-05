@@ -20,9 +20,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -39,12 +41,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+func TestMain(m *testing.M) {
+	if runtime.GOOS == "windows" {
+		// These tests are skipped as part of enabling running unit tests on windows and MacOS in
+		// https://github.com/pulumi/pulumi/pull/19653. These tests currently fail on Windows, and
+		// re-enabling them is left as future work.
+		// TODO[pulumi/pulumi#19675]: Re-enable tests on windows once they are fixed.
+		fmt.Println("Skip tests on windows until they are fixed")
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
+
 func TestParseGitRepoURL(t *testing.T) {
 	t.Parallel()
 
 	test := func(expectedURL, expectedURLPath string, rawurl string) {
 		actualURL, actualURLPath, err := ParseGitRepoURL(rawurl)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expectedURL, actualURL)
 		assert.Equal(t, expectedURLPath, actualURLPath)
 	}
@@ -174,18 +188,18 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 	// Create local test repository.
 	repoPath := filepath.Join(e.RootPath, "repo")
 	err := os.MkdirAll(repoPath, os.ModePerm)
-	assert.NoError(e, err, "making repo dir %s", repoPath)
+	require.NoError(e, err, "making repo dir %s", repoPath)
 	e.CWD = repoPath
 	createTestRepo(e)
 
 	// Create temp directory to clone to.
 	cloneDir := filepath.Join(e.RootPath, "temp")
 	err = os.MkdirAll(cloneDir, os.ModePerm)
-	assert.NoError(e, err, "making clone dir %s", cloneDir)
+	require.NoError(e, err, "making clone dir %s", cloneDir)
 
 	test := func(expectedHashOrBranch string, expectedSubDirectory string, urlPath string) {
 		ref, hash, subDirectory, err := GetGitReferenceNameOrHashAndSubDirectory(repoPath, urlPath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if ref != "" {
 			assert.True(t, hash.IsZero())
@@ -378,13 +392,29 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 		{"svn:something.com/owner/repo", nil},
 		{"https://bitbucket.org/foo.git", nil},
 		{"git@github.foo.acme.bad-tld:owner-name/repo-name.git", nil},
+		{
+			"git@github.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitHubHostName},
+		},
+		{
+			"git@github.enterprise.example.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.enterprise.example.com"},
+		},
+		{
+			"https://github.com/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitHubHostName},
+		},
+		{
+			"https://github.enterprise.example.com/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.enterprise.example.com"},
+		},
 	}
 
 	for _, test := range gitTests {
 		got, err := TryGetVCSInfo(test.Remote)
 		// Only assert the returned error if we don't expect to get an error.
 		if test.WantVCSInfo != nil {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		assert.Equal(t, test.WantVCSInfo, got)
 	}
@@ -401,12 +431,11 @@ func (c *mockSSHConfig) GetStrict(host, key string) (string, error) {
 	return c.path, c.err
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestParseAuthURL(t *testing.T) {
 	//nolint: gosec
 	generateSSHKey := func(t *testing.T, passphrase string) string {
 		r := rand.New(rand.NewSource(0))
-		key, err := rsa.GenerateKey(r, 256)
+		key, err := rsa.GenerateKey(r, 1024)
 		require.NoError(t, err)
 
 		block := &pem.Block{
@@ -432,7 +461,7 @@ func TestParseAuthURL(t *testing.T) {
 		t.Setenv("GITLAB_TOKEN", "")
 
 		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, auth)
 	})
 
@@ -441,7 +470,7 @@ func TestParseAuthURL(t *testing.T) {
 		t.Setenv("GITLAB_TOKEN", "")
 
 		url, auth, err := getAuthForURL("http://user@github.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "user"}, auth)
 		assert.Equal(t, "http://github.com/pulumi/templates", url)
 	})
@@ -449,7 +478,7 @@ func TestParseAuthURL(t *testing.T) {
 	t.Run("with basic auth user/password", func(t *testing.T) {
 		t.Parallel()
 		url, auth, err := getAuthForURL("http://user:password@github.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
 		assert.Equal(t, "http://github.com/pulumi/templates", url)
 	})
@@ -457,11 +486,15 @@ func TestParseAuthURL(t *testing.T) {
 	t.Run("with GITHUB_TOKEN set in environment", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", "token-1")
 		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+
+		_, auth, err = getAuthForURL("http://github.enterprise.example.com/pulumi/templates")
+		require.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
 
 		_, auth, err = getAuthForURL("http://gitlab.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, auth)
 	})
 
@@ -469,11 +502,15 @@ func TestParseAuthURL(t *testing.T) {
 		t.Setenv("GITLAB_TOKEN", "token-1")
 		t.Setenv("GITHUB_TOKEN", "")
 		_, auth, err := getAuthForURL("http://gitlab.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "oauth2", Password: "token-1"}, auth)
+
+		_, auth, err = getAuthForURL("http://gitlab.enterprise.example.com/pulumi/templates")
+		require.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "oauth2", Password: "token-1"}, auth)
 
 		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, auth)
 	})
 
@@ -481,11 +518,10 @@ func TestParseAuthURL(t *testing.T) {
 		t.Setenv("GIT_USERNAME", "user")
 		t.Setenv("GIT_PASSWORD", "password")
 		_, auth, err := getAuthForURL("http://example.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
 	})
 
-	//nolint:paralleltest // global environment variables
 	t.Run("with passphrase-protected key and environment variable", func(t *testing.T) {
 		passphrase := "foobar"
 		t.Setenv(env.GitSSHPassphrase.Var().Name(), passphrase)
@@ -495,13 +531,12 @@ func TestParseAuthURL(t *testing.T) {
 		}
 
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
-		assert.NoError(t, err)
-		assert.NotNil(t, auth)
+		require.NoError(t, err)
+		require.NotNil(t, auth)
 		assert.Equal(t, "user: git, name: ssh-public-keys", auth.String())
 		assert.Contains(t, parser.sshKeys, "github.com")
 	})
 
-	//nolint:paralleltest // global environment variables
 	t.Run("with passphrase-protected key and wrong environment variable (agent available)", func(t *testing.T) {
 		l, err := nettest.NewLocalListener("unix")
 		defer contract.IgnoreClose(l)
@@ -517,11 +552,10 @@ func TestParseAuthURL(t *testing.T) {
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
 		// This isn't an error because the connection should fall back to the
 		// SSH agent for auth.
-		assert.NoError(t, err)
-		assert.NotNil(t, auth)
+		require.NoError(t, err)
+		require.NotNil(t, auth)
 	})
 
-	//nolint:paralleltest // global environment variables
 	t.Run("with passphrase-protected key and wrong environment variable (agent unavailable)", func(t *testing.T) {
 		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
 		t.Setenv("SSH_AUTH_SOCK", "")
@@ -546,12 +580,11 @@ func TestParseAuthURL(t *testing.T) {
 		}
 
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
-		assert.NoError(t, err)
-		assert.NotNil(t, auth)
+		require.NoError(t, err)
+		require.NotNil(t, auth)
 		assert.Equal(t, "http-basic-auth - foo:<empty>", auth.String())
 	})
 
-	//nolint:paralleltest // modifies environment variables
 	t.Run("Don't cache on error", func(t *testing.T) {
 		// Regression test for https://github.com/pulumi/pulumi/issues/16637
 		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
@@ -611,7 +644,6 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -657,11 +689,10 @@ func TestGetLatestTagOrHash(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			v, err := GetLatestTagOrHash(context.Background(), c.dataDir)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, c.expected.String(), v.String())
 		})
 	}

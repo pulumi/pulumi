@@ -16,9 +16,10 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -28,29 +29,30 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 4, "expected 4 outputs")
-					AssertPropertyMapMember(l, outputs, "empty", resource.NewObjectProperty(resource.PropertyMap{}))
-					AssertPropertyMapMember(l, outputs, "strings", resource.NewObjectProperty(resource.PropertyMap{
-						"greeting": resource.NewStringProperty("Hello, world!"),
-						"farewell": resource.NewStringProperty("Goodbye, world!"),
+					require.Len(l, outputs, 4, "expected 4 outputs")
+					AssertPropertyMapMember(l, outputs, "empty", resource.NewProperty(resource.PropertyMap{}))
+					AssertPropertyMapMember(l, outputs, "strings", resource.NewProperty(resource.PropertyMap{
+						"greeting": resource.NewProperty("Hello, world!"),
+						"farewell": resource.NewProperty("Goodbye, world!"),
 					}))
-					AssertPropertyMapMember(l, outputs, "numbers", resource.NewObjectProperty(resource.PropertyMap{
-						"1": resource.NewNumberProperty(1),
-						"2": resource.NewNumberProperty(2),
+					AssertPropertyMapMember(l, outputs, "numbers", resource.NewProperty(resource.PropertyMap{
+						"1": resource.NewProperty(1.0),
+						"2": resource.NewProperty(2.0),
 					}))
-					AssertPropertyMapMember(l, outputs, "keys", resource.NewObjectProperty(resource.PropertyMap{
-						"my.key": resource.NewNumberProperty(1),
-						"my-key": resource.NewNumberProperty(2),
-						"my_key": resource.NewNumberProperty(3),
-						"MY_KEY": resource.NewNumberProperty(4),
-						"mykey":  resource.NewNumberProperty(5),
-						"MYKEY":  resource.NewNumberProperty(6),
+					AssertPropertyMapMember(l, outputs, "keys", resource.NewProperty(resource.PropertyMap{
+						"my.key": resource.NewProperty(1.0),
+						"my-key": resource.NewProperty(2.0),
+						"my_key": resource.NewProperty(3.0),
+						"MY_KEY": resource.NewProperty(4.0),
+						"mykey":  resource.NewProperty(5.0),
+						"MYKEY":  resource.NewProperty(6.0),
 					}))
 				},
 			},

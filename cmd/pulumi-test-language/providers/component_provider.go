@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -59,9 +58,9 @@ func (p *ComponentProvider) Pkg() tokens.Package {
 	return "component"
 }
 
-func (p *ComponentProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *ComponentProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	version := semver.MustParse("13.3.7")
-	info := workspace.PluginInfo{Version: &version}
+	info := plugin.PluginInfo{Version: &version}
 	return info, nil
 }
 
@@ -371,8 +370,9 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 ) (plugin.ConstructResponse, error) {
 	// Register the parent component.
 	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type: "component:index:ComponentCustomRefOutput",
-		Name: req.Name,
+		Type:     "component:index:ComponentCustomRefOutput",
+		Name:     req.Name,
+		Provider: req.Options.Providers["component"],
 	})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)
@@ -380,11 +380,12 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 
 	// Register the child resource, parented to the component we just created.
 	child, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:    "component:index:Custom",
-		Custom:  true,
-		Name:    req.Name + "-child",
-		Parent:  parent.Urn,
-		Version: "13.3.7",
+		Type:     "component:index:Custom",
+		Custom:   true,
+		Name:     req.Name + "-child",
+		Parent:   parent.Urn,
+		Version:  "13.3.7",
+		Provider: req.Options.Providers["component"],
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"value": structpb.NewStringValue(req.Inputs["value"].StringValue()),
@@ -397,9 +398,9 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 
 	// Create a resource reference to the child, that we'll register as an output of the component and return as part of
 	// our ConstructResponse.
-	refPropVal := resource.NewResourceReferenceProperty(resource.ResourceReference{
+	refPropVal := resource.NewProperty(resource.ResourceReference{
 		URN: resource.URN(child.Urn),
-		ID:  resource.NewStringProperty(child.Id),
+		ID:  resource.NewProperty(child.Id),
 	})
 	refStruct, err := plugin.MarshalPropertyValue("ref", refPropVal, plugin.MarshalOptions{
 		KeepResources: true,
@@ -426,7 +427,7 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Outputs: resource.NewPropertyMapFromMap(map[string]any{
 			"value": value,
 			"ref":   refPropVal,
 		}),
@@ -440,8 +441,9 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 ) (plugin.ConstructResponse, error) {
 	// Register the parent component.
 	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type: "component:index:ComponentCustomRefInputOutput",
-		Name: req.Name,
+		Type:     "component:index:ComponentCustomRefInputOutput",
+		Name:     req.Name,
+		Provider: req.Options.Providers["component"],
 	})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)
@@ -470,11 +472,12 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 
 	// Register the child resource, parented to the component we just created.
 	child, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:    "component:index:Custom",
-		Custom:  true,
-		Name:    req.Name + "-child",
-		Parent:  parent.Urn,
-		Version: "13.3.7",
+		Type:     "component:index:Custom",
+		Custom:   true,
+		Name:     req.Name + "-child",
+		Parent:   parent.Urn,
+		Version:  "13.3.7",
+		Provider: req.Options.Providers["component"],
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"value": getRes.Return.Fields["state"].GetStructValue().Fields["value"],
@@ -486,7 +489,7 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 	}
 
 	// Create resource references for the inputRef and outputRef component outputs.
-	inputRefPropVal := resource.NewResourceReferenceProperty(inputRef)
+	inputRefPropVal := resource.NewProperty(inputRef)
 	inputRefStruct, err := plugin.MarshalPropertyValue("inputRef", inputRefPropVal, plugin.MarshalOptions{
 		KeepResources: true,
 		KeepSecrets:   true,
@@ -495,9 +498,9 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 		return plugin.ConstructResponse{}, fmt.Errorf("marshal input ref: %w", err)
 	}
 
-	outputRefPropVal := resource.NewResourceReferenceProperty(resource.ResourceReference{
+	outputRefPropVal := resource.NewProperty(resource.ResourceReference{
 		URN: resource.URN(child.Urn),
-		ID:  resource.NewStringProperty(child.Id),
+		ID:  resource.NewProperty(child.Id),
 	})
 	outputRefStruct, err := plugin.MarshalPropertyValue("outputRef", outputRefPropVal, plugin.MarshalOptions{
 		KeepResources: true,
@@ -523,7 +526,7 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Outputs: resource.NewPropertyMapFromMap(map[string]any{
 			"inputRef":  inputRefPropVal,
 			"outputRef": outputRefPropVal,
 		}),
@@ -537,8 +540,9 @@ func (p *ComponentProvider) constructComponentCallable(
 ) (plugin.ConstructResponse, error) {
 	// Register the parent component.
 	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type: "component:index:ComponentCallable",
-		Name: req.Name,
+		Type:     "component:index:ComponentCallable",
+		Name:     req.Name,
+		Provider: req.Options.Providers["component"],
 	})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)
@@ -546,11 +550,12 @@ func (p *ComponentProvider) constructComponentCallable(
 
 	// Register a child resource, parented to the component we just created.
 	child, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:    "component:index:Custom",
-		Custom:  true,
-		Name:    req.Name + "-child",
-		Parent:  parent.Urn,
-		Version: "13.3.7",
+		Type:     "component:index:Custom",
+		Custom:   true,
+		Name:     req.Name + "-child",
+		Parent:   parent.Urn,
+		Version:  "13.3.7",
+		Provider: req.Options.Providers["component"],
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"value": structpb.NewStringValue(req.Inputs["value"].StringValue()),
@@ -577,7 +582,7 @@ func (p *ComponentProvider) constructComponentCallable(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Outputs: resource.NewPropertyMapFromMap(map[string]any{
 			"value": value,
 		}),
 	}, nil
@@ -598,9 +603,10 @@ func (p *ComponentProvider) Call(
 	defer conn.Close()
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
-	if req.Tok == "component:index:ComponentCallable/identity" {
+	switch req.Tok {
+	case "component:index:ComponentCallable/identity":
 		return p.callComponentCallableIdentity(ctx, req, monitor)
-	} else if req.Tok == "component:index:ComponentCallable/prefixed" {
+	case "component:index:ComponentCallable/prefixed":
 		return p.callComponentCallablePrefixed(ctx, req, monitor)
 	}
 
@@ -631,7 +637,7 @@ func (p *ComponentProvider) callComponentCallableIdentity(
 	result := value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil
@@ -674,7 +680,7 @@ func (p *ComponentProvider) callComponentCallablePrefixed(
 	result := prefix.StringValue() + value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil

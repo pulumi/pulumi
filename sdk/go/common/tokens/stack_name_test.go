@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseStackName_AcceptsValidInput(t *testing.T) {
@@ -39,7 +40,7 @@ func TestParseStackName_AcceptsValidInput(t *testing.T) {
 
 		// Assert.
 		assert.Equal(t, tt, sn.String())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -90,7 +91,6 @@ func TestParseStackName_RejectsInvalidInput(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -115,7 +115,6 @@ func TestStackNameValidation_AssertsNonEmpty(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Modifies the environment
 func TestStackNameValidation_CanBeDisabled(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_VALIDATION", "true")
 
@@ -124,7 +123,7 @@ func TestStackNameValidation_CanBeDisabled(t *testing.T) {
 	sn2, err := ParseStackName("")
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "", sn1.String())
 	assert.Equal(t, "", sn2.String())
 }

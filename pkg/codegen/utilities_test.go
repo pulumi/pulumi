@@ -56,13 +56,15 @@ func TestResolvingPackageReferences(t *testing.T) {
 	testdataPath := filepath.Join("testing", "test", "testdata")
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("awsx-1.0.0-beta.5.json")
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NotNil(t, pkg)
 	require.NoError(t, err)
 	require.Empty(t, diags)
 	// ensure that package references return aws because awsx depends on aws
 	references := PackageReferences(pkg)
-	require.Equal(t, 1, len(references))
+	require.Len(t, references, 1)
 	assert.Equal(t, "aws", references[0].Name())
 }
 

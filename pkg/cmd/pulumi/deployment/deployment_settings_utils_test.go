@@ -37,18 +37,18 @@ func TestRepoLookup(t *testing.T) {
 		wd := "/"
 
 		rl, err := newRepoLookup(wd)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &noRepoLookupImpl{}, rl)
 
 		dir, err := rl.GetRootDirectory(wd)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, ".", dir)
 
 		branch := rl.GetBranchName()
 		assert.Equal(t, "", branch)
 
 		remote, err := rl.RemoteURL()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "", remote)
 
 		root := rl.GetRepoRoot()
@@ -62,11 +62,11 @@ func TestRepoLookup(t *testing.T) {
 		workDir := filepath.Join(repoDir, "goproj")
 
 		rl, err := newRepoLookup(workDir)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, &repoLookupImpl{}, rl)
 
 		dir, err := rl.GetRootDirectory(filepath.Join(workDir, "something"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// should assure the directory is using linux path separator as deployments are
 		// currently run only on linux images.
 		assert.Equal(t, filepath.Join("goproj", "something"), dir)
@@ -75,7 +75,7 @@ func TestRepoLookup(t *testing.T) {
 		assert.Equal(t, "refs/heads/master", branch)
 
 		remote, err := rl.RemoteURL()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "https://github.com/pulumi/test-repo.git", remote)
 
 		assert.Equal(t, filepath.Dir(workDir), rl.GetRepoRoot())
@@ -192,11 +192,11 @@ func TestDSFileParsing(t *testing.T) {
 	require.Equal(t, "git@github.com:pulumi/test-repo.git", deploymentFile.DeploymentSettings.SourceContext.Git.RepoURL)
 	require.Equal(t, "main", deploymentFile.DeploymentSettings.SourceContext.Git.Branch)
 	require.Equal(t, ".", deploymentFile.DeploymentSettings.SourceContext.Git.RepoDir)
-	assert.NotNil(t, deploymentFile.DeploymentSettings.SourceContext.Git.GitAuth)
-	assert.NotNil(t, deploymentFile.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth)
-	assert.NotNil(t, deploymentFile.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName)
+	require.NotNil(t, deploymentFile.DeploymentSettings.SourceContext.Git.GitAuth)
+	require.NotNil(t, deploymentFile.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth)
+	require.NotNil(t, deploymentFile.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName)
 	assert.Equal(t, "jdoe", deploymentFile.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.UserName.Value)
-	assert.NotNil(t, deploymentFile.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.Password)
+	require.NotNil(t, deploymentFile.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.Password)
 	assert.Equal(t, "AAABAMcGtHDraogfM3Qk4WyaNp3F/syk2cjHPQTb6Hu6ps8=",
 		deploymentFile.DeploymentSettings.SourceContext.Git.GitAuth.BasicAuth.Password.Ciphertext)
 	require.NotNil(t, deploymentFile.DeploymentSettings.Operation)
@@ -205,10 +205,10 @@ func TestDSFileParsing(t *testing.T) {
 	require.True(t, deploymentFile.DeploymentSettings.Operation.Options.SkipIntermediateDeployments)
 	require.False(t, deploymentFile.DeploymentSettings.Operation.Options.DeleteAfterDestroy)
 	require.False(t, deploymentFile.DeploymentSettings.Operation.Options.RemediateIfDriftDetected)
-	assert.NotNil(t, deploymentFile.DeploymentSettings.Operation.OIDC)
+	require.NotNil(t, deploymentFile.DeploymentSettings.Operation.OIDC)
 	assert.Nil(t, deploymentFile.DeploymentSettings.Operation.OIDC.Azure)
 	assert.Nil(t, deploymentFile.DeploymentSettings.Operation.OIDC.GCP)
-	assert.NotNil(t, deploymentFile.DeploymentSettings.Operation.OIDC.AWS)
+	require.NotNil(t, deploymentFile.DeploymentSettings.Operation.OIDC.AWS)
 	assert.Equal(t, "the_session_name", deploymentFile.DeploymentSettings.Operation.OIDC.AWS.SessionName)
 	assert.Equal(t, "the_role", deploymentFile.DeploymentSettings.Operation.OIDC.AWS.RoleARN)
 	duration, _ := time.ParseDuration("1h0m0s")
@@ -229,7 +229,7 @@ func setUpGitWorkspace(ctx context.Context, t *testing.T) string {
 	}
 
 	_, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return workDir
 }

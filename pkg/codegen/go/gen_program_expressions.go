@@ -921,7 +921,8 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		return "map[string]" + valType
 	case *model.ListType:
 		argTypeName := g.argumentTypeName(destType.ElementType, isInput)
-		if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
+		isResourceTypeName := argTypeName == "pulumi.Resource" || argTypeName == "pulumi.ProviderResource"
+		if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 			if argTypeName == "pulumi.Any" {
 				return "pulumi.Array"
 			}
@@ -947,9 +948,10 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			}
 		}
 
-		if elmType != nil {
+		if elmType != nil && elmType != model.NoneType {
 			argTypeName := g.argumentTypeName(elmType, isInput)
-			if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
+			isResourceTypeName := argTypeName == "pulumi.Resource" || argTypeName == "pulumi.ProviderResource"
+			if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 				if argTypeName == "pulumi.Any" {
 					return "pulumi.Array"
 				}
@@ -1053,7 +1055,7 @@ func (nameInfo) Format(name string) string {
 
 // lowerExpression amends the expression with intrinsics for Go generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
-	model.Expression, []interface{},
+	model.Expression, []any,
 ) {
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
@@ -1066,7 +1068,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 
 	bufferSize := len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps)
-	temps := slice.Prealloc[interface{}](bufferSize)
+	temps := slice.Prealloc[any](bufferSize)
 	for _, t := range tTemps {
 		temps = append(temps, t)
 	}
@@ -1092,7 +1094,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	return expr, temps
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagWarning,
@@ -1160,11 +1162,7 @@ func (g *generator) rewriteThenForAllApply(
 	}
 
 	// dummy type that will produce []interface{} for argumentTypeName
-	interfaceArrayType := &model.TupleType{
-		ElementTypes: []model.Type{
-			model.BoolType, model.StringType, model.IntType,
-		},
-	}
+	interfaceArrayType := model.NewTupleType(model.BoolType, model.StringType, model.IntType)
 
 	then.Parameters = []*model.Variable{{
 		Name:         "_args",

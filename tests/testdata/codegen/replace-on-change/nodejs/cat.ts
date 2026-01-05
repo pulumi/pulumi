@@ -35,11 +35,11 @@ export class Cat extends pulumi.CustomResource {
         return obj['__pulumiType'] === Cat.__pulumiType;
     }
 
-    public /*out*/ readonly foes!: pulumi.Output<{[key: string]: outputs.Toy} | undefined>;
-    public /*out*/ readonly friends!: pulumi.Output<outputs.Toy[] | undefined>;
-    public /*out*/ readonly name!: pulumi.Output<string | undefined>;
-    public /*out*/ readonly other!: pulumi.Output<God | undefined>;
-    public /*out*/ readonly toy!: pulumi.Output<outputs.Toy | undefined>;
+    declare public /*out*/ readonly foes: pulumi.Output<{[key: string]: outputs.Toy} | undefined>;
+    declare public /*out*/ readonly friends: pulumi.Output<outputs.Toy[] | undefined>;
+    declare public /*out*/ readonly name: pulumi.Output<string | undefined>;
+    declare public /*out*/ readonly other: pulumi.Output<God | undefined>;
+    declare public /*out*/ readonly toy: pulumi.Output<outputs.Toy | undefined>;
 
     /**
      * Create a Cat resource with the given unique name, arguments, and options.

@@ -20,9 +20,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func testPrintf(t *testing.T, ins ...interface{}) {
+func testPrintf(t *testing.T, ins ...any) {
 	const f = "%v %v %v"
 	expected := fmt.Sprintf(f, "foo", 42, true)
 
@@ -33,7 +34,7 @@ func testPrintf(t *testing.T, ins ...interface{}) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, buf.String())
 
 	// Sprintf
@@ -42,7 +43,7 @@ func testPrintf(t *testing.T, ins ...interface{}) {
 	assert.False(t, secret)
 	assert.True(t, known)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, v)
 }
 

@@ -599,12 +599,11 @@ func TestProgramCodegen(
 		t.Skip("TestProgramCodegen is skipped on Windows")
 	}
 
-	assert.NotNil(t, testcase.TestCases, "Caller must provide test cases")
+	require.NotNil(t, testcase.TestCases, "Caller must provide test cases")
 	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 	skipCompile := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_COMPILE_TEST"))
 
 	for _, tt := range testcase.TestCases {
-		tt := tt // avoid capturing loop variable
 		t.Run(tt.Directory, func(t *testing.T) {
 			// These tests should not run in parallel.
 			// They take up a fair bit of memory
@@ -691,7 +690,7 @@ func TestProgramCodegen(
 					Runtime: workspace.NewProjectRuntimeInfo(testcase.Language, nil),
 				}
 				err = testcase.GenProject(testDir, project, program, nil /*localDependencies*/)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				depFilePath := filepath.Join(testDir, testcase.DependencyFile)
 				outfilePath := filepath.Join(testDir, testcase.OutputFile)
@@ -699,7 +698,7 @@ func TestProgramCodegen(
 				GenProjectCleanUp(t, testDir, depFilePath, outfilePath)
 			}
 			files, diags, err = testcase.GenProgram(program)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			if expectNYIDiags {
 				var tmpDiags hcl.Diagnostics
 				for _, d := range diags {

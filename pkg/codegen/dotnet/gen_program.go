@@ -35,7 +35,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type GenerateProgramOptions struct {
@@ -83,6 +85,10 @@ type generator struct {
 	// from an array
 	listInitializer         string
 	deferredOutputVariables []*pcl.DeferredOutputVariable
+	// Some of our names interfere with one another. For example, `Pulumi.Output` is a module, and `Output` exists in
+	// `Pulumi`, so programs that import `Pulumi` and `Pulumi.Output` hit name collisions. For this reason, we'll import
+	// the latter as `OutputProvider` rather than `Output`.
+	namespaceAliases map[string]string
 }
 
 func (g *generator) resetListInitializer() {
@@ -137,14 +143,15 @@ func GenerateProgramWithOptions(
 	}
 
 	g := &generator{
-		program:         program,
-		namespaces:      namespaces,
-		compatibilities: compatibilities,
-		tokenToModules:  tokenToModules,
-		functionArgs:    functionArgs,
-		functionInvokes: map[string]*schema.Function{},
-		generateOptions: options,
-		listInitializer: "new[]",
+		program:          program,
+		namespaces:       namespaces,
+		compatibilities:  compatibilities,
+		tokenToModules:   tokenToModules,
+		functionArgs:     functionArgs,
+		functionInvokes:  map[string]*schema.Function{},
+		generateOptions:  options,
+		listInitializer:  "new[]",
+		namespaceAliases: map[string]string{},
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -175,15 +182,16 @@ func GenerateProgramWithOptions(
 		componentNodes := pcl.Linearize(component.Program)
 
 		componentGenerator := &generator{
-			program:         component.Program,
-			namespaces:      namespaces,
-			compatibilities: compatibilities,
-			tokenToModules:  tokenToModules,
-			functionArgs:    functionArgs,
-			functionInvokes: map[string]*schema.Function{},
-			generateOptions: options,
-			isComponent:     true,
-			listInitializer: "new[]",
+			program:          component.Program,
+			namespaces:       namespaces,
+			compatibilities:  compatibilities,
+			tokenToModules:   tokenToModules,
+			functionArgs:     functionArgs,
+			functionInvokes:  map[string]*schema.Function{},
+			generateOptions:  options,
+			isComponent:      true,
+			listInitializer:  "new[]",
+			namespaceAliases: g.namespaceAliases,
 		}
 
 		componentGenerator.Formatter = format.NewFormatter(componentGenerator)
@@ -249,6 +257,127 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return GenerateProgramWithOptions(program, defaultOptions)
 }
 
+func generateProjectFile(program *pcl.Program, localDependencies map[string]string) ([]byte, error) {
+	// Build a .csproj based on the packages used by program.
+	// Using the current LTS of .NET which is 8.0 as of now.
+	var csproj bytes.Buffer
+	csproj.WriteString(`<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+`)
+
+	// find all the local dependency folders and add them as restore sources.
+	// restore sources are folders that contain nuget packages with (.nupkg files)
+	folders := mapset.NewSet[string]()
+	for _, dep := range localDependencies {
+		isLocalNugetPackage := strings.HasSuffix(dep, ".nupkg")
+		if isLocalNugetPackage {
+			folders.Add(path.Dir(dep))
+		}
+	}
+
+	restoreSources := folders.ToSlice()
+	sort.Strings(restoreSources)
+
+	if len(restoreSources) > 0 {
+		csproj.WriteString(`	<PropertyGroup>
+		<RestoreSources>`)
+		csproj.WriteString(strings.Join(restoreSources, ";"))
+		csproj.WriteString(`;$(RestoreSources)</RestoreSources>
+	</PropertyGroup>
+`)
+	}
+
+	csproj.WriteString("	<ItemGroup>\n")
+
+	// Add local package references
+	pkgs := maputil.SortedKeys(localDependencies)
+	for _, pkg := range pkgs {
+		isLocalNugetPackage := strings.HasSuffix(localDependencies[pkg], ".nupkg")
+		if !isLocalNugetPackage {
+			// only local nuget packages are referenced via a PackageReference
+			// if the local dependency is a source code package, it will be referenced
+			// via a ProjectReference instead
+			continue
+		}
+		nugetFilePath := localDependencies[pkg]
+		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {
+			csproj.WriteString(fmt.Sprintf(
+				"		<PackageReference Include=\"%s\" Version=\"%s\" />\n",
+				packageName, version))
+		} else {
+			return nil, fmt.Errorf("could not extract package name and version from %s", nugetFilePath)
+		}
+	}
+
+	if _, hasLocalPulumiReference := localDependencies[pulumiPackage]; !hasLocalPulumiReference {
+		csproj.WriteString("		<PackageReference Include=\"Pulumi\" Version=\"3.*\" />\n")
+	}
+
+	// For each package add a PackageReference line
+	packages, err := program.CollectNestedPackageSnapshots()
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range packages {
+		if p.Name == pulumiPackage {
+			continue
+		}
+
+		_, isLocal := localDependencies[p.Name]
+		isLocalNugetPackage := isLocal && strings.HasSuffix(localDependencies[p.Name], ".nupkg")
+		isLocalProjectReference := isLocal && !isLocalNugetPackage
+		if isLocalNugetPackage {
+			// skip local nuget package dependencies since we added them above
+			continue
+		}
+
+		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
+		projectReferenceTemplate := "		<ProjectReference Include=\"%s\" />\n"
+
+		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+			return nil, err
+		}
+
+		rootNamespace := "Pulumi"
+		if p.Namespace != "" {
+			rootNamespace = namespaceName(nil, p.Namespace)
+		}
+
+		packageName := rootNamespace + "." + namespaceName(map[string]string{}, p.Name)
+		if langInfo, found := p.Language["csharp"]; found {
+			csharpInfo, ok := langInfo.(CSharpPackageInfo)
+			if ok {
+				namespace := namespaceName(csharpInfo.Namespaces, p.Name)
+				packageName = fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
+			}
+		}
+
+		if isLocalProjectReference {
+			// local project reference
+			packageDir := localDependencies[p.Name]
+			projectPath := path.Join(packageDir, packageName+".csproj")
+			fmt.Fprintf(&csproj, projectReferenceTemplate, projectPath)
+		} else {
+			if p.Version != nil {
+				fmt.Fprintf(&csproj, packageTemplate, packageName, p.Version.String())
+			} else {
+				fmt.Fprintf(&csproj, packageTemplate, packageName, "*")
+			}
+		}
+	}
+
+	csproj.WriteString(`	</ItemGroup>
+
+</Project>`)
+
+	return csproj.Bytes(), nil
+}
+
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
@@ -283,99 +412,11 @@ func GenerateProject(
 		return fmt.Errorf("write Pulumi.yaml: %w", err)
 	}
 
-	// Build a .csproj based on the packages used by program.
-	// Using the current LTS of .NET which is 8.0 as of now.
-	var csproj bytes.Buffer
-	csproj.WriteString(`<Project Sdk="Microsoft.NET.Sdk">
-
-	<PropertyGroup>
-		<OutputType>Exe</OutputType>
-		<TargetFramework>net8.0</TargetFramework>
-		<Nullable>enable</Nullable>
-	</PropertyGroup>
-`)
-
-	// Find all the local dependency folders
-	folders := mapset.NewSet[string]()
-	for _, dep := range localDependencies {
-		folders.Add(path.Dir(dep))
-	}
-
-	restoreSources := folders.ToSlice()
-	sort.Strings(restoreSources)
-
-	if len(restoreSources) > 0 {
-		csproj.WriteString(`	<PropertyGroup>
-		<RestoreSources>`)
-		csproj.WriteString(strings.Join(restoreSources, ";"))
-		csproj.WriteString(`;$(RestoreSources)</RestoreSources>
-	</PropertyGroup>
-`)
-	}
-
-	csproj.WriteString("	<ItemGroup>\n")
-
-	// Add local package references
-	pkgs := codegen.SortedKeys(localDependencies)
-	for _, pkg := range pkgs {
-		nugetFilePath := localDependencies[pkg]
-		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {
-			csproj.WriteString(fmt.Sprintf(
-				"		<PackageReference Include=\"%s\" Version=\"%s\" />\n",
-				packageName, version))
-		} else {
-			return fmt.Errorf("could not extract package name and version from %s", nugetFilePath)
-		}
-	}
-
-	if _, hasLocalPulumiReference := localDependencies[pulumiPackage]; !hasLocalPulumiReference {
-		csproj.WriteString("		<PackageReference Include=\"Pulumi\" Version=\"3.*\" />\n")
-	}
-
-	// For each package add a PackageReference line
-	packages, err := program.CollectNestedPackageSnapshots()
+	csproj, err := generateProjectFile(program, localDependencies)
 	if err != nil {
 		return err
 	}
-	for _, p := range packages {
-		if _, isLocal := localDependencies[p.Name]; isLocal {
-			continue
-		}
-
-		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
-
-		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
-			return err
-		}
-		if p.Name == pulumiPackage {
-			continue
-		}
-
-		rootNamespace := "Pulumi"
-		if p.Namespace != "" {
-			rootNamespace = namespaceName(nil, p.Namespace)
-		}
-
-		packageName := rootNamespace + "." + namespaceName(map[string]string{}, p.Name)
-		if langInfo, found := p.Language["csharp"]; found {
-			csharpInfo, ok := langInfo.(CSharpPackageInfo)
-			if ok {
-				namespace := namespaceName(csharpInfo.Namespaces, p.Name)
-				packageName = fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
-			}
-		}
-		if p.Version != nil {
-			fmt.Fprintf(&csproj, packageTemplate, packageName, p.Version.String())
-		} else {
-			fmt.Fprintf(&csproj, packageTemplate, packageName, "*")
-		}
-	}
-
-	csproj.WriteString(`	</ItemGroup>
-
-</Project>`)
-
-	files[project.Name.String()+".csproj"] = csproj.Bytes()
+	files[project.Name.String()+".csproj"] = csproj
 
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(dotnetGitIgnore)
@@ -453,6 +494,68 @@ type programUsings struct {
 	pulumiHelperMethods codegen.StringSet
 }
 
+// setupNamespaceAlias sets up a namespace alias for the given package if it doesn't already exist.
+// It extracts CSharpPackageInfo, creates a safe alias using makeSafePulumiNamespace, stores it,
+// and adds the appropriate using statement to pulumiUsings.
+func (g *generator) setupNamespaceAlias(
+	pkg string,
+	pkgRef schema.PackageReference,
+	program *pcl.Program,
+	pulumiUsings codegen.StringSet,
+) {
+	if pkg == pulumiPackage {
+		return
+	}
+
+	pkgNamespace := namespaceName(g.namespaces[pkg], pkg)
+
+	// Get CSharpPackageInfo from the package reference
+	var info CSharpPackageInfo
+	if pkgRef != nil {
+		def, err := pkgRef.Definition()
+		if err == nil {
+			if csharpinfo, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
+				info = csharpinfo
+			}
+			if info.RootNamespace == "" && pkgRef.Namespace() != "" {
+				info.RootNamespace = namespaceName(nil, pkgRef.Namespace())
+			}
+		}
+	} else {
+		// Look up the package reference from the program
+		for _, ref := range program.PackageReferences() {
+			if ref.Name() == pkg {
+				def, err := ref.Definition()
+				if err == nil {
+					if csharpinfo, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
+						info = csharpinfo
+					}
+					if info.RootNamespace == "" && ref.Namespace() != "" {
+						info.RootNamespace = namespaceName(nil, ref.Namespace())
+					}
+				}
+				break
+			}
+		}
+	}
+
+	rootNamespace := info.GetRootNamespace()
+	if rootNamespace == "" {
+		rootNamespace = "Pulumi"
+	}
+
+	var safeAlias string
+	if existingAlias, exists := g.namespaceAliases[pkgNamespace]; exists {
+		safeAlias = existingAlias
+	} else {
+		safeAlias = makeSafePulumiNamespace(pkgNamespace)
+		g.namespaceAliases[pkgNamespace] = safeAlias
+	}
+
+	pkgFullNamespace := fmt.Sprintf("%s.%s", rootNamespace, pkgNamespace)
+	pulumiUsings.Add(fmt.Sprintf("%s = %s", safeAlias, pkgFullNamespace))
+}
+
 func (g *generator) usingStatements(program *pcl.Program) programUsings {
 	systemUsings := codegen.NewStringSet("System.Linq", "System.Collections.Generic")
 	pulumiUsings := codegen.NewStringSet()
@@ -461,24 +564,31 @@ func (g *generator) usingStatements(program *pcl.Program) programUsings {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pcl.FixupPulumiPackageTokens(r)
 			pkg, _, _, _ := r.DecomposeToken()
-			if pkg != pulumiPackage {
-				namespace := namespaceName(g.namespaces[pkg], pkg)
-				var info CSharpPackageInfo
-				if r.Schema != nil && r.Schema.PackageReference != nil {
-					def, err := r.Schema.PackageReference.Definition()
-					contract.AssertNoErrorf(err, "error loading definition for package %q", r.Schema.PackageReference.Name())
-					if csharpinfo, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
-						info = csharpinfo
-					}
-					if info.RootNamespace == "" && r.Schema.PackageReference.Namespace() != "" {
-						info.RootNamespace = namespaceName(nil, r.Schema.PackageReference.Namespace())
-					}
-				}
-				pulumiUsings.Add(fmt.Sprintf("%s = %[2]s.%[1]s", namespace, info.GetRootNamespace()))
+			var pkgRef schema.PackageReference
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				pkgRef = r.Schema.PackageReference
 			}
+			g.setupNamespaceAlias(pkg, pkgRef, program, pulumiUsings)
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
+				if call.Name == pcl.Invoke && len(call.Args) > 0 {
+					if tokenExpr, ok := call.Args[0].(*model.TemplateExpression); ok {
+						if len(tokenExpr.Parts) > 0 {
+							if literal, ok := tokenExpr.Parts[0].(*model.LiteralValueExpression); ok {
+								if literal.Value.Type().Equals(cty.String) {
+									token := literal.Value.AsString()
+									tokenRange := call.Args[0].SyntaxNode().Range()
+									pkg, _, _, diags := pcl.DecomposeToken(token, tokenRange)
+									if len(diags) == 0 {
+										g.setupNamespaceAlias(pkg, nil, program, pulumiUsings)
+									}
+								}
+							}
+						}
+					}
+				}
+
 				for _, i := range g.genFunctionUsings(call) {
 					if strings.HasPrefix(i, "System") {
 						systemUsings.Add(i)
@@ -701,7 +811,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 			g.Fprintf(w, "%s{\n", g.Indent)
 			g.Indented(func() {
 				objectTypedConfigVars := collectComponentObjectTypedConfigVariables(component)
-				variableNames := pcl.SortedStringKeys(objectTypedConfigVars)
+				variableNames := maputil.SortedKeys(objectTypedConfigVars)
 				// generate resource args for this component
 				for _, variableName := range variableNames {
 					objectType := objectTypedConfigVars[variableName]
@@ -709,7 +819,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 					g.Fprintf(w, "%spublic class %s : global::Pulumi.ResourceArgs\n", g.Indent, objectTypeName)
 					g.Fprintf(w, "%s{\n", g.Indent)
 					g.Indented(func() {
-						propertyNames := pcl.SortedStringKeys(objectType.Properties)
+						propertyNames := maputil.SortedKeys(objectType.Properties)
 						for _, propertyName := range propertyNames {
 							propertyType := objectType.Properties[propertyName]
 							inputType := componentInputType(propertyType)
@@ -954,11 +1064,11 @@ func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 	// those are referenced in config.GetObject<T> where T is one of these generated types
 	// they must be generated after the top-level statement call to Deployment.RunAsync
 	objectTypedConfigVariables := collectObjectTypedConfigVariables(g.program)
-	objectTypeKeys := pcl.SortedStringKeys(objectTypedConfigVariables)
+	objectTypeKeys := maputil.SortedKeys(objectTypedConfigVariables)
 	for _, typeName := range objectTypeKeys {
 		objectType := objectTypedConfigVariables[typeName]
 		g.Fgenf(w, "public class %s\n{\n", typeName)
-		sortedProperties := pcl.SortedStringKeys(objectType.Properties)
+		sortedProperties := maputil.SortedKeys(objectType.Properties)
 		for _, propertyName := range sortedProperties {
 			g.Indented(func() {
 				property := objectType.Properties[propertyName]
@@ -993,6 +1103,36 @@ func requiresAsyncInit(r *pcl.Resource) bool {
 	return model.ContainsPromises(r.Options.Range.Type())
 }
 
+// qualifiedTypeName processes namespace information and returns the root namespace and qualified type name.
+// It handles namespace token processing and namespace alias resolution.
+func (g *generator) qualifiedTypeName(pkg, module, member string) (string, string) {
+	namespaces := g.namespaces[pkg]
+	rootNamespace := namespaceName(namespaces, pkg)
+
+	namespace := namespaceName(namespaces, module)
+	namespaceTokens := strings.Split(namespace, "/")
+	for i, name := range namespaceTokens {
+		namespaceTokens[i] = Title(name)
+	}
+	namespace = strings.Join(namespaceTokens, ".")
+
+	pkgNamespace := namespaceName(namespaces, pkg)
+	if alias, ok := g.namespaceAliases[pkgNamespace]; ok {
+		typePrefix := alias
+		if namespace != "" {
+			typePrefix = fmt.Sprintf("%s.%s", alias, namespace)
+		}
+		return alias, fmt.Sprintf("%s.%s", typePrefix, Title(member))
+	}
+
+	if namespace != "" {
+		namespace = "." + namespace
+	}
+
+	qualifiedMemberName := fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
+	return rootNamespace, qualifiedMemberName
+}
+
 // resourceTypeName computes the C# class name for the given resource.
 func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	pcl.FixupPulumiPackageTokens(r)
@@ -1008,22 +1148,8 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 		}
 	}
 
-	namespaces := g.namespaces[pkg]
-	rootNamespace := namespaceName(namespaces, pkg)
-
-	namespace := namespaceName(namespaces, module)
-	namespaceTokens := strings.Split(namespace, "/")
-	for i, name := range namespaceTokens {
-		namespaceTokens[i] = Title(name)
-	}
-	namespace = strings.Join(namespaceTokens, ".")
-
-	if namespace != "" {
-		namespace = "." + namespace
-	}
-
-	qualifiedMemberName := fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
-	return qualifiedMemberName
+	_, qualifiedName := g.qualifiedTypeName(pkg, module, member)
+	return qualifiedName
 }
 
 func (g *generator) extractInputPropertyNameMap(r *pcl.Resource) map[string]string {
@@ -1069,15 +1195,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := pcl.DecomposeToken(token, tokenRange)
 	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
-	namespaces := g.namespaces[pkg]
-	rootNamespace := namespaceName(namespaces, pkg)
-	namespace := namespaceName(namespaces, module)
-
-	if namespace != "" {
-		namespace = "." + namespace
-	}
-
-	return rootNamespace, fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
+	return g.qualifiedTypeName(pkg, module, member)
 }
 
 func (g *generator) toSchemaType(destType model.Type) (schema.Type, bool) {
@@ -1173,12 +1291,13 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 			contract.IgnoreError(err)
 		}
 
-		if name == "IgnoreChanges" {
-			// ignore changes need to be special cased
-			// because new [] { "field" } cannot be implicitly casted to List<string>
-			// which is the type of IgnoreChanges
+		switch name {
+		case "IgnoreChanges", "HideDiffs":
+			// IgnoreChanges and HideDiffs need to be special cased because
+			// new [] { "field" } cannot be implicitly casted to List<string>
+			// which is the type of IgnoreChanges and HideDiffs
 			if changes, isTuple := value.(*model.TupleConsExpression); isTuple {
-				g.Fgenf(&result, "\n%sIgnoreChanges =", g.Indent)
+				g.Fgenf(&result, "\n%s%s =", g.Indent, name)
 				g.Fgenf(&result, "\n%s{", g.Indent)
 				g.Indented(func() {
 					for _, v := range changes.Expressions {
@@ -1189,7 +1308,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
-		} else if name == "Parent" {
+		case "Parent":
 			// special case parent = this, do not escape "this"
 			if parent, isThis := value.(*model.ScopeTraversalExpression); isThis {
 				if parent.RootName == "this" && len(parent.Parts) == 1 && g.isComponent {
@@ -1200,12 +1319,19 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
-		} else if name == "DependsOn" {
-			// depends on need to be special cased
-			// because new [] { resourceA, resourceB } cannot be implicitly casted to InputList<Resource>
-			// use syntax DependsOn = { resourceA, resourceB } instead
+		case "DependsOn", "Providers":
+			// The DependsOn and Providers resource options need to be special cased. Both want something List-y (e.g.
+			// InputList for DependsOn, List for Providers), but normal code generation will yield arrays e.g.:
+			//
+			// new [] { x, y }
+			//
+			// To emit something that can be used as a list, we simply omit the [] and produce expressions of the form:
+			//
+			// new { x, y }
+			//
+			// instead.
 			if resourcesList, isTuple := value.(*model.TupleConsExpression); isTuple {
-				g.Fgenf(&result, "\n%sDependsOn =", g.Indent)
+				g.Fgenf(&result, "\n%s%s =", g.Indent, name)
 				g.Fgenf(&result, "\n%s{", g.Indent)
 				g.Indented(func() {
 					for _, resource := range resourcesList.Expressions {
@@ -1216,16 +1342,44 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
-		} else {
+		default:
 			g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 		}
 	}
 
+	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
 	if opts.Parent != nil {
 		appendOption("Parent", opts.Parent)
 	}
 	if opts.Provider != nil {
 		appendOption("Provider", opts.Provider)
+	}
+	if opts.Providers != nil {
+		// If the providers (plural) resource option was passed, it could be either a list of provider resources, or a map
+		// whose values are provider resources. The .Net SDK only supports passing a list of provider resources, so we need
+		// to check if we've been given a map and convert accordingly if so. We do this by seeing if we've been given an
+		// ObjectConsExpression (something of the form { x = y, ... }) and if so produce a TupleConsExpression (something of
+		// the form [y, ...]) of the values instead.
+		providersType := opts.Providers.Type()
+		mapType := model.NewMapType(model.DynamicType)
+
+		providersExpr := opts.Providers
+
+		if mapType.ConversionFrom(providersType) == model.SafeConversion {
+			providersMap, ok := opts.Providers.(*model.ObjectConsExpression)
+			contract.Assertf(ok, "expected providers to be a map")
+
+			providersList := &model.TupleConsExpression{
+				Expressions: make([]model.Expression, len(providersMap.Items)),
+			}
+			for i, p := range providersMap.Items {
+				providersList.Expressions[i] = p.Value
+			}
+
+			providersExpr = providersList
+		}
+
+		appendOption("Providers", providersExpr)
 	}
 	if opts.DependsOn != nil {
 		appendOption("DependsOn", opts.DependsOn)
@@ -1241,6 +1395,18 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith)
+	}
+	if opts.ReplaceWith != nil {
+		appendOption("ReplaceWith", opts.ReplaceWith)
+	}
+	if opts.ImportID != nil {
+		appendOption("ImportId", opts.ImportID)
+	}
+	if opts.HideDiffs != nil {
+		appendOption("HideDiffs", opts.HideDiffs)
+	}
+	if opts.ReplacementTrigger != nil {
+		appendOption("ReplacementTrigger", opts.ReplacementTrigger)
 	}
 
 	if result.Len() != 0 {
@@ -1382,7 +1548,15 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 					g.resetListInitializer()
 				}
 			})
-			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options, "CustomResourceOptions"))
+
+			// If the resource's schema indicates that it's a component, we'll want to generate code to pass
+			// ComponentResourceOptions instead of CustomResourceOptions.
+			resourceOptionsType := "CustomResourceOptions"
+			if r.Schema != nil && r.Schema.IsComponent {
+				resourceOptionsType = "ComponentResourceOptions"
+			}
+
+			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options, resourceOptionsType))
 		}
 	}
 
@@ -1650,7 +1824,7 @@ func (g *generator) genLocalVariable(w io.Writer, localVariable *pcl.LocalVariab
 	}
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagWarning,

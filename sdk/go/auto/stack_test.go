@@ -53,7 +53,6 @@ func TestGetPermalink(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -107,7 +106,7 @@ func TestUpdatePlans(t *testing.T) {
 	stackConfig, err := s.Workspace().StackSettings(ctx, stackName)
 	require.NoError(t, err)
 	stackConfig.SecretsProvider = "passphrase"
-	assert.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
+	require.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
 
 	// -- pulumi preview --
 	tempFile, err := os.CreateTemp(t.TempDir(), "update_plan.json")
@@ -220,7 +219,7 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 
 	defer func() {
 		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
-		assert.NoError(t, err, "failed to remove stack.")
+		require.NoError(t, err, "failed to remove stack.")
 	}()
 
 	configFile := filepath.Join(stack.Workspace().WorkDir(), "test.yaml")
@@ -257,17 +256,21 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args := destroyOptsToCmd(
+	args, _, err := destroyOptsToCmd(
 		&optdestroy.Options{
 			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
 		},
 		&stack,
 	)
+	require.NoError(t, err)
 
 	assert.Contains(t, args, "destroy")
 
@@ -281,18 +284,22 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args := refreshOptsToCmd(
+	args, _, err := refreshOptsToCmd(
 		&optrefresh.Options{
 			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
 		},
 		&stack,
 		true,
 	)
+	require.NoError(t, err)
 
 	assert.Contains(t, args, "refresh")
 
@@ -304,15 +311,20 @@ func TestRefreshOptsDiff(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, ptesting.RandomStackName(), pDir)
 	require.NoError(t, err)
 
-	argsUp := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, true)
+	argsUp, _, err := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, true)
+	require.NoError(t, err)
 	assert.Contains(t, argsUp, "--diff", argsUp)
 
-	argsPreview := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, false)
+	argsPreview, _, err := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, false)
+	require.NoError(t, err)
 	assert.Contains(t, argsPreview, "--diff", argsUp)
 }
 
@@ -322,18 +334,22 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args := refreshOptsToCmd(
+	args, _, err := refreshOptsToCmd(
 		&optrefresh.Options{
 			ClearPendingCreates: true,
 		},
 		&stack,
 		true,
 	)
+	require.NoError(t, err)
 
 	assert.Contains(t, args, "--clear-pending-creates")
 }
@@ -344,7 +360,10 @@ func TestRename(t *testing.T) {
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
@@ -375,14 +394,14 @@ func TestPreviewImportResources(t *testing.T) {
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	tempDir := t.TempDir()
 	importFilePath := filepath.Join(tempDir, "import.json")
 	resources := []byte(`{"resoures": [{"type":"my:module:MyResource","name":"imported-resource","id":"preview-bar"}]}`)
 	err = os.WriteFile(importFilePath, resources, 0o600)
-	assert.NoError(t, err, "error writing file")
+	require.NoError(t, err, "error writing file")
 
 	// Act
 	result, err := s.ImportResources(ctx,

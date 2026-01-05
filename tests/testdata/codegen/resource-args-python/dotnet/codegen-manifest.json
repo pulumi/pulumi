@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "Inputs/PetArgs.cs",
     "Outputs/Pet.cs",
     "Person.cs",

@@ -23,8 +23,8 @@ package nodejs
 type fileInfo struct {
 	fileType         fileType
 	pathToNodeModule string           // path understood by require() in Node
-	resourceFileInfo resourceFileInfo // required if fileType == resourceFileType
-	functionFileInfo functionFileInfo // required if fileType == functionFileType
+	resourceFileInfo resourceFileInfo // only required if fileType == resourceFileType
+	functionFileInfo functionFileInfo // only required if fileType == functionFileType
 }
 
 type fileType int
@@ -51,7 +51,7 @@ func (ri resourceFileInfo) interfaces() []string {
 }
 
 type functionFileInfo struct {
-	functionName                           string
+	functionName                           string // may be empty
 	functionArgsInterfaceName              string // may be empty
 	functionResultInterfaceName            string // may be empty
 	functionOutputVersionName              string // may be empty

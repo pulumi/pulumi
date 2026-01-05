@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ package plugin
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -46,16 +48,21 @@ func NewPluginCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newPluginInstallCmd())
+	packageResolutionOptions := packageresolution.Options{
+		ResolveWithRegistry: env.Experimental.Value() &&
+			!env.DisableRegistryResolve.Value(),
+		AllowNonInvertableLocalWorkspaceResolution: true,
+	}
+	cmd.AddCommand(newPluginInstallCmd(packageResolutionOptions))
 	cmd.AddCommand(newPluginLsCmd())
 	cmd.AddCommand(newPluginRmCmd())
-	cmd.AddCommand(newPluginRunCmd())
+	cmd.AddCommand(newPluginRunCmd(pkgWorkspace.Instance))
 
 	return cmd
 }
 
 // getProjectPlugins fetches a list of plugins used by this project.
-func getProjectPlugins() ([]workspace.PluginSpec, error) {
+func getProjectPlugins() ([]workspace.PluginDescriptor, error) {
 	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
@@ -82,7 +89,7 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 	return plugins, nil
 }
 
-func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, error) {
+func resolvePlugins(plugins []workspace.PluginDescriptor) ([]workspace.PluginInfo, error) {
 	proj, root, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil {
 		return nil, err
@@ -102,7 +109,7 @@ func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, err
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	var results []workspace.PluginInfo
 	for _, plugin := range plugins {
-		info, err := workspace.GetPluginInfo(d, plugin, ctx.Host.GetProjectPlugins())
+		info, err := workspace.GetPluginInfo(ctx.Base(), d, plugin, ctx.Host.GetProjectPlugins())
 		if err != nil {
 			contract.IgnoreError(err)
 		}

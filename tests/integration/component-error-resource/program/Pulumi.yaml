@@ -1,0 +1,9 @@
+name: component-error-in-resource
+runtime: yaml
+packages:
+  provider: ../provider
+resources:
+  comp:
+    type: nodejs-component-provider:index:MyComponent
+outputs:
+  out: "${comp.aString}"

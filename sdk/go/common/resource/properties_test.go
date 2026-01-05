@@ -18,25 +18,61 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// TestNewPropertyNonGeneric tests the non-generic NewProperty functions, ensuring they
+// behave the same as the generic NewProperty function.
+func TestNewPropertyNonGeneric(t *testing.T) {
+	t.Parallel()
+
+	assetValue, err := asset.FromText("hello world")
+	require.NoError(t, err)
+
+	archiveValue, err := archive.FromAssets(map[string]any{
+		"hello": assetValue,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, NewProperty(""), NewStringProperty(""))
+	assert.Equal(t, NewProperty("hi"), NewStringProperty("hi"))
+	assert.Equal(t, NewProperty(false), NewBoolProperty(false))
+	assert.Equal(t, NewProperty(true), NewBoolProperty(true))
+	assert.Equal(t, NewProperty(0.0), NewNumberProperty(0))
+	assert.Equal(t, NewProperty(42.0), NewNumberProperty(42))
+	assert.Equal(t, NewProperty([]PropertyValue{}), NewArrayProperty([]PropertyValue{}))
+	assert.Equal(t, NewProperty(assetValue), NewAssetProperty(assetValue))
+	assert.Equal(t, NewProperty(archiveValue), NewArchiveProperty(archiveValue))
+	assert.Equal(t, NewProperty(PropertyMap{}), NewObjectProperty(PropertyMap{}))
+	assert.Equal(t, NewProperty(Computed{Element: NewProperty("")}),
+		NewComputedProperty(Computed{Element: NewProperty("")}))
+	assert.Equal(t, NewProperty(Output{Element: NewProperty("")}),
+		NewOutputProperty(Output{Element: NewProperty("")}))
+	assert.Equal(t, NewProperty(&Secret{Element: NewProperty("")}),
+		NewSecretProperty(&Secret{Element: NewProperty("")}))
+	assert.Equal(t, NewProperty(ResourceReference{}),
+		NewResourceReferenceProperty(ResourceReference{}))
+}
 
 // TestMappable ensures that we properly convert from resource property maps to their "weakly typed" JSON-like
 // equivalents.
 func TestMappable(t *testing.T) {
 	t.Parallel()
 
-	ma1 := map[string]interface{}{
+	ma1 := map[string]any{
 		"a": float64(42.3),
 		"b": false,
 		"c": "foobar",
-		"d": []interface{}{"x", float64(99), true},
-		"e": map[string]interface{}{
+		"d": []any{"x", float64(99), true},
+		"e": map[string]any{
 			"e.1": "z",
 			"e.n": float64(676.767),
-			"e.^": []interface{}{"bbb"},
+			"e.^": []any{"bbb"},
 		},
-		"f": []interface{}{},
+		"f": []any{},
 	}
 	ma1p := NewPropertyMapFromMap(ma1)
 	assert.Equal(t, len(ma1), len(ma1p))
@@ -50,15 +86,15 @@ func TestMapReplValues(t *testing.T) {
 	t.Parallel()
 
 	// First, no replacements (nil repl).
-	ma1 := map[string]interface{}{
+	ma1 := map[string]any{
 		"a": float64(42.3),
 		"b": false,
 		"c": "foobar",
-		"d": []interface{}{"x", float64(99), true},
-		"e": map[string]interface{}{
+		"d": []any{"x", float64(99), true},
+		"e": map[string]any{
 			"e.1": "z",
 			"e.n": float64(676.767),
-			"e.^": []interface{}{"bbb"},
+			"e.^": []any{"bbb"},
 		},
 	}
 	ma1p := NewPropertyMapFromMap(ma1)
@@ -67,39 +103,39 @@ func TestMapReplValues(t *testing.T) {
 	assert.Equal(t, ma1, ma1mm)
 
 	// First, no replacements (false-returning repl).
-	ma2 := map[string]interface{}{
+	ma2 := map[string]any{
 		"a": float64(42.3),
 		"b": false,
 		"c": "foobar",
-		"d": []interface{}{"x", float64(99), true},
-		"e": map[string]interface{}{
+		"d": []any{"x", float64(99), true},
+		"e": map[string]any{
 			"e.1": "z",
 			"e.n": float64(676.767),
-			"e.^": []interface{}{"bbb"},
+			"e.^": []any{"bbb"},
 		},
 	}
 	ma2p := NewPropertyMapFromMap(ma2)
 	assert.Equal(t, len(ma2), len(ma2p))
-	ma2mm := ma2p.MapRepl(nil, func(v PropertyValue) (interface{}, bool) {
+	ma2mm := ma2p.MapRepl(nil, func(v PropertyValue) (any, bool) {
 		return nil, false
 	})
 	assert.Equal(t, ma2, ma2mm)
 
 	// Finally, actually replace some numbers with ints.
-	ma3 := map[string]interface{}{
+	ma3 := map[string]any{
 		"a": float64(42.3),
 		"b": false,
 		"c": "foobar",
-		"d": []interface{}{"x", float64(99), true},
-		"e": map[string]interface{}{
+		"d": []any{"x", float64(99), true},
+		"e": map[string]any{
 			"e.1": "z",
 			"e.n": float64(676.767),
-			"e.^": []interface{}{"bbb"},
+			"e.^": []any{"bbb"},
 		},
 	}
 	ma3p := NewPropertyMapFromMap(ma3)
 	assert.Equal(t, len(ma3), len(ma3p))
-	ma3mm := ma3p.MapRepl(nil, func(v PropertyValue) (interface{}, bool) {
+	ma3mm := ma3p.MapRepl(nil, func(v PropertyValue) (any, bool) {
 		if v.IsNumber() {
 			return int(v.NumberValue()), true
 		}
@@ -107,23 +143,23 @@ func TestMapReplValues(t *testing.T) {
 	})
 	// patch the original map so it can compare easily
 	ma3["a"] = int(ma3["a"].(float64))
-	ma3["d"].([]interface{})[1] = int(ma3["d"].([]interface{})[1].(float64))
-	ma3["e"].(map[string]interface{})["e.n"] = int(ma3["e"].(map[string]interface{})["e.n"].(float64))
+	ma3["d"].([]any)[1] = int(ma3["d"].([]any)[1].(float64))
+	ma3["e"].(map[string]any)["e.n"] = int(ma3["e"].(map[string]any)["e.n"].(float64))
 	assert.Equal(t, ma3, ma3mm)
 }
 
 func TestMapReplKeys(t *testing.T) {
 	t.Parallel()
 
-	m := map[string]interface{}{
+	m := map[string]any{
 		"a": float64(42.3),
 		"b": false,
 		"c": "foobar",
-		"d": []interface{}{"x", float64(99), true},
-		"e": map[string]interface{}{
+		"d": []any{"x", float64(99), true},
+		"e": map[string]any{
 			"e.1": "z",
 			"e.n": float64(676.767),
-			"e.^": []interface{}{"bbb"},
+			"e.^": []any{"bbb"},
 		},
 	}
 	ma := NewPropertyMapFromMap(m)
@@ -135,9 +171,9 @@ func TestMapReplKeys(t *testing.T) {
 	assert.Equal(t, m["b"], mam["B"])
 	assert.Equal(t, m["c"], mam["C"])
 	assert.Equal(t, m["d"], mam["D"])
-	assert.Equal(t, m["e"].(map[string]interface{})["e.1"], mam["E"].(map[string]interface{})["E.1"])
-	assert.Equal(t, m["e"].(map[string]interface{})["e.n"], mam["E"].(map[string]interface{})["E.N"])
-	assert.Equal(t, m["e"].(map[string]interface{})["e.^"], mam["E"].(map[string]interface{})["E.^"])
+	assert.Equal(t, m["e"].(map[string]any)["e.1"], mam["E"].(map[string]any)["E.1"])
+	assert.Equal(t, m["e"].(map[string]any)["e.n"], mam["E"].(map[string]any)["E.N"])
+	assert.Equal(t, m["e"].(map[string]any)["e.^"], mam["E"].(map[string]any)["E.^"])
 }
 
 func TestMapReplComputedOutput(t *testing.T) {
@@ -155,19 +191,19 @@ func TestMapReplComputedOutput(t *testing.T) {
 func TestCopy(t *testing.T) {
 	t.Parallel()
 
-	src := NewPropertyMapFromMap(map[string]interface{}{
+	src := NewPropertyMapFromMap(map[string]any{
 		"a": "str",
 		"b": 42,
 	})
 	dst := src.Copy()
-	assert.NotNil(t, dst)
+	require.NotNil(t, dst)
 	assert.Equal(t, len(src), len(dst))
 	assert.Equal(t, src["a"], dst["a"])
 	assert.Equal(t, src["b"], dst["b"])
 	src["a"] = NewNullProperty()
 	assert.Equal(t, NewProperty("str"), dst["a"])
 	src["c"] = NewProperty(99.99)
-	assert.Equal(t, 2, len(dst))
+	require.Len(t, dst, 2)
 }
 
 func TestSecretUnknown(t *testing.T) {
@@ -219,7 +255,6 @@ func TestTypeString(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -264,7 +299,6 @@ func TestString(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -301,7 +335,6 @@ func TestContainsUnknowns(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -352,7 +385,6 @@ func TestContainsSecrets(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -394,7 +426,6 @@ func TestHasValue(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -407,20 +438,20 @@ func TestHasValue(t *testing.T) {
 func TestMapFromMapNestedPropertyValues(t *testing.T) {
 	t.Parallel()
 
-	actual := NewPropertyMapFromMap(map[string]interface{}{
-		"prop": NewStringProperty("value"),
-		"nested": map[string]interface{}{
-			"obj": NewObjectProperty(PropertyMap{
-				"k": NewStringProperty("v"),
+	actual := NewPropertyMapFromMap(map[string]any{
+		"prop": NewProperty("value"),
+		"nested": map[string]any{
+			"obj": NewProperty(PropertyMap{
+				"k": NewProperty("v"),
 			}),
 		},
 	})
 
 	expected := PropertyMap{
-		"prop": NewStringProperty("value"),
-		"nested": NewObjectProperty(PropertyMap{
-			"obj": NewObjectProperty(PropertyMap{
-				"k": NewStringProperty("v"),
+		"prop": NewProperty("value"),
+		"nested": NewProperty(PropertyMap{
+			"obj": NewProperty(PropertyMap{
+				"k": NewProperty("v"),
 			}),
 		}),
 	}

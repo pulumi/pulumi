@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -26,12 +27,15 @@ import (
 
 func init() {
 	LanguageTests["l2-resource-secret"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SecretProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SecretProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 
@@ -43,15 +47,15 @@ func init() {
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"public":  "open",
-						"private": resource.MakeSecret(resource.NewStringProperty("closed")),
-						"publicData": map[string]interface{}{
+						"private": resource.MakeSecret(resource.NewProperty("closed")),
+						"publicData": map[string]any{
 							"public": "open",
 							// TODO https://github.com/pulumi/pulumi/issues/10319: This should be a secret,
 							// but currently _all_ the SDKs send it as a plain value and the engine doesn't
 							// fix it. We should fix the engine to ensure this ends up as secret as well.
 							"private": "closed",
 						},
-						"privateData": resource.MakeSecret(resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]any{
+						"privateData": resource.MakeSecret(resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 							"public":  "open",
 							"private": "closed",
 						}))),

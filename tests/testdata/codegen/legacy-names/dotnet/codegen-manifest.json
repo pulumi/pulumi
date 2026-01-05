@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "Enums.cs",
     "Example_resource.cs",
     "HTTP_module/Inputs/RequestArgs.cs",

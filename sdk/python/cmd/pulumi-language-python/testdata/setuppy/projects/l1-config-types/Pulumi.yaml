@@ -1,6 +1,0 @@
-name: l1-config-types
-runtime:
-  name: python
-  options:
-    typechecker: mypy
-    virtualenv: venv

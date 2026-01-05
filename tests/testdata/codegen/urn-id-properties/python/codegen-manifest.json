@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "pulumi_urnid/README.md",
     "pulumi_urnid/__init__.py",
     "pulumi_urnid/_utilities.py",

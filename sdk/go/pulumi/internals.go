@@ -21,7 +21,7 @@ import (
 )
 
 // Functions in this file are exposed in pulumi/internals via go:linkname
-func awaitWithContext(ctx context.Context, o Output) (interface{}, bool, bool, []Resource, error) {
+func awaitWithContext(ctx context.Context, o Output) (any, bool, bool, []Resource, error) {
 	value, known, secret, deps, err := internal.AwaitOutput(ctx, o)
 	return value, known, secret, resourcesFromInternal(deps), err
 }

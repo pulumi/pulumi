@@ -46,7 +46,6 @@ func TestNPMInstallCmd(t *testing.T) {
 	ctx := context.Background()
 
 	for _, tc := range cases {
-		tc := tc
 		name := fmt.Sprintf("production=%v", tc.production)
 		t.Run(name, func(tt *testing.T) {
 			tt.Parallel()

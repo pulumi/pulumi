@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,18 +19,12 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // this test sets the global login state
 func TestAzureLoginSasToken(t *testing.T) {
-	err := os.Chdir("project")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := os.Chdir("..")
-		require.NoError(t, err)
-	})
+	t.Chdir("project")
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
 
 	// Make sure we use the SAS token for login here
@@ -38,31 +32,32 @@ func TestAzureLoginSasToken(t *testing.T) {
 	t.Setenv("AZURE_CLIENT_SECRET", "")
 	t.Setenv("AZURE_TENANT_ID", "")
 
-	_, ok := os.LookupEnv("AZURE_STORAGE_SAS_TOKEN")
-	if !ok {
+	token := os.Getenv("AZURE_STORAGE_SAS_TOKEN")
+	if token == "" {
 		t.Skip("AZURE_STORAGE_SAS_TOKEN not set, skipping test")
 	}
 
 	t.Cleanup(func() {
 		err := exec.Command("pulumi", "logout").Run()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 	loginAndCreateStack(t, cloudURL)
 }
 
 //nolint:paralleltest // this test uses the global azure login state
 func TestAzureLoginAzLogin(t *testing.T) {
-	err := os.Chdir("project")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := os.Chdir("..")
-		require.NoError(t, err)
-	})
+	// NOTE: This test requires a valid AZURE_CLIENT_SECRET. Unfortunately the longest time these
+	// can be valid is 2 years. When this test fails (after 2027-12-22), the secret will need to
+	// be rotated. This can be done by navigating to the `pulumi-test` app in the Azure portal, and
+	// creating a new client secret under "Certificates & secrets". Create a new client secret from
+	// there and update the GitHub Actions secret `AZURE_CLIENT_SECRET` with the new value.
+
+	t.Chdir("project")
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
-	_, clientIDSet := os.LookupEnv("AZURE_CLIENT_ID")
-	_, clientSecretSet := os.LookupEnv("AZURE_CLIENT_SECRET")
-	_, tenantIDSet := os.LookupEnv("AZURE_TENANT_ID")
-	if !clientIDSet || !clientSecretSet || !tenantIDSet {
+	clientID := os.Getenv("AZURE_CLIENT_ID")
+	clientSecret := os.Getenv("AZURE_CLIENT_SECRET")
+	tenantID := os.Getenv("AZURE_TENANT_ID")
+	if clientID == "" || clientSecret == "" || tenantID == "" {
 		t.Skip("AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, and AZURE_TENANT_ID not set, skipping test")
 	}
 
@@ -70,17 +65,17 @@ func TestAzureLoginAzLogin(t *testing.T) {
 	t.Setenv("AZURE_STORAGE_SAS_TOKEN", "")
 
 	//nolint:gosec // this is a test
-	err = exec.Command("az", "login", "--service-principal",
+	out, err := exec.Command("az", "login", "--service-principal",
 		"--username", os.Getenv("AZURE_CLIENT_ID"),
 		"--password", os.Getenv("AZURE_CLIENT_SECRET"),
-		"--tenant", os.Getenv("AZURE_TENANT_ID")).Run()
-	assert.NoError(t, err)
+		"--tenant", os.Getenv("AZURE_TENANT_ID")).CombinedOutput()
+	require.NoError(t, err, "%s: %q", err, out)
 
 	t.Cleanup(func() {
 		err := exec.Command("az", "logout").Run()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = exec.Command("pulumi", "logout").Run()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	loginAndCreateStack(t, cloudURL)

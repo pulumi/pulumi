@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
@@ -34,14 +35,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -55,6 +54,9 @@ func NewDestroyCmd() *cobra.Command {
 	var message string
 	var execKind string
 	var execAgent string
+	var configArray []string
+	var path bool
+	var client string
 
 	// Flags for remote operations.
 	remoteArgs := deployment.RemoteArgs{}
@@ -70,6 +72,7 @@ func NewDestroyCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var skipPreview bool
+	var showFullOutput bool
 	var suppressOutputs bool
 	var suppressProgress bool
 	var suppressPermalink string
@@ -80,6 +83,9 @@ func NewDestroyCmd() *cobra.Command {
 	var excludeDependents bool
 	var excludeProtected bool
 	var continueOnError bool
+
+	// Flags for Neo.
+	var neoEnabled bool
 
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -140,6 +146,7 @@ func NewDestroyCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				SuppressOutputs:      suppressOutputs,
 				SuppressProgress:     suppressProgress,
+				TruncateOutput:       !showFullOutput,
 				IsInteractive:        interactive,
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
@@ -156,7 +163,7 @@ func NewDestroyCmd() *cobra.Command {
 			}
 
 			if remoteArgs.Remote {
-				err = deployment.ValidateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
+				err = deployment.ValidateUnsupportedRemoteFlags(false, nil, false, client, jsonDisplay, nil,
 					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
 					targetDependents, "", cmdStack.ConfigFile, runProgram)
@@ -187,8 +194,11 @@ func NewDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
+			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
+
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
@@ -199,7 +209,11 @@ func NewDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			proj, root, err := ws.ReadProject()
+			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path); err != nil {
+				return err
+			}
+
+			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())
@@ -223,7 +237,7 @@ func NewDestroyCmd() *cobra.Command {
 				// The config may be missing, fallback on the latest configuration in the backend.
 				getConfig = config.GetStackConfigurationOrLatest
 			}
-			cfg, sm, err := getConfig(ctx, ssml, s, proj)
+			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -255,26 +269,37 @@ func NewDestroyCmd() *cobra.Command {
 			}
 
 			if len(*targets) > 0 && excludeProtected {
-				return errors.New("You cannot specify --target and --exclude-protected")
+				return errors.New("you cannot specify --target and --exclude-protected")
 			}
 
-			var protectedCount int
 			targetUrns := *targets
 			excludeUrns := *excludes
+			protectedCount := 0
 			if excludeProtected {
-				contract.Assertf(len(targetUrns) == 0, "Expected no target URNs, got %d", len(targetUrns))
-				targetUrns, protectedCount, err = handleExcludeProtected(ctx, s)
+				snapshot, err := s.Snapshot(ctx, secrets.DefaultProvider)
 				if err != nil {
 					return err
-				} else if protectedCount > 0 && len(targetUrns) == 0 {
+				} else if snapshot == nil {
+					return errors.New("failed to find the stack snapshot. Are you in a stack?")
+				}
+
+				protected, err := getProtectedExcludes(snapshot.Resources)
+				protectedCount = len(protected)
+				excludeUrns = append(excludeUrns, protected...)
+
+				if err != nil {
+					return err
+				} else if protectedCount == len(snapshot.Resources) {
 					if !jsonDisplay {
 						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
 							" protected resources associated with this stack.\n", protectedCount)
 					}
-					// We need to return now. Otherwise the update will conclude
-					// we tried to destroy everything and error for trying to
-					// destroy a protected resource.
-					return nil
+					// We need to return now. Otherwise the update will conclude we tried to destroy
+					// everything and error for trying to destroy a protected resource. _Unless_ there are no
+					// resources in which case we can do a no-op destroy and remove the stack (if requested).
+					if protectedCount != 0 {
+						return nil
+					}
 				}
 			}
 
@@ -297,14 +322,14 @@ func NewDestroyCmd() *cobra.Command {
 				DestroyProgram:            runProgram,
 			}
 
-			_, destroyErr := s.Destroy(ctx, backend.UpdateOperation{
+			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    stack.DefaultSecretsProvider,
+				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			})
 
@@ -317,7 +342,7 @@ func NewDestroyCmd() *cobra.Command {
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
 						"completely, run `pulumi stack rm %s`.\n", s.Ref())
 				} else if remove {
-					_, err = s.Remove(ctx, false)
+					_, err = backend.RemoveStack(ctx, s, false /*force*/, false /*removeBackups*/)
 					if err != nil {
 						return err
 					}
@@ -339,7 +364,7 @@ func NewDestroyCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(
-		&runProgram, "run-program", false,
+		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to destroy resources")
 
 	cmd.PersistentFlags().BoolVarP(
@@ -354,6 +379,12 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	cmd.PersistentFlags().StringArrayVarP(
+		&configArray, "config", "c", []string{},
+		"Config to use during the destroy and save to the stack config file")
+	cmd.PersistentFlags().BoolVar(
+		&path, "config-path", false,
+		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the destroy operation")
@@ -410,6 +441,9 @@ func NewDestroyCmd() *cobra.Command {
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVar(
+		&showFullOutput, "show-full-output", false,
+		"Display full length of inputs & outputs")
+	cmd.PersistentFlags().BoolVar(
 		&suppressProgress, "suppress-progress", false,
 		"Suppress display of periodic progress dots")
 	cmd.PersistentFlags().StringVar(
@@ -424,6 +458,18 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")
+
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "neo", false,
+		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_NEO environment variable)")
+
+	// Keep --copilot flag for backwards compatibility, but hide it
+	cmd.PersistentFlags().BoolVar(
+		&neoEnabled, "copilot", false,
+		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
+			"(can also be set with PULUMI_COPILOT environment variable)")
+	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)
@@ -442,13 +488,17 @@ func NewDestroyCmd() *cobra.Command {
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
+	cmd.PersistentFlags().StringVar(
+		&client, "client", "", "The address of an existing language runtime host to connect to")
+	_ = cmd.PersistentFlags().MarkHidden("client")
+
 	return cmd
 }
 
-// separateProtected returns a list or unprotected and protected resources respectively. This allows
-// us to safely destroy all resources in the unprotected list without invalidating any resource in
-// the protected list. Protection is contravarient: A < B where A: Protected => B: Protected, A < B
-// where B: Protected !=> A: Protected.
+// getProtectedExcludes returns a list of protected resources. This allows us
+// to safely destroy all resources in the unprotected list without invalidating
+// any resource in the protected list. Parents of protected resources will be
+// transitively protected.
 //
 // A
 // B: Parent = A
@@ -460,37 +510,25 @@ func NewDestroyCmd() *cobra.Command {
 // Unprotected: B, D
 // Protected: A, C
 //
-// We rely on the fact that `resources` is topologically sorted with respect to its dependencies.
-// This function understands that providers live outside this topological sort.
-func separateProtected(resources []*resource.State) (
-	/*unprotected*/ []*resource.State /*protected*/, []*resource.State,
-) {
+// We rely on the fact that `resources` is topologically sorted with respect to
+// its dependencies.  This function understands that providers live outside
+// this topological sort.
+func getProtectedExcludes(resources []*resource.State) ([]string, error) {
 	dg := graph.NewDependencyGraph(resources)
-	transitiveProtected := mapset.NewSet[*resource.State]()
-	for _, r := range resources {
-		if r.Protect {
-			rProtected := dg.TransitiveDependenciesOf(r)
-			rProtected.Add(r)
-			transitiveProtected = transitiveProtected.Union(rProtected)
+	protected := mapset.NewSet[*resource.State]()
+
+	for _, resource := range resources {
+		if resource.Protect {
+			dependencies := dg.TransitiveDependenciesOf(resource)
+			dependencies.Add(resource)
+			protected = protected.Union(dependencies)
 		}
 	}
-	allResources := mapset.NewSet(resources...)
-	return allResources.Difference(transitiveProtected).ToSlice(), transitiveProtected.ToSlice()
-}
 
-// Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.
-func handleExcludeProtected(ctx context.Context, s backend.Stack) ([]string, int, error) {
-	// Get snapshot
-	snapshot, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
-	if err != nil {
-		return nil, 0, err
-	} else if snapshot == nil {
-		return nil, 0, errors.New("Failed to find the stack snapshot. Are you in a stack?")
+	urns := make([]string, 0, protected.Cardinality())
+	for _, resource := range protected.ToSlice() {
+		urns = append(urns, string(resource.URN))
 	}
-	unprotected, protected := separateProtected(snapshot.Resources)
-	targetUrns := make([]string, len(unprotected))
-	for i, r := range unprotected {
-		targetUrns[i] = string(r.URN)
-	}
-	return targetUrns, len(protected), nil
+
+	return urns, nil
 }

@@ -7,6 +7,7 @@ permissions:
 on:
   schedule:
     - cron: "27 5 * * *"
+  workflow_dispatch: {}
 
 jobs:
   info:
@@ -30,13 +31,19 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
-      # codegen tests are not the fastest, but we want to run them
-      # on PR to get correct coverage numbers.
+      # codegen tests are not the fastest, but we want to run all
+      # tests daily
       test-codegen: true
       test-version-sets: 'all'
-      integration-test-platforms: ubuntu-22.04
+      integration-test-platforms: ubuntu-latest
       acceptance-test-platforms: 'macos-latest windows-latest'
-      enable-coverage: true
+      # Disable coverage in daily runs.  This is unfortunately flaky
+      # on windows, and the daily cron job runs the most extensive set
+      # of tests, leading to quite a bit of flakyness.  We get coverage
+      # data on every merge to main, so getting it in the daily cro
+      # job is not important.
+      enable-coverage: false
+      enable-journaling: false
     secrets: inherit
 
   performance-gate:
@@ -49,14 +56,14 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       test-version-sets: 'all'
-      performance-test-platforms: ubuntu-22.04
+      performance-test-platforms: ubuntu-latest
     secrets: inherit
 
   ci-ok:
     name: ci-ok
     needs: [ci, performance-gate]
     if: always()
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: CI failed
         if: ${{ needs.ci.result != 'success' }}

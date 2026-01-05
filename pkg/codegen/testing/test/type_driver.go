@@ -27,16 +27,16 @@ import (
 )
 
 type typeTestCase struct {
-	Expected map[string]interface{} `json:"expected"`
+	Expected map[string]any `json:"expected"`
 }
 
 type typeTestImporter int
 
-func (typeTestImporter) ImportDefaultSpec(def *schema.DefaultValue, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportDefaultSpec(bytes json.RawMessage) (any, error) {
 	return bytes, nil
 }
 
-func (typeTestImporter) ImportPropertySpec(property *schema.Property, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportPropertySpec(bytes json.RawMessage) (any, error) {
 	var test typeTestCase
 	if err := json.Unmarshal([]byte(bytes), &test); err != nil {
 		return nil, err
@@ -44,19 +44,19 @@ func (typeTestImporter) ImportPropertySpec(property *schema.Property, bytes json
 	return &test, nil
 }
 
-func (typeTestImporter) ImportObjectTypeSpec(object *schema.ObjectType, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportObjectTypeSpec(bytes json.RawMessage) (any, error) {
 	return bytes, nil
 }
 
-func (typeTestImporter) ImportResourceSpec(resource *schema.Resource, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportResourceSpec(bytes json.RawMessage) (any, error) {
 	return bytes, nil
 }
 
-func (typeTestImporter) ImportFunctionSpec(function *schema.Function, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportFunctionSpec(bytes json.RawMessage) (any, error) {
 	return bytes, nil
 }
 
-func (typeTestImporter) ImportPackageSpec(pkg *schema.Package, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportPackageSpec(bytes json.RawMessage) (any, error) {
 	return bytes, nil
 }
 
@@ -73,7 +73,14 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 	err = json.Unmarshal(schemaBytes, &pkgSpec)
 	require.NoError(t, err)
 
-	pkg, err := schema.ImportSpec(pkgSpec, map[string]schema.Language{"test": typeTestImporter(0)})
+	pkg, err := schema.ImportSpec(
+		pkgSpec,
+		map[string]schema.Language{"test": typeTestImporter(0)},
+		schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		},
+	)
+
 	require.NoError(t, err)
 
 	typeName := newTypeNameGenerator(pkg)
@@ -81,7 +88,6 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 	if !cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
 		runTests := func(where string, props []*schema.Property, inputShape bool) {
 			for _, p := range props {
-				p := p
 				if testCase, ok := p.Language["test"].(*typeTestCase); ok {
 					if expected, ok := testCase.Expected[language]; ok {
 						typ := p.Type
@@ -92,7 +98,7 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 							switch expected := expected.(type) {
 							case string:
 								expectedName = expected
-							case map[string]interface{}:
+							case map[string]any:
 								if inputShape {
 									expectedName = expected["input"].(string)
 								} else {
@@ -155,7 +161,7 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 				p.Language["test"] = testCase
 			}
 			if testCase.Expected == nil {
-				testCase.Expected = map[string]interface{}{}
+				testCase.Expected = map[string]any{}
 			}
 			testCase.Expected[language] = typeName(p.Type)
 		}
@@ -182,7 +188,7 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 				testCase := p.Language["test"].(*typeTestCase)
 				plain := testCase.Expected[language].(string)
 				input := o.InputShape.Properties[i].Language["test"].(*typeTestCase).Expected[language].(string)
-				testCase.Expected[language] = map[string]interface{}{
+				testCase.Expected[language] = map[string]any{
 					"plain": plain,
 					"input": input,
 				}

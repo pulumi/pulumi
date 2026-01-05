@@ -43,6 +43,70 @@ service Analyzer {
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
     // Configure configures the analyzer, passing configuration properties for each policy.
     rpc Configure(ConfigureAnalyzerRequest) returns (google.protobuf.Empty) {}
+
+    // `Handshake` is the first call made by the engine to an analyzer. It is used to pass the engine's address to the
+    // analyzer so that it may establish its own connections back, and to establish protocol configuration that will be
+    // used to communicate between the two parties.
+    rpc Handshake(AnalyzerHandshakeRequest) returns (AnalyzerHandshakeResponse) {}
+
+    // `ConfigureStack` is always called if the engine is using the analyzer to analyze resources in a specific stack.
+    // This method is not always called, for example if the engine is just booting the analyzer up to call
+    // GetAnalyzerInfo.
+    rpc ConfigureStack(AnalyzerStackConfigureRequest) returns (AnalyzerStackConfigureResponse) {}
+
+    // Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
+    // Operations aborted in this way will return an error. Since Cancel is advisory and non-blocking,
+    // it is up to the host to decide how long to wait after Cancel is called before (e.g.)
+    // hard-closing any gRPC connection.
+    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}
+
+// `AnalyzerStackConfigureRequest` is the message for the stack configuration of the stack being analyzed.
+message AnalyzerStackConfigureRequest {
+    // The stack name being analyzed.
+    string stack = 1;
+    // The project name of the stack being analyzed.
+    string project = 2;
+    // The organization name of the stack being analyzed.
+    string organization = 3;
+    // True if this is a preview/dry run.
+    bool dry_run = 4;
+
+    reserved 5; // This was used to send stack config as property values.
+
+    // A list of configuration keys whose values should be treated as secrets.
+    repeated string config_secret_keys = 6;
+    // The configuration of the stack being analyzed.
+    map<string, string> config = 7;
+
+    // Tags for the current stack.
+    map<string, string> tags = 8;
+}
+
+// `AnalyzerStackConfigureResponse` is the type of responses sent by a [](pulumirpc.Analyzer.ConfigureStack) call.
+message AnalyzerStackConfigureResponse {
+}
+
+// `AnalyzerHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.Analyzer.Handshake) call.
+message AnalyzerHandshakeRequest {
+    // The gRPC address of the engine handshaking with the analyzer. At a minimum, this address will expose an instance
+    // of the [](pulumirpc.Engine) service.
+    string engine_address = 1;
+
+    // A *root directory* where the analyzer's binary, `PulumiPolicy.yaml`, or other identifying source code is located.
+    // In the event that the analyzer is *not* being booted by the engine (e.g. in the case that the engine has been
+    // asked to attach to an existing running analyzer instance via a host/port number), this field will be empty.
+    optional string root_directory = 2;
+
+    // A *program directory* in which the analyzer should execute. This is generally a subdirectory of the root
+    // directory, though this is not required. In the event that the analyzer is *not* being booted by the engine (e.g.
+    // in the case that the engine has been asked to attach to an existing running analyzer instance via a host/port
+    // number), this field will be empty.
+    optional string program_directory = 3;
+}
+
+// `AnalyzerHandshakeResponse` is the type of responses sent by a [](pulumirpc.Analyzer.Handshake) call.
+message AnalyzerHandshakeResponse {
 }
 
 message AnalyzeRequest {
@@ -106,7 +170,8 @@ message AnalyzeStackRequest {
 }
 
 message AnalyzeResponse {
-    repeated AnalyzeDiagnostic diagnostics = 2; // information about policy violations.
+    repeated AnalyzeDiagnostic diagnostics = 2;      // information about policy violations.
+    repeated PolicyNotApplicable not_applicable = 3; // information about policies that were not applicable.
 }
 
 // EnforcementLevel indicates the severity of a policy violation.
@@ -123,9 +188,14 @@ message AnalyzeDiagnostic {
     string policyPackVersion = 3;          // Version of the policy pack.
     string description = 4;                // Description of policy rule. e.g., "encryption enabled."
     string message = 5;                    // Message to display on policy violation, e.g., remediation steps.
-    repeated string tags = 6;              // Keywords/terms to associate with a policy, e.g., "cost".
-    EnforcementLevel enforcementLevel = 7; // Severity of the policy violation.
+
+    // Keywords/terms to associate with a policy, e.g., "cost". This was unused by the engine and policy SDKs.
+    reserved 6;
+    reserved "tags";
+
+    EnforcementLevel enforcementLevel = 7; // Enforcement level of the policy violation.
     string urn = 8;                        // URN of the resource that violates the policy.
+    PolicySeverity severity = 9;           // Severity of the policy violation.
 }
 
 // Remediation is a single resource remediation result.
@@ -140,7 +210,8 @@ message Remediation {
 
 // RemediateResponse contains a sequence of remediations applied, in order.
 message RemediateResponse {
-    repeated Remediation remediations = 1;       // the list of remediations that were applied.
+    repeated Remediation remediations = 1;           // the list of remediations that were applied.
+    repeated PolicyNotApplicable not_applicable = 2; // information about policies that were not applicable.
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
@@ -151,16 +222,27 @@ message AnalyzerInfo {
     string version = 4;                          // Version of the Policy Pack.
     bool supportsConfig = 5;                     // Whether the Policy Pack supports config.
     map<string, PolicyConfig> initialConfig = 6; // Map of policy name to config.
+    string description = 7;                      // Description of the policy pack.
+    string readme = 8;                           // README text for the policy pack.
+    string provider = 9;                         // Cloud provider/platform associated with the policy pack.
+    repeated string tags = 10;                   // Tags for this policy pack.
+    string repository = 11;                      // A URL to the repository where the policy pack is defined.
 }
 
 // PolicyInfo provides metadata about a policy within a Policy Pack.
 message PolicyInfo {
-    string name = 1;                       // Name of the policy.
-    string displayName = 2;                // Pretty name for the policy.
-    string description = 3;                // Description of policy rule. e.g., "encryption enabled."
-    string message = 4;                    // Message to display on policy violation, e.g., remediation steps.
-    EnforcementLevel enforcementLevel = 5; // Severity of the policy violation.
-    PolicyConfigSchema configSchema = 6;   // Config schema for the policy.
+    string name = 1;                         // Name of the policy.
+    string displayName = 2;                  // Pretty name for the policy.
+    string description = 3;                  // Description of policy rule. e.g., "encryption enabled."
+    string message = 4;                      // Message to display on policy violation, e.g., remediation steps.
+    EnforcementLevel enforcementLevel = 5;   // Severity of the policy violation.
+    PolicyConfigSchema configSchema = 6;     // Config schema for the policy.
+    PolicyType policy_type = 7;              // Type of the policy.
+    PolicySeverity severity = 8;             // Severity of the policy.
+    PolicyComplianceFramework framework = 9; // Compliance framework that this policy belongs to.
+    repeated string tags = 10;               // Tags associated with the policy.
+    string remediation_steps = 11;           // A description of the steps to take to remediate a policy violation.
+    string url = 12;                         // A URL to more information about the policy.
 }
 
 // PolicyConfigSchema provides the schema for a policy's configuration.
@@ -178,4 +260,34 @@ message PolicyConfig {
 // ConfigureAnalyzerRequest provides configuration information to the analyzer.
 message ConfigureAnalyzerRequest {
     map<string, PolicyConfig> policyConfig = 1; // Map of policy name to config.
+}
+
+// PolicyComplianceFramework provides information about the compliance framework that a policy belongs to.
+message PolicyComplianceFramework {
+    string name = 1;          // The compliance framework name.
+    string version = 2;       // The compliance framework version.
+    string reference = 3;     // The compliance framework reference.
+    string specification = 4; // The compliance framework specification.
+}
+
+// PolicyType indicates the type of a policy.
+enum PolicyType {
+    POLICY_TYPE_UNKNOWN = 0;     // Unknown policy type.
+    POLICY_TYPE_RESOURCE = 1;    // A policy that validates a resource.
+    POLICY_TYPE_STACK = 2;       // A policy that validates a stack.
+}
+
+// PolicyNotApplicable describes a policy that was not applicable, including an optional reason why.
+message PolicyNotApplicable {
+    string policy_name = 1; // The name of the policy that was not applicable.
+    string reason = 2;      // An optional reason why the policy was not applicable.
+}
+
+// PolicySeverity indicates the severity of a policy.
+enum PolicySeverity {
+    POLICY_SEVERITY_UNSPECIFIED = 0; // Unspecified severity.
+    POLICY_SEVERITY_LOW = 1;         // Low severity.
+    POLICY_SEVERITY_MEDIUM = 2;      // Medium severity.
+    POLICY_SEVERITY_HIGH = 3;        // High severity.
+    POLICY_SEVERITY_CRITICAL = 4;    // Critical severity.
 }

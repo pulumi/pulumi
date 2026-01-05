@@ -46,8 +46,8 @@ export class Component extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["local"] = args ? args.local : undefined;
-            resourceInputs["main"] = args ? args.main : undefined;
+            resourceInputs["local"] = args?.local;
+            resourceInputs["main"] = args?.main;
         } else {
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);

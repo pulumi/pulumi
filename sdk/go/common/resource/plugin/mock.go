@@ -31,15 +31,15 @@ type MockHost struct {
 	AnalyzerF           func(nm tokens.QName) (Analyzer, error)
 	PolicyAnalyzerF     func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
 	ListAnalyzersF      func() []Analyzer
-	ProviderF           func(descriptor workspace.PackageDescriptor) (Provider, error)
-	CloseProviderF      func(provider Provider) error
-	LanguageRuntimeF    func(runtime string, info ProgramInfo) (LanguageRuntime, error)
-	EnsurePluginsF      func(plugins []workspace.PluginSpec, kinds Flags) error
-	ResolvePluginF      func(spec workspace.PluginSpec) (*workspace.PluginInfo, error)
+	ProviderF           func(descriptor workspace.PluginDescriptor) (Provider, error)
+	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
+	EnsurePluginsF      func(plugins []workspace.PluginDescriptor, kinds Flags) error
+	ResolvePluginF      func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
 	GetProjectPluginsF  func() []workspace.ProjectPlugin
 	SignalCancellationF func() error
 	CloseF              func() error
-	StartDebuggingF     func(DebuggingInfo) error
+	StartDebuggingF     func(info DebuggingInfo) error
+	AttachDebuggerF     func(spec DebugSpec) bool
 }
 
 var _ Host = (*MockHost)(nil)
@@ -84,28 +84,21 @@ func (m *MockHost) ListAnalyzers() []Analyzer {
 	return nil
 }
 
-func (m *MockHost) Provider(descriptor workspace.PackageDescriptor) (Provider, error) {
+func (m *MockHost) Provider(descriptor workspace.PluginDescriptor) (Provider, error) {
 	if m.ProviderF != nil {
 		return m.ProviderF(descriptor)
 	}
 	return nil, errors.New("Provider not implemented")
 }
 
-func (m *MockHost) CloseProvider(provider Provider) error {
-	if m.CloseProviderF != nil {
-		return m.CloseProviderF(provider)
-	}
-	return nil
-}
-
-func (m *MockHost) LanguageRuntime(runtime string, info ProgramInfo) (LanguageRuntime, error) {
+func (m *MockHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
 	if m.LanguageRuntimeF != nil {
-		return m.LanguageRuntimeF(runtime, info)
+		return m.LanguageRuntimeF(runtime)
 	}
 	return nil, errors.New("LanguageRuntime not implemented")
 }
 
-func (m *MockHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error {
+func (m *MockHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds Flags) error {
 	if m.EnsurePluginsF != nil {
 		return m.EnsurePluginsF(plugins, kinds)
 	}
@@ -113,7 +106,7 @@ func (m *MockHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) er
 }
 
 func (m *MockHost) ResolvePlugin(
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if m.ResolvePluginF != nil {
 		return m.ResolvePluginF(spec)
@@ -149,6 +142,13 @@ func (m *MockHost) StartDebugging(info DebuggingInfo) error {
 	return nil
 }
 
+func (m *MockHost) AttachDebugger(spec DebugSpec) bool {
+	if m.AttachDebuggerF != nil {
+		return m.AttachDebuggerF(spec)
+	}
+	return false
+}
+
 type MockProvider struct {
 	NotForwardCompatibleProvider
 
@@ -168,9 +168,8 @@ type MockProvider struct {
 	DeleteF             func(context.Context, DeleteRequest) (DeleteResponse, error)
 	ConstructF          func(context.Context, ConstructRequest) (ConstructResponse, error)
 	InvokeF             func(context.Context, InvokeRequest) (InvokeResponse, error)
-	StreamInvokeF       func(context.Context, StreamInvokeRequest) (StreamInvokeResponse, error)
 	CallF               func(context.Context, CallRequest) (CallResponse, error)
-	GetPluginInfoF      func(context.Context) (workspace.PluginInfo, error)
+	GetPluginInfoF      func(context.Context) (PluginInfo, error)
 	SignalCancellationF func(context.Context) error
 	GetMappingF         func(context.Context, GetMappingRequest) (GetMappingResponse, error)
 	GetMappingsF        func(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
@@ -292,13 +291,6 @@ func (m *MockProvider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRes
 	return InvokeResponse{}, errors.New("Invoke not implemented")
 }
 
-func (m *MockProvider) StreamInvoke(ctx context.Context, req StreamInvokeRequest) (StreamInvokeResponse, error) {
-	if m.StreamInvokeF != nil {
-		return m.StreamInvokeF(ctx, req)
-	}
-	return StreamInvokeResponse{}, errors.New("StreamInvoke not implemented")
-}
-
 func (m *MockProvider) Call(ctx context.Context, req CallRequest) (CallResponse, error) {
 	if m.CallF != nil {
 		return m.CallF(ctx, req)
@@ -306,11 +298,11 @@ func (m *MockProvider) Call(ctx context.Context, req CallRequest) (CallResponse,
 	return CallResponse{}, errors.New("Call not implemented")
 }
 
-func (m *MockProvider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
+func (m *MockProvider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 	if m.GetPluginInfoF != nil {
 		return m.GetPluginInfoF(ctx)
 	}
-	return workspace.PluginInfo{}, errors.New("GetPluginInfo not implemented")
+	return PluginInfo{}, errors.New("GetPluginInfo not implemented")
 }
 
 func (m *MockProvider) SignalCancellation(ctx context.Context) error {

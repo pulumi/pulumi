@@ -81,6 +81,7 @@ func init() {
 
 	addEndpoint("GET", "/api/user", "getCurrentUser")
 	addEndpoint("GET", "/api/user/stacks", "listUserStacks")
+	addEndpoint("GET", "/api/user/organizations/default", "getDefaultOrg")
 	addEndpoint("GET", "/api/stacks/{orgName}", "listOrganizationStacks")
 	addEndpoint("POST", "/api/stacks/{orgName}", "createStack")
 	addEndpoint("DELETE", "/api/stacks/{orgName}/{projectName}/{stackName}", "deleteStack")
@@ -126,4 +127,9 @@ func init() {
 	// APIs for interacting with the Package Registry
 	addEndpoint("POST", "/api/preview/registry/packages/{source}/{publisher}/{name}/versions", "publishPackage")
 	addEndpoint("POST", "/api/preview/registry/packages/{source}/{publisher}/{name}/versions/{version}/complete", "completePackagePublish")
+	addEndpoint("DELETE", "/api/registry/packages/{source}/{publisher}/{name}/versions/{version}", "deletePackageVersion")
+
+	// APIs for interacting with the Template Registry
+	addEndpoint("POST", "/api/registry/templates/{source}/{publisher}/{name}/versions", "publishTemplate")
+	addEndpoint("POST", "/api/registry/templates/{source}/{publisher}/{name}/versions/{version}/complete", "completeTemplatePublish")
 }

@@ -21,8 +21,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -87,8 +87,8 @@ func TestDeletion(t *testing.T) {
 	})
 
 	err := DeleteResource(snap, b, nil, false)
-	assert.NoError(t, err)
-	assert.Len(t, snap.Resources, 3)
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, []*resource.State{pA, a, c}, snap.Resources)
 }
 
@@ -304,7 +304,7 @@ func TestFailedDeletionProviderDependency(t *testing.T) {
 	assert.Contains(t, depErr.Dependencies, a)
 	assert.Contains(t, depErr.Dependencies, b)
 	assert.Contains(t, depErr.Dependencies, c)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
 }
 
@@ -333,7 +333,7 @@ func TestFailedDeletionRegularDependency(t *testing.T) {
 	assert.NotContains(t, depErr.Dependencies, a)
 	assert.Contains(t, depErr.Dependencies, b)
 	assert.NotContains(t, depErr.Dependencies, c)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
 }
 
@@ -371,7 +371,7 @@ func TestDeleteProtected(t *testing.T) {
 					protectedCount++
 					return nil
 				}, false)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, protectedCount, 1)
 				assert.Equal(t, snap.Resources, []*resource.State{pA, b, c})
 			},
@@ -388,7 +388,7 @@ func TestDeleteProtected(t *testing.T) {
 					protectedCount++
 					return nil
 				}, true)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				// 2 because we only plan to delete b and c. a is protected but not
 				// scheduled for deletion, so we don't call the onProtect handler.
 				assert.Equal(t, protectedCount, 2)
@@ -406,7 +406,7 @@ func TestDeleteProtected(t *testing.T) {
 					protectedCount++
 					return nil
 				}, false)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, protectedCount, 1)
 				assert.Equal(t, snap.Resources, []*resource.State{pA, a, b})
 			},
@@ -433,7 +433,6 @@ func TestDeleteProtected(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			pA := NewProviderResource("a", "p1", "0")
@@ -479,30 +478,8 @@ func TestFailedDeletionParentDependency(t *testing.T) {
 	assert.NotContains(t, depErr.Dependencies, a)
 	assert.Contains(t, depErr.Dependencies, b)
 	assert.Contains(t, depErr.Dependencies, c)
-	assert.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
-}
-
-func TestUnprotectResource(t *testing.T) {
-	t.Parallel()
-
-	pA := NewProviderResource("a", "p1", "0")
-	a := NewResource("a", pA)
-	a.Protect = true
-	b := NewResource("b", pA)
-	c := NewResource("c", pA)
-	snap := NewSnapshot([]*resource.State{
-		pA,
-		a,
-		b,
-		c,
-	})
-
-	err := UnprotectResource(snap, a)
-	assert.NoError(t, err)
-	assert.Len(t, snap.Resources, 4)
-	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
-	assert.False(t, a.Protect)
 }
 
 func TestLocateResourceNotFound(t *testing.T) {
@@ -541,7 +518,7 @@ func TestLocateResourceAmbiguous(t *testing.T) {
 	})
 
 	resList := LocateResource(snap, a.URN)
-	assert.Len(t, resList, 2)
+	require.Len(t, resList, 2)
 	assert.Contains(t, resList, a)
 	assert.Contains(t, resList, aPending)
 	assert.NotContains(t, resList, pA)
@@ -563,7 +540,7 @@ func TestLocateResourceExact(t *testing.T) {
 	})
 
 	resList := LocateResource(snap, a.URN)
-	assert.Len(t, resList, 1)
+	require.Len(t, resList, 1)
 	assert.Contains(t, resList, a)
 }
 
@@ -599,8 +576,8 @@ func TestRenameStack(t *testing.T) {
 		return apitype.ResourceV3{
 			Type:         t,
 			URN:          resource.NewURN("test", "test", "", t, name),
-			Inputs:       map[string]interface{}{},
-			Outputs:      map[string]interface{}{},
+			Inputs:       map[string]any{},
+			Outputs:      map[string]any{},
 			Dependencies: deps,
 			Provider:     prov,
 		}
@@ -612,8 +589,8 @@ func TestRenameStack(t *testing.T) {
 			Type:         t,
 			URN:          resource.NewURN("test", "test", "", t, name),
 			ID:           resource.ID(id),
-			Inputs:       map[string]interface{}{},
-			Outputs:      map[string]interface{}{},
+			Inputs:       map[string]any{},
+			Outputs:      map[string]any{},
 			Dependencies: deps,
 		}
 	}
@@ -642,7 +619,7 @@ func TestRenameStack(t *testing.T) {
 
 	// Baseline. Can locate resource A.
 	resList := locateResource(deployment, a.URN)
-	assert.Len(t, resList, 1)
+	require.Len(t, resList, 1)
 	assert.Contains(t, resList, a)
 	if t.Failed() {
 		t.Fatal("Unable to find expected resource in initial checkpoint.")
@@ -662,7 +639,7 @@ func TestRenameStack(t *testing.T) {
 		}
 
 		// Confirm the previous resource by URN isn't found.
-		assert.Len(t, locateResource(deployment, baselineResourceURN), 0)
+		require.Len(t, locateResource(deployment, baselineResourceURN), 0)
 
 		// Confirm the resource has been renamed.
 		updatedResourceURN := resource.NewURN(
@@ -670,7 +647,7 @@ func TestRenameStack(t *testing.T) {
 			"test", // project name stayed the same
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
-		assert.Len(t, locateResource(deployment, updatedResourceURN), 1)
+		require.Len(t, locateResource(deployment, updatedResourceURN), 1)
 	})
 
 	// Rename the stack and project.
@@ -687,6 +664,6 @@ func TestRenameStack(t *testing.T) {
 			"new-project",
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
-		assert.Len(t, locateResource(deployment, updatedResourceURN), 1)
+		require.Len(t, locateResource(deployment, updatedResourceURN), 1)
 	})
 }

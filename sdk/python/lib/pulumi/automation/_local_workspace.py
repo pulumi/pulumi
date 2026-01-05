@@ -18,7 +18,9 @@ import json
 import os
 import tempfile
 from datetime import datetime
-from typing import TYPE_CHECKING, Callable, List, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
+from collections.abc import Callable
+from collections.abc import Mapping
 
 import yaml
 from semver import VersionInfo
@@ -46,6 +48,36 @@ if TYPE_CHECKING:
     from pulumi.automation._remote_workspace import RemoteGitAuth
 
 _setting_extensions = [".yaml", ".yml", ".json"]
+
+
+class DockerImageCredentials:
+    """
+    Credentials for the remote execution Docker image.
+    """
+
+    username: str
+    password: str
+
+    def __init__(self, username: str, password: str):
+        self.username = username
+        self.password = password
+
+
+class ExecutorImage:
+    """
+    Information about the remote execution image.
+    """
+
+    image: Optional[str]
+    credentials: Optional[DockerImageCredentials]
+
+    def __init__(
+        self,
+        image: Optional[str] = None,
+        credentials: Optional[DockerImageCredentials] = None,
+    ):
+        self.image = image
+        self.credentials = credentials
 
 
 class Secret(str):
@@ -100,8 +132,9 @@ class LocalWorkspace(Workspace):
 
     _remote: bool = False
     _remote_env_vars: Optional[Mapping[str, Union[str, Secret]]]
-    _remote_pre_run_commands: Optional[List[str]]
+    _remote_pre_run_commands: Optional[list[str]]
     _remote_skip_install_dependencies: Optional[bool]
+    _remote_executor_image: Optional[ExecutorImage]
     _remote_inherit_settings: Optional[bool]
     _remote_git_url: Optional[str]
     _remote_git_project_path: Optional[str]
@@ -178,7 +211,7 @@ class LocalWorkspace(Workspace):
             path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{ext}")
             if not os.path.exists(path):
                 continue
-            with open(path, "r", encoding="utf-8") as file:
+            with open(path, encoding="utf-8") as file:
                 settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
                 return StackSettings._deserialize(settings)
         raise FileNotFoundError(
@@ -202,7 +235,7 @@ class LocalWorkspace(Workspace):
             else:
                 yaml.dump(settings._serialize(), stream=file)
 
-    def serialize_args_for_op(self, stack_name: str) -> List[str]:
+    def serialize_args_for_op(self, stack_name: str) -> list[str]:
         # Not used by LocalWorkspace
         return []
 
@@ -228,7 +261,7 @@ class LocalWorkspace(Workspace):
                 "upgrade to at least version 3.95.0."
             )
 
-    def list_environments(self, stack_name: str) -> List[str]:
+    def list_environments(self, stack_name: str) -> list[str]:
         # Assume an old version. Doesn't really matter what this is as long as it's pre-3.99.
         ver = VersionInfo(3)
         if self.pulumi_command.version is not None:
@@ -327,6 +360,10 @@ class LocalWorkspace(Workspace):
 
         self._run_pulumi_cmd_sync(args)
 
+    def set_all_config_json(self, stack_name: str, config_json: str) -> None:
+        args = ["config", "set-all", "--stack", stack_name, "--json", config_json]
+        self._run_pulumi_cmd_sync(args)
+
     def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:
         args = ["config", "rm", key, "--stack", stack_name]
         if path:
@@ -334,7 +371,7 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(args)
 
     def remove_all_config(
-        self, stack_name: str, keys: List[str], *, path: bool = False
+        self, stack_name: str, keys: list[str], *, path: bool = False
     ) -> None:
         args = ["config", "rm-all", "--stack", stack_name]
         if path:
@@ -417,7 +454,7 @@ class LocalWorkspace(Workspace):
     def select_stack(self, stack_name: str) -> None:
         # If this is a remote workspace, we don't want to actually select the stack (which would modify global state);
         # but we will ensure the stack exists by calling `pulumi stack`.
-        args: List[str] = ["stack"]
+        args: list[str] = ["stack"]
         if not self._remote:
             args.append("select")
         args.append("--stack")
@@ -438,13 +475,13 @@ class LocalWorkspace(Workspace):
         args.append(stack_name)
         self._run_pulumi_cmd_sync(args)
 
-    def list_stacks(self, include_all: Optional[bool] = None) -> List[StackSummary]:
+    def list_stacks(self, include_all: Optional[bool] = None) -> list[StackSummary]:
         args = ["stack", "ls", "--json"]
         if include_all:
             args.append("--all")
         result = self._run_pulumi_cmd_sync(args)
         json_list = json.loads(result.stdout)
-        stack_list: List[StackSummary] = []
+        stack_list: list[StackSummary] = []
         for stack_json in json_list:
             stack = StackSummary(
                 name=stack_json["name"],
@@ -531,10 +568,10 @@ class LocalWorkspace(Workspace):
         args.append("--yes")
         self._run_pulumi_cmd_sync(args)
 
-    def list_plugins(self) -> List[PluginInfo]:
+    def list_plugins(self) -> list[PluginInfo]:
         result = self._run_pulumi_cmd_sync(["plugin", "ls", "--json"])
         json_list = json.loads(result.stdout)
-        plugin_list: List[PluginInfo] = []
+        plugin_list: list[PluginInfo] = []
         for plugin_json in json_list:
             plugin = PluginInfo(
                 name=plugin_json["name"],
@@ -605,16 +642,19 @@ class LocalWorkspace(Workspace):
         return "--remote-inherit-settings" in help_string
 
     def _run_pulumi_cmd_sync(
-        self, args: List[str], on_output: Optional[OnOutput] = None
+        self,
+        args: list[str],
+        on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
     ) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
         if self._remote:
             envs["PULUMI_EXPERIMENTAL"] = "true"
         envs = {**envs, **self.env_vars}
-        return self.pulumi_command.run(args, self.work_dir, envs, on_output)
+        return self.pulumi_command.run(args, self.work_dir, envs, on_output, on_error)
 
-    def _remote_args(self) -> List[str]:
-        args: List[str] = []
+    def _remote_args(self) -> list[str]:
+        args: list[str] = []
         if not self._remote:
             return args
 
@@ -667,6 +707,22 @@ class LocalWorkspace(Workspace):
 
         if self._remote_skip_install_dependencies:
             args.append("--remote-skip-install-dependencies")
+
+        if self._remote_executor_image:
+            if self._remote_executor_image.image:
+                args.append(
+                    "--remote-executor-image=" + self._remote_executor_image.image
+                )
+
+            if self._remote_executor_image.credentials:
+                args.append(
+                    "--remote-executor-image-username="
+                    + self._remote_executor_image.credentials.username
+                )
+                args.append(
+                    "--remote-executor-image-password="
+                    + self._remote_executor_image.credentials.password
+                )
 
         if self._remote_inherit_settings:
             args.append("--remote-inherit-settings")
@@ -726,7 +782,7 @@ def create_stack(
     :param program: The inline program - required for inline programs.
     :param work_dir: The directory for a CLI-driven stack - required for local programs.
     :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-           variables to pass through to every command.
+        variables to pass through to every command.
     :return: Stack
     """
     args = locals()
@@ -786,7 +842,7 @@ def select_stack(
     :param program: The inline program - required for inline programs.
     :param work_dir: The directory for a CLI-driven stack - required for local programs.
     :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-           variables to pass through to every command.
+        variables to pass through to every command.
     :return: Stack
     """
     args = locals()
@@ -845,7 +901,7 @@ def create_or_select_stack(
     :param program: The inline program - required for inline programs.
     :param work_dir: The directory for a CLI-driven stack - required for local programs.
     :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-           variables to pass through to every command.
+        variables to pass through to every command.
     :return: Stack
     """
     args = locals()
@@ -931,7 +987,7 @@ def _load_project_settings(work_dir: str) -> ProjectSettings:
         project_path = os.path.join(work_dir, f"Pulumi{ext}")
         if not os.path.exists(project_path):
             continue
-        with open(project_path, "r", encoding="utf-8") as file:
+        with open(project_path, encoding="utf-8") as file:
             settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
             return ProjectSettings.from_dict(settings)
     raise FileNotFoundError(

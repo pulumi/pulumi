@@ -29,11 +29,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func initLoader(b *testing.B, options pluginLoaderCacheOptions) ReferenceLoader {
+func initLoader(b testing.TB, options pluginLoaderCacheOptions) ReferenceLoader {
 	cwd, err := os.Getwd()
 	require.NoError(b, err)
 	sink := diagtest.LogSink(b)
-	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	ctx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil)
 	require.NoError(b, err)
 	loader := newPluginLoaderWithOptions(ctx.Host, options)
 
@@ -159,12 +159,12 @@ func TestLoadParameterized(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 			assert.Equal(t, "terraform-provider", descriptor.Name)
 			assert.Equal(t, semver.MustParse("1.0.0"), *descriptor.Version)
 			return mockProvider, nil
 		},
-		ResolvePluginF: func(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			assert.Equal(t, apitype.ResourcePlugin, spec.Kind)
 			assert.Equal(t, "terraform-provider", spec.Name)
 			assert.Equal(t, semver.MustParse("1.0.0"), *spec.Version)
@@ -227,10 +227,10 @@ func TestLoadNameMismatch(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(workspace.PackageDescriptor) (plugin.Provider, error) {
+		ProviderF: func(workspace.PluginDescriptor) (plugin.Provider, error) {
 			return provider, nil
 		},
-		ResolvePluginF: func(workspace.PluginSpec) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{
 				Name:    notPkg,
 				Kind:    apitype.ResourcePlugin,
@@ -298,10 +298,10 @@ func TestLoadVersionMismatch(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(workspace.PackageDescriptor) (plugin.Provider, error) {
+		ProviderF: func(workspace.PluginDescriptor) (plugin.Provider, error) {
 			return provider, nil
 		},
-		ResolvePluginF: func(workspace.PluginSpec) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{
 				Name:    pkg,
 				Kind:    apitype.ResourcePlugin,
@@ -386,4 +386,56 @@ func TestPackageDescriptorString(t *testing.T) {
 	for _, c := range cases {
 		assert.Equal(t, c.expected, c.desc.String())
 	}
+}
+
+type testLoader struct {
+	t         testing.TB
+	wasCalled bool
+	expected  json.RawMessage
+	retVal    any
+}
+
+func (testLoader) ImportDefaultSpec(bytes json.RawMessage) (any, error)    { return nil, nil }
+func (testLoader) ImportPropertySpec(bytes json.RawMessage) (any, error)   { return nil, nil }
+func (testLoader) ImportObjectTypeSpec(bytes json.RawMessage) (any, error) { return nil, nil }
+func (testLoader) ImportResourceSpec(bytes json.RawMessage) (any, error)   { return nil, nil }
+func (testLoader) ImportFunctionSpec(bytes json.RawMessage) (any, error)   { return nil, nil }
+func (tl *testLoader) ImportPackageSpec(bytes json.RawMessage) (any, error) {
+	tl.wasCalled = true
+	assert.Equal(tl.t, tl.expected, bytes)
+	return tl.retVal, nil
+}
+
+func TestPartialPackageLanguage(t *testing.T) {
+	t.Parallel()
+
+	loaderBytes := RawMessage{1, 2, 3}
+
+	spec := PartialPackageSpec{
+		PackageInfoSpec: PackageInfoSpec{
+			Name: "pkg",
+			Language: map[string]RawMessage{
+				"loader": loaderBytes,
+			},
+		},
+	}
+
+	tl := testLoader{
+		t:        t,
+		expected: json.RawMessage(loaderBytes),
+		retVal:   "123",
+	}
+	ref, err := ImportPartialSpec(spec, map[string]Language{
+		"loader": &tl,
+	}, initLoader(t, pluginLoaderCacheOptions{}))
+	require.NoError(t, err)
+
+	l, err := ref.Language("loader")
+	require.NoError(t, err)
+	assert.Equal(t, "123", l)
+	assert.True(t, tl.wasCalled)
+
+	unknownL, err := ref.Language("unknown")
+	require.NoError(t, err)
+	assert.Nil(t, unknownL)
 }

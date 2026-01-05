@@ -1,6 +1,0 @@
-name: l1-empty
-runtime:
-  name: python
-  options:
-    typechecker: mypy
-    virtualenv: venv

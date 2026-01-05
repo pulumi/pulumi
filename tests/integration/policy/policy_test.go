@@ -27,8 +27,6 @@ import (
 
 // TestPolicyWithConfig runs integration tests against the policy pack in the policy_pack_w_config
 // directory using version 0.4.1-dev of the pulumi/policy sdk.
-//
-//nolint:paralleltest // mutates environment variables
 func TestPolicyWithConfig(t *testing.T) {
 	t.Skip("Skip test that is causing unrelated tests to fail - pulumi/pulumi#4149")
 
@@ -45,7 +43,7 @@ func TestPolicyWithConfig(t *testing.T) {
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
 	e.ImportDirectory("policy_pack_w_config")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	t.Setenv("TEST_POLICY_PACK", policyPackName)
 
 	// Publish the Policy Pack twice.
@@ -100,8 +98,6 @@ func TestPolicyWithConfig(t *testing.T) {
 
 // TestPolicyWithoutConfig runs integration tests against the policy pack in the policy_pack_w_config
 // directory. This tests against version 0.4.0 of the pulumi/policy sdk, prior to policy config being supported.
-//
-//nolint:paralleltest // mutates environment variables
 func TestPolicyWithoutConfig(t *testing.T) {
 	t.Skip("Skip test that is causing unrelated tests to fail - pulumi/pulumi#4149")
 
@@ -119,7 +115,7 @@ func TestPolicyWithoutConfig(t *testing.T) {
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
 	e.ImportDirectory("policy_pack_wo_config")
-	e.RunCommand("yarn", "install")
+	e.RunCommandWithRetry("yarn", "install")
 	t.Setenv("TEST_POLICY_PACK", policyPackName)
 
 	// Publish the Policy Pack twice.
@@ -160,7 +156,7 @@ type policyGroupsJSON struct {
 }
 
 //nolint:unused // Used by skipped test
-func assertJSON(e *ptesting.Environment, out string, respObj interface{}) {
+func assertJSON(e *ptesting.Environment, out string, respObj any) {
 	err := json.Unmarshal([]byte(out), &respObj)
 	if err != nil {
 		e.Errorf("unable to unmarshal %v", out)

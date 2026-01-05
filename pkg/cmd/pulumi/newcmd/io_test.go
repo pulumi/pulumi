@@ -61,7 +61,6 @@ func TestErrorIfNotEmptyDirectory(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -80,7 +79,7 @@ func TestErrorIfNotEmptyDirectory(t *testing.T) {
 
 			err := ErrorIfNotEmptyDirectory(path)
 			if tt.ok {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
 				assert.Error(t, err)
 			}

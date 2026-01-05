@@ -24,14 +24,26 @@ import * as engrpc from "../proto/engine_grpc_pb";
 import * as engproto from "../proto/engine_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
+import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 
+/*
+  Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
+ */
+const maxRPCMessageSize: number = 1024 * 1024 * 400;
+/*
+  This is the time a message can be received by the GRPC server and wait in the queue without being handled. If there is
+  blocking happening in the pulumi program, and/or there are a lot of requests and other tasks to process by the event
+  loop, this can take longer than the default 30 seconds. Requests that take longer end up being cancelled, causing the
+  operation to fail.
+*/
+const serverMaxUnrequestedTimeInServer = 30 * 60; // half an hour in seconds
 /**
- * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
- *
  * @internal
  */
-export const maxRPCMessageSize: number = 1024 * 1024 * 400;
-const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
+export const grpcChannelOptions = {
+    "grpc.max_receive_message_length": maxRPCMessageSize,
+    "grpc.server_max_unrequested_time_in_server": serverMaxUnrequestedTimeInServer,
+};
 
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining
@@ -85,11 +97,6 @@ export interface Options {
     readonly testModeEnabled?: boolean;
 
     /**
-     * True if we're in query mode (does not allow resource registration).
-     */
-    readonly queryMode?: boolean;
-
-    /**
      * True if we will resolve missing outputs to inputs during preview.
      */
     readonly legacyApply?: boolean;
@@ -141,7 +148,6 @@ export function resetOptions(
     store.settings.options.project = project;
     store.settings.options.stack = stack;
     store.settings.options.dryRun = preview;
-    store.settings.options.queryMode = isQueryMode();
     store.settings.options.parallel = parallel;
     store.settings.options.monitorAddr = monitorAddr;
     store.settings.options.engineAddr = engineAddr;
@@ -154,6 +160,7 @@ export function resetOptions(
     store.supportsResourceReferences = false;
     store.supportsOutputValues = false;
     store.supportsDeletedWith = false;
+    store.supportsReplaceWith = false;
     store.supportsAliasSpecs = false;
     store.supportsTransforms = false;
     store.supportsInvokeTransforms = false;
@@ -254,20 +261,24 @@ export async function awaitFeatureSupport(): Promise<void> {
             resourceReferences,
             outputValues,
             deletedWith,
+            replaceWith,
             aliasSpecs,
             transforms,
             invokeTransforms,
             parameterization,
+            resourceHooks,
         ] = await Promise.all(
             [
                 "secrets",
                 "resourceReferences",
                 "outputValues",
                 "deletedWith",
+                "replaceWith",
                 "aliasSpecs",
                 "transforms",
                 "invokeTransforms",
                 "parameterization",
+                "resourceHooks",
             ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
         );
 
@@ -275,20 +286,13 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsResourceReferences = resourceReferences;
         store.supportsOutputValues = outputValues;
         store.supportsDeletedWith = deletedWith;
+        store.supportsReplaceWith = replaceWith;
         store.supportsAliasSpecs = aliasSpecs;
         store.supportsTransforms = transforms;
         store.supportsInvokeTransforms = invokeTransforms;
         store.supportsParameterization = parameterization;
+        store.supportsResourceHooks = resourceHooks;
     }
-}
-
-/**
- * @internal
- *  Used only for testing purposes.
- */
-export function _setQueryMode(val: boolean) {
-    const { settings } = getStore();
-    settings.options.queryMode = val;
 }
 
 /**
@@ -297,13 +301,6 @@ export function _setQueryMode(val: boolean) {
  */
 export function _reset(): void {
     resetOptions("", "", -1, "", "", false, "");
-}
-
-/**
- * Returns true if query mode is enabled.
- */
-export function isQueryMode(): boolean {
-    return options().queryMode === true;
 }
 
 /**
@@ -521,6 +518,8 @@ export function getEngine(): engrpc.IEngineClient | undefined {
 }
 
 export function terminateRpcs() {
+    const store = getStore();
+    store.terminated = true;
     disconnectSync();
 }
 
@@ -555,29 +554,69 @@ function options(): Options {
  * Permanently disconnects from the server, closing the connections. It waits
  * for the existing RPC queue to drain.  If any RPCs come in afterwards,
  * however, they will crash the process.
+ *
+ * If `signalShutdown` is true, signal to the monitor that we're ready to
+ * shutdown. This will wait until the monitor has completed all steps,
+ * including deletion steps.
  */
-export function disconnect(): Promise<void> {
-    return waitForRPCs(/*disconnectFromServers*/ true);
+export async function disconnect(signalShutdown = false): Promise<void> {
+    await waitForRPCs();
+    if (signalShutdown) {
+        await signalAndWaitForShutdown();
+    }
+    disconnectSync();
 }
 
 /**
+ * Waits for the existing RPC queue to drain.
+ *
  * @internal
  */
-export function waitForRPCs(disconnectFromServers = false): Promise<void> {
+export function waitForRPCs(): Promise<void> {
     const localStore = getStore();
     let done: Promise<any> | undefined;
-    const closeCallback: () => Promise<void> = () => {
+    const closeCallback: () => Promise<void> = async () => {
         if (done !== localStore.settings.rpcDone) {
             // If the done promise has changed, some activity occurred in between callbacks.  Wait again.
             done = localStore.settings.rpcDone;
             return debuggablePromise(done.then(closeCallback), "disconnect");
         }
-        if (disconnectFromServers) {
-            disconnectSync();
-        }
         return Promise.resolve();
     };
     return closeCallback();
+}
+
+/**
+ * Signals to the monitor that we're ready to shutdown. This will wait until the
+ * monitor has completed all steps, including deletion steps.
+ *
+ * @internal
+ */
+export function signalAndWaitForShutdown(): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const monitorRef = getMonitor();
+        if (!monitorRef) {
+            return resolve();
+        }
+        monitorRef.signalAndWaitForShutdown(new emptyproto.Empty(), (err, _) => {
+            if (err) {
+                // If we are running against an older version of the CLI,
+                // SignalAndWaitForShutdown might not be implemented. This is
+                // mostly fine, but means that delete hooks do not work. Since
+                // we check if the CLI supports the `resourceHook` feature when
+                // registering hooks, it's fine to ignore the `UNIMPLEMENTED`
+                // error here.
+                // If we get `UNAVAILABLE`, the monitor was already shutdown, likely
+                // due to an error, and we can ignore the GRPC error here, since
+                // Pulumi will have notified the user.
+                if (err && (err.code === grpc.status.UNIMPLEMENTED || err.code === grpc.status.UNAVAILABLE)) {
+                    return resolve();
+                }
+                return reject(new Error(`Error while signaling shutdown: ${err}`));
+            }
+            return resolve();
+        });
+    });
 }
 
 /**

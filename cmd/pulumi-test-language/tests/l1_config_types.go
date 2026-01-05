@@ -16,10 +16,11 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -36,21 +37,22 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 5, "expected 5 outputs")
-					AssertPropertyMapMember(l, outputs, "theNumber", resource.NewNumberProperty(4.75))
-					AssertPropertyMapMember(l, outputs, "theString", resource.NewStringProperty("Hello World"))
-					AssertPropertyMapMember(l, outputs, "theMap", resource.NewObjectProperty(resource.PropertyMap{
-						"a": resource.NewNumberProperty(2),
-						"b": resource.NewNumberProperty(3),
+					require.Len(l, outputs, 5, "expected 5 outputs")
+					AssertPropertyMapMember(l, outputs, "theNumber", resource.NewProperty(4.75))
+					AssertPropertyMapMember(l, outputs, "theString", resource.NewProperty("Hello World"))
+					AssertPropertyMapMember(l, outputs, "theMap", resource.NewProperty(resource.PropertyMap{
+						"a": resource.NewProperty(2.0),
+						"b": resource.NewProperty(3.0),
 					}))
-					AssertPropertyMapMember(l, outputs, "theObject", resource.NewBoolProperty(true))
-					AssertPropertyMapMember(l, outputs, "theThing", resource.NewNumberProperty(30))
+					AssertPropertyMapMember(l, outputs, "theObject", resource.NewProperty(true))
+					AssertPropertyMapMember(l, outputs, "theThing", resource.NewProperty(30.0))
 				},
 			},
 		},

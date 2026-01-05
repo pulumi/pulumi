@@ -14,26 +14,22 @@
 
 import { readFileSync } from "fs";
 import * as path from "path";
+import { Input, Inputs } from "../../output";
 import { ComponentResource, ComponentResourceOptions } from "../../resource";
 import { ConstructResult, Provider } from "../provider";
-import { Inputs, Input, Output } from "../../output";
 import { main } from "../server";
+import { Analyzer, ComponentDefinition } from "./analyzer";
 import { generateSchema } from "./schema";
-import { Analyzer } from "./analyzer";
 
-type OutputsToInputs<T> = {
-    [K in keyof T]: T[K] extends Output<infer U> ? Input<U> : never;
-};
-
-function getInputsFromOutputs<T extends ComponentResource>(resource: T): OutputsToInputs<T> {
+function getComponentOutputs<T extends ComponentResource>(
+    componentDefinition: ComponentDefinition,
+    resource: T,
+): Record<keyof T, Input<T[keyof T]>> {
     const result: any = {};
-    for (const key of Object.keys(resource)) {
-        const value = resource[key as keyof T];
-        if (Output.isInstance(value)) {
-            result[key] = value;
-        }
+    for (const key of Object.keys(componentDefinition.outputs)) {
+        result[key] = resource[key as keyof T];
     }
-    return result as OutputsToInputs<T>;
+    return result;
 }
 
 export type ComponentResourceConstructor = {
@@ -119,6 +115,8 @@ export class ComponentProvider implements Provider {
     private componentConstructors: Record<string, ComponentResourceConstructor>;
     private name: string;
     private namespace?: string;
+    private componentDefinitions?: Record<string, ComponentDefinition>;
+    private cachedSchema?: string;
     public version: string;
 
     public static validateResourceType(packageName: string, resourceType: string): void {
@@ -150,7 +148,7 @@ export class ComponentProvider implements Provider {
         this.packageJSON = JSON.parse(packStr);
         this.path = absDir;
         this.name = options.name;
-        this.version = options.version ?? "0.0.0";
+        this.version = options.version ?? this.packageJSON.version ?? "0.0.0";
         this.namespace = options.namespace;
         this.componentConstructors = options.components.reduce(
             (acc, component) => {
@@ -162,18 +160,28 @@ export class ComponentProvider implements Provider {
     }
 
     async getSchema(): Promise<string> {
-        const analyzer = new Analyzer(this.path, this.packageJSON, new Set(Object.keys(this.componentConstructors)));
-        const { components, typeDefinitions, packageReferences } = analyzer.analyze();
+        if (this.cachedSchema) {
+            return this.cachedSchema;
+        }
+        const analyzer = new Analyzer(
+            this.path,
+            this.name,
+            this.packageJSON,
+            new Set(Object.keys(this.componentConstructors)),
+        );
+        const { components, typeDefinitions, dependencies } = analyzer.analyze();
         const schema = generateSchema(
             this.name,
             this.version,
             this.packageJSON.description,
             components,
             typeDefinitions,
-            packageReferences,
+            dependencies,
             this.namespace,
         );
-        return JSON.stringify(schema);
+        this.cachedSchema = JSON.stringify(schema);
+        this.componentDefinitions = components;
+        return this.cachedSchema;
     }
 
     async construct(
@@ -182,16 +190,20 @@ export class ComponentProvider implements Provider {
         inputs: Inputs,
         options: ComponentResourceOptions,
     ): Promise<ConstructResult> {
-        ComponentProvider.validateResourceType(this.packageJSON.name, type);
+        ComponentProvider.validateResourceType(this.name, type);
         const componentName = type.split(":")[2];
         const constructor = this.componentConstructors[componentName];
         if (!constructor) {
             throw new Error(`Component class not found for '${componentName}'`);
         }
         const instance = new constructor(name, inputs, options);
+        if (!this.componentDefinitions) {
+            await this.getSchema();
+        }
+        const componentDefinition = this.componentDefinitions![componentName];
         return {
             urn: instance.urn,
-            state: getInputsFromOutputs(instance),
+            state: getComponentOutputs(componentDefinition, instance),
         };
     }
 }
@@ -224,9 +236,6 @@ export function componentProviderHost(options: ComponentProviderOptions): Promis
             throw new Error("Could not determine caller directory");
         }
     }
-    // Default the version to "0.0.0" for now, otherwise SDK codegen gets
-    // confused without a version.
-    const version = "0.0.0";
     const prov = new ComponentProvider(options);
     return main(prov, args);
 }

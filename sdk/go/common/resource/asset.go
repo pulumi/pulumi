@@ -71,7 +71,7 @@ func NewPathAssetWithWD(path string, cwd string) (*Asset, error) {
 func NewURIAsset(uri string) (*Asset, error) { return asset.FromURI(uri) }
 
 // DeserializeAsset checks to see if the map contains an asset, using its signature, and if so deserializes it.
-func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
+func DeserializeAsset(obj map[string]any) (*Asset, bool, error) {
 	return asset.Deserialize(obj)
 }
 
@@ -84,11 +84,11 @@ func NewFileBlob(f *os.File) (*Blob, error) { return asset.NewFileBlob(f) }
 // NewReadCloserBlob turn any old ReadCloser into an Blob, usually by making a copy.
 func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) { return asset.NewReadCloserBlob(r) }
 
-func NewAssetArchive(assets map[string]interface{}) (*Archive, error) {
+func NewAssetArchive(assets map[string]any) (*Archive, error) {
 	return archive.FromAssets(assets)
 }
 
-func NewAssetArchiveWithWD(assets map[string]interface{}, wd string) (*Archive, error) {
+func NewAssetArchiveWithWD(assets map[string]any, wd string) (*Archive, error) {
 	return archive.FromAssetsWithWD(assets, wd)
 }
 
@@ -105,7 +105,7 @@ func NewURIArchive(uri string) (*Archive, error) {
 }
 
 // DeserializeArchive checks to see if the map contains an archive, using its signature, and if so deserializes it.
-func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
+func DeserializeArchive(obj map[string]any) (*Archive, bool, error) {
 	return archive.Deserialize(obj)
 }
 

@@ -17,6 +17,7 @@ from typing import Optional
 import pytest
 
 from pulumi.automation._remote_workspace import _is_fully_qualified_stack_name
+from pulumi.automation._local_workspace import DockerImageCredentials, ExecutorImage
 
 from pulumi.automation import (
     LocalWorkspace,

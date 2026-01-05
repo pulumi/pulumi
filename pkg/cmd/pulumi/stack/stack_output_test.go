@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,9 +40,9 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
-		"bucketName": resource.NewStringProperty("mybucket-1234"),
-		"password": resource.NewSecretProperty(&resource.Secret{
-			Element: resource.NewStringProperty("hunter2"),
+		"bucketName": resource.NewProperty("mybucket-1234"),
+		"password": resource.NewProperty(&resource.Secret{
+			Element: resource.NewProperty("hunter2"),
 		}),
 	}
 
@@ -98,7 +99,6 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -110,7 +110,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 					},
 				},
 			}
-			requireStack := func(context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
+			requireStack := func(context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
 				string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
@@ -148,9 +148,9 @@ func TestStackOutputCmd_json(t *testing.T) {
 	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
-		"bucketName": resource.NewStringProperty("mybucket-1234"),
-		"password": resource.NewSecretProperty(&resource.Secret{
-			Element: resource.NewStringProperty("hunter2"),
+		"bucketName": resource.NewProperty("mybucket-1234"),
+		"password": resource.NewProperty(&resource.Secret{
+			Element: resource.NewProperty("hunter2"),
 		}),
 	}
 
@@ -167,12 +167,12 @@ func TestStackOutputCmd_json(t *testing.T) {
 		args []string
 
 		// Expected parsed JSON output.
-		want interface{}
+		want any
 	}{
 		{
 			desc:    "default",
 			outputs: outputsWithSecret,
-			want: map[string]interface{}{
+			want: map[string]any{
 				"bucketName": "mybucket-1234",
 				"password":   "[secret]",
 			},
@@ -181,7 +181,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 			desc:        "show-secrets",
 			outputs:     outputsWithSecret,
 			showSecrets: true,
-			want: map[string]interface{}{
+			want: map[string]any{
 				"bucketName": "mybucket-1234",
 				"password":   "hunter2",
 			},
@@ -210,7 +210,6 @@ func TestStackOutputCmd_json(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -222,7 +221,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 					},
 				},
 			}
-			requireStack := func(context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
+			requireStack := func(context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
 				string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
@@ -242,7 +241,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 
 			stdout := stdoutBuff.Bytes()
-			var got interface{}
+			var got any
 			require.NoError(t, json.Unmarshal(stdout, &got),
 				"output is not valid JSON:\n%s", stdout)
 
@@ -257,9 +256,9 @@ func TestStackOutputCmd_shell(t *testing.T) {
 	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
-		"bucketName": resource.NewStringProperty("mybucket-1234"),
-		"password": resource.NewSecretProperty(&resource.Secret{
-			Element: resource.NewStringProperty("hunter2"),
+		"bucketName": resource.NewProperty("mybucket-1234"),
+		"password": resource.NewProperty(&resource.Secret{
+			Element: resource.NewProperty("hunter2"),
 		}),
 	}
 
@@ -332,7 +331,6 @@ func TestStackOutputCmd_shell(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -344,7 +342,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 					},
 				},
 			}
-			requireStack := func(context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
+			requireStack := func(context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
 				string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
@@ -383,7 +381,7 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 
 	cmd := stackOutputCmd{
 		requireStack: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, string, LoadOption, display.Options,
+			context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager, string, LoadOption, display.Options,
 		) (backend.Stack, error) {
 			t.Fatal("This function should not be called")
 			return nil, errors.New("should not be called")
@@ -401,7 +399,7 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 
 	tests := []struct {
 		desc     string
-		give     interface{}
+		give     any
 		wantBash string
 		wantPwsh string
 	}{
@@ -444,11 +442,10 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("bash", func(t *testing.T) {
+			t.Run("bash", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 				var got bytes.Buffer
 				writer := bashStackOutputWriter{W: &got}
 				require.NoError(t, writer.WriteOne("myoutput", tt.give))
@@ -457,7 +454,7 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 				assert.Equal(t, want, got.String())
 			})
 
-			t.Run("pwsh", func(t *testing.T) {
+			t.Run("pwsh", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 				var got bytes.Buffer
 				writer := powershellStackOutputWriter{W: &got}
 				require.NoError(t, writer.WriteOne("myoutput", tt.give))

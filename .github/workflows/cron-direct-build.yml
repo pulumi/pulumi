@@ -7,22 +7,27 @@ on:
 
 jobs:
   pkg:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
           go-version: "1.24"
       - name: Build
         shell: bash
-        run: GOPROXY=direct make build
+        run: GOPROXY=direct SDKS="" make build
   sdk:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
           go-version: "1.24"
+
+      - uses: pulumi/actions@v6
+        with:
+          pulumi-version: dev
+
       - name: Build
         shell: bash
         run: |

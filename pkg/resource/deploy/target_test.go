@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTarget(t *testing.T) {
@@ -49,6 +50,7 @@ func TestTarget(t *testing.T) {
 				_, err := target.GetPackageConfig("test")
 				assert.ErrorIs(t, err, expectedErr)
 			})
+			//nolint:paralleltest // golangci-lint v2 upgrade
 			t.Run("different namespace", func(t *testing.T) {
 				target := &Target{
 					Config: config.Map{
@@ -58,10 +60,11 @@ func TestTarget(t *testing.T) {
 					Decrypter: &decrypterMock{},
 				}
 				_, err := target.GetPackageConfig("something-else")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 		})
-		t.Run("ok", func(t *testing.T) {
+
+		t.Run("ok", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 			expectedErr := errors.New("expected error")
 			target := &Target{
 				Config: config.Map{
@@ -80,7 +83,7 @@ func TestTarget(t *testing.T) {
 				},
 			}
 			res, err := target.GetPackageConfig("test")
-			assert.NoError(t, err, expectedErr)
+			require.NoError(t, err, expectedErr)
 
 			cfg := res.Mappable()
 			assert.Equal(t, "regular-value", cfg["regular"])

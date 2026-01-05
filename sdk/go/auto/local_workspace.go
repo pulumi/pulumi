@@ -92,7 +92,7 @@ func (l *LocalWorkspace) StackSettings(ctx context.Context, stackName string) (*
 	for _, ext := range settingsExtensions {
 		stackPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi.%s%s", name, ext))
 		if _, err := os.Stat(stackPath); err == nil {
-			proj, err := workspace.LoadProjectStack(project, stackPath)
+			proj, err := workspace.LoadProjectStack(nil /*sink*/, project, stackPath)
 			if err != nil {
 				return nil, fmt.Errorf("found stack settings, but failed to load: %w", err)
 			}
@@ -319,6 +319,26 @@ func (l *LocalWorkspace) SetAllConfigWithOptions(
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return newAutoError(fmt.Errorf("unable to set config: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
+// SetAllConfigJson sets all config values from a JSON string for the specified stack name.
+// The JSON string should be in the format produced by "pulumi config --json".
+// LocalWorkspace writes the config to the matching Pulumi.<stack>.yaml file in Workspace.WorkDir().
+func (l *LocalWorkspace) SetAllConfigJson(
+	ctx context.Context, stackName string, configJson string, opts *ConfigOptions,
+) error {
+	args := []string{"config", "set-all", "--stack", stackName, "--json", configJson}
+	if opts != nil {
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
+		}
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return newAutoError(fmt.Errorf("unable to set config from JSON: %w", err), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -776,8 +796,8 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 		return nil, newAutoError(fmt.Errorf("could not get secret outputs: %w", err), outStdout, outStderr, code)
 	}
 
-	var outputs map[string]interface{}
-	var secrets map[string]interface{}
+	var outputs map[string]any
+	var secrets map[string]any
 
 	if err = json.Unmarshal([]byte(outStdout), &outputs); err != nil {
 		return nil, fmt.Errorf("error unmarshalling outputs: %s: %w", secretStderr, err)

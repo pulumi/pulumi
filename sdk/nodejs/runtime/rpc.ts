@@ -388,9 +388,13 @@ export async function serializeProperty(
     dependentResources?: Set<Resource>,
     opts?: SerializationOptions,
 ): Promise<any> {
-    // IMPORTANT:
-    // IMPORTANT: Keep this in sync with serializePropertiesSync in invoke.ts
-    // IMPORTANT:
+    // if prop is a function type just return undefined, we don't want to try and keep these values around.
+    if (typeof prop === "function") {
+        if (excessiveDebugOutput) {
+            log.debug(`Serialize property [${ctx}]: function=${prop}`);
+        }
+        return undefined;
+    }
 
     if (
         prop === undefined ||

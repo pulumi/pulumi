@@ -169,7 +169,7 @@ func (h *L1MainLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest)
 		return nil, fmt.Errorf("could not register stack: %w", err)
 	}
 
-	outputs, err := structpb.NewStruct(map[string]interface{}{
+	outputs, err := structpb.NewStruct(map[string]any{
 		"output_true": true,
 	})
 	if err != nil {
@@ -193,7 +193,7 @@ func TestL1Main(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L1MainLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

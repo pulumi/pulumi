@@ -42,14 +42,12 @@ func componentVariableType(program *Program) model.Type {
 				properties[node.LogicalName()] = nodeType
 			default:
 				// otherwise, wrap it as an output
-				properties[node.LogicalName()] = &model.OutputType{
-					ElementType: nodeType,
-				}
+				properties[node.LogicalName()] = model.NewOutputType(nodeType)
 			}
 		}
 	}
 
-	return &model.ObjectType{Properties: properties}
+	return model.NewObjectType(properties)
 }
 
 type componentScopes struct {

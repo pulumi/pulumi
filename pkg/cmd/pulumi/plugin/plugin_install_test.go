@@ -15,16 +15,26 @@
 package plugin
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"iter"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test for https://github.com/pulumi/pulumi/issues/11703, check we give an error when trying to install a
@@ -61,7 +71,7 @@ func TestBundledDev(t *testing.T) {
 		env: env.NewEnv(
 			env.MapStore{"PULUMI_DEV": "true"},
 		),
-		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
 			getLatestVersionCalled = true
 			assert.Equal(t, "nodejs", ps.Name)
 			assert.Equal(t, apitype.LanguagePlugin, ps.Kind)
@@ -71,4 +81,354 @@ func TestBundledDev(t *testing.T) {
 
 	err := cmd.Run(context.Background(), []string{"language", "nodejs"})
 	assert.ErrorContains(t, err, "404 HTTP error fetching plugin")
+}
+
+func TestGetLatestPluginIncludedVersion(t *testing.T) {
+	t.Parallel()
+
+	var pluginWasInstalled bool
+	defer func() {
+		assert.True(t, pluginWasInstalled, "installPluginSpec should have been called")
+	}()
+
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
+			assert.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string,
+			install workspace.PluginDescriptor, file string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			pluginWasInstalled = true
+			assert.Empty(t, file)
+			assert.Equal(t, workspace.PluginDescriptor{
+				Name: "aws",
+				Kind: apitype.ResourcePlugin,
+				Version: &semver.Version{
+					Major: 1000,
+					Minor: 78,
+				},
+			}, install)
+			return nil
+		},
+	}
+
+	err := cmd.Run(t.Context(), []string{"resource", "aws@1000.78.0"})
+	require.NoError(t, err)
+}
+
+func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
+	t.Parallel()
+
+	var pluginWasInstalled bool
+	defer func() {
+		assert.True(t, pluginWasInstalled, "installPluginSpec should have been called")
+	}()
+
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		packageResolutionOptions: packageresolution.Options{
+			ResolveWithRegistry: true,
+		},
+		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
+			assert.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		registry: &backend.MockCloudRegistry{
+			Mock: registry.Mock{
+				ListPackagesF: func(
+					ctx context.Context, name *string,
+				) iter.Seq2[apitype.PackageMetadata, error] {
+					return func(yield func(apitype.PackageMetadata, error) bool) {
+						yield(apitype.PackageMetadata{
+							Name:              "foo",
+							Publisher:         "pulumi",
+							Source:            "pulumi",
+							Version:           semver.Version{Major: 2},
+							PluginDownloadURL: "http://example.com/download",
+						}, nil)
+					}
+				},
+			},
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string,
+			install workspace.PluginDescriptor, _ string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			pluginWasInstalled = true
+			assert.Equal(t, workspace.PluginDescriptor{
+				Name: "foo",
+				Kind: apitype.ResourcePlugin,
+				Version: &semver.Version{
+					Major: 2,
+				},
+				PluginDownloadURL: "http://example.com/download",
+			}, install)
+			return nil
+		},
+	}
+
+	err := cmd.Run(t.Context(), []string{"resource", "foo@2.0.0"})
+	require.NoError(t, err)
+}
+
+// We need to check that we don't break installs of versions that are not published into the registry.
+func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
+	t.Parallel()
+
+	var pluginWasInstalled bool
+	defer func() {
+		assert.True(t, pluginWasInstalled, "installPluginSpec should have been called")
+	}()
+
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
+			assert.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		registry: &backend.MockCloudRegistry{
+			Mock: registry.Mock{
+				GetPackageF: func(
+					_ context.Context, source, publisher, name string, version *semver.Version,
+				) (apitype.PackageMetadata, error) {
+					switch version.String() {
+					case "1.48.0":
+						return apitype.PackageMetadata{}, registry.ErrNotFound
+					default:
+						require.Failf(t, "unknown version requested", "found %s", version)
+						return apitype.PackageMetadata{}, nil
+					}
+				},
+				ListPackagesF: func(
+					ctx context.Context, name *string,
+				) iter.Seq2[apitype.PackageMetadata, error] {
+					return func(yield func(apitype.PackageMetadata, error) bool) {
+						yield(apitype.PackageMetadata{
+							Name:      "random",
+							Publisher: "pulumi",
+							Source:    "pulumi",
+							Version:   semver.Version{Major: 2},
+						}, nil)
+					}
+				},
+			},
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string,
+			install workspace.PluginDescriptor, _ string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			pluginWasInstalled = true
+			assert.Equal(t, workspace.PluginDescriptor{
+				Name: "random",
+				Kind: apitype.ResourcePlugin,
+				Version: &semver.Version{
+					Major: 1,
+					Minor: 48,
+				},
+			}, install)
+			return nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), []string{"resource", "random", "1.48.0"})
+	require.NoError(t, err)
+}
+
+func TestGetPluginDownloadForMissingPackage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("with version", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := &pluginInstallCmd{
+			diag: diagtest.LogSink(t),
+			packageResolutionOptions: packageresolution.Options{
+				ResolveWithRegistry: true,
+			},
+			pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
+				assert.Fail(t, "GetLatestVersion should not have been called")
+				return nil, nil
+			},
+			registry: &backend.MockCloudRegistry{
+				Mock: registry.Mock{
+					ListPackagesF: func(
+						ctx context.Context, name *string,
+					) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {}
+					},
+				},
+			},
+		}
+
+		err := cmd.Run(context.Background(), []string{"resource", "unknown", "1.48.0"})
+		assert.ErrorContains(t, err,
+			"Unable to resolve package from name: package unknown@1.48.0 not found")
+	})
+
+	t.Run("without version", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := &pluginInstallCmd{
+			diag: diagtest.LogSink(t),
+			packageResolutionOptions: packageresolution.Options{
+				ResolveWithRegistry: true,
+			},
+			pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
+				assert.Fail(t, "GetLatestVersion should not have been called")
+				return nil, nil
+			},
+			registry: &backend.MockCloudRegistry{
+				Mock: registry.Mock{
+					ListPackagesF: func(
+						ctx context.Context, name *string,
+					) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {}
+					},
+				},
+			},
+		}
+
+		err := cmd.Run(context.Background(), []string{"resource", "unknown"})
+		assert.ErrorContains(t, err,
+			"Unable to resolve package from name: package unknown not found")
+	})
+}
+
+func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var wasInstalled bool
+	defer func() { assert.True(t, wasInstalled) }()
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
+			require.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		registry: &backend.MockCloudRegistry{ /* empty registry will fail when used */ },
+		file:     "./pulumi-resource-some-file.tar.gz", // This is a flag: --file
+		installPluginSpec: func(
+			_ context.Context, _ string,
+			install workspace.PluginDescriptor, file string,
+			sink diag.Sink, color colors.Colorization, reinstall bool,
+		) error {
+			wasInstalled = true
+			assert.Equal(t, "./pulumi-resource-some-file.tar.gz", file)
+			assert.Equal(t, workspace.PluginDescriptor{
+				Name:    "some-file",
+				Kind:    "resource",
+				Version: &semver.Version{Major: 1},
+			}, install)
+			return nil
+		},
+	}
+
+	require.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
+}
+
+//nolint:paralleltest // uses t.Chdir
+func TestRegistryFallbackWithLocalPackages(t *testing.T) {
+	tmpDir := t.TempDir()
+	pulumiYaml := `name: test-project
+runtime: nodejs
+packages:
+  my-local-provider: ./my-provider`
+
+	err := os.WriteFile(filepath.Join(tmpDir, "Pulumi.yaml"), []byte(pulumiYaml), 0o600)
+	require.NoError(t, err)
+
+	t.Chdir(tmpDir)
+
+	installCalled := false
+	defer func() {
+		require.True(t, installCalled, "Expected installPluginSpec to be called")
+	}()
+
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
+			return &semver.Version{Major: 1}, nil
+		},
+		registry: &backend.MockCloudRegistry{
+			Mock: registry.Mock{
+				ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+					return func(yield func(apitype.PackageMetadata, error) bool) {}
+				},
+			},
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string, install workspace.PluginDescriptor, _ string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			require.Equal(t, "./my-provider", install.Name)
+			require.NotContains(t, install.PluginDownloadURL, "github.com/pulumi/pulumi-my-local-provider")
+			installCalled = true
+			return nil
+		},
+	}
+
+	err = cmd.Run(t.Context(), []string{"resource", "my-local-provider"})
+	require.NoError(t, err)
+}
+
+func TestSuggestedPackagesDisplay(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+
+	cmd := &pluginInstallCmd{
+		diag: sink,
+		packageResolutionOptions: packageresolution.Options{
+			ResolveWithRegistry: true,
+		},
+		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
+			assert.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		registry: &backend.MockCloudRegistry{
+			Mock: registry.Mock{
+				ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+					return func(yield func(apitype.PackageMetadata, error) bool) {
+						if !yield(apitype.PackageMetadata{
+							Source:    "community",
+							Publisher: "example",
+							Name:      "similar-pkg",
+							Version:   semver.Version{Major: 1, Minor: 0, Patch: 0},
+						}, nil) {
+							return
+						}
+						yield(apitype.PackageMetadata{
+							Source:    "github",
+							Publisher: "someuser",
+							Name:      "another-similar-pkg",
+							Version:   semver.Version{Major: 2, Minor: 1, Patch: 0},
+						}, nil)
+					}
+				},
+			},
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string, install workspace.PluginDescriptor, _ string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			assert.Fail(t, "installPluginSpec should not have been called")
+			return nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), []string{"resource", "missing-pkg", "1.0.0"})
+	assert.ErrorContains(t, err, "Unable to resolve package from name")
+
+	output := stdout.String() + stderr.String()
+	assert.Contains(t, output, "community/example/similar-pkg@1.0.0 is a similar package")
+	assert.Contains(t, output, "github/someuser/another-similar-pkg@2.1.0 is a similar package")
 }

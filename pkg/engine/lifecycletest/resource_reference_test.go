@@ -20,6 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -62,6 +63,7 @@ func TestResourceReferences(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -76,14 +78,14 @@ func TestResourceReferences(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
 		respA, err := monitor.RegisterResource("component", "resA", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnA = respA.URN
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnB, idB = respB.URN, respB.ID
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
@@ -92,7 +94,7 @@ func TestResourceReferences(t *testing.T) {
 				"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assert.True(t, resp.Outputs.DeepEquals(resource.PropertyMap{
 			"resA": resource.MakeComponentResourceReference(urnA, ""),
@@ -145,6 +147,7 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -160,22 +163,22 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
 		respA, err := monitor.RegisterResource("component", "resA", false, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnA = respA.URN
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnB, idB = respB.URN, respB.ID
 
 		respC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		assert.Equal(t, resource.NewStringProperty(string(urnA)), respC.Outputs["resA"])
+		assert.Equal(t, resource.NewProperty(string(urnA)), respC.Outputs["resA"])
 		if idB != "" {
-			assert.Equal(t, resource.NewStringProperty(string(idB)), respC.Outputs["resB"])
+			assert.Equal(t, resource.NewProperty(string(idB)), respC.Outputs["resB"])
 		} else {
 			assert.True(t, respC.Outputs["resB"].IsComputed())
 		}
@@ -210,7 +213,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 
 					// If we have resource references here, the engine has not properly disabled them.
 					if req.URN.Name() == "resC" {
-						assert.Equal(t, resource.NewStringProperty(string(urnA)), req.Properties["resA"])
+						assert.Equal(t, resource.NewProperty(string(urnA)), req.Properties["resA"])
 						assert.Equal(t, refB.ResourceReferenceValue().ID, req.Properties["resB"])
 					}
 
@@ -223,6 +226,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -237,14 +241,14 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
 		respA, err := monitor.RegisterResource("component", "resA", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnA = respA.URN
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		refB = resource.MakeCustomResourceReference(respB.URN, respB.ID, "")
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
@@ -253,9 +257,9 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 				"resB": refB,
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		assert.Equal(t, resource.NewStringProperty(string(urnA)), resp.Outputs["resA"])
+		assert.Equal(t, resource.NewProperty(string(urnA)), resp.Outputs["resA"])
 		if refB.ResourceReferenceValue().ID.IsComputed() {
 			assert.True(t, resp.Outputs["resB"].IsComputed())
 		} else {
@@ -301,6 +305,7 @@ func TestResourceReferences_GetResource(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -314,7 +319,7 @@ func TestResourceReferences_GetResource(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		childResp, err := monitor.RegisterResource("pkgA:m:typChild", "resChild", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		refChild := resource.MakeCustomResourceReference(childResp.URN, childResp.ID, "")
 		resp, err := monitor.RegisterResource("pkgA:m:typContainer", "resContainer", true,
@@ -323,17 +328,17 @@ func TestResourceReferences_GetResource(t *testing.T) {
 					"child": refChild,
 				},
 			})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Expect the `child` property from `resContainer`'s state to come back from 'pulumi:pulumi:getResource'
 		// as a resource reference.
 		result, failures, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
-			"urn": resource.NewStringProperty(string(resp.URN)),
+			"urn": resource.NewProperty(string(resp.URN)),
 		}, "", "", "")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, failures)
-		assert.Equal(t, resource.NewStringProperty(string(resp.URN)), result["urn"])
-		assert.Equal(t, resource.NewStringProperty(string(resp.ID)), result["id"])
+		assert.Equal(t, resource.NewProperty(string(resp.URN)), result["urn"])
+		assert.Equal(t, resource.NewProperty(string(resp.ID)), result["id"])
 		state := result["state"].ObjectValue()
 		assert.Equal(t, refChild, state["child"])
 

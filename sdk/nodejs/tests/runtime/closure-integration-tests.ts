@@ -59,7 +59,7 @@ async function copyDir(src: string, dest: string) {
     );
 
     for (const entry of entries) {
-        const srcPath = path.join(entry.path, entry.name);
+        const srcPath = path.join(entry.parentPath ?? entry.path, entry.name);
         const destPath = srcPath.replace(src, dest);
         const destDir = path.dirname(destPath);
 

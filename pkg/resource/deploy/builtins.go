@@ -22,13 +22,12 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // The built-in provider provides resources and functions in the `pulumi` package, such as stack references and the
@@ -113,90 +112,161 @@ func (p *builtinProvider) Configure(context.Context, plugin.ConfigureRequest) (p
 	return plugin.ConfigureResponse{}, nil
 }
 
-const stackReferenceType = "pulumi:pulumi:StackReference"
+const (
+	stackReferenceType = "pulumi:pulumi:StackReference"
+	stashType          = "pulumi:index:Stash"
+)
 
 func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 	typ := req.URN.Type()
-	if typ != stackReferenceType {
-		return plugin.CheckResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
-	}
+	switch typ { //nolint:exhaustive
+	case stackReferenceType:
+		// We only need to warn about this in Check. This won't be called for Reads but Creates or Updates will
+		// call Check first.
+		msg := "The \"pulumi:pulumi:StackReference\" resource type is deprecated. " +
+			"Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues."
+		p.diag.Warningf(diag.Message(req.URN, msg))
 
-	// We only need to warn about this in Check. This won't be called for Reads but Creates or Updates will
-	// call Check first.
-	msg := "The \"pulumi:pulumi:StackReference\" resource type is deprecated. " +
-		"Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues."
-	p.diag.Warningf(diag.Message(req.URN, msg))
+		for k := range req.News {
+			if k != "name" {
+				return plugin.CheckResponse{
+					Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+				}, nil
+			}
+		}
 
-	for k := range req.News {
-		if k != "name" {
+		name, ok := req.News["name"]
+		if !ok {
 			return plugin.CheckResponse{
-				Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+				Failures: []plugin.CheckFailure{{Property: "name", Reason: `missing required property "name"`}},
 			}, nil
 		}
-	}
+		if !name.IsString() && !name.IsComputed() {
+			return plugin.CheckResponse{
+				Failures: []plugin.CheckFailure{{Property: "name", Reason: `property "name" must be a string`}},
+			}, nil
+		}
+		return plugin.CheckResponse{Properties: req.News}, nil
+	case stashType:
+		for k := range req.News {
+			if k != "input" {
+				return plugin.CheckResponse{
+					Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+				}, nil
+			}
+		}
 
-	name, ok := req.News["name"]
-	if !ok {
-		return plugin.CheckResponse{
-			Failures: []plugin.CheckFailure{{Property: "name", Reason: `missing required property "name"`}},
-		}, nil
+		_, ok := req.News["input"]
+		if !ok {
+			return plugin.CheckResponse{
+				Failures: []plugin.CheckFailure{{Property: "input", Reason: `missing required property "input"`}},
+			}, nil
+		}
+
+		return plugin.CheckResponse{Properties: req.News}, nil
+	default:
+		return plugin.CheckResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
-	if !name.IsString() && !name.IsComputed() {
-		return plugin.CheckResponse{
-			Failures: []plugin.CheckFailure{{Property: "name", Reason: `property "name" must be a string`}},
-		}, nil
-	}
-	return plugin.CheckResponse{Properties: req.News}, nil
 }
 
 func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
-	contract.Assertf(req.URN.Type() == stackReferenceType,
-		"expected resource type %v, got %v", stackReferenceType, req.URN.Type())
+	typ := req.URN.Type()
+	switch typ { //nolint:exhaustive
+	case stackReferenceType:
+		if !req.NewInputs["name"].DeepEquals(req.OldInputs["name"]) {
+			return plugin.DiffResult{
+				Changes:     plugin.DiffSome,
+				ReplaceKeys: []resource.PropertyKey{"name"},
+			}, nil
+		}
 
-	if !req.NewInputs["name"].DeepEquals(req.OldInputs["name"]) {
-		return plugin.DiffResult{
-			Changes:     plugin.DiffSome,
-			ReplaceKeys: []resource.PropertyKey{"name"},
-		}, nil
+		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+	case stashType:
+		// If the input has changed we need to update, although that update might just be to copy the new input
+		// value to the output side property called "input".
+		if !req.NewInputs["input"].DeepEquals(req.OldInputs["input"]) {
+			return plugin.DiffResult{
+				Changes:     plugin.DiffSome,
+				ChangedKeys: []resource.PropertyKey{"input"},
+			}, nil
+		}
+
+		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+	default:
+		return plugin.DiffResult{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
-
-	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
 func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-	contract.Assertf(req.URN.Type() == stackReferenceType,
-		"expected resource type %v, got %v", stackReferenceType, req.URN.Type())
+	typ := req.URN.Type()
+	switch typ { //nolint:exhaustive
+	case stackReferenceType:
 
-	state, err := p.readStackReference(req.Properties)
-	if err != nil {
-		return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-	}
-
-	var id resource.ID
-	if !req.Preview {
-		// generate a new uuid
-		uuid, err := uuid.NewV4()
+		state, err := p.readStackReference(req.Properties)
 		if err != nil {
-			return plugin.CreateResponse{Status: resource.StatusOK}, err
+			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
 		}
-		id = resource.ID(uuid.String())
-	}
 
-	return plugin.CreateResponse{
-		ID:         id,
-		Properties: state,
-		Status:     resource.StatusOK,
-	}, nil
+		var id resource.ID
+		if !req.Preview {
+			// generate a new uuid
+			uuid, err := uuid.NewV4()
+			if err != nil {
+				return plugin.CreateResponse{Status: resource.StatusOK}, err
+			}
+			id = resource.ID(uuid.String())
+		}
+
+		return plugin.CreateResponse{
+			ID:         id,
+			Properties: state,
+			Status:     resource.StatusOK,
+		}, nil
+	case stashType:
+		var id resource.ID
+		if !req.Preview {
+			// generate a new uuid
+			uuid, err := uuid.NewV4()
+			if err != nil {
+				return plugin.CreateResponse{Status: resource.StatusOK}, err
+			}
+			id = resource.ID(uuid.String())
+		}
+
+		return plugin.CreateResponse{
+			ID: id,
+			Properties: resource.PropertyMap{
+				"input":  req.Properties["input"],
+				"output": req.Properties["input"],
+			},
+			Status: resource.StatusOK,
+		}, nil
+	default:
+		return plugin.CreateResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
+	}
 }
 
 func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-	contract.Failf("unexpected update for builtin resource %v", req.URN)
-	return plugin.UpdateResponse{}, nil
+	typ := req.URN.Type()
+	switch typ { //nolint:exhaustive
+	case stashType:
+		properties := resource.PropertyMap{
+			"input":  req.NewInputs["input"],
+			"output": req.OldOutputs["output"],
+		}
+
+		return plugin.UpdateResponse{
+			Properties: properties,
+			Status:     resource.StatusOK,
+		}, nil
+	default:
+		return plugin.UpdateResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
+	}
 }
 
 func (p *builtinProvider) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-	contract.Assertf(req.URN.Type() == stackReferenceType,
-		"expected resource type %v, got %v", stackReferenceType, req.URN.Type())
+	contract.Assertf(req.URN.Type() == stackReferenceType || req.URN.Type() == stashType,
+		"expected resource type %v or %v, got %v", stackReferenceType, stashType, req.URN.Type())
 
 	return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 }
@@ -204,32 +274,51 @@ func (p *builtinProvider) Delete(_ context.Context, req plugin.DeleteRequest) (p
 func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 	contract.Requiref(req.URN != "", "urn", "must not be empty")
 	contract.Requiref(req.ID != "", "id", "must not be empty")
-	contract.Assertf(req.URN.Type() == stackReferenceType,
-		"expected resource type %v, got %v", stackReferenceType, req.URN.Type())
 
-	for k := range req.Inputs {
-		if k != "name" {
-			return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unknown property \"%v\"", k)
+	typ := req.URN.Type()
+	switch typ { //nolint:exhaustive
+	case stackReferenceType:
+		for k := range req.Inputs {
+			if k != "name" {
+				return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unknown property \"%v\"", k)
+			}
 		}
-	}
-	// If the name is not provided, we should return an error. This is probably due to a user trying to import
-	// this stack reference.
-	if _, ok := req.Inputs["name"]; !ok {
-		return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
-	}
+		// If the name is not provided, we should return an error. This is probably due to a user trying to import
+		// this stack reference.
+		if _, ok := req.Inputs["name"]; !ok {
+			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
+		}
 
-	outputs, err := p.readStackReference(req.State)
-	if err != nil {
-		return plugin.ReadResponse{Status: resource.StatusUnknown}, err
-	}
+		outputs, err := p.readStackReference(req.State)
+		if err != nil {
+			return plugin.ReadResponse{Status: resource.StatusUnknown}, err
+		}
 
-	return plugin.ReadResponse{
-		ReadResult: plugin.ReadResult{
-			Inputs:  req.Inputs,
-			Outputs: outputs,
-		},
-		Status: resource.StatusOK,
-	}, nil
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{
+				ID:      req.ID,
+				Inputs:  req.Inputs,
+				Outputs: outputs,
+			},
+			Status: resource.StatusOK,
+		}, nil
+
+	case stashType:
+		if len(req.Inputs) == 0 {
+			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stash can not be imported")
+		}
+
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{
+				ID:      req.ID,
+				Inputs:  req.Inputs,
+				Outputs: req.State,
+			},
+			Status: resource.StatusOK,
+		}, nil
+	default:
+		return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unrecognized resource type '%v'", typ)
+	}
 }
 
 func (p *builtinProvider) Construct(context.Context, plugin.ConstructRequest) (plugin.ConstructResponse, error) {
@@ -261,19 +350,13 @@ func (p *builtinProvider) Invoke(_ context.Context, req plugin.InvokeRequest) (p
 	return plugin.InvokeResponse{Properties: outs}, nil
 }
 
-func (p *builtinProvider) StreamInvoke(
-	context.Context, plugin.StreamInvokeRequest,
-) (plugin.StreamInvokeResponse, error) {
-	return plugin.StreamInvokeResponse{}, errors.New("the builtin provider does not implement streaming invokes")
-}
-
 func (p *builtinProvider) Call(context.Context, plugin.CallRequest) (plugin.CallResponse, error) {
 	return plugin.CallResult{}, errors.New("the builtin provider does not implement call")
 }
 
-func (p *builtinProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *builtinProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	// return an error: this should not be called for the builtin provider
-	return workspace.PluginInfo{}, errors.New("the builtin provider does not report plugin info")
+	return plugin.PluginInfo{}, errors.New("the builtin provider does not report plugin info")
 }
 
 func (p *builtinProvider) SignalCancellation(context.Context) error {
@@ -290,15 +373,27 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 		return nil, errors.New("no backend client is available")
 	}
 
-	outputs, err := p.backendClient.GetStackOutputs(p.context, name.StringValue())
+	// If we fail to decrypt secrets when fetching the stack's outputs, we'll catch the error and log diagnostics rather
+	// than failing outright.
+	var decryptionErr error
+	outputs, err := p.backendClient.GetStackOutputs(
+		p.context,
+		name.StringValue(),
+		func(e error) error { decryptionErr = e; return nil },
+	)
 	if err != nil {
 		return nil, err
 	}
 
+	if decryptionErr != nil {
+		p.diag.Infof(diag.Message("", "eliding undecryptable secrets for stack reference '%s'"), name.StringValue())
+		p.diag.Debugf(diag.Message("", "stack reference '%s' decryption error: %v"), name.StringValue(), decryptionErr)
+	}
+
 	secretOutputs := make([]resource.PropertyValue, 0)
-	for k, v := range outputs {
-		if v.ContainsSecrets() {
-			secretOutputs = append(secretOutputs, resource.NewStringProperty(string(k)))
+	for k, v := range outputs.All {
+		if v.HasSecrets() {
+			secretOutputs = append(secretOutputs, resource.NewProperty(k))
 		}
 	}
 
@@ -309,8 +404,8 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 
 	return resource.PropertyMap{
 		"name":              name,
-		"outputs":           resource.NewObjectProperty(outputs),
-		"secretOutputNames": resource.NewArrayProperty(secretOutputs),
+		"outputs":           resource.NewProperty(resource.ToResourcePropertyMap(outputs)),
+		"secretOutputNames": resource.NewProperty(secretOutputs),
 	}, nil
 }
 
@@ -330,7 +425,7 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 
 	return resource.PropertyMap{
 		"name":    name,
-		"outputs": resource.NewObjectProperty(outputs),
+		"outputs": resource.NewProperty(resource.ToResourcePropertyMap(outputs)),
 	}, nil
 }
 
@@ -356,8 +451,8 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 
 	return resource.PropertyMap{
 		"urn":      urnInput,
-		"id":       resource.NewStringProperty(string(state.ID)),
-		"provider": resource.NewStringProperty(state.Provider),
-		"state":    resource.NewObjectProperty(state.Outputs),
+		"id":       resource.NewProperty(string(state.ID)),
+		"provider": resource.NewProperty(state.Provider),
+		"state":    resource.NewProperty(state.Outputs),
 	}, nil
 }

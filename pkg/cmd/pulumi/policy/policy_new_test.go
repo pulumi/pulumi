@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !xplatform_acceptance
-
 package policy
 
 import (
@@ -22,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // changes directory for process
@@ -29,14 +28,14 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
-	chdir(t, tempdir)
+	t.Chdir(tempdir)
 
 	args := newPolicyArgs{
 		templateNameOrURL: "aws-javascript",
 	}
 
 	err := runNewPolicyPack(context.Background(), args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(tempdir, "PulumiPolicy.yaml"))
 	assert.FileExists(t, filepath.Join(tempdir, "index.js"))
@@ -51,7 +50,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
-		chdir(t, tempdir)
+		t.Chdir(tempdir)
 
 		args := newPolicyArgs{
 			templateNameOrURL: nonExistantTemplate,
@@ -64,7 +63,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
-		chdir(t, tempdir)
+		t.Chdir(tempdir)
 
 		args := newPolicyArgs{
 			generateOnly:      true,

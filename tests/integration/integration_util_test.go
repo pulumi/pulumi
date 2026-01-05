@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The linter doesn't see the uses since the consumers are conditionally compiled tests.
-//
-//nolint:unused,deadcode,varcheck
 package ints
 
 import (
@@ -80,16 +77,15 @@ func testComponentProviderSchema(t *testing.T, path string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			// Start the plugin binary.
 			cmd := exec.Command(path, "ignored")
 			cmd.Env = append(os.Environ(), test.env...)
 			stdout, err := cmd.StdoutPipe()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = cmd.Start()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer func() {
 				// Ignore the error as it may fail with access denied on Windows.
 				cmd.Process.Kill() //nolint:errcheck
@@ -98,7 +94,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			// Read the port from standard output.
 			reader := bufio.NewReader(stdout)
 			bytes, err := reader.ReadBytes('\n')
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			port := strings.TrimSpace(string(bytes))
 
 			// Create a connection to the server.
@@ -107,7 +103,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 				rpcutil.GrpcChannelOptions(),
 			)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			client := pulumirpc.NewResourceProviderClient(conn)
 
 			// Call GetSchema and verify the results.
@@ -140,7 +136,6 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -178,8 +173,6 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 		},
 	}
 	for _, test := range tests {
-		test := test
-
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -218,7 +211,7 @@ func runComponentSetup(t *testing.T, testDir string) {
 		err := cmd.Run()
 
 		// This runs in a separate goroutine, so don't use 'require'.
-		assert.NoError(t, err, "failed to run setup script")
+		require.NoError(t, err, "failed to run setup script")
 	})
 
 	// The function above runs in a separate goroutine
@@ -245,7 +238,7 @@ func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn fu
 			}
 
 			defer func() {
-				assert.NoError(t, mutex.Unlock())
+				require.NoError(t, mutex.Unlock())
 			}()
 			break
 		}
@@ -275,7 +268,7 @@ func TestSynchronouslyDo_timeout(t *testing.T) {
 	mu := fsutil.NewFileMutex(path)
 	require.NoError(t, mu.Lock())
 	defer func() {
-		assert.NoError(t, mu.Unlock())
+		require.NoError(t, mu.Unlock())
 	}()
 
 	fakeT := nonfatalT{T: t}
@@ -284,9 +277,8 @@ func TestSynchronouslyDo_timeout(t *testing.T) {
 	})
 
 	assert.True(t, fakeT.fatal, "must have a fatal failure")
-	if assert.Len(t, fakeT.messages, 1) {
-		assert.Contains(t, fakeT.messages[0], "timed out waiting")
-	}
+	require.Len(t, fakeT.messages, 1)
+	assert.Contains(t, fakeT.messages[0], "timed out waiting")
 }
 
 // nonfatalT wraps a testing.T to capture fatal errors.
@@ -298,7 +290,7 @@ type nonfatalT struct {
 	messages []string
 }
 
-func (t *nonfatalT) Fatalf(msg string, args ...interface{}) {
+func (t *nonfatalT) Fatalf(msg string, args ...any) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -325,7 +317,6 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -336,8 +327,8 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 				LocalProviders: localProviders,
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Deployment)
-					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
+					require.NotNil(t, stackInfo.Deployment)
+					require.Len(t, stackInfo.Deployment.Resources, 6)
 					var hasExpectedResource bool
 					var result string
 					for _, res := range stackInfo.Deployment.Resources {
@@ -345,7 +336,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 							hasExpectedResource = true
 							result = res.Outputs["result"].(string)
 							assert.Equal(t, float64(10), res.Inputs["length"])
-							assert.Equal(t, 10, len(result))
+							require.Len(t, result, 10)
 						}
 					}
 					assert.True(t, hasExpectedResource)
@@ -375,7 +366,6 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := "the failure reason (the failure property)"
@@ -418,7 +408,6 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -458,7 +447,6 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -481,7 +469,7 @@ func assertOutputContainsEvent(t *testing.T, evt apitype.EngineEvent, output str
 	encoder := json.NewEncoder(&evtJSON)
 	encoder.SetEscapeHTML(false)
 	err := encoder.Encode(evt)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, output, evtJSON.String())
 }
 
@@ -601,7 +589,6 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := `error: testcomponent:index:Component resource 'component' has a problem: failing for a reason
@@ -645,7 +632,6 @@ func testCallFailures(t *testing.T, lang string, dependencies ...string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := `error: call to function 'testcomponent:index:Component/getMessage' failed:

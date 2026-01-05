@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13pulumi/source.proto\x12\tpulumirpc\";\n\x0eSourcePosition\x12\x0b\n\x03uri\x18\x01 \x01(\t\x12\x0c\n\x04line\x18\x02 \x01(\x05\x12\x0e\n\x06\x63olumn\x18\x03 \x01(\x05\x42\x34Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13pulumi/source.proto\x12\tpulumirpc\";\n\x0eSourcePosition\x12\x0b\n\x03uri\x18\x01 \x01(\t\x12\x0c\n\x04line\x18\x02 \x01(\x05\x12\x0e\n\x06\x63olumn\x18\x03 \x01(\x05\"3\n\nStackFrame\x12%\n\x02pc\x18\x01 \x01(\x0b\x32\x19.pulumirpc.SourcePosition\"3\n\nStackTrace\x12%\n\x06\x66rames\x18\x01 \x03(\x0b\x32\x15.pulumirpc.StackFrameB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.source_pb2', globals())
@@ -23,4 +23,8 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._serialized_options = b'Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc'
   _SOURCEPOSITION._serialized_start=34
   _SOURCEPOSITION._serialized_end=93
+  _STACKFRAME._serialized_start=95
+  _STACKFRAME._serialized_end=146
+  _STACKTRACE._serialized_start=148
+  _STACKTRACE._serialized_end=199
 # @@protoc_insertion_point(module_scope)

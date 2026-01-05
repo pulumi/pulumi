@@ -33,6 +33,7 @@ class JobKind(str, Enum):
     UNIT_TEST = "unit-test"
     PERFORMANCE_TEST = "performance-test"
     ALL_TEST = "all-test"
+    LOWEST_PYTHON_DEPS_TEST = "lowest-python-deps-test"
 
 
 @dataclass
@@ -117,6 +118,11 @@ MAKEFILE_INTEGRATION_TESTS: List[MakefileTest] = [
     {"name": "sdk/python test_fast", "run": "cd sdk/python && ../../scripts/retry make test_fast", "eta": 3},
 ]
 
+MAKEFILE_LOWEST_PYTHON_DEPS_TESTS: List[MakefileTest] = [
+    {"name": "sdk/python test_auto_lowest_deps", "run": "cd sdk/python && ../../scripts/retry make test_auto_lowest_deps", "eta": 6},
+    {"name": "sdk/python test_fast_lowest_deps", "run": "cd sdk/python && ../../scripts/retry make test_fast_lowest_deps", "eta": 3},
+]
+
 MAKEFILE_ACCEPTANCE_TESTS: List[MakefileTest] = [
     {"name": "sdk/nodejs test_integration", "run": "cd sdk/nodejs && ../../scripts/retry make test_integration", "eta": 3},
 ]
@@ -129,7 +135,7 @@ MAKEFILE_PERFORMANCE_TESTS: List[MakefileTest] = [
     {"name": "performance tests", "run": "./scripts/retry make test_performance", "eta": 10},
 ]
 
-ALL_PLATFORMS = ["ubuntu-22.04", "windows-latest", "macos-latest"]
+ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
 
 
 # When updating the minumum and current versions, consider also updating the
@@ -138,11 +144,11 @@ ALL_PLATFORMS = ["ubuntu-22.04", "windows-latest", "macos-latest"]
 
 ALL_VERSION_SET = {
     "dotnet": ["8", "9"],
-    "go": ["1.23.x", "1.24.x"],
-    "nodejs": ["18.x", "20.x", "22.x", "23.x"],
+    "go": ["1.24.x", "1.25.x"],
+    "nodejs": ["20.x", "22.x", "24.x", "25.x"],
     # When updating the minimum Python version here, also update `pyproject.toml`, including the
     # `mypy` and `ruff` sections.
-    "python": ["3.9.x", "3.10.x", "3.11.x", "3.12.x", "3.13.x"],
+    "python": ["3.10.x", "3.11.x", "3.12.x", "3.13.x", "3.14.x"],
 }
 
 MINIMUM_SUPPORTED_VERSION_SET = {
@@ -210,6 +216,8 @@ def run_list_tests(pkg_dir: str, tags: List[str]) -> List[str]:
     except sp.CalledProcessError as err:
         message=f"Failed to list tests in package dir '{pkg_dir}', usually this implies a Go compilation error. Check that `make lint` succeeds. Also check that `make tidy` has been run."
         print(f"::error {message}", file=sys.stderr)
+        print(f"::stdout {err.stdout}", file=sys.stderr)
+        print(f"::stderr {err.stderr}", file=sys.stderr)
         raise Exception(message) from err
 
     tests: List[str] = []
@@ -409,6 +417,8 @@ def get_matrix(
         makefile_tests = MAKEFILE_PERFORMANCE_TESTS
     elif kind == JobKind.ALL_TEST:
         makefile_tests = MAKEFILE_INTEGRATION_TESTS + MAKEFILE_UNIT_TESTS
+    elif kind == JobKind.LOWEST_PYTHON_DEPS_TEST:
+        makefile_tests = MAKEFILE_LOWEST_PYTHON_DEPS_TESTS
     else:
         raise Exception(f"Unknown job kind {kind}")
 
@@ -434,6 +444,9 @@ def get_matrix(
             go_packages = {pkg for pkg in go_packages if is_unit_test(pkg)}
         elif kind == JobKind.ALL_TEST:
             pass
+        elif kind == JobKind.LOWEST_PYTHON_DEPS_TEST:
+            # Skip all Go packages for lowest-deps tests (only Makefile tests)
+            go_packages = set()
 
         test_suites += run_gotestsum_ci_matrix_packages(list(go_packages), item, tags)
 

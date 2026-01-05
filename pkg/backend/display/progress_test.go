@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,13 +21,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -44,8 +45,7 @@ func defaultOpts() Options {
 		ShowSameResources:    true,
 		ShowReads:            true,
 		DeterministicOutput:  true,
-		ShowLinkToCopilot:    false,
-		ShowCopilotSummary:   false,
+		ShowLinkToNeo:        false,
 		RenderOnDirty:        true,
 	}
 }
@@ -108,9 +108,8 @@ func testProgressEvents(
 	}
 }
 
-//nolint:paralleltest // sets the TERM environment variable
 func TestProgressEvents(t *testing.T) {
-	t.Setenv("TERM", "vt102")
+	t.Parallel()
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
@@ -139,20 +138,23 @@ func TestProgressEvents(t *testing.T) {
 					t.Parallel()
 
 					t.Run("raw", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v", width, height)
 						opts := defaultOpts()
 						opts.IsInteractive = true
-						testProgressEvents(t, path, accept, suffix, opts, width, height, true)
+						testProgressEvents(t, path, accept, suffix, opts, width, height, true /* raw */)
 					})
 
 					t.Run("cooked", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v-cooked", width, height)
 						opts := defaultOpts()
 						opts.IsInteractive = true
-						testProgressEvents(t, path, accept, suffix, opts, width, height, false)
+						testProgressEvents(t, path, accept, suffix, opts, width, height, false /* raw */)
 					})
 
 					t.Run("plain", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
 						opts := defaultOpts()
 						opts.ShowResourceChanges = true
@@ -162,6 +164,7 @@ func TestProgressEvents(t *testing.T) {
 			}
 
 			t.Run("no-show-sames", func(t *testing.T) {
+				t.Parallel()
 				opts := defaultOpts()
 				opts.IsInteractive = true
 				opts.ShowSameResources = false
@@ -178,28 +181,37 @@ func TestProgressEvents(t *testing.T) {
 	}
 }
 
+func sliceToBufferedChan[T any](slice []T) <-chan T {
+	ch := make(chan T, len(slice))
+	for _, v := range slice {
+		ch <- v
+	}
+	close(ch)
+	return ch
+}
+
 func TestCaptureProgressEventsCapturesOutput(t *testing.T) {
 	t.Parallel()
 
-	captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
-
 	// Push some example events
-	eventChannel <- engine.NewEvent(engine.StdoutEventPayload{
-		Message: "Hello, world!",
-		// Note: System events need their own Color instance
-		Color: colors.Never,
-	})
+	events := []engine.Event{
+		engine.NewEvent(engine.StdoutEventPayload{
+			Message: "Hello, world!",
+			// Note: System events need their own Color instance
+			Color: colors.Never,
+		}),
+	}
+	eventsChannel := sliceToBufferedChan(events)
 
-	close(eventChannel)
-	<-doneChannel
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, false, apitype.UpdateUpdate)
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.False(t, captureRenderer.OutputIncludesFailure())
-	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Hello, world!")
+	assert.Contains(t, captureRenderer.Output(), "Hello, world!")
 }
 
-func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
+func TestCaptureProgressEventsDetectsResourceOperationFailed(t *testing.T) {
 	t.Parallel()
 
 	// If we see a ResourceOperationFailed event, the update is marked as failed.
@@ -209,28 +221,33 @@ func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
 			Op:  deploy.OpUpdate,
 		},
 	})
+	failureEvents := []engine.Event{resourceOperationFailedEvent}
+	eventsChannel := sliceToBufferedChan(failureEvents)
 
-	// Some diagnostics which is what we're usually interested in.
-	diagEvent := engine.NewEvent(engine.DiagEventPayload{
-		URN:     "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
-		Message: "Failed to update",
-	})
-
-	failureEvents := []engine.Event{resourceOperationFailedEvent, diagEvent}
-
-	captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
-
-	for _, event := range failureEvents {
-		eventChannel <- event
-	}
-
-	close(eventChannel)
-	<-doneChannel
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, false, apitype.UpdateUpdate)
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.True(t, captureRenderer.OutputIncludesFailure())
-	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Failed to update")
+}
+
+func TestCaptureProgressEventsDetectsDiagnosticsWithErrors(t *testing.T) {
+	t.Parallel()
+
+	diagEventWithErrors := engine.NewEvent(engine.DiagEventPayload{
+		URN:      "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
+		Message:  "Failed to update",
+		Severity: diag.Error,
+	})
+	failureEvents := []engine.Event{diagEventWithErrors}
+	eventsChannel := sliceToBufferedChan(failureEvents)
+
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, true, apitype.PreviewUpdate)
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
+
+	assert.True(t, captureRenderer.OutputIncludesFailure())
+	assert.Contains(t, captureRenderer.Output(), "Failed to update")
 }
 
 func BenchmarkProgressEvents(t *testing.B) {
@@ -328,7 +345,6 @@ func TestStatusDisplayFlags(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

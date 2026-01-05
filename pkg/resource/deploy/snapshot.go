@@ -17,11 +17,13 @@ package deploy
 import (
 	"errors"
 	"fmt"
-	"runtime/debug"
+	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/go-test/deep"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -160,6 +162,12 @@ func (snap *Snapshot) Prune() []PruneResult {
 						state.DeletedWith = ""
 						removedDeps = append(removedDeps, dep)
 					}
+				case resource.ResourceReplaceWith:
+					if newReplaceWithURN, has := seen[dep.URN]; has {
+						state.ReplaceWith = append(state.ReplaceWith, newReplaceWithURN)
+					} else {
+						removedDeps = append(removedDeps, dep)
+					}
 				}
 			}
 
@@ -253,6 +261,154 @@ func (snap *Snapshot) Toposort() error {
 	}
 
 	snap.Resources = sorted
+	return nil
+}
+
+// Assert that the snapshot is equal to the expected snapshot. If not, return an error describing the difference.
+func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
+	// Just want to check the same operations and resources are counted, but order might be slightly different.
+	if snap == nil && expected == nil {
+		return nil
+	}
+	if snap == nil {
+		return errors.New("actual snapshot is nil")
+	}
+	if expected == nil {
+		return errors.New("expected snapshot is nil")
+	}
+
+	if len(snap.PendingOperations) != len(expected.PendingOperations) {
+		var snapPendingOps strings.Builder
+		for _, op := range snap.PendingOperations {
+			snapPendingOps.WriteString(fmt.Sprintf("%v (%v), ", op.Type, op.Resource))
+		}
+		var expectedPendingOps strings.Builder
+		for _, op := range expected.PendingOperations {
+			expectedPendingOps.WriteString(fmt.Sprintf("%v (%v), ", op.Type, op.Resource))
+		}
+		return fmt.Errorf("actual and expected pending operations differ, %d in actual (have %v), %d in expected (have %v)",
+			len(snap.PendingOperations), snapPendingOps.String(), len(expected.PendingOperations), expectedPendingOps.String())
+	}
+
+	pendingOpsMap := make(map[resource.URN][]resource.Operation)
+
+	for _, mop := range expected.PendingOperations {
+		pendingOpsMap[mop.Resource.URN] = append(pendingOpsMap[mop.Resource.URN], mop)
+	}
+	for _, jop := range snap.PendingOperations {
+		var diffStr strings.Builder
+		found := false
+		for _, mop := range pendingOpsMap[jop.Resource.URN] {
+			if diff := deep.Equal(jop, mop); diff != nil {
+				if jop.Resource.URN == mop.Resource.URN {
+					diffStr.WriteString(fmt.Sprintf("%s\n", diff))
+				}
+			} else {
+				found = true
+				break
+			}
+		}
+		if !found {
+			var pendingOps strings.Builder
+			for _, op := range snap.PendingOperations {
+				pendingOps.WriteString(fmt.Sprintf("%v (%v)\n", op.Type, op.Resource))
+			}
+			var expectedPendingOps strings.Builder
+			for _, op := range expected.PendingOperations {
+				expectedPendingOps.WriteString(fmt.Sprintf("%v (%v)\n", op.Type, op.Resource))
+			}
+			return fmt.Errorf("actual and expected pending operations differ, %v (%v) not found in expected\n"+
+				"Actual: %v\nExpected: %v\nDiffs: %v",
+				jop.Type, jop.Resource, pendingOps.String(), expectedPendingOps.String(), diffStr.String())
+		}
+	}
+
+	if len(snap.Resources) != len(expected.Resources) {
+		var snapResources strings.Builder
+		for _, r := range snap.Resources {
+			snapResources.WriteString(fmt.Sprintf("%v %v, ", r.URN, r.Delete))
+		}
+		var expectedResources strings.Builder
+		for _, r := range expected.Resources {
+			expectedResources.WriteString(fmt.Sprintf("%v %v, ", r.URN, r.Delete))
+		}
+		return fmt.Errorf("actual and expected resources differ, %d in actual (have %v), %d in expected (have %v)",
+			len(snap.Resources), snapResources.String(), len(expected.Resources), expectedResources.String())
+	}
+
+	resourcesMap := make(map[resource.URN][]*resource.State)
+
+	for _, mr := range expected.Resources {
+		if len(mr.PropertyDependencies) > 0 {
+			// We normalize empty slices away, so we don't get `nil != [] != key missing` diffs.
+			newPropDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, v := range mr.PropertyDependencies {
+				if len(v) > 0 {
+					newPropDeps[k] = v
+				}
+			}
+			mr.PropertyDependencies = newPropDeps
+		}
+		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
+		// this in the journal, we lose some information compared to the regular
+		// snapshotting algorithm.
+		if len(mr.Outputs) == 0 {
+			mr.Outputs = make(resource.PropertyMap)
+		}
+		if len(mr.Inputs) == 0 {
+			mr.Inputs = make(resource.PropertyMap)
+		}
+		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
+	}
+
+	for _, jr := range snap.Resources {
+		if len(jr.PropertyDependencies) > 0 {
+			// We normalize empty slices away, so we don't get `nil != [] != key missing` diffs.
+			newPropDeps := map[resource.PropertyKey][]resource.URN{}
+			for k, v := range jr.PropertyDependencies {
+				if len(v) > 0 {
+					newPropDeps[k] = v
+				}
+			}
+			jr.PropertyDependencies = newPropDeps
+		}
+
+		found := false
+		var diffStr strings.Builder
+		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
+		// this in the journal, we lose some information compared to the regular
+		// snapshotting algorithm.
+		if len(jr.Outputs) == 0 {
+			jr.Outputs = make(resource.PropertyMap)
+		}
+		if len(jr.Inputs) == 0 {
+			jr.Inputs = make(resource.PropertyMap)
+		}
+		for _, mr := range resourcesMap[jr.URN] {
+			if diff := deep.Equal(jr, mr); diff != nil {
+				if jr.URN == mr.URN {
+					diffStr.WriteString(fmt.Sprintf("%s\n", diff))
+				}
+			} else {
+				found = true
+				break
+			}
+		}
+		if !found {
+			var snapResources strings.Builder
+			for _, jr := range snap.Resources {
+				snapResources.WriteString(fmt.Sprintf("Actual resource: %v\n", jr))
+			}
+			var expectedResources strings.Builder
+			for _, mr := range expected.Resources {
+				expectedResources.WriteString(fmt.Sprintf("Expected resource: %v\n", mr))
+			}
+			return fmt.Errorf("actual and expected resources differ, %v not found in expected.\n"+
+				"Actual: %v\nExpected: %v\nDiffs: %v",
+				jr, snapResources.String(), expectedResources.String(), diffStr.String())
+		}
+	}
+
 	return nil
 }
 
@@ -430,20 +586,29 @@ func (snap *Snapshot) VerifyIntegrity() error {
 	if snap != nil {
 		// Ensure the magic cookie checks out.
 		if snap.Manifest.Magic != snap.Manifest.NewMagic() {
-			return SnapshotIntegrityErrorf("magic cookie mismatch; possible tampering/corruption detected")
+			return snapshot.SnapshotIntegrityErrorf("magic cookie mismatch; possible tampering/corruption detected")
 		}
 
-		// Now check the resources.  For now, we just verify that parents come before children, and that there aren't
-		// any duplicate URNs.
-		urns := make(map[resource.URN]*resource.State)
+		// Now check the resources.  Check that the resources are well formed, that there
+		// are no duplicate URNs and that all dependencies exist in the snapshot.
+		urns := make(map[resource.URN][]*resource.State)
 		provs := make(map[providers.Reference]struct{})
 		for i, state := range snap.Resources {
 			urn := state.URN
+			if urn == "" {
+				return snapshot.SnapshotIntegrityErrorf("resource at index %d missing required 'urn' field", i)
+			}
+			if state.Type == "" {
+				return snapshot.SnapshotIntegrityErrorf("resource '%s' missing required 'type' field", urn)
+			}
+			if !state.Custom && state.ID != "" {
+				return snapshot.SnapshotIntegrityErrorf("resource '%s' has 'custom false but non-empty ID", urn)
+			}
 
 			if providers.IsProviderType(state.Type) {
 				ref, err := providers.NewReference(urn, state.ID)
 				if err != nil {
-					return SnapshotIntegrityErrorf("provider %s is not referenceable: %w", urn, err)
+					return snapshot.SnapshotIntegrityErrorf("provider %s is not referenceable: %w", urn, err)
 				}
 				provs[ref] = struct{}{}
 			}
@@ -452,17 +617,17 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			if provider != "" {
 				ref, err := providers.ParseReference(provider)
 				if err != nil {
-					return SnapshotIntegrityErrorf("failed to parse provider reference for resource %s: %w", urn, err)
+					return snapshot.SnapshotIntegrityErrorf("failed to parse provider reference for resource %s: %w", urn, err)
 				}
 				if _, has := provs[ref]; !has && !state.PendingReplacement {
-					return SnapshotIntegrityErrorf("resource %s refers to unknown provider %s", urn, ref)
+					return snapshot.SnapshotIntegrityErrorf("resource %s refers to unknown provider %s", urn, ref)
 				}
 			}
 
 			// For each resource, we'll ensure that all its dependencies are declared
 			// before it in the snapshot. In this case, "dependencies" includes the
 			// Dependencies field, as well as the resource's Parent (if it has one),
-			// any PropertyDependencies, and the DeletedWith field.
+			// any PropertyDependencies, and the DeletedWith and ReplaceWith fields.
 			//
 			// If a dependency is missing, we'll return an error. In such cases, we'll
 			// walk through the remaining resources in the snapshot to see if the
@@ -476,10 +641,10 @@ func (snap *Snapshot) VerifyIntegrity() error {
 					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep.URN {
-								return SnapshotIntegrityErrorf("child resource %s's parent %s comes after it", urn, dep.URN)
+								return snapshot.SnapshotIntegrityErrorf("child resource %s's parent %s comes after it", urn, dep.URN)
 							}
 						}
-						return SnapshotIntegrityErrorf("child resource %s refers to missing parent %s", urn, dep.URN)
+						return snapshot.SnapshotIntegrityErrorf("child resource %s refers to missing parent %s", urn, dep.URN)
 					}
 
 					// Ensure that our URN is a child of the parent's URN.
@@ -497,14 +662,14 @@ func (snap *Snapshot) VerifyIntegrity() error {
 					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep.URN {
-								return SnapshotIntegrityErrorf(
+								return snapshot.SnapshotIntegrityErrorf(
 									"resource %s's dependency %s comes after it",
 									urn, other.URN,
 								)
 							}
 						}
 
-						return SnapshotIntegrityErrorf(
+						return snapshot.SnapshotIntegrityErrorf(
 							"resource %s's dependency %s refers to missing resource",
 							urn, dep.URN,
 						)
@@ -513,14 +678,14 @@ func (snap *Snapshot) VerifyIntegrity() error {
 					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep.URN {
-								return SnapshotIntegrityErrorf(
+								return snapshot.SnapshotIntegrityErrorf(
 									"resource %s's property dependency %s (from property %s) comes after it",
 									urn, other.URN, dep.Key,
 								)
 							}
 						}
 
-						return SnapshotIntegrityErrorf(
+						return snapshot.SnapshotIntegrityErrorf(
 							"resource %s's property dependency %s (from property %s) refers to missing resource",
 							urn, dep.URN, dep.Key,
 						)
@@ -529,27 +694,57 @@ func (snap *Snapshot) VerifyIntegrity() error {
 					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep.URN {
-								return SnapshotIntegrityErrorf(
+								return snapshot.SnapshotIntegrityErrorf(
 									"resource %s is specified as being deleted with %s, which comes after it",
 									urn, dep.URN,
 								)
 							}
 						}
 
-						return SnapshotIntegrityErrorf(
+						return snapshot.SnapshotIntegrityErrorf(
 							"resource %s is specified as being deleted with %s, which is missing",
+							urn, dep.URN,
+						)
+					}
+				case resource.ResourceReplaceWith:
+					if _, has := urns[dep.URN]; !has {
+						for _, other := range snap.Resources[i+1:] {
+							if other.URN == dep.URN {
+								return snapshot.SnapshotIntegrityErrorf(
+									"resource %s is specified as being replaced with %s, which comes after it",
+									urn, dep.URN,
+								)
+							}
+						}
+
+						return snapshot.SnapshotIntegrityErrorf(
+							"resource %s is specified as being replaced with %s, which is missing",
 							urn, dep.URN,
 						)
 					}
 				}
 			}
 
-			if _, has := urns[urn]; has && !state.Delete {
-				// The only time we should have duplicate URNs is when all but one of them are marked for deletion.
-				return SnapshotIntegrityErrorf("duplicate resource %s (not marked for deletion)", urn)
+			urns[urn] = append(urns[urn], state)
+		}
+
+		for urn, states := range urns {
+			if len(states) == 1 {
+				continue
 			}
 
-			urns[urn] = state
+			deletes := 0
+			// The only time we should have duplicate URNs is when all or all but one of them are marked for
+			// deletion.
+			for _, state := range states {
+				if state.Delete {
+					deletes++
+				}
+			}
+
+			if deletes != len(states)-1 && deletes != len(states) {
+				return snapshot.SnapshotIntegrityErrorf("duplicate resource %s (not marked for deletion)", urn)
+			}
 		}
 	}
 
@@ -575,80 +770,4 @@ func (snap *Snapshot) withUpdatedResources(update func(*resource.State) *resourc
 	newSnap := *snap // shallow copy
 	newSnap.Resources = new
 	return &newSnap
-}
-
-// A snapshot integrity error is raised when a snapshot is found to be malformed
-// or invalid in some way (e.g. missing or out-of-order dependencies, or
-// unparseable data).
-type SnapshotIntegrityError struct {
-	// The underlying error that caused this integrity error, if applicable.
-	Err error
-
-	// The operation which caused the error. Defaults to SnapshotIntegrityWrite.
-	Op SnapshotIntegrityOperation
-
-	// The stack trace at the point the error was raised.
-	Stack []byte
-
-	// Metadata about the operation that caused the error, if available.
-	Metadata *SnapshotIntegrityErrorMetadata
-}
-
-// The set of operations alongside which snapshot integrity checks can be
-// performed.
-type SnapshotIntegrityOperation int
-
-const (
-	// Snapshot integrity checks were performed at write time.
-	SnapshotIntegrityWrite SnapshotIntegrityOperation = 0
-	// Snapshot integrity checks were performed at read time.
-	SnapshotIntegrityRead SnapshotIntegrityOperation = 1
-)
-
-// Creates a new snapshot integrity error with a message produced by the given
-// format string and arguments. Supports wrapping errors with %w. Snapshot
-// integrity errors are raised by Snapshot.VerifyIntegrity when a problem is
-// detected with a snapshot (e.g. missing or out-of-order dependencies, or
-// unparseable data).
-func SnapshotIntegrityErrorf(format string, args ...interface{}) error {
-	return &SnapshotIntegrityError{
-		Err:   fmt.Errorf(format, args...),
-		Op:    SnapshotIntegrityWrite,
-		Stack: debug.Stack(),
-	}
-}
-
-func (s *SnapshotIntegrityError) Error() string {
-	if s.Err == nil {
-		return "snapshot integrity error"
-	}
-
-	return s.Err.Error()
-}
-
-func (s *SnapshotIntegrityError) Unwrap() error {
-	return s.Err
-}
-
-// Returns a copy of the given snapshot integrity error with the operation set to
-// SnapshotIntegrityRead and metadata set to the given snapshot's integrity error
-// metadata.
-func (s *SnapshotIntegrityError) ForRead(snap *Snapshot) *SnapshotIntegrityError {
-	return &SnapshotIntegrityError{
-		Err:      s.Err,
-		Op:       SnapshotIntegrityRead,
-		Stack:    s.Stack,
-		Metadata: snap.Metadata.IntegrityErrorMetadata,
-	}
-}
-
-// Returns a tuple in which the second element is true if and only if any error
-// in the given error's tree is a SnapshotIntegrityError. In that case, the
-// first element will be the first SnapshotIntegrityError in the tree. In the
-// event that there is no such SnapshotIntegrityError, the first element will be
-// nil.
-func AsSnapshotIntegrityError(err error) (*SnapshotIntegrityError, bool) {
-	var sie *SnapshotIntegrityError
-	ok := errors.As(err, &sie)
-	return sie, ok
 }

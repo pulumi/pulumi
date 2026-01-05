@@ -17,7 +17,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Dict, List, Set, Optional, TypeVar, Any, cast
+from typing import Optional, TypeVar, Any, cast
 import argparse
 import asyncio
 import sys
@@ -42,20 +42,19 @@ from pulumi.runtime.proto import (
     status_pb2,
     errors_pb2,
 )
+from pulumi.runtime.resource_hooks import _binding_from_proto
 from pulumi.runtime.stack import wait_for_rpcs
 import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
+from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.errors import (
     InputPropertiesError,
     InputPropertyError,
     InputPropertyErrorDetails,
+    RunError,
 )
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 class ComponentInitError(Exception):
@@ -82,23 +81,22 @@ class ProviderServicer(ResourceProviderServicer):
 
     engine_address: str
     provider: Provider
-    args: List[str]
+    args: list[str]
     lock: asyncio.Lock
 
     def create_grpc_invalid_properties_status(
-        self, message: str, errors: Optional[List[InputPropertyErrorDetails]]
+        self, message: str, errors: Optional[list[InputPropertyErrorDetails]]
     ):
-        status = grpc.Status()  # type: ignore[attr-defined]
+        status = grpc.Status()
         # We don't care about the exact status code here, since they are pretty web centric, and don't
         # necessarily make sense in this context.  Pick one that's close enough.
-        # type: ignore
-        status.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]  # type: ignore[index]
+        status.code = grpc.StatusCode.INVALID_ARGUMENT
         status.details = message
 
         if errors is not None:
-            s = status_pb2.Status()  # type: ignore[attr-defined]
+            s = status_pb2.Status()
             # This code needs to match the code above.
-            s.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]  # type: ignore[index]
+            s.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]
             s.message = message
 
             error_details = errors_pb2.InputPropertiesError()
@@ -126,6 +124,8 @@ class ProviderServicer(ResourceProviderServicer):
         try:
             return await self._construct(request, context)
         except Exception as e:  # noqa
+            if isinstance(e, RunError):
+                raise
             if isinstance(e, InputPropertiesError):
                 status = self.create_grpc_invalid_properties_status(e.message, e.errors)
                 await context.abort_with_status(status)
@@ -153,9 +153,9 @@ class ProviderServicer(ResourceProviderServicer):
     async def _construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        assert isinstance(
-            request, proto.ConstructRequest
-        ), f"request is not ConstructRequest but is {type(request)} instead"
+        assert isinstance(request, proto.ConstructRequest), (
+            f"request is not ConstructRequest but is {type(request)} instead"
+        )
 
         organization = request.organization if request.organization else "organization"
         pulumi.runtime.settings.reset_options(
@@ -167,6 +167,7 @@ class ProviderServicer(ResourceProviderServicer):
             monitor_address=_empty_as_none(request.monitorEndpoint),
             preview=request.dryRun,
         )
+        await pulumi.runtime.settings._load_monitor_feature_support()
 
         pulumi.runtime.config.set_all_config(
             dict(request.config), list(request.configSecretKeys)
@@ -195,14 +196,14 @@ class ProviderServicer(ResourceProviderServicer):
     @staticmethod
     async def _construct_inputs(
         inputs: struct_pb2.Struct, input_dependencies: Any
-    ) -> Dict[str, pulumi.Input[Any]]:
-        def deps(key: str) -> Set[str]:
-            return set(
+    ) -> dict[str, pulumi.Input[Any]]:
+        def deps(key: str) -> set[str]:
+            return {
                 urn
                 for urn in input_dependencies.get(
                     key, proto.ConstructRequest.PropertyDependencies()
                 ).urns
-            )
+            }
 
         return {
             k: await ProviderServicer._select_value(the_input, deps=deps(k))
@@ -212,7 +213,7 @@ class ProviderServicer(ResourceProviderServicer):
         }
 
     @staticmethod
-    async def _select_value(the_input: Any, deps: Set[str]) -> Any:
+    async def _select_value(the_input: Any, deps: set[str]) -> Any:
         is_secret = rpc.is_rpc_secret(the_input)
 
         # If the input isn't a secret and either doesn't have any dependencies, already contains Outputs (from
@@ -230,7 +231,7 @@ class ProviderServicer(ResourceProviderServicer):
         # Note: If the value is or contains an unknown value, the Output will mark its value as
         # unknown automatically, so we just pass true for is_known here.
         return pulumi.Output(
-            resources=set(DependencyResource(urn) for urn in deps),
+            resources={DependencyResource(urn) for urn in deps},
             future=_as_future(rpc.unwrap_rpc_secret(the_input)),
             is_known=_as_future(True),
             is_secret=_as_future(is_secret),
@@ -239,8 +240,29 @@ class ProviderServicer(ResourceProviderServicer):
     @staticmethod
     def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:
         parent = None
-        if not _empty_as_none(request.parent):
+        if request.parent:
             parent = DependencyResource(request.parent)
+
+        deleted_with = None
+        if request.deletedWith != "":
+            deleted_with = _create_provider_resource(request.deletedWith)
+
+        replace_with: Optional[list[pulumi.Resource]] = None
+        if request.replace_with:
+            replace_with = [
+                _create_provider_resource(urn) for urn in request.replace_with
+            ]
+
+        custom_timeouts = None
+        if request.customTimeouts:
+            pulumi.resource.CustomTimeouts(
+                request.customTimeouts.create,
+                request.customTimeouts.update,
+                request.customTimeouts.delete,
+            )
+
+        resource_hooks = _binding_from_proto(request.resource_hooks)
+
         return pulumi.ResourceOptions(
             aliases=list(request.aliases),
             depends_on=[DependencyResource(urn) for urn in request.dependencies],
@@ -250,6 +272,13 @@ class ProviderServicer(ResourceProviderServicer):
                 for pkg, ref in request.providers.items()
             },
             parent=parent,
+            custom_timeouts=custom_timeouts,
+            ignore_changes=list(request.ignoreChanges),
+            replace_on_changes=list(request.replaceOnChanges),
+            retain_on_delete=request.retainOnDelete,
+            deleted_with=deleted_with,
+            replace_with=replace_with,
+            hooks=resource_hooks,
         )
 
     async def _construct_response(
@@ -259,13 +288,13 @@ class ProviderServicer(ResourceProviderServicer):
         assert urn is not None
 
         # Note: property_deps is populated by rpc.serialize_properties.
-        property_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        property_deps: dict[str, list[pulumi.resource.Resource]] = {}
         state = await rpc.serialize_properties(
             inputs={k: v for k, v in result.state.items() if k not in ["id", "urn"]},
             property_deps=property_deps,
         )
 
-        deps: Dict[str, proto.ConstructResponse.PropertyDependencies] = {}
+        deps: dict[str, proto.ConstructResponse.PropertyDependencies] = {}
         for k, resources in property_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
             # filter out any unknowns
@@ -296,9 +325,9 @@ class ProviderServicer(ResourceProviderServicer):
             self.lock.release()
 
     async def _call(self, request: proto.CallRequest, context):
-        assert isinstance(
-            request, proto.CallRequest
-        ), f"request is not CallRequest but is {type(request)} instead"
+        assert isinstance(request, proto.CallRequest), (
+            f"request is not CallRequest but is {type(request)} instead"
+        )
 
         organization = request.organization if request.organization else "organization"
         pulumi.runtime.settings.reset_options(
@@ -333,14 +362,14 @@ class ProviderServicer(ResourceProviderServicer):
         return response
 
     @staticmethod
-    async def _call_args(request: proto.CallRequest) -> Dict[str, pulumi.Input[Any]]:
-        def deps(key: str) -> Set[str]:
-            return set(
+    async def _call_args(request: proto.CallRequest) -> dict[str, pulumi.Input[Any]]:
+        def deps(key: str) -> set[str]:
+            return {
                 urn
                 for urn in request.argDependencies.get(
                     key, proto.CallRequest.ArgumentDependencies()
                 ).urns
-            )
+            }
 
         return {
             k: await ProviderServicer._select_value(the_input, deps=deps(k))
@@ -354,12 +383,12 @@ class ProviderServicer(ResourceProviderServicer):
 
     async def _call_response(self, result: CallResult) -> proto.CallResponse:
         # Note: ret_deps is populated by rpc.serialize_properties.
-        ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        ret_deps: dict[str, list[pulumi.resource.Resource]] = {}
         ret = await rpc.serialize_properties(
             inputs=result.outputs, property_deps=ret_deps
         )
 
-        deps: Dict[str, proto.CallResponse.ReturnDependencies] = {}
+        deps: dict[str, proto.CallResponse.ReturnDependencies] = {}
         for k, resources in ret_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
             # filter out any unknowns
@@ -379,12 +408,12 @@ class ProviderServicer(ResourceProviderServicer):
 
     async def _invoke_response(self, result: InvokeResult) -> proto.InvokeResponse:
         # Note: ret_deps is populated by rpc.serialize_properties but unused
-        ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        ret_deps: dict[str, list[pulumi.resource.Resource]] = {}
         ret = await rpc.serialize_properties(
             inputs=result.outputs, property_deps=ret_deps
         )
         # Since `return` is a keyword, we need to pass the args to `InvokeResponse` using a dictionary.
-        resp: Dict[str, Any] = {
+        resp: dict[str, Any] = {
             "return": ret,
         }
         if result.failures:
@@ -423,7 +452,7 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.GetSchemaResponse(schema=schema)
 
     def __init__(
-        self, provider: Provider, args: List[str], engine_address: str
+        self, provider: Provider, args: list[str], engine_address: str
     ) -> None:
         super().__init__()
         self.provider = provider
@@ -432,7 +461,7 @@ class ProviderServicer(ResourceProviderServicer):
         self.lock = asyncio.Lock()
 
 
-def main(provider: Provider, args: List[str]) -> None:  # args not in use?
+def main(provider: Provider, args: list[str]) -> None:  # args not in use?
     """For use as the `main` in programs that wrap a custom Provider
     implementation into a Pulumi-compatible gRPC server.
 
@@ -461,11 +490,7 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
         await server.wait_for_termination()
 
     try:
-        loop = asyncio.get_event_loop()
-        try:
-            loop.run_until_complete(serve())
-        finally:
-            loop.close()
+        asyncio.run(serve())
     except KeyboardInterrupt:
         pass
 
@@ -474,7 +499,7 @@ T = TypeVar("T")
 
 
 def _as_future(value: T) -> "asyncio.Future[T]":
-    fut: "asyncio.Future[T]" = asyncio.Future()
+    fut: asyncio.Future[T] = asyncio.Future()
     fut.set_result(value)
     return fut
 
@@ -487,7 +512,7 @@ def _zero_as_none(value: int) -> Optional[int]:
     return None if value == 0 else value
 
 
-async def _is_resource_reference(the_input: Any, deps: Set[str]) -> bool:
+async def _is_resource_reference(the_input: Any, deps: set[str]) -> bool:
     """
     Returns True if `the_input` is a Resource and only depends on itself.
     """

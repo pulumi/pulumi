@@ -174,7 +174,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
             skipProject: skipProject,
             compiler: typescriptRequire,
             compilerOptions: {
-                target: "es6",
+                target: "ES2020", // TypeScript 3.8 supports this
                 module: "commonjs",
                 moduleResolution: "node",
                 sourceMap: "true",

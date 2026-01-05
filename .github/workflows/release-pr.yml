@@ -33,12 +33,12 @@ on:
 jobs:
   version-bump:
     name: version bump
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
           go-version: '>=1.19.0' # decoupled from version sets, only used by changelog tool
       - name: Create PR
@@ -66,7 +66,7 @@ jobs:
             cd pkg
             go get -u "github.com/pulumi/pulumi/sdk/v3@v${PULUMI_VERSION}"
           )
-          make tidy
+          make tidy_fix
           git add -A
           git commit -m "chore: post-release go.mod updates"
 

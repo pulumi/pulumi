@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -26,7 +27,9 @@ import (
 
 func init() {
 	LanguageTests["l2-provider-call"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.CallProvider{}},
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.CallProvider{} },
+		},
 		Runs: []TestRun{
 			{
 				Config: config.Map{
@@ -35,6 +38,7 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 
@@ -69,7 +73,7 @@ func init() {
 					require.Len(l, outputs, 1, "expected 1 output")
 					AssertPropertyMapMember(
 						l, outputs,
-						"defaultProviderValue", resource.NewStringProperty("defaultProvValuedefaultValue"),
+						"defaultProviderValue", resource.NewProperty("defaultProvValuedefaultValue"),
 					)
 				},
 			},

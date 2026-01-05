@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,11 +23,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"net/http"
 	"net/url"
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -38,11 +40,50 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+const (
+	// 20s before we give up on a copilot request
+	NeoRequestTimeout = 20 * time.Second
+)
+
+// TemplatePublishOperationID uniquely identifies a template publish operation.
+type TemplatePublishOperationID string
+
+// StartTemplatePublishRequest is the request body for starting a template publish operation.
+type StartTemplatePublishRequest struct {
+	// Version is the semantic version of the template.
+	Version semver.Version `json:"version"`
+}
+
+// StartTemplatePublishResponse is the response from initiating a template publish.
+// It returns a presigned URL to upload the template archive.
+type StartTemplatePublishResponse struct {
+	// OperationID uniquely identifies the publishing operation.
+	OperationID TemplatePublishOperationID `json:"operationID"`
+	// UploadURLs contains the presigned URLs for uploading template artifacts.
+	UploadURLs TemplateUploadURLs `json:"uploadURLs"`
+}
+
+// TemplateUploadURLs contains the presigned URLs for uploading template artifacts.
+type TemplateUploadURLs struct {
+	// Archive is the URL for uploading the template archive.
+	Archive string `json:"archive"`
+}
+
+// PublishTemplateVersionCompleteRequest is the request body for completing a template publish operation.
+type PublishTemplateVersionCompleteRequest struct {
+	// OpID is the operation ID from the StartTemplatePublishResponse.
+	OpID TemplatePublishOperationID `json:"operationID"`
+}
+
+// PublishTemplateVersionCompleteResponse is the response from completing a template publish operation.
+type PublishTemplateVersionCompleteResponse struct{}
 
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
@@ -97,6 +138,18 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 	return newClient(apiURL, apiToken, insecure, d)
 }
 
+// WithHTTPClient sets the HTTP client for the API client.
+// Useful for testing.
+func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
+	pc.httpClient = httpClient
+	pc.restClient = &defaultRESTClient{
+		client: &defaultHTTPClient{
+			client: httpClient,
+		},
+	}
+	return pc
+}
+
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *Client) URL() string {
 	return pc.apiURL
@@ -109,15 +162,16 @@ func (pc *Client) do(ctx context.Context, req *http.Request) (*http.Response, er
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{}) error {
+func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj any) error {
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken,
 		httpCallOptions{})
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, queryObj, reqObj,
-	respObj interface{}, opts httpCallOptions,
+func (pc *Client) restCallWithOptions(
+	ctx context.Context, method, path string, queryObj, reqObj,
+	respObj any, opts httpCallOptions,
 ) error {
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
@@ -125,7 +179,7 @@ func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, 
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. The call is authorized with the indicated update token. If a response object is provided, the server's
 // response is deserialized into that object.
-func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{},
+func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj any,
 	token updateToken, httpOptions httpCallOptions,
 ) error {
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
@@ -215,6 +269,18 @@ func completePackagePublishPath(source, publisher, name, version string) string 
 	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
+func deletePackageVersionPath(source, publisher, name, version string) string {
+	return fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s", source, publisher, name, version)
+}
+
+func publishTemplatePath(source, publisher, name string) string {
+	return fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions", source, publisher, name)
+}
+
+func completeTemplatePublishPath(source, publisher, name string, version semver.Version) string {
+	return fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
+}
+
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
 type serviceUserInfo struct {
 	Name        string `json:"name"`
@@ -241,6 +307,52 @@ type serviceTokenInfo struct {
 	Name         string `json:"name"`
 	Organization string `json:"organization,omitempty"`
 	Team         string `json:"team,omitempty"`
+}
+
+//nolint:gosec
+const (
+	pulumiAccessTokenTypeOrganization = "urn:pulumi:token-type:access_token:organization"
+	pulumiAccessTokenTypeTeam         = "urn:pulumi:token-type:access_token:team"
+	pulumiAccessTokenTypePersonal     = "urn:pulumi:token-type:access_token:personal"
+)
+
+func (pc *Client) ExchangeOidcToken(
+	oidcToken string, org string, scope string, expiration time.Duration,
+) (*apitype.TokenExchangeGrantResponse, error) {
+	requestedTokenType := pulumiAccessTokenTypeOrganization
+	if strings.HasPrefix(scope, "team:") {
+		requestedTokenType = pulumiAccessTokenTypeTeam
+	}
+	if strings.HasPrefix(scope, "user:") {
+		requestedTokenType = pulumiAccessTokenTypePersonal
+	}
+	tokenUrl := pc.apiURL + "/api/oauth/token"
+	data := url.Values{
+		"audience":             {"urn:pulumi:org:" + org},
+		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
+		"requested_token_type": {requestedTokenType},
+		"scope":                {scope},
+		"subject_token_type":   {"urn:ietf:params:oauth:token-type:id_token"},
+		"subject_token":        {oidcToken},
+		"expiration":           {strconv.Itoa(int(expiration.Seconds()))},
+	}
+	resp, err := pc.httpClient.PostForm(tokenUrl, data)
+	if err != nil {
+		return nil, err
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s", string(body))
+	}
+	var unmarshalledResp apitype.TokenExchangeGrantResponse
+	err = json.Unmarshal(body, &unmarshalledResp)
+	if err != nil {
+		return nil, err
+	}
+	return &unmarshalledResp, nil
 }
 
 // GetPulumiAccountDetails returns the user implied by the API token associated with this client.
@@ -278,8 +390,16 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the
 // oldest version before the CLI should warn about an upgrade, and the current dev version).
-func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, semver.Version, error) {
+func (pc *Client) GetCLIVersionInfo(
+	ctx context.Context,
+	metadata map[string]string,
+) (semver.Version, semver.Version, semver.Version, error) {
 	var versionInfo apitype.CLIVersionResponse
+
+	headers := map[string][]string{}
+	for k, v := range metadata {
+		headers["X-Pulumi-"+k] = []string{v}
+	}
 
 	err := pc.restCallWithOptions(
 		ctx,
@@ -290,6 +410,7 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 		&versionInfo, // response
 		httpCallOptions{
 			RetryPolicy: retryNone,
+			Header:      http.Header(headers),
 		},
 	)
 	if err != nil {
@@ -319,6 +440,21 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 	}
 
 	return latestSem, oldestSem, devSem, nil
+}
+
+// GetDefaultOrg lists the backend's opinion of which user organization to use, if default organization
+// is unset. This API should only be called if the backend supports DefaultOrg as a capability.
+func (pc *Client) GetDefaultOrg(ctx context.Context) (apitype.GetDefaultOrganizationResponse, error) {
+	var resp apitype.GetDefaultOrganizationResponse
+	if err := pc.restCall(ctx, "GET", "/api/user/organizations/default", nil, nil, &resp); err != nil {
+		if is404(err) {
+			// The client continues to support legacy backends. They do not support GetDefaultOrg; decision
+			// for default org is left for the CLI to determine.
+			return apitype.GetDefaultOrganizationResponse{}, nil
+		}
+		return apitype.GetDefaultOrganizationResponse{}, err
+	}
+	return resp, nil
 }
 
 // ListStacksFilter describes optional filters when listing stacks.
@@ -462,6 +598,7 @@ func (pc *Client) CreateStack(
 	tags map[apitype.StackTagName]string,
 	teams []string,
 	state *apitype.UntypedDeployment,
+	config *apitype.StackConfig,
 ) (apitype.Stack, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
@@ -479,6 +616,7 @@ func (pc *Client) CreateStack(
 		Tags:      tags,
 		Teams:     teams,
 		State:     state,
+		Config:    config,
 	}
 
 	endpoint := fmt.Sprintf("/api/stacks/%s/%s", stackID.Owner, stackID.Project)
@@ -651,9 +789,9 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 }
 
 type CreateUpdateDetails struct {
-	Messages                    []apitype.Message
-	RequiredPolicies            []apitype.RequiredPolicy
-	IsCopilotIntegrationEnabled bool
+	Messages                []apitype.Message
+	RequiredPolicies        []apitype.RequiredPolicy
+	IsNeoIntegrationEnabled bool
 }
 
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
@@ -728,9 +866,9 @@ func (pc *Client) CreateUpdate(
 			UpdateKind:      kind,
 			UpdateID:        updateResponse.UpdateID,
 		}, CreateUpdateDetails{
-			Messages:                    updateResponse.Messages,
-			RequiredPolicies:            updateResponse.RequiredPolicies,
-			IsCopilotIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
+			Messages:                updateResponse.Messages,
+			RequiredPolicies:        updateResponse.RequiredPolicies,
+			IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
 		}, nil
 }
 
@@ -747,22 +885,26 @@ func (pc *Client) RenameStack(ctx context.Context, currentID, newID StackIdentif
 // to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
 func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	tags map[apitype.StackTagName]string,
-) (int, string, error) {
+) (int, string, int64, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
-		return 0, "", fmt.Errorf("validating stack properties: %w", err)
+		return 0, "", 0, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	req := apitype.StartUpdateRequest{
 		Tags: tags,
 	}
 
-	var resp apitype.StartUpdateResponse
-	if err := pc.restCall(ctx, "POST", getUpdatePath(update), nil, req, &resp); err != nil {
-		return 0, "", err
+	if env.EnableJournaling.Value() {
+		req.JournalVersion = 1
 	}
 
-	return resp.Version, resp.Token, nil
+	var resp apitype.StartUpdateResponse
+	if err := pc.restCall(ctx, "POST", getUpdatePath(update), nil, req, &resp); err != nil {
+		return 0, "", 0, err
+	}
+
+	return resp.Version, resp.Token, resp.JournalVersion, nil
 }
 
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
@@ -795,6 +937,7 @@ func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContTok
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader,
+	metadata map[string]string,
 ) (string, error) {
 	//
 	// Step 1: Send POST containing policy metadata to service. This begins process of creating
@@ -819,6 +962,11 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 			EnforcementLevel: policy.EnforcementLevel,
 			Message:          policy.Message,
 			ConfigSchema:     configSchema,
+			Severity:         policy.Severity,
+			Framework:        convertPolicyComplianceFramework(policy.Framework),
+			Tags:             policy.Tags,
+			RemediationSteps: policy.RemediationSteps,
+			URL:              policy.URL,
 		}
 	}
 
@@ -827,6 +975,12 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		DisplayName: analyzerInfo.DisplayName,
 		VersionTag:  analyzerInfo.Version,
 		Policies:    policies,
+		Description: analyzerInfo.Description,
+		Readme:      analyzerInfo.Readme,
+		Provider:    analyzerInfo.Provider,
+		Tags:        analyzerInfo.Tags,
+		Repository:  analyzerInfo.Repository,
+		Metadata:    metadata,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -901,6 +1055,19 @@ func convertPolicyConfigSchema(schema *plugin.AnalyzerPolicyConfigSchema) (*apit
 		Properties: properties,
 		Required:   schema.Required,
 	}, nil
+}
+
+// convertPolicyComplianceFramework converts a policy compliance framework from the analyzer to the apitype.
+func convertPolicyComplianceFramework(f *plugin.AnalyzerPolicyComplianceFramework) *apitype.PolicyComplianceFramework {
+	if f == nil {
+		return nil
+	}
+	return &apitype.PolicyComplianceFramework{
+		Name:          f.Name,
+		Version:       f.Version,
+		Reference:     f.Reference,
+		Specification: f.Specification,
+	}
 }
 
 // validatePolicyPackVersion validates the version of a Policy Pack. The version may be empty,
@@ -1059,31 +1226,17 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	return resp.Token, nil
 }
 
-// InvalidateUpdateCheckpoint invalidates the checkpoint for the indicated update.
-func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateIdentifier,
-	token UpdateTokenSource,
-) error {
-	req := apitype.PatchUpdateCheckpointRequest{
-		IsInvalid: true,
-	}
-
-	// It is safe to retry this PATCH operation, because it is logically idempotent.
-	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods})
-}
-
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
+func (pc *Client) PatchUpdateCheckpoint(
+	ctx context.Context,
+	update UpdateIdentifier,
+	deployment *apitype.UntypedDeployment,
 	token UpdateTokenSource,
 ) error {
-	rawDeployment, err := json.Marshal(deployment)
-	if err != nil {
-		return err
-	}
-
 	req := apitype.PatchUpdateCheckpointRequest{
-		Version:    3,
-		Deployment: rawDeployment,
+		Version:    deployment.Version,
+		Features:   deployment.Features,
+		Deployment: deployment.Deployment,
 	}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
@@ -1095,10 +1248,10 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
 // UntypedDeployment transferred over the wire.
 func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, untypedDeploymentBytes json.RawMessage, token UpdateTokenSource,
+	sequenceNumber int, untypedDeploymentBytes json.RawMessage, deploymentVersion int, token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateVerbatimCheckpointRequest{
-		Version:           3,
+		Version:           deploymentVersion,
 		UntypedDeployment: untypedDeploymentBytes,
 		SequenceNumber:    sequenceNumber,
 	}
@@ -1118,10 +1271,11 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 // PatchUpdateCheckpoint. Unlike PatchUpdateCheckpoint, it uses a text diff-based protocol to conserve bandwidth on
 // large stack states.
 func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, token UpdateTokenSource,
+	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, deploymentVersion int,
+	token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateCheckpointDeltaRequest{
-		Version:         3,
+		Version:         deploymentVersion,
 		CheckpointHash:  checkpointHash,
 		SequenceNumber:  sequenceNumber,
 		DeploymentDelta: deploymentDelta,
@@ -1129,6 +1283,26 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 
 	// It is safe to retry because SequenceNumber serves as an idempotency key.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointdelta"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+}
+
+// SaveJournalEntry sends a single journal entry to the service. When we get a success response,
+// the journal entry is guaranteed to be stored safely.
+func (pc *Client) SaveJournalEntry(ctx context.Context, update UpdateIdentifier,
+	entry apitype.JournalEntry, token UpdateTokenSource,
+) error {
+	return pc.SaveJournalEntries(ctx, update, []apitype.JournalEntry{entry}, token)
+}
+
+// SaveJournalEntries sends a single journal entry to the service. When we get a success response,
+// all journal entries are guaranteed to be stored safely.
+func (pc *Client) SaveJournalEntries(ctx context.Context, update UpdateIdentifier,
+	entries []apitype.JournalEntry, token UpdateTokenSource,
+) error {
+	req := apitype.JournalEntries{
+		Entries: entries,
+	}
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "journalentries"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
@@ -1193,6 +1367,12 @@ func (pc *Client) UpdateStackTags(
 	}
 
 	return pc.restCall(ctx, "PATCH", getStackPath(stack, "tags"), nil, tags, nil)
+}
+
+func (pc *Client) UpdateStackConfig(
+	ctx context.Context, stack StackIdentifier, config *apitype.StackConfig,
+) error {
+	return pc.restCall(ctx, "PUT", getStackPath(stack, "config"), nil, config, nil)
 }
 
 func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
@@ -1352,7 +1532,7 @@ func is404(err error) bool {
 }
 
 // SubmitAIPrompt sends the user's prompt to the Pulumi Service and streams back the response.
-func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (*http.Response, error) {
+func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody any) (*http.Response, error) {
 	url, err := url.Parse(pc.apiURL + getAIPromptPath())
 	if err != nil {
 		return nil, err
@@ -1370,27 +1550,40 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (
 	return res, err
 }
 
-// SummarizeErrorWithCopilot summarizes Pulumi Update output using the Copilot API
-func (pc *Client) SummarizeErrorWithCopilot(
+// SummarizeErrorWithNeo summarizes Pulumi Update output using the Copilot API
+func (pc *Client) SummarizeErrorWithNeo(
 	ctx context.Context,
 	orgID string,
-	lines []string,
+	content string,
 	model string,
 	maxSummaryLen int,
 ) (string, error) {
-	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen, maxCopilotContentLength)
+	request := createSummarizeUpdateRequest(content, orgID, model, maxSummaryLen, maxCopilotSummarizeUpdateContentLength)
+	return pc.callCopilot(ctx, request)
+}
 
-	jsonData, err := json.Marshal(request)
+func (pc *Client) ExplainPreviewWithNeo(
+	ctx context.Context,
+	orgID string,
+	kind string,
+	content string,
+) (string, error) {
+	request := createExplainPreviewRequest(content, orgID, kind, maxCopilotExplainPreviewContentLength)
+	return pc.callCopilot(ctx, request)
+}
+
+func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, error) {
+	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
 
-	// Requests that take longer that 10 seconds will result in this message being printed to the user:
-	// "Error summarizing update output: making request: Post "https://api.pulumi.com/api/ai/chat/preview":
-	// context deadline exceeded" Copilot backend will see this in telemetry as well
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
+
 	url := pc.apiURL + "/api/ai/chat/preview"
+	apiToken := string(pc.apiToken)
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
@@ -1398,7 +1591,7 @@ func (pc *Client) SummarizeErrorWithCopilot(
 
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", pc.apiToken))
+	req.Header.Set("Authorization", "token "+apiToken)
 
 	resp, err := pc.do(ctx, req)
 	if err != nil {
@@ -1419,16 +1612,25 @@ func (pc *Client) SummarizeErrorWithCopilot(
 		return "", fmt.Errorf("reading response body: %w", err)
 	}
 
-	var copilotResp apitype.CopilotSummarizeUpdateResponse
+	if resp.StatusCode >= 400 {
+		// For other error status codes, return the body as an error if it's readable, otherwise a generic error
+		errorMsg := string(body)
+		if errorMsg == "" {
+			errorMsg = fmt.Sprintf("Copilot API returned error status: %d", resp.StatusCode)
+		}
+		return "", errors.New(errorMsg)
+	}
+
+	var copilotResp apitype.CopilotResponse
 	if err := json.Unmarshal(body, &copilotResp); err != nil {
-		return "", fmt.Errorf("got non-JSON response from Copilot: %s", body)
+		return "", fmt.Errorf("unable to parse Copilot response: %s", string(body))
 	}
 
 	if copilotResp.Error != "" {
 		return "", fmt.Errorf("copilot API error: %s\n%s", copilotResp.Error, copilotResp.Details)
 	}
 
-	return extractSummaryFromResponse(copilotResp)
+	return extractCopilotResponse(copilotResp)
 }
 
 func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePublishOp) error {
@@ -1490,4 +1692,229 @@ func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePubli
 	}
 
 	return nil
+}
+
+// StartTemplatePublish is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) StartTemplatePublish(
+	ctx context.Context,
+	source, publisher, name string,
+	version semver.Version,
+) (*StartTemplatePublishResponse, error) {
+	req := StartTemplatePublishRequest{
+		Version: version,
+	}
+	var resp StartTemplatePublishResponse
+	err := pc.restCall(ctx, "POST", publishTemplatePath(source, publisher, name), nil, req, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("start template publish failed: %w", err)
+	}
+	return &resp, nil
+}
+
+// CompleteTemplatePublish is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) CompleteTemplatePublish(
+	ctx context.Context,
+	source, publisher, name string,
+	version semver.Version,
+	operationID TemplatePublishOperationID,
+) error {
+	completeReq := PublishTemplateVersionCompleteRequest{
+		OpID: operationID,
+	}
+
+	requestPath := completeTemplatePublishPath(source, publisher, name, version)
+	err := pc.restCall(ctx, "POST", requestPath, nil, completeReq, nil)
+	if err != nil {
+		return fmt.Errorf("failed to complete template publishing operation %q: %w", operationID, err)
+	}
+
+	return nil
+}
+
+// PublishTemplate is a preview API, and should not be used without an approved EOL plan for
+// deprecation.
+func (pc *Client) PublishTemplate(ctx context.Context, input apitype.TemplatePublishOp) error {
+	resp, err := pc.StartTemplatePublish(ctx, input.Source, input.Publisher, input.Name, input.Version)
+	if err != nil {
+		return fmt.Errorf("failed to start template publish: %w", err)
+	}
+
+	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURLs.Archive, input.Archive)
+	if err != nil {
+		return fmt.Errorf("failed to create upload request: %w", err)
+	}
+	putReq.Header.Set("Content-Type", "application/gzip")
+
+	uploadResp, err := pc.do(ctx, putReq)
+	if err != nil {
+		return fmt.Errorf("failed to upload archive: %w", err)
+	} else if uploadResp.StatusCode != http.StatusOK {
+		body, bodyErr := readBody(uploadResp)
+		if bodyErr != nil {
+			return fmt.Errorf("failed to upload archive: %s", uploadResp.Status)
+		}
+		return fmt.Errorf("failed to upload archive: %s - %s", uploadResp.Status, string(body))
+	}
+
+	err = pc.CompleteTemplatePublish(ctx, input.Source, input.Publisher, input.Name, input.Version, resp.OperationID)
+	if err != nil {
+		return fmt.Errorf("failed to complete template publish: %w", err)
+	}
+
+	return nil
+}
+
+func (pc *Client) GetPackage(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.PackageMetadata, error) {
+	v := "latest"
+	if version != nil {
+		v = version.String()
+	}
+	url := fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s", source, publisher, name, v)
+	var resp apitype.PackageMetadata
+	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
+	return resp, err
+}
+
+// DeletePackageVersion deletes a specific version of a package from the registry.
+func (pc *Client) DeletePackageVersion(
+	ctx context.Context, source, publisher, name string, version semver.Version,
+) error {
+	url := deletePackageVersionPath(source, publisher, name, version.String())
+	err := pc.restCall(ctx, "DELETE", url, nil, nil, nil)
+	return err
+}
+
+func (pc *Client) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	v := "latest"
+	if version != nil {
+		v = version.String()
+	}
+	url := fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions/%s", source, publisher, name, v)
+	var resp apitype.TemplateMetadata
+	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
+	return resp, err
+}
+
+// DownloadTemplate takes a downloadURL, which is a full URL (not a path). The URL can be
+// one of two situations:
+//
+// - An URL for the client: `api.pulumi.com/api/orgs/{org}/template/download?name={template-name}`
+// - A foreign URL: `api.github.com/blobs/4328791917840`
+//
+// We want to use the full method receiver with configured credentials if and only if we
+// are targeting the correct URL. If we are targeting another URL, we should use a fresh
+// client without tokens.
+func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	// Presigned URLs need to be handled differently to avoid signature mismatches due to e.g. headers.
+	// See https://docs.aws.amazon.com/prescriptive-guidance/latest/presigned-url-best-practices/identifying-requests.html
+	isPresignedURL := strings.Contains(downloadURL, "X-Amz-Expires=")
+	if after, ok := strings.CutPrefix(downloadURL, pc.apiURL); ok {
+		downloadURL = after
+	} else if isPresignedURL {
+		return pc.downloadWithRawClient(ctx, downloadURL)
+	} else {
+		// Set pc to the new client. This only sets the local variable. It is very
+		// different from *pc = *NewClient().
+		pc = NewClient(downloadURL, "", true, pc.diag)
+		downloadURL = ""
+	}
+
+	var bytes io.ReadCloser
+	header := make(http.Header, 1)
+	header.Add("Accept", "application/x-tar")
+
+	err := pc.restCallWithOptions(ctx, "GET", downloadURL, nil, nil, &bytes, httpCallOptions{
+		Header: header,
+	})
+	return bytes, err
+}
+
+func (pc *Client) downloadWithRawClient(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := pc.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	return bodyIntoReader(resp)
+}
+
+func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+	url := "/api/preview/registry/packages?limit=499"
+	if name != nil {
+		url += "&name=" + *name
+	}
+
+	var continuationToken *string
+	return func(f func(apitype.PackageMetadata, error) bool) {
+		for {
+			queryURL := url
+			if continuationToken != nil {
+				queryURL += "&continuationToken=" + *continuationToken
+			}
+			var resp apitype.ListPackagesResponse
+			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &resp)
+			if err != nil {
+				f(apitype.PackageMetadata{}, err)
+				return
+			}
+			for _, v := range resp.Packages {
+				if !f(v, nil) {
+					return
+				}
+			}
+			continuationToken = resp.ContinuationToken
+			if continuationToken == nil {
+				return
+			}
+		}
+	}
+}
+
+func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+	url := "/api/registry/templates?limit=499"
+	if name != nil {
+		url += "&name=" + *name
+	}
+
+	var continuationToken *string
+	return func(f func(apitype.TemplateMetadata, error) bool) {
+		for {
+			queryURL := url
+			if continuationToken != nil {
+				queryURL += "&continuationToken=" + *continuationToken
+			}
+			var resp apitype.ListTemplatesResponse
+			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &resp)
+			if err != nil {
+				f(apitype.TemplateMetadata{}, err)
+				return
+			}
+			for _, v := range resp.Templates {
+				if !f(v, nil) {
+					return
+				}
+			}
+			continuationToken = resp.ContinuationToken
+			if continuationToken == nil {
+				return
+			}
+		}
+	}
 }

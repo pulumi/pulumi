@@ -21,14 +21,11 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -42,7 +39,7 @@ const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
-	diag, statusDiag diag.Sink, debugging plugin.DebugEventEmitter, disableProviderPreview bool,
+	diag, statusDiag diag.Sink, debugging plugin.DebugContext, disableProviderPreview bool,
 	tracingSpan opentracing.Span, config map[config.Key]string,
 ) (string, string, *plugin.Context, error) {
 	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
@@ -54,26 +51,11 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, pwd, projinfo.Root,
+	ctx, err := plugin.NewContextWithRoot(context.TODO(), diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
 		projinfo.Proj.GetPackageSpecs(), config, debugging)
 	if err != nil {
 		return "", "", nil, err
-	}
-
-	if logFile := env.DebugGRPC.Value(); logFile != "" {
-		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
-			LogFile: logFile,
-			Mutex:   ctx.DebugTraceMutex,
-		})
-		if err != nil {
-			return "", "", nil, err
-		}
-		ctx.DialOptions = func(metadata interface{}) []grpc.DialOption {
-			return di.DialOptions(interceptors.LogOptions{
-				Metadata: metadata,
-			})
-		}
 	}
 
 	// If the project wants to connect to an existing language runtime, do so now.
@@ -99,8 +81,6 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 // newDeploymentContext creates a context for a subsequent deployment. Callers must call Close on the context after the
 // associated deployment completes.
 func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.SpanContext) (*deploymentContext, error) {
-	contract.Requiref(u != nil, "u", "must not be nil")
-
 	// Create a root span for the operation
 	opts := []opentracing.StartSpanOption{}
 	if opName != "" {
@@ -134,6 +114,9 @@ type deploymentOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc deploymentSourceFunc
 
+	// pluginManager manages plugin installations.
+	pluginManager PluginManager
+
 	// true if we should print the DOT file for this deployment.
 	DOT bool
 	// the channel to write events from the engine to.
@@ -162,7 +145,8 @@ type deploymentOptions struct {
 type deploymentSourceFunc func(
 	ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error)
+	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks, panicErrs chan<- error,
+) (deploy.Source, error)
 
 // newDeployment creates a new deployment with the given context and options.
 func newDeployment(
@@ -172,15 +156,14 @@ func newDeployment(
 	opts *deploymentOptions,
 ) (*deployment, error) {
 	contract.Assertf(info != nil, "a deployment context must be provided")
-	contract.Assertf(info.Update != nil, "update info cannot be nil")
 	contract.Assertf(opts.SourceFunc != nil, "a source factory must be provided")
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.
-	proj, target := info.Update.GetProject(), info.Update.GetTarget()
+	proj, target := info.Update.Project, info.Update.Target
 	contract.Assertf(proj != nil, "update project cannot be nil")
 	contract.Assertf(target != nil, "update target cannot be nil")
-	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
+	projinfo := &Projinfo{Proj: proj, Root: info.Update.Root}
 
 	// Decrypt the configuration.
 	config, err := target.Config.Decrypt(target.Decrypter)
@@ -188,30 +171,34 @@ func newDeployment(
 		return nil, fmt.Errorf("failed to decrypt config: %w", err)
 	}
 
+	panicErrsChannel := make(chan error)
+
 	// Create a context for plugins.
-	debuggingEventEmitter := newDebuggingEventEmitter(opts.Events)
+	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
 	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
-		opts.Diag, opts.StatusDiag, debuggingEventEmitter, opts.DisableProviderPreview, info.TracingSpan, config)
+		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
 	}
 
 	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
-	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Terminated())
+	go func() { <-ctx.Cancel.Terminated(); contract.IgnoreClose(plugctx) }()
 
 	// Set up a goroutine that will signal cancellation to the source if the caller context
 	// is cancelled.
 	cancelCtx, cancelFunc := context.WithCancel(context.Background())
-	go func() {
+	go deploy.PanicRecovery(panicErrsChannel, func() {
 		<-ctx.Cancel.Canceled()
 		logging.V(7).Infof("engine.newDeployment(...): received cancellation signal")
 		cancelFunc()
-	}()
+	})
+
+	resourceHooks := deploy.NewResourceHooks(plugctx.DialOptions)
 
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(
-		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx)
+		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, resourceHooks, panicErrsChannel)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -225,6 +212,7 @@ func newDeployment(
 		Parallel:                  opts.Parallel,
 		Refresh:                   opts.Refresh,
 		RefreshOnly:               opts.isRefresh,
+		RefreshProgram:            opts.RefreshProgram,
 		DestroyProgram:            opts.DestroyProgram,
 		ReplaceTargets:            opts.ReplaceTargets,
 		Targets:                   opts.Targets,
@@ -235,7 +223,7 @@ func newDeployment(
 		UseLegacyRefreshDiff:      opts.UseLegacyRefreshDiff,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
-		GeneratePlan:              opts.UpdateOptions.GeneratePlan,
+		GeneratePlan:              opts.GeneratePlan,
 		ContinueOnError:           opts.ContinueOnError,
 		Autonamer:                 opts.Autonamer,
 	}
@@ -244,7 +232,7 @@ func newDeployment(
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
 			plugctx, deplOpts, actions, target, target.Snapshot, opts.Plan, source,
-			localPolicyPackPaths, ctx.BackendClient)
+			localPolicyPackPaths, ctx.BackendClient, resourceHooks)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(
 			cancelCtx,
@@ -322,6 +310,7 @@ func newDeployment(
 		Deployment: depl,
 		Actions:    actions,
 		Options:    opts,
+		panicErrs:  panicErrsChannel,
 	}, nil
 }
 
@@ -336,6 +325,8 @@ type deployment struct {
 	Actions runActions
 	// the options used while deploying.
 	Options *deploymentOptions
+	// Channel to collect panic errors from goroutines
+	panicErrs chan error
 }
 
 // runActions represents a set of actions to run as part of a deployment,
@@ -360,7 +351,7 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 
 	// Emit an appropriate prelude event.
 	deployment.Options.Events.preludeEvent(
-		deployment.Options.DryRun, deployment.Ctx.Update.GetTarget().Config)
+		deployment.Options.DryRun, deployment.Ctx.Update.Target.Config)
 
 	// Execute the deployment.
 	start := time.Now()
@@ -368,13 +359,13 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 	done := make(chan bool)
 	var newPlan *deploy.Plan
 	var walkError error
-	go func() {
+	go deploy.PanicRecovery(deployment.panicErrs, func() {
 		newPlan, walkError = deployment.Deployment.Execute(ctx)
 		close(done)
-	}()
+	})
 
 	// Asynchronously listen for cancellation, and deliver that signal to the deployment.
-	go func() {
+	go deploy.PanicRecovery(deployment.panicErrs, func() {
 		select {
 		case <-cancelCtx.Cancel.Canceled():
 			// Cancel the deployment's execution context, so it begins to shut down.
@@ -382,11 +373,13 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 		case <-done:
 			return
 		}
-	}()
+	})
 
 	var err error
 	// Wait for the deployment to finish executing or for the user to terminate the run.
 	select {
+	case err = <-deployment.panicErrs:
+		panic(err)
 	case <-cancelCtx.Cancel.Terminated():
 		err = cancelCtx.Cancel.TerminateErr()
 
@@ -412,6 +405,8 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 	// Emit a summary event.
 	deployment.Options.Events.summaryEvent(
 		deployment.Options.DryRun, deployment.Actions.MaybeCorrupt(), duration, changes, policies)
+
+	close(deployment.panicErrs)
 
 	return newPlan, changes, err
 }

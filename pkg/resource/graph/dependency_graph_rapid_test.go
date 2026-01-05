@@ -170,7 +170,6 @@ func TestRapidDependingOn(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, includingChildren := range []bool{false, true} {
-		includingChildren := includingChildren
 		t.Run(fmt.Sprintf("includingChildren=%v", includingChildren), func(t *testing.T) {
 			t.Parallel()
 
@@ -205,7 +204,6 @@ func TestRapidDependingOnOrdered(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, includingChildren := range []bool{false, true} {
-		includingChildren := includingChildren
 		t.Run(fmt.Sprintf("includingChildren=%v", includingChildren), func(t *testing.T) {
 			t.Parallel()
 

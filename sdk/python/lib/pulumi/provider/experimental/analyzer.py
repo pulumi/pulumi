@@ -13,19 +13,26 @@
 # limitations under the License.
 
 import ast
+import builtins
 import collections
-from enum import Enum
+import importlib.resources
 import inspect
+import json
 import sys
+import types
 import typing
 from collections import abc
 from collections.abc import Awaitable
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from types import GenericAlias
 from typing import (  # type: ignore
     Any,
     ForwardRef,
+    Literal,
     Optional,
+    TypedDict,
     Union,
     _GenericAlias,  # type: ignore
     _SpecialGenericAlias,  # type: ignore
@@ -37,12 +44,6 @@ from typing import (  # type: ignore
 from ...asset import Archive, Asset
 from ...output import Output
 from ...resource import ComponentResource, Resource
-from .component import (
-    ComponentDefinition,
-    PropertyDefinition,
-    PropertyType,
-    TypeDefinition,
-)
 from .util import camel_case
 
 _NoneType = type(None)  # Available as typing.NoneType in >= 3.10
@@ -57,6 +58,80 @@ _GenericAliasT = (  # type: ignore
     _SpecialGenericAlias,
     GenericAlias,
 )
+
+
+class PropertyType(Enum):
+    STRING = "string"
+    INTEGER = "integer"
+    NUMBER = "number"
+    BOOLEAN = "boolean"
+    OBJECT = "object"
+    ARRAY = "array"
+
+
+@dataclass
+class EnumValueDefinition:
+    name: str
+    value: Union[str, float, int, bool]
+    description: Optional[str] = None
+
+
+@dataclass
+class PropertyDefinition:
+    optional: bool = False
+    type: Optional[PropertyType] = None
+    ref: Optional[str] = None
+    description: Optional[str] = None
+    items: Optional["PropertyDefinition"] = None
+    additional_properties: Optional["PropertyDefinition"] = None
+    plain: Optional[Literal[True]] = None
+
+
+@dataclass
+class TypeDefinition:
+    name: str
+    type: PropertyType
+    properties: dict[str, PropertyDefinition]
+    properties_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
+    module: str
+    """The Python module where this type is defined."""
+    python_type: builtins.type
+    """The Python type from which we derived this type definition."""
+    description: Optional[str] = None
+    enum: Optional[list[EnumValueDefinition]] = None
+
+
+@dataclass
+class ComponentDefinition:
+    name: str
+    inputs: dict[str, PropertyDefinition]
+    outputs: dict[str, PropertyDefinition]
+    inputs_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
+    outputs_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
+    module: Optional[str]
+    """The Python module where this component is defined."""
+    description: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class Parameterization:
+    name: str
+    version: str
+    # The value is a represented as base64 encoded string in JSON. Since all we
+    # do is return it again in the schema, we don't decode it to bytes, and keep
+    # it in base64.
+    value: str
+
+
+@dataclass(frozen=True)
+class Dependency:
+    name: str
+    version: Optional[str] = None
+    downloadURL: Optional[str] = None
+    parameterization: Optional[Parameterization] = None
 
 
 class TypeNotFoundError(Exception):
@@ -107,6 +182,23 @@ class InvalidListTypeError(Exception):
         )
 
 
+class DependencyError(Exception): ...
+
+
+class AnalyzeResult(TypedDict):
+    component_definitions: dict[str, ComponentDefinition]
+    """The components defined by the package."""
+    type_definitions: dict[str, TypeDefinition]
+    """The types defined in the package, these are complex types or enums."""
+    external_enum_types: dict[str, type[Enum]]
+    """
+    A map of references to Python enum types. These are used to deserialize
+    raw values back into Python types.
+    """
+    dependencies: set[Dependency]
+    """The packages this package depends on."""
+
+
 class Analyzer:
     """
     Analyzer infers component and type definitions for a set of
@@ -150,17 +242,30 @@ class Analyzer:
 
     def __init__(self, name: str):
         self.name = name
+        self.dependencies: set[Dependency] = set()
         self.type_definitions: dict[str, TypeDefinition] = {}
-        self.unresolved_forward_refs: dict[str, TypeDefinition] = {}
+        # Keep track of external enum types we encountered. We use these to map a schema
+        # reference to a type so that we can deserialize a raw value back into a Python
+        # enum type.
+        self.external_enum_types: dict[str, type[Enum]] = {}
+        # For unresolved types, we need to keep track of whether we saw them in a
+        # component output or an input.
+        self.unresolved_forward_refs: dict[
+            str,
+            tuple[
+                bool,  # is_component_output
+                TypeDefinition,
+            ],
+        ] = {}
         self.docstrings: dict[str, dict[str, str]] = {}
 
     def analyze(
         self,
         components: list[type[ComponentResource]],
-    ) -> tuple[dict[str, ComponentDefinition], dict[str, TypeDefinition]]:
+    ) -> AnalyzeResult:
         """
-        Analyze walks the directory at `path` and searches for
-        ComponentResources in Python files.
+        Analyze builds a Pulumi schema for a provider that handles the passed
+        list of components.
         """
         component_defs: dict[str, ComponentDefinition] = {}
         for component in components:
@@ -179,7 +284,9 @@ class Analyzer:
         # With https://peps.python.org/pep-0649/ we might be able to let
         # Python handle this for us.
         checked_modules: set[str] = set()
-        for name, type_def in [*self.unresolved_forward_refs.items()]:
+        for name, (is_component_output, type_def) in [
+            *self.unresolved_forward_refs.items()
+        ]:
             for component in components:
                 if component.__module__ in checked_modules:
                     continue
@@ -190,10 +297,12 @@ class Analyzer:
                     typ = getattr(module, type_def.name, None)
                     if typ:
                         (properties, properties_mapping) = self.analyze_type(
-                            typ, can_be_plain=False
+                            typ,
+                            is_component_output=is_component_output,
                         )
                         type_def.properties = properties
                         type_def.properties_mapping = properties_mapping
+                        type_def.python_type = typ
                         del self.unresolved_forward_refs[name]
                         break
 
@@ -204,34 +313,32 @@ class Analyzer:
         if len(components) == 0:
             raise Exception("No components found")
 
-        return (component_defs, self.type_definitions)
-
-    def get_annotations(self, o: Any) -> dict[str, Any]:
-        if sys.version_info >= (3, 10):
-            # Only available in 3.10 and later
-            return inspect.get_annotations(o)
-        else:
-            # On Python 3.9 and older, __annotations__ is not guaranteed to be
-            # present. Additionally, if the class has no annotations, and it is
-            # a subclass, it will return the annotations of the parent
-            # https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
-            if isinstance(o, type):
-                return o.__dict__.get("__annotations__", {})
-            else:
-                return getattr(o, "__annotations__", {})
+        return {
+            "component_definitions": component_defs,
+            "type_definitions": self.type_definitions,
+            "dependencies": self.dependencies,
+            "external_enum_types": self.external_enum_types,
+        }
 
     def analyze_component(
         self, component: type[ComponentResource]
     ) -> ComponentDefinition:
-        ann = self.get_annotations(component.__init__)
+        """
+        Analyze a single component, building up a `ComponentDefinition` that
+        holds all the information necessary to create a resource in a Pulumi
+        provider schema.
+        """
+        ann = inspect.get_annotations(component.__init__)
         args = ann.get("args", None)
         if not args:
             raise Exception(
                 f"ComponentResource '{component.__name__}' requires an argument named 'args' with a type annotation in its __init__ method"
             )
 
-        (inputs, inputs_mapping) = self.analyze_type(args, can_be_plain=True)
-        (outputs, outputs_mapping) = self.analyze_type(component, can_be_plain=False)
+        (inputs, inputs_mapping) = self.analyze_type(args, is_component_output=False)
+        (outputs, outputs_mapping) = self.analyze_type(
+            component, is_component_output=True
+        )
         return ComponentDefinition(
             name=component.__name__,
             description=component.__doc__.strip() if component.__doc__ else None,
@@ -243,12 +350,17 @@ class Analyzer:
         )
 
     def analyze_type(
-        self, typ: type, can_be_plain: bool
+        self, typ: type, *, is_component_output: bool
     ) -> tuple[dict[str, PropertyDefinition], dict[str, str]]:
         """
         analyze_type returns a dictionary of the properties of a type based on
         its annotations, as well as a mapping from the schema property name
         (camel cased) to the Python property name.
+
+        :param typ: the type to analyze
+        :param is_component_output: whether the type is a used as a component
+        output. Types used in component outputs can never have the plain
+        property, including nested complex types or in list/dictionaries.
 
         For example for the class
 
@@ -269,10 +381,16 @@ class Analyzer:
                 }
             )
         """
-        ann = self.get_annotations(typ)
+        ann = inspect.get_annotations(typ)
         mapping: dict[str, str] = {camel_case(k): k for k in ann.keys()}
         return {
-            camel_case(k): self.analyze_property(v, typ, k, can_be_plain)
+            camel_case(k): self.analyze_property(
+                v,
+                typ,
+                k,
+                can_be_plain=not is_component_output,
+                is_component_output=is_component_output,
+            )
             for k, v in ann.items()
         }, mapping
 
@@ -281,7 +399,9 @@ class Analyzer:
         arg: type,
         typ: type,
         name: str,
-        plain: bool,
+        *,
+        can_be_plain: bool,
+        is_component_output: bool,
         optional: Optional[bool] = None,
     ) -> PropertyDefinition:
         """
@@ -290,36 +410,57 @@ class Analyzer:
         :param arg: the type of the property we are analyzing
         :param typ: the type this property belongs to
         :param name: the name of the property
+        :param can_be_plain: whether the property can be plain
+        :param is_component_output: whether the property is in a component output
         :param optional: whether the property is optional or not
+
+        For properties of a type that's used as a component output, can_be_plain
+        is always false. For properties used in an input, can_be_plain is true,
+        indicating that they can potentially be plain.
         """
         optional = optional if optional is not None else is_optional(arg)
-        if is_plain(arg):
+        if is_simple(arg):
             return PropertyDefinition(
                 type=py_type_to_property_type(arg),
                 optional=optional,
                 # We are currently looking at a plain type, but it might be
                 # wrapped in a pulumi.Input or pulumi.Output, in which case this
                 # isn't plain.
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 description=self.get_docstring(typ, name),
             )
         elif is_input(arg):
             return self.analyze_property(
-                unwrap_input(arg), typ, name, plain=False, optional=optional
+                unwrap_input(arg),
+                typ,
+                name,
+                can_be_plain=False,  # Property is inside an input -> it can't be plain
+                is_component_output=is_component_output,
+                optional=optional,
             )
         elif is_output(arg):
             return self.analyze_property(
-                unwrap_output(arg), typ, name, plain=False, optional=optional
+                unwrap_output(arg),
+                typ,
+                name,
+                can_be_plain=False,  # Property is inside an output -> it can't be plain
+                is_component_output=is_component_output,
+                optional=optional,
             )
         elif is_optional(arg):
             return self.analyze_property(
-                unwrap_optional(arg), typ, name, plain=True, optional=True
+                unwrap_optional(arg),
+                typ,
+                name,
+                can_be_plain=can_be_plain,
+                is_component_output=is_component_output,
+                optional=True,
             )
         elif is_any(arg):
             return PropertyDefinition(
                 ref="pulumi.json#/Any",
                 optional=optional,
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 description=self.get_docstring(typ, name),
             )
 
@@ -327,11 +468,19 @@ class Analyzer:
             args = get_args(arg)
             if len(args) != 1:
                 raise InvalidListTypeError(arg, typ, name)
-            items = self.analyze_property(args[0], typ, name, plain=True)
+            items = self.analyze_property(
+                args[0],
+                typ,
+                name,
+                # The type of the list's items can potentially be plain, unless
+                # we're in a type that's used as a component output.
+                can_be_plain=not is_component_output,
+                is_component_output=is_component_output,
+            )
             return PropertyDefinition(
                 type=PropertyType.ARRAY,
                 optional=optional,
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 items=items,
                 description=self.get_docstring(typ, name),
             )
@@ -344,12 +493,16 @@ class Analyzer:
             return PropertyDefinition(
                 type=PropertyType.OBJECT,
                 optional=optional,
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 additional_properties=self.analyze_property(
                     args[1],
                     typ,
                     name,
-                    plain=True,
+                    # The type of the dictionary's values can potentially be
+                    # plain, unless we're in a type that's used as a component
+                    # output.
+                    can_be_plain=not is_component_output,
+                    is_component_output=is_component_output,
                 ),
                 description=self.get_docstring(typ, name),
             )
@@ -366,7 +519,7 @@ class Analyzer:
                 return PropertyDefinition(
                     ref=ref,
                     optional=optional,
-                    plain=plain,
+                    plain=true_or_none(can_be_plain),
                     description=self.get_docstring(typ, name),
                 )
             else:
@@ -377,19 +530,20 @@ class Analyzer:
                 # analysis is done.
                 type_def = TypeDefinition(
                     name=ref_name,
-                    type="object",
+                    type=PropertyType.OBJECT,
                     properties={},
                     properties_mapping={},
                     module=module,
                     description=self.get_docstring(typ, name),
+                    python_type=arg,
                 )
-                self.unresolved_forward_refs[ref_name] = type_def
+                self.unresolved_forward_refs[ref_name] = (is_component_output, type_def)
                 self.type_definitions[type_def.name] = type_def
                 ref = f"#/types/{self.name}:index:{type_def.name}"
                 return PropertyDefinition(
                     ref=ref,
                     optional=optional,
-                    plain=plain,
+                    plain=true_or_none(can_be_plain),
                     description=self.get_docstring(typ, name),
                 )
         elif is_asset(arg):
@@ -405,17 +559,62 @@ class Analyzer:
                 description=self.get_docstring(typ, name),
             )
         elif is_resource(arg):
-            # TODO: https://github.com/pulumi/pulumi/issues/18484
-            raise Exception(
-                f"Resource references are not supported yet: found type '{arg.__name__}' for '{typ.__name__}.{name}'"
-            )
+            resource_type_string, package_name = get_package_name(arg, typ, name)
+            try:
+                dep = get_dependency_for_type(arg)
+                self.dependencies.add(dep)
+                return PropertyDefinition(
+                    ref=f"/{dep.name}/v{dep.version}/schema.json#/resources/{resource_type_string.replace('/', '%2F')}",
+                    optional=optional,
+                    description=self.get_docstring(typ, name),
+                )
+            except DependencyError as e:
+                raise Exception(f"{package_name}: {str(e)}")
         elif is_union(arg):
             raise Exception(
                 f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"
             )
         elif is_enum(arg):
-            raise Exception(
-                f"Enum types are not supported: found type '{arg.__name__}' for '{typ.__name__}.{name}'"
+            enum_type_string = getattr(arg, "pulumi_type", None)
+            if enum_type_string:  # This is an enum from an external package
+                _, package_name = get_package_name(arg, typ, name)
+                try:
+                    dep = get_dependency_for_type(arg)
+                    self.dependencies.add(dep)
+                    ref = f"/{dep.name}/v{dep.version}/schema.json#/types/{enum_type_string.replace('/', '%2F')}"
+                    self.external_enum_types[ref] = arg
+                    return PropertyDefinition(
+                        ref=ref,
+                        optional=optional,
+                        description=self.get_docstring(typ, name),
+                    )
+                except DependencyError as e:
+                    raise Exception(f"{package_name}: {str(e)}")
+
+            type_name = arg.__name__
+            type_def = self.type_definitions.get(type_name)
+            if not type_def:
+                type_def = TypeDefinition(
+                    name=type_name,
+                    module=arg.__module__,
+                    type=enum_value_type(arg),
+                    properties={},
+                    properties_mapping={},
+                    description=arg.__doc__,
+                    enum=enum_members(arg),
+                    python_type=arg,
+                )
+                for member in type_def.enum or []:
+                    member.description = self.get_docstring(arg, member.name)
+                self.type_definitions[type_def.name] = type_def
+            elif type_def.module and type_def.module != arg.__module__:
+                raise DuplicateTypeError(arg.__module__, type_def)
+            ref = f"#/types/{self.name}:index:{type_def.name}"
+            return PropertyDefinition(
+                ref=ref,
+                optional=optional,
+                plain=true_or_none(can_be_plain),
+                description=self.get_docstring(typ, name),
             )
         elif not is_builtin(arg):
             # We have a custom type, analyze it recursively. Immediately add the
@@ -426,17 +625,20 @@ class Analyzer:
             if not type_def:
                 type_def = TypeDefinition(
                     name=type_name,
-                    type="object",
+                    type=PropertyType.OBJECT,
                     properties={},
                     properties_mapping={},
                     description=arg.__doc__,
                     module=arg.__module__,
+                    python_type=arg,
                 )
                 self.type_definitions[type_def.name] = type_def
             else:
                 if type_def.module and type_def.module != arg.__module__:
                     raise DuplicateTypeError(arg.__module__, type_def)
-            (properties, properties_mapping) = self.analyze_type(arg, can_be_plain=True)
+            (properties, properties_mapping) = self.analyze_type(
+                arg, is_component_output=is_component_output
+            )
             type_def.properties = properties
             type_def.properties_mapping = properties_mapping
             if type_def.name in self.unresolved_forward_refs:
@@ -445,7 +647,7 @@ class Analyzer:
             return PropertyDefinition(
                 ref=ref,
                 optional=optional,
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 description=self.get_docstring(typ, name),
             )
         else:
@@ -479,10 +681,33 @@ class Analyzer:
                     while True:
                         try:
                             node = next(it)
-                            # Look for an assignment with a type annotation
-                            if isinstance(node, ast.AnnAssign):
-                                if isinstance(node.target, ast.Name):
-                                    target = node.target.id
+                            # For argument types or complex types, we'll have
+                            # assignments with type annotations (ast.AnnAssign):
+                            #
+                            #   class SomeArgs(TypedDict):
+                            #     abc: str                  # <- ast.AnnAssign
+                            #
+                            # Here we have an `ast.AnnAssign` with the target `abc`.
+                            # For Enums, we instead have assignments without annotations:
+                            #
+                            #   class SomeEnum(Enum):
+                            #     abc = "abc"               # <- ast.Assign
+                            #
+                            # In this case we have an `ast.Assign`. Since Python supports
+                            # multiple assignement, this node type has a list of targets.
+                            # We are only interested in cases with exactly one.
+                            if isinstance(node, ast.AnnAssign) or isinstance(
+                                node, ast.Assign
+                            ):
+                                if isinstance(node, ast.AnnAssign):
+                                    target_node: ast.expr = node.target
+                                else:
+                                    # We have an ast.Assign
+                                    if len(node.targets) != 1:
+                                        continue
+                                    target_node = node.targets[0]
+                                if isinstance(target_node, ast.Name):
+                                    target = target_node.id
                                     # Look for a docstring right after the assignment
                                     node = next(it)
                                     if (
@@ -504,6 +729,47 @@ class Analyzer:
         return self.docstrings.get(typ.__name__, {}).get(name, None)
 
 
+def get_package_name(arg: type, typ: type, name: str) -> tuple[str, str]:
+    type_string = getattr(arg, "pulumi_type", None)
+    if not type_string:
+        mod = arg.__module__.split(".")[0]
+        raise Exception(
+            f"Can not determine resource reference for type '{arg.__name__}' used in '{typ.__name__}.{name}': "
+            + f"'{arg.__name__}.pulumi_type' is not defined. This may be due to an outdated version of '{mod}'."
+        )
+    parts = type_string.split(":")
+    if len(parts) != 3:
+        raise Exception(
+            f"invalid type string '{type_string}' for type '{arg}' used in '{typ.__name__}.{name}'"
+        )
+    return type_string, parts[0]
+
+
+def get_dependency_for_type(arg: type) -> Dependency:
+    try:
+        root_mod = arg.__module__.split(".")[0]
+        pluginJSON = (
+            importlib.resources.files(root_mod)
+            .joinpath("pulumi-plugin.json")
+            .open("r")
+            .read()
+        )
+        plugin = json.loads(pluginJSON)
+        args = {"name": plugin["name"], "version": plugin["version"]}
+        if "server" in plugin:
+            args["downloadURL"] = plugin["server"]
+        if "parameterization" in plugin:
+            p = plugin["parameterization"]
+            args["parameterization"] = Parameterization(
+                p["name"], p["version"], p["value"]
+            )
+        return Dependency(**args)
+    except FileNotFoundError as e:
+        raise DependencyError("Could not load pulumi-plugin.json") from e
+    except json.JSONDecodeError as e:
+        raise DependencyError("Could not parse pulumi-plugin.json for package") from e
+
+
 def is_in_venv(path: Path):
     venv = Path(sys.prefix).resolve()
     path = path.resolve()
@@ -523,14 +789,18 @@ def py_type_to_property_type(typ: type) -> PropertyType:
 
 
 def is_union(typ: type):
-    return get_origin(typ) == Union
+    # Check for `Union[a, b]`
+    if get_origin(typ) == Union:
+        return True
+    # Check for `a | b`
+    return get_origin(typ) == types.UnionType
 
 
 def is_enum(typ: type):
     return issubclass(typ, Enum)
 
 
-def is_plain(typ: type) -> bool:
+def is_simple(typ: type) -> bool:
     return typ in (str, int, float, bool)
 
 
@@ -634,7 +904,7 @@ def is_list(typ: type) -> bool:
         abc.Sequence,
         abc.MutableSequence,
         collections.UserList,
-        typing.List,
+        list,
         typing.Sequence,
         typing.MutableSequence,
     )
@@ -651,10 +921,10 @@ def is_dict(typ: type) -> bool:
         collections.defaultdict,
         collections.OrderedDict,
         collections.UserDict,
-        typing.Dict,
+        typing.Dict,  # noqa - normally you'd use dict, but we want to check for this too
         typing.Mapping,
         typing.MutableMapping,
-        typing.DefaultDict,
+        typing.DefaultDict,  # noqa - normally you'd use collections.defaultdict, but we want to check for this too
         typing.OrderedDict,
     )
 
@@ -678,3 +948,35 @@ def is_archive(typ: type) -> bool:
         return issubclass(typ, Archive)
     except TypeError:
         return False
+
+
+def enum_value_type(enu: type) -> PropertyType:
+    if not issubclass(enu, Enum):
+        raise Exception(f"Invalid enum type {enu}.")
+    member = next(iter(enu.__members__.values()))
+    if isinstance(member.value, bool):
+        return PropertyType.BOOLEAN
+    elif isinstance(member.value, int):
+        return PropertyType.INTEGER
+    elif isinstance(member.value, float):
+        return PropertyType.NUMBER
+    elif isinstance(member.value, str):
+        return PropertyType.STRING
+    raise Exception(
+        f"Invalid type for enum value '{enu.__name__}.{member.name}': '{type(member.value)}'. "
+        + "Supported enum value types are bool, str, float and int."
+    )
+
+
+def enum_members(enu: type) -> list[EnumValueDefinition]:
+    if not issubclass(enu, Enum):
+        raise Exception(f"Invalid enum type {enu}.")
+    return [
+        EnumValueDefinition(name=name, value=enum_value.value)
+        for (name, enum_value) in enu.__members__.items()
+    ]
+
+
+def true_or_none(plain: bool) -> Union[Literal[True], None]:
+    """Helper to set PropertyDefinition.plain. We want to omit this property if plain is false."""
+    return True if plain else None

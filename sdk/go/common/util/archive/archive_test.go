@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIgnoreSimple(t *testing.T) {
@@ -120,11 +121,11 @@ func TestIgnoreNestedGitignore(t *testing.T) {
 func doArchiveTest(t *testing.T, path string, files ...fileContents) {
 	doTest := func(prefixPathInsideTar, path string) {
 		tarball, err := archiveContents(t, prefixPathInsideTar, path, files...)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		tarReader := bytes.NewReader(tarball)
 		gzr, err := gzip.NewReader(tarReader)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		r := tar.NewReader(gzr)
 
 		checkFiles(t, prefixPathInsideTar, path, files, r)
@@ -181,7 +182,7 @@ func checkFiles(t *testing.T, prefixPathInsideTar, path string, expected []fileC
 		if err == io.EOF {
 			break
 		}
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Ignore anything other than regular files (e.g. directories) since we only care
 		// that the files themselves are correct.

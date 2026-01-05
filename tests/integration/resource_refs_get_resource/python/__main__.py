@@ -3,6 +3,8 @@
 from typing import Optional
 
 import pulumi
+from pulumi.runtime.sync_await import _sync_await
+import asyncio
 
 
 class Child(pulumi.ComponentResource):
@@ -89,5 +91,31 @@ def round_trip(urn: str):
         actual_message=round_tripped_container.child.message,
     ).apply(assert_equal)
 
+def wait_for_container(container):
+    import time
+    start_time = time.time()
+    while True:
+        urn = _sync_await(container.urn._future)
+        round_tripped = Container("mycontainer", opts=pulumi.ResourceOptions(urn=urn))
+        # Check that the child urn is available
+        child = _sync_await(round_tripped.child._future)
+        if child:
+            break
+        # If we didn't find the urn after 500ms then we should give up
+        elapsed = time.time() - start_time
+        if  elapsed > 0.5:
+            raise Exception("timed out waiting for container urn to be available")
+
+# Wait to make sure RegisterResourceOutputs has actually finished registering the resource outputs.
+#
+# RegisterResourceOutputs does most of its work async, as does RegisterComponentResource.  This
+# means RegisterResourceOutputs is inheritly racy with the resource being read later.  This test explicitly
+# tests roundtripping a container component resource, which means we need to read the outputs registered
+# through RegisterResourceOutputs later, making the test racy.  We can work around this by making sure the
+# outputs are registered before we return the container.  Ideally we should find a way to make this non-racy
+# (see the issue linked below)
+#
+# TODO: make RegisterResourceOutputs not racy [pulumi/pulumi#16896]
+wait_for_container(container)
 
 container.urn.apply(round_trip)

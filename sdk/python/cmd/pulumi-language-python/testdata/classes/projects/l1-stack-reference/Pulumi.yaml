@@ -1,6 +1,0 @@
-name: l1-stack-reference
-runtime:
-  name: python
-  options:
-    typechecker: pyright
-    virtualenv: venv

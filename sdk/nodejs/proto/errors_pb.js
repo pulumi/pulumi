@@ -113,8 +113,8 @@ proto.pulumirpc.ErrorCause.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.ErrorCause.toObject = function(includeInstance, msg) {
   var f, obj = {
-    message: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    stacktrace: jspb.Message.getFieldWithDefault(msg, 2, "")
+message: jspb.Message.getFieldWithDefault(msg, 1, ""),
+stacktrace: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -280,7 +280,7 @@ proto.pulumirpc.InputPropertiesError.prototype.toObject = function(opt_includeIn
  */
 proto.pulumirpc.InputPropertiesError.toObject = function(includeInstance, msg) {
   var f, obj = {
-    errorsList: jspb.Message.toObjectList(msg.getErrorsList(),
+errorsList: jspb.Message.toObjectList(msg.getErrorsList(),
     proto.pulumirpc.InputPropertiesError.PropertyError.toObject, includeInstance)
   };
 
@@ -395,8 +395,8 @@ proto.pulumirpc.InputPropertiesError.PropertyError.prototype.toObject = function
  */
 proto.pulumirpc.InputPropertiesError.PropertyError.toObject = function(includeInstance, msg) {
   var f, obj = {
-    propertyPath: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    reason: jspb.Message.getFieldWithDefault(msg, 2, "")
+propertyPath: jspb.Message.getFieldWithDefault(msg, 1, ""),
+reason: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {

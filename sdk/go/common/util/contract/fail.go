@@ -28,6 +28,6 @@ func Fail() {
 }
 
 // Failf unconditionally abandons the process, formatting and logging the given message.
-func Failf(msg string, args ...interface{}) {
+func Failf(msg string, args ...any) {
 	failfast(fmt.Sprintf("%v: %v", failMsg, fmt.Sprintf(msg, args...)))
 }

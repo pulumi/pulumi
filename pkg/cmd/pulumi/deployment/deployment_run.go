@@ -28,7 +28,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDeploymentRunCmd() *cobra.Command {
+func newDeploymentRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	// Flags for remote operations.
 	remoteArgs := RemoteArgs{}
 
@@ -45,7 +45,6 @@ func newDeploymentRunCmd() *cobra.Command {
 		Args: cmdutil.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 
 			operation, err := apitype.ParsePulumiOperation(args[0])
 			if err != nil {
@@ -81,6 +80,7 @@ func newDeploymentRunCmd() *cobra.Command {
 
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				backend.DefaultLoginManager,
 				stack,

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,13 +16,16 @@ package display
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"io"
 	"os"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -38,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // DiagInfo contains the bundle of diagnostic information for a single resource.
@@ -132,7 +136,7 @@ type ProgressDisplay struct {
 	systemEventPayloads []engine.StdoutEventPayload
 
 	// Any active download progress events that we've received.
-	progressEventPayloads map[string]engine.ProgressEventPayload
+	progressEventPayloads *gsync.Map[string, engine.ProgressEventPayload]
 
 	// Used to record the order that rows are created in.  That way, when we present in a tree, we
 	// can keep things ordered so they will not jump around.
@@ -154,7 +158,7 @@ type ProgressDisplay struct {
 	isTerminal bool
 
 	// If all progress messages are done and we can print out the final display.
-	done bool
+	done atomic.Bool
 
 	// True if one or more resource operations have failed.
 	failed bool
@@ -247,10 +251,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 
 	var renderer progressRenderer
 	if isInteractive {
-		printPermalinkInteractive(term, opts, permalink)
+		printPermalinkInteractive(term, opts, permalink, "")
 		renderer = newInteractiveRenderer(term, permalink, opts)
 	} else {
-		printPermalinkNonInteractive(stdout, opts, permalink)
+		printPermalinkNonInteractive(stdout, opts, permalink, "")
 		renderer = newNonInteractiveRenderer(stdout, op, opts)
 	}
 
@@ -270,6 +274,11 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		opStopwatch:           newOpStopwatch(),
 		permalink:             permalink,
 	}
+	defer func() {
+		contract.IgnoreClose(display.renderer)
+		// let our caller know we're done.
+		close(done)
+	}()
 	renderer.initializeDisplay(display)
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -277,11 +286,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		ticker.Stop()
 	}
 	display.processEvents(ticker, events)
-	contract.IgnoreClose(display.renderer)
 	ticker.Stop()
-
-	// let our caller know we're done.
-	close(done)
 }
 
 // RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
@@ -315,7 +320,7 @@ func RenderProgressEvents(
 	o.RenderOnDirty = false
 	o.IsInteractive = true
 
-	printPermalinkInteractive(o.term, o, permalink)
+	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
 	display := &ProgressDisplay{
 		action:                action,
@@ -357,6 +362,8 @@ func NewCaptureProgressEvents(
 	stack tokens.StackName,
 	proj tokens.PackageName,
 	opts Options,
+	isPreview bool,
+	action apitype.UpdateKind,
 ) *CaptureProgressEvents {
 	buffer := bytes.NewBuffer([]byte{})
 	width, height := 200, 80
@@ -370,11 +377,9 @@ func NewCaptureProgressEvents(
 	o.Stderr = io.Discard
 	o.term = terminal.NewSimpleTerminal(buffer, width, height)
 
-	isPreview := false
-	action := apitype.UpdateUpdate
 	permalink := ""
 
-	printPermalinkInteractive(o.term, o, permalink)
+	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
 	display := &ProgressDisplay{
 		action:                action,
@@ -411,16 +416,38 @@ func (r *CaptureProgressEvents) ProcessEvents(
 	close(renderDone)
 }
 
-func (r *CaptureProgressEvents) Output() []string {
-	v := strings.TrimSpace(r.Buffer.String())
-	if v == "" {
-		return nil
+func (r *CaptureProgressEvents) ProcessEventSlice(events []engine.Event) {
+	eventsChan := make(chan engine.Event)
+	renderDone := make(chan bool)
+	go r.ProcessEvents(eventsChan, renderDone)
+	for _, event := range events {
+		eventsChan <- event
 	}
-	return strings.Split(v, "\n")
+	close(eventsChan)
+	<-renderDone
+}
+
+func (r *CaptureProgressEvents) Output() string {
+	return strings.TrimSpace(r.Buffer.String())
 }
 
 func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
-	return r.display.failed
+	// Display layer has detected a ResourceOperationFailed event.
+	// Only happens in non-preview updates.
+	if r.display.failed {
+		return true
+	}
+
+	// Diagnostic events have an error.
+	// This can include things like Auth errors which are not ResourceOperationFailed events.
+	for _, row := range r.display.resourceRows {
+		diagInfo := row.DiagInfo()
+		if diagInfo != nil && diagInfo.ErrorCount > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (display *ProgressDisplay) println(line string) {
@@ -633,7 +660,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// Transition the display to the 'done' state.  This will transitively cause all
 	// rows to become done.
-	display.done = true
+	display.done.Store(true)
 
 	// Now print out all those rows that were in progress.  They will now be 'done'
 	// since the display was marked 'done'.
@@ -793,13 +820,15 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	// Print a link to Copilot to explain the failure.
+	// Print a link to Neo to explain the failure.
+	// "ShowNeoFeatures" renders the link if it is enabled so don't render it here.
+	showNeoLink := display.opts.ShowLinkToNeo && !display.opts.ShowNeoFeatures
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showNeoLink {
 		display.println("    " +
-			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
+			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
-			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
+			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
 		display.println("")
 	}
 }
@@ -892,24 +921,24 @@ func (display *ProgressDisplay) printPolicies() bool {
 			// do not break; subsequent mandatory violations will override this.
 		}
 
-		var localMark string
+		var localMark strings.Builder
 		if len(info.LocalPaths) > 0 {
-			localMark = " (local: "
+			localMark.WriteString(" (local: ")
 			sort.Strings(info.LocalPaths)
 			for i, path := range info.LocalPaths {
 				if i > 0 {
-					localMark += "; "
+					localMark.WriteString("; ")
 				}
-				localMark += path
+				localMark.WriteString(path)
 			}
-			localMark += ")"
+			localMark.WriteString(")")
 
 			if info.HasCloudPack {
-				localMark += " + (cloud)"
+				localMark.WriteString(" + (cloud)")
 			}
 		}
 
-		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark))
+		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark.String()))
 		subItemIndent := "        "
 
 		// First show any remediations since they happen first.
@@ -945,18 +974,19 @@ func (display *ProgressDisplay) printPolicies() bool {
 			}
 		}
 
-		// Next up, display all violations. Sort policy events by: policy pack name, policy pack version,
-		// enforcement level, policy name, and finally the URN of the resource.
-		sort.SliceStable(info.ViolationEvents, func(i, j int) bool {
-			eventI, eventJ := info.ViolationEvents[i], info.ViolationEvents[j]
-			if enfLevelCmp := strings.Compare(
-				string(eventI.EnforcementLevel), string(eventJ.EnforcementLevel)); enfLevelCmp != 0 {
-				return enfLevelCmp < 0
+		// Next up, display all violations. Sort policy events by: enforcement level, severity, policy name,
+		// and finally the URN of the resource.
+		slices.SortStableFunc(info.ViolationEvents, func(a, b engine.PolicyViolationEventPayload) int {
+			if d := cmp.Compare(enforcementRank(a.EnforcementLevel), enforcementRank(b.EnforcementLevel)); d != 0 {
+				return d
 			}
-			if policyNameCmp := strings.Compare(eventI.PolicyName, eventJ.PolicyName); policyNameCmp != 0 {
-				return policyNameCmp < 0
+			if d := cmp.Compare(severityRank(a.Severity), severityRank(b.Severity)); d != 0 {
+				return d
 			}
-			return strings.Compare(string(eventI.ResourceURN), string(eventJ.ResourceURN)) < 0
+			if d := cmp.Compare(a.PolicyName, b.PolicyName); d != 0 {
+				return d
+			}
+			return cmp.Compare(string(a.ResourceURN), string(b.ResourceURN))
 		})
 		for _, policyEvent := range info.ViolationEvents {
 			// Print the individual policy event.
@@ -985,8 +1015,14 @@ func (display *ProgressDisplay) printOutputs() {
 	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
 	props := getResourceOutputsPropertiesString(
-		stackStep, 1, display.isPreview, display.opts.Debug,
-		false /* refresh */, display.opts.ShowSameResources, display.opts.ShowSecrets)
+		stackStep,
+		1, /* indent */
+		display.isPreview,
+		display.opts.Debug,
+		false, /* refresh */
+		display.opts.ShowSameResources,
+		display.opts.ShowSecrets,
+		display.opts.TruncateOutput)
 	if props != "" {
 		display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
 		display.println(props)
@@ -999,8 +1035,17 @@ func (display *ProgressDisplay) printSummary() {
 	if display.summaryEventPayload == nil {
 		return
 	}
+	// track resources errored
+	resourcesErrored := 0
 
-	msg := renderSummaryEvent(*display.summaryEventPayload, false, display.opts)
+	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+
+	for _, r := range rr {
+		if r.DiagInfo().ErrorCount > 0 {
+			resourcesErrored++
+		}
+	}
+	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, false, display.opts)
 	display.println(msg)
 }
 
@@ -1144,6 +1189,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.ProgressEvent:
 		display.handleProgressEvent(event.Payload().(engine.ProgressEventPayload))
 		return
+	case engine.ErrorEvent:
+		return
+	case engine.PolicyAnalyzeSummaryEvent,
+		engine.PolicyAnalyzeStackSummaryEvent,
+		engine.PolicyRemediateSummaryEvent:
+		return
 	}
 
 	// At this point, all events should relate to resources.
@@ -1195,7 +1246,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		row.SetHideRowIfUnnecessary(false)
 	}
 
-	if event.Type == engine.ResourcePreEvent {
+	switch event.Type { //nolint:exhaustive // golangci-lint v2 upgrade
+	case engine.ResourcePreEvent:
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
 
 		// Register the resource update start time to calculate duration
@@ -1209,7 +1261,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.stopwatchMutex.Unlock()
 
 		row.SetStep(step)
-	} else if event.Type == engine.ResourceOutputsEvent {
+	case engine.ResourceOutputsEvent:
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
 
@@ -1239,19 +1291,19 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		if !display.isTerminal && !hasMeaningfulOutput {
 			return
 		}
-	} else if event.Type == engine.ResourceOperationFailed {
+	case engine.ResourceOperationFailed:
 		display.failed = true
 		row.SetFailed()
-	} else if event.Type == engine.DiagEvent {
+	case engine.DiagEvent:
 		// also record this diagnostic so we print it at the end.
 		row.RecordDiagEvent(event)
-	} else if event.Type == engine.PolicyViolationEvent {
+	case engine.PolicyViolationEvent:
 		// also record this policy violation so we print it at the end.
 		row.RecordPolicyViolationEvent(event)
-	} else if event.Type == engine.PolicyRemediationEvent {
+	case engine.PolicyRemediationEvent:
 		// record this remediation so we print it at the end.
 		row.RecordPolicyRemediationEvent(event)
-	} else {
+	default:
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
 
@@ -1276,24 +1328,28 @@ func (display *ProgressDisplay) handleProgressEvent(payload engine.ProgressEvent
 	// We need to take the writer lock here because ensureHeaderAndStackRows expects to be
 	// called under the write lock.
 	display.eventMutex.Lock()
-	defer display.eventMutex.Unlock()
 
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()
 
 	if display.progressEventPayloads == nil {
-		display.progressEventPayloads = make(map[string]engine.ProgressEventPayload)
+		display.progressEventPayloads = &gsync.Map[string, engine.ProgressEventPayload]{}
 	}
 
-	_, seen := display.progressEventPayloads[payload.ID]
+	_, seen := display.progressEventPayloads.Load(payload.ID)
 	first := !seen
 
 	if payload.Done {
-		delete(display.progressEventPayloads, payload.ID)
+		display.progressEventPayloads.Delete(payload.ID)
 	} else {
-		display.progressEventPayloads[payload.ID] = payload
+		display.progressEventPayloads.Store(payload.ID, payload)
 	}
 
+	// We have to release the lock before we call renderer.progress, because that may call back into a method that wants
+	// eventMutex.Lock(), causing a deadlock.
+	display.eventMutex.Unlock()
+
+	// Now call renderer.progress outside the lock.
 	display.renderer.progress(payload, first)
 }
 
@@ -1595,7 +1651,7 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) display
 	// * During preview -- we'll show a single "replace" plan.
 	// * During update -- we'll show the individual steps.
 	// * When done -- we'll show a single "replaced" step.
-	if display.isPreview || display.done {
+	if display.isPreview || display.done.Load() {
 		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced || op == deploy.OpDiscardReplaced {
 			return deploy.OpReplace
 		}
@@ -1712,4 +1768,36 @@ func sortResourceRows(rows []ResourceRow) {
 
 		return a.Res.URN < b.Res.URN
 	})
+}
+
+func enforcementRank(el apitype.EnforcementLevel) int {
+	switch el {
+	case apitype.Remediate:
+		return 0
+	case apitype.Mandatory:
+		return 1
+	case apitype.Advisory:
+		return 2
+	case apitype.Disabled:
+		return 3
+	default:
+		return 99 // unknowns last
+	}
+}
+
+func severityRank(s apitype.PolicySeverity) int {
+	switch s {
+	case apitype.PolicySeverityCritical:
+		return 0
+	case apitype.PolicySeverityHigh:
+		return 1
+	case apitype.PolicySeverityMedium:
+		return 2
+	case apitype.PolicySeverityLow:
+		return 3
+	case apitype.PolicySeverityUnspecified:
+		return 4
+	default:
+		return 99 // unknowns last
+	}
 }

@@ -33,12 +33,12 @@ func NewGenCompletionCmd(root *cobra.Command) *cobra.Command {
 		Args:    cmdutil.ExactArgs(1),
 		Short:   "Generate completion scripts for the Pulumi CLI",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			switch {
-			case args[0] == "bash":
+			switch args[0] {
+			case "bash":
 				return root.GenBashCompletion(os.Stdout)
-			case args[0] == "zsh":
+			case "zsh":
 				return genZshCompletion(os.Stdout, root)
-			case args[0] == "fish":
+			case "fish":
 				return root.GenFishCompletion(os.Stdout, true)
 			default:
 				return fmt.Errorf("%q is not a supported shell", args[0])

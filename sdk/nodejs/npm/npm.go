@@ -24,6 +24,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
 // NPM is the canonical "Node Package Manager".
@@ -52,6 +55,20 @@ func (node *npmManager) Name() string {
 	return "npm"
 }
 
+func (node *npmManager) Version() (semver.Version, error) {
+	cmd := exec.Command(node.executable, "--version") //nolint:gosec
+	output, err := cmd.Output()
+	if err != nil {
+		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
+	}
+	versionStr := strings.TrimSpace(string(output))
+	version, err := semver.Parse(versionStr)
+	if err != nil {
+		return semver.Version{}, err
+	}
+	return version, nil
+}
+
 func (node *npmManager) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
 	command := node.installCmd(ctx, production)
 	command.Dir = dir
@@ -71,6 +88,16 @@ func (node *npmManager) installCmd(ctx context.Context, production bool) *exec.C
 
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	return exec.CommandContext(ctx, node.executable, args...)
+}
+
+func (node *npmManager) Link(ctx context.Context, dir, packageName, path string) error {
+	packageSpecifier := getLinkPackageProperty(packageName, path)
+	cmd := exec.CommandContext(ctx, "npm", "pkg", "set", packageSpecifier)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error executing npm command %s: %w, output: %s", cmd.String(), err, out)
+	}
+	return nil
 }
 
 func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {

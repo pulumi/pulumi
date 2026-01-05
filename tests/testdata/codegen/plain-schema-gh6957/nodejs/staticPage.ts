@@ -26,11 +26,11 @@ export class StaticPage extends pulumi.ComponentResource {
     /**
      * The bucket resource.
      */
-    public /*out*/ readonly bucket!: pulumi.Output<pulumiAws.s3.Bucket>;
+    declare public /*out*/ readonly bucket: pulumi.Output<pulumiAws.s3.Bucket>;
     /**
      * The website URL.
      */
-    public /*out*/ readonly websiteUrl!: pulumi.Output<string>;
+    declare public /*out*/ readonly websiteUrl: pulumi.Output<string>;
 
     /**
      * Create a StaticPage resource with the given unique name, arguments, and options.
@@ -43,11 +43,11 @@ export class StaticPage extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.indexContent === undefined) && !opts.urn) {
+            if (args?.indexContent === undefined && !opts.urn) {
                 throw new Error("Missing required property 'indexContent'");
             }
-            resourceInputs["foo"] = args ? args.foo : undefined;
-            resourceInputs["indexContent"] = args ? args.indexContent : undefined;
+            resourceInputs["foo"] = args?.foo;
+            resourceInputs["indexContent"] = args?.indexContent;
             resourceInputs["bucket"] = undefined /*out*/;
             resourceInputs["websiteUrl"] = undefined /*out*/;
         } else {

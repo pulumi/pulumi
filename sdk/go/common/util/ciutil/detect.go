@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,122 +20,124 @@ import (
 
 // detectors contains environment variable names and their values, if applicable, for detecting when we're running in
 // CI. See https://github.com/watson/ci-info/blob/master/index.js.
-// For any CI system for which we detect additional env vars, the type of `System` is that is
-// specific to that CI system. The rest, even though we detect if it is that CI system, may not have an
-// implementation that detects all useful env vars, and hence just uses the `baseCI` struct type.
-var detectors = map[SystemName]system{
-	AppVeyor: baseCI{
-		Name:            AppVeyor,
-		EnvVarsToDetect: []string{"APPVEYOR"},
-	},
-	AWSCodeBuild: baseCI{
-		Name:            AWSCodeBuild,
-		EnvVarsToDetect: []string{"CODEBUILD_BUILD_ARN"},
-	},
-	AtlassianBamboo: baseCI{
-		Name:            AtlassianBamboo,
-		EnvVarsToDetect: []string{"bamboo_planKey"},
-	},
-	AtlassianBitbucketPipelines: bitbucketPipelinesCI{
-		baseCI: baseCI{
-			Name:            AtlassianBitbucketPipelines,
-			EnvVarsToDetect: []string{"BITBUCKET_COMMIT"},
-		},
-	},
-	AzurePipelines: azurePipelinesCI{
-		baseCI: baseCI{
-			Name:            AzurePipelines,
-			EnvVarsToDetect: []string{"TF_BUILD"},
-		},
-	},
-	Buildkite: buildkiteCI{
-		baseCI: baseCI{
-			Name:            Buildkite,
-			EnvVarsToDetect: []string{"BUILDKITE"},
-		},
-	},
-	CircleCI: circleCICI{
-		baseCI: baseCI{
-			Name:            CircleCI,
-			EnvVarsToDetect: []string{"CIRCLECI"},
-		},
-	},
-	Codefresh: codefreshCI{
-		baseCI: baseCI{
-			Name:            Codefresh,
-			EnvVarsToDetect: []string{"CF_BUILD_URL"},
-		},
-	},
-	Codeship: baseCI{
-		Name:              Codeship,
-		EnvValuesToDetect: map[string]string{"CI_NAME": "codeship"},
-	},
-	Drone: baseCI{
-		Name:            Drone,
-		EnvVarsToDetect: []string{"DRONE"},
-	},
-
-	// GenericCI is used when a CI system in which the CLI is being run,
-	// is not recognized by it. Users can set the relevant env vars
-	// as a fallback so that the CLI would still pick-up the metadata related
-	// to their CI build.
-	GenericCI: genericCICI{
+//
+// For any CI system for which we detect additional env vars, the type of `System` is specific to that CI system. The
+// rest, even though we detect if it is that CI system, may not have an implementation that detects all useful env vars,
+// and hence just uses the `baseCI` struct type.
+var detectors = []system{
+	// GenericCI picks up a set of environment variables that users may define explicitly when using a CI system that we
+	// would not otherwise detect. It is deliberately placed first in this list so that it takes precedence over any other
+	// CI system that we may detect.
+	genericCICI{
 		baseCI: baseCI{
 			Name:            SystemName(os.Getenv("PULUMI_CI_SYSTEM")),
 			EnvVarsToDetect: []string{"PULUMI_CI_SYSTEM"},
 		},
 	},
 
-	GitHubActions: githubActionsCI{
+	// Supported CI systems, in alphabetical order. We expect (rather, support) exactly one of these matching, so their
+	// order should not really matter.
+	baseCI{
+		Name:            AppVeyor,
+		EnvVarsToDetect: []string{"APPVEYOR"},
+	},
+	baseCI{
+		Name:            AWSCodeBuild,
+		EnvVarsToDetect: []string{"CODEBUILD_BUILD_ARN"},
+	},
+	baseCI{
+		Name:            AtlassianBamboo,
+		EnvVarsToDetect: []string{"bamboo_planKey"},
+	},
+	bitbucketPipelinesCI{
+		baseCI: baseCI{
+			Name:            AtlassianBitbucketPipelines,
+			EnvVarsToDetect: []string{"BITBUCKET_COMMIT"},
+		},
+	},
+	azurePipelinesCI{
+		baseCI: baseCI{
+			Name:            AzurePipelines,
+			EnvVarsToDetect: []string{"TF_BUILD"},
+		},
+	},
+	buildkiteCI{
+		baseCI: baseCI{
+			Name:            Buildkite,
+			EnvVarsToDetect: []string{"BUILDKITE"},
+		},
+	},
+	circleCICI{
+		baseCI: baseCI{
+			Name:            CircleCI,
+			EnvVarsToDetect: []string{"CIRCLECI"},
+		},
+	},
+	codefreshCI{
+		baseCI: baseCI{
+			Name:            Codefresh,
+			EnvVarsToDetect: []string{"CF_BUILD_URL"},
+		},
+	},
+	baseCI{
+		Name:              Codeship,
+		EnvValuesToDetect: map[string]string{"CI_NAME": "codeship"},
+	},
+	baseCI{
+		Name:            Drone,
+		EnvVarsToDetect: []string{"DRONE"},
+	},
+
+	githubActionsCI{
 		baseCI{
 			Name:            GitHubActions,
 			EnvVarsToDetect: []string{"GITHUB_ACTIONS"},
 		},
 	},
-	GitLab: gitlabCI{
+	gitlabCI{
 		baseCI: baseCI{
 			Name:            GitLab,
 			EnvVarsToDetect: []string{"GITLAB_CI"},
 		},
 	},
-	GoCD: baseCI{
+	baseCI{
 		Name:            GoCD,
 		EnvVarsToDetect: []string{"GO_PIPELINE_LABEL"},
 	},
-	Hudson: baseCI{
+	baseCI{
 		Name:            Hudson,
 		EnvVarsToDetect: []string{"HUDSON_URL"},
 	},
-	Jenkins: jenkinsCI{
+	jenkinsCI{
 		baseCI: baseCI{
 			Name:            Jenkins,
 			EnvVarsToDetect: []string{"JENKINS_URL"},
 		},
 	},
-	MagnumCI: baseCI{
+	baseCI{
 		Name:            MagnumCI,
 		EnvVarsToDetect: []string{"MAGNUM"},
 	},
-	Semaphore: baseCI{
+	baseCI{
 		Name:            Semaphore,
 		EnvVarsToDetect: []string{"SEMAPHORE"},
 	},
-	Spacelift: baseCI{
+	baseCI{
 		Name: Spacelift,
 		EnvVarsToDetect: []string{
 			"SPACELIFT_MAX_REQUESTS_BURST", "TF_VAR_spacelift_run_trigger", "SPACELIFT_STORE_HOOKS_ENV_VARS",
 			"TF_VAR_spacelift_commit_branch", "SPACELIFT_WORKER_TRACING_ENABLED",
 		},
 	},
-	TaskCluster: baseCI{
+	baseCI{
 		Name:            TaskCluster,
 		EnvVarsToDetect: []string{"TASK_ID", "RUN_ID"},
 	},
-	TeamCity: baseCI{
+	baseCI{
 		Name:            TeamCity,
 		EnvVarsToDetect: []string{"TEAMCITY_VERSION"},
 	},
-	Travis: travisCI{
+	travisCI{
 		baseCI: baseCI{
 			Name:            Travis,
 			EnvVarsToDetect: []string{"TRAVIS"},

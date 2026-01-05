@@ -7,7 +7,7 @@ paths:
       name: foo
     string: '[{"host":"example","name":"foo"}]'
     redacted: '[{"host":"example","name":"foo"}]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAW/+EKAABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAv/4IsAAIEaG9zdAZzdHJpbmcMCQAHZXhhbXBsZQRuYW1lBnN0cmluZwwFAANmb28=
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAWv+CJwABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAC//gCwAAgRuYW1lBnN0cmluZwwFAANmb28EaG9zdAZzdHJpbmcMCQAHZXhhbXBsZQ==
     secure: false
     isObject: true
   my:servers[0]:
@@ -16,7 +16,7 @@ paths:
       name: foo
     string: '{"host":"example","name":"foo"}'
     redacted: '{"host":"example","name":"foo"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAv/4IsAAIEbmFtZQZzdHJpbmcMBQADZm9vBGhvc3QGc3RyaW5nDAkAB2V4YW1wbGU=
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAC//gCwAAgRob3N0BnN0cmluZwwJAAdleGFtcGxlBG5hbWUGc3RyaW5nDAUAA2Zvbw==
     secure: false
     isObject: true
   my:servers[0].host:

@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // A small provider with a single resource "Resource" that takes most of its inputs via plain properties.
@@ -52,9 +51,9 @@ func (p *PlainProvider) Pkg() tokens.Package {
 	return "plain"
 }
 
-func (p *PlainProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *PlainProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("13.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

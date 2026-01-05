@@ -44,11 +44,12 @@ type ConvertStateResponse struct {
 }
 
 type ConvertProgramRequest struct {
-	SourceDirectory string
-	TargetDirectory string
-	MapperTarget    string
-	LoaderTarget    string
-	Args            []string
+	SourceDirectory           string
+	TargetDirectory           string
+	MapperTarget              string
+	LoaderTarget              string
+	Args                      []string
+	GeneratedProjectDirectory string
 }
 
 type ConvertProgramResponse struct {

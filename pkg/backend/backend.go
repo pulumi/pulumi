@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/pulumi/esc"
@@ -34,35 +33,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
-
-// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
-var ErrNoPreviousDeployment = errors.New("no previous deployment")
-
-// StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
-type StackAlreadyExistsError struct {
-	StackName string
-}
-
-func (e StackAlreadyExistsError) Error() string {
-	return fmt.Sprintf("stack '%v' already exists", e.StackName)
-}
-
-// OverStackLimitError is returned from CreateStack when the organization is billed per-stack and
-// is over its stack limit.
-type OverStackLimitError struct {
-	Message string
-}
-
-func (e OverStackLimitError) Error() string {
-	m := e.Message
-	m = strings.ReplaceAll(m, "Conflict: ", "over stack limit: ")
-	return m
-}
 
 // StackReference is an opaque type that refers to a stack managed by a backend.  The CLI uses the ParseStackReference
 // method to turn a string like "my-great-stack" or "pulumi/my-great-stack" into a stack reference that can be used to
@@ -82,6 +60,26 @@ type StackReference interface {
 
 	// Fully qualified name of the stack, including any organization, project, or other information.
 	FullyQualifiedName() tokens.QName
+}
+
+// Confirm the specified stack's project doesn't contradict the name of the current project.
+func CurrentProjectContradictsWorkspace(proj *workspace.Project, stack StackReference) error {
+	contract.Requiref(stack != nil, "stack", "is nil")
+
+	if proj == nil {
+		return nil
+	}
+
+	project, has := stack.Project()
+	if !has {
+		return nil
+	}
+
+	if string(proj.Name) != string(project) {
+		return fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", project)
+	}
+
+	return nil
 }
 
 // PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI
@@ -116,6 +114,14 @@ type ListStacksFilter struct {
 	TagValue     *string
 }
 
+// ListStackNamesFilter describes optional filters when listing stack names.
+// This filter does not contain tag fields since they cannot be efficiently
+// implemented for the DIY backend.
+type ListStackNamesFilter struct {
+	Organization *string
+	Project      *string
+}
+
 // ContinuationToken is an opaque string used for paginated backend requests. If non-nil, means
 // there are more results to be returned and the continuation token should be passed into a
 // subsequent call to the backend method. A nil continuation token means all results have been
@@ -143,9 +149,6 @@ type Backend interface {
 	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
 		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 
-	// SupportsTags tells whether a stack can have associated tags stored with it in this backend.
-	SupportsTags() bool
-
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
 
@@ -154,6 +157,10 @@ type Backend interface {
 
 	// SupportsDeployments tells whether it is possible to manage deployments in this backend.
 	SupportsDeployments() bool
+
+	// GetDefaultOrg returns the organization if the backend has an opinion on what user organization to default to,
+	// if not configured locally by the user.
+	GetDefaultOrg(ctx context.Context) (string, error)
 
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
@@ -179,11 +186,16 @@ type Backend interface {
 
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
-	// first boolean return value will be set to true.
-	RemoveStack(ctx context.Context, stack Stack, force bool) (bool, error)
+	// first boolean return value will be set to true. If removeBackups is true, any backups associated with the
+	// the stack will also be removed if the backend supports it.
+	RemoveStack(ctx context.Context, stack Stack, force, removeBackups bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
+	// ListStackNames returns a list of stack references without metadata for all known stacks in the target backend.
+	// This is a more efficient method for scenarios like stack selection where only stack names are needed.
+	ListStackNames(ctx context.Context, filter ListStackNamesFilter, inContToken ContinuationToken) (
+		[]StackReference, ContinuationToken, error)
 
 	// RenameStack renames the given stack to a new name, and then returns an updated stack reference that
 	// can be used to refer to the newly renamed stack.
@@ -194,7 +206,8 @@ type Backend interface {
 		ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
 	) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	Update(ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
+	) (sdkDisplay.ResourceChanges, error)
 	// Import imports resources into a stack.
 	Import(ctx context.Context, stack Stack, op UpdateOperation,
 		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
@@ -262,8 +275,17 @@ type Backend interface {
 	// to ListTemplates.
 	DownloadTemplate(ctx context.Context, orgName, sourceURL string) (TarReaderCloser, error)
 
-	// GetPackageRegistry returns a PackageRegistry object tied to this backend
-	GetPackageRegistry() (PackageRegistry, error)
+	// GetCloudRegistry returns a CloudRegistry object tied to this backend. Not
+	// all backends are required to support GetCloudRegistry. Those that don't
+	// should return a non-nil error when GetCloudRegistry is called.
+	//
+	// CloudRegistry is a superset of [registry.Registry] that supports publishing
+	// packages and templates.
+	GetCloudRegistry() (CloudRegistry, error)
+
+	// GetReadOnlyCloudRegistry returns a [registry.Registry] object tied to this
+	// backend. All backends should support GetReadOnlyCloudRegistry.
+	GetReadOnlyCloudRegistry() registry.Registry
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
@@ -351,7 +373,7 @@ type CancellationScope interface {
 // CancellationScopeSource provides a source for cancellation scopes.
 type CancellationScopeSource interface {
 	// NewScope creates a new cancellation scope.
-	NewScope(events chan<- engine.Event, isPreview bool) CancellationScope
+	NewScope(ctx context.Context, events chan<- engine.Event, isPreview bool) CancellationScope
 }
 
 // NewBackendClient returns a deploy.BackendClient that wraps the given Backend.
@@ -365,68 +387,79 @@ type backendClient struct {
 }
 
 // GetStackOutputs returns the outputs of the stack with the given name.
-func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+func (c *backendClient) GetStackOutputs(
+	ctx context.Context,
+	name string,
+	onDecryptError func(err error) error,
+) (property.Map, error) {
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	s, err := c.backend.GetStack(ctx, ref)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	if s == nil {
-		return nil, fmt.Errorf("unknown stack %q", name)
+		return property.Map{}, fmt.Errorf("unknown stack %q", name)
 	}
-	snap, err := s.Snapshot(ctx, c.secretsProvider)
+
+	secretsProvider := newErrorCatchingSecretsProvider(c.secretsProvider, onDecryptError)
+	snap, err := s.Snapshot(ctx, secretsProvider)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
+
 	res, err := stack.GetRootStackResource(snap)
 	if err != nil {
-		return nil, fmt.Errorf("getting root stack resources: %w", err)
+		return property.Map{}, fmt.Errorf("getting root stack resources: %w", err)
 	}
+
 	if res == nil {
-		return resource.PropertyMap{}, nil
+		return property.Map{}, nil
 	}
-	return res.Outputs, nil
+	return resource.FromResourcePropertyMap(res.Outputs), nil
 }
 
 func (c *backendClient) GetStackResourceOutputs(
 	ctx context.Context, name string,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	s, err := c.backend.GetStack(ctx, ref)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	if s == nil {
-		return nil, fmt.Errorf("unknown stack %q", name)
+		return property.Map{}, fmt.Errorf("unknown stack %q", name)
 	}
 	snap, err := s.Snapshot(ctx, c.secretsProvider)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
-	pm := resource.PropertyMap{}
+	pm := map[string]property.Value{}
 	for _, r := range snap.Resources {
 		if r.Delete {
 			continue
 		}
 
-		resc := resource.PropertyMap{
-			resource.PropertyKey("type"):    resource.NewStringProperty(string(r.Type)),
-			resource.PropertyKey("outputs"): resource.NewObjectProperty(r.Outputs),
+		resc := map[string]property.Value{
+			"type":    property.New(string(r.Type)),
+			"outputs": property.New(resource.FromResourcePropertyMap(r.Outputs)),
 		}
-		pm[resource.PropertyKey(r.URN)] = resource.NewObjectProperty(resc)
+		pm[string(r.URN)] = property.New(resc)
 	}
-	return pm, nil
+	return property.NewMap(pm), nil
 }
 
 // ErrTeamsNotSupported is returned by backends
 // which do not support the teams feature.
-var ErrTeamsNotSupported = errors.New("teams are not supported")
+var (
+	ErrTeamsNotSupported  = errors.New("teams are not supported")
+	ErrConfigNotSupported = errors.New("remote config is not supported")
+)
 
 // CreateStackOptions provides options for stack creation.
 // At present, options only apply to the Service.
@@ -439,6 +472,10 @@ type CreateStackOptions struct {
 	// The backend may return ErrTeamsNotSupported
 	// if Teams is specified but not supported.
 	Teams []string
+
+	// Config is the optional cloud stack config to use instead of reading from a local file on disk.
+	// This is only used by the Service backend.
+	Config *apitype.StackConfig
 }
 
 // TarReaderCloser is a [tar.Reader] that owns it's backing memory.

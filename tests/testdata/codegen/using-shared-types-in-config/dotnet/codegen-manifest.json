@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "Config/Config.cs",
     "Config/README.md",
     "Enums.cs",

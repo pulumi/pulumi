@@ -325,14 +325,21 @@ var functionImports = map[string][]string{
 	"sha1":               {"crypto"},
 }
 
-func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
+func (g *generator) visitFunctionImports(
+	x *model.FunctionCallExpression,
+	visitNodeImport func(nodeImportString string),
+	visitPackageImport func(pkg string),
+) {
 	if x.Name != pcl.Invoke {
-		return functionImports[x.Name]
+		for _, i := range functionImports[x.Name] {
+			visitNodeImport(i)
+		}
+		return
 	}
 
 	pkg, _, _, diags := functionName(x.Args[0])
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
-	return []string{"@pulumi/" + pkg}
+	visitPackageImport(pkg)
 }
 
 func enumName(enum *model.EnumType) (string, error) {
@@ -579,6 +586,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genCan(w, expr)
 	case "rootDirectory":
 		g.genRootDirectory(w)
+	case "pulumiResourceName":
+		g.Fgenf(w, "pulumi.resourceName(%v)", expr.Args[0])
+	case "pulumiResourceType":
+		g.Fgenf(w, "pulumi.resourceType(%v)", expr.Args[0])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
@@ -647,7 +658,7 @@ func (g *generator) genCan(w io.Writer, expr *model.FunctionCallExpression) {
 }
 
 func (g *generator) genRootDirectory(w io.Writer) {
-	g.Fgen(w, "pulumi.runtime.getRootDirectory()")
+	g.Fgen(w, "pulumi.getRootDirectory()")
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
@@ -724,7 +735,7 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 	case model.BoolType:
 		g.Fgenf(w, "%v", expr.Value.True())
 	case model.NoneType:
-		g.Fgen(w, "undefined")
+		g.Fgen(w, "null")
 	case model.NumberType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {
@@ -814,7 +825,7 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 			indexPrefix = "."
 		}
 
-		genIndex := func(inner string, value interface{}) {
+		genIndex := func(inner string, value any) {
 			g.Fgenf(w, "%s["+inner+"]", indexPrefix, value)
 		}
 

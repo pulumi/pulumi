@@ -11,7 +11,7 @@ import (
 )
 
 type componentArgs struct {
-	Echo interface{} `pulumi:"echo"`
+	Echo any `pulumi:"echo"`
 }
 
 type ComponentArgs struct {

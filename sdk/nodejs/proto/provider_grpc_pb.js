@@ -1,7 +1,7 @@
 // GENERATED CODE -- DO NOT EDIT!
 
 // Original file comments:
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -546,19 +546,6 @@ invoke: {
     responseSerialize: serialize_pulumirpc_InvokeResponse,
     responseDeserialize: deserialize_pulumirpc_InvokeResponse,
   },
-  // StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-// of responses.
-streamInvoke: {
-    path: '/pulumirpc.ResourceProvider/StreamInvoke',
-    requestStream: false,
-    responseStream: true,
-    requestType: pulumi_provider_pb.InvokeRequest,
-    responseType: pulumi_provider_pb.InvokeResponse,
-    requestSerialize: serialize_pulumirpc_InvokeRequest,
-    requestDeserialize: deserialize_pulumirpc_InvokeRequest,
-    responseSerialize: serialize_pulumirpc_InvokeResponse,
-    responseDeserialize: deserialize_pulumirpc_InvokeResponse,
-  },
   // Call dynamically executes a method in the provider associated with a component resource.
 call: {
     path: '/pulumirpc.ResourceProvider/Call',
@@ -787,4 +774,4 @@ getMappings: {
   },
 };
 
-exports.ResourceProviderClient = grpc.makeGenericClientConstructor(ResourceProviderService);
+exports.ResourceProviderClient = grpc.makeGenericClientConstructor(ResourceProviderService, 'ResourceProvider');

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:unused,deadcode,lll
+//nolint:unused,lll
 package pulumi
 
 import (
@@ -114,31 +114,31 @@ func (rm *testResourceModule) Version() semver.Version {
 }
 
 type test struct {
-	S                              string                 `pulumi:"s"`
-	A                              bool                   `pulumi:"a"`
-	B                              int                    `pulumi:"b"`
-	StringAsset                    Asset                  `pulumi:"cStringAsset"`
-	FileAsset                      Asset                  `pulumi:"cFileAsset"`
-	RemoteAsset                    Asset                  `pulumi:"cRemoteAsset"`
-	AssetArchive                   Archive                `pulumi:"dAssetArchive"`
-	FileArchive                    Archive                `pulumi:"dFileArchive"`
-	RemoteArchive                  Archive                `pulumi:"dRemoteArchive"`
-	E                              interface{}            `pulumi:"e"`
-	Array                          []interface{}          `pulumi:"fArray"`
-	Map                            map[string]interface{} `pulumi:"fMap"`
-	G                              string                 `pulumi:"g"`
-	H                              string                 `pulumi:"h"`
-	I                              string                 `pulumi:"i"`
-	CustomResource                 CustomResource         `pulumi:"jCustomResource"`
-	ComponentResource              ComponentResource      `pulumi:"jComponentResource"`
-	ProviderResource               ProviderResource       `pulumi:"jProviderResource"`
-	PreviewCustomResource          CustomResource         `pulumi:"jPreviewCustomResource"`
-	PreviewProviderResource        ProviderResource       `pulumi:"jPreviewProviderResource"`
-	MissingCustomResource          CustomResource         `pulumi:"kCustomResource"`
-	MissingComponentResource       ComponentResource      `pulumi:"kComponentResource"`
-	MissingProviderResource        ProviderResource       `pulumi:"kProviderResource"`
-	MissingPreviewCustomResource   CustomResource         `pulumi:"kPreviewCustomResource"`
-	MissingPreviewProviderResource ProviderResource       `pulumi:"kPreviewProviderResource"`
+	S                              string            `pulumi:"s"`
+	A                              bool              `pulumi:"a"`
+	B                              int               `pulumi:"b"`
+	StringAsset                    Asset             `pulumi:"cStringAsset"`
+	FileAsset                      Asset             `pulumi:"cFileAsset"`
+	RemoteAsset                    Asset             `pulumi:"cRemoteAsset"`
+	AssetArchive                   Archive           `pulumi:"dAssetArchive"`
+	FileArchive                    Archive           `pulumi:"dFileArchive"`
+	RemoteArchive                  Archive           `pulumi:"dRemoteArchive"`
+	E                              any               `pulumi:"e"`
+	Array                          []any             `pulumi:"fArray"`
+	Map                            map[string]any    `pulumi:"fMap"`
+	G                              string            `pulumi:"g"`
+	H                              string            `pulumi:"h"`
+	I                              string            `pulumi:"i"`
+	CustomResource                 CustomResource    `pulumi:"jCustomResource"`
+	ComponentResource              ComponentResource `pulumi:"jComponentResource"`
+	ProviderResource               ProviderResource  `pulumi:"jProviderResource"`
+	PreviewCustomResource          CustomResource    `pulumi:"jPreviewCustomResource"`
+	PreviewProviderResource        ProviderResource  `pulumi:"jPreviewProviderResource"`
+	MissingCustomResource          CustomResource    `pulumi:"kCustomResource"`
+	MissingComponentResource       ComponentResource `pulumi:"kComponentResource"`
+	MissingProviderResource        ProviderResource  `pulumi:"kProviderResource"`
+	MissingPreviewCustomResource   CustomResource    `pulumi:"kPreviewCustomResource"`
+	MissingPreviewProviderResource ProviderResource  `pulumi:"kPreviewProviderResource"`
 }
 
 type testInputs struct {
@@ -179,7 +179,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 
 	// Create interesting inputs.
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	customURN := resource.NewURN("stack", "project", "", "test:index:custom", "test")
 	componentURN := resource.NewURN("stack", "project", "", "test:index:component", "test")
@@ -207,7 +207,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 		StringAsset: NewStringAsset("put a lime in the coconut"),
 		FileAsset:   NewFileAsset("foo.txt"),
 		RemoteAsset: NewRemoteAsset("https://pulumi.com/fake/txt"),
-		AssetArchive: NewAssetArchive(map[string]interface{}{
+		AssetArchive: NewAssetArchive(map[string]any{
 			"subAsset":   NewFileAsset("bar.txt"),
 			"subArchive": NewFileArchive("bar.zip"),
 		}),
@@ -237,96 +237,94 @@ func TestMarshalRoundtrip(t *testing.T) {
 
 	// Marshal those inputs.
 	resolved, pdeps, deps, err := marshalInputs(inputs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	if assert.NoError(t, err) {
-		assert.Equal(t, reflect.TypeOf(inputs).NumField(), len(resolved))
-		assert.Equal(t, 10, len(deps))
-		assert.Equal(t, 25, len(pdeps))
+	require.NoError(t, err)
+	assert.Equal(t, reflect.TypeOf(inputs).NumField(), len(resolved))
+	require.Len(t, deps, 10)
+	require.Len(t, pdeps, 25)
 
-		// Now just unmarshal and ensure the resulting map matches.
-		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
-		assert.False(t, secret)
-		if assert.NoError(t, err) {
-			if assert.NotNil(t, resV) {
-				res := resV.(map[string]interface{})
-				assert.Equal(t, "a string", res["s"])
-				assert.Equal(t, true, res["a"])
-				assert.Equal(t, 42.0, res["b"])
-				assert.Equal(t, "put a lime in the coconut", res["cStringAsset"].(Asset).Text())
-				assert.Equal(t, "foo.txt", res["cFileAsset"].(Asset).Path())
-				assert.Equal(t, "https://pulumi.com/fake/txt", res["cRemoteAsset"].(Asset).URI())
-				ar := res["dAssetArchive"].(Archive).Assets()
-				assert.Equal(t, 2, len(ar))
-				assert.Equal(t, "bar.txt", ar["subAsset"].(Asset).Path())
-				assert.Equal(t, "bar.zip", ar["subArchive"].(Archive).Path())
-				assert.Equal(t, "foo.zip", res["dFileArchive"].(Archive).Path())
-				assert.Equal(t, "https://pulumi.com/fake/archive.zip", res["dRemoteArchive"].(Archive).URI())
-				assert.Equal(t, "outputty", res["e"])
-				aa := res["fArray"].([]interface{})
-				assert.Equal(t, 4, len(aa))
-				assert.Equal(t, 0.0, aa[0])
-				assert.Less(t, 1.3-aa[1].(float64), 0.00001)
-				assert.Equal(t, 1.3-aa[1].(float64), 0.0)
-				assert.Equal(t, "x", aa[2])
-				assert.Equal(t, false, aa[3])
-				am := res["fMap"].(map[string]interface{})
-				assert.Equal(t, 3, len(am))
-				assert.Equal(t, "y", am["x"])
-				assert.Equal(t, 999.9, am["y"])
-				assert.Equal(t, false, am["z"])
-				assert.Equal(t, nil, res["g"])
-				assert.Equal(t, "foo", res["h"])
-				assert.Equal(t, nil, res["i"])
-				custom := res["jCustomResource"].(*simpleCustomResource)
-				urn, _, _, _ := custom.URN().awaitURN(context.Background())
-				assert.Equal(t, URN(customURN), urn)
-				id, _, _, _ := custom.ID().awaitID(context.Background())
-				assert.Equal(t, ID("id"), id)
-				component := res["jComponentResource"].(*simpleComponentResource)
-				urn, _, _, _ = component.URN().awaitURN(context.Background())
-				assert.Equal(t, URN(componentURN), urn)
-				provider := res["jProviderResource"].(*simpleProviderResource)
-				urn, _, _, _ = provider.URN().awaitURN(context.Background())
-				assert.Equal(t, URN(providerURN), urn)
-				id, _, _, _ = provider.ID().awaitID(context.Background())
-				assert.Equal(t, ID("id"), id)
-				previewCustom := res["jPreviewCustomResource"].(*simpleCustomResource)
-				urn, _, _, _ = previewCustom.URN().awaitURN(context.Background())
-				assert.Equal(t, URN(previewCustomURN), urn)
-				_, known, _, _ := previewCustom.ID().awaitID(context.Background())
-				assert.False(t, known)
-				previewProvider := res["jPreviewProviderResource"].(*simpleProviderResource)
-				urn, _, _, _ = previewProvider.URN().awaitURN(context.Background())
-				assert.Equal(t, URN(previewProviderURN), urn)
-				_, known, _, _ = previewProvider.ID().awaitID(context.Background())
-				assert.False(t, known)
-				missingCustom := res["kCustomResource"].(CustomResource)
-				urn, _, _, _ = missingCustom.URN().awaitURN(context.Background())
-				assert.Equal(t, URN(missingCustomURN), urn)
-				id, _, _, _ = missingCustom.ID().awaitID(context.Background())
-				assert.Equal(t, ID("id"), id)
-				missingComponent := res["kComponentResource"].(ComponentResource)
-				urn, _, _, _ = missingComponent.URN().awaitURN(context.Background())
-				assert.Equal(t, URN(missingComponentURN), urn)
-				missingProvider := res["kProviderResource"].(ProviderResource)
-				urn, _, _, _ = missingProvider.URN().awaitURN(context.Background())
-				assert.Equal(t, URN(missingProviderURN), urn)
-				id, _, _, _ = missingProvider.ID().awaitID(context.Background())
-				assert.Equal(t, ID("id"), id)
-				missingPreviewCustom := res["kPreviewCustomResource"].(CustomResource)
-				urn, _, _, _ = missingPreviewCustom.URN().awaitURN(context.Background())
-				assert.Equal(t, URN(missingPreviewCustomURN), urn)
-				_, known, _, _ = missingPreviewCustom.ID().awaitID(context.Background())
-				assert.False(t, known)
-				missingPreviewProvider := res["kPreviewProviderResource"].(ProviderResource)
-				urn, _, _, _ = missingPreviewProvider.URN().awaitURN(context.Background())
-				assert.Equal(t, URN(missingPreviewProviderURN), urn)
-				_, known, _, _ = missingPreviewProvider.ID().awaitID(context.Background())
-				assert.False(t, known)
-			}
-		}
-	}
+	// Now just unmarshal and ensure the resulting map matches.
+	resV, secret, err := unmarshalPropertyValue(ctx, resource.NewProperty(resolved))
+	assert.False(t, secret)
+	require.NoError(t, err)
+	require.NotNil(t, resV)
+
+	res := resV.(map[string]any)
+	assert.Equal(t, "a string", res["s"])
+	assert.Equal(t, true, res["a"])
+	assert.Equal(t, 42.0, res["b"])
+	assert.Equal(t, "put a lime in the coconut", res["cStringAsset"].(Asset).Text())
+	assert.Equal(t, "foo.txt", res["cFileAsset"].(Asset).Path())
+	assert.Equal(t, "https://pulumi.com/fake/txt", res["cRemoteAsset"].(Asset).URI())
+	ar := res["dAssetArchive"].(Archive).Assets()
+	require.Len(t, ar, 2)
+	assert.Equal(t, "bar.txt", ar["subAsset"].(Asset).Path())
+	assert.Equal(t, "bar.zip", ar["subArchive"].(Archive).Path())
+	assert.Equal(t, "foo.zip", res["dFileArchive"].(Archive).Path())
+	assert.Equal(t, "https://pulumi.com/fake/archive.zip", res["dRemoteArchive"].(Archive).URI())
+	assert.Equal(t, "outputty", res["e"])
+	aa := res["fArray"].([]any)
+	require.Len(t, aa, 4)
+	assert.Equal(t, 0.0, aa[0])
+	assert.Less(t, 1.3-aa[1].(float64), 0.00001)
+	assert.Equal(t, 1.3-aa[1].(float64), 0.0)
+	assert.Equal(t, "x", aa[2])
+	assert.Equal(t, false, aa[3])
+	am := res["fMap"].(map[string]any)
+	require.Len(t, am, 3)
+	assert.Equal(t, "y", am["x"])
+	assert.Equal(t, 999.9, am["y"])
+	assert.Equal(t, false, am["z"])
+	assert.Equal(t, nil, res["g"])
+	assert.Equal(t, "foo", res["h"])
+	assert.Equal(t, nil, res["i"])
+	custom := res["jCustomResource"].(*simpleCustomResource)
+	urn, _, _, _ := custom.URN().awaitURN(context.Background())
+	assert.Equal(t, URN(customURN), urn)
+	id, _, _, _ := custom.ID().awaitID(context.Background())
+	assert.Equal(t, ID("id"), id)
+	component := res["jComponentResource"].(*simpleComponentResource)
+	urn, _, _, _ = component.URN().awaitURN(context.Background())
+	assert.Equal(t, URN(componentURN), urn)
+	provider := res["jProviderResource"].(*simpleProviderResource)
+	urn, _, _, _ = provider.URN().awaitURN(context.Background())
+	assert.Equal(t, URN(providerURN), urn)
+	id, _, _, _ = provider.ID().awaitID(context.Background())
+	assert.Equal(t, ID("id"), id)
+	previewCustom := res["jPreviewCustomResource"].(*simpleCustomResource)
+	urn, _, _, _ = previewCustom.URN().awaitURN(context.Background())
+	assert.Equal(t, URN(previewCustomURN), urn)
+	_, known, _, _ := previewCustom.ID().awaitID(context.Background())
+	assert.False(t, known)
+	previewProvider := res["jPreviewProviderResource"].(*simpleProviderResource)
+	urn, _, _, _ = previewProvider.URN().awaitURN(context.Background())
+	assert.Equal(t, URN(previewProviderURN), urn)
+	_, known, _, _ = previewProvider.ID().awaitID(context.Background())
+	assert.False(t, known)
+	missingCustom := res["kCustomResource"].(CustomResource)
+	urn, _, _, _ = missingCustom.URN().awaitURN(context.Background())
+	assert.Equal(t, URN(missingCustomURN), urn)
+	id, _, _, _ = missingCustom.ID().awaitID(context.Background())
+	assert.Equal(t, ID("id"), id)
+	missingComponent := res["kComponentResource"].(ComponentResource)
+	urn, _, _, _ = missingComponent.URN().awaitURN(context.Background())
+	assert.Equal(t, URN(missingComponentURN), urn)
+	missingProvider := res["kProviderResource"].(ProviderResource)
+	urn, _, _, _ = missingProvider.URN().awaitURN(context.Background())
+	assert.Equal(t, URN(missingProviderURN), urn)
+	id, _, _, _ = missingProvider.ID().awaitID(context.Background())
+	assert.Equal(t, ID("id"), id)
+	missingPreviewCustom := res["kPreviewCustomResource"].(CustomResource)
+	urn, _, _, _ = missingPreviewCustom.URN().awaitURN(context.Background())
+	assert.Equal(t, URN(missingPreviewCustomURN), urn)
+	_, known, _, _ = missingPreviewCustom.ID().awaitID(context.Background())
+	assert.False(t, known)
+	missingPreviewProvider := res["kPreviewProviderResource"].(ProviderResource)
+	urn, _, _, _ = missingPreviewProvider.URN().awaitURN(context.Background())
+	assert.Equal(t, URN(missingPreviewProviderURN), urn)
+	_, known, _, _ = missingPreviewProvider.ID().awaitID(context.Background())
+	assert.False(t, known)
 }
 
 type nestedTypeInput interface {
@@ -367,15 +365,15 @@ type testResourceArgs struct {
 	URN URN `pulumi:"urn"`
 	ID  ID  `pulumi:"id"`
 
-	Any     interface{}            `pulumi:"any"`
-	Archive Archive                `pulumi:"archive"`
-	Array   []interface{}          `pulumi:"array"`
-	Asset   Asset                  `pulumi:"asset"`
-	Bool    bool                   `pulumi:"bool"`
-	Float64 float64                `pulumi:"float64"`
-	Int     int                    `pulumi:"int"`
-	Map     map[string]interface{} `pulumi:"map"`
-	String  string                 `pulumi:"string"`
+	Any     any            `pulumi:"any"`
+	Archive Archive        `pulumi:"archive"`
+	Array   []any          `pulumi:"array"`
+	Asset   Asset          `pulumi:"asset"`
+	Bool    bool           `pulumi:"bool"`
+	Float64 float64        `pulumi:"float64"`
+	Int     int            `pulumi:"int"`
+	Map     map[string]any `pulumi:"map"`
+	String  string         `pulumi:"string"`
 
 	Nested nestedType `pulumi:"nested"`
 }
@@ -421,7 +419,7 @@ func TestResourceState(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var theResource testResource
 	state := ctx.makeResourceState("", "", &theResource, nil, nil, nil, "", "", nil, nil)
@@ -445,7 +443,7 @@ func TestResourceState(t *testing.T) {
 	s, err := plugin.MarshalProperties(
 		resolved,
 		plugin.MarshalOptions{KeepUnknowns: true})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	state.resolve(ctx, nil, nil, "foo", "bar", s, nil, false)
 
 	input := &testResourceInputs{
@@ -463,7 +461,7 @@ func TestResourceState(t *testing.T) {
 		Nested:  theResource.Nested,
 	}
 	resolved, pdeps, deps, err := marshalInputs(input)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string][]URN{
 		"urn":     {"foo"},
 		"id":      {"foo"},
@@ -480,22 +478,22 @@ func TestResourceState(t *testing.T) {
 	}, pdeps)
 	assert.Equal(t, []URN{"foo"}, deps)
 
-	res, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
-	assert.NoError(t, err)
+	res, secret, err := unmarshalPropertyValue(ctx, resource.NewProperty(resolved))
+	require.NoError(t, err)
 	assert.False(t, secret)
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		"urn":     "foo",
 		"id":      "bar",
 		"any":     "foo",
 		"archive": NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
-		"array":   []interface{}{"foo"},
+		"array":   []any{"foo"},
 		"asset":   NewStringAsset("put a lime in the coconut"),
 		"bool":    true,
 		"float64": 3.14,
 		"int":     -1.0,
-		"map":     map[string]interface{}{"foo": "bar"},
+		"map":     map[string]any{"foo": "bar"},
 		"string":  "qux",
-		"nested": map[string]interface{}{
+		"nested": map[string]any{
 			"foo": "bar",
 			"bar": 42.0,
 		},
@@ -506,17 +504,17 @@ func TestUnmarshalSecret(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	secret := resource.MakeSecret(resource.NewPropertyValue("foo"))
 
 	_, isSecret, err := unmarshalPropertyValue(ctx, secret)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, isSecret)
 
 	var sv string
 	isSecret, err = unmarshalOutput(ctx, secret, reflect.ValueOf(&sv).Elem())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "foo", sv)
 	assert.True(t, isSecret)
 }
@@ -525,16 +523,16 @@ func TestUnmarshalInternalMapValue(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	m["foo"] = "bar"
 	m["__default"] = "buzz"
-	pmap := resource.NewObjectProperty(resource.NewPropertyMapFromMap(m))
+	pmap := resource.NewProperty(resource.NewPropertyMapFromMap(m))
 
 	var mv map[string]string
 	_, err = unmarshalOutput(ctx, pmap, reflect.ValueOf(&mv).Elem())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	val, ok := mv["foo"]
 	assert.True(t, ok)
 	assert.Equal(t, "bar", val)
@@ -549,7 +547,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 
 	// Create interesting inputs.
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
@@ -562,7 +560,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 		StringAsset: NewStringAsset("put a lime in the coconut"),
 		FileAsset:   NewFileAsset("foo.txt"),
 		RemoteAsset: NewRemoteAsset("https://pulumi.com/fake/txt"),
-		AssetArchive: NewAssetArchive(map[string]interface{}{
+		AssetArchive: NewAssetArchive(map[string]any{
 			"subAsset":   NewFileAsset("bar.txt"),
 			"subArchive": NewFileArchive("bar.zip"),
 		}),
@@ -582,59 +580,57 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 
 	// Marshal those inputs.
 	resolved, pdeps, deps, err := marshalInputs(inputs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	if assert.NoError(t, err) {
-		// The value we marshaled above omits the 10 Resource-typed fields, so we don't expect those fields to appear
-		// in the unmarshaled value.
-		const resourceFields = 10
-		assert.Equal(t, reflect.TypeOf(inputs).NumField()-resourceFields, len(resolved))
-		assert.Equal(t, 0, len(deps))
-		assert.Equal(t, 15, len(pdeps))
+	require.NoError(t, err)
+	// The value we marshaled above omits the 10 Resource-typed fields, so we don't expect those fields to appear
+	// in the unmarshaled value.
+	const resourceFields = 10
+	assert.Equal(t, reflect.TypeOf(inputs).NumField()-resourceFields, len(resolved))
+	assert.Empty(t, deps)
+	require.Len(t, pdeps, 15)
 
-		// Now just unmarshal and ensure the resulting map matches.
-		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
-		assert.True(t, secret)
-		if assert.NoError(t, err) {
-			if assert.NotNil(t, resV) {
-				res := resV.(map[string]interface{})
-				assert.Equal(t, "a string", res["s"])
-				assert.Equal(t, true, res["a"])
-				assert.Equal(t, 42.0, res["b"])
-				assert.Equal(t, "put a lime in the coconut", res["cStringAsset"].(Asset).Text())
-				assert.Equal(t, "foo.txt", res["cFileAsset"].(Asset).Path())
-				assert.Equal(t, "https://pulumi.com/fake/txt", res["cRemoteAsset"].(Asset).URI())
-				ar := res["dAssetArchive"].(Archive).Assets()
-				assert.Equal(t, 2, len(ar))
-				assert.Equal(t, "bar.txt", ar["subAsset"].(Asset).Path())
-				assert.Equal(t, "bar.zip", ar["subArchive"].(Archive).Path())
-				assert.Equal(t, "foo.zip", res["dFileArchive"].(Archive).Path())
-				assert.Equal(t, "https://pulumi.com/fake/archive.zip", res["dRemoteArchive"].(Archive).URI())
-				assert.Equal(t, "outputty", res["e"])
-				aa := res["fArray"].([]interface{})
-				assert.Equal(t, 4, len(aa))
-				assert.Equal(t, 0.0, aa[0])
-				assert.Less(t, 1.3-aa[1].(float64), 0.00001)
-				assert.Equal(t, 1.3-aa[1].(float64), 0.0)
-				assert.Equal(t, "x", aa[2])
-				assert.Equal(t, false, aa[3])
-				am := res["fMap"].(map[string]interface{})
-				assert.Equal(t, 3, len(am))
-				assert.Equal(t, "y", am["x"])
-				assert.Equal(t, 999.9, am["y"])
-				assert.Equal(t, false, am["z"])
-				assert.Equal(t, nil, res["g"])
-				assert.Equal(t, "foo", res["h"])
-				assert.Equal(t, nil, res["i"])
-			}
-		}
-	}
+	// Now just unmarshal and ensure the resulting map matches.
+	resV, secret, err := unmarshalPropertyValue(ctx, resource.NewProperty(resolved))
+	assert.True(t, secret)
+	require.NoError(t, err)
+	require.NotNil(t, resV)
+
+	res := resV.(map[string]any)
+	assert.Equal(t, "a string", res["s"])
+	assert.Equal(t, true, res["a"])
+	assert.Equal(t, 42.0, res["b"])
+	assert.Equal(t, "put a lime in the coconut", res["cStringAsset"].(Asset).Text())
+	assert.Equal(t, "foo.txt", res["cFileAsset"].(Asset).Path())
+	assert.Equal(t, "https://pulumi.com/fake/txt", res["cRemoteAsset"].(Asset).URI())
+	ar := res["dAssetArchive"].(Archive).Assets()
+	require.Len(t, ar, 2)
+	assert.Equal(t, "bar.txt", ar["subAsset"].(Asset).Path())
+	assert.Equal(t, "bar.zip", ar["subArchive"].(Archive).Path())
+	assert.Equal(t, "foo.zip", res["dFileArchive"].(Archive).Path())
+	assert.Equal(t, "https://pulumi.com/fake/archive.zip", res["dRemoteArchive"].(Archive).URI())
+	assert.Equal(t, "outputty", res["e"])
+	aa := res["fArray"].([]any)
+	require.Len(t, aa, 4)
+	assert.Equal(t, 0.0, aa[0])
+	assert.Less(t, 1.3-aa[1].(float64), 0.00001)
+	assert.Equal(t, 1.3-aa[1].(float64), 0.0)
+	assert.Equal(t, "x", aa[2])
+	assert.Equal(t, false, aa[3])
+	am := res["fMap"].(map[string]any)
+	require.Len(t, am, 3)
+	assert.Equal(t, "y", am["x"])
+	assert.Equal(t, 999.9, am["y"])
+	assert.Equal(t, false, am["z"])
+	assert.Equal(t, nil, res["g"])
+	assert.Equal(t, "foo", res["h"])
+	assert.Equal(t, nil, res["i"])
 }
 
-type UntypedArgs map[string]interface{}
+type UntypedArgs map[string]any
 
 func (UntypedArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]interface{})(nil)).Elem()
+	return reflect.TypeOf((*map[string]any)(nil)).Elem()
 }
 
 func TestMapInputMarshalling(t *testing.T) {
@@ -652,9 +648,9 @@ func TestMapInputMarshalling(t *testing.T) {
 		}),
 	})
 
-	inputs2 := UntypedArgs(map[string]interface{}{
+	inputs2 := UntypedArgs(map[string]any{
 		"prop": "outputty",
-		"nested": map[string]interface{}{
+		"nested": map[string]any{
 			"foo": "foo",
 			"bar": 42,
 		},
@@ -671,7 +667,7 @@ func TestMapInputMarshalling(t *testing.T) {
 
 	for _, c := range cases {
 		resolved, _, depUrns, err := marshalInputs(c.inputs)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if c.expectOutputValue {
 			assert.Equal(t, "outputty", resolved["prop"].OutputValue().Element.StringValue())
 		} else {
@@ -755,7 +751,6 @@ func TestVersionedMap(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -791,7 +786,6 @@ func TestRegisterResourcePackage(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -827,7 +821,6 @@ func TestRegisterResourceModule(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -843,10 +836,10 @@ func TestInvalidAsset(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var d Asset
-	_, err = unmarshalOutput(ctx, resource.NewStringProperty("foo"), reflect.ValueOf(&d).Elem())
+	_, err = unmarshalOutput(ctx, resource.NewProperty("foo"), reflect.ValueOf(&d).Elem())
 	require.NoError(t, err)
 	require.NotNil(t, d)
 	require.True(t, d.(*asset).invalid)
@@ -859,10 +852,10 @@ func TestInvalidArchive(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var d Archive
-	_, err = unmarshalOutput(ctx, resource.NewStringProperty("foo"), reflect.ValueOf(&d).Elem())
+	_, err = unmarshalOutput(ctx, resource.NewProperty("foo"), reflect.ValueOf(&d).Elem())
 	require.NoError(t, err)
 	require.NotNil(t, d)
 	require.True(t, d.(*archive).invalid)
@@ -875,7 +868,7 @@ func TestUnmarshalPointer(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	res := resource.ResourceReference{
 		URN: urn.New("testStack", "testProj", "", "test:index:component", "test"),
@@ -885,8 +878,8 @@ func TestUnmarshalPointer(t *testing.T) {
 	RegisterResourceModule("test", "index", &testResourceModule{
 		version: semver.MustParse("2.0.0"),
 	})
-	_, err = unmarshalOutput(ctx, resource.NewResourceReferenceProperty(res), reflect.ValueOf(&d).Elem())
-	assert.NoError(t, err)
+	_, err = unmarshalOutput(ctx, resource.NewProperty(res), reflect.ValueOf(&d).Elem())
+	require.NoError(t, err)
 	assert.IsType(t, &simpleComponentResource{}, d)
 }
 
@@ -894,7 +887,7 @@ func TestDependsOnComponent(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	registerResource := func(name string, res Resource, custom bool, options ...ResourceOption) (Resource, []string) {
 		opts := merge(options...)
@@ -946,19 +939,19 @@ func TestOutputValueMarshalling(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	values := []struct {
-		value    interface{}
+		value    any
 		expected resource.PropertyValue
 	}{
 		{value: nil, expected: resource.NewNullProperty()},
-		{value: 0, expected: resource.NewNumberProperty(0)},
-		{value: 1, expected: resource.NewNumberProperty(1)},
-		{value: "", expected: resource.NewStringProperty("")},
-		{value: "hi", expected: resource.NewStringProperty("hi")},
-		{value: map[string]string{}, expected: resource.NewObjectProperty(resource.PropertyMap{})},
-		{value: []string{}, expected: resource.NewArrayProperty([]resource.PropertyValue{})},
+		{value: 0, expected: resource.NewProperty(0.0)},
+		{value: 1, expected: resource.NewProperty(1.0)},
+		{value: "", expected: resource.NewProperty("")},
+		{value: "hi", expected: resource.NewProperty("hi")},
+		{value: map[string]string{}, expected: resource.NewProperty(resource.PropertyMap{})},
+		{value: []string{}, expected: resource.NewProperty([]resource.PropertyValue{})},
 	}
 	//nolint:paralleltest // parallel parent, would require refactor to silence lint
 	for _, value := range values {
@@ -986,7 +979,7 @@ func TestOutputValueMarshalling(t *testing.T) {
 						if known {
 							v.Element = value.expected
 						}
-						expectedValue = resource.NewOutputProperty(v)
+						expectedValue = resource.NewProperty(v)
 					}
 
 					expected := resource.PropertyMap{"value": expectedValue}
@@ -999,7 +992,7 @@ func TestOutputValueMarshalling(t *testing.T) {
 					//nolint:paralleltest // very small test, parallel parent
 					t.Run(name, func(t *testing.T) {
 						actual, _, _, err := marshalInputs(inputs)
-						assert.NoError(t, err)
+						require.NoError(t, err)
 						assert.Equal(t, expected, actual)
 					})
 				}
@@ -1223,7 +1216,7 @@ func (MyResourceArgs) ElementType() reflect.Type {
 }
 
 type myNestedOutputArgs struct {
-	Nested interface{} `pulumi:"nested"`
+	Nested any `pulumi:"nested"`
 }
 
 type MyNestedOutputArgs struct {
@@ -1238,7 +1231,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	RegisterOutputType(TemplateOptionsOutput{})
 	RegisterOutputType(TemplateOptionsPtrOutput{})
@@ -1283,15 +1276,15 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 		{
 			name:     "empty",
 			input:    fooArgs{},
-			expected: resource.NewObjectProperty(resource.PropertyMap{}),
+			expected: resource.NewProperty(resource.PropertyMap{}),
 		},
 		{
 			name: "options empty",
 			input: fooArgs{
 				TemplateOptions: TemplateOptionsArgs{},
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{}),
+			expected: resource.NewProperty(resource.PropertyMap{
+				"templateOptions": resource.NewProperty(resource.PropertyMap{}),
 			}),
 		},
 		{
@@ -1299,8 +1292,8 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: fooArgs{
 				TemplateOptions: unknownTemplateOptionsPtrOutput,
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"templateOptions": resource.NewOutputProperty(resource.Output{}),
+			expected: resource.NewProperty(resource.PropertyMap{
+				"templateOptions": resource.NewProperty(resource.Output{}),
 			}),
 		},
 		{
@@ -1308,8 +1301,8 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: fooArgs{
 				TemplateOptions: unknownSecretTemplateOptionsPtrOutput,
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"templateOptions": resource.NewOutputProperty(resource.Output{
+			expected: resource.NewProperty(resource.PropertyMap{
+				"templateOptions": resource.NewProperty(resource.Output{
 					Secret: true,
 				}),
 			}),
@@ -1321,9 +1314,9 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 					Description: String("hello"),
 				},
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
-					"description": resource.NewStringProperty("hello"),
+			expected: resource.NewProperty(resource.PropertyMap{
+				"templateOptions": resource.NewProperty(resource.PropertyMap{
+					"description": resource.NewProperty("hello"),
 				}),
 			}),
 		},
@@ -1334,10 +1327,10 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 					Description: ToSecret(String("hello")).(StringOutput),
 				},
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
-					"description": resource.NewOutputProperty(resource.Output{
-						Element: resource.NewStringProperty("hello"),
+			expected: resource.NewProperty(resource.PropertyMap{
+				"templateOptions": resource.NewProperty(resource.PropertyMap{
+					"description": resource.NewProperty(resource.Output{
+						Element: resource.NewProperty("hello"),
 						Known:   true,
 						Secret:  true,
 					}),
@@ -1351,10 +1344,10 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 					Description: ToSecret(String("hello")).(StringOutput),
 				}.ToTemplateOptionsOutput(),
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"templateOptions": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewObjectProperty(resource.PropertyMap{
-						"description": resource.NewStringProperty("hello"),
+			expected: resource.NewProperty(resource.PropertyMap{
+				"templateOptions": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty(resource.PropertyMap{
+						"description": resource.NewProperty("hello"),
 					}),
 					Known:  true,
 					Secret: true,
@@ -1368,9 +1361,9 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 					Description: unknownStringOutput,
 				},
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
-					"description": resource.NewOutputProperty(resource.Output{}),
+			expected: resource.NewProperty(resource.PropertyMap{
+				"templateOptions": resource.NewProperty(resource.PropertyMap{
+					"description": resource.NewProperty(resource.Output{}),
 				}),
 			}),
 		},
@@ -1389,14 +1382,14 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 					},
 				},
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
-					"tagSpecifications": resource.NewArrayProperty([]resource.PropertyValue{
-						resource.NewObjectProperty(resource.PropertyMap{
-							"name": resource.NewStringProperty("hello"),
-							"tags": resource.NewObjectProperty(resource.PropertyMap{
-								"first": resource.NewStringProperty("second"),
-								"third": resource.NewOutputProperty(resource.Output{}),
+			expected: resource.NewProperty(resource.PropertyMap{
+				"templateOptions": resource.NewProperty(resource.PropertyMap{
+					"tagSpecifications": resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty(resource.PropertyMap{
+							"name": resource.NewProperty("hello"),
+							"tags": resource.NewProperty(resource.PropertyMap{
+								"first": resource.NewProperty("second"),
+								"third": resource.NewProperty(resource.Output{}),
 							}),
 						}),
 					}),
@@ -1408,8 +1401,8 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: &BucketObjectArgs{
 				Source: NewFileAsset("foo.txt"),
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"source": resource.NewAssetProperty(&rasset.Asset{
+			expected: resource.NewProperty(resource.PropertyMap{
+				"source": resource.NewProperty(&rasset.Asset{
 					Path: "foo.txt",
 				}),
 			}),
@@ -1419,8 +1412,8 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: &BucketObjectArgs{
 				Source: NewFileArchive("bar.zip"),
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"source": resource.NewArchiveProperty(&rarchive.Archive{
+			expected: resource.NewProperty(resource.PropertyMap{
+				"source": resource.NewProperty(&rarchive.Archive{
 					Path: "bar.zip",
 				}),
 			}),
@@ -1430,8 +1423,8 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: &BucketObjectArgs{
 				Source: fileAssetOutput,
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"source": resource.NewAssetProperty(&rasset.Asset{
+			expected: resource.NewProperty(resource.PropertyMap{
+				"source": resource.NewProperty(&rasset.Asset{
 					Path: "foo.txt",
 				}),
 			}),
@@ -1441,9 +1434,9 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: &BucketObjectArgs{
 				Source: fileAssetSecretOutput,
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"source": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewAssetProperty(&rasset.Asset{
+			expected: resource.NewProperty(resource.PropertyMap{
+				"source": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty(&rasset.Asset{
 						Path: "foo.txt",
 					}),
 					Known:  true,
@@ -1456,9 +1449,9 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: &BucketObjectArgs{
 				Source: fileAssetOutputDeps,
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"source": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewAssetProperty(&rasset.Asset{
+			expected: resource.NewProperty(resource.PropertyMap{
+				"source": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty(&rasset.Asset{
 						Path: "foo.txt",
 					}),
 					Known:        true,
@@ -1471,10 +1464,10 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: &MyResourceArgs{
 				Res: NewResourceInput(newSimpleCustomResource(ctx, "fakeURN", "fakeID")),
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"res": resource.NewResourceReferenceProperty(resource.ResourceReference{
+			expected: resource.NewProperty(resource.PropertyMap{
+				"res": resource.NewProperty(resource.ResourceReference{
 					URN: "fakeURN",
-					ID:  resource.NewStringProperty("fakeID"),
+					ID:  resource.NewProperty("fakeID"),
 				}),
 			}),
 		},
@@ -1483,8 +1476,8 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: &MyNestedOutputArgs{
 				Nested: nestedOutput,
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"nested": resource.NewAssetProperty(&rasset.Asset{
+			expected: resource.NewProperty(resource.PropertyMap{
+				"nested": resource.NewProperty(&rasset.Asset{
 					Path: "foo.txt",
 				}),
 			}),
@@ -1494,8 +1487,8 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: &MyNestedOutputArgs{
 				Nested: nestedPtrOutput,
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"nested": resource.NewAssetProperty(&rasset.Asset{
+			expected: resource.NewProperty(resource.PropertyMap{
+				"nested": resource.NewProperty(&rasset.Asset{
 					Path: "foo.txt",
 				}),
 			}),
@@ -1505,15 +1498,14 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			input: &MyNestedOutputArgs{
 				Nested: nestedNestedOutput,
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"nested": resource.NewAssetProperty(&rasset.Asset{
+			expected: resource.NewProperty(resource.PropertyMap{
+				"nested": resource.NewProperty(&rasset.Asset{
 					Path: "foo.txt",
 				}),
 			}),
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1521,7 +1513,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 			expected := resource.PropertyMap{"value": tt.expected}
 
 			actual, _, _, err := marshalInputs(inputs)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, expected, actual)
 		})
 	}
@@ -1735,7 +1727,7 @@ func (o TreeSizeMapOutput) ToTreeSizeMapOutputWithContext(ctx context.Context) T
 }
 
 func (o TreeSizeMapOutput) MapIndex(k StringInput) TreeSizeOutput {
-	return All(o, k).ApplyT(func(vs []interface{}) TreeSize {
+	return All(o, k).ApplyT(func(vs []any) TreeSize {
 		return vs[0].(map[string]TreeSize)[vs[1].(string)]
 	}).(TreeSizeOutput)
 }
@@ -1744,7 +1736,7 @@ func TestOutputValueMarshallingEnums(t *testing.T) {
 	t.Parallel()
 
 	_, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	RegisterOutputType(TreeSizeOutput{})
 	RegisterOutputType(TreeSizePtrOutput{})
@@ -1760,13 +1752,12 @@ func TestOutputValueMarshallingEnums(t *testing.T) {
 			input: &RubberTreeArgs{
 				Size: TreeSize("medium"),
 			},
-			expected: resource.NewObjectProperty(resource.PropertyMap{
-				"size": resource.NewStringProperty("medium"),
+			expected: resource.NewProperty(resource.PropertyMap{
+				"size": resource.NewProperty("medium"),
 			}),
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1774,7 +1765,7 @@ func TestOutputValueMarshallingEnums(t *testing.T) {
 			expected := resource.PropertyMap{"value": tt.expected}
 
 			actual, _, _, err := marshalInputs(inputs)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, expected, actual)
 		})
 	}
@@ -1787,10 +1778,10 @@ func TestMarshalInputsPropertyDependencies(t *testing.T) {
 		S: String("a string"),
 		A: Bool(true),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, resource.PropertyMap{
-		"s": resource.NewStringProperty("a string"),
-		"a": resource.NewBoolProperty(true),
+		"s": resource.NewProperty("a string"),
+		"a": resource.NewProperty(true),
 	}, pmap)
 	assert.Nil(t, deps)
 	// Expect a non-empty property deps map, even when there aren't any deps.
@@ -1814,9 +1805,9 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 			name: "primitive types",
 			input: resource.PropertyMap{
 				"nil":    resource.NewNullProperty(),
-				"bool":   resource.NewBoolProperty(true),
-				"number": resource.NewNumberProperty(42),
-				"string": resource.NewStringProperty("hello"),
+				"bool":   resource.NewProperty(true),
+				"number": resource.NewProperty(42.0),
+				"string": resource.NewProperty("hello"),
 			},
 			expected: Map{
 				"nil":    nil,
@@ -1828,11 +1819,11 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		{
 			name: "array",
 			input: resource.PropertyMap{
-				"array": resource.NewArrayProperty([]resource.PropertyValue{
+				"array": resource.NewProperty([]resource.PropertyValue{
 					resource.NewNullProperty(),
-					resource.NewBoolProperty(true),
-					resource.NewNumberProperty(42),
-					resource.NewStringProperty("hello"),
+					resource.NewProperty(true),
+					resource.NewProperty(42.0),
+					resource.NewProperty("hello"),
 				}),
 			},
 			expected: Map{
@@ -1847,11 +1838,11 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		{
 			name: "object",
 			input: resource.PropertyMap{
-				"object": resource.NewObjectProperty(resource.PropertyMap{
+				"object": resource.NewProperty(resource.PropertyMap{
 					"nil":    resource.NewNullProperty(),
-					"bool":   resource.NewBoolProperty(true),
-					"number": resource.NewNumberProperty(42),
-					"string": resource.NewStringProperty("hello"),
+					"bool":   resource.NewProperty(true),
+					"number": resource.NewProperty(42.0),
+					"string": resource.NewProperty("hello"),
 				}),
 			},
 			expected: Map{
@@ -1866,7 +1857,6 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1874,7 +1864,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 			require.NoError(t, err)
 
 			actual, err := unmarshalPropertyMap(ctx, c.input)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, c.expected, actual)
 		})
 	}
@@ -1886,12 +1876,12 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
-			"computed": resource.NewComputedProperty(resource.Computed{}),
-			"unknown":  resource.MakeComputed(resource.NewStringProperty("")),
+			"computed": resource.NewProperty(resource.Computed{}),
+			"unknown":  resource.MakeComputed(resource.NewProperty("")),
 		})
 		require.NoError(t, err)
 
-		assert.Len(t, actual, 2)
+		require.Len(t, actual, 2)
 		_, known, secret, _, err := awaitWithContext(ctx.Context(), actual["computed"].(AnyOutput))
 		require.NoError(t, err)
 		assert.False(t, known)
@@ -1910,12 +1900,12 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
-			"secret":  resource.MakeSecret(resource.NewStringProperty("secret string")),
-			"unknown": resource.MakeSecret(resource.MakeComputed(resource.NewStringProperty(""))),
+			"secret":  resource.MakeSecret(resource.NewProperty("secret string")),
+			"unknown": resource.MakeSecret(resource.MakeComputed(resource.NewProperty(""))),
 		})
 		require.NoError(t, err)
 
-		assert.Len(t, actual, 2)
+		require.Len(t, actual, 2)
 		value, known, secret, _, err := awaitWithContext(ctx.Context(), actual["secret"].(StringOutput))
 		require.NoError(t, err)
 		assert.Equal(t, "secret string", value.(string))
@@ -1937,28 +1927,28 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		dependencies := []resource.URN{"urn:pulumi:test_stack::test_project::pkg:index:type::name"}
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
-			"standard": resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("a string"),
+			"standard": resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("a string"),
 				Known:        true,
 				Secret:       false,
 				Dependencies: dependencies,
 			}),
-			"secret": resource.NewOutputProperty(resource.Output{
-				Element:      resource.NewStringProperty("secret string"),
+			"secret": resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("secret string"),
 				Known:        true,
 				Secret:       true,
 				Dependencies: dependencies,
 			}),
-			"unknown": resource.NewOutputProperty(resource.Output{
+			"unknown": resource.NewProperty(resource.Output{
 				Dependencies: dependencies,
 			}),
-			"secret unknown": resource.NewOutputProperty(resource.Output{
+			"secret unknown": resource.NewProperty(resource.Output{
 				Dependencies: dependencies,
 				Secret:       true,
 			}),
-			"nested": resource.NewOutputProperty(resource.Output{
-				Element: resource.NewOutputProperty(resource.Output{
-					Element: resource.NewNumberProperty(42),
+			"nested": resource.NewProperty(resource.Output{
+				Element: resource.NewProperty(resource.Output{
+					Element: resource.NewProperty(42.0),
 					Known:   true,
 					Secret:  true,
 				}),
@@ -1969,7 +1959,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		require.NoError(t, err)
 
 		assertDeps := func(actual []Resource) {
-			assert.Len(t, actual, 1)
+			require.Len(t, actual, 1)
 
 			value, known, _, _, err := awaitWithContext(ctx.Context(), actual[0].URN())
 			require.NoError(t, err)
@@ -1977,7 +1967,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 			assert.Equal(t, URN("urn:pulumi:test_stack::test_project::pkg:index:type::name"), value.(URN))
 		}
 
-		assert.Len(t, actual, 5)
+		require.Len(t, actual, 5)
 		value, known, secret, deps, err := awaitWithContext(ctx.Context(), actual["standard"].(StringOutput))
 		require.NoError(t, err)
 		assert.Equal(t, "a string", value.(string))
@@ -2019,13 +2009,13 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
-			"unknown id": resource.NewResourceReferenceProperty(resource.ResourceReference{
+			"unknown id": resource.NewProperty(resource.ResourceReference{
 				URN: "urn:pulumi:test_stack::test_project::pkg:index:type::name",
 			}),
 		})
 		require.NoError(t, err)
 
-		assert.Len(t, actual, 1)
+		require.Len(t, actual, 1)
 		value, known, secret, _, err := awaitWithContext(ctx.Context(), actual["unknown id"].(ResourceOutput))
 		require.NoError(t, err)
 		assert.True(t, known)
@@ -2057,7 +2047,7 @@ func TestResourceReferenceDependencies(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	custom1URN := URN(resource.NewURN("stack", "project", "", "test:index:custom", "custom1"))
 	custom2URN := URN(resource.NewURN("stack", "project", "", "test:index:custom", "custom2"))
@@ -2083,13 +2073,12 @@ func TestResourceReferenceDependencies(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprintf("exclude=%v", tt.exclude), func(t *testing.T) {
 			t.Parallel()
 			_, pdeps, deps, err := marshalInputsOptions(props, &marshalOptions{
 				ExcludeResourceRefsFromDeps: tt.exclude,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.ElementsMatch(t, tt.expected, pdeps["resources"])
 			assert.ElementsMatch(t, tt.expected, deps)
 		})

@@ -74,7 +74,7 @@ func TestPclConvert(t *testing.T) {
 
 	// Check that we made one file
 	pclBytes, err := os.ReadFile(filepath.Join(tmp, "main.pp"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// On Windows, we need to replace \r\n with \n to match the expected string below
 	pclCode := string(pclBytes)
 	if runtime.GOOS == "windows" {
@@ -114,11 +114,11 @@ func TestProjectNameDefaults(t *testing.T) {
 		true, /*strict*/
 		"",   /*name*/
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert.
 	yamlBytes, err := os.ReadFile(filepath.Join(outDir, "Pulumi.yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, string(yamlBytes), "name: pcl_testdata")
 }
 
@@ -148,10 +148,10 @@ func TestProjectNameOverrides(t *testing.T) {
 		true, /*strict*/
 		name,
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert.
 	yamlBytes, err := os.ReadFile(filepath.Join(outDir, "Pulumi.yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, string(yamlBytes), "name: "+name)
 }

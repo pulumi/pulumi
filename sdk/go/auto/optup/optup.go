@@ -73,6 +73,20 @@ func TargetDependents() Option {
 	})
 }
 
+// Exclude specifies an exclusive list of resource URNs to ignore
+func Exclude(urns []string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Exclude = urns
+	})
+}
+
+// ExcludeDependents allows ignoring of dependent targets discovered but not specified in the Exclude list
+func ExcludeDependents() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ExcludeDependents = true
+	})
+}
+
 // ProgressStreams allows specifying one or more io.Writers to redirect incremental update stdout
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
@@ -171,6 +185,27 @@ func ConfigFile(path string) Option {
 	})
 }
 
+// RunProgram runs the program in the workspace to perform the refresh.
+func RunProgram(f bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.RunProgram = &f
+	})
+}
+
+// PolicyPacks specifies one or more policy packs to run as part of this update
+func PolicyPacks(packs ...string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.PolicyPacks = packs
+	})
+}
+
+// PolicyPackConfigs specifies one or more paths to JSON files containing the config for the policy pack
+func PolicyPackConfigs(paths ...string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.PolicyPackConfigs = paths
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Up() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -195,6 +230,10 @@ type Options struct {
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
+	// Specify an exclusive of resource URNs to ignore
+	Exclude []string
+	// Allows ignoring of dependent targets discovered but not specified in the Exclude list
+	ExcludeDependents bool
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update stdout
@@ -227,6 +266,8 @@ type Options struct {
 	AttachDebugger bool
 	// Run using the configuration values in the specified file rather than detecting the file name
 	ConfigFile string
+	// When set to true, run the program in the workspace to perform the refresh.
+	RunProgram *bool
 }
 
 type optionFunc func(*Options)

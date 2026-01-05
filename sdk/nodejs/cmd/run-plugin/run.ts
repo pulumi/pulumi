@@ -177,7 +177,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
             skipProject: skipProject,
             compiler: typescriptRequire,
             compilerOptions: {
-                target: "es6",
+                target: "ES2020", // TypeScript 3.8 supports this
                 module: "commonjs",
                 moduleResolution: "node",
                 sourceMap: "true",
@@ -285,7 +285,12 @@ ${errMsg}`,
                 const packStr = fs.readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
                 const packageJSON = JSON.parse(packStr);
                 const matches = packageJSON.name.match(/(@.*?\/)?(.+)/);
-                const providerName = matches[2];
+                const providerName = matches[2].replace(/[^-a-zA-Z0-9_]/g, "-");
+                if (!/^[a-zA-Z]/.test(providerName)) {
+                    throw new Error(
+                        `Invalid provider name '${providerName}' in package.json. Provider names must start with a letter.`,
+                    );
+                }
                 let namespace = undefined;
                 if (matches[1]) {
                     namespace = matches[1].substring(1, matches[1].length - 1);

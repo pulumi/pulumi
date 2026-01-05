@@ -61,7 +61,7 @@ func identToken(token syntax.Token, ident string) syntax.Token {
 	return token
 }
 
-func exprHasLeadingTrivia(parens syntax.Parentheses, first interface{}) bool {
+func exprHasLeadingTrivia(parens syntax.Parentheses, first any) bool {
 	if parens.Any() {
 		return true
 	}
@@ -76,7 +76,7 @@ func exprHasLeadingTrivia(parens syntax.Parentheses, first interface{}) bool {
 	}
 }
 
-func exprHasTrailingTrivia(parens syntax.Parentheses, last interface{}) bool {
+func exprHasTrailingTrivia(parens syntax.Parentheses, last any) bool {
 	if parens.Any() {
 		return true
 	}
@@ -91,7 +91,7 @@ func exprHasTrailingTrivia(parens syntax.Parentheses, last interface{}) bool {
 	}
 }
 
-func getExprLeadingTrivia(parens syntax.Parentheses, first interface{}) syntax.TriviaList {
+func getExprLeadingTrivia(parens syntax.Parentheses, first any) syntax.TriviaList {
 	if parens.Any() {
 		return parens.GetLeadingTrivia()
 	}
@@ -104,7 +104,7 @@ func getExprLeadingTrivia(parens syntax.Parentheses, first interface{}) syntax.T
 	return nil
 }
 
-func setExprLeadingTrivia(parens syntax.Parentheses, first interface{}, trivia syntax.TriviaList) {
+func setExprLeadingTrivia(parens syntax.Parentheses, first any, trivia syntax.TriviaList) {
 	if parens.Any() {
 		parens.SetLeadingTrivia(trivia)
 		return
@@ -117,7 +117,7 @@ func setExprLeadingTrivia(parens syntax.Parentheses, first interface{}, trivia s
 	}
 }
 
-func getExprTrailingTrivia(parens syntax.Parentheses, last interface{}) syntax.TriviaList {
+func getExprTrailingTrivia(parens syntax.Parentheses, last any) syntax.TriviaList {
 	if parens.Any() {
 		return parens.GetTrailingTrivia()
 	}
@@ -130,7 +130,7 @@ func getExprTrailingTrivia(parens syntax.Parentheses, last interface{}) syntax.T
 	return nil
 }
 
-func setExprTrailingTrivia(parens syntax.Parentheses, last interface{}, trivia syntax.TriviaList) {
+func setExprTrailingTrivia(parens syntax.Parentheses, last any, trivia syntax.TriviaList) {
 	if parens.Any() {
 		parens.SetTrailingTrivia(trivia)
 		return
@@ -1050,17 +1050,30 @@ func (x *FunctionCallExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 	typecheckDiags := typecheckArgs(rng, x.Signature, x.Args...)
 	diagnostics = append(diagnostics, typecheckDiags...)
 
-	// TODO(https://github.com/pulumi/pulumi/issues/8439): This lifting is overly aggressive, we special case this for
-	// pulumiResourceName and pulumiResourceType as they should return a plain string even with an output input. But
-	// this should be covered more generally, only lifting when needed.
-	//
-	// Unless the function is already automatically using an Output-returning version, modify the signature to account
-	// for automatic lifting to Promise or Output.
-	if x.Name != "pulumiResourceName" && x.Name != "pulumiResourceType" {
-		_, isOutput := x.Signature.ReturnType.(*OutputType)
-		if !isOutput {
-			x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
+	// If any of the inputs are Output<T> but the function only expects T then we need to lift the function into output
+	// space.
+	lift := false
+	for i, arg := range x.Args {
+		var param Parameter
+		if i >= len(x.Signature.Parameters) {
+			if x.Signature.VarargsParameter == nil {
+				// If we get here we must have already generated an error diagnostic above, just break out the loop at
+				// this point.
+				break
+			}
+			param = *x.Signature.VarargsParameter
+		} else {
+			param = x.Signature.Parameters[i]
 		}
+
+		if !param.Type.AssignableFrom(arg.Type()) {
+			lift = true
+			break
+		}
+	}
+
+	if lift {
+		x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
 	}
 
 	return diagnostics
@@ -1387,8 +1400,8 @@ func (x *LiteralValueExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 		typ = ctyTypeToType(x.Value.Type(), false)
 	}
 
-	switch {
-	case typ == NoneType || typ == StringType || typ == IntType || typ == NumberType || typ == BoolType:
+	switch typ {
+	case NoneType, StringType, IntType, NumberType, BoolType:
 		// OK
 		typ = NewConstType(typ, x.Value)
 	default:
@@ -1564,7 +1577,18 @@ func (x *ObjectConsExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics
 		elementType, _ := UnifyTypes(types...)
 		typ = NewMapType(elementType)
 	} else {
-		typ = NewObjectType(properties)
+		// If x was previously typed as an object, and the object has annotations,
+		// Typecheck should preserve these annotations.
+		//
+		// This is necessary to make it safe to call
+		// x.Typecheck(typecheckOperands) on already typed objects without loosing
+		// information.
+		var annotations []any
+		if typ, ok := x.exprType.(*ObjectType); ok {
+			annotations = typ.Annotations
+		}
+
+		typ = NewObjectType(properties, annotations...)
 	}
 
 	x.exprType = liftOperationType(typ, keys...)

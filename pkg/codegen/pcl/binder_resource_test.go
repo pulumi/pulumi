@@ -37,10 +37,22 @@ func TestBindResourceOptions(t *testing.T) {
 		Name: "foo",
 		Provider: &schema.Resource{
 			Token: "foo:index:Foo",
+			InputProperties: []*schema.Property{
+				{Name: "property", Type: schema.StringType},
+			},
+			Properties: []*schema.Property{
+				{Name: "property", Type: schema.StringType},
+			},
 		},
 		Resources: []*schema.Resource{
 			{
 				Token: "foo:index:Foo",
+				InputProperties: []*schema.Property{
+					{Name: "property", Type: schema.StringType},
+				},
+				Properties: []*schema.Property{
+					{Name: "property", Type: schema.StringType},
+				},
 			},
 		},
 	}
@@ -75,15 +87,35 @@ func TestBindResourceOptions(t *testing.T) {
 			src:  `pluginDownloadURL = "https://example.com/whatever"`,
 			want: cty.StringVal("https://example.com/whatever"),
 		},
+		{
+			name: "ImportID",
+			src:  `import = "abc123"`,
+			want: cty.StringVal("abc123"),
+		},
+		{
+			name: "IgnoreChanges",
+			src:  `ignoreChanges = [property]`,
+			want: cty.TupleVal([]cty.Value{cty.DynamicVal}),
+		},
+		{
+			name: "HideDiffs",
+			src:  `hideDiffs = [property]`,
+			want: cty.TupleVal([]cty.Value{cty.DynamicVal}),
+		},
+		{
+			name: "DeletedWith",
+			src:  `deletedWith = "abc123"`,
+			want: cty.StringVal("abc123"),
+		},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			var sb strings.Builder
 			fmt.Fprintln(&sb, `resource foo "foo:index:Foo" {`)
+			fmt.Fprintln(&sb, "	property = \"42\"")
 			fmt.Fprintln(&sb, "	options {")
 			fmt.Fprintln(&sb, "		"+tt.src)
 			fmt.Fprintln(&sb, "	}")

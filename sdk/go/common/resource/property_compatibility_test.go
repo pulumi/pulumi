@@ -18,9 +18,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pTest "github.com/pulumi/pulumi/sdk/v3/go/property/testing"
 )
 
@@ -41,4 +45,65 @@ func TestRoundTripConvert(t *testing.T) {
 
 		assert.True(t, source.Equals(roundTripped))
 	})
+}
+
+func testRoundTripThroughGRPC(t require.TestingT, v property.Value) {
+	rm := resource.ToResourcePropertyValue(v)
+
+	marshalOpts := plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepOutputValues: true,
+	}
+
+	mm, err := plugin.MarshalPropertyValue("", rm, marshalOpts)
+	require.NoError(t, err)
+
+	nrm, err := plugin.UnmarshalPropertyValue("", mm, marshalOpts)
+	require.NoError(t, err)
+
+	// Inexplicably, some [resource.PropertyValue]s do not survive round-tripping. We
+	// see the computed empty string in rm turn into a computed nil value in
+	// nrm. These are semantically equivalent (since they are behind a
+	// [resource.Computed]), but they should round trip correctly.
+	//
+	// You can check if this comment still applies by adding an:
+	//
+	//	assert.NotEqual(t, rm, nrm)
+	//
+	// If that check fails, this comment no longer applies and can be removed.
+
+	nm := resource.FromResourcePropertyValue(*nrm)
+
+	assert.Equal(t, v, nm, "Assert that m survived a full round trip through gRPC's representation")
+}
+
+func TestConversionThroughGRPCRapid(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		source := pTest.Value(10).Draw(t, "round-trip value")
+		testRoundTripThroughGRPC(t, source)
+	})
+}
+
+func TestConversionThroughGRPC(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		value property.Value
+	}{
+		{"known", property.New("v1")},
+		{"unknown-output", property.New(property.Computed).WithSecret(true)},
+		{"known-output", property.New(1.2).WithDependencies([]urn.URN{"urn1", "urn2"})},
+		{"unknown", property.New(property.Computed)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			testRoundTripThroughGRPC(t, tt.value)
+		})
+	}
 }

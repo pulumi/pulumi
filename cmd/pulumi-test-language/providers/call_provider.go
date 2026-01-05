@@ -23,12 +23,11 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -55,9 +54,9 @@ func (p *CallProvider) Pkg() tokens.Package {
 	return "call"
 }
 
-func (p *CallProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *CallProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	version := semver.MustParse("15.7.9")
-	info := workspace.PluginInfo{Version: &version}
+	info := plugin.PluginInfo{Version: &version}
 	return info, nil
 }
 
@@ -122,6 +121,51 @@ func (p *CallProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plug
 				"value": primitiveType("string"),
 			},
 		),
+	}
+	pkg.Functions["pulumi:providers:call/identity"] = schema.FunctionSpec{
+		Description: "The `identity` method of the `call` package's provider. " +
+			"Returns the provider's `value` configuration unaltered.",
+		Inputs: &schema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]schema.PropertySpec{
+				"__self__": refType("#/resources/pulumi:providers:call"),
+			},
+			Required: []string{"__self__"},
+		},
+		ReturnType: &schema.ReturnTypeSpec{
+			ObjectTypeSpec: &schema.ObjectTypeSpec{
+				Type: "object",
+				Properties: map[string]schema.PropertySpec{
+					"result": primitiveType("string"),
+				},
+				Required: []string{"result"},
+			},
+		},
+	}
+	pkg.Functions["pulumi:providers:call/prefixed"] = schema.FunctionSpec{
+		Description: "The `prefixed` method of the `call` package's provider. " +
+			"Accepts a string and returns the provider's `value` configuration prefixed with that string.",
+		Inputs: &schema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]schema.PropertySpec{
+				"__self__": refType("#/resources/pulumi:providers:call"),
+				"prefix":   primitiveType("string"),
+			},
+			Required: []string{"__self__", "prefix"},
+		},
+		ReturnType: &schema.ReturnTypeSpec{
+			ObjectTypeSpec: &schema.ObjectTypeSpec{
+				Type: "object",
+				Properties: map[string]schema.PropertySpec{
+					"result": primitiveType("string"),
+				},
+				Required: []string{"result"},
+			},
+		},
+	}
+	pkg.Provider.Methods = map[string]string{
+		"identity": "pulumi:providers:call/identity",
+		"prefixed": "pulumi:providers:call/prefixed",
 	}
 
 	custom := customResource(
@@ -296,8 +340,13 @@ func (p *CallProvider) Call(
 	defer conn.Close()
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
-	if req.Tok == "call:index:Custom/providerValue" {
+	switch req.Tok {
+	case "call:index:Custom/providerValue":
 		return p.callCustomProviderValue(ctx, req, monitor)
+	case "pulumi:providers:call/identity":
+		return p.callProviderIdentity(ctx, req, monitor)
+	case "pulumi:providers:call/prefixed":
+		return p.callProviderPrefixed(ctx, req, monitor)
 	}
 
 	return plugin.CallResponse{}, fmt.Errorf("unknown function %v", req.Tok)
@@ -349,7 +398,80 @@ func (p *CallProvider) callCustomProviderValue(
 	result := provValue.GetStringValue() + resValue.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
+			"result": result,
+		}),
+	}, nil
+}
+
+func (p *CallProvider) callProviderIdentity(
+	ctx context.Context,
+	req plugin.CallRequest,
+	monitor pulumirpc.ResourceMonitorClient,
+) (plugin.CallResponse, error) {
+	selfRef := req.Args["__self__"].ResourceReferenceValue()
+
+	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
+		Tok: "pulumi:pulumi:getResource",
+		Args: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"urn": structpb.NewStringValue(string(selfRef.URN)),
+			},
+		},
+		AcceptResources: true,
+	})
+	if err != nil {
+		return plugin.CallResponse{}, fmt.Errorf("hydrating __self__ resource reference: %w", err)
+	}
+
+	value := selfRes.Return.Fields["state"].GetStructValue().Fields["value"]
+	result := value.GetStringValue()
+
+	return plugin.CallResponse{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
+			"result": result,
+		}),
+	}, nil
+}
+
+func (p *CallProvider) callProviderPrefixed(
+	ctx context.Context,
+	req plugin.CallRequest,
+	monitor pulumirpc.ResourceMonitorClient,
+) (plugin.CallResponse, error) {
+	prefix, ok := req.Args["prefix"]
+	if !ok {
+		return plugin.CallResponse{
+			Failures: makeCheckFailure("prefix", "missing prefix"),
+		}, nil
+	}
+
+	if !prefix.IsString() {
+		return plugin.CallResponse{
+			Failures: makeCheckFailure("prefix", "prefix is not a string"),
+		}, nil
+	}
+
+	selfRef := req.Args["__self__"].ResourceReferenceValue()
+
+	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
+		Tok: "pulumi:pulumi:getResource",
+		Args: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"urn": structpb.NewStringValue(string(selfRef.URN)),
+			},
+		},
+		AcceptResources: true,
+	})
+	if err != nil {
+		return plugin.CallResponse{}, fmt.Errorf("hydrating __self__ resource reference: %w", err)
+	}
+
+	value := selfRes.Return.Fields["state"].GetStructValue().Fields["value"]
+	result := prefix.StringValue() + value.GetStringValue()
+
+	return plugin.CallResponse{
+		Return: resource.NewPropertyMapFromMap(map[string]any{
 			"result": result,
 		}),
 	}, nil
