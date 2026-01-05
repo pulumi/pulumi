@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -245,6 +245,12 @@ func writeSnapshotTestFunction(
 					g.writeBlock(
 						"UpdateOptions: engine.UpdateOptions{",
 						func(g *generator) {
+							if planSpec.Refresh {
+								g.writeLine("Refresh: true,")
+							}
+							if planSpec.RefreshProgram {
+								g.writeLine("RefreshProgram: true,")
+							}
 							if len(planSpec.TargetURNs) > 0 {
 								g.writeBlock(
 									"Targets: deploy.NewUrnTargets([]string{",
@@ -403,6 +409,12 @@ func writeFrameworkTestFunction(
 					g.writeBlock(
 						"UpdateOptions: engine.UpdateOptions{",
 						func(g *generator) {
+							if planSpec.Refresh {
+								g.writeLine("Refresh: true,")
+							}
+							if planSpec.RefreshProgram {
+								g.writeLine("RefreshProgram: true,")
+							}
 							if len(planSpec.TargetURNs) > 0 {
 								g.writeBlock(
 									"Targets: deploy.NewUrnTargets([]string{",
