@@ -184,7 +184,7 @@ jobs:
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
             --partition-module sdk/nodejs/cmd/pulumi-language-nodejs 1 \
-            --partition-module sdk/python/cmd/pulumi-language-python 1 \
+            --partition-package github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python sdk/python/cmd/pulumi-language-python 4 \
             --partition-module tests 2 \
             --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
             --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
