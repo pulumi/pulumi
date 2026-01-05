@@ -37,6 +37,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeTargetedAliasDestroyV2,
 		// TODO[pulumi/pulumi#21347]
 		ExcludeTargetedChildWithNewParentDestroyV2,
+		// TODO[pulumi/pulumi#21364]
+		ExcludeTargetedResourceWithAliasedParentDestroyV2,
 	}
 }
 
@@ -167,6 +169,58 @@ func ExcludeProtectedResourceWithDuplicateProviderDestroyV2(
 		_, ok := providersByURN[providerURN]
 		if ok {
 			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeTargetedResourceWithAliasedParentDestroyV2 excludes snapshots where a resource is
+// targeted for deletion and its parent has been aliased to change parent relationships.
+// This causes a panic: "parent not found in urnIndex".
+func ExcludeTargetedResourceWithAliasedParentDestroyV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	snapParents := make(map[resource.URN]resource.URN)
+	for _, res := range snap.Resources {
+		snapParents[res.URN()] = res.Parent
+	}
+
+	progParents := make(map[resource.URN]resource.URN)
+	aliasMap := make(map[resource.URN]resource.URN)
+	for _, res := range prog.ResourceRegistrations {
+		progParents[res.URN()] = res.Parent
+		for _, alias := range res.Aliases {
+			aliasMap[alias] = res.URN()
+		}
+	}
+
+	targetURNs := make(map[resource.URN]bool)
+	for _, urn := range plan.TargetURNs {
+		targetURNs[urn] = true
+	}
+
+	for _, res := range snap.Resources {
+		if !targetURNs[res.URN()] {
+			continue
+		}
+
+		parentURN := res.Parent
+		if parentURN == "" {
+			continue
+		}
+
+		if newParentURN, hasAlias := aliasMap[parentURN]; hasAlias {
+			if snapParents[parentURN] != progParents[newParentURN] {
+				return true
+			}
 		}
 	}
 
