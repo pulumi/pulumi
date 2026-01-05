@@ -976,6 +976,96 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 	require.Len(t, snap.Resources, 0)
 }
 
+func TestTargetedAliasDestroyV2(t *testing.T) {
+	t.Parallel()
+
+	// TODO[https://github.com/pulumi/pulumi/issues/21281]: Fix snapshot integrity issue
+	t.Skip("Skipping due to snapshot integrity issue")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
+			Custom: true,
+			ID:     "id-prov",
+		}
+		s.Resources = append(s.Resources, prov)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		comp := &resource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::compA",
+			Custom:   false,
+			Delete:   true,
+			Provider: provRef.String(),
+		}
+		s.Resources = append(s.Resources, comp)
+
+		res := &resource.State{
+			Type:     "pkgA:m:typB",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA$pkgA:m:typB::resA",
+			Custom:   true,
+			ID:       "id-res",
+			Provider: provRef.String(),
+			Parent:   comp.URN,
+		}
+		s.Resources = append(s.Resources, res)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+			AliasURNs: []resource.URN{
+				"urn:pulumi:test-stack::test-project::pkgA:m:typA$pkgA:m:typB::resA",
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test-stack::test-project::pkgA:m:typA::compA",
+				"urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
+			}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.DestroyV2).
+		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
 func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 	t.Parallel()
 
