@@ -151,7 +151,7 @@ def pulumi_test(coro):
     return wrapper
 
 
-class NextSerializationTests(unittest.TestCase):
+class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_list(self):
         test_list = [1, 2, 3]
