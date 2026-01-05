@@ -239,7 +239,9 @@ type NewState struct {
 	// If set, the URN of the resource this resource is a view of.
 	ViewOf URN // required
 
-	// The resource hooks attached to the resource, by type.
+	// The resource hooks attached to the resource, by type
+	// For lifecycle hooks, multiple hooks per type are allowed.
+	// For error hooks, only one hook per type is allowed (first in the slice).
 	ResourceHooks map[HookType][]string // required
 }
 

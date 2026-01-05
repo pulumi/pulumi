@@ -1103,12 +1103,18 @@ message ConstructRequest {
     bool accepts_output_values = 25;
 
     message ResourceHooksBinding {
+        // Lifecycle hooks
         repeated string before_create = 1;
         repeated string after_create = 2;
         repeated string before_update = 3;
         repeated string after_update = 4;
         repeated string before_delete = 5;
         repeated string after_delete = 6;
+
+        // Error hooks (single hook per type)
+        optional string on_error_create = 7;
+        optional string on_error_update = 8;
+        optional string on_error_delete = 9;
     }
     optional ResourceHooksBinding resource_hooks = 26;
 
