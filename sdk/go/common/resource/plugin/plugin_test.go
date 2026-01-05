@@ -379,6 +379,17 @@ func TestCheckVersionRange(t *testing.T) {
 			cliVersion:         "",
 			pulumiVersionRange: "1.2.3",
 		},
+		{
+			name:               "cli dev version ok",
+			cliVersion:         "3.215.0-alpha.x75fc436",
+			pulumiVersionRange: ">=3.214.0",
+		},
+		{
+			name:               "cli dev version bad",
+			cliVersion:         "3.215.0-alpha.x75fc436",
+			pulumiVersionRange: ">=3.215.0",
+			expectedError:      "CLI version 3.215.0-alpha.x75fc436 does not satisfy the version range \">=3.215.0\" requested by the provider test.",
+		},
 	}
 
 	for _, tt := range tests {
