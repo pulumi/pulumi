@@ -34,7 +34,9 @@ import (
 
 var _ packageinstallation.Context = invariantWorkspace{}
 
-func newInvariantWorkspace(t *testing.T, workDirs, plainBinaryPaths []string, plugins []invariantPlugin) *invariantWorkspace {
+func newInvariantWorkspace(
+	t *testing.T, workDirs, plainBinaryPaths []string, plugins []invariantPlugin,
+) *invariantWorkspace {
 	pluginMap := make(map[string]*invariantPlugin, len(plugins))
 	for _, v := range plugins {
 		p := filepath.ToSlash(filepath.Join("$HOME", ".pulumi", "plugins", v.d.Dir(), v.d.SubDir()))
@@ -231,7 +233,8 @@ func (w invariantWorkspace) DownloadPlugin(
 	p := filepath.ToSlash(filepath.Join("$HOME", ".pulumi", "plugins", plugin.Dir(), plugin.SubDir()))
 	pl, ok := w.plugins[p]
 	if !ok {
-		assert.Failf(w.t, "DownloadPlugin: Unknown plugin", "could not find %q in %#v", p, slices.Collect(maps.Keys(w.plugins)))
+		assert.Failf(w.t, "DownloadPlugin: Unknown plugin",
+			"could not find %q in %#v", p, slices.Collect(maps.Keys(w.plugins)))
 		return "", nil, assert.AnError
 	}
 	pl.downloaded = true
@@ -270,7 +273,8 @@ func (w invariantWorkspace) LinkPackage(
 	} else if workDir, ok := w.downloadedWorkspace[projectDir]; ok {
 		links = &workDir.linked
 	} else {
-		assert.Failf(w.t, "LinkPackage: Unknown plugin", "could not find %q in %#v", pluginPath, slices.Collect(maps.Keys(w.plugins)))
+		assert.Failf(w.t, "LinkPackage: Unknown plugin", "could not find %q in %#v",
+			pluginPath, slices.Collect(maps.Keys(w.plugins)))
 		return assert.AnError
 	}
 
@@ -313,7 +317,8 @@ func (w invariantWorkspace) RunPackage(
 	}
 	pl, ok := w.plugins[pluginPath]
 	if !ok {
-		assert.Failf(w.t, "RunPackage: Unknown plugin", "could not find %q in %#v", pluginPath, slices.Collect(maps.Keys(w.plugins)))
+		assert.Failf(w.t, "RunPackage: Unknown plugin", "could not find %q in %#v",
+			pluginPath, slices.Collect(maps.Keys(w.plugins)))
 		return nil, assert.AnError
 	}
 	if !pl.installed && pl.project != nil {
