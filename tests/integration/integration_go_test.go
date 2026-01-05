@@ -17,7 +17,6 @@ package ints
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1022,10 +1021,6 @@ func TestConstructResourceOptionsGo(t *testing.T) {
 func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	t.Parallel()
 
-	// Context scoped to the lifetime of the test.
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("go", "regress-13301"))
@@ -1066,7 +1061,7 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 		"PULUMI_DEBUG_GRPC="+grpcLog)
 	e.RunCommand("pulumi", "plugin", "install")
 
-	ws, err := auto.NewLocalWorkspace(ctx,
+	ws, err := auto.NewLocalWorkspace(t.Context(),
 		auto.Project(workspace.Project{
 			Name:    "issue-13301",
 			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
@@ -1092,10 +1087,10 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 		return nil
 	})
 
-	stack, err := auto.UpsertStack(ctx, "foo", ws)
+	stack, err := auto.UpsertStack(t.Context(), "foo", ws)
 	require.NoError(t, err)
 
-	_, err = stack.Preview(ctx)
+	_, err = stack.Preview(t.Context())
 	require.NoError(t, err)
 }
 
