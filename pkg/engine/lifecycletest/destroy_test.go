@@ -1176,3 +1176,81 @@ func TestDestroyWithProgramProtectedResourceWithProvider(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, initialSnap), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 }
+
+func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21347]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, see pulumi/pulumi#21347")
+
+	initialSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pulumi:providers:pkgA",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
+				Custom: true,
+				ID:     "prov",
+			},
+			{
+				Type:     "pkgA:m:typA",
+				URN:      "urn:pulumi:test::test::pkgA:m:typA::future-parent",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::prov",
+			},
+			{
+				Type:   "pulumi:providers:pkgB",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgB::future-child",
+				Custom: true,
+				ID:     "prov",
+			},
+		},
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov0, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		prov0Ref, err := providers.NewReference(prov0.URN, prov0.ID)
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkgA:m:typA", "future-parent", false, deploytest.ResourceOptions{
+			RetainOnDelete: ptr(true),
+			Provider:       prov0Ref.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pulumi:providers:pkgB", "future-child", true, deploytest.ResourceOptions{
+			Parent: res1.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::future-parent",
+			}),
+		},
+	}
+
+	p := &lt.TestPlan{
+		Options: opts,
+	}
+
+	_, err := lt.TestOp(DestroyV2).RunStep(
+		p.GetProject(), p.GetTarget(t, initialSnap), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
