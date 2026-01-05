@@ -172,17 +172,15 @@ func TestGetDiffInfo_FiltersInternalProperties(t *testing.T) {
 			result := getDiffInfo(step, apitype.UpdateUpdate)
 
 			if tt.expectDiff {
-				require.NotEmpty(t, result, "expected diff output but got none")
+				require.NotEmpty(t, result)
 			}
 
 			if tt.shouldMatch != "" {
-				require.Contains(t, result, tt.shouldMatch,
-					"expected diff to contain %q but got: %s", tt.shouldMatch, result)
+				require.Contains(t, result, tt.shouldMatch)
 			}
 
 			if tt.shouldNotMatch != "" {
-				require.NotContains(t, result, tt.shouldNotMatch,
-					"expected diff to NOT contain %q but got: %s", tt.shouldNotMatch, result)
+				require.NotContains(t, result, tt.shouldNotMatch)
 			}
 
 			// Verify that if there's a diff output, it doesn't contain any internal properties
