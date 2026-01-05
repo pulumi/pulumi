@@ -123,6 +123,10 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     pulumi_version_range: builtins.str
     """The CLI version range required for this provider to work correctly. If no version range is specified, the
     provider will be considered compatible with any CLI version.
+    The supported syntax for ranges is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example
+    ">=3.0.0", or "!3.1.2". Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning
+    greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
+    meaning less-than 3.4.0 or greater-than 3.8.0.
     """
     def __init__(
         self,
