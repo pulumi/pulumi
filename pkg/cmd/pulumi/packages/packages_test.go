@@ -36,7 +36,8 @@ import (
 
 func TestProviderFromSource(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO: Need to figure out the correct way to mock this, since packageinstallation doesn't trust host to find plugins")
+	t.Skip("TODO: Need to figure out the correct way to mock this," +
+		" since packageinstallation doesn't trust host to find plugins")
 
 	test := func(t *testing.T, yaml string, inputSource string) plugin.Provider {
 		t.Helper()
