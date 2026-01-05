@@ -43,10 +43,6 @@ func (b *bailError) Error() string {
 	return fmt.Sprintf("BAIL: %v", b.err)
 }
 
-func (b *bailError) Unwrap() error {
-	return b.err
-}
-
 // BailErrorf is a helper for BailError(fmt.Errorf(...)).
 func BailErrorf(format string, args ...any) error {
 	return BailError(fmt.Errorf(format, args...))
