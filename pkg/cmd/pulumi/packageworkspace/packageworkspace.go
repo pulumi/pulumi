@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	diagutils "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -49,19 +50,18 @@ type Options struct {
 //
 // The returned workspace must be closed after use.
 func New(
-	host plugin.Host, stdout, stderr io.Writer, sink, statusSink diag.Sink,
+	host plugin.Host, stdout, stderr io.Writer,
 	parentSPan opentracing.Span, options Options,
 ) Workspace {
-	return Workspace{packageresolution.DefaultWorkspace(), host, stdout, stderr, options, sink, statusSink, parentSPan}
+	return Workspace{packageresolution.DefaultWorkspace(), host, stdout, stderr, options, parentSPan}
 }
 
 type Workspace struct {
 	packageresolution.PluginWorkspace
-	host             plugin.Host
-	stdout, stderr   io.Writer
-	options          Options
-	sink, statusSink diag.Sink
-	parentSpan       opentracing.Span
+	host           plugin.Host
+	stdout, stderr io.Writer
+	options        Options
+	parentSpan     opentracing.Span
 }
 
 func (Workspace) GetPluginPath(ctx context.Context, spec workspace.PluginDescriptor) (string, error) {
@@ -134,13 +134,13 @@ func (w Workspace) DownloadPlugin(
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
 		// Log at info but to stderr so we don't pollute stdout for commands like `package get-schema`
-		w.statusSink.Infoerrf(&diag.Diag{Message: "Downloading provider: %s"}, pluginSpec.Name)
+		fmt.Fprintf(w.stderr, "Downloading provider: %s\n", pluginSpec.Name)
 		return stream
 	}
 
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
-		w.statusSink.Warningf(&diag.Diag{Message: "error downloading provider: %s\n" +
-			"Will retry in %v [%d/%d]"}, err, delay, attempt, limit)
+		fmt.Fprintf(w.stderr, "error downloading provider: %s\n"+
+			"Will retry in %v [%d/%d]", err, delay, attempt, limit)
 	}
 
 	logging.V(1).Infof("downloading provider %s", pluginSpec.Name)
@@ -313,7 +313,11 @@ func (w Workspace) servers(ctx context.Context, language string, dir string) (se
 		return servers{}, err
 	}
 
-	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, w.host, dir, dir, w.parentSpan)
+	d := diag.DefaultSink(w.stdout, w.stderr, diag.FormatOptions{
+		Color: diagutils.GetGlobalColorization(),
+	})
+
+	pctx := plugin.NewContextWithHost(ctx, d, d, w.host, dir, dir, w.parentSpan)
 	loader := schema.NewPluginLoader(pctx.Host)
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
@@ -378,7 +382,11 @@ func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, e
 func (w Workspace) runPackage(
 	ctx context.Context, rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
 ) (plugin.Provider, *plugin.ParameterizeResponse, error) {
-	pctx := plugin.NewContextWithHost(ctx, w.sink, w.statusSink, w.host, rootDir, rootDir, w.parentSpan)
+	d := diag.DefaultSink(w.stdout, w.stderr, diag.FormatOptions{
+		Color: diagutils.GetGlobalColorization(),
+	})
+
+	pctx := plugin.NewContextWithHost(ctx, d, d, w.host, rootDir, rootDir, w.parentSpan)
 	p, err := plugin.NewProviderFromPath(w.host, pctx, pkgName, pluginPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)

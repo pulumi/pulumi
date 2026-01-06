@@ -224,7 +224,7 @@ func installPackagesFromProject(
 	if err != nil {
 		return err
 	}
-	ws := packageworkspace.New(pctx.Host, stdout, stderr, d, d, nil, packageworkspace.Options{
+	ws := packageworkspace.New(pctx.Host, stdout, stderr, nil, packageworkspace.Options{
 		UseLanguageVersionTools: useLanguageVersionTools,
 	})
 	opts := packageinstallation.Options{
