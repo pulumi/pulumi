@@ -15,34 +15,33 @@
 import json
 import os
 import tempfile
-import time
 import threading
+import time
+from collections.abc import Callable, Mapping
 from concurrent import futures
-from enum import Enum
 from datetime import datetime
+from enum import Enum
 from typing import (
     Any,
     Optional,
     TypedDict,
 )
-from collections.abc import Callable
-from collections.abc import Mapping
+
 import grpc
+from google.protobuf import empty_pb2
 from semver import VersionInfo
 
-from ._cmd import CommandResult, OnOutput
-from ._config import ConfigValue, ConfigMap
-from .errors import StackNotFoundError, InvalidVersionError
-from .events import OpMap, EngineEvent, SummaryEvent
-from ._output import OutputMap
-from ._server import LanguageServer
-from ._workspace import Workspace, PulumiFn, Deployment
 from ..runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
-from ..runtime.proto import language_pb2_grpc
-from ..runtime.proto import events_pb2_grpc
-from google.protobuf import empty_pb2
+from ..runtime.proto import events_pb2_grpc, language_pb2_grpc
+from ._cmd import CommandResult, OnOutput
+from ._config import ConfigMap, ConfigValue
+from ._output import OutputMap
 from ._representable import _Representable
+from ._server import LanguageServer
 from ._tag import TagMap
+from ._workspace import Deployment, PulumiFn, Workspace
+from .errors import InvalidVersionError, StackNotFoundError
+from .events import EngineEvent, OpMap, SummaryEvent
 
 _DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -91,11 +90,7 @@ class UpdateSummary:
             secret = config_value["secret"]
             # If it is a secret, and we're not showing secrets, the value is excluded from the JSON results.
             # In that case, we'll just use the sentinal `[secret]` value. Otherwise, we expect to get a value.
-            value = (
-                config_value.get("value", "[secret]")
-                if secret
-                else config_value["value"]
-            )
+            value = config_value.get("value", "[secret]") if secret else config_value["value"]
             self.config[key] = ConfigValue(value=value, secret=secret)
 
     def __repr__(self):
@@ -156,18 +151,14 @@ class PreviewResult(BaseResult):
 
 
 class UpResult(BaseResult):
-    def __init__(
-        self, stdout: str, stderr: str, summary: UpdateSummary, outputs: OutputMap
-    ):
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary, outputs: OutputMap):
         super().__init__(stdout, stderr)
         self.outputs = outputs
         self.summary = summary
 
 
 class ImportResult(BaseResult):
-    def __init__(
-        self, stdout: str, stderr: str, summary: UpdateSummary, generated_code: str
-    ):
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary, generated_code: str):
         super().__init__(stdout, stderr)
         self.summary = summary
         self.generated_code = generated_code
@@ -311,9 +302,7 @@ class Stack:
         else:
             log_file, temp_dir = _create_log_file(command)
             stop_event = threading.Event()
-            log_watcher_thread = threading.Thread(
-                target=_watch_logs, args=(log_file, on_event, stop_event)
-            )
+            log_watcher_thread = threading.Thread(target=_watch_logs, args=(log_file, on_event, stop_event))
             log_watcher_thread.start()
             return (log_file, log_watcher_thread, stop_event, temp_dir, None)
 
@@ -413,9 +402,7 @@ class Stack:
                 options=_GRPC_CHANNEL_OPTIONS,
             )
             language_server = LanguageServer(program)
-            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
-                language_server, server
-            )
+            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(language_server, server)
 
             port = server.add_insecure_port(address="127.0.0.1:0")
             server.start()
@@ -434,8 +421,8 @@ class Stack:
         stop_event = None
         grpc_server = None
         if on_event:
-            log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = (
-                self._setup_event_log("up", on_event, self.workspace.pulumi_version)
+            log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
+                "up", on_event, self.workspace.pulumi_version
             )
             args.extend(["--event-log", log_file])
 
@@ -556,9 +543,7 @@ class Stack:
                 options=_GRPC_CHANNEL_OPTIONS,
             )
             language_server = LanguageServer(program)
-            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
-                language_server, server
-            )
+            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(language_server, server)
 
             port = server.add_insecure_port(address="127.0.0.1:0")
             server.start()
@@ -582,10 +567,8 @@ class Stack:
             if on_event:
                 on_event(event)
 
-        log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = (
-            self._setup_event_log(
-                "preview", on_event_callback, self.workspace.pulumi_version
-            )
+        log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
+            "preview", on_event_callback, self.workspace.pulumi_version
         )
         args.extend(["--event-log", log_file])
 
@@ -707,9 +690,7 @@ class Stack:
                 options=_GRPC_CHANNEL_OPTIONS,
             )
             language_server = LanguageServer(program)
-            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
-                language_server, server
-            )
+            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(language_server, server)
 
             port = server.add_insecure_port(address="127.0.0.1:0")
             server.start()
@@ -728,10 +709,8 @@ class Stack:
         temp_dir = None
         grpc_server = None
         if on_event:
-            log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = (
-                self._setup_event_log(
-                    "refresh", on_event, self.workspace.pulumi_version
-                )
+            log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
+                "refresh", on_event, self.workspace.pulumi_version
             )
             args.extend(["--event-log", log_file])
 
@@ -744,9 +723,7 @@ class Stack:
         # load the project file.
         summary = self.info(show_secrets and not self._remote)
         assert summary is not None
-        return RefreshResult(
-            stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
-        )
+        return RefreshResult(stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary)
 
     def preview_refresh(
         self,
@@ -824,10 +801,8 @@ class Stack:
             if on_event:
                 on_event(event)
 
-        log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = (
-            self._setup_event_log(
-                "preview-refresh", on_event_callback, self.workspace.pulumi_version
-            )
+        log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
+            "preview-refresh", on_event_callback, self.workspace.pulumi_version
         )
         args.extend(["--event-log", log_file])
 
@@ -880,9 +855,7 @@ class Stack:
         # Summary can be None, this case can happen if the stack was empty and had no history.
         summary = self.info(show_secrets and not self._remote)
 
-        return RenameResult(
-            stdout=rename_result.stdout, stderr=rename_result.stderr, summary=summary
-        )
+        return RenameResult(stdout=rename_result.stdout, stderr=rename_result.stderr, summary=summary)
 
     def destroy(
         self,
@@ -970,9 +943,7 @@ class Stack:
                 options=_GRPC_CHANNEL_OPTIONS,
             )
             language_server = LanguageServer(program)
-            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
-                language_server, server
-            )
+            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(language_server, server)
 
             port = server.add_insecure_port(address="127.0.0.1:0")
             server.start()
@@ -991,10 +962,8 @@ class Stack:
         temp_dir = None
         grpc_server = None
         if on_event:
-            log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = (
-                self._setup_event_log(
-                    "destroy", on_event, self.workspace.pulumi_version
-                )
+            log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
+                "destroy", on_event, self.workspace.pulumi_version
             )
             args.extend(["--event-log", log_file])
 
@@ -1015,9 +984,7 @@ class Stack:
         if remove:
             self.workspace.remove_stack(self.name)
 
-        return DestroyResult(
-            stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
-        )
+        return DestroyResult(stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary)
 
     def preview_destroy(
         self,
@@ -1095,10 +1062,8 @@ class Stack:
             if on_event:
                 on_event(event)
 
-        log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = (
-            self._setup_event_log(
-                "preview-destroy", on_event_callback, self.workspace.pulumi_version
-            )
+        log_file, log_watcher_thread, stop_event, temp_dir, grpc_server = self._setup_event_log(
+            "preview-destroy", on_event_callback, self.workspace.pulumi_version
         )
         args.extend(["--event-log", log_file])
 
@@ -1354,27 +1319,17 @@ class Stack:
         for summary_json in summary_list:
             summary = UpdateSummary(
                 kind=summary_json["kind"],
-                start_time=datetime.strptime(
-                    summary_json["startTime"], _DATETIME_FORMAT
-                ),
+                start_time=datetime.strptime(summary_json["startTime"], _DATETIME_FORMAT),
                 message=summary_json["message"],
                 environment=summary_json["environment"],
                 config=summary_json["config"],
                 result=summary_json["result"],
                 end_time=(
-                    datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
-                    if "endTime" in summary_json
-                    else None
+                    datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT) if "endTime" in summary_json else None
                 ),
                 version=summary_json["version"] if "version" in summary_json else None,
-                deployment=(
-                    summary_json["Deployment"] if "Deployment" in summary_json else None
-                ),
-                resource_changes=(
-                    summary_json["resourceChanges"]
-                    if "resourceChanges" in summary_json
-                    else None
-                ),
+                deployment=(summary_json["Deployment"] if "Deployment" in summary_json else None),
+                resource_changes=(summary_json["resourceChanges"] if "resourceChanges" in summary_json else None),
             )
             summaries.append(summary)
         return summaries
@@ -1430,11 +1385,15 @@ class Stack:
         envs = {**envs, **self.workspace.env_vars}
 
         additional_args = self.workspace.serialize_args_for_op(self.name)
-        args.extend(additional_args)
-        args.extend(["--stack", self.name])
-        result = self.workspace.pulumi_command.run(
-            args, self.workspace.work_dir, envs, on_output, on_error
-        )
+        stack_args = ["--stack", self.name]
+
+        if "--" in args:
+            separator_index = args.index("--")
+            args[separator_index:separator_index] = additional_args + stack_args
+        else:
+            args.extend(additional_args + stack_args)
+
+        result = self.workspace.pulumi_command.run(args, self.workspace.work_dir, envs, on_output, on_error)
         self.workspace.post_command_callback(self.name)
         return result
 
@@ -1442,20 +1401,12 @@ class Stack:
     def _remote(self) -> bool:
         from pulumi.automation._local_workspace import LocalWorkspace
 
-        return (
-            self.workspace._remote
-            if isinstance(self.workspace, LocalWorkspace)
-            else False
-        )
+        return self.workspace._remote if isinstance(self.workspace, LocalWorkspace) else False
 
     def _remote_args(self) -> list[str]:
         from pulumi.automation._local_workspace import LocalWorkspace
 
-        return (
-            self.workspace._remote_args()
-            if isinstance(self.workspace, LocalWorkspace)
-            else []
-        )
+        return self.workspace._remote_args() if isinstance(self.workspace, LocalWorkspace) else []
 
 
 def _parse_extra_args(**kwargs) -> list[str]:
@@ -1582,9 +1533,7 @@ class _EventsServicer(events_pb2_grpc.EventsServicer):
                 except Exception as e:  # noqa
                     import warnings
 
-                    warnings.warn(
-                        f"Failed to parse engine event\nEvent: {request.event}\n{e}"
-                    )
+                    warnings.warn(f"Failed to parse engine event\nEvent: {request.event}\n{e}")
         except Exception as e:  # noqa
             import warnings
 
@@ -1602,9 +1551,7 @@ def _create_log_file(command: str) -> tuple[str, tempfile.TemporaryDirectory]:
     return filepath, log_dir
 
 
-def _watch_logs(
-    filename: str, callback: OnEvent, stopEvent: Optional[threading.Event] = None
-):
+def _watch_logs(filename: str, callback: OnEvent, stopEvent: Optional[threading.Event] = None):
     partial_line = ""
     with open(filename, encoding="utf-8") as f:
         while True:
