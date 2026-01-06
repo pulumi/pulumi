@@ -633,6 +633,8 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 // not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or
 // greater-than 3.8.0.
 func validatePulumiVersionRange(pulumiVersionRange, cliVersion, provider string) error {
+	// The cliVersion is the build version and will usually be set when running the Pulumi CLI, however it may be empty
+	// when running non-integration tests.
 	if pulumiVersionRange != "" && cliVersion != "" {
 		rg, err := semver.ParseRange(pulumiVersionRange)
 		if err != nil {
