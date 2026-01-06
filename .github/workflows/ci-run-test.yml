@@ -235,6 +235,15 @@ jobs:
         uses: gradle/actions/setup-gradle@d9c87d481d55275bb5441eef3fe0e46805f9ef70 # v3
         with:
           gradle-version: "7.6"
+      - name: Cache Gradle and Maven packages
+        uses: actions/cache@v5
+        with:
+          key: "maven-gradle-${{ runner.os }}-${{ github.run_id }}"
+          restore-keys: |
+            maven-gradle-${{ runner.os }}-
+          path: |
+            ~/.gradle/caches
+            ~/.m2/repository
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
