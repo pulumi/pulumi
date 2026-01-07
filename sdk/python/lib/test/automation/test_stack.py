@@ -74,9 +74,7 @@ class TestStack(unittest.IsolatedAsyncioTestCase):
 
         project_name = "test_preview_errror"
         stack_name = stack_namer(project_name)
-        stack = create_stack(
-            stack_name, program=pulumi_program, project_name=project_name
-        )
+        stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
 
         # Passing an invalid color option will throw after we've setup the
         # log watcher thread, but before the actual Pulumi operation starts.
@@ -131,9 +129,7 @@ class TestStackArgOrdering(unittest.TestCase):
         mock_workspace.serialize_args_for_op.return_value = additional_args or []
         mock_workspace.pulumi_home = None
         mock_workspace.env_vars = {}
-        mock_workspace.pulumi_command.run.return_value = MagicMock(
-            stdout="", stderr="", code=0
-        )
+        mock_workspace.pulumi_command.run.return_value = MagicMock(stdout="", stderr="", code=0)
         # _remote property on Stack checks isinstance(workspace, LocalWorkspace)
         # and then reads workspace._remote. By setting this, the property returns False.
         mock_workspace._remote = False
@@ -183,13 +179,19 @@ class TestStackArgOrdering(unittest.TestCase):
         # Verify the command was called with --stack before --
         called_args = mock_workspace.pulumi_command.run.call_args[0][0]
 
-        separator_index = called_args.index("--")
-        stack_index = called_args.index("--stack")
-
-        self.assertLess(
-            stack_index,
-            separator_index,
-            f"--stack should appear before -- separator. Got: {' '.join(called_args)}",
+        self.assertEqual(
+            called_args,
+            [
+                "import",
+                "--yes",
+                "--skip-preview",
+                "--from",
+                "terraform",
+                "--stack",
+                "test-stack",
+                "--",
+                "/path/to/file.json",
+            ],
         )
 
     def test_stack_arg_appended_when_no_separator(self):
@@ -205,11 +207,9 @@ class TestStackArgOrdering(unittest.TestCase):
 
         called_args = mock_workspace.pulumi_command.run.call_args[0][0]
 
-        # --stack should be at the end
         self.assertEqual(
-            called_args[-2:],
-            ["--stack", "test-stack"],
-            f"--stack test-stack should be at end. Got: {' '.join(called_args)}",
+            called_args,
+            ["up", "--yes", "--skip-preview", "--stack", "test-stack"],
         )
 
     def test_additional_args_also_inserted_before_separator(self):
@@ -217,9 +217,7 @@ class TestStackArgOrdering(unittest.TestCase):
         Test that additional args from serialize_args_for_op are also
         inserted before the -- separator.
         """
-        stack, mock_workspace = self._create_mock_stack(
-            additional_args=["--config-file", "Pulumi.yaml"]
-        )
+        stack, mock_workspace = self._create_mock_stack(additional_args=["--config-file", "Pulumi.yaml"])
 
         args = ["import", "--from", "terraform", "--", "/path/to/file.json"]
 
@@ -227,13 +225,19 @@ class TestStackArgOrdering(unittest.TestCase):
 
         called_args = mock_workspace.pulumi_command.run.call_args[0][0]
 
-        separator_index = called_args.index("--")
-        config_file_index = called_args.index("--config-file")
-
-        self.assertLess(
-            config_file_index,
-            separator_index,
-            f"--config-file should appear before -- separator. Got: {' '.join(called_args)}",
+        self.assertEqual(
+            called_args,
+            [
+                "import",
+                "--from",
+                "terraform",
+                "--config-file",
+                "Pulumi.yaml",
+                "--stack",
+                "test-stack",
+                "--",
+                "/path/to/file.json",
+            ],
         )
 
     def test_converter_args_remain_after_separator(self):
@@ -249,12 +253,15 @@ class TestStackArgOrdering(unittest.TestCase):
 
         called_args = mock_workspace.pulumi_command.run.call_args[0][0]
 
-        separator_index = called_args.index("--")
-
-        # The converter file should be the only thing after --
-        args_after_separator = called_args[separator_index + 1 :]
         self.assertEqual(
-            args_after_separator,
-            [converter_file],
-            f"Only converter args should be after --. Got: {' '.join(called_args)}",
+            called_args,
+            [
+                "import",
+                "--from",
+                "terraform",
+                "--stack",
+                "test-stack",
+                "--",
+                converter_file,
+            ],
         )
