@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 /**
- * docs:index:Resource is a basic resource.
+ * docs:index:Resource is a basic resource. Use docs:index:fun to set in using #/functions/docs:index:fun/outputProperties/out.
  */
 export class Resource extends pulumi.CustomResource {
     /**

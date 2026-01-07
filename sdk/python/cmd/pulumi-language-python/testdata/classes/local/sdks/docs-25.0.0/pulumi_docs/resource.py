@@ -17,7 +17,7 @@ class ResourceArgs:
                  in_: pulumi.Input[_builtins.bool]):
         """
         The set of arguments for constructing a Resource resource.
-        :param pulumi.Input[_builtins.bool] in_: Will be used to set Resource.in_ and Resource.out.
+        :param pulumi.Input[_builtins.bool] in_: Will be used to set in and out.
         """
         pulumi.set(__self__, "in_", in_)
 
@@ -25,7 +25,7 @@ class ResourceArgs:
     @pulumi.getter(name="in")
     def in_(self) -> pulumi.Input[_builtins.bool]:
         """
-        Will be used to set Resource.in_ and Resource.out.
+        Will be used to set in and out.
         """
         return pulumi.get(self, "in_")
 
@@ -43,11 +43,11 @@ class Resource(pulumi.CustomResource):
                  in_: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         """
-        Resource is a basic resource.
+        docs:index:Resource is a basic resource. Use docs:index:fun to set in using #/functions/docs:index:fun/outputProperties/out.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[_builtins.bool] in_: Will be used to set Resource.in_ and Resource.out.
+        :param pulumi.Input[_builtins.bool] in_: Will be used to set in and out.
         """
         ...
     @overload
@@ -56,7 +56,7 @@ class Resource(pulumi.CustomResource):
                  args: ResourceArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Resource is a basic resource.
+        docs:index:Resource is a basic resource. Use docs:index:fun to set in using #/functions/docs:index:fun/outputProperties/out.
 
         :param str resource_name: The name of the resource.
         :param ResourceArgs args: The arguments to use to populate this resource's properties.
@@ -117,7 +117,7 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter(name="in")
     def in_(self) -> pulumi.Output[Optional[_builtins.bool]]:
         """
-        Will be set to the same as Resource.in_.
+        Will be set to the same as in.
         """
         return pulumi.get(self, "in_")
 
@@ -125,7 +125,7 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter
     def out(self) -> pulumi.Output[_builtins.bool]:
         """
-        Will be set to the opposite of Resource.in_.
+        Will be set to the opposite of in.
         """
         return pulumi.get(self, "out")
 

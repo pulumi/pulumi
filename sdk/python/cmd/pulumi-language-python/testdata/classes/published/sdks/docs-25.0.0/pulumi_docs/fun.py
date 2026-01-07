@@ -27,7 +27,7 @@ class FunResult:
     @pulumi.getter
     def out(self) -> _builtins.bool:
         """
-        Will be the opposite of #/functions/docs:index:fun/inputProperties/in can be used to set Resource.in_.
+        Will be the opposite of #/functions/docs:index:fun/inputProperties/in can be used to set in.
         """
         return pulumi.get(self, "out")
 
@@ -44,7 +44,7 @@ class AwaitableFunResult(FunResult):
 def fun(in_: Optional[_builtins.bool] = None,
         opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableFunResult:
     """
-    Fun is a basic function for setting properties on Resource.
+    docs:index:fun is a basic function for setting in on docs:index:Resource.
 
 
     :param _builtins.bool in_: Will be used to set #/functions/docs:index:fun/outputProperties/out.
@@ -59,7 +59,7 @@ def fun(in_: Optional[_builtins.bool] = None,
 def fun_output(in_: Optional[pulumi.Input[_builtins.bool]] = None,
                opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FunResult]:
     """
-    Fun is a basic function for setting properties on Resource.
+    docs:index:fun is a basic function for setting in on docs:index:Resource.
 
 
     :param _builtins.bool in_: Will be used to set #/functions/docs:index:fun/outputProperties/out.

@@ -12,7 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// docs:index:Resource is a basic resource.
+// docs:index:Resource is a basic resource. Use docs:index:fun to set in using #/functions/docs:index:fun/outputProperties/out.
 type Resource struct {
 	pulumi.CustomResourceState
 

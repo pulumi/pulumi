@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// docs:index:fun is a basic function for setting properties on docs:index:Resource.
+// docs:index:fun is a basic function for setting in on docs:index:Resource.
 func Fun(ctx *pulumi.Context, args *FunArgs, opts ...pulumi.InvokeOption) (*FunResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv FunResult
