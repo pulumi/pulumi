@@ -15,33 +15,34 @@
 import json
 import os
 import tempfile
-import threading
 import time
-from collections.abc import Callable, Mapping
+import threading
 from concurrent import futures
-from datetime import datetime
 from enum import Enum
+from datetime import datetime
 from typing import (
     Any,
     Optional,
     TypedDict,
 )
-
+from collections.abc import Callable
+from collections.abc import Mapping
 import grpc
-from google.protobuf import empty_pb2
 from semver import VersionInfo
 
-from ..runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
-from ..runtime.proto import events_pb2_grpc, language_pb2_grpc
 from ._cmd import CommandResult, OnOutput
-from ._config import ConfigMap, ConfigValue
+from ._config import ConfigValue, ConfigMap
+from .errors import StackNotFoundError, InvalidVersionError
+from .events import OpMap, EngineEvent, SummaryEvent
 from ._output import OutputMap
-from ._representable import _Representable
 from ._server import LanguageServer
+from ._workspace import Workspace, PulumiFn, Deployment
+from ..runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
+from ..runtime.proto import language_pb2_grpc
+from ..runtime.proto import events_pb2_grpc
+from google.protobuf import empty_pb2
+from ._representable import _Representable
 from ._tag import TagMap
-from ._workspace import Deployment, PulumiFn, Workspace
-from .errors import InvalidVersionError, StackNotFoundError
-from .events import EngineEvent, OpMap, SummaryEvent
 
 _DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
