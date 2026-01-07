@@ -825,6 +825,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// We always override the core "pulumi" package to point to the local core SDK we built as part of test
 	// setup.
+	sdks := map[string]string{}
 	localDependencies := map[string]string{}
 	if token.CoreArtifact != "" {
 		localDependencies["pulumi"] = token.CoreArtifact
@@ -851,6 +852,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		for _, pkg := range packages {
 			sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
 			sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
+			sdks[sdkName] = sdkTempDir
 			// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. We do this
 			// using a per-sdk lock for fine grained control. The generated SDK artifacts are then cached, and will be
 			// reused.
@@ -1453,6 +1455,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			assertPreview = func(
 				l *tests.L, proj string, err error, p *deploy.Plan,
 				changes display.ResourceChanges, events []engine.Event,
+				sdks map[string]string,
 			) {
 				require.NoErrorf(l, err, "expected no error in preview")
 			}
@@ -1478,7 +1481,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// assert preview results
 		previewResult := tests.WithL(func(l *tests.L) {
-			assertPreview(l, projectDir, res, plan, previewChanges, events)
+			assertPreview(l, projectDir, res, plan, previewChanges, events, sdks)
 		})
 
 		if previewResult.Failed {
@@ -1528,7 +1531,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		result = tests.WithL(func(l *tests.L) {
-			run.Assert(l, projectDir, res, snap, changes, events)
+			run.Assert(l, projectDir, res, snap, changes, events, sdks)
 		})
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{

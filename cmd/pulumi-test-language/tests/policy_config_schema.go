@@ -64,7 +64,7 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.ErrorContains(l, err, "validating policy config")
 					diags := getDiagnostics(l, events)
@@ -75,7 +75,7 @@ func init() {
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.ErrorContains(l, err, "validating policy config")
 					diags := getDiagnostics(l, events)
@@ -97,7 +97,7 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.ErrorContains(l, err, "validating policy config")
 					diags := getDiagnostics(l, events)
@@ -109,7 +109,7 @@ func init() {
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.ErrorContains(l, err, "validating policy config")
 					diags := getDiagnostics(l, events)
@@ -132,7 +132,7 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					policyViolations := getPolicyViolationEvents(l, events)
@@ -140,7 +140,7 @@ func init() {
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					policyViolations := getPolicyViolationEvents(l, events)
@@ -159,7 +159,7 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					policyViolations := getPolicyViolationEvents(l, events)
@@ -177,7 +177,7 @@ func init() {
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					policyViolations := getPolicyViolationEvents(l, events)

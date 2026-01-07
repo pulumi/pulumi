@@ -78,14 +78,14 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					validate(l, events, apitype.Advisory)
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					validate(l, events, apitype.Advisory)
@@ -102,14 +102,14 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.ErrorContains(l, err, "BAIL: step generator errored")
 					validate(l, events, apitype.Mandatory)
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.ErrorContains(l, err,
 						"BAIL: resource urn:pulumi:test::policy-enforcement-config::simple:index:Resource::res is invalid")
@@ -125,14 +125,14 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					validate(l, events, "")
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					validate(l, events, "")

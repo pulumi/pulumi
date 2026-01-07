@@ -1121,6 +1121,10 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 func printComment(w io.Writer, comment string, indent bool) int {
 	comment = codegen.FilterExamples(comment, "go")
 
+	comment = codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
+		return "", false
+	})
+
 	lines := strings.Split(comment, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]

@@ -37,6 +37,7 @@ func init() {
 				snapshot *deploy.Snapshot,
 				changes display.ResourceChanges,
 				e []engine.Event,
+				sdks map[string]string,
 			) {
 				RequireStackResource(l, err, changes)
 				stack := RequireSingleResource(l, snapshot.Resources, "pulumi:pulumi:Stack")

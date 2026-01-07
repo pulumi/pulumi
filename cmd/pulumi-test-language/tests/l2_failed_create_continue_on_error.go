@@ -40,7 +40,7 @@ func init() {
 				AssertPreview: func(l *L,
 					projectDirectory string, err error,
 					plan *deploy.Plan, changes display.ResourceChanges,
-					events []engine.Event,
+					events []engine.Event, sdks map[string]string,
 				) {
 					require.True(l, result.IsBail(err), "expected a bail result on preview")
 
@@ -60,7 +60,7 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event,
+					events []engine.Event, sdks map[string]string,
 				) {
 					// Expect the error diagnostic for the failed resource
 					found := false

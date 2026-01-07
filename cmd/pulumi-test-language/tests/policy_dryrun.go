@@ -36,7 +36,7 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.ErrorContains(l, err, "BAIL: step generator errored")
 
@@ -68,7 +68,7 @@ func init() {
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 

@@ -36,14 +36,14 @@ func init() {
 				AssertPreview: func(l *L,
 					projectDirectory string, err error,
 					plan *deploy.Plan, changes display.ResourceChanges,
-					events []engine.Event,
+					events []engine.Event, sdks map[string]string,
 				) {
 					RequireStackResource(l, err, changes)
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event,
+					events []engine.Event, sdks map[string]string,
 				) {
 					RequireStackResource(l, err, changes)
 
@@ -131,7 +131,7 @@ func init() {
 				AssertPreview: func(l *L,
 					projectDirectory string, err error,
 					plan *deploy.Plan, changes display.ResourceChanges,
-					events []engine.Event,
+					events []engine.Event, sdks map[string]string,
 				) {
 					// Preview should show that the resource with an unknown trigger is going to be replaced.
 					var ops []display.StepOp
@@ -150,7 +150,7 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, _ error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event,
+					events []engine.Event, sdks map[string]string,
 				) {
 					// We expect the following resources:
 					//
