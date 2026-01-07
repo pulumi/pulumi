@@ -60,7 +60,7 @@ func (p *DocsProvider) GetSchema(
 			"docs:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:        "object",
-					Description: "<pulumi ref=\"#/resources/docs:index:Resource\"/> is a basic resource.",
+					Description: "<pulumi ref=\"#/resources/docs:index:Resource\"/> is a basic resource. Use <pulumi ref=\"#/functions/docs:index:fun\"/> to set <pulumi ref=\"#/resources/docs:index:Resource/inputProperties/in\"/> using <pulumi ref=\"#/functions/docs:index:fun/outputProperties/out\"/>.",
 					Properties: map[string]schema.PropertySpec{
 						"in": {
 							TypeSpec: schema.TypeSpec{
@@ -90,7 +90,7 @@ func (p *DocsProvider) GetSchema(
 		},
 		Functions: map[string]schema.FunctionSpec{
 			"docs:index:fun": {
-				Description: "<pulumi ref=\"#/functions/docs:index:fun\"/> is a basic function for setting properties on <pulumi ref=\"#/resources/docs:index:Resource\"/>.",
+				Description: "<pulumi ref=\"#/functions/docs:index:fun\"/> is a basic function for setting <pulumi ref=\"#/resources/docs:index:Resource/properties/in\"/> on <pulumi ref=\"#/resources/docs:index:Resource\"/>.",
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
