@@ -180,12 +180,11 @@ func (w *recordingWorkspace) DetectPluginPathAt(ctx context.Context, path string
 
 func (w *recordingWorkspace) LinkPackage(
 	ctx context.Context,
-	project *workspace.ProjectRuntimeInfo, projectDir string, packageName tokens.Package,
-	pluginPath string, params plugin.ParameterizeParameters,
-	originalSpec workspace.PackageSpec,
+	project *workspace.ProjectRuntimeInfo, projectDir string,
+	provider plugin.Provider,
 ) error {
-	w.start("LinkPackage", ctx, project, projectDir, packageName, pluginPath, params, originalSpec)
-	err := w.w.LinkPackage(ctx, project, projectDir, packageName, pluginPath, params, originalSpec)
+	w.start("LinkPackage", ctx, project, projectDir, provider)
+	err := w.w.LinkPackage(ctx, project, projectDir, provider)
 	w.finish(err)
 	return err
 }
@@ -193,9 +192,10 @@ func (w *recordingWorkspace) LinkPackage(
 func (w *recordingWorkspace) RunPackage(
 	ctx context.Context,
 	rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
 	w.start("RunPackage", ctx, rootDir, pluginPath, pkgName, params)
-	provider, err := w.w.RunPackage(ctx, rootDir, pluginPath, pkgName, params)
+	provider, err := w.w.RunPackage(ctx, rootDir, pluginPath, pkgName, params, originalSpec)
 	w.finish(provider, err)
 	return provider, err
 }

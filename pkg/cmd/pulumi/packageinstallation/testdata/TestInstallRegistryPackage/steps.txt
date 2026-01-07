@@ -7,4 +7,4 @@ DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-registry-package-v1.0.0"
 LoadPluginProject{ctx, "$HOME/.pulumi/plugins/resource-registry-package-v1.0.0/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, nil}
 InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-registry-package-v1.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
 DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"registry-package", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/registry-package-1.0.0.tar.gz"}, true} -> {}
-RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-registry-package-v1.0.0", "registry-package", nil} -> {nil, nil}
+RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-registry-package-v1.0.0", "registry-package", nil} -> {invariantProvider{path:"$HOME/.pulumi/plugins/resource-registry-package-v1.0.0"}, nil}

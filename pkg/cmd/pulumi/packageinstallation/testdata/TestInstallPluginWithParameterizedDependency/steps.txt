@@ -15,7 +15,8 @@ DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0"} -> {"$
 LoadPluginProject{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, nil}
 InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
 DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:3}, PluginDownloadURL:"example.com/plugin-b"}, true} -> {}
-LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0", "plugin-b", "$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0", ParameterizeArgs{Args:[2]{"param1", "param2"}}, PackageSpec{Source:"plugin-b", Version:"3.0.0", Parameters:[2]{"param1", "param2"}, PluginDownloadURL:"example.com/plugin-b"}} -> {nil}
+RunPackage{ctx, "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0", "$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0", "plugin-b", ParameterizeArgs{Args:[2]{"param1", "param2"}}} -> {invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0"}, nil}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0", invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-b-v3.0.0"}} -> {nil}
 InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":PackageSpec{Source:"plugin-b", Version:"3.0.0", Parameters:[2]{"param1", "param2"}, PluginDownloadURL:"example.com/plugin-b"}}}} -> {nil}
 DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-a", Kind:"resource", Version:Version{Major:4}, PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}, true} -> {}
-RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0", "plugin-a", nil} -> {nil, nil}
+RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0", "plugin-a", nil} -> {invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-a-v4.0.0"}, nil}

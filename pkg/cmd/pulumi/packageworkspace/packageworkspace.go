@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	diagutils "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -171,29 +172,11 @@ func (Workspace) DetectPluginPathAt(ctx context.Context, path string) (string, e
 // Link a package into a project, generating an SDK if appropriate.
 //
 // project and projectDir describe the where the SDK is being generated and linked into.
-//
-// parameters describes any parameters necessary to convert the plugin into a
-// package.
-//
-// The plugin used to generate the SDK will always be installed already, and
-// should be run from pluginDir.
 func (w Workspace) LinkPackage(
-	ctx context.Context,
-	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string, packageName tokens.Package,
-	pluginPath string, params plugin.ParameterizeParameters,
-	originalSpec workspace.PackageSpec,
+	ctx context.Context, runtimeInfo *workspace.ProjectRuntimeInfo,
+	projectDir string, provider plugin.Provider,
 ) error {
-	p, paramResp, err := w.runPackage(ctx, projectDir, pluginPath, packageName, params)
-	if err != nil {
-		return fmt.Errorf("failed to run package for linking: %w", err)
-	}
-
-	var schemaRequest plugin.GetSchemaRequest
-	if paramResp != nil {
-		schemaRequest.SubpackageName = paramResp.Name
-		schemaRequest.SubpackageVersion = &paramResp.Version
-	}
-	schemaResponse, err := p.GetSchema(ctx, schemaRequest)
+	schemaResponse, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{})
 	if err != nil {
 		return err
 	}
@@ -206,32 +189,6 @@ func (w Workspace) LinkPackage(
 	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.host))
 	if err != nil {
 		return fmt.Errorf("failed to bind schema: %w", err)
-	}
-
-	// Git based plugins are allowed to not be self-referential: know their version
-	// and pluginDownloadURL. That requires the launching infrastructure to inject
-	// that information into the returned schema.
-	//
-	// TODO[https://github.com/pulumi/pulumi/issues/21258]: Download lock files would
-	// allow us to push this deeper through the plugin loading process.
-	{
-		source := originalSpec.Source
-		if originalSpec.Version != "" {
-			source += "@" + originalSpec.Version
-		}
-		s, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
-		if err == nil && s.IsGitPlugin() {
-			boundSchema.PluginDownloadURL = s.PluginDownloadURL
-			boundSchema.Version = s.Version
-
-			if boundSchema.Namespace == "" {
-				namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
-				matches := namespaceRegex.FindStringSubmatch(s.PluginDownloadURL)
-				if len(matches) == 2 {
-					boundSchema.Namespace = strings.ToLower(matches[1])
-				}
-			}
-		}
 	}
 
 	// We _always_ want SupportPack turned on for `package add`, this is an option on schemas because it can change
@@ -360,9 +317,28 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 // Run a package from a directory, parameterized by params.
 func (w Workspace) RunPackage(
 	ctx context.Context, rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
-	p, _, err := w.runPackage(ctx, rootDir, pluginPath, pkgName, params)
-	return p, err
+	d := diag.DefaultSink(w.stdout, w.stderr, diag.FormatOptions{
+		Color: diagutils.GetGlobalColorization(),
+	})
+
+	pctx := plugin.NewContextWithHost(ctx, d, d, w.host, rootDir, rootDir, w.parentSpan)
+	p, err := plugin.NewProviderFromPath(w.host, pctx, pkgName, pluginPath)
+	if err != nil {
+		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
+	}
+	var pluginResp *plugin.ParameterizeResponse
+	if params != nil && !params.Empty() {
+		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{
+			Parameters: params,
+		})
+		if err != nil {
+			return nil, err
+		}
+		pluginResp = &resp
+	}
+	return pluginProvider{p, originalSpec, pluginResp}, nil
 }
 
 func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, error) {
@@ -378,34 +354,72 @@ func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, e
 	return pkg, nil
 }
 
-// Run a package from a directory, parameterized by params.
-func (w Workspace) runPackage(
-	ctx context.Context, rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
-) (plugin.Provider, *plugin.ParameterizeResponse, error) {
-	d := diag.DefaultSink(w.stdout, w.stderr, diag.FormatOptions{
-		Color: diagutils.GetGlobalColorization(),
-	})
+type pluginProvider struct {
+	plugin.Provider
 
-	pctx := plugin.NewContextWithHost(ctx, d, d, w.host, rootDir, rootDir, w.parentSpan)
-	p, err := plugin.NewProviderFromPath(w.host, pctx, pkgName, pluginPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
-	}
-	p = providerWithEmbeddedContext{p, pctx}
-	var pluginResp *plugin.ParameterizeResponse
-	if params != nil && !params.Empty() {
-		resp, err := p.Parameterize(ctx, plugin.ParameterizeRequest{
-			Parameters: params,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-		pluginResp = &resp
-	}
-	return p, pluginResp, nil
+	originalSpec workspace.PackageSpec
+
+	// The response to the parameterization *if* the parameterization was handled within the RunPlugin call that we
+	// originally had.
+	paramResp *plugin.ParameterizeResponse
 }
 
-type providerWithEmbeddedContext struct {
-	plugin.Provider
-	pctx *plugin.Context
+func (p pluginProvider) GetSchema(
+	ctx context.Context, req plugin.GetSchemaRequest,
+) (plugin.GetSchemaResponse, error) {
+	if p.paramResp != nil {
+		if req.SubpackageName != "" {
+			return plugin.GetSchemaResponse{}, plugin.ErrDoubleParameterized
+		}
+		req.SubpackageName = p.paramResp.Name
+		req.SubpackageVersion = &p.paramResp.Version
+	}
+	resp, err := p.Provider.GetSchema(ctx, req)
+	if err != nil {
+		return plugin.GetSchemaResponse{}, err
+	}
+
+	// Git based plugins are allowed to not be self-referential: know their version
+	// and pluginDownloadURL. That requires the launching infrastructure to inject
+	// that information into the returned schema.
+	//
+	// TODO[https://github.com/pulumi/pulumi/issues/21258]: Download lock files would
+	// allow us to push this deeper through the plugin loading process.
+
+	var pkgSpec schema.PackageSpec
+	if json.Unmarshal(resp.Schema, &pkgSpec) != nil {
+		// If we can't un-marshal, give up.
+		return resp, nil
+	}
+	source := p.originalSpec.Source
+	if p.originalSpec.Version != "" {
+		source += "@" + p.originalSpec.Version
+	}
+	pd, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
+	if err == nil && pd.IsGitPlugin() {
+		pkgSpec.PluginDownloadURL = pd.PluginDownloadURL
+		if pd.Version != nil {
+			pkgSpec.Version = pd.Version.String()
+		}
+
+		if pkgSpec.Namespace == "" {
+			namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
+			matches := namespaceRegex.FindStringSubmatch(pd.PluginDownloadURL)
+			if len(matches) == 2 {
+				pkgSpec.Namespace = strings.ToLower(matches[1])
+			}
+		}
+	}
+	bytes, err := json.Marshal(pkgSpec)
+	contract.AssertNoErrorf(err, "schema.PackageSpec is safe to marshal")
+	return plugin.GetSchemaResponse{Schema: bytes}, nil
+}
+
+func (p pluginProvider) Parameterize(
+	ctx context.Context, req plugin.ParameterizeRequest,
+) (plugin.ParameterizeResponse, error) {
+	if p.paramResp != nil {
+		return plugin.ParameterizeResponse{}, plugin.ErrDoubleParameterized
+	}
+	return p.Provider.Parameterize(ctx, req)
 }

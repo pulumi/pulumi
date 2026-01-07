@@ -8,4 +8,4 @@ DownloadPlugin{ctx, PluginDescriptor{Name:"external-package", Kind:"resource", V
 DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-external-package-v6.0.0"} -> {"", wrapErrors{msg:"no project file found and no plugin file found", errs:[2]{errorString{s:"no project file found"}, errorString{s:"no plugin file found"}}}}
 IsExecutable{ctx, "$HOME/.pulumi/plugins/resource-external-package-v6.0.0/pulumi-resource-external-package"} -> {true, nil}
 DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"external-package", Kind:"resource", Version:Version{Major:6}, PluginDownloadURL:"https://example.com/external-package.tar.gz"}, true} -> {}
-RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-external-package-v6.0.0/pulumi-resource-external-package", "external-package", nil} -> {nil, nil}
+RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-external-package-v6.0.0/pulumi-resource-external-package", "external-package", nil} -> {invariantProvider{path:"$HOME/.pulumi/plugins/resource-external-package-v6.0.0"}, nil}
