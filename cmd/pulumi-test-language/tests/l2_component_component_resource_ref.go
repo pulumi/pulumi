@@ -36,7 +36,7 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event,
+					events []engine.Event, sdks map[string]string,
 				) {
 					RequireStackResource(l, err, changes)
 

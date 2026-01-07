@@ -83,14 +83,14 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					verify(l, events)
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					verify(l, events)
@@ -108,7 +108,7 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					policyRemediations := getPolicyRemediations(l, events)
@@ -116,7 +116,7 @@ func init() {
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					policyRemediations := getPolicyRemediations(l, events)
@@ -136,7 +136,7 @@ func init() {
 				},
 				AssertPreview: func(
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					policyRemediations := getPolicyRemediations(l, events)
@@ -144,7 +144,7 @@ func init() {
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event,
+					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
 				) {
 					require.NoError(l, err)
 					policyRemediations := getPolicyRemediations(l, events)

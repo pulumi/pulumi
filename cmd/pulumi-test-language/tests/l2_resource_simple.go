@@ -35,8 +35,12 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event,
+					events []engine.Event, sdks map[string]string,
 				) {
+					// Require the sdk folder to exist
+					_, ok := sdks["simple-2.0.0"]
+					require.True(l, ok, "expected simple sdk in %v", sdks)
+
 					RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.

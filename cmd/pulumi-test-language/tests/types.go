@@ -239,9 +239,9 @@ type TestRun struct {
 	// This can be used to set a main value for the test.
 	Main string
 	// TODO: This should just return "string", if == "" then ok, else fail
-	Assert func(*L, string, error, *deploy.Snapshot, display.ResourceChanges, []engine.Event)
+	Assert func(*L, string, error, *deploy.Snapshot, display.ResourceChanges, []engine.Event, map[string]string)
 	// Assert resource changes during preview runs.
-	AssertPreview func(*L, string, error, *deploy.Plan, display.ResourceChanges, []engine.Event)
+	AssertPreview func(*L, string, error, *deploy.Plan, display.ResourceChanges, []engine.Event, map[string]string)
 	// UpdateOptions can be used to set the update options for the engine.
 	UpdateOptions engine.UpdateOptions
 	// PolicyPacks is a map of policy packs to use for this test and their config.
