@@ -1254,3 +1254,94 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, initialSnap), opts, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 }
+
+// TestDestroyV2TargetProviderWithAliasedParent tests a targeted destroy of a provider
+// whose parent has been aliased to change its parent relationship, which previously
+// caused a snapshot integrity error (parent not found in urnIndex).
+func TestDestroyV2TargetProviderWithAliasedParent(t *testing.T) {
+	t.Parallel()
+	// TODO[pulumi/pulumi#21364]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, snapshot integrity error with aliased parent")
+
+	initialSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pulumi:providers:pkgA",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
+				Custom: true,
+				ID:     "id-123",
+			},
+			{
+				Type:     "pkgA:mod:ComponentParent",
+				URN:      "urn:pulumi:test::test::pkgA:mod:ComponentParent::parent",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::id-123",
+			},
+			{
+				Type:     "pkgA:mod:ComponentChild",
+				URN:      "urn:pulumi:test::test::pkgA:mod:ComponentParent$pkgA:mod:ComponentChild::child",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::id-123",
+				Parent:   "urn:pulumi:test::test::pkgA:mod:ComponentParent::parent",
+			},
+			{
+				Type:   "pulumi:providers:pkgB",
+				URN:    "urn:pulumi:test::test::pkgA:mod:ComponentParent$pkgA:mod:ComponentChild$pulumi:providers:pkgB::childprov",
+				Custom: true,
+				ID:     "id-456",
+				Parent: "urn:pulumi:test::test::pkgA:mod:ComponentParent$pkgA:mod:ComponentChild::child",
+			},
+		},
+	}
+
+	require.NoError(t, initialSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Program aliases the child component to remove its parent,  but the provider still has the child as
+	// its parent with the old URN.
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		child, err := monitor.RegisterResource("pkgA:mod:ComponentChild", "child", false, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+			AliasURNs: []resource.URN{
+				"urn:pulumi:test::test::pkgA:mod:ComponentParent$pkgA:mod:ComponentChild::child",
+			},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pulumi:providers:pkgB", "childprov", true, deploytest.ResourceOptions{
+			Parent: child.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+			UpdateOptions: engine.UpdateOptions{
+				Targets: deploy.NewUrnTargets([]string{
+					"urn:pulumi:test::test::pkgA:mod:ComponentParent$pkgA:mod:ComponentChild$pulumi:providers:pkgB::childprov",
+				}),
+			},
+		},
+	}
+
+	_, err := lt.TestOp(DestroyV2).RunStep(
+		p.GetProject(), p.GetTarget(t, initialSnap), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
