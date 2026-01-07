@@ -33,10 +33,10 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeDestroyAndRefreshProgramSet,
 		// TODO[pulumi/pulumi#21277]
 		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
+		// TODO[pulumi/pulumi#21347]
+		ExcludeResourceWithTargetedDependencyDestroyV2,
 		// TODO[pulumi/pulumi#21282]
 		ExcludeTargetedAliasDestroyV2,
-		// TODO[pulumi/pulumi#21347]
-		ExcludeTargetedChildWithNewParentDestroyV2,
 		// TODO[pulumi/pulumi#21364]
 		ExcludeTargetedResourceWithAliasedParentDestroyV2,
 	}
@@ -95,9 +95,10 @@ func ExcludeTargetedAliasDestroyV2(
 	return false
 }
 
-// ExcludeTargetedChildWithNewParent excludes snapshots where a child resource has a
-// new parent that's targeted for deletion during a destroy v2 operation.
-func ExcludeTargetedChildWithNewParentDestroyV2(
+// ExcludeResourceWithTargetedDependencyDestroyV2 excludes snapshots where a resource has a
+// dependency (Parent, DeletedWith, Dependencies, or PropertyDependencies) pointing to a targeted
+// resource during a destroy v2 operation.
+func ExcludeResourceWithTargetedDependencyDestroyV2(
 	spec *SnapshotSpec,
 	prog *ProgramSpec,
 	_ *ProviderSpec,
@@ -118,13 +119,26 @@ func ExcludeTargetedChildWithNewParentDestroyV2(
 	}
 
 	for _, res := range prog.ResourceRegistrations {
-		if res.Parent == "" {
-			continue
+		if res.Parent != "" && targetURNs[res.Parent] && res.Parent != specParents[res.URN()] {
+			return true
 		}
 
-		targeted, ok := targetURNs[res.Parent]
-		if ok && targeted && res.Parent != "" && res.Parent != specParents[res.URN()] {
+		if res.DeletedWith != "" && targetURNs[res.DeletedWith] {
 			return true
+		}
+
+		for _, dep := range res.Dependencies {
+			if targetURNs[dep] {
+				return true
+			}
+		}
+
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if targetURNs[dep] {
+					return true
+				}
+			}
 		}
 	}
 
