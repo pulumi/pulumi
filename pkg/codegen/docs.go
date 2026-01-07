@@ -158,11 +158,11 @@ func FilterExamples(description string, lang string) string {
 	return schema.RenderDocsToString(source, parsed)
 }
 
-type PulumiRefResolver func(ref DocRef) (string, bool)
+type PulumiRefResolver func(ref DocRef) (string, bool, error)
 
-func InterpretPulumiRefs(description string, resolveRefToName PulumiRefResolver) string {
+func InterpretPulumiRefs(description string, resolveRefToName PulumiRefResolver) (string, error) {
 	if description == "" {
-		return ""
+		return "", nil
 	}
 
 	source := []byte(description)
@@ -181,14 +181,14 @@ func InterpretPulumiRefs(description string, resolveRefToName PulumiRefResolver)
 	contract.AssertNoErrorf(err, "error rendering docs")
 	// Avoid reformatting if no refs found.
 	if refRenderer.renderedCount == 0 {
-		return description
+		return description, nil
 	}
 	newDescription := buf.String()
 	// Cut trailing newline if the original description didn't have one.
 	if !strings.HasSuffix(description, "\n") {
 		newDescription, _ = strings.CutSuffix(newDescription, "\n")
 	}
-	return newDescription
+	return newDescription, nil
 }
 
 type pulumiRefNodeRenderer struct {
@@ -215,7 +215,10 @@ func (r *pulumiRefNodeRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegis
 			if !ok {
 				_, err = writer.Write(htmlSource.Bytes())
 			} else {
-				name, ok := r.resolveRefToName(ref)
+				name, ok, err := r.resolveRefToName(ref)
+				if err != nil {
+					return ast.WalkStop, fmt.Errorf("error resolving pulumi ref: %w", err)
+				}
 				if !ok {
 					name = defaultRefRender(ref)
 				}

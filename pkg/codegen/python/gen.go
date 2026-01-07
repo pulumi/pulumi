@@ -2450,18 +2450,31 @@ func (mod *modContext) genComment(comment string, selfRef codegen.DocRef, filter
 		comment = codegen.FilterExamples(comment, "python")
 	}
 	return codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
-		if ref.Token == "" {
-			return "", false
+		if ref.Type == codegen.DocRefTypeUnknown {
+			panic(fmt.Sprintf("unhandled doc ref type: %v", ref.Type))
 		}
-		pythonResource := mod.tokenToResource(ref.Token.String())
-		if ref.Property == "" {
-			return pythonResource, true
+
+		var base string
+		switch ref.Type {
+		case codegen.DocRefTypeFunction, codegen.DocRefTypeFunctionInputProperty, codegen.DocRefTypeFunctionOutputProperty:
+		case codegen.DocRefTypeType, codegen.DocRefTypeTypeProperty:
+			typ, ok, err = mod.pkg.Types().Get(string(ref.Token))
+		case codegen.DocRefTypeResource, codegen.DocRefTypeResourceInputProperty, codegen.DocRefTypeResourceProperty:
+			base = mod.tokenToResource(ref.Token.String())
 		}
-		pythonPropName := PyName(ref.Property)
+
+		var property string
+		switch ref.Type {
+		case codegen.DocRefTypeFunction, codegen.DocRefTypeFunctionInputProperty, codegen.DocRefTypeFunctionOutputProperty:
+		case codegen.DocRefTypeType, codegen.DocRefTypeTypeProperty:
+		case codegen.DocRefTypeResource, codegen.DocRefTypeResourceInputProperty, codegen.DocRefTypeResourceProperty:
+
+		}
+
 		if ref.IsWithin(selfRef) {
-			return pythonPropName, true
+			return property, true
 		}
-		return pythonResource + "." + pythonPropName, true
+		return base + "." + property, true
 	})
 }
 

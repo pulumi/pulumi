@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const codeFence = "```"
@@ -129,15 +130,16 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		description := "This is a reference to <pulumi ref=\"#/resources/aws:s3:bucket\" /> and one to the " +
 			"<pulumi ref=\"#/resources/azure:storage:storageAccount/properties/region\" /> property."
 		expected := "This is a reference to s3.bucket and one to the region property."
-		result := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
+		result, err := InterpretPulumiRefs(description, func(ref DocRef) (string, bool, error) {
 			//nolint:exhaustive
 			switch ref.Type {
 			case DocRefTypeResource:
-				return ref.Token.Module().Name().String() + "." + ref.Token.Name().String(), true
+				return ref.Token.Module().Name().String() + "." + ref.Token.Name().String(), true, nil
 			default:
-				return "", false
+				return "", false, nil
 			}
 		})
+		require.NoError(t, err)
 		assert.Equal(t, expected, result, "expected resolved references")
 	})
 
@@ -147,9 +149,10 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		description := "This is a reference to <pulumi ref=\"#/resources/unknown:resource:type/properties/myProperty\"/>" +
 			" and to <pulumi ref=\"#/resources/unknown:resource:type\" />."
 		expected := "This is a reference to myProperty and to unknown:resource:type."
-		result := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
-			return "", false
+		result, err := InterpretPulumiRefs(description, func(ref DocRef) (string, bool, error) {
+			return "", false, nil
 		})
+		require.NoError(t, err)
 		assert.Equal(t, expected, result, "expected fallback to last segment for unknown references")
 	})
 
@@ -158,9 +161,10 @@ func TestInterpretPulumiRefs(t *testing.T) {
 
 		description := ""
 		expected := ""
-		result := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
-			return "ResolvedName", true
+		result, err := InterpretPulumiRefs(description, func(ref DocRef) (string, bool, error) {
+			return "ResolvedName", true, nil
 		})
+		require.NoError(t, err)
 		assert.Equal(t, expected, result, "expected empty result for empty description")
 	})
 
@@ -169,9 +173,10 @@ func TestInterpretPulumiRefs(t *testing.T) {
 
 		description := "This description has no Pulumi references."
 		expected := "This description has no Pulumi references."
-		result := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
-			return "ResolvedName", true
+		result, err := InterpretPulumiRefs(description, func(ref DocRef) (string, bool, error) {
+			return "ResolvedName", true, nil
 		})
+		require.NoError(t, err)
 		assert.Equal(t, expected, result, "expected unchanged description when no refs are present")
 	})
 }
