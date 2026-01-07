@@ -256,12 +256,9 @@ func (w invariantWorkspace) GetStoredCredentials() (workspace.Credentials, error
 
 func (w invariantWorkspace) LinkPackage(
 	ctx context.Context,
-	project *workspace.ProjectRuntimeInfo, projectDir string, packageName tokens.Package,
-	pluginPath string, params plugin.ParameterizeParameters,
-	originalSpec workspace.PackageSpec,
+	project *workspace.ProjectRuntimeInfo, projectDir string, provider plugin.Provider,
 ) error {
 	projectDir = filepath.ToSlash(projectDir)
-	pluginPath = filepath.ToSlash(pluginPath)
 
 	var links *[]string
 	if dst, ok := w.plugins[projectDir]; ok {
@@ -272,45 +269,31 @@ func (w invariantWorkspace) LinkPackage(
 		links = &dst.linked
 	} else if workDir, ok := w.downloadedWorkspace[projectDir]; ok {
 		links = &workDir.linked
-	} else {
-		assert.Failf(w.t, "LinkPackage: Unknown plugin", "could not find %q in %#v",
-			pluginPath, slices.Collect(maps.Keys(w.plugins)))
-		return assert.AnError
 	}
 
-	actualPluginPath := pluginPath
-	if binPath, ok := w.binaryPaths[pluginPath]; ok {
-		actualPluginPath = binPath
-	}
-
-	src, ok := w.plugins[actualPluginPath]
-	if !ok || !src.downloaded {
-		assert.Failf(w.t, "",
-			"LinkPackage(%q) called on non-existent src (downloaded=%t)",
-			actualPluginPath, src != nil && src.downloaded)
-		return assert.AnError
-	}
+	ip := provider.(invariantProvider)
 
 	w.rw.Lock()
 	defer w.rw.Unlock()
-	if slices.Contains(*links, actualPluginPath) {
-		assert.Failf(w.t, "", "LinkPackage(%q) linked %q >1 time", projectDir, actualPluginPath)
+	if slices.Contains(*links, ip.path) {
+		assert.Failf(w.t, "", "LinkPackage(%q) linked %q >1 time", projectDir, ip.path)
 		return assert.AnError
 	}
 	// Insert in sorted order to ensure deterministic comparison
-	pos, _ := slices.BinarySearch(*links, actualPluginPath)
-	*links = slices.Insert(*links, pos, actualPluginPath)
+	pos, _ := slices.BinarySearch(*links, ip.path)
+	*links = slices.Insert(*links, pos, ip.path)
 	return nil
 }
 
 func (w invariantWorkspace) RunPackage(
 	ctx context.Context,
 	rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
-	if _, ok := w.plainBinaryPaths[pluginPath]; ok {
-		return nil, nil
-	}
 	pluginPath = filepath.ToSlash(pluginPath)
+	if _, ok := w.plainBinaryPaths[pluginPath]; ok {
+		return invariantProvider{path: pluginPath}, nil
+	}
 
 	if p, ok := w.binaryPaths[pluginPath]; ok {
 		pluginPath = p
@@ -326,5 +309,11 @@ func (w invariantWorkspace) RunPackage(
 			pluginPath, pl.installed, pl.project != nil)
 		return nil, assert.AnError
 	}
-	return nil, nil
+	return invariantProvider{path: pluginPath}, nil
+}
+
+type invariantProvider struct {
+	plugin.Provider
+
+	path string
 }
