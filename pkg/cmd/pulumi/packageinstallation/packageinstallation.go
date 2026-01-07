@@ -76,9 +76,8 @@ type Context interface {
 	// should be run from pluginDir.
 	LinkPackage(
 		ctx context.Context,
-		project *workspace.ProjectRuntimeInfo, projectDir string, packageName tokens.Package,
-		pluginPath string, params plugin.ParameterizeParameters,
-		originalSpec workspace.PackageSpec,
+		project *workspace.ProjectRuntimeInfo, projectDir string,
+		provider plugin.Provider,
 	) error
 
 	// Run a package from a directory, parameterized by params.
@@ -89,6 +88,7 @@ type Context interface {
 	RunPackage(
 		ctx context.Context,
 		rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+		originalSpec workspace.PackageSpec,
 	) (plugin.Provider, error)
 }
 
@@ -148,7 +148,8 @@ func InstallPlugin(
 	}
 
 	return func(ctx context.Context, wd string) (plugin.Provider, error) {
-		return ws.RunPackage(ctx, wd, runBundle.pluginPath, tokens.Package(runBundle.name), runBundle.params)
+		return ws.RunPackage(ctx, wd, runBundle.pluginPath, tokens.Package(runBundle.name),
+			runBundle.params, resolvedSpec)
 	}, resolvedSpec, nil
 }
 
@@ -522,12 +523,14 @@ type linkPackageStep struct {
 func (step linkPackageStep) run(ctx context.Context, p state) error {
 	contract.Assertf(step.runBundle != nil, "must set run bundle before running this step")
 
-	return p.ws.LinkPackage(
-		ctx,
-		step.project.proj.RuntimeInfo(), step.project.projectDir,
-		tokens.Package(step.packageName), step.runBundle.pluginPath, step.runBundle.params,
-		step.specSource,
-	)
+	provider, err := p.ws.RunPackage(ctx,
+		step.project.projectDir, step.runBundle.pluginPath,
+		tokens.Package(step.packageName), step.runBundle.params, step.specSource)
+	if err != nil {
+		return err
+	}
+
+	return p.ws.LinkPackage(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, provider)
 }
 
 // newSpecNode adds a new spec to the DAG, or de-duplicates the spec.

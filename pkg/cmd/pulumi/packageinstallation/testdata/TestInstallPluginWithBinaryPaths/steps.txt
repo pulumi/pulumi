@@ -1,2 +1,2 @@
 IsExecutable{ctx, "/path/to/binary/pulumi-resource-test-provider"} -> {true, nil}
-RunPackage{ctx, "/tmp", "/path/to/binary/pulumi-resource-test-provider", "test-provider", nil} -> {nil, nil}
+RunPackage{ctx, "/tmp", "/path/to/binary/pulumi-resource-test-provider", "test-provider", nil} -> {invariantProvider{path:"/path/to/binary/pulumi-resource-test-provider"}, nil}

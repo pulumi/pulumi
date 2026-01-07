@@ -385,15 +385,11 @@ func SchemaFromSchemaSource(
 	if err != nil {
 		return nil, nil, err
 	}
-	defer func() { contract.IgnoreClose(p.Provider) }()
+	defer func() { contract.IgnoreClose(p) }()
 
 	var request plugin.GetSchemaRequest
 	if !parameters.Empty() {
-		if p.AlreadyParameterized {
-			return nil, nil,
-				fmt.Errorf("cannot specify parameters since %s is already parameterized", packageSource)
-		}
-		resp, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
+		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 			Parameters: parameters,
 		})
 		if err != nil {
@@ -406,7 +402,7 @@ func SchemaFromSchemaSource(
 		}
 	}
 
-	schema, err := p.Provider.GetSchema(pctx.Request(), request)
+	schema, err := p.GetSchema(pctx.Request(), request)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -425,19 +421,13 @@ func SchemaFromSchemaSource(
 	return &spec, &packageSpec, nil
 }
 
-type Provider struct {
-	Provider plugin.Provider
-
-	AlreadyParameterized bool
-}
-
 // ProviderFromSource takes a plugin name or path.
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 	e env.Env, concurrency int,
-) (Provider, workspace.PackageSpec, error) {
+) (plugin.Provider, workspace.PackageSpec, error) {
 	var version string
 	if parts := strings.SplitN(packageSource, "@", 2); len(parts) > 1 {
 		packageSource = parts[0]
@@ -455,11 +445,11 @@ func ProviderFromSource(
 		Concurrency: concurrency,
 	}, reg, packageworkspace.New(pctx.Host, os.Stderr, os.Stderr, nil, packageworkspace.Options{}))
 	if err != nil {
-		return Provider{}, workspace.PackageSpec{}, fmt.Errorf("unable to install %q: %w", packageSource, err)
+		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to install %q: %w", packageSource, err)
 	}
 	p, err := f(pctx.Request(), ".")
 	if err != nil {
-		return Provider{}, workspace.PackageSpec{}, fmt.Errorf("unable to run %q: %w", packageSource, err)
+		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to run %q: %w", packageSource, err)
 	}
-	return Provider{Provider: p, AlreadyParameterized: len(spec.Parameters) > 0}, spec, nil
+	return p, spec, nil
 }

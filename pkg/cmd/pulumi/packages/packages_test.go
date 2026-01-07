@@ -121,7 +121,7 @@ func TestProviderFromSource(t *testing.T) {
 			"PULUMI_EXPERIMENTAL": "true",
 		}), 0)
 		require.NoError(t, err)
-		return provider.Provider
+		return provider
 	}
 
 	t.Run("empy Pulumi.yaml", func(t *testing.T) {
