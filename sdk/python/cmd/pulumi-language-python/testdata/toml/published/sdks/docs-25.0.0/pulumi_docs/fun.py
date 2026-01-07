@@ -49,7 +49,7 @@ class AwaitableFunResult(FunResult):
 def fun(in_: Optional[_builtins.bool] = None,
         opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableFunResult:
     """
-    docs:index:fun is a basic function for setting in on docs:index:Resource.
+    docs:index:fun is a basic function for setting in on Resource.
 
 
     :param _builtins.bool in_: Will be used to set #/functions/docs:index:fun/outputProperties/out.
@@ -64,7 +64,7 @@ def fun(in_: Optional[_builtins.bool] = None,
 def fun_output(in_: Optional[pulumi.Input[_builtins.bool]] = None,
                opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FunResult]:
     """
-    docs:index:fun is a basic function for setting in on docs:index:Resource.
+    docs:index:fun is a basic function for setting in on Resource.
 
 
     :param _builtins.bool in_: Will be used to set #/functions/docs:index:fun/outputProperties/out.

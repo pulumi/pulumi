@@ -2450,7 +2450,31 @@ func (mod *modContext) genComment(comment string, selfRef codegen.DocRef, filter
 		comment = codegen.FilterExamples(comment, "python")
 	}
 	return codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
-		return "", false
+		var base string
+		switch ref.Type {
+		case codegen.DocRefTypeResource:
+			base = mod.tokenToResource(ref.Token.String())
+		}
+
+		if base == "" {
+			return "", false
+		}
+
+		var property string
+		switch ref.Type {
+		case codegen.DocRefTypeResource, codegen.DocRefTypeFunction, codegen.DocRefTypeType:
+			return base, true
+		}
+
+		if property == "" {
+			return "", false
+		}
+
+		if ref.IsWithin(selfRef) {
+			return property, true
+		}
+
+		return fmt.Sprintf("%s.%s", base, property), true
 	})
 }
 
