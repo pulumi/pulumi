@@ -74,7 +74,9 @@ class TestStack(unittest.IsolatedAsyncioTestCase):
 
         project_name = "test_preview_errror"
         stack_name = stack_namer(project_name)
-        stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
 
         # Passing an invalid color option will throw after we've setup the
         # log watcher thread, but before the actual Pulumi operation starts.
@@ -129,7 +131,9 @@ class TestStackArgOrdering(unittest.TestCase):
         mock_workspace.serialize_args_for_op.return_value = additional_args or []
         mock_workspace.pulumi_home = None
         mock_workspace.env_vars = {}
-        mock_workspace.pulumi_command.run.return_value = MagicMock(stdout="", stderr="", code=0)
+        mock_workspace.pulumi_command.run.return_value = MagicMock(
+            stdout="", stderr="", code=0
+        )
         # _remote property on Stack checks isinstance(workspace, LocalWorkspace)
         # and then reads workspace._remote. By setting this, the property returns False.
         mock_workspace._remote = False
@@ -217,7 +221,9 @@ class TestStackArgOrdering(unittest.TestCase):
         Test that additional args from serialize_args_for_op are also
         inserted before the -- separator.
         """
-        stack, mock_workspace = self._create_mock_stack(additional_args=["--config-file", "Pulumi.yaml"])
+        stack, mock_workspace = self._create_mock_stack(
+            additional_args=["--config-file", "Pulumi.yaml"]
+        )
 
         args = ["import", "--from", "terraform", "--", "/path/to/file.json"]
 
