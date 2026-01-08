@@ -16,9 +16,6 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -31,11 +28,9 @@ func init() {
 		Providers: []func() plugin.Provider{func() plugin.Provider { return &providers.NamesProvider{} }},
 		Runs: []TestRun{
 			{
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
 					RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.

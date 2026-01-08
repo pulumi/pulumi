@@ -16,9 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 )
@@ -62,10 +60,9 @@ func init() {
 						},
 					},
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.ErrorContains(l, err, "validating policy config")
 					diags := getDiagnostics(l, events)
 					require.Len(l, diags, 1)
@@ -73,10 +70,9 @@ func init() {
 						"<{%reset%}>validating policy config: config-schema 3.0.0  validator: names is required<{%reset%}>\n",
 						diags[0].Message)
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
 					require.ErrorContains(l, err, "validating policy config")
 					diags := getDiagnostics(l, events)
 					require.Len(l, diags, 1)
@@ -95,10 +91,9 @@ func init() {
 						},
 					},
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.ErrorContains(l, err, "validating policy config")
 					diags := getDiagnostics(l, events)
 					require.Len(l, diags, 1)
@@ -107,10 +102,9 @@ func init() {
 							" names: Array must have at least 1 items<{%reset%}>\n",
 						diags[0].Message)
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
 					require.ErrorContains(l, err, "validating policy config")
 					diags := getDiagnostics(l, events)
 					require.Len(l, diags, 1)
@@ -130,18 +124,16 @@ func init() {
 						},
 					},
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.NoError(l, err)
 					policyViolations := getPolicyViolationEvents(l, events)
 					require.Empty(l, policyViolations, "expected no policy violations")
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
 					require.NoError(l, err)
 					policyViolations := getPolicyViolationEvents(l, events)
 					require.Empty(l, policyViolations, "expected no policy violations")
@@ -157,10 +149,9 @@ func init() {
 						},
 					},
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.NoError(l, err)
 					policyViolations := getPolicyViolationEvents(l, events)
 					require.Len(l, policyViolations, 1, "expected one policy violation")
@@ -175,10 +166,9 @@ func init() {
 						Prefix:            "<{%fg 3%}>advisory: <{%reset%}>",
 					}, policyViolations[0])
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
 					require.NoError(l, err)
 					policyViolations := getPolicyViolationEvents(l, events)
 					require.Len(l, policyViolations, 1, "expected one policy violation")

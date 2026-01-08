@@ -16,9 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -81,17 +79,15 @@ func init() {
 						},
 					},
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.NoError(l, err)
 					verify(l, events)
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
 					require.NoError(l, err)
 					verify(l, events)
 				},
@@ -106,18 +102,16 @@ func init() {
 						},
 					},
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.NoError(l, err)
 					policyRemediations := getPolicyRemediations(l, events)
 					assert.Empty(l, policyRemediations, "expected no policy remediations")
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
 					require.NoError(l, err)
 					policyRemediations := getPolicyRemediations(l, events)
 					assert.Empty(l, policyRemediations, "expected no policy remediations")
@@ -134,18 +128,16 @@ func init() {
 						},
 					},
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.NoError(l, err)
 					policyRemediations := getPolicyRemediations(l, events)
 					assert.Empty(l, policyRemediations, "expected no policy remediations")
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
 					require.NoError(l, err)
 					policyRemediations := getPolicyRemediations(l, events)
 					assert.Empty(l, policyRemediations, "expected no policy remediations")

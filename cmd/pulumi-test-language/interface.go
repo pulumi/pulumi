@@ -38,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -1454,9 +1453,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			// if no assertPreview is provided for the test run, we create a default implementation
 			// where we simply assert that the preview changes did not error
 			assertPreview = func(
-				l *tests.L, proj string, err error, p *deploy.Plan,
-				changes display.ResourceChanges, events []engine.Event,
-				sdks map[string]string,
+				l *tests.L, args tests.AssertPreviewArgs,
 			) {
 				require.NoErrorf(l, err, "expected no error in preview")
 			}
@@ -1482,7 +1479,14 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// assert preview results
 		previewResult := tests.WithL(func(l *tests.L) {
-			assertPreview(l, projectDir, res, plan, previewChanges, events, sdks)
+			assertPreview(l, tests.AssertPreviewArgs{
+				ProjectDirectory: projectDir,
+				Err:              res,
+				Plan:             plan,
+				Changes:          previewChanges,
+				Events:           events,
+				SDKs:             sdks,
+			})
 		})
 
 		if previewResult.Failed {
@@ -1532,7 +1536,14 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		result = tests.WithL(func(l *tests.L) {
-			run.Assert(l, projectDir, res, snap, changes, events, sdks)
+			run.Assert(l, tests.AssertArgs{
+				ProjectDirectory: projectDir,
+				Err:              res,
+				Snap:             snap,
+				Changes:          changes,
+				Events:           events,
+				SDKs:             sdks,
+			})
 		})
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{

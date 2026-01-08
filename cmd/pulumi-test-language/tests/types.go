@@ -234,14 +234,32 @@ type LanguageTest struct {
 	RunsShareSource bool
 }
 
+type AssertPreviewArgs struct {
+	ProjectDirectory string                  // required
+	Err              error                   // required
+	Plan             *deploy.Plan            // required
+	Changes          display.ResourceChanges // required
+	Events           []engine.Event          // required
+	SDKs             map[string]string       // required
+}
+
+type AssertArgs struct {
+	ProjectDirectory string                  // required
+	Err              error                   // required
+	Snap             *deploy.Snapshot        // required
+	Changes          display.ResourceChanges // required
+	Events           []engine.Event          // required
+	SDKs             map[string]string       // required
+}
+
 type TestRun struct {
 	Config config.Map
 	// This can be used to set a main value for the test.
 	Main string
 	// TODO: This should just return "string", if == "" then ok, else fail
-	Assert func(*L, string, error, *deploy.Snapshot, display.ResourceChanges, []engine.Event, map[string]string)
+	Assert func(*L, AssertArgs)
 	// Assert resource changes during preview runs.
-	AssertPreview func(*L, string, error, *deploy.Plan, display.ResourceChanges, []engine.Event, map[string]string)
+	AssertPreview func(*L, AssertPreviewArgs)
 	// UpdateOptions can be used to set the update options for the engine.
 	UpdateOptions engine.UpdateOptions
 	// PolicyPacks is a map of policy packs to use for this test and their config.
