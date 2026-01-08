@@ -1431,3 +1431,79 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		RunStep(project, p.GetTarget(t, setupSnap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+func TestDestroyV2ResourceReferencesAliasedProvider(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21399]:Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, repro for snapshot integrity issue")
+
+	initialSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pulumi:providers:pkgA",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::provA",
+				Custom: true,
+				ID:     "id-provA",
+			},
+			{
+				Type:     "pkgA:index:Resource",
+				URN:      "urn:pulumi:test::test::pkgA:index:Resource::resA",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::provA::id-provA",
+			},
+		},
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(ctx context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+					return plugin.DiffResponse{
+						Changes:     plugin.DiffSome,
+						ReplaceKeys: []resource.PropertyKey{"__replace"},
+					}, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		res1, err := monitor.RegisterResource("pkgB:index:Component", "resB", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{
+			Parent: res1.URN,
+			AliasURNs: []resource.URN{
+				"urn:pulumi:test::test::pulumi:providers:pkgA::provA",
+			},
+		})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:Resource", "resA", false, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+	}
+
+	p := &lt.TestPlan{
+		Options: opts,
+	}
+
+	_, err := lt.TestOp(engine.DestroyV2).RunStep(
+		p.GetProject(), p.GetTarget(t, initialSnap), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
