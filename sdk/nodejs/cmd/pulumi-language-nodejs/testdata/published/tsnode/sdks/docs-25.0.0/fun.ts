@@ -16,14 +16,14 @@ export function fun(args: FunArgs, opts?: pulumi.InvokeOptions): Promise<FunResu
 
 export interface FunArgs {
     /**
-     * Will be used to set #/functions/docs:index:fun/outputProperties/out.
+     * Will be used to set out.
      */
     in: boolean;
 }
 
 export interface FunResult {
     /**
-     * Will be the opposite of #/functions/docs:index:fun/inputProperties/in can be used to set in.
+     * Will be the opposite of in can be used to set in.
      */
     readonly out: boolean;
 }
@@ -39,7 +39,7 @@ export function funOutput(args: FunOutputArgs, opts?: pulumi.InvokeOutputOptions
 
 export interface FunOutputArgs {
     /**
-     * Will be used to set #/functions/docs:index:fun/outputProperties/out.
+     * Will be used to set out.
      */
     in: pulumi.Input<boolean>;
 }

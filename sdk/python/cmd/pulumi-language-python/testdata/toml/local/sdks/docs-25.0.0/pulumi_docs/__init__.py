@@ -9,6 +9,7 @@ import typing
 from .fun import *
 from .provider import *
 from .resource import *
+from . import outputs
 _utilities.register(
     resource_modules="""
 [

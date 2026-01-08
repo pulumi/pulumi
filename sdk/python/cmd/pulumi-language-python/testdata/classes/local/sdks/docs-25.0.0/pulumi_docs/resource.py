@@ -8,6 +8,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
+from . import outputs
 
 __all__ = ['ResourceArgs', 'Resource']
 
@@ -17,7 +18,7 @@ class ResourceArgs:
                  in_: pulumi.Input[_builtins.bool]):
         """
         The set of arguments for constructing a Resource resource.
-        :param pulumi.Input[_builtins.bool] in_: Will be used to set in and out.
+        :param pulumi.Input[_builtins.bool] in_: Will be used to set Resource.in_ and Resource.out.
         """
         pulumi.set(__self__, "in_", in_)
 
@@ -25,7 +26,7 @@ class ResourceArgs:
     @pulumi.getter(name="in")
     def in_(self) -> pulumi.Input[_builtins.bool]:
         """
-        Will be used to set in and out.
+        Will be used to set Resource.in_ and Resource.out.
         """
         return pulumi.get(self, "in_")
 
@@ -43,11 +44,11 @@ class Resource(pulumi.CustomResource):
                  in_: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         """
-        Resource is a basic resource. Use docs:index:fun to set in using #/functions/docs:index:fun/outputProperties/out.
+        Resource is a basic resource. Use fun to set in_ using FunResult.out.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[_builtins.bool] in_: Will be used to set in and out.
+        :param pulumi.Input[_builtins.bool] in_: Will be used to set Resource.in_ and Resource.out.
         """
         ...
     @overload
@@ -56,7 +57,7 @@ class Resource(pulumi.CustomResource):
                  args: ResourceArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Resource is a basic resource. Use docs:index:fun to set in using #/functions/docs:index:fun/outputProperties/out.
+        Resource is a basic resource. Use fun to set in_ using FunResult.out.
 
         :param str resource_name: The name of the resource.
         :param ResourceArgs args: The arguments to use to populate this resource's properties.
@@ -86,6 +87,7 @@ class Resource(pulumi.CustomResource):
             if in_ is None and not opts.urn:
                 raise TypeError("Missing required property 'in_'")
             __props__.__dict__["in_"] = in_
+            __props__.__dict__["data"] = None
             __props__.__dict__["out"] = None
         super(Resource, __self__).__init__(
             'docs:index:Resource',
@@ -109,15 +111,24 @@ class Resource(pulumi.CustomResource):
 
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
+        __props__.__dict__["data"] = None
         __props__.__dict__["in_"] = None
         __props__.__dict__["out"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
     @_builtins.property
+    @pulumi.getter
+    def data(self) -> pulumi.Output['outputs.ResourceData']:
+        """
+        state will have internal data about this resource.
+        """
+        return pulumi.get(self, "data")
+
+    @_builtins.property
     @pulumi.getter(name="in")
     def in_(self) -> pulumi.Output[Optional[_builtins.bool]]:
         """
-        Will be set to the same as in.
+        Will be set to the same as ResourceArgs.in_.
         """
         return pulumi.get(self, "in_")
 
@@ -125,7 +136,7 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter
     def out(self) -> pulumi.Output[_builtins.bool]:
         """
-        Will be set to the opposite of in.
+        Will be set to the opposite of ResourceArgs.in_.
         """
         return pulumi.get(self, "out")
 

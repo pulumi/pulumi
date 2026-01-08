@@ -2,10 +2,12 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
+import * as inputs from "./types/input";
+import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
 /**
- * docs:index:Resource is a basic resource. Use docs:index:fun to set in using #/functions/docs:index:fun/outputProperties/out.
+ * docs:index:Resource is a basic resource. Use docs:index:fun to set in using out.
  */
 export class Resource extends pulumi.CustomResource {
     /**
@@ -35,6 +37,10 @@ export class Resource extends pulumi.CustomResource {
     }
 
     /**
+     * state will have internal data about this resource.
+     */
+    declare public /*out*/ readonly data: pulumi.Output<outputs.ResourceData>;
+    /**
      * Will be set to the same as in.
      */
     declare public readonly in: pulumi.Output<boolean | undefined>;
@@ -58,8 +64,10 @@ export class Resource extends pulumi.CustomResource {
                 throw new Error("Missing required property 'in'");
             }
             resourceInputs["in"] = args?.in;
+            resourceInputs["data"] = undefined /*out*/;
             resourceInputs["out"] = undefined /*out*/;
         } else {
+            resourceInputs["data"] = undefined /*out*/;
             resourceInputs["in"] = undefined /*out*/;
             resourceInputs["out"] = undefined /*out*/;
         }

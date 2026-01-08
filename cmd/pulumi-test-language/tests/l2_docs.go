@@ -81,6 +81,9 @@ func init() {
 					want = resource.NewPropertyMapFromMap(map[string]any{
 						"in":  true,
 						"out": false,
+						"data": map[string]any{
+							"state": "internal data",
+						},
 					})
 					assert.Equal(l, want, res.Outputs, "expected outputs to be %v", want)
 				},

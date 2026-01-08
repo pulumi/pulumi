@@ -23,12 +23,12 @@ func Fun(ctx *pulumi.Context, args *FunArgs, opts ...pulumi.InvokeOption) (*FunR
 }
 
 type FunArgs struct {
-	// Will be used to set #/functions/docs:index:fun/outputProperties/out.
+	// Will be used to set out.
 	In bool `pulumi:"in"`
 }
 
 type FunResult struct {
-	// Will be the opposite of #/functions/docs:index:fun/inputProperties/in can be used to set in.
+	// Will be the opposite of in can be used to set in.
 	Out bool `pulumi:"out"`
 }
 
@@ -42,7 +42,7 @@ func FunOutput(ctx *pulumi.Context, args FunOutputArgs, opts ...pulumi.InvokeOpt
 }
 
 type FunOutputArgs struct {
-	// Will be used to set #/functions/docs:index:fun/outputProperties/out.
+	// Will be used to set out.
 	In pulumi.BoolInput `pulumi:"in"`
 }
 
@@ -64,7 +64,7 @@ func (o FunResultOutput) ToFunResultOutputWithContext(ctx context.Context) FunRe
 	return o
 }
 
-// Will be the opposite of #/functions/docs:index:fun/inputProperties/in can be used to set in.
+// Will be the opposite of in can be used to set in.
 func (o FunResultOutput) Out() pulumi.BoolOutput {
 	return o.ApplyT(func(v FunResult) bool { return v.Out }).(pulumi.BoolOutput)
 }

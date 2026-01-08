@@ -2171,7 +2171,8 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	case schema.StringType, schema.IntType, schema.NumberType:
 		fmt.Fprintf(w, "@pulumi.type_token(\"%s\")\n", enum.Token)
 		fmt.Fprintf(w, "class %s(%s, Enum):\n", enumName, underlyingType)
-		printComment(w, enum.Comment, indent)
+		docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+		printComment(w, mod.genComment(enum.Comment, docRef, true /*filterExamples*/), indent)
 		for _, e := range enum.Elements {
 			// If the enum doesn't have a name, set the value as the name.
 			if e.Name == "" {
@@ -2191,7 +2192,8 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 				fmt.Fprintf(w, "%v\n", e.Value)
 			}
 			if e.Comment != "" {
-				printComment(w, e.Comment, indent)
+				docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+				printComment(w, mod.genComment(e.Comment, docRef, true /*filterExamples*/), indent)
 			}
 		}
 	default:
@@ -2452,8 +2454,16 @@ func (mod *modContext) genComment(comment string, selfRef codegen.DocRef, filter
 	return codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
 		var base string
 		switch ref.Type {
-		case codegen.DocRefTypeResource:
+		case codegen.DocRefTypeResource, codegen.DocRefTypeResourceProperty:
 			base = mod.tokenToResource(ref.Token.String())
+		case codegen.DocRefTypeResourceInputProperty:
+			base = mod.tokenToResource(ref.Token.String()) + "Args"
+		case codegen.DocRefTypeFunction:
+			base = PyName(tokenToName(ref.Token.String()))
+		case codegen.DocRefTypeFunctionInputProperty:
+			base = title(PyName(tokenToName(ref.Token.String()))) + "Args"
+		case codegen.DocRefTypeFunctionOutputProperty:
+			base = title(PyName(tokenToName(ref.Token.String()))) + "Result"
 		}
 
 		if base == "" {
@@ -2464,6 +2474,8 @@ func (mod *modContext) genComment(comment string, selfRef codegen.DocRef, filter
 		switch ref.Type {
 		case codegen.DocRefTypeResource, codegen.DocRefTypeFunction, codegen.DocRefTypeType:
 			return base, true
+		default:
+			property = PyName(ref.Property)
 		}
 
 		if property == "" {
@@ -2848,7 +2860,8 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
 	}
 	fmt.Fprintf(w, "):\n")
-	mod.genTypeDocstring(w, comment, props)
+	docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+	mod.genTypeDocstring(w, mod.genComment(comment, docRef, false /*filterExamples*/), props)
 	if len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
 	}

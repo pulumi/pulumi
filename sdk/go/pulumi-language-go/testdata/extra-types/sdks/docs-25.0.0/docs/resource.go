@@ -12,10 +12,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// docs:index:Resource is a basic resource. Use docs:index:fun to set in using #/functions/docs:index:fun/outputProperties/out.
+// docs:index:Resource is a basic resource. Use docs:index:fun to set in using out.
 type Resource struct {
 	pulumi.CustomResourceState
 
+	// state will have internal data about this resource.
+	Data ResourceDataOutput `pulumi:"data"`
 	// Will be set to the same as in.
 	In pulumi.BoolPtrOutput `pulumi:"in"`
 	// Will be set to the opposite of in.
@@ -160,6 +162,11 @@ func (o ResourceOutput) ToResourceOutput() ResourceOutput {
 
 func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
 	return o
+}
+
+// state will have internal data about this resource.
+func (o ResourceOutput) Data() ResourceDataOutput {
+	return o.ApplyT(func(v *Resource) ResourceDataOutput { return v.Data }).(ResourceDataOutput)
 }
 
 // Will be set to the same as in.
