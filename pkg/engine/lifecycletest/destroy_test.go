@@ -1507,3 +1507,96 @@ func TestDestroyV2ResourceReferencesAliasedProvider(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, initialSnap), opts, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 }
+
+func TestDestroyV2RefreshWithTargetedProviderParentChange(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21402]: Re-enable this test when the underlying issue is fixed
+	t.Skip("Skipping test that fails due to snapshot integrity issue")
+
+	p := &lt.TestPlan{
+		Project: "test",
+		Stack:   "test",
+	}
+	project := p.GetProject()
+
+	initialSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pulumi:providers:pkgB",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgB::provB",
+				Custom: true,
+				ID:     "id1",
+			},
+			{
+				Type:   "pulumi:providers:pkgB",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgB::provB",
+				Custom: true,
+				Delete: true,
+				ID:     "id1",
+			},
+			{
+				Type:     "pkgB:m:typC",
+				URN:      "urn:pulumi:test::test::pkgB:m:typC::resC",
+				Custom:   false,
+				ID:       "",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgB::provB::id1",
+				Inputs: resource.PropertyMap{
+					"__id": resource.NewProperty(""),
+				},
+			},
+			{
+				Type:     "pkgB:m:typD",
+				URN:      "urn:pulumi:test::test::pkgB:m:typD::resD",
+				Custom:   true,
+				ID:       "id2",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgB::provB::id1",
+				Inputs: resource.PropertyMap{
+					"__id": resource.NewProperty("id2"),
+				},
+			},
+		},
+	}
+	require.NoError(t, initialSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pulumi:providers:pkgB", "provB", true, deploytest.ResourceOptions{
+			Parent: resA.URN,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgB:m:typC", "resC", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgB:m:typD", "resD", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgB:m:typD::resD",
+				"urn:pulumi:test::test::pulumi:providers:pkgB::provB",
+			}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.DestroyV2).
+		RunStep(project, p.GetTarget(t, initialSnap), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
