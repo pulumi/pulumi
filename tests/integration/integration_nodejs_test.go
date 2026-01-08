@@ -338,6 +338,33 @@ func TestStackOutputsJSON(t *testing.T) {
 `, stdout)
 }
 
+func TestPlanFlag(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	integration.CreateBasicPulumiRepo(e)
+	e.ImportDirectory("../integration/iterative-constraints")
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.18.3")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "stack", "init", "plan-flag")
+
+	_, stderr := e.RunCommandExpectError("pulumi", "up", "--skip-preview", "--plan")
+	assert.Equal(t,
+		"error: --plan cannot be used with --skip-preview; plan requires a preview",
+		strings.Trim(stderr, "\r\n"))
+
+	logs, _ := e.RunCommandExpectError("pulumi", "up", "--plan", "--yes")
+	assert.Contains(t, logs,
+		"error: create is not allowed by the plan: no steps were expected for this resource")
+
+	// Clean up.
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "plan-flag", "--yes")
+}
+
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
