@@ -399,7 +399,7 @@ func ShowProgressOutput(in <-chan Progress, out io.Writer, isInteractive bool) {
 				line = len(ids)
 				ids[jm.ID] = line
 				if term != nil {
-					term.CarriageReturn()
+					fmt.Fprintf(out, "\n")
 				}
 			}
 			diff = len(ids) - line
