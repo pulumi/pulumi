@@ -837,6 +837,18 @@ func (p *providerServer) Construct(ctx context.Context,
 		replaceWith[i] = resource.URN(urn)
 	}
 
+	var replacementTrigger resource.PropertyValue
+	if trigger := req.GetReplacementTrigger(); trigger != nil {
+		rt, err := UnmarshalPropertyValue("replacementTrigger", trigger, p.unmarshalOptions(
+			"replacementTrigger", true /* keepOutputValues */))
+		if err != nil {
+			return nil, err
+		}
+		if rt != nil {
+			replacementTrigger = *rt
+		}
+	}
+
 	options := ConstructOptions{
 		Aliases:              aliases,
 		Dependencies:         dependencies,
@@ -846,6 +858,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		ResourceHooks:        hooks,
 		DeletedWith:          resource.URN(req.DeletedWith),
 		ReplaceWith:          replaceWith,
+		ReplacementTrigger:   replacementTrigger,
 	}
 
 	resp, err := p.provider.Construct(ctx, ConstructRequest{
