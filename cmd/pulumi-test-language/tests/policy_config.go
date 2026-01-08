@@ -65,14 +65,20 @@ func init() {
 					},
 				},
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
-					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
 					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.ErrorContains(l, err, "BAIL: step generator errored")
 					validate(l, events, "true")
 				},
 				Assert: func(l *L, res AssertArgs) {
-					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
-					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
+					err := res.Err
+					events := res.Events
+
 					require.ErrorContains(l, err,
 						"BAIL: resource urn:pulumi:test::policy-config::simple:index:Resource::res is invalid")
 					validate(l, events, "true")
@@ -87,14 +93,20 @@ func init() {
 					},
 				},
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
-					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
 					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.ErrorContains(l, err, "BAIL: step generator errored")
 					validate(l, events, "false")
 				},
 				Assert: func(l *L, res AssertArgs) {
-					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
-					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
+					err := res.Err
+					events := res.Events
+
 					require.ErrorContains(l, err,
 						"BAIL: resource urn:pulumi:test::policy-config::simple:index:Resource::res is invalid")
 					validate(l, events, "false")

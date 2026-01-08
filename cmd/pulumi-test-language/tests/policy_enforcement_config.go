@@ -75,14 +75,20 @@ func init() {
 					"enforcement-config": {},
 				},
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
-					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
 					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.NoError(l, err)
 					validate(l, events, apitype.Advisory)
 				},
 				Assert: func(l *L, res AssertArgs) {
-					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
-					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
+					err := res.Err
+					events := res.Events
+
 					require.NoError(l, err)
 					validate(l, events, apitype.Advisory)
 				},
@@ -97,14 +103,20 @@ func init() {
 					},
 				},
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
-					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
 					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.ErrorContains(l, err, "BAIL: step generator errored")
 					validate(l, events, apitype.Mandatory)
 				},
 				Assert: func(l *L, res AssertArgs) {
-					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
-					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
+					err := res.Err
+					events := res.Events
+
 					require.ErrorContains(l, err,
 						"BAIL: resource urn:pulumi:test::policy-enforcement-config::simple:index:Resource::res is invalid")
 					validate(l, events, apitype.Mandatory)
@@ -118,14 +130,20 @@ func init() {
 					},
 				},
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
-					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
 					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.NoError(l, err)
 					validate(l, events, "")
 				},
 				Assert: func(l *L, res AssertArgs) {
-					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
-					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
+					err := res.Err
+					events := res.Events
+
 					require.NoError(l, err)
 					validate(l, events, "")
 				},

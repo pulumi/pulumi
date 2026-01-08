@@ -30,8 +30,11 @@ func init() {
 		Runs: []TestRun{
 			{
 				Assert: func(l *L, res AssertArgs) {
-					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
-					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
+					err := res.Err
+					snap := res.Snap
+					changes := res.Changes
+					sdks := res.SDKs
+
 					// Require the sdk folder to exist
 					_, ok := sdks["simple-2.0.0"]
 					require.True(l, ok, "expected simple sdk in %v", sdks)

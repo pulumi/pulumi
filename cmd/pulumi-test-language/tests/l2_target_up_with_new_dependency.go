@@ -30,8 +30,10 @@ func init() {
 		Runs: []TestRun{
 			{
 				Assert: func(l *L, res AssertArgs) {
-					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
-					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
+					err := res.Err
+					snap := res.Snap
+					changes := res.Changes
+
 					RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 					err = snap.VerifyIntegrity()
@@ -52,8 +54,8 @@ func init() {
 					}),
 				},
 				Assert: func(l *L, res AssertArgs) {
-					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
-					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
+					snap := res.Snap
+
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
 					target := RequireSingleNamedResource(l, snap.Resources, "targetOnly")

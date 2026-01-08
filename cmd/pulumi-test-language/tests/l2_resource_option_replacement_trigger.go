@@ -34,13 +34,20 @@ func init() {
 		Runs: []TestRun{
 			{
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
-					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
 					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					RequireStackResource(l, err, changes)
 				},
 				Assert: func(l *L, res AssertArgs) {
-					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
-					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
+					err := res.Err
+					snap := res.Snap
+					changes := res.Changes
+
 					RequireStackResource(l, err, changes)
 
 					// We expect the following resources:
@@ -125,7 +132,12 @@ func init() {
 			},
 			{
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
-					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
 					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					// Preview should show that the resource with an unknown trigger is going to be replaced.
 					var ops []display.StepOp

@@ -31,7 +31,12 @@ func init() {
 		Runs: []TestRun{
 			{
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
-					projectDirectory, err, plan, changes, events, sdks := res.ProjectDirectory, res.Err, res.Plan, res.Changes, res.Events, res.SDKs
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
 					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.True(l, result.IsBail(err), "expected a bail result on preview")
 
@@ -49,8 +54,10 @@ func init() {
 					require.True(l, found, "expected to find error diagnostic for failing resource")
 				},
 				Assert: func(l *L, res AssertArgs) {
-					projectDirectory, err, snap, changes, events, sdks := res.ProjectDirectory, res.Err, res.Snap, res.Changes, res.Events, res.SDKs
-					_, _, _, _, _, _ = projectDirectory, err, snap, changes, events, sdks
+					err := res.Err
+					snap := res.Snap
+					events := res.Events
+
 					require.True(l, result.IsBail(err), "expected a bail result")
 
 					// Expect the error diagnostic for the failed resource
