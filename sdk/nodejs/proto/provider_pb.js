@@ -9753,7 +9753,8 @@ resourceHooks: (f = msg.getResourceHooks()) && proto.pulumirpc.ConstructRequest.
 stackTraceHandle: jspb.Message.getFieldWithDefault(msg, 27, ""),
 replaceWithList: (f = jspb.Message.getRepeatedField(msg, 28)) == null ? undefined : f,
 aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
-    pulumi_alias_pb.Alias.toObject, includeInstance)
+    pulumi_alias_pb.Alias.toObject, includeInstance),
+replacementTrigger: (f = msg.getReplacementTrigger()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -9911,6 +9912,11 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
       var value = new pulumi_alias_pb.Alias;
       reader.readMessage(value,pulumi_alias_pb.Alias.deserializeBinaryFromReader);
       msg.addAliases(value);
+      break;
+    case 30:
+      var value = new google_protobuf_struct_pb.Value;
+      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
+      msg.setReplacementTrigger(value);
       break;
     default:
       reader.skipField();
@@ -10130,6 +10136,14 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
       29,
       f,
       pulumi_alias_pb.Alias.serializeBinaryToWriter
+    );
+  }
+  f = message.getReplacementTrigger();
+  if (f != null) {
+    writer.writeMessage(
+      30,
+      f,
+      google_protobuf_struct_pb.Value.serializeBinaryToWriter
     );
   }
 };
@@ -11692,6 +11706,43 @@ proto.pulumirpc.ConstructRequest.prototype.addAliases = function(opt_value, opt_
  */
 proto.pulumirpc.ConstructRequest.prototype.clearAliasesList = function() {
   return this.setAliasesList([]);
+};
+
+
+/**
+ * optional google.protobuf.Value replacement_trigger = 30;
+ * @return {?proto.google.protobuf.Value}
+ */
+proto.pulumirpc.ConstructRequest.prototype.getReplacementTrigger = function() {
+  return /** @type{?proto.google.protobuf.Value} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 30));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Value|undefined} value
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+*/
+proto.pulumirpc.ConstructRequest.prototype.setReplacementTrigger = function(value) {
+  return jspb.Message.setWrapperField(this, 30, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.clearReplacementTrigger = function() {
+  return this.setReplacementTrigger(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.prototype.hasReplacementTrigger = function() {
+  return jspb.Message.getField(this, 30) != null;
 };
 
 

@@ -1127,6 +1127,10 @@ message ConstructRequest {
 
     // a list of additional aliases that should be considered the same.
     repeated Alias aliases = 29;
+    
+    // If set, the engine will diff this value with the last recorded value, and trigger a replace if they are not
+    // equal.
+    google.protobuf.Value replacement_trigger = 30;
 }
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.
