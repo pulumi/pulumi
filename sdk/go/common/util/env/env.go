@@ -24,6 +24,8 @@ package env
 
 import (
 	"fmt"
+	"iter"
+	"maps"
 	"os"
 	"sort"
 	"strconv"
@@ -37,6 +39,7 @@ type Store interface {
 	// Retrieve a raw value from the Store. If the value is not present, "", false should
 	// be returned.
 	Raw(key string) (string, bool)
+	Values() iter.Seq2[string, string]
 }
 
 // A strongly typed environment.
@@ -44,6 +47,7 @@ type Env interface {
 	GetString(val StringValue) string
 	GetBool(val BoolValue) bool
 	GetInt(val IntValue) int
+	GetStore() Store
 }
 
 // Create a new strongly typed Env from an untyped Store.
@@ -65,10 +69,27 @@ func (e env) GetInt(val IntValue) int {
 	return IntValue{val.withStore(e.s)}.Value()
 }
 
+func (e env) GetStore() Store { return e.s }
+
 type envStore struct{}
 
 func (envStore) Raw(key string) (string, bool) {
 	return os.LookupEnv(key)
+}
+
+func (envStore) Values() iter.Seq2[string, string] {
+	return func(yield func(string, string) bool) {
+		vars := os.Environ()
+		for _, v := range vars {
+			parts := strings.SplitN(v, "=", 2)
+			if len(parts) == 1 {
+				panic("os.Environ promises that this won't happen")
+			}
+			if !yield(parts[0], parts[1]) {
+				break
+			}
+		}
+	}
 }
 
 type MapStore map[string]string
@@ -76,6 +97,10 @@ type MapStore map[string]string
 func (m MapStore) Raw(key string) (string, bool) {
 	v, ok := m[key]
 	return v, ok
+}
+
+func (m MapStore) Values() iter.Seq2[string, string] {
+	return maps.All(m)
 }
 
 // The global store of values that Value.Value() uses.
@@ -420,4 +445,37 @@ func Int(name, description string, opts ...Option) IntValue {
 		options:     options,
 	}
 	return setVar(val, variable).(IntValue)
+}
+
+func JoinStore(stores ...Store) Store {
+	return joinStore{stores}
+}
+
+type joinStore struct{ stores []Store }
+
+func (js joinStore) Raw(key string) (string, bool) {
+	for _, store := range js.stores {
+		if v, ok := store.Raw(key); ok {
+			return v, true
+		}
+	}
+	return "", false
+}
+
+func (js joinStore) Values() iter.Seq2[string, string] {
+	seen := map[string]struct{}{}
+	return func(yield func(string, string) bool) {
+		for _, store := range js.stores {
+			for k, v := range store.Values() {
+				_, duplicate := seen[k]
+				if duplicate {
+					continue
+				}
+				seen[k] = struct{}{}
+				if !yield(k, v) {
+					return
+				}
+			}
+		}
+	}
 }
