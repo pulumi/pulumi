@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2025-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,8 @@ type ExclusionRules []ExclusionRule
 func DefaultExclusionRules() ExclusionRules {
 	return []ExclusionRule{
 		ExcludeDestroyAndRefreshProgramSet,
+		// TODO[pulumi/pulumi#21386]
+		ExcludeChildProviderOfDuplicateResourceRefresh,
 		// TODO[pulumi/pulumi#21277]
 		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
 		// TODO[pulumi/pulumi#21347]
@@ -67,6 +69,44 @@ func ExcludeDestroyAndRefreshProgramSet(
 	if plan.Operation == PlanOperationDestroyV2 && plan.RefreshProgram {
 		return true
 	}
+	return false
+}
+
+// ExcludeChildProviderOfDuplicateResourceRefresh excludes snapshots where a resource appears
+// twice in the snapshot (once normal, once marked for deletion) and has a child resource.
+// During refresh, this causes a snapshot integrity error because the child resource's parent
+// can appear after it in the resulting snapshot.
+func ExcludeChildProviderOfDuplicateResourceRefresh(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefresh && !plan.Refresh && !plan.RefreshProgram {
+		return false
+	}
+
+	urnCounts := make(map[resource.URN]int)
+	deletedURNs := make(map[resource.URN]bool)
+
+	for _, res := range snap.Resources {
+		urn := res.URN()
+		urnCounts[urn]++
+		if res.Delete {
+			deletedURNs[urn] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent == "" {
+			continue
+		}
+
+		if urnCounts[res.Parent] > 1 && deletedURNs[res.Parent] {
+			return true
+		}
+	}
+
 	return false
 }
 
