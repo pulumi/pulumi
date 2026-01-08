@@ -15,9 +15,6 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/require"
@@ -34,11 +31,11 @@ func init() {
 					config.MustMakeKey("l1-config-types", "anObject"):  config.NewObjectValue("{\"prop\": [true]}"),
 					config.MustMakeKey("l1-config-types", "anyObject"): config.NewObjectValue("{\"a\": 10, \"b\": 20}"),
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					err := res.Err
+					snap := res.Snap
+					changes := res.Changes
+
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
