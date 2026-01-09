@@ -1115,14 +1115,16 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 	return "To" + outputTypeName
 }
 
-// genComment processes a comment string by filtering examples and resolving Pulumi references.
-func (pkg *pkgContext) genComment(comment string, selfRef codegen.DocRef) string {
+// printComment filters examples for the Go languages and prepends double forward slash to each line in the given
+// comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
+// resulting comment. It guarantees that each line is terminated with newline character.
+func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef codegen.DocRef, indent bool) int {
 	if comment == "" {
-		return ""
+		return 0
 	}
 	comment = codegen.FilterExamples(comment, "go")
 
-	return codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
+	comment = codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
 		var base string
 		switch ref.Type {
 		case codegen.DocRefTypeResource, codegen.DocRefTypeResourceProperty:
@@ -1163,13 +1165,6 @@ func (pkg *pkgContext) genComment(comment string, selfRef codegen.DocRef) string
 
 		return fmt.Sprintf("%s.%s", base, property), true
 	})
-}
-
-// printComment filters examples for the Go languages and prepends double forward slash to each line in the given
-// comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
-// resulting comment. It guarantees that each line is terminated with newline character.
-func printComment(w io.Writer, comment string, indent bool) int {
-	comment = codegen.FilterExamples(comment, "go")
 
 	lines := strings.Split(comment, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
@@ -1188,18 +1183,20 @@ func printComment(w io.Writer, comment string, indent bool) int {
 	return len(lines)
 }
 
-func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage string, indent bool) {
-	lines := printComment(w, comment, indent)
+func (pkg *pkgContext) printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage string, indent bool) {
+	ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+	lines := pkg.printComment(w, comment, ref, indent)
 	if deprecationMessage != "" {
 		if lines > 0 {
 			fmt.Fprintf(w, "//\n")
 		}
-		printComment(w, "Deprecated: "+deprecationMessage, indent)
+		pkg.printComment(w, "Deprecated: "+deprecationMessage, ref, indent)
 	}
 }
 
 func (pkg *pkgContext) genInputInterface(w io.Writer, name string) {
-	printComment(w, pkg.getInputUsage(name), false)
+	ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+	pkg.printComment(w, pkg.getInputUsage(name), ref, false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
@@ -1225,7 +1222,7 @@ func (pkg *pkgContext) genEnumInputInterface(w io.Writer, name string, enumType 
 		" ",
 	}, "\n")
 
-	printComment(w, enumUsage, false)
+	pkg.printComment(w, enumUsage, codegen.NewDocRef(codegen.DocRefTypeUnknown, "", ""), false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
