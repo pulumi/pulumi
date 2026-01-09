@@ -34,6 +34,9 @@ type MockHTTPBackend struct {
 	) (*apitype.ResourceSearchResponse, error)
 	FNaturalLanguageSearch func(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
 	FPromptAI              func(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
+	FCreateNeoTask         func(ctx context.Context, orgName string, req apitype.NeoTaskRequest) (*apitype.NeoTaskResponse, error)
+	FListNeoTasks          func(ctx context.Context, orgName string, pageSize int, continuationToken string) (*apitype.NeoTaskListResponse, error)
+	FGetNeoTask            func(ctx context.Context, orgName string, taskID string) (*apitype.NeoTask, error)
 	FStackConsoleURL       func(stackRef backend.StackReference) (string, error)
 	FRunDeployment         func(
 		ctx context.Context,
@@ -85,6 +88,18 @@ func (b *MockHTTPBackend) Search(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {
 	return b.FSearch(ctx, orgName, queryParams)
+}
+
+func (b *MockHTTPBackend) CreateNeoTask(ctx context.Context, orgName string, req apitype.NeoTaskRequest) (*apitype.NeoTaskResponse, error) {
+	return b.FCreateNeoTask(ctx, orgName, req)
+}
+
+func (b *MockHTTPBackend) ListNeoTasks(ctx context.Context, orgName string, pageSize int, continuationToken string) (*apitype.NeoTaskListResponse, error) {
+	return b.FListNeoTasks(ctx, orgName, pageSize, continuationToken)
+}
+
+func (b *MockHTTPBackend) GetNeoTask(ctx context.Context, orgName string, taskID string) (*apitype.NeoTask, error) {
+	return b.FGetNeoTask(ctx, orgName, taskID)
 }
 
 func (b *MockHTTPBackend) Capabilities(context.Context) apitype.Capabilities {

@@ -187,6 +187,12 @@ type Backend interface {
 		ctx context.Context, orgName string, query string,
 	) (*apitype.ResourceSearchResponse, error)
 	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
+
+	// Neo task management
+	CreateNeoTask(ctx context.Context, orgName string, req apitype.NeoTaskRequest) (*apitype.NeoTaskResponse, error)
+	ListNeoTasks(ctx context.Context, orgName string, pageSize int, continuationToken string) (*apitype.NeoTaskListResponse, error)
+	GetNeoTask(ctx context.Context, orgName string, taskID string) (*apitype.NeoTask, error)
+
 	// Capabilities returns the capabilities of the backend indicating what features are available.
 	Capabilities(ctx context.Context) apitype.Capabilities
 }
@@ -1402,6 +1408,21 @@ func (b *cloudBackend) NaturalLanguageSearch(
 		return nil, err
 	}
 	return results, err
+}
+
+// CreateNeoTask creates a new Neo task for the given organization.
+func (b *cloudBackend) CreateNeoTask(ctx context.Context, orgName string, req apitype.NeoTaskRequest) (*apitype.NeoTaskResponse, error) {
+	return b.Client().CreateNeoTask(ctx, orgName, req)
+}
+
+// ListNeoTasks retrieves Neo tasks for the given organization with pagination support.
+func (b *cloudBackend) ListNeoTasks(ctx context.Context, orgName string, pageSize int, continuationToken string) (*apitype.NeoTaskListResponse, error) {
+	return b.Client().ListNeoTasks(ctx, orgName, pageSize, continuationToken)
+}
+
+// GetNeoTask retrieves a specific Neo task by ID for the given organization.
+func (b *cloudBackend) GetNeoTask(ctx context.Context, orgName string, taskID string) (*apitype.NeoTask, error) {
+	return b.Client().GetNeoTask(ctx, orgName, taskID)
 }
 
 func (b *cloudBackend) PromptAI(

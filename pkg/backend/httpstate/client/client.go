@@ -1633,6 +1633,61 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, err
 	return extractCopilotResponse(copilotResp)
 }
 
+// CreateNeoTask creates a new Neo task for the given organization.
+func (pc *Client) CreateNeoTask(ctx context.Context, orgName string, req apitype.NeoTaskRequest) (*apitype.NeoTaskResponse, error) {
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks", url.PathEscape(orgName))
+
+	var resp apitype.NeoTaskResponse
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+// ListNeoTasks retrieves Neo tasks for the given organization with optional pagination.
+// pageSize: number of items to return (1-1000, default 100 if not specified)
+// continuationToken: token from previous response to fetch next page (empty for first page)
+func (pc *Client) ListNeoTasks(ctx context.Context, orgName string, pageSize int, continuationToken string) (*apitype.NeoTaskListResponse, error) {
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks", url.PathEscape(orgName))
+
+	// Build query parameters
+	queryParams := url.Values{}
+	if pageSize > 0 {
+		if pageSize > 1000 {
+			pageSize = 1000
+		}
+		queryParams.Set("pageSize", strconv.Itoa(pageSize))
+	}
+	if continuationToken != "" {
+		queryParams.Set("continuationToken", continuationToken)
+	}
+
+	// Add query params to path if present
+	if len(queryParams) > 0 {
+		path = path + "?" + queryParams.Encode()
+	}
+
+	var resp apitype.NeoTaskListResponse
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+// GetNeoTask retrieves a specific Neo task by ID for the given organization.
+func (pc *Client) GetNeoTask(ctx context.Context, orgName string, taskID string) (*apitype.NeoTask, error) {
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", url.PathEscape(orgName), url.PathEscape(taskID))
+
+	var resp apitype.NeoTask
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
 func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePublishOp) error {
 	req := apitype.StartPackagePublishRequest{
 		Version: input.Version.String(),

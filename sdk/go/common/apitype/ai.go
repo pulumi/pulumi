@@ -98,3 +98,52 @@ type CopilotThreadMessage struct {
 	Kind    string          `json:"kind"`    // Depends on the tool called, e.g. "response" / "program"
 	Content json.RawMessage `json:"content"` // The content of the message. String or JSON object.
 }
+
+// Neo Task Types
+
+// NeoEntity represents an entity associated with a Neo task.
+type NeoEntity struct {
+	Type    string `json:"type"`              // Entity type (e.g., "stack", "repository")
+	Name    string `json:"name,omitempty"`    // Entity name
+	Project string `json:"project,omitempty"` // Project name (for stacks)
+	ID      string `json:"id,omitempty"`      // Entity ID
+}
+
+// NeoEntityDiff represents entities to add or remove from a task.
+type NeoEntityDiff struct {
+	Add    []NeoEntity `json:"add,omitempty"`    // Entities to add
+	Remove []NeoEntity `json:"remove,omitempty"` // Entities to remove
+}
+
+// NeoMessage represents a user message for Neo.
+type NeoMessage struct {
+	Type       string         `json:"type"`                  // Message type (always "user_message")
+	Content    string         `json:"content"`               // User's message content
+	Timestamp  string         `json:"timestamp"`             // ISO 8601 timestamp
+	EntityDiff *NeoEntityDiff `json:"entity_diff,omitempty"` // Optional entity changes
+}
+
+// NeoTaskRequest is the request to create a new Neo task.
+type NeoTaskRequest struct {
+	Message NeoMessage `json:"message"` // The user's message
+}
+
+// NeoTask represents a Neo task.
+type NeoTask struct {
+	ID        string      `json:"id"`        // The unique ID of the task
+	Name      string      `json:"name"`      // Human-readable task name
+	Status    string      `json:"status"`    // Status: "running" or "idle"
+	CreatedAt string      `json:"createdAt"` // When the task was created (ISO 8601)
+	Entities  []NeoEntity `json:"entities"`  // Associated entities
+}
+
+// NeoTaskResponse is the response from creating a Neo task.
+type NeoTaskResponse struct {
+	TaskID string `json:"taskId"` // The created task ID
+}
+
+// NeoTaskListResponse is the response from listing Neo tasks.
+type NeoTaskListResponse struct {
+	Tasks             []NeoTask `json:"tasks"`                       // The list of tasks
+	ContinuationToken string    `json:"continuationToken,omitempty"` // Token for pagination
+}

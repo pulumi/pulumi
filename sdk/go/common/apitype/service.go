@@ -40,6 +40,9 @@ const (
 	// Indicates whether the service supports the Copilot explainer.
 	CopilotExplainPreview APICapability = "copilot-explain-preview"
 
+	// Indicates whether the service supports Neo tasks.
+	NeoTasks APICapability = "neo-tasks"
+
 	// Indicates the maximum deployment schema version that the service supports.
 	DeploymentSchemaVersion APICapability = "deployment-schema-version"
 )
@@ -85,6 +88,9 @@ type Capabilities struct {
 	// Indicates whether the service supports the Copilot explainer.
 	CopilotExplainPreviewV1 bool
 
+	// Indicates whether the service supports Neo tasks.
+	NeoTasks bool
+
 	// Indicates the maximum deployment schema version that the service supports.
 	DeploymentSchemaVersion int
 }
@@ -118,6 +124,8 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 			if entry.Version == 1 {
 				parsed.CopilotExplainPreviewV1 = true
 			}
+		case NeoTasks:
+			parsed.NeoTasks = true
 		case DeploymentSchemaVersion:
 			if entry.Version == 1 {
 				var versionConfig DeploymentSchemaVersionConfig
