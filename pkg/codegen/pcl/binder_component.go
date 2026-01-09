@@ -136,7 +136,8 @@ func ComponentProgramBinderFromFS(fsys fs.FS, baseDir string) ComponentProgramBi
 		nodeRange := args.ComponentNodeRange
 		loader := args.BinderLoader
 
-		componentPath := path.Join(baseDir, componentSource)
+		// Clean the path to resolve .. and . segments since embedded FS doesn't support them
+		componentPath := path.Clean(path.Join(baseDir, componentSource))
 
 		parser := syntax.NewParser()
 		files, err := fs.ReadDir(fsys, componentPath)
@@ -178,11 +179,13 @@ func ComponentProgramBinderFromFS(fsys fs.FS, baseDir string) ComponentProgramBi
 			}
 		}
 
-		componentSourceDir := path.Join(baseDir, componentSource)
+		// Clean the path to resolve .. and . segments since embedded FS doesn't support them
+		componentSourceDir := path.Clean(path.Join(baseDir, componentSource))
 		opts := []BindOption{
 			Loader(loader),
 			DirPath(componentSourceDir),
-			ComponentBinder(ComponentProgramBinderFromFS(fsys, baseDir)),
+			// For nested components, use componentPath as the base so relative paths work correctly
+			ComponentBinder(ComponentProgramBinderFromFS(fsys, componentPath)),
 			Cache(args.PackageCache),
 		}
 

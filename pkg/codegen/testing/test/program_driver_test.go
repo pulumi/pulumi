@@ -15,12 +15,13 @@
 package test
 
 import (
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,17 +46,16 @@ func TestBatches(t *testing.T) {
 func TestTranspiledExampleTestsCovered(t *testing.T) {
 	t.Parallel()
 	// Check that all synced tests from pulumi/yaml are in test list
-	syncDir := filepath.Join("testdata", transpiledExamplesDir)
-	untestedTranspiledExamples, err := getUntestedTranspiledExampleDirs(syncDir, PulumiPulumiYAMLProgramTests)
+	untestedTranspiledExamples, err := getUntestedTranspiledExampleDirs(transpiledExamplesDir, PulumiPulumiYAMLProgramTests)
 	require.NoError(t, err)
 	assert.Emptyf(t, untestedTranspiledExamples,
-		"Untested examples in %s: %v", syncDir, untestedTranspiledExamples)
+		"Untested examples in %s: %v", transpiledExamplesDir, untestedTranspiledExamples)
 }
 
 func getUntestedTranspiledExampleDirs(baseDir string, tests []ProgramTest) ([]string, error) {
 	untested := make([]string, 0)
 	testedDirs := make(map[string]bool)
-	files, err := os.ReadDir(baseDir)
+	files, err := fs.ReadDir(utils.GetTestdataFS(), baseDir)
 	if err != nil {
 		return untested, err
 	}

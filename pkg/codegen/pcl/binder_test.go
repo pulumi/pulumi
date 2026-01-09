@@ -134,12 +134,11 @@ func TestWritingProgramSource(t *testing.T) {
 
 	var bindError error
 	var diags hcl.Diagnostics
-	// TODO: This test uses ComponentProgramBinderFromFileSystem which reads from disk.
-	// We'll need to implement ComponentProgramBinderFromFS to fully support embedded FS here.
-	// For now, skip the DirPath and ComponentBinder options.
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))))
+		pcl.Loader(schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))),
+		pcl.DirPath(componentsDir),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFS(testdataFS, componentsDir)))
 
 	require.NoError(t, bindError)
 	if diags.HasErrors() || program == nil {
