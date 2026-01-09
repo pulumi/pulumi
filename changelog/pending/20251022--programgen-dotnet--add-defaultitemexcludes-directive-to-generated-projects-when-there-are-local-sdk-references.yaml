@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/dotnet
+  description: Add DefaultItemExcludes directive to generated projects when there are local SDK references
