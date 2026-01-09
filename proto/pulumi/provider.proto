@@ -1125,6 +1125,10 @@ message ConstructRequest {
 
     // The URNs of resources whose replaces will trigger a replace on this resource.
     repeated string replace_with = 28;
+
+    // If set, the engine will diff this value with the last recorded value, and trigger a replace if they are not
+    // equal.
+    google.protobuf.Value replacement_trigger = 29;
 }
 
 // `ConstructResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Construct) call.

@@ -1906,6 +1906,22 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		replaceWithURNs[i] = string(urn)
 	}
 
+	// Marshal the replacement trigger.
+	var replacementTrigger *structpb.Value
+	if !req.Options.ReplacementTrigger.IsNull() {
+		trigger, err := MarshalPropertyValue("replacementTrigger", req.Options.ReplacementTrigger, MarshalOptions{
+			Label:            label + ".replacementTrigger",
+			KeepUnknowns:     req.Info.DryRun,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return ConstructResult{}, err
+		}
+		replacementTrigger = trigger
+	}
+
 	// Marshal the resource hook bindings.
 	var resourceHook *pulumirpc.ConstructRequest_ResourceHooksBinding
 	if len(req.Options.ResourceHooks) > 0 {
@@ -1945,6 +1961,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		AcceptsOutputValues:     true,
 		ResourceHooks:           resourceHook,
 		StackTraceHandle:        req.Info.StackTraceHandle,
+		ReplacementTrigger:      replacementTrigger,
 	}
 	if ct := req.Options.CustomTimeouts; ct != nil {
 		rpcReq.CustomTimeouts = &pulumirpc.ConstructRequest_CustomTimeouts{

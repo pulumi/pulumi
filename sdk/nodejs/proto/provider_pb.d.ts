@@ -1266,6 +1266,11 @@ export class ConstructRequest extends jspb.Message {
     setReplaceWithList(value: Array<string>): ConstructRequest;
     addReplaceWith(value: string, index?: number): string;
 
+    hasReplacementTrigger(): boolean;
+    clearReplacementTrigger(): void;
+    getReplacementTrigger(): google_protobuf_struct_pb.Value | undefined;
+    setReplacementTrigger(value?: google_protobuf_struct_pb.Value): ConstructRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConstructRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ConstructRequest): ConstructRequest.AsObject;
@@ -1309,6 +1314,7 @@ export namespace ConstructRequest {
         resourceHooks?: ConstructRequest.ResourceHooksBinding.AsObject,
         stackTraceHandle: string,
         replaceWithList: Array<string>,
+        replacementTrigger?: google_protobuf_struct_pb.Value.AsObject,
     }
 
 
