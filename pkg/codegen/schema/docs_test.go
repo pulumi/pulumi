@@ -44,7 +44,6 @@ import (
 // Aside from just being verbose, the voluminous output makes `gotestsum` analysis less useful and
 // prevents use of the `ci-matrix` tool.
 
-
 var nodeAssertions = testutil.DefaultNodeAssertions().Union(testutil.NodeAssertions{
 	KindShortcode: func(t *testing.T, sourceExpected, sourceActual []byte, expected, actual ast.Node) bool {
 		shortcodeExpected, shortcodeActual := expected.(*Shortcode), actual.(*Shortcode)

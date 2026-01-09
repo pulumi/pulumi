@@ -15,7 +15,6 @@
 package python
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -27,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
-
 
 func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
 	parser := syntax.NewParser()

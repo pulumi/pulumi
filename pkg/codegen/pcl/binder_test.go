@@ -39,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
-
 func TestBindProgram(t *testing.T) {
 	t.Parallel()
 
@@ -91,11 +90,11 @@ func TestBindProgram(t *testing.T) {
 				var bindError error
 				var diags hcl.Diagnostics
 				loader := pcl.Loader(schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS())))
-			options := append(
-				bindOptions[v.Name()],
-				loader,
-				pcl.DirPath(folderPath),
-				pcl.ComponentBinder(pcl.ComponentProgramBinderFromFS(testdataFS, folderPath)))
+				options := append(
+					bindOptions[v.Name()],
+					loader,
+					pcl.DirPath(folderPath),
+					pcl.ComponentBinder(pcl.ComponentProgramBinderFromFS(testdataFS, folderPath)))
 				// PCL binder options are taken from program_driver.go
 				program, diags, bindError := pcl.BindProgram(parser.Files, options...)
 

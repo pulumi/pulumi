@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -136,7 +135,6 @@ resource "app" "scaleway:iam/application:Application" {}
 func parseAndBindProgram(t *testing.T,
 	text string,
 	name string,
-	testdataPath string,
 	options ...pcl.BindOption,
 ) (*pcl.Program, hcl.Diagnostics, error) {
 	parser := syntax.NewParser()
@@ -148,7 +146,7 @@ func parseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+	options = append(options, pcl.PluginHost(utils.NewHost(utils.GetTestdataFS())))
 	return pcl.BindProgram(parser.Files, options...)
 }
 
@@ -177,8 +175,7 @@ resource "test-organization" "tfe:index/organization:Organization" {
 
 	program, diags, err := parseAndBindProgram(t,
 		source,
-		"main.pp",
-		filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas"))
+		"main.pp")
 
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), "unexpected diags: %v", diags)

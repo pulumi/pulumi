@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	ioFS "io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -201,7 +202,7 @@ func TestGenerateTypeNames(t *testing.T) {
 
 func readSchemaFile(file string) *schema.Package {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
+	schemaBytes, err := ioFS.ReadFile(utils.GetTestdataFS(), file)
 	if err != nil {
 		panic(err)
 	}
@@ -209,7 +210,7 @@ func readSchemaFile(file string) *schema.Package {
 	if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
 		panic(err)
 	}
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -226,7 +227,7 @@ func readSchemaFile(file string) *schema.Package {
 
 func readYamlSchemaFile(file string) *schema.Package {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
+	schemaBytes, err := ioFS.ReadFile(utils.GetTestdataFS(), file)
 	if err != nil {
 		panic(err)
 	}
@@ -234,7 +235,7 @@ func readYamlSchemaFile(file string) *schema.Package {
 	if err = yaml.Unmarshal(schemaBytes, &pkgSpec); err != nil {
 		panic(err)
 	}
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -591,7 +592,7 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 		}
 	}
 
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})

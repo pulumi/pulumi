@@ -27,7 +27,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-
 func BenchmarkLoadPackage(b *testing.B) {
 	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 

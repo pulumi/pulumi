@@ -18,8 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -46,8 +46,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
-
-var testdataPath = filepath.Join("..", "codegen", "testing", "test", "testdata")
 
 const (
 	parentName   = "parent"
@@ -261,7 +259,7 @@ func readTestCases(path string) (testCases, error) {
 func TestGenerateHCL2Definition(t *testing.T) {
 	t.Parallel()
 
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 	cases, err := readTestCases("testdata/cases.json")
 	require.NoError(t, err)
 
@@ -374,7 +372,7 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 
 	state := &resource.State{
 		ID:       "someProvider",
@@ -431,8 +429,8 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	pluginLoader := deploytest.NewProviderLoader(pkg, semver.MustParse(requestVersion), func() (plugin.Provider, error) {
 		return &deploytest.Provider{
 			GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
-				path := filepath.Join(testdataPath, fmt.Sprintf("%s-%s.json", pkg, loadVersion))
-				data, err := os.ReadFile(path)
+				filename := fmt.Sprintf("%s-%s.json", pkg, loadVersion)
+				data, err := fs.ReadFile(utils.GetTestdataFS(), filename)
 				if err != nil {
 					return plugin.GetSchemaResponse{}, err
 				}
@@ -481,7 +479,7 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 
 func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 
 	snapshot := []*resource.State{
 		{
@@ -557,7 +555,7 @@ resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
 // Also shows that the logical name is emitted in the form of the __logicalName attribute.
 func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGeneratedCode(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 
 	snapshot := []*resource.State{
 		{
@@ -637,7 +635,7 @@ resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
 
 func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 
 	snapshot := []*resource.State{
 		{
@@ -732,7 +730,7 @@ resource exampleBucketObjectUsingArn "aws:s3/bucketObject:BucketObject" {
 
 func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 
 	snapshot := []*resource.State{
 		{
@@ -817,7 +815,7 @@ resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
 
 func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 
 	snapshot := []*resource.State{
 		{
