@@ -38,7 +38,7 @@ TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
 # The number of Rapid checks to perform when fuzzing lifecycle tests. See the documentation on Rapid at
 # https://pkg.go.dev/pgregory.net/rapid#section-readme or the lifecycle test documentation under
 # pkg/engine/lifecycletest for more information.
-LIFECYCLE_TEST_FUZZ_CHECKS ?= 1000
+LIFECYCLE_TEST_FUZZ_CHECKS ?= 10000
 
 ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 .make/ensure/phony: sdk/go.mod pkg/go.mod tests/go.mod
