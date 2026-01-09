@@ -125,7 +125,7 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter
     def data(self) -> pulumi.Output['outputs.ResourceData']:
         """
-        state will have internal data about this resource.
+        Docs_index__resource_data.state will have internal data about this resource.
         """
         return pulumi.get(self, "data")
 

@@ -7,7 +7,7 @@ import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
 /**
- * <pulumi ref="#/resources/docs:index:Resource"/> is a basic resource. Use <pulumi ref="#/functions/docs:index:fun"/> to set <pulumi ref="#/resources/docs:index:Resource/inputProperties/in"/> using <pulumi ref="#/functions/docs:index:fun/outputs/properties/out"/>.
+ * Resource is a basic resource. Use fun to set ResourceArgs.in using FunResult.out.
  */
 export class Resource extends pulumi.CustomResource {
     /**
@@ -37,15 +37,15 @@ export class Resource extends pulumi.CustomResource {
     }
 
     /**
-     * <pulumi ref="#/types/docs:index:ResourceData/properties/state"/> will have internal data about this resource.
+     * ResourceData.state will have internal data about this resource.
      */
     declare public /*out*/ readonly data: pulumi.Output<outputs.ResourceData>;
     /**
-     * Will be set to the same as <pulumi ref="#/resources/docs:index:Resource/inputProperties/in"/>.
+     * Will be set to the same as ResourceArgs.in.
      */
     declare public readonly in: pulumi.Output<boolean | undefined>;
     /**
-     * Will be set to the opposite of <pulumi ref="#/resources/docs:index:Resource/inputProperties/in"/>.
+     * Will be set to the opposite of ResourceArgs.in.
      */
     declare public /*out*/ readonly out: pulumi.Output<boolean>;
 
@@ -81,7 +81,7 @@ export class Resource extends pulumi.CustomResource {
  */
 export interface ResourceArgs {
     /**
-     * Will be used to set <pulumi ref="#/resources/docs:index:Resource/properties/in"/> and <pulumi ref="#/resources/docs:index:Resource/properties/out"/>.
+     * Will be used to set Resource.in and Resource.out.
      */
     in: pulumi.Input<boolean>;
 }

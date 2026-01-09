@@ -16,13 +16,13 @@ __all__ = [
 @pulumi.output_type
 class ResourceData(dict):
     """
-    docs:index:ResourceData is a basic type used in Resource.
+    Docs_index__resource_data is a basic type used in Resource.
     """
     def __init__(__self__, *,
                  state: _builtins.str):
         """
-        docs:index:ResourceData is a basic type used in Resource.
-        :param _builtins.str state: A property of docs:index:ResourceData.
+        Docs_index__resource_data is a basic type used in Resource.
+        :param _builtins.str state: A property of Docs_index__resource_data.
         """
         pulumi.set(__self__, "state", state)
 
@@ -30,7 +30,7 @@ class ResourceData(dict):
     @pulumi.getter
     def state(self) -> _builtins.str:
         """
-        A property of docs:index:ResourceData.
+        A property of Docs_index__resource_data.
         """
         return pulumi.get(self, "state")
 
