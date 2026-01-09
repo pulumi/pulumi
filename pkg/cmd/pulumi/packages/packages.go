@@ -427,7 +427,7 @@ func ProviderFromSource(
 		version = parts[1]
 	}
 	packageSpec := workspace.PackageSpec{Source: packageSource, Version: version}
-
+	
 	{
 		proj, _, err := pkgWorkspace.Instance.LoadBaseProjectFrom(pctx.Request(), pctx.Pwd)
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
