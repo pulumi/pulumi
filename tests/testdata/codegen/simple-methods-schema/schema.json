@@ -127,7 +127,7 @@
   "language": {
     "csharp": {
       "packageReferences": {
-        "Pulumi.Random": "4.2.0"
+        "Pulumi.Random": "4.3.1"
       }
     },
     "go": {

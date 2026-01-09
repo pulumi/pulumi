@@ -1,8 +1,8 @@
 {
     "dependencies": {
-        "@pulumi/azure-native": "^1.29.0",
+        "@pulumi/azure-native": "^1.56.0",
         "@pulumi/pulumi": "latest",
-        "@pulumi/random": "^4.11.2"
+        "@pulumi/random": "^4.3.1"
     },
     "devDependencies": {
         "@types/node": "^17.0.14",
