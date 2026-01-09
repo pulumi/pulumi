@@ -27,7 +27,7 @@ export function defaultErrorMessage(err: any): string {
         // colorize stack trace if exists, but fallback to uncolorized version if that fails,
         // and finally to the message/stack directly. See
         // https://github.com/pulumi/pulumi/issues/20567 and https://github.com/pulumi/pulumi/issues/21326
-        // where this can cause RangeErrors due to large error objects (e.g., AWS SDK errors with
+        // where this can cause RangeErrors due to large error objects (e.g., SDK errors with
         // large request/response metadata).
         try {
             return util.inspect(err, { colors: true });
