@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"sync"
 
 	"github.com/blang/semver"
@@ -47,6 +48,7 @@ const (
 	nameKey             resource.PropertyKey = "name"
 	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
 	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
+	envOverridesKey     resource.PropertyKey = "envOverrides"
 
 	// versionKey is the key used to store the version of the provider in the Pulumi state. This is _not_ treated as an
 	// internal key. As such a provider can't define it's own configuration key "version". However the "version" that is
@@ -241,6 +243,19 @@ func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.P
 		base64.StdEncoding.EncodeToString(value.Value))
 }
 
+func GetEnvironmentOverrides(
+	inputs resource.PropertyMap,
+) (env.Store, error) {
+	internalInputs, err := getInternal(inputs)
+	if err != nil {
+		return nil, err
+	}
+	overrides, ok := internalInputs[envOverridesKey]
+	if !ok {
+		return nil, nil
+	}
+}
+
 // GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
 // parameterization property is not present, this function returns nil.
 func GetProviderParameterization(
@@ -308,7 +323,7 @@ type Registry struct {
 var _ plugin.Provider = (*Registry)(nil)
 
 func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
-	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider,
+	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider, e env.Env,
 ) (plugin.Provider, error) {
 	if builtins != nil && pkg == builtins.Pkg() {
 		return builtins, nil
@@ -322,7 +337,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		Checksums:         checksums,
 	}
 
-	provider, err := host.Provider(descriptor)
+	provider, err := host.Provider(descriptor, e)
 	if err == nil {
 		return provider, nil
 	}
@@ -353,7 +368,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 	}
 
 	// Try to load the provider again, this time it should succeed.
-	return host.Provider(descriptor)
+	return host.Provider(descriptor, e)
 }
 
 // loadParameterizedProvider wraps loadProvider to also support loading parameterized providers.
@@ -362,8 +377,9 @@ func loadParameterizedProvider(
 	name tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
 	parameter *workspace.Parameterization,
 	host plugin.Host, builtins plugin.Provider,
+	e env.Env,
 ) (plugin.Provider, error) {
-	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, host, builtins)
+	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, host, builtins, e)
 	if err != nil {
 		return nil, err
 	}
@@ -552,9 +568,19 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 			Property: "parameter", Reason: err.Error(),
 		}}}, nil
 	}
+
+	envOverrides, err := GetEnvironmentOverrides(req.News)
+	if err != nil {
+		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
+			Property: "envOverrides", Reason: err.Error(),
+		}}}, nil
+	}
+
+	e := envutil.NewEnv(envutil.JoinStore(envOverrides, env.Global().GetStore()))
 	// TODO: We should thread checksums through here.
+	// TODO: We should thead the env though here.
 	provider, err := loadParameterizedProvider(
-		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
