@@ -146,7 +146,7 @@
         "Pulumi": "3.71",
         "Pulumi.Aws": "4.20",
         "Pulumi.Kubernetes": "3.7.0",
-        "Pulumi.Random": "4.2.0"
+        "Pulumi.Random": "4.3.1"
       }
     },
     "go": {
@@ -156,7 +156,7 @@
     },
     "nodejs": {
       "dependencies": {
-        "@pulumi/random": "^4.2.0",
+        "@pulumi/random": "^4.3.1",
         "@pulumi/aws": "^4.19.0",
         "@pulumi/kubernetes": "^3.7.0"
       }

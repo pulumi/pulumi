@@ -257,19 +257,14 @@ get_schemas: \
 			schema-aws!4.15.0           \
 			schema-aws!4.26.0           \
 			schema-aws!4.36.0           \
-			schema-aws!4.37.1           \
 			schema-aws!5.4.0            \
 			schema-aws!5.16.2           \
-			schema-azure-native!1.28.0  \
-			schema-azure-native!1.29.0  \
 			schema-azure-native!1.56.0  \
 			schema-azure!4.18.0         \
 			schema-kubernetes!3.0.0     \
 			schema-kubernetes!3.7.0     \
 			schema-kubernetes!3.7.2     \
-			schema-random!4.2.0         \
 			schema-random!4.3.1         \
-			schema-random!4.11.2        \
 			schema-eks!0.37.1           \
 			schema-eks!0.40.0           \
 			schema-docker!3.1.0         \
@@ -277,7 +272,6 @@ get_schemas: \
 			schema-awsx!1.0.0-beta.5    \
 			schema-aws-native!0.13.0    \
 			schema-google-native!0.18.2 \
-			schema-google-native!0.27.0 \
 			schema-tls!4.10.0
 
 .PHONY: changelog
