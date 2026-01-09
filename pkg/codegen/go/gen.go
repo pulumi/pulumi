@@ -1115,15 +1115,61 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 	return "To" + outputTypeName
 }
 
+// genComment processes a comment string by filtering examples and resolving Pulumi references.
+func (pkg *pkgContext) genComment(comment string, selfRef codegen.DocRef) string {
+	if comment == "" {
+		return ""
+	}
+	comment = codegen.FilterExamples(comment, "go")
+
+	return codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
+		var base string
+		switch ref.Type {
+		case codegen.DocRefTypeResource, codegen.DocRefTypeResourceProperty:
+			base = pkg.tokenToResource(ref.Token.String())
+		case codegen.DocRefTypeResourceInputProperty:
+			base = pkg.tokenToResource(ref.Token.String()) + "Args"
+		case codegen.DocRefTypeFunction:
+			base = tokenToName(ref.Token.String())
+		case codegen.DocRefTypeFunctionInputProperty:
+			base = tokenToName(ref.Token.String()) + "Args"
+		case codegen.DocRefTypeFunctionOutputProperty:
+			base = tokenToName(ref.Token.String())
+		case codegen.DocRefTypeType, codegen.DocRefTypeTypeProperty:
+			base = pkg.tokenToType(ref.Token.String())
+		case codegen.DocRefTypeUnknown:
+			return "", false
+		}
+
+		if base == "" {
+			return "", false
+		}
+
+		var property string
+		switch ref.Type {
+		case codegen.DocRefTypeResource, codegen.DocRefTypeFunction, codegen.DocRefTypeType:
+			return base, true
+		case codegen.DocRefTypeUnknown, codegen.DocRefTypeResourceProperty, codegen.DocRefTypeResourceInputProperty, codegen.DocRefTypeFunctionInputProperty, codegen.DocRefTypeFunctionOutputProperty, codegen.DocRefTypeTypeProperty:
+			property = Title(ref.Property)
+		}
+
+		if property == "" {
+			return "", false
+		}
+
+		if ref.IsWithin(selfRef) {
+			return property, true
+		}
+
+		return fmt.Sprintf("%s.%s", base, property), true
+	})
+}
+
 // printComment filters examples for the Go languages and prepends double forward slash to each line in the given
 // comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
 // resulting comment. It guarantees that each line is terminated with newline character.
 func printComment(w io.Writer, comment string, indent bool) int {
 	comment = codegen.FilterExamples(comment, "go")
-
-	comment = codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
-		return "", false
-	})
 
 	lines := strings.Split(comment, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {

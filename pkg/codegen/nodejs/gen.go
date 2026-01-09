@@ -390,16 +390,61 @@ func sanitizeComment(str string) string {
 	return strings.ReplaceAll(str, "*/", "*&#47;")
 }
 
+func (mod *modContext) genComment(comment string, selfRef codegen.DocRef) string {
+	if comment == "" {
+		return ""
+	}
+
+	return codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
+		var base string
+		switch ref.Type {
+		case codegen.DocRefTypeResource, codegen.DocRefTypeResourceProperty:
+			base = tokenToName(ref.Token.String())
+		case codegen.DocRefTypeResourceInputProperty:
+			base = tokenToName(ref.Token.String()) + "Args"
+		case codegen.DocRefTypeFunction:
+			base = tokenToFunctionName(ref.Token.String())
+		case codegen.DocRefTypeFunctionInputProperty:
+			base = tokenToName(ref.Token.String()) + "Args"
+		case codegen.DocRefTypeFunctionOutputProperty:
+			base = tokenToName(ref.Token.String()) + "Result"
+		case codegen.DocRefTypeType, codegen.DocRefTypeTypeProperty:
+			base = tokenToName(ref.Token.String())
+		case codegen.DocRefTypeUnknown:
+			return "", false
+		}
+
+		if base == "" {
+			return "", false
+		}
+
+		var property string
+		switch ref.Type {
+		case codegen.DocRefTypeResource, codegen.DocRefTypeFunction, codegen.DocRefTypeType:
+			return base, true
+		case codegen.DocRefTypeUnknown, codegen.DocRefTypeResourceProperty, codegen.DocRefTypeResourceInputProperty, codegen.DocRefTypeFunctionInputProperty, codegen.DocRefTypeFunctionOutputProperty, codegen.DocRefTypeTypeProperty:
+			property = camel(ref.Property)
+		}
+
+		if property == "" {
+			return "", false
+		}
+
+		if ref.IsWithin(selfRef) {
+			return property, true
+		}
+
+		return fmt.Sprintf("%s.%s", base, property), true
+	})
+}
+
 func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 	if comment == "" && deprecationMessage == "" {
 		return
 	}
 
-	comment = codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
-		return "", false
-	})
-
-	lines := strings.Split(sanitizeComment(comment), "\n")
+	comment = sanitizeComment(comment)
+	lines := strings.Split(comment, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
