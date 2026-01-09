@@ -1,0 +1,1306 @@
+{
+  "name": "tls",
+  "description": "A Pulumi package to create TLS resources in Pulumi programs.",
+  "keywords": [
+    "pulumi",
+    "tls"
+  ],
+  "homepage": "https://pulumi.io",
+  "license": "Apache-2.0",
+  "attribution": "This Pulumi package is based on the [`tls` Terraform Provider](https://github.com/terraform-providers/terraform-provider-tls).",
+  "repository": "https://github.com/pulumi/pulumi-tls",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "csharp": {
+      "compatibility": "tfbridge20",
+      "namespaces": {
+        "tls": "Tls"
+      },
+      "packageReferences": {
+        "Pulumi": "3.*"
+      }
+    },
+    "go": {
+      "generateExtraInputTypes": true,
+      "generateResourceContainerTypes": true,
+      "importBasePath": "github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
+    },
+    "nodejs": {
+      "compatibility": "tfbridge20",
+      "dependencies": {
+        "@pulumi/pulumi": "^3.0.0"
+      },
+      "devDependencies": {
+        "@types/node": "^10.0.0"
+      },
+      "disableUnionOutputTypes": true,
+      "packageDescription": "A Pulumi package to create TLS resources in Pulumi programs.",
+      "packageName": "",
+      "readme": "> This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-tls)\n> distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n> first check the [`pulumi-tls` repo](https://github.com/pulumi/pulumi-tls/issues); however, if that doesn't turn up anything,\n> please consult the source [`terraform-provider-tls` repo](https://github.com/terraform-providers/terraform-provider-tls/issues).",
+      "typescriptVersion": ""
+    },
+    "python": {
+      "compatibility": "tfbridge20",
+      "readme": "> This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-tls)\n> distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n> first check the [`pulumi-tls` repo](https://github.com/pulumi/pulumi-tls/issues); however, if that doesn't turn up anything,\n> please consult the source [`terraform-provider-tls` repo](https://github.com/terraform-providers/terraform-provider-tls/issues).",
+      "requires": {
+        "pulumi": ">=3.0.0,<4.0.0"
+      }
+    }
+  },
+  "config": {
+    "variables": {
+      "proxy": {
+        "$ref": "#/types/tls:config/proxy:proxy",
+        "description": "Proxy used by resources and data sources that connect to external endpoints.\n"
+      }
+    }
+  },
+  "types": {
+    "tls:config/proxy:proxy": {
+      "properties": {
+        "fromEnv": {
+          "type": "boolean"
+        },
+        "password": {
+          "type": "string",
+          "secret": true
+        },
+        "url": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "tls:index/CertRequestSubject:CertRequestSubject": {
+      "properties": {
+        "commonName": {
+          "type": "string",
+          "description": "Distinguished name: `CN`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "country": {
+          "type": "string",
+          "description": "Distinguished name: `C`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "locality": {
+          "type": "string",
+          "description": "Distinguished name: `L`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "organization": {
+          "type": "string",
+          "description": "Distinguished name: `O`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "organizationalUnit": {
+          "type": "string",
+          "description": "Distinguished name: `OU`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "postalCode": {
+          "type": "string",
+          "description": "Distinguished name: `PC`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "province": {
+          "type": "string",
+          "description": "Distinguished name: `ST`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "serialNumber": {
+          "type": "string",
+          "description": "Distinguished name: `SERIALNUMBER`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "streetAddresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Distinguished name: `STREET`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        }
+      },
+      "type": "object"
+    },
+    "tls:index/ProviderProxy:ProviderProxy": {
+      "properties": {
+        "fromEnv": {
+          "type": "boolean",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "password": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "secret": true
+        },
+        "url": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "username": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object"
+    },
+    "tls:index/SelfSignedCertSubject:SelfSignedCertSubject": {
+      "properties": {
+        "commonName": {
+          "type": "string",
+          "description": "Distinguished name: `CN`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "country": {
+          "type": "string",
+          "description": "Distinguished name: `C`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "locality": {
+          "type": "string",
+          "description": "Distinguished name: `L`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "organization": {
+          "type": "string",
+          "description": "Distinguished name: `O`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "organizationalUnit": {
+          "type": "string",
+          "description": "Distinguished name: `OU`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "postalCode": {
+          "type": "string",
+          "description": "Distinguished name: `PC`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "province": {
+          "type": "string",
+          "description": "Distinguished name: `ST`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "serialNumber": {
+          "type": "string",
+          "description": "Distinguished name: `SERIALNUMBER`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        },
+        "streetAddresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Distinguished name: `STREET`\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          },
+          "willReplaceOnChanges": true
+        }
+      },
+      "type": "object"
+    },
+    "tls:index/getCertificateCertificate:getCertificateCertificate": {
+      "properties": {
+        "certPem": {
+          "type": "string",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "isCa": {
+          "type": "boolean",
+          "description": "`true` if the certificate is of a CA (Certificate Authority).\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "issuer": {
+          "type": "string",
+          "description": "Who verified and signed the certificate, roughly following [RFC2253](https://tools.ietf.org/html/rfc2253).\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "notAfter": {
+          "type": "string",
+          "description": "The time until which the certificate is invalid, as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "notBefore": {
+          "type": "string",
+          "description": "The time after which the certificate is valid, as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "publicKeyAlgorithm": {
+          "type": "string",
+          "description": "The key algorithm used to create the certificate.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "serialNumber": {
+          "type": "string",
+          "description": "Number that uniquely identifies the certificate with the CA's system.\nThe `format` function can be used to convert this *base 10* number into other bases, such as hex.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "sha1Fingerprint": {
+          "type": "string",
+          "description": "The SHA1 fingerprint of the public key of the certificate.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "signatureAlgorithm": {
+          "type": "string",
+          "description": "The algorithm used to sign the certificate.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "subject": {
+          "type": "string",
+          "description": "The entity the certificate belongs to, roughly following [RFC2253](https://tools.ietf.org/html/rfc2253).\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "version": {
+          "type": "integer",
+          "description": "The version the certificate is in.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "certPem",
+        "isCa",
+        "issuer",
+        "notAfter",
+        "notBefore",
+        "publicKeyAlgorithm",
+        "serialNumber",
+        "sha1Fingerprint",
+        "signatureAlgorithm",
+        "subject",
+        "version"
+      ],
+      "language": {
+        "nodejs": {
+          "requiredInputs": []
+        }
+      }
+    }
+  },
+  "provider": {
+    "description": "The provider type for the tls package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+    "properties": {
+      "proxy": {
+        "$ref": "#/types/tls:index/ProviderProxy:ProviderProxy",
+        "description": "Proxy used by resources and data sources that connect to external endpoints.\n"
+      }
+    },
+    "inputProperties": {
+      "proxy": {
+        "$ref": "#/types/tls:index/ProviderProxy:ProviderProxy",
+        "description": "Proxy used by resources and data sources that connect to external endpoints.\n"
+      }
+    }
+  },
+  "resources": {
+    "tls:index/certRequest:CertRequest": {
+      "description": "{{% examples %}}\n## Example Usage\n{{% example %}}\n\n```typescript\nimport * as pulumi from \"@pulumi/pulumi\";\nimport * as fs from \"fs\";\nimport * as tls from \"@pulumi/tls\";\n\nconst example = new tls.CertRequest(\"example\", {\n    privateKeyPem: fs.readFileSync(\"private_key.pem\"),\n    subject: {\n        commonName: \"example.com\",\n        organization: \"ACME Examples, Inc\",\n    },\n});\n```\n```python\nimport pulumi\nimport pulumi_tls as tls\n\nexample = tls.CertRequest(\"example\",\n    private_key_pem=(lambda path: open(path).read())(\"private_key.pem\"),\n    subject=tls.CertRequestSubjectArgs(\n        common_name=\"example.com\",\n        organization=\"ACME Examples, Inc\",\n    ))\n```\n```csharp\nusing System.Collections.Generic;\nusing System.IO;\nusing Pulumi;\nusing Tls = Pulumi.Tls;\n\nreturn await Deployment.RunAsync(() => \n{\n    var example = new Tls.CertRequest(\"example\", new()\n    {\n        PrivateKeyPem = File.ReadAllText(\"private_key.pem\"),\n        Subject = new Tls.Inputs.CertRequestSubjectArgs\n        {\n            CommonName = \"example.com\",\n            Organization = \"ACME Examples, Inc\",\n        },\n    });\n\n});\n```\n```go\npackage main\n\nimport (\n\t\"io/ioutil\"\n\n\t\"github.com/pulumi/pulumi-tls/sdk/v4/go/tls\"\n\t\"github.com/pulumi/pulumi/sdk/v3/go/pulumi\"\n)\n\nfunc readFileOrPanic(path string) pulumi.StringPtrInput {\n\tdata, err := ioutil.ReadFile(path)\n\tif err != nil {\n\t\tpanic(err.Error())\n\t}\n\treturn pulumi.String(string(data))\n}\n\nfunc main() {\n\tpulumi.Run(func(ctx *pulumi.Context) error {\n\t\t_, err := tls.NewCertRequest(ctx, \"example\", &tls.CertRequestArgs{\n\t\t\tPrivateKeyPem: readFileOrPanic(\"private_key.pem\"),\n\t\t\tSubject: &tls.CertRequestSubjectArgs{\n\t\t\t\tCommonName:   pulumi.String(\"example.com\"),\n\t\t\t\tOrganization: pulumi.String(\"ACME Examples, Inc\"),\n\t\t\t},\n\t\t})\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\treturn nil\n\t})\n}\n```\n```java\npackage generated_program;\n\nimport com.pulumi.Context;\nimport com.pulumi.Pulumi;\nimport com.pulumi.core.Output;\nimport com.pulumi.tls.CertRequest;\nimport com.pulumi.tls.CertRequestArgs;\nimport com.pulumi.tls.inputs.CertRequestSubjectArgs;\nimport java.util.List;\nimport java.util.ArrayList;\nimport java.util.Map;\nimport java.io.File;\nimport java.nio.file.Files;\nimport java.nio.file.Paths;\n\npublic class App {\n    public static void main(String[] args) {\n        Pulumi.run(App::stack);\n    }\n\n    public static void stack(Context ctx) {\n        var example = new CertRequest(\"example\", CertRequestArgs.builder()        \n            .privateKeyPem(Files.readString(Paths.get(\"private_key.pem\")))\n            .subject(CertRequestSubjectArgs.builder()\n                .commonName(\"example.com\")\n                .organization(\"ACME Examples, Inc\")\n                .build())\n            .build());\n\n    }\n}\n```\n```yaml\nresources:\n  example:\n    type: tls:CertRequest\n    properties:\n      privateKeyPem:\n        fn::readFile: private_key.pem\n      subject:\n        commonName: example.com\n        organization: ACME Examples, Inc\n```\n{{% /example %}}\n{{% /examples %}}",
+      "properties": {
+        "certRequestPem": {
+          "type": "string",
+          "description": "The certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+        },
+        "dnsNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
+        },
+        "ipAddresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n"
+        },
+        "keyAlgorithm": {
+          "type": "string",
+          "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`. **NOTE**: this is deprecated and ignored, as the key algorithm is now inferred from the key.\n",
+          "deprecationMessage": "This is now ignored, as the key algorithm is inferred from the `private_key_pem`."
+        },
+        "privateKeyPem": {
+          "type": "string",
+          "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
+          "secret": true
+        },
+        "subject": {
+          "$ref": "#/types/tls:index/CertRequestSubject:CertRequestSubject",
+          "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n"
+        },
+        "uris": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n"
+        }
+      },
+      "required": [
+        "certRequestPem",
+        "keyAlgorithm",
+        "privateKeyPem"
+      ],
+      "inputProperties": {
+        "dnsNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n",
+          "willReplaceOnChanges": true
+        },
+        "ipAddresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n",
+          "willReplaceOnChanges": true
+        },
+        "keyAlgorithm": {
+          "type": "string",
+          "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`. **NOTE**: this is deprecated and ignored, as the key algorithm is now inferred from the key.\n",
+          "deprecationMessage": "This is now ignored, as the key algorithm is inferred from the `private_key_pem`.",
+          "willReplaceOnChanges": true
+        },
+        "privateKeyPem": {
+          "type": "string",
+          "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
+          "secret": true,
+          "willReplaceOnChanges": true
+        },
+        "subject": {
+          "$ref": "#/types/tls:index/CertRequestSubject:CertRequestSubject",
+          "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n",
+          "willReplaceOnChanges": true
+        },
+        "uris": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "privateKeyPem"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering CertRequest resources.\n",
+        "properties": {
+          "certRequestPem": {
+            "type": "string",
+            "description": "The certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+          },
+          "dnsNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n",
+            "willReplaceOnChanges": true
+          },
+          "ipAddresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n",
+            "willReplaceOnChanges": true
+          },
+          "keyAlgorithm": {
+            "type": "string",
+            "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`. **NOTE**: this is deprecated and ignored, as the key algorithm is now inferred from the key.\n",
+            "deprecationMessage": "This is now ignored, as the key algorithm is inferred from the `private_key_pem`.",
+            "willReplaceOnChanges": true
+          },
+          "privateKeyPem": {
+            "type": "string",
+            "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
+            "secret": true,
+            "willReplaceOnChanges": true
+          },
+          "subject": {
+            "$ref": "#/types/tls:index/CertRequestSubject:CertRequestSubject",
+            "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n",
+            "willReplaceOnChanges": true
+          },
+          "uris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "tls:index/locallySignedCert:LocallySignedCert": {
+      "properties": {
+        "allowedUses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n"
+        },
+        "caCertPem": {
+          "type": "string",
+          "description": "Certificate data of the Certificate Authority (CA) in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n"
+        },
+        "caKeyAlgorithm": {
+          "type": "string",
+          "description": "Name of the algorithm used when generating the private key provided in `ca_private_key_pem`. **NOTE**: this is deprecated and ignored, as the key algorithm is now inferred from the key.\n",
+          "deprecationMessage": "This is now ignored, as the key algorithm is inferred from the `ca_private_key_pem`."
+        },
+        "caPrivateKeyPem": {
+          "type": "string",
+          "description": "Private key of the Certificate Authority (CA) used to sign the certificate, in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+          "secret": true
+        },
+        "certPem": {
+          "type": "string",
+          "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+        },
+        "certRequestPem": {
+          "type": "string",
+          "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n"
+        },
+        "earlyRenewalHours": {
+          "type": "integer",
+          "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+        },
+        "isCaCertificate": {
+          "type": "boolean",
+          "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n"
+        },
+        "readyForRenewal": {
+          "type": "boolean",
+          "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within the `early_renewal_hours`)?\n"
+        },
+        "setSubjectKeyId": {
+          "type": "boolean",
+          "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n"
+        },
+        "validityEndTime": {
+          "type": "string",
+          "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+        },
+        "validityPeriodHours": {
+          "type": "integer",
+          "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n"
+        },
+        "validityStartTime": {
+          "type": "string",
+          "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+        }
+      },
+      "required": [
+        "allowedUses",
+        "caCertPem",
+        "caKeyAlgorithm",
+        "caPrivateKeyPem",
+        "certPem",
+        "certRequestPem",
+        "readyForRenewal",
+        "validityEndTime",
+        "validityPeriodHours",
+        "validityStartTime"
+      ],
+      "inputProperties": {
+        "allowedUses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n",
+          "willReplaceOnChanges": true
+        },
+        "caCertPem": {
+          "type": "string",
+          "description": "Certificate data of the Certificate Authority (CA) in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+          "willReplaceOnChanges": true
+        },
+        "caKeyAlgorithm": {
+          "type": "string",
+          "description": "Name of the algorithm used when generating the private key provided in `ca_private_key_pem`. **NOTE**: this is deprecated and ignored, as the key algorithm is now inferred from the key.\n",
+          "deprecationMessage": "This is now ignored, as the key algorithm is inferred from the `ca_private_key_pem`.",
+          "willReplaceOnChanges": true
+        },
+        "caPrivateKeyPem": {
+          "type": "string",
+          "description": "Private key of the Certificate Authority (CA) used to sign the certificate, in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+          "secret": true,
+          "willReplaceOnChanges": true
+        },
+        "certRequestPem": {
+          "type": "string",
+          "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+          "willReplaceOnChanges": true
+        },
+        "earlyRenewalHours": {
+          "type": "integer",
+          "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+        },
+        "isCaCertificate": {
+          "type": "boolean",
+          "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n",
+          "willReplaceOnChanges": true
+        },
+        "setSubjectKeyId": {
+          "type": "boolean",
+          "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n",
+          "willReplaceOnChanges": true
+        },
+        "validityPeriodHours": {
+          "type": "integer",
+          "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "allowedUses",
+        "caCertPem",
+        "caPrivateKeyPem",
+        "certRequestPem",
+        "validityPeriodHours"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering LocallySignedCert resources.\n",
+        "properties": {
+          "allowedUses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n",
+            "willReplaceOnChanges": true
+          },
+          "caCertPem": {
+            "type": "string",
+            "description": "Certificate data of the Certificate Authority (CA) in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+            "willReplaceOnChanges": true
+          },
+          "caKeyAlgorithm": {
+            "type": "string",
+            "description": "Name of the algorithm used when generating the private key provided in `ca_private_key_pem`. **NOTE**: this is deprecated and ignored, as the key algorithm is now inferred from the key.\n",
+            "deprecationMessage": "This is now ignored, as the key algorithm is inferred from the `ca_private_key_pem`.",
+            "willReplaceOnChanges": true
+          },
+          "caPrivateKeyPem": {
+            "type": "string",
+            "description": "Private key of the Certificate Authority (CA) used to sign the certificate, in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+            "secret": true,
+            "willReplaceOnChanges": true
+          },
+          "certPem": {
+            "type": "string",
+            "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+          },
+          "certRequestPem": {
+            "type": "string",
+            "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+            "willReplaceOnChanges": true
+          },
+          "earlyRenewalHours": {
+            "type": "integer",
+            "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+          },
+          "isCaCertificate": {
+            "type": "boolean",
+            "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n",
+            "willReplaceOnChanges": true
+          },
+          "readyForRenewal": {
+            "type": "boolean",
+            "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within the `early_renewal_hours`)?\n"
+          },
+          "setSubjectKeyId": {
+            "type": "boolean",
+            "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n",
+            "willReplaceOnChanges": true
+          },
+          "validityEndTime": {
+            "type": "string",
+            "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+          },
+          "validityPeriodHours": {
+            "type": "integer",
+            "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n",
+            "willReplaceOnChanges": true
+          },
+          "validityStartTime": {
+            "type": "string",
+            "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "tls:index/privateKey:PrivateKey": {
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "description": "Name of the algorithm to use when generating the private key. Currently-supported values are `RSA`, `ECDSA` and `ED25519`.\n"
+        },
+        "ecdsaCurve": {
+          "type": "string",
+          "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are `P224`, `P256`, `P384` or `P521` (default: `P224`).\n"
+        },
+        "privateKeyOpenssh": {
+          "type": "string",
+          "description": "Private key data in [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) format.\n",
+          "secret": true
+        },
+        "privateKeyPem": {
+          "type": "string",
+          "description": "Private key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+          "secret": true
+        },
+        "publicKeyFingerprintMd5": {
+          "type": "string",
+          "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected private key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
+        },
+        "publicKeyFingerprintSha256": {
+          "type": "string",
+          "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected private key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
+        },
+        "publicKeyOpenssh": {
+          "type": "string",
+          "description": "The public key data in [\"Authorized\nKeys\"](https://www.ssh.com/academy/ssh/authorized_keys/openssh#format-of-the-authorized-keys-file) format. This is\npopulated only if the configured private key is supported: this includes all `RSA` and `ED25519` keys, as well as\n`ECDSA` keys with curves `P256`, `P384` and `P521`. `ECDSA` with curve `P224` [is not\nsupported](../../docs#limitations). **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+        },
+        "publicKeyPem": {
+          "type": "string",
+          "description": "Public key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+        },
+        "rsaBits": {
+          "type": "integer",
+          "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`).\n"
+        }
+      },
+      "required": [
+        "algorithm",
+        "privateKeyOpenssh",
+        "privateKeyPem",
+        "publicKeyFingerprintMd5",
+        "publicKeyFingerprintSha256",
+        "publicKeyOpenssh",
+        "publicKeyPem"
+      ],
+      "inputProperties": {
+        "algorithm": {
+          "type": "string",
+          "description": "Name of the algorithm to use when generating the private key. Currently-supported values are `RSA`, `ECDSA` and `ED25519`.\n",
+          "willReplaceOnChanges": true
+        },
+        "ecdsaCurve": {
+          "type": "string",
+          "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are `P224`, `P256`, `P384` or `P521` (default: `P224`).\n",
+          "willReplaceOnChanges": true
+        },
+        "rsaBits": {
+          "type": "integer",
+          "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`).\n",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "algorithm"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering PrivateKey resources.\n",
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "description": "Name of the algorithm to use when generating the private key. Currently-supported values are `RSA`, `ECDSA` and `ED25519`.\n",
+            "willReplaceOnChanges": true
+          },
+          "ecdsaCurve": {
+            "type": "string",
+            "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are `P224`, `P256`, `P384` or `P521` (default: `P224`).\n",
+            "willReplaceOnChanges": true
+          },
+          "privateKeyOpenssh": {
+            "type": "string",
+            "description": "Private key data in [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) format.\n",
+            "secret": true
+          },
+          "privateKeyPem": {
+            "type": "string",
+            "description": "Private key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+            "secret": true
+          },
+          "publicKeyFingerprintMd5": {
+            "type": "string",
+            "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected private key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
+          },
+          "publicKeyFingerprintSha256": {
+            "type": "string",
+            "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected private key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
+          },
+          "publicKeyOpenssh": {
+            "type": "string",
+            "description": "The public key data in [\"Authorized\nKeys\"](https://www.ssh.com/academy/ssh/authorized_keys/openssh#format-of-the-authorized-keys-file) format. This is\npopulated only if the configured private key is supported: this includes all `RSA` and `ED25519` keys, as well as\n`ECDSA` keys with curves `P256`, `P384` and `P521`. `ECDSA` with curve `P224` [is not\nsupported](../../docs#limitations). **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+          },
+          "publicKeyPem": {
+            "type": "string",
+            "description": "Public key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+          },
+          "rsaBits": {
+            "type": "integer",
+            "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`).\n",
+            "willReplaceOnChanges": true
+          }
+        },
+        "type": "object"
+      }
+    },
+    "tls:index/selfSignedCert:SelfSignedCert": {
+      "properties": {
+        "allowedUses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n"
+        },
+        "certPem": {
+          "type": "string",
+          "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+        },
+        "dnsNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
+        },
+        "earlyRenewalHours": {
+          "type": "integer",
+          "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+        },
+        "ipAddresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n"
+        },
+        "isCaCertificate": {
+          "type": "boolean",
+          "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n"
+        },
+        "keyAlgorithm": {
+          "type": "string",
+          "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`. **NOTE**: this is deprecated and ignored, as the key algorithm is now inferred from the key.\n",
+          "deprecationMessage": "This is now ignored, as the key algorithm is inferred from the `private_key_pem`."
+        },
+        "privateKeyPem": {
+          "type": "string",
+          "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
+          "secret": true
+        },
+        "readyForRenewal": {
+          "type": "boolean",
+          "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within the `early_renewal_hours`)?\n"
+        },
+        "setAuthorityKeyId": {
+          "type": "boolean",
+          "description": "Should the generated certificate include an [authority key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.1): for self-signed certificates this is the same value as the [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n"
+        },
+        "setSubjectKeyId": {
+          "type": "boolean",
+          "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n"
+        },
+        "subject": {
+          "$ref": "#/types/tls:index/SelfSignedCertSubject:SelfSignedCertSubject",
+          "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n"
+        },
+        "uris": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n"
+        },
+        "validityEndTime": {
+          "type": "string",
+          "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+        },
+        "validityPeriodHours": {
+          "type": "integer",
+          "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n"
+        },
+        "validityStartTime": {
+          "type": "string",
+          "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+        }
+      },
+      "required": [
+        "allowedUses",
+        "certPem",
+        "keyAlgorithm",
+        "privateKeyPem",
+        "readyForRenewal",
+        "validityEndTime",
+        "validityPeriodHours",
+        "validityStartTime"
+      ],
+      "inputProperties": {
+        "allowedUses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n",
+          "willReplaceOnChanges": true
+        },
+        "dnsNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n",
+          "willReplaceOnChanges": true
+        },
+        "earlyRenewalHours": {
+          "type": "integer",
+          "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+        },
+        "ipAddresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n",
+          "willReplaceOnChanges": true
+        },
+        "isCaCertificate": {
+          "type": "boolean",
+          "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n",
+          "willReplaceOnChanges": true
+        },
+        "keyAlgorithm": {
+          "type": "string",
+          "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`. **NOTE**: this is deprecated and ignored, as the key algorithm is now inferred from the key.\n",
+          "deprecationMessage": "This is now ignored, as the key algorithm is inferred from the `private_key_pem`.",
+          "willReplaceOnChanges": true
+        },
+        "privateKeyPem": {
+          "type": "string",
+          "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
+          "secret": true,
+          "willReplaceOnChanges": true
+        },
+        "setAuthorityKeyId": {
+          "type": "boolean",
+          "description": "Should the generated certificate include an [authority key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.1): for self-signed certificates this is the same value as the [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n",
+          "willReplaceOnChanges": true
+        },
+        "setSubjectKeyId": {
+          "type": "boolean",
+          "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n",
+          "willReplaceOnChanges": true
+        },
+        "subject": {
+          "$ref": "#/types/tls:index/SelfSignedCertSubject:SelfSignedCertSubject",
+          "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n",
+          "willReplaceOnChanges": true
+        },
+        "uris": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n",
+          "willReplaceOnChanges": true
+        },
+        "validityPeriodHours": {
+          "type": "integer",
+          "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n",
+          "willReplaceOnChanges": true
+        }
+      },
+      "requiredInputs": [
+        "allowedUses",
+        "privateKeyPem",
+        "validityPeriodHours"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering SelfSignedCert resources.\n",
+        "properties": {
+          "allowedUses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n",
+            "willReplaceOnChanges": true
+          },
+          "certPem": {
+            "type": "string",
+            "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+          },
+          "dnsNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n",
+            "willReplaceOnChanges": true
+          },
+          "earlyRenewalHours": {
+            "type": "integer",
+            "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+          },
+          "ipAddresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n",
+            "willReplaceOnChanges": true
+          },
+          "isCaCertificate": {
+            "type": "boolean",
+            "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n",
+            "willReplaceOnChanges": true
+          },
+          "keyAlgorithm": {
+            "type": "string",
+            "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`. **NOTE**: this is deprecated and ignored, as the key algorithm is now inferred from the key.\n",
+            "deprecationMessage": "This is now ignored, as the key algorithm is inferred from the `private_key_pem`.",
+            "willReplaceOnChanges": true
+          },
+          "privateKeyPem": {
+            "type": "string",
+            "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
+            "secret": true,
+            "willReplaceOnChanges": true
+          },
+          "readyForRenewal": {
+            "type": "boolean",
+            "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within the `early_renewal_hours`)?\n"
+          },
+          "setAuthorityKeyId": {
+            "type": "boolean",
+            "description": "Should the generated certificate include an [authority key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.1): for self-signed certificates this is the same value as the [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n",
+            "willReplaceOnChanges": true
+          },
+          "setSubjectKeyId": {
+            "type": "boolean",
+            "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n",
+            "willReplaceOnChanges": true
+          },
+          "subject": {
+            "$ref": "#/types/tls:index/SelfSignedCertSubject:SelfSignedCertSubject",
+            "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n",
+            "willReplaceOnChanges": true
+          },
+          "uris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n",
+            "willReplaceOnChanges": true
+          },
+          "validityEndTime": {
+            "type": "string",
+            "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+          },
+          "validityPeriodHours": {
+            "type": "integer",
+            "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n",
+            "willReplaceOnChanges": true
+          },
+          "validityStartTime": {
+            "type": "string",
+            "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "functions": {
+    "tls:index/getCertificate:getCertificate": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getCertificate.\n",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "The content of the certificate in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. Cannot be used with `url`.\n"
+          },
+          "url": {
+            "type": "string",
+            "description": "The URL of the website to get the certificates from. Cannot be used with `content`.\n"
+          },
+          "verifyChain": {
+            "type": "boolean",
+            "description": "Whether to verify the certificate chain while parsing it or not (default: `true`). Cannot be used with `content`.\n"
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getCertificate.\n",
+        "properties": {
+          "certificates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/tls:index/getCertificateCertificate:getCertificateCertificate"
+            },
+            "description": "The certificates protecting the site, with the root of the chain first.\n"
+          },
+          "content": {
+            "type": "string",
+            "description": "The content of the certificate in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. Cannot be used with `url`.\n"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique identifier of this data source: hashing of the certificates in the chain.\n"
+          },
+          "url": {
+            "type": "string",
+            "description": "The URL of the website to get the certificates from. Cannot be used with `content`.\n"
+          },
+          "verifyChain": {
+            "type": "boolean",
+            "description": "Whether to verify the certificate chain while parsing it or not (default: `true`). Cannot be used with `content`.\n"
+          }
+        },
+        "type": "object",
+        "required": [
+          "certificates",
+          "id"
+        ]
+      }
+    },
+    "tls:index/getPublicKey:getPublicKey": {
+      "description": "Get a public key from a PEM-encoded private key.\n\nUse this data source to get the public key from a [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) or [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) formatted private key, for use in other resources.\n\n{{% examples %}}\n## Example Usage\n{{% example %}}\n\n```typescript\nimport * as pulumi from \"@pulumi/pulumi\";\nimport * as fs from \"fs\";\nimport * as tls from \"@pulumi/tls\";\n\nconst ed25519_example = new tls.PrivateKey(\"ed25519-example\", {algorithm: \"ED25519\"});\nconst privateKeyPem-example = tls.getPublicKeyOutput({\n    privateKeyPem: ed25519_example.privateKeyPem,\n});\nconst privateKeyOpenssh-example = tls.getPublicKey({\n    privateKeyOpenssh: fs.readFileSync(\"~/.ssh/id_rsa_rfc4716\"),\n});\n```\n```python\nimport pulumi\nimport pulumi_tls as tls\n\ned25519_example = tls.PrivateKey(\"ed25519-example\", algorithm=\"ED25519\")\nprivate_key_pem_example = tls.get_public_key_output(private_key_pem=ed25519_example.private_key_pem)\nprivate_key_openssh_example = tls.get_public_key(private_key_openssh=(lambda path: open(path).read())(\"~/.ssh/id_rsa_rfc4716\"))\n```\n```csharp\nusing System.Collections.Generic;\nusing System.IO;\nusing Pulumi;\nusing Tls = Pulumi.Tls;\n\nreturn await Deployment.RunAsync(() => \n{\n    var ed25519_example = new Tls.PrivateKey(\"ed25519-example\", new()\n    {\n        Algorithm = \"ED25519\",\n    });\n\n    var privateKeyPem_example = Tls.GetPublicKey.Invoke(new()\n    {\n        PrivateKeyPem = ed25519_example.PrivateKeyPem,\n    });\n\n    var privateKeyOpenssh_example = Tls.GetPublicKey.Invoke(new()\n    {\n        PrivateKeyOpenssh = File.ReadAllText(\"~/.ssh/id_rsa_rfc4716\"),\n    });\n\n});\n```\n```go\npackage main\n\nimport (\n\t\"io/ioutil\"\n\n\t\"github.com/pulumi/pulumi-tls/sdk/v4/go/tls\"\n\t\"github.com/pulumi/pulumi/sdk/v3/go/pulumi\"\n)\n\nfunc readFileOrPanic(path string) pulumi.StringPtrInput {\n\tdata, err := ioutil.ReadFile(path)\n\tif err != nil {\n\t\tpanic(err.Error())\n\t}\n\treturn pulumi.String(string(data))\n}\n\nfunc main() {\n\tpulumi.Run(func(ctx *pulumi.Context) error {\n\t\t_, err := tls.NewPrivateKey(ctx, \"ed25519-example\", &tls.PrivateKeyArgs{\n\t\t\tAlgorithm: pulumi.String(\"ED25519\"),\n\t\t})\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\t_ = tls.GetPublicKeyOutput(ctx, tls.GetPublicKeyOutputArgs{\n\t\t\tPrivateKeyPem: ed25519_example.PrivateKeyPem,\n\t\t}, nil)\n\t\t_, err = tls.GetPublicKey(ctx, &tls.GetPublicKeyArgs{\n\t\t\tPrivateKeyOpenssh: pulumi.StringRef(readFileOrPanic(\"~/.ssh/id_rsa_rfc4716\")),\n\t\t}, nil)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\treturn nil\n\t})\n}\n```\n```java\npackage generated_program;\n\nimport com.pulumi.Context;\nimport com.pulumi.Pulumi;\nimport com.pulumi.core.Output;\nimport com.pulumi.tls.PrivateKey;\nimport com.pulumi.tls.PrivateKeyArgs;\nimport com.pulumi.tls.TlsFunctions;\nimport com.pulumi.tls.inputs.GetPublicKeyArgs;\nimport java.util.List;\nimport java.util.ArrayList;\nimport java.util.Map;\nimport java.io.File;\nimport java.nio.file.Files;\nimport java.nio.file.Paths;\n\npublic class App {\n    public static void main(String[] args) {\n        Pulumi.run(App::stack);\n    }\n\n    public static void stack(Context ctx) {\n        var ed25519_example = new PrivateKey(\"ed25519-example\", PrivateKeyArgs.builder()        \n            .algorithm(\"ED25519\")\n            .build());\n\n        final var privateKeyPem-example = TlsFunctions.getPublicKey(GetPublicKeyArgs.builder()\n            .privateKeyPem(ed25519_example.privateKeyPem())\n            .build());\n\n        final var privateKeyOpenssh-example = TlsFunctions.getPublicKey(GetPublicKeyArgs.builder()\n            .privateKeyOpenssh(Files.readString(Paths.get(\"~/.ssh/id_rsa_rfc4716\")))\n            .build());\n\n    }\n}\n```\n```yaml\nresources:\n  ed25519-example:\n    type: tls:PrivateKey\n    properties:\n      algorithm: ED25519\nvariables:\n  privateKeyPem-example:\n    fn::invoke:\n      Function: tls:getPublicKey\n      Arguments:\n        privateKeyPem: ${[\"ed25519-example\"].privateKeyPem}\n  privateKeyOpenssh-example:\n    fn::invoke:\n      Function: tls:getPublicKey\n      Arguments:\n        privateKeyOpenssh:\n          fn::readFile: ~/.ssh/id_rsa_rfc4716\n```\n{{% /example %}}\n{{% /examples %}}",
+      "inputs": {
+        "description": "A collection of arguments for invoking getPublicKey.\n",
+        "properties": {
+          "privateKeyOpenssh": {
+            "type": "string",
+            "description": "The private key (in  [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) format) to extract the public key from. Currently-supported algorithms for keys are `RSA`, `ECDSA` and `ED25519`. This is *mutually exclusive* with `private_key_pem`.\n",
+            "secret": true
+          },
+          "privateKeyPem": {
+            "type": "string",
+            "description": "The private key (in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format) to extract the public key from. Currently-supported algorithms for keys are `RSA`, `ECDSA` and `ED25519`. This is *mutually exclusive* with `private_key_openssh`.\n",
+            "secret": true
+          }
+        },
+        "type": "object"
+      },
+      "outputs": {
+        "description": "A collection of values returned by getPublicKey.\n",
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "description": "The name of the algorithm used by the given private key. Possible values are: `RSA`, `ECDSA` and `ED25519`.\n"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for this data source: hexadecimal representation of the SHA1 checksum of the data source.\n"
+          },
+          "privateKeyOpenssh": {
+            "type": "string",
+            "description": "The private key (in  [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) format) to extract the public key from. Currently-supported algorithms for keys are `RSA`, `ECDSA` and `ED25519`. This is *mutually exclusive* with `private_key_pem`.\n",
+            "secret": true
+          },
+          "privateKeyPem": {
+            "type": "string",
+            "description": "The private key (in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format) to extract the public key from. Currently-supported algorithms for keys are `RSA`, `ECDSA` and `ED25519`. This is *mutually exclusive* with `private_key_openssh`.\n",
+            "secret": true
+          },
+          "publicKeyFingerprintMd5": {
+            "type": "string",
+            "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected private key format is compatible, as per the rules for `public_key_openssh` and ECDSA P224 limitations.\n"
+          },
+          "publicKeyFingerprintSha256": {
+            "type": "string",
+            "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected private key format is compatible, as per the rules for `public_key_openssh` and ECDSA P224 limitations.\n"
+          },
+          "publicKeyOpenssh": {
+            "type": "string"
+          },
+          "publicKeyPem": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "algorithm",
+          "id",
+          "publicKeyFingerprintMd5",
+          "publicKeyFingerprintSha256",
+          "publicKeyOpenssh",
+          "publicKeyPem"
+        ]
+      }
+    }
+  },
+  "version": "4.10.0"
+}

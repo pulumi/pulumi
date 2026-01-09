@@ -1,0 +1,72 @@
+{
+    "name": "basic-unions",
+    "version": "1.0.0",
+    "description": "A basic schema to test program generation with unions",
+    "resources": {
+        "basic-unions:index:ExampleServer": {
+            "properties":{
+                "name": {
+                    "type": "string"
+                }
+            },
+            "inputProperties": {
+                "properties": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/types/basic-unions:index:ServerPropertiesForReplica"
+                      },
+                      {
+                        "$ref": "#/types/basic-unions:index:ServerPropertiesForRestore"
+                      }
+                    ],
+                    "discriminator": {
+                      "propertyName": "createMode",
+                      "mapping": {
+                        "PointInTimeRestore": "#/types/basic-unions:index:ServerPropertiesForRestore",
+                        "Replica": "#/types/basic-unions:index:ServerPropertiesForReplica"
+                      }
+                    }
+                }
+            }
+        }
+    },
+    "types":{
+        "basic-unions:index:ServerPropertiesForReplica": {
+          "properties": {
+            "createMode": {
+              "type": "string",
+              "const": "Replica"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "createMode"
+          ]
+        },
+        "basic-unions:index:ServerPropertiesForRestore": {
+          "properties": {
+            "createMode": {
+              "type": "string",
+              "const": "PointInTimeRestore"
+            },
+            "restorePointInTime": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "createMode",
+            "restorePointInTime"
+          ]
+        }
+    },
+    "language": {
+        "go": {
+          "importBasePath": "github.com/pulumi/pulumi-basic-unions/sdk/v4/go/basic-unions",
+          "generateExtraInputTypes": true
+        }
+    }
+}

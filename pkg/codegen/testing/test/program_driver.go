@@ -17,6 +17,7 @@ package test
 import (
 	"bufio"
 	"bytes"
+	"embed"
 	"fmt"
 	"io"
 	"os"
@@ -61,7 +62,8 @@ type ProgramTest struct {
 	PluginHost         plugin.Host
 }
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
+//go:embed testdata/*
+var testdata embed.FS
 
 // Get batch number k (base-1 indexed) of tests out of n batches total.
 func ProgramTestBatch(k, n int) []ProgramTest {

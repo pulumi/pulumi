@@ -1,0 +1,8 @@
+{
+  "emittedFiles": [
+    "_index.md",
+    "provider/_index.md",
+    "submod/_index.md",
+    "submod/provider/_index.md"
+  ]
+}

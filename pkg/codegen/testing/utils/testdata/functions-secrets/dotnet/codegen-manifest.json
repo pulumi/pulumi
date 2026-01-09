@@ -1,0 +1,13 @@
+{
+  "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
+    "FuncWithSecrets.cs",
+    "Provider.cs",
+    "Pulumi.Mypkg.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

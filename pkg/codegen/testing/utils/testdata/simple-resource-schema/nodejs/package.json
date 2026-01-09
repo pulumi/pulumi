@@ -1,0 +1,23 @@
+{
+    "name": "@pulumi/example",
+    "version": "1.2.3",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "^3.142.0"
+    },
+    "devDependencies": {
+        "@types/mocha": "latest",
+        "@types/node": "ts4.3",
+        "mocha": "latest",
+        "ts-node": "latest",
+        "typescript": "^4.3.5"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "example",
+        "version": "1.2.3",
+        "server": "example.com/download"
+    }
+}

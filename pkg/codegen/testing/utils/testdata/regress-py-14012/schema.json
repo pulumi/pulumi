@@ -1,0 +1,31 @@
+{
+    "version": "0.0.1",
+    "name": "foo",
+    "provider": {
+        "inputProperties": {
+            "certmanager": {
+                "$ref": "#/types/foo:index:ProviderCertmanager"
+            }
+        }
+    },
+    "types": {
+        "foo:index:ProviderCertmanager": {
+            "properties": {
+                "mtlsCertPem": {
+                    "type": "string"
+                },
+                "mtlsKeyPem": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "mtlsCertPem",
+                "mtlsKeyPem"
+            ],
+            "type": "object"
+        }
+    },
+    "language": {
+        "python": {}
+    }
+}

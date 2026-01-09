@@ -1,0 +1,20 @@
+{
+  "name": "xyz",
+  "version": "0.0.1",
+  "functions": {
+    "xyz:index:basic": {
+      "multiArgumentInputs": ["value"],
+      "inputs": {
+        "properties": {
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": ["value"]
+      },
+      "outputs": {
+        "type": "number"
+      }
+    }
+  }
+}

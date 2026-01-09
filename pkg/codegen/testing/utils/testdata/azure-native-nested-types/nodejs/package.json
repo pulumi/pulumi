@@ -1,0 +1,28 @@
+{
+    "name": "@pulumi/azure-native",
+    "version": "${VERSION}",
+    "keywords": [
+        "pulumi",
+        "azure",
+        "azure-native",
+        "category/cloud",
+        "kind/native"
+    ],
+    "homepage": "https://pulumi.com",
+    "repository": "https://github.com/pulumi/pulumi-azure-native",
+    "license": "Apache-2.0",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "^3.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^4.3.5"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "azure-native"
+    }
+}

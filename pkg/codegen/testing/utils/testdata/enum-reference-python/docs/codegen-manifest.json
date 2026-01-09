@@ -1,0 +1,9 @@
+{
+  "emittedFiles": [
+    "_index.md",
+    "myModule/_index.md",
+    "myModule/iamresource/_index.md",
+    "provider/_index.md",
+    "replicatedbucket/_index.md"
+  ]
+}

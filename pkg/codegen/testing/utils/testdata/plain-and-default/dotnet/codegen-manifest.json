@@ -1,0 +1,14 @@
+{
+  "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
+    "Enums.cs",
+    "ModuleResource.cs",
+    "Provider.cs",
+    "Pulumi.FooBar.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

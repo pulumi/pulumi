@@ -1,0 +1,17 @@
+{
+  "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
+    "README.md",
+    "index.ts",
+    "moduleResource.ts",
+    "package.json",
+    "provider.ts",
+    "tsconfig.json",
+    "types/enums/index.ts",
+    "types/index.ts",
+    "types/input.ts",
+    "types/output.ts",
+    "utilities.ts"
+  ]
+}

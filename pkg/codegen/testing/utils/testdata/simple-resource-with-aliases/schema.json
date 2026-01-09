@@ -1,0 +1,80 @@
+{
+    "version": "0.0.1",
+    "name": "example",
+    "resources": {
+      "example:index:BasicResource": {
+        "properties": {
+          "bar": {
+            "type": "string"
+          }
+        },
+        "required": ["bar"],
+        "inputProperties": {
+          "bar": {
+            "type": "string"
+          }
+        },
+        "requiredInputs": ["bar"],
+        "type": "object"
+      },
+      "example:index:BasicResourceV2": {
+        "properties": {
+          "bar": {
+            "type": "string"
+          }
+        },
+        "required": ["bar"],
+        "inputProperties": {
+          "bar": {
+            "type": "string"
+          }
+        },
+        "requiredInputs": ["bar"],
+        "type": "object",
+        "aliases": [
+          {
+            "type": "example:index:BasicResource"
+          }
+        ]
+      },
+      "example:index:BasicResourceV3": {
+        "properties": {
+          "bar": {
+            "type": "string"
+          }
+        },
+        "required": ["bar"],
+        "inputProperties": {
+          "bar": {
+            "type": "string"
+          }
+        },
+        "requiredInputs": ["bar"],
+        "type": "object",
+        "aliases": [
+          {
+            "type": "example:index:BasicResource"
+          },
+          {
+            "type": "example:index:BasicResourceV2"
+          }
+        ]
+      }
+    },
+    "language": {
+      "go": {
+        "importBasePath": "simple-resource-with-aliases/example",
+        "generateExtraInputTypes": true,
+        "generics": "side-by-side"
+      },
+      "nodejs": {
+        "dependencies": {
+          "@pulumi/pulumi": "^3.12"
+        },
+        "devDependencies": {
+          "typescript": "^4.6.0"
+        }
+      },
+      "python": {}
+    }
+  }

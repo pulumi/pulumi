@@ -1,0 +1,76 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "resources": {
+    "example:index:ExampleServer": {
+      "properties":{
+        "name": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "propertiesCollection": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "$ref": "#/types/example:index:ServerPropertiesForReplica"
+              },
+              {
+                "type": "object",
+                "$ref": "#/types/example:index:ServerPropertiesForRestore"
+              }
+            ],
+            "discriminator": {
+              "propertyName": "createMode",
+              "mapping": {
+                "PointInTimeRestore": "#/types/example:index:ServerPropertiesForRestore",
+                "Replica": "#/types/example:index:ServerPropertiesForReplica"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "types":{
+    "example:index:ServerPropertiesForReplica": {
+      "properties": {
+        "createMode": {
+          "type": "string",
+          "const": "Replica"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "createMode"
+      ]
+    },
+    "example:index:ServerPropertiesForRestore": {
+      "properties": {
+        "createMode": {
+          "type": "string",
+          "const": "PointInTimeRestore"
+        },
+        "restorePointInTime": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "createMode",
+        "restorePointInTime"
+      ]
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "unions-inside-arrays/example",
+      "generics": "side-by-side"
+    }
+  }
+}

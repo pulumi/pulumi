@@ -1,0 +1,21 @@
+{
+  "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
+    "Cat.cs",
+    "Dog.cs",
+    "God.cs",
+    "NoRecursive.cs",
+    "Outputs/Chew.cs",
+    "Outputs/Laser.cs",
+    "Outputs/Rec.cs",
+    "Outputs/Toy.cs",
+    "Provider.cs",
+    "Pulumi.Example.csproj",
+    "README.md",
+    "ToyStore.cs",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

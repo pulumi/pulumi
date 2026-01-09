@@ -1,0 +1,148 @@
+{
+  "version": "0.0.1",
+  "name": "configstation",
+  "provider": {
+    "inputProperties": {
+      "favoriteColor": {
+        "description": "this is a relaxed string enum which can also be set via env var",
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/types/configstation:index:color"
+          }
+        ],
+        "defaultInfo": {
+          "environment": ["FAVE_COLOR"]
+        }
+      },
+      "secretSandwiches": {
+        "type": "array",
+        "items": {
+         "$ref": "#/types/configstation:config:sandwich"
+        },
+        "description": "Super duper secret sandwiches.\n",
+        "secret": true
+      }
+    }
+  },
+  "config": {
+    "variables": {
+      "name": {
+        "type": "string"
+      },
+      "numberOfSheep": {
+        "type": "integer"
+      },
+      "isMember": {
+        "type": "boolean",
+        "default": true
+      },
+      "favoritePlants": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "secretCode": {
+        "type": "string",
+        "description": "This is a huge secret",
+        "defaultInfo": {
+          "environment": ["SECRET_CODE", "MY_SUPER_SECRET_CODE"]
+        }
+      },
+      "favoriteSandwich": {
+        "$ref": "#/types/configstation:config:sandwich",
+        "description": "omg my favorite sandwich"
+      },
+      "kids": {
+        "$ref": "#/types/configstation:index:child"
+      }
+    },
+    "defaults": ["name"]
+  },
+  "functions":{
+    "configstation::funcWithAllOptionalInputs": {
+       "description": "Check codegen of functions with all optional inputs.",
+       "inputs": {
+         "type": "object",
+         "properties": {
+           "a": {
+            "type": "string",
+            "description": "Property A"
+           },
+           "b": {
+            "type": "string",
+            "description": "Property B"
+           }
+         }
+       },
+       "outputs": {
+         "properties": {
+           "r": {
+             "type": "string"
+           }
+         },
+        "type": "object",
+        "required": [
+          "r"
+        ]
+      }
+    }
+  },
+  "types": {
+    "configstation:config:sandwich": {
+      "properties": {
+        "bread": {
+          "type": "string"
+        },
+        "veggies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "configstation:index:child": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "age": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "configstation:index:color": {
+      "enum": [
+        {"value": "blue"},
+        {"value": "red"}
+      ],
+      "type": "string"
+    }
+  },
+  "language": {
+    "csharp": {
+      "rootNamespace": "Configstation.Pulumi",
+      "packageReferences": {
+        "Pulumi": "3.12"
+      }
+    },
+    "go": {
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {}
+  }
+}

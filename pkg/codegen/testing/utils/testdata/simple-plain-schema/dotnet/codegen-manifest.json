@@ -1,0 +1,17 @@
+{
+  "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
+    "Component.cs",
+    "DoFoo.cs",
+    "Inputs/Foo.cs",
+    "Inputs/FooArgs.cs",
+    "Outputs/Foo.cs",
+    "Provider.cs",
+    "Pulumi.Example.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

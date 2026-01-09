@@ -1,0 +1,75 @@
+{
+    "name": "repro",
+    "version": "0.1.0",
+    "resources": {
+        "repro:index:Foo": {
+            "properties": {
+                "conditionSets": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/types/repro:index:Bar"
+                            }
+                        }
+                    }
+                },
+                "privateEndpoint": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "repro:overlap:SomeType": {},
+        "repro:overlap:SomeTypeMap": {},
+        "repro:overlap:Consumer": {
+            "inputProperties": {
+                "typM": {
+                    "$ref": "#/resources/repro:overlap:SomeTypeMap"
+                },
+                "typ": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/resources/repro:overlap:SomeType"
+                    }
+                }
+            }
+        },
+        "repro:elementType:ElementType": {
+            "properties": {
+                "elementType": { "$ref": "#/types/repro:elementType:ElementType" }
+            }
+        }
+    },
+    "types": {
+        "repro:elementType:ElementType": {
+            "type": "object",
+            "properties": {
+                "elementType": { "type": "string" }
+            }
+        },
+        "repro:index:Bar": {
+            "type": "object",
+            "properties": {
+                "prop": { "type": "string" }
+            }
+        }
+    },
+    "language": {
+        "go": {
+            "generateResourceContainerTypes": true,
+            "importBasePath": "go-nested-collections/repro",
+            "liftSingleValueMethodReturns": true
+        }
+    }
+}
