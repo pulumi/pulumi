@@ -73,7 +73,7 @@
           "$ref": "/kubernetes/v3.7.0/schema.json#/provider"
         },
         "securityGroup": {
-          "$ref": "/aws/v4.36.0/schema.json#/resources/aws:ec2%2FsecurityGroup:SecurityGroup"
+          "$ref": "/aws/v5.16.2/schema.json#/resources/aws:ec2%2FsecurityGroup:SecurityGroup"
         },
         "storageClasses": {
           "type": "object",
@@ -144,7 +144,7 @@
     "csharp": {
       "packageReferences": {
         "Pulumi": "3.71",
-        "Pulumi.Aws": "4.20",
+        "Pulumi.Aws": "5.16.2",
         "Pulumi.Kubernetes": "3.7.0",
         "Pulumi.Random": "4.3.1"
       }
@@ -157,7 +157,7 @@
     "nodejs": {
       "dependencies": {
         "@pulumi/random": "^4.3.1",
-        "@pulumi/aws": "^4.19.0",
+        "@pulumi/aws": "^5.16.2",
         "@pulumi/kubernetes": "^3.7.0"
       }
     },

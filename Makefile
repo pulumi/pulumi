@@ -254,9 +254,7 @@ schema-%: .make/ensure/curl .make/ensure/jq
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
 # separate commit from other changes, as online code review tools may balk at rendering these diffs.
 get_schemas: \
-			schema-aws!4.15.0           \
 			schema-aws!4.26.0           \
-			schema-aws!4.36.0           \
 			schema-aws!5.4.0            \
 			schema-aws!5.16.2           \
 			schema-azure-native!1.56.0  \
@@ -265,7 +263,6 @@ get_schemas: \
 			schema-kubernetes!3.7.0     \
 			schema-kubernetes!3.7.2     \
 			schema-random!4.3.1         \
-			schema-eks!0.37.1           \
 			schema-eks!0.40.0           \
 			schema-docker!3.1.0         \
 			schema-docker!4.0.0-alpha.0 \
