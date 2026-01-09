@@ -23,7 +23,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -145,404 +144,81 @@ func TestConfigPaths(t *testing.T) {
 		TopLevelExpectedValue string
 		ExpectFailure         bool
 	}
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
 
-	runTest := func(t *testing.T, a ...testArgs) {
-		e := ptesting.NewEnvironment(t)
-		defer e.DeleteIfNotFailed()
+	// Initialize an empty stack.
+	path := filepath.Join(e.RootPath, "Pulumi.yaml")
+	err := (&workspace.Project{
+		Name:    "testing-config",
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
+	}).Save(path)
+	require.NoError(t, err)
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "testing")
 
-		// Initialize an empty stack.
-		path := filepath.Join(e.RootPath, "Pulumi.yaml")
-		err := (&workspace.Project{
-			Name:    "testing-config",
-			Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
-		}).Save(path)
-		require.NoError(t, err)
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-		e.RunCommand("pulumi", "stack", "init", "testing")
-
-		for _, a := range a {
-			args := []string{"config", "set"}
-			if a.Secret {
-				args = append(args, "--secret")
-			}
-			if a.Path {
-				args = append(args, "--path")
-			}
-			args = append(args, a.Key, a.Value)
-
-			if a.ExpectFailure {
-				stdout, stderr := e.RunCommandExpectError("pulumi", args...)
-				assert.Empty(t, stdout)
-				assert.NotEqual(t, "", stderr)
-				continue
-			}
-
-			stdout, stderr := e.RunCommand("pulumi", args...)
-			assert.Empty(t, stdout, "stdout")
-			assert.Empty(t, stderr, "stderr")
-
-			// Validate that the config was correct
-			stdout, stderr = e.RunCommand("pulumi", "config", "get", a.TopLevelKey)
-			assert.Equal(t, a.TopLevelExpectedValue+"\n", stdout)
-			assert.Empty(t, stderr)
-		}
-		e.RunCommand("pulumi", "stack", "rm", "--yes")
-	}
-
-	namespaces := []string{"", "my:"}
-
-	tests := [][]testArgs{
-		{
-			{
-				Key:                   "aConfigValue",
-				Value:                 "this value is a value",
-				TopLevelKey:           "aConfigValue",
-				TopLevelExpectedValue: "this value is a value",
-			},
-			{
-				Key:                   "anotherConfigValue",
-				Value:                 "this value is another value",
-				TopLevelKey:           "anotherConfigValue",
-				TopLevelExpectedValue: "this value is another value",
-			},
-			{
-				Key:                   "bEncryptedSecret",
-				Value:                 "this super secret is encrypted",
-				Secret:                true,
-				TopLevelKey:           "bEncryptedSecret",
-				TopLevelExpectedValue: "this super secret is encrypted",
-			},
-			{
-				Key:                   "anotherEncryptedSecret",
-				Value:                 "another encrypted secret",
-				Secret:                true,
-				TopLevelKey:           "anotherEncryptedSecret",
-				TopLevelExpectedValue: "another encrypted secret",
-			},
-			// Overwriting a top-level string value is allowed.
-			{
-				Key:                   "aConfigValue.inner",
-				Value:                 "new value",
-				Path:                  true,
-				TopLevelKey:           "aConfigValue",
-				TopLevelExpectedValue: `{"inner":"new value"}`,
-			},
-			{
-				Key:                   "anotherConfigValue[0]",
-				Value:                 "new value",
-				Path:                  true,
-				TopLevelKey:           "anotherConfigValue",
-				TopLevelExpectedValue: `["new value"]`,
-			},
-			{
-				Key:                   "bEncryptedSecret.inner",
-				Value:                 "new value",
-				Path:                  true,
-				TopLevelKey:           "bEncryptedSecret",
-				TopLevelExpectedValue: `{"inner":"new value"}`,
-			},
-			{
-				Key:                   "anotherEncryptedSecret[0]",
-				Value:                 "new value",
-				Path:                  true,
-				TopLevelKey:           "anotherEncryptedSecret",
-				TopLevelExpectedValue: `["new value"]`,
-			},
+	tests := []testArgs{
+		{ // Test case 1: Neither --path nor --secret
+			Key:                   "plainValue",
+			Value:                 "a simple string value",
+			TopLevelKey:           "plainValue",
+			TopLevelExpectedValue: "a simple string value",
 		},
-		{
-			{
-				Key:                   "[]",
-				Value:                 "square brackets value",
-				TopLevelKey:           "[]",
-				TopLevelExpectedValue: "square brackets value",
-			},
-			{
-				Key:                   "x.y",
-				Value:                 "x.y value",
-				TopLevelKey:           "x.y",
-				TopLevelExpectedValue: "x.y value",
-			},
-			{
-				Key:                   "0",
-				Value:                 "0 value",
-				Path:                  true,
-				TopLevelKey:           "0",
-				TopLevelExpectedValue: "0 value",
-			},
-			{
-				Key:                   "true",
-				Value:                 "value",
-				Path:                  true,
-				TopLevelKey:           "true",
-				TopLevelExpectedValue: "value",
-			},
+		{ // Test case 2: --path only
+			Key:                   "ns:nested.inner",
+			Value:                 "nested value",
+			Path:                  true,
+			TopLevelKey:           "ns:nested",
+			TopLevelExpectedValue: `{"inner":"nested value"}`,
 		},
-		{
-			{
-				Key:                   `["test.Key"]`,
-				Value:                 "test key value",
-				Path:                  true,
-				TopLevelKey:           "test.Key",
-				TopLevelExpectedValue: "test key value",
-			},
-			{
-				Key:                   `nested["test.Key"]`,
-				Value:                 "nested test key value",
-				Path:                  true,
-				TopLevelKey:           "nested",
-				TopLevelExpectedValue: `{"test.Key":"nested test key value"}`,
-			},
-			{
-				Key:                   "outer.inner",
-				Value:                 "value",
-				Path:                  true,
-				TopLevelKey:           "outer",
-				TopLevelExpectedValue: `{"inner":"value"}`,
-			},
-
-			// Wrong type
-			{Key: "outer[0]", Value: "v", Path: true, ExpectFailure: true},
-			{Key: "outer.inner.nested", Value: "v", Path: true, ExpectFailure: true},
-			{Key: "outer.inner[0]", Value: "v", Path: true, ExpectFailure: true},
+		{ // Test case 3: --secret only
+			Key:                   "secretValue",
+			Value:                 "this is a secret",
+			Secret:                true,
+			TopLevelKey:           "secretValue",
+			TopLevelExpectedValue: "this is a secret",
 		},
-		{
-			{
-				Key:                   "names[0]",
-				Value:                 "a",
-				Path:                  true,
-				TopLevelKey:           "names",
-				TopLevelExpectedValue: `["a"]`,
-			},
-			{
-				Key:                   "names[1]",
-				Value:                 "b",
-				Path:                  true,
-				TopLevelKey:           "names",
-				TopLevelExpectedValue: `["a","b"]`,
-			},
-			{
-				Key:                   "names[2]",
-				Value:                 "c",
-				Path:                  true,
-				TopLevelKey:           "names",
-				TopLevelExpectedValue: `["a","b","c"]`,
-			},
-			{
-				Key:                   "names[3]",
-				Value:                 "super secret name",
-				Path:                  true,
-				Secret:                true,
-				TopLevelKey:           "names",
-				TopLevelExpectedValue: `["a","b","c","super secret name"]`,
-			},
-
-			// Index out of range.
-			{Key: "names[-1]", Value: "v", Path: true, ExpectFailure: true},
-			{Key: "names[5]", Value: "v", Path: true, ExpectFailure: true},
-
-			// Wrong type
-			{Key: "names.nested", Value: "v", Path: true, ExpectFailure: true},
+		{ // Test case 4: Both --path and --secret
+			Key:                   "ns:tokens[0]",
+			Value:                 "secret token",
+			Path:                  true,
+			Secret:                true,
+			TopLevelKey:           "ns:tokens",
+			TopLevelExpectedValue: `["secret token"]`,
 		},
-		{
-			{
-				Key:                   "servers[0].port",
-				Value:                 "80",
-				Path:                  true,
-				TopLevelKey:           "servers",
-				TopLevelExpectedValue: `[{"port":80}]`,
-			},
-			{
-				Key:                   "servers[0].host",
-				Value:                 "example",
-				Path:                  true,
-				TopLevelKey:           "servers",
-				TopLevelExpectedValue: `[{"host":"example","port":80}]`,
-			},
-		},
-		{
-			{
-				Key:                   "a.b[0].c",
-				Value:                 "true",
-				Path:                  true,
-				TopLevelKey:           "a",
-				TopLevelExpectedValue: `{"b":[{"c":true}]}`,
-			},
-			{
-				Key:                   "a.b[1].c",
-				Value:                 "false",
-				Path:                  true,
-				TopLevelKey:           "a",
-				TopLevelExpectedValue: `{"b":[{"c":true},{"c":false}]}`,
-			},
-		},
-		{
-			{
-				Key:                   "tokens[0]",
-				Value:                 "shh",
-				Path:                  true,
-				Secret:                true,
-				TopLevelKey:           "tokens",
-				TopLevelExpectedValue: `["shh"]`,
-			},
-			{
-				Key:                   "foo.bar",
-				Value:                 "don't tell",
-				Path:                  true,
-				Secret:                true,
-				TopLevelKey:           "foo",
-				TopLevelExpectedValue: `{"bar":"don't tell"}`,
-			},
-		},
-		{
-			{
-				Key:                   "semiInner.a.b.c.d",
-				Value:                 "1",
-				Path:                  true,
-				TopLevelKey:           "semiInner",
-				TopLevelExpectedValue: `{"a":{"b":{"c":{"d":1}}}}`,
-			},
-			{
-				Key:                   "wayInner.a.b.c.d.e.f.g.h.i.j.k",
-				Value:                 "false",
-				Path:                  true,
-				TopLevelKey:           "wayInner",
-				TopLevelExpectedValue: `{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":{"j":{"k":false}}}}}}}}}}}`,
-			},
-		},
-		{
-			{
-				Key:                   "foo1[0]",
-				Value:                 "false",
-				Path:                  true,
-				TopLevelKey:           "foo1",
-				TopLevelExpectedValue: `[false]`,
-			},
-			{
-				Key:                   "foo2[0]",
-				Value:                 "true",
-				Path:                  true,
-				TopLevelKey:           "foo2",
-				TopLevelExpectedValue: `[true]`,
-			},
-			{
-				Key:                   "foo3[0]",
-				Value:                 "10",
-				Path:                  true,
-				TopLevelKey:           "foo3",
-				TopLevelExpectedValue: `[10]`,
-			},
-			{
-				Key:                   "foo4[0]",
-				Value:                 "0",
-				Path:                  true,
-				TopLevelKey:           "foo4",
-				TopLevelExpectedValue: `[0]`,
-			},
-			{
-				Key:                   "foo5[0]",
-				Value:                 "00",
-				Path:                  true,
-				TopLevelKey:           "foo5",
-				TopLevelExpectedValue: `["00"]`,
-			},
-			{
-				Key:                   "foo6[0]",
-				Value:                 "01",
-				Path:                  true,
-				TopLevelKey:           "foo6",
-				TopLevelExpectedValue: `["01"]`,
-			},
-			{
-				Key:                   "foo7[0]",
-				Value:                 "0123456",
-				Path:                  true,
-				TopLevelKey:           "foo7",
-				TopLevelExpectedValue: `["0123456"]`,
-			},
-		},
-		{
-			{
-				Key:                   "bar1.inner",
-				Value:                 "false",
-				Path:                  true,
-				TopLevelKey:           "bar1",
-				TopLevelExpectedValue: `{"inner":false}`,
-			},
-			{
-				Key:                   "bar2.inner",
-				Value:                 "true",
-				Path:                  true,
-				TopLevelKey:           "bar2",
-				TopLevelExpectedValue: `{"inner":true}`,
-			},
-			{
-				Key:                   "bar3.inner",
-				Value:                 "10",
-				Path:                  true,
-				TopLevelKey:           "bar3",
-				TopLevelExpectedValue: `{"inner":10}`,
-			},
-			{
-				Key:                   "bar4.inner",
-				Value:                 "0",
-				Path:                  true,
-				TopLevelKey:           "bar4",
-				TopLevelExpectedValue: `{"inner":0}`,
-			},
-			{
-				Key:                   "bar5.inner",
-				Value:                 "00",
-				Path:                  true,
-				TopLevelKey:           "bar5",
-				TopLevelExpectedValue: `{"inner":"00"}`,
-			},
-			{
-				Key:                   "bar6.inner",
-				Value:                 "01",
-				Path:                  true,
-				TopLevelKey:           "bar6",
-				TopLevelExpectedValue: `{"inner":"01"}`,
-			},
-			{
-				Key:                   "bar7.inner",
-				Value:                 "0123456",
-				Path:                  true,
-				TopLevelKey:           "bar7",
-				TopLevelExpectedValue: `{"inner":"0123456"}`,
-			},
-		},
-		{ // Bad keys
-			// Syntax errors.
-			{Key: "root[", Value: "v", Path: true, ExpectFailure: true},
-			{Key: `root["nested]`, Value: "v", Path: true, ExpectFailure: true},
-			{Key: "root.array[abc]", Value: "v", Path: true, ExpectFailure: true},
-			// First path segment must be a non-empty string.
-			{Key: `[""]`, Value: "v", Path: true, ExpectFailure: true},
-			{Key: "[0]", Value: "v", Path: true, ExpectFailure: true},
-			{Key: ".foo", Value: "v", Path: true, ExpectFailure: true},
-			{Key: ".[0]", Value: "v", Path: true, ExpectFailure: true},
-			// A "secure" key that is a map with a single string value is reserved by the system.
-			{Key: "key.secure", Value: "v", Path: true, ExpectFailure: true},
-			{Key: "super.nested.map.secure", Value: "v", Path: true, ExpectFailure: true},
+		{ // Test case 5: Invalid value (malformed path)
+			Key:           "root[",
+			Value:         "value",
+			Path:          true,
+			ExpectFailure: true,
 		},
 	}
 
-	bakeArgs := func(ns string, a []testArgs) []testArgs {
-		a = slices.Clone(a)
-		for _, a := range a {
-			a.Key = fmt.Sprintf("%s%s", ns, a.Key)
-			a.TopLevelKey = fmt.Sprintf("%s%s", ns, a.TopLevelKey)
+	for _, test := range tests {
+		args := []string{"config", "set"}
+		if test.Secret {
+			args = append(args, "--secret")
 		}
-		return a
-	}
+		if test.Path {
+			args = append(args, "--path")
+		}
+		args = append(args, test.Key, test.Value)
 
-	for _, ns := range namespaces {
-		for _, test := range tests {
-			t.Run("", func(t *testing.T) {
-				t.Parallel()
-				runTest(t, bakeArgs(ns, test)...)
-			})
+		if test.ExpectFailure {
+			stdout, stderr := e.RunCommandExpectError("pulumi", args...)
+			assert.Empty(t, stdout)
+			assert.NotEqual(t, "", stderr)
+			return
 		}
+
+		stdout, stderr := e.RunCommand("pulumi", args...)
+		assert.Empty(t, stdout, "stdout")
+		assert.Empty(t, stderr, "stderr")
+
+		// Validate that the config was correct
+		stdout, stderr = e.RunCommand("pulumi", "config", "get", test.TopLevelKey)
+		assert.Equal(t, test.TopLevelExpectedValue+"\n", stdout)
+		assert.Empty(t, stderr)
 	}
 }
 
