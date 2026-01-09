@@ -39,6 +39,7 @@ type Store interface {
 	// Retrieve a raw value from the Store. If the value is not present, "", false should
 	// be returned.
 	Raw(key string) (string, bool)
+	// Retrieve an iterator for values in the Store. An empty store will result in an empty collection.
 	Values() iter.Seq2[string, string]
 }
 
