@@ -5,33 +5,33 @@
     "example::Pet": {
       "properties": {
         "name": {
-          "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+          "$ref": "/random/v4.11.2/schema.json#/resources/random:index%2FrandomPet:RandomPet"
         },
         "requiredName": {
-          "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+          "$ref": "/random/v4.11.2/schema.json#/resources/random:index%2FrandomPet:RandomPet"
         },
         "nameArray": {
           "type": "array",
           "items": {
-            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.11.2/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           }
         },
         "requiredNameArray": {
           "type": "array",
           "items": {
-            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.11.2/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           }
         },
         "nameMap": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.11.2/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           }
         },
         "requiredNameMap": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.11.2/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           }
         },
         "age": {
@@ -127,7 +127,7 @@
       "inputs": {
         "properties": {
           "name": {
-            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.11.2/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           }
         }
       },
@@ -146,7 +146,7 @@
         "Pulumi": "3.71",
         "Pulumi.Aws": "5.16.2",
         "Pulumi.Kubernetes": "3.7.0",
-        "Pulumi.Random": "4.3.1"
+        "Pulumi.Random": "4.11.2"
       }
     },
     "go": {
@@ -156,7 +156,7 @@
     },
     "nodejs": {
       "dependencies": {
-        "@pulumi/random": "^4.3.1",
+        "@pulumi/random": "^4.11.2",
         "@pulumi/aws": "^5.16.2",
         "@pulumi/kubernetes": "^3.7.0"
       }

@@ -8,7 +8,7 @@
         "@pulumi/aws": "^5.16.2",
         "@pulumi/kubernetes": "^3.7.0",
         "@pulumi/pulumi": "^3.142.0",
-        "@pulumi/random": "^4.3.1"
+        "@pulumi/random": "^4.11.2"
     },
     "devDependencies": {
         "@types/node": "^18",

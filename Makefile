@@ -261,12 +261,10 @@ get_schemas: \
 			schema-azure!4.18.0         \
 			schema-kubernetes!3.0.0     \
 			schema-kubernetes!3.7.0     \
-			schema-random!4.3.1         \
+			schema-random!4.11.2        \
 			schema-eks!0.40.0           \
-			schema-docker!3.1.0         \
 			schema-docker!4.0.0-alpha.0 \
 			schema-awsx!1.0.0-beta.5    \
-			schema-aws-native!0.13.0    \
 			schema-google-native!0.18.2 \
 			schema-tls!4.10.0
 
