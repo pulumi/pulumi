@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// docs:index:fun is a basic function for setting in on docs:index:Resource.
+// Fun is a basic function for setting Resource.In on Resource.
 func Fun(ctx *pulumi.Context, args *FunArgs, opts ...pulumi.InvokeOption) (*FunResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv FunResult
@@ -23,12 +23,12 @@ func Fun(ctx *pulumi.Context, args *FunArgs, opts ...pulumi.InvokeOption) (*FunR
 }
 
 type FunArgs struct {
-	// Will be used to set out.
+	// Will be used to set Fun.Out.
 	In bool `pulumi:"in"`
 }
 
 type FunResult struct {
-	// Will be the opposite of in can be used to set in.
+	// Will be the opposite of FunArgs.In can be used to set ResourceArgs.In.
 	Out bool `pulumi:"out"`
 }
 
@@ -42,7 +42,7 @@ func FunOutput(ctx *pulumi.Context, args FunOutputArgs, opts ...pulumi.InvokeOpt
 }
 
 type FunOutputArgs struct {
-	// Will be used to set out.
+	// Will be used to set Fun.Out.
 	In pulumi.BoolInput `pulumi:"in"`
 }
 
@@ -64,7 +64,7 @@ func (o FunResultOutput) ToFunResultOutputWithContext(ctx context.Context) FunRe
 	return o
 }
 
-// Will be the opposite of in can be used to set in.
+// Will be the opposite of FunArgs.In can be used to set ResourceArgs.In.
 func (o FunResultOutput) Out() pulumi.BoolOutput {
 	return o.ApplyT(func(v FunResult) bool { return v.Out }).(pulumi.BoolOutput)
 }

@@ -13,13 +13,13 @@ import (
 
 var _ = internal.GetEnvOrDefault
 
-// docs:index:ResourceData is a basic type used in docs:index:Resource.
+// ResourceData is a basic type used in Resource.
 type ResourceData struct {
-	// A property of docs:index:ResourceData.
+	// A property of ResourceData.
 	State string `pulumi:"state"`
 }
 
-// docs:index:ResourceData is a basic type used in docs:index:Resource.
+// ResourceData is a basic type used in Resource.
 type ResourceDataOutput struct{ *pulumi.OutputState }
 
 func (ResourceDataOutput) ElementType() reflect.Type {
@@ -34,7 +34,7 @@ func (o ResourceDataOutput) ToResourceDataOutputWithContext(ctx context.Context)
 	return o
 }
 
-// A property of docs:index:ResourceData.
+// A property of ResourceData.
 func (o ResourceDataOutput) State() pulumi.StringOutput {
 	return o.ApplyT(func(v ResourceData) string { return v.State }).(pulumi.StringOutput)
 }

@@ -6,11 +6,11 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
 /**
- * docs:index:ResourceData is a basic type used in docs:index:Resource.
+ * <pulumi ref="#/types/docs:index:ResourceData"/> is a basic type used in <pulumi ref="#/resources/docs:index:Resource"/>.
  */
 export interface ResourceData {
     /**
-     * A property of docs:index:ResourceData.
+     * A property of <pulumi ref="#/types/docs:index:ResourceData"/>.
      */
     state: string;
 }
