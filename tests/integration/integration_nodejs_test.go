@@ -2085,6 +2085,33 @@ func TestNodejsDynamicProviderConfig(t *testing.T) {
 	})
 }
 
+// Tests logging from dynamic providers.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsDynamicProviderOutput(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("dynamic", "nodejs-output"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotEmpty(t, stackInfo.Events)
+			message := "message from provider"
+			found := false
+			for _, event := range stackInfo.Events {
+				if event.DiagnosticEvent != nil &&
+					event.DiagnosticEvent.Severity == "info" &&
+					strings.Contains(event.DiagnosticEvent.Message, message) {
+					found = true
+					break
+				}
+			}
+			b, err := json.Marshal(stackInfo.Events)
+			require.NoError(t, err)
+			require.True(t, found, "expected a diagnostic event with the message %s, got: %s", message, b)
+		},
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/12301
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
