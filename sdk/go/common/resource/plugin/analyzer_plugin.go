@@ -19,7 +19,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -207,21 +208,20 @@ func NewPolicyAnalyzer(
 		}
 
 		// Create the environment variables from the options.
-		var env []string
-		env, err = constructEnv(opts, proj.Runtime.Name())
+		environment, err := constructEnv(opts, proj.Runtime.Name())
 		if err != nil {
 			return nil, err
 		}
 
 		plug, _, err = newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-			apitype.AnalyzerPlugin, args, env, handshake,
+			apitype.AnalyzerPlugin, args, environment, handshake,
 			analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	} else {
-		// Else we _did_ get a lanuage plugin so just use RunPlugin to invoke the policy pack.
+		// Else we _did_ get a language plugin so just use RunPlugin to invoke the policy pack.
 
 		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
-			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, os.Environ(),
+			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, env.Global(),
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	}
@@ -971,12 +971,13 @@ func convertNotApplicable(protoNotApplicable []*pulumirpc.PolicyNotApplicable) [
 // constructEnv creates a slice of key/value pairs to be used as the environment for the policy pack process. Each entry
 // is of the form "key=value". Config is passed as an environment variable (including unecrypted secrets), similar to
 // how config is passed to each language runtime plugin.
-func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error) {
-	env := os.Environ()
+func constructEnv(opts *PolicyAnalyzerOptions, runtime string) (env.Env, error) {
+
+	store := envutil.MapStore{}
 
 	maybeAppendEnv := func(k, v string) {
 		if v != "" {
-			env = append(env, k+"="+v)
+			store[k] = v
 		}
 	}
 
@@ -1003,8 +1004,9 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 		maybeAppendEnv("PULUMI_STACK", opts.Stack)
 		maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(opts.DryRun))
 	}
+	env.Global()
 
-	return env, nil
+	return envutil.NewEnv(envutil.JoinStore(store, env.Global().GetStore())), nil
 }
 
 // constructConfig JSON-serializes the configuration data.

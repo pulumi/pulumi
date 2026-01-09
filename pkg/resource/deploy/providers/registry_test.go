@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -78,7 +79,7 @@ func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
 
-func (host *testPluginHost) Provider(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+func (host *testPluginHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 	return host.provider(descriptor)
 }
 
@@ -827,7 +828,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		_, err := loadProvider(
 			context.Background(),
 			"myplugin", &version, srv.URL,
-			nil, host, nil /* builtins */)
+			nil, host, nil /* builtins */, nil)
 		assert.ErrorContains(t, err,
 			"no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v1.2.3")
 		assert.Equal(t, 0, count)
@@ -839,7 +840,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		_, err := loadProvider(
 			context.Background(),
 			"myplugin", &version, srv.URL,
-			nil, host, nil /* builtins */)
+			nil, host, nil /* builtins */, nil)
 		assert.ErrorContains(t, err,
 			"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
 		assert.ErrorContains(t, err,

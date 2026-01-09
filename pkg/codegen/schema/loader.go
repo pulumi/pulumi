@@ -472,7 +472,7 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 		Kind:              apitype.ResourcePlugin,
 	}
 
-	provider, err := l.host.Provider(wsDescriptor)
+	provider, err := l.host.Provider(wsDescriptor, nil)
 	if err != nil {
 		return nil, nil, err
 	}

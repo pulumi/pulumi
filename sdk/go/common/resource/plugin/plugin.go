@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"io"
 	"os"
 	"os/exec"
@@ -240,7 +241,7 @@ func newPlugin[T any](
 	prefix string,
 	kind apitype.PluginKind,
 	args []string,
-	env []string,
+	env env.Env,
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
 	attachDebugger bool,
@@ -440,7 +441,7 @@ func parsePort(portString string) (int, error) {
 
 // ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
 func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
-	pluginArgs []string, pwd string, env []string, attachDebugger bool,
+	pluginArgs []string, pwd string, e env.Env, attachDebugger bool,
 ) (*Plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
@@ -449,6 +450,11 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		logToStderr:     logging.LogToStderr,
 		verbose:         logging.Verbose,
 	})
+
+	var environment []string
+	for k, v := range e.GetStore().Values() {
+		environment = append(environment, k+"="+v)
+	}
 
 	// Check to see if we have a binary we can invoke directly
 	stat, err := os.Stat(bin)
@@ -504,7 +510,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
-			Env:              env,
+			Env:              environment,
 			Kind:             string(kind),
 			AttachDebugger:   attachDebugger,
 		})
@@ -515,7 +521,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		return &Plugin{
 			Bin:    bin,
 			Args:   args,
-			Env:    env,
+			Env:    environment,
 			Kill:   func() error { kill(); return nil },
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
@@ -532,8 +538,9 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd
-	if len(env) > 0 {
-		cmd.Env = env
+
+	if len(environment) > 0 {
+		cmd.Env = environment
 	}
 	in, _ := cmd.StdinPipe()
 	outr, outw := io.Pipe()
@@ -606,7 +613,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	return &Plugin{
 		Bin:    bin,
 		Args:   args,
-		Env:    env,
+		Env:    environment,
 		Kill:   kill,
 		Stdin:  in,
 		Stdout: outr,
