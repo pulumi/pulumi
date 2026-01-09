@@ -62,15 +62,15 @@ func GenerateGoProgramTest(
 			GenProgram: genProgram,
 			TestCases: []ProgramTest{
 				{
-					Directory:   "aws-resource-options-4.26",
+					Name:        "aws-resource-options-4.26",
 					Description: "Resource Options",
 				},
 				{
-					Directory:   "aws-resource-options-5.16.2",
+					Name:        "aws-resource-options-5.16.2",
 					Description: "Resource Options",
 				},
 				{
-					Directory:   "modpath",
+					Name:        "modpath",
 					Description: "Check that modpath is respected",
 					MockPluginVersions: map[string]string{
 						"other": "0.1.0",

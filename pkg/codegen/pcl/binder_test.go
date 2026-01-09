@@ -50,7 +50,7 @@ func TestBindProgram(t *testing.T) {
 
 	bindOptions := map[string][]pcl.BindOption{}
 	for _, r := range test.PulumiPulumiProgramTests {
-		bindOptions[r.Directory+"-pp"] = r.BindOptions
+		bindOptions[r.Name+"-pp"] = r.BindOptions
 	}
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
