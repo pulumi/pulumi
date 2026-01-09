@@ -14,21 +14,14 @@
 
 package tests
 
-import (
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-)
-
 func init() {
 	LanguageTests["l1-empty"] = LanguageTest{
 		Runs: []TestRun{
 			{
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					err := res.Err
+					changes := res.Changes
+
 					AssertStackResource(l, err, changes)
 				},
 			},

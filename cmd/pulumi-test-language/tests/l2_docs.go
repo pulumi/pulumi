@@ -20,9 +20,6 @@ import (
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -36,11 +33,16 @@ func init() {
 		},
 		Runs: []TestRun{
 			{
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event, sdks map[string]string,
+				Assert: func(l *L, args AssertArgs,
 				) {
+					projectDirectory := args.ProjectDirectory
+					sdks := args.SDKs
+					changes := args.Changes
+					snap := args.Snap
+					err := args.Err
+
+					RequireStackResource(l, err, changes)
+
 					// Check the docs sdk doesn't show the "<pulumi ref=", string anywhere it should
 					// have been replaced by the appropriate link.
 					sdkPath, ok := sdks["docs-25.0.0"]
@@ -65,8 +67,6 @@ func init() {
 						return nil
 					})
 					require.NoError(l, err)
-
-					RequireStackResource(l, err, changes)
 
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")

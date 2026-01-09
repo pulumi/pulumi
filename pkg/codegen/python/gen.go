@@ -2464,6 +2464,10 @@ func (mod *modContext) genComment(comment string, selfRef codegen.DocRef, filter
 			base = title(PyName(tokenToName(ref.Token.String()))) + "Args"
 		case codegen.DocRefTypeFunctionOutputProperty:
 			base = title(PyName(tokenToName(ref.Token.String()))) + "Result"
+		case codegen.DocRefTypeType, codegen.DocRefTypeTypeProperty:
+			base = title(PyName(ref.Token.String()))
+		case codegen.DocRefTypeUnknown:
+			return "", false
 		}
 
 		if base == "" {
@@ -2474,7 +2478,7 @@ func (mod *modContext) genComment(comment string, selfRef codegen.DocRef, filter
 		switch ref.Type {
 		case codegen.DocRefTypeResource, codegen.DocRefTypeFunction, codegen.DocRefTypeType:
 			return base, true
-		default:
+		case codegen.DocRefTypeUnknown, codegen.DocRefTypeResourceProperty, codegen.DocRefTypeResourceInputProperty, codegen.DocRefTypeFunctionInputProperty, codegen.DocRefTypeFunctionOutputProperty, codegen.DocRefTypeTypeProperty:
 			property = PyName(ref.Property)
 		}
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -334,8 +334,15 @@ type ProviderHandshakeResponse struct {
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
 	SupportsAutonamingConfiguration bool `protobuf:"varint,4,opt,name=supports_autonaming_configuration,json=supportsAutonamingConfiguration,proto3" json:"supports_autonaming_configuration,omitempty"`
-	unknownFields                   protoimpl.UnknownFields
-	sizeCache                       protoimpl.SizeCache
+	// The CLI version range required for this provider to work correctly. If no version range is specified, the
+	// provider will be considered compatible with any CLI version.
+	// The supported syntax for ranges is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example
+	// ">=3.0.0", or "!3.1.2". Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning
+	// greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
+	// meaning less-than 3.4.0 or greater-than 3.8.0.
+	PulumiVersionRange *string `protobuf:"bytes,5,opt,name=pulumi_version_range,json=pulumiVersionRange,proto3,oneof" json:"pulumi_version_range,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeResponse) Reset() {
@@ -394,6 +401,13 @@ func (x *ProviderHandshakeResponse) GetSupportsAutonamingConfiguration() bool {
 		return x.SupportsAutonamingConfiguration
 	}
 	return false
+}
+
+func (x *ProviderHandshakeResponse) GetPulumiVersionRange() string {
+	if x != nil && x.PulumiVersionRange != nil {
+		return *x.PulumiVersionRange
+	}
+	return ""
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
@@ -3895,12 +3909,14 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x1esupports_refresh_before_update\x18\x06 \x01(\bR\x1bsupportsRefreshBeforeUpdate\x12.\n" +
 	"\x13invoke_with_preview\x18\a \x01(\bR\x11invokeWithPreviewB\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
-	"\x12_program_directory\"\xe0\x01\n" +
+	"\x12_program_directory\"\xb0\x02\n" +
 	"\x19ProviderHandshakeResponse\x12%\n" +
 	"\x0eaccept_secrets\x18\x01 \x01(\bR\racceptSecrets\x12)\n" +
 	"\x10accept_resources\x18\x02 \x01(\bR\x0facceptResources\x12%\n" +
 	"\x0eaccept_outputs\x18\x03 \x01(\bR\racceptOutputs\x12J\n" +
-	"!supports_autonaming_configuration\x18\x04 \x01(\bR\x1fsupportsAutonamingConfiguration\"\xad\x02\n" +
+	"!supports_autonaming_configuration\x18\x04 \x01(\bR\x1fsupportsAutonamingConfiguration\x125\n" +
+	"\x14pulumi_version_range\x18\x05 \x01(\tH\x00R\x12pulumiVersionRange\x88\x01\x01B\x17\n" +
+	"\x15_pulumi_version_range\"\xad\x02\n" +
 	"\x13ParameterizeRequest\x12C\n" +
 	"\x04args\x18\x01 \x01(\v2-.pulumirpc.ParameterizeRequest.ParametersArgsH\x00R\x04args\x12F\n" +
 	"\x05value\x18\x02 \x01(\v2..pulumirpc.ParameterizeRequest.ParametersValueH\x00R\x05value\x1a$\n" +
@@ -4432,6 +4448,7 @@ func file_pulumi_provider_proto_init() {
 	}
 	file_pulumi_plugin_proto_init()
 	file_pulumi_provider_proto_msgTypes[0].OneofWrappers = []any{}
+	file_pulumi_provider_proto_msgTypes[1].OneofWrappers = []any{}
 	file_pulumi_provider_proto_msgTypes[2].OneofWrappers = []any{
 		(*ParameterizeRequest_Args)(nil),
 		(*ParameterizeRequest_Value)(nil),

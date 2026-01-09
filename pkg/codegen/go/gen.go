@@ -1701,7 +1701,18 @@ func (pkg *pkgContext) assignProperty(
 
 func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) string {
 	contract.Assertf(field != nil, "Field must not be nil")
-	return fieldName(pkg, r, field)
+	s := Title(field.Name)
+	var name string
+	if r != nil {
+		name = disambiguatedResourceName(r, pkg)
+	}
+	if !isReservedResourceField(name, s) {
+		return s
+	}
+
+	res := s + "_"
+	contract.Assertf(!isReservedResourceField(name, res), "Name %q is reserved on resource %q", name, res)
+	return res
 }
 
 func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,

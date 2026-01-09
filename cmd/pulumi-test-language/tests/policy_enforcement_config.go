@@ -18,9 +18,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -76,17 +74,21 @@ func init() {
 				PolicyPacks: map[string]map[string]any{
 					"enforcement-config": {},
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.NoError(l, err)
 					validate(l, events, apitype.Advisory)
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					err := res.Err
+					events := res.Events
+
 					require.NoError(l, err)
 					validate(l, events, apitype.Advisory)
 				},
@@ -100,17 +102,21 @@ func init() {
 						},
 					},
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.ErrorContains(l, err, "BAIL: step generator errored")
 					validate(l, events, apitype.Mandatory)
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					err := res.Err
+					events := res.Events
+
 					require.ErrorContains(l, err,
 						"BAIL: resource urn:pulumi:test::policy-enforcement-config::simple:index:Resource::res is invalid")
 					validate(l, events, apitype.Mandatory)
@@ -123,17 +129,21 @@ func init() {
 						"false": "disabled",
 					},
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.NoError(l, err)
 					validate(l, events, "")
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					err := res.Err
+					events := res.Events
+
 					require.NoError(l, err)
 					validate(l, events, "")
 				},

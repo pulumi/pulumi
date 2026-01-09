@@ -1130,11 +1130,11 @@ func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
 	// Create a new python project based of the local random template
 	e.RunCommand("pulumi", "new", "python", "--yes")
 	e.RunCommand("pulumi", "install")
-	e.RunCommand("pulumi", "package", "add", "opentofu/airbytehq/airbyte@0.13.0")
+	e.RunCommand("pulumi", "package", "add", "opentofu/aptible/aptible@0.9.19")
 
-	e.WriteTestFile("__main__.py", `import pulumi_airbyte as airbyte
+	e.WriteTestFile("__main__.py", `import pulumi_aptible as aptible
 
-example = airbyte.Provider("provider")`)
+example = aptible.Provider("provider")`)
 
 	e.RunCommand("pulumi", "up", "--yes")
 

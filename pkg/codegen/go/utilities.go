@@ -22,8 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // isReservedWord returns true if s is a Go reserved word as per
@@ -136,20 +134,4 @@ func enumTitle(s string) string {
 	return cgstrings.ModifyStringAroundDelimeter(s, "-", func(next string) string {
 		return "_" + cgstrings.UppercaseFirst(next)
 	})
-}
-
-// Calculate the name of a field in a resource
-func fieldName(pkg *pkgContext, r *schema.Resource, p *schema.Property) string {
-	s := Title(p.Name)
-	var name string
-	if r != nil {
-		name = disambiguatedResourceName(r, pkg)
-	}
-	if !isReservedResourceField(name, s) {
-		return s
-	}
-
-	res := s + "_"
-	contract.Assertf(!isReservedResourceField(name, res), "Name %q is reserved on resource %q", name, res)
-	return res
 }

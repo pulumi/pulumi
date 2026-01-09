@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.215.0 (2026-01-07)
+
+
+### Features
+
+- [cli/plugin] Allow plugins to specify a supported version range for the CLI
+  [#21335](https://github.com/pulumi/pulumi/pull/21335)
+
+
+### Bug Fixes
+
+- [cli] Filter internal properties like __defaults from diff display
+  [#21359](https://github.com/pulumi/pulumi/pull/21359)
+
+- [cli/config] Make `config set --type bool` accept different spellings of boolean values instead of only lowercase "true"
+  [#21314](https://github.com/pulumi/pulumi/pull/21314)
+
+- [sdk/python] Fix import_resources with converter failing due to --stack argument placement
+  [#21373](https://github.com/pulumi/pulumi/pull/21373)
+
+
+### Miscellaneous
+
+- [cli] Update pulumi-dotnet to 3.96.1
+
+- [cli/package] Remove superfluous version string
+  [#21351](https://github.com/pulumi/pulumi/pull/21351)
+
 ## 3.214.1 (2026-01-03)
 
 

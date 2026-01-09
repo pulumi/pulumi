@@ -1254,3 +1254,180 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, initialSnap), opts, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 }
+
+// TestDestroyV2TargetProviderWithAliasedParent tests a targeted destroy of a provider
+// whose parent has been aliased to change its parent relationship, which previously
+// caused a snapshot integrity error (parent not found in urnIndex).
+func TestDestroyV2TargetProviderWithAliasedParent(t *testing.T) {
+	t.Parallel()
+	// TODO[pulumi/pulumi#21364]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, snapshot integrity error with aliased parent")
+
+	initialSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pulumi:providers:pkgA",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
+				Custom: true,
+				ID:     "id-123",
+			},
+			{
+				Type:     "pkgA:mod:ComponentParent",
+				URN:      "urn:pulumi:test::test::pkgA:mod:ComponentParent::parent",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::id-123",
+			},
+			{
+				Type:     "pkgA:mod:ComponentChild",
+				URN:      "urn:pulumi:test::test::pkgA:mod:ComponentParent$pkgA:mod:ComponentChild::child",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::prov::id-123",
+				Parent:   "urn:pulumi:test::test::pkgA:mod:ComponentParent::parent",
+			},
+			{
+				Type:   "pulumi:providers:pkgB",
+				URN:    "urn:pulumi:test::test::pkgA:mod:ComponentParent$pkgA:mod:ComponentChild$pulumi:providers:pkgB::childprov",
+				Custom: true,
+				ID:     "id-456",
+				Parent: "urn:pulumi:test::test::pkgA:mod:ComponentParent$pkgA:mod:ComponentChild::child",
+			},
+		},
+	}
+
+	require.NoError(t, initialSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Program aliases the child component to remove its parent,  but the provider still has the child as
+	// its parent with the old URN.
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		child, err := monitor.RegisterResource("pkgA:mod:ComponentChild", "child", false, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+			AliasURNs: []resource.URN{
+				"urn:pulumi:test::test::pkgA:mod:ComponentParent$pkgA:mod:ComponentChild::child",
+			},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pulumi:providers:pkgB", "childprov", true, deploytest.ResourceOptions{
+			Parent: child.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+			UpdateOptions: engine.UpdateOptions{
+				Targets: deploy.NewUrnTargets([]string{
+					"urn:pulumi:test::test::pkgA:mod:ComponentParent$pkgA:mod:ComponentChild$pulumi:providers:pkgB::childprov",
+				}),
+			},
+		},
+	}
+
+	_, err := lt.TestOp(DestroyV2).RunStep(
+		p.GetProject(), p.GetTarget(t, initialSnap), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
+
+func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21384]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, repro for snapshot integrity issue")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
+			Custom: true,
+			ID:     "id1",
+		}
+		s.Resources = append(s.Resources, prov)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		resA1 := &resource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:   false,
+			Provider: provRef.String(),
+		}
+		s.Resources = append(s.Resources, resA1)
+
+		resA2 := &resource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:   false,
+			Delete:   true,
+			Provider: provRef.String(),
+		}
+		s.Resources = append(s.Resources, resA2)
+
+		resB := &resource.State{
+			Type:               "pkgA:m:typB",
+			URN:                "urn:pulumi:test-stack::test-project::pkgA:m:typB::resB",
+			Custom:             true,
+			Delete:             true,
+			ID:                 "id2",
+			PendingReplacement: true,
+			Provider:           provRef.String(),
+			Dependencies:       []resource.URN{resA2.URN},
+		}
+		s.Resources = append(s.Resources, resB)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options = lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+		},
+	}
+
+	_, err := lt.TestOp(engine.DestroyV2).
+		RunStep(project, p.GetTarget(t, setupSnap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}

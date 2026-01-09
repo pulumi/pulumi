@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -160,6 +160,7 @@ func (p *providerServer) Handshake(
 
 		// For features we don't shim, we just pass through the response from the provider as expected.
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
+		PulumiVersionRange:              &res.PulumiVersionRange,
 	}, nil
 }
 

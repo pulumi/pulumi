@@ -33,18 +33,21 @@ func init() {
 		},
 		Runs: []TestRun{
 			{
-				AssertPreview: func(l *L,
-					projectDirectory string, err error,
-					plan *deploy.Plan, changes display.ResourceChanges,
-					events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					RequireStackResource(l, err, changes)
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					err := res.Err
+					snap := res.Snap
+					changes := res.Changes
+
 					RequireStackResource(l, err, changes)
 
 					// We expect the following resources:
@@ -128,11 +131,14 @@ func init() {
 				},
 			},
 			{
-				AssertPreview: func(l *L,
-					projectDirectory string, err error,
-					plan *deploy.Plan, changes display.ResourceChanges,
-					events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					// Preview should show that the resource with an unknown trigger is going to be replaced.
 					var ops []display.StepOp
 					for _, evt := range events {
@@ -147,11 +153,9 @@ func init() {
 					require.Contains(l, ops, deploy.OpReplace,
 						"expected unknownReplacementTrigger resource to be replaced during preview")
 				},
-				Assert: func(l *L,
-					projectDirectory string, _ error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					projectDirectory, snap, changes, events, sdks := res.ProjectDirectory, res.Snap, res.Changes, res.Events, res.SDKs
+					_, _, _, _, _ = projectDirectory, snap, changes, events, sdks
 					// We expect the following resources:
 					//
 					// 0. The stack

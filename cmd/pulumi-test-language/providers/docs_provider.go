@@ -59,8 +59,11 @@ func (p *DocsProvider) GetSchema(
 		Resources: map[string]schema.ResourceSpec{
 			"docs:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type:        "object",
-					Description: "<pulumi ref=\"#/resources/docs:index:Resource\"/> is a basic resource. Use <pulumi ref=\"#/functions/docs:index:fun\"/> to set <pulumi ref=\"#/resources/docs:index:Resource/inputProperties/in\"/> using <pulumi ref=\"#/functions/docs:index:fun/outputs/properties/out\"/>.",
+					Type: "object",
+					Description: "<pulumi ref=\"#/resources/docs:index:Resource\"/> is a basic resource." +
+						" Use <pulumi ref=\"#/functions/docs:index:fun\"/> to set <pulumi " +
+						"ref=\"#/resources/docs:index:Resource/inputProperties/in\"/> using <pulumi " +
+						"ref=\"#/functions/docs:index:fun/outputs/properties/out\"/>.",
 					Properties: map[string]schema.PropertySpec{
 						"in": {
 							TypeSpec: schema.TypeSpec{
@@ -72,13 +75,15 @@ func (p *DocsProvider) GetSchema(
 							TypeSpec: schema.TypeSpec{
 								Type: "boolean",
 							},
-							Description: "Will be set to the opposite of <pulumi ref=\"#/resources/docs:index:Resource/inputProperties/in\"/>.",
+							Description: "Will be set to the opposite of <pulumi " +
+								"ref=\"#/resources/docs:index:Resource/inputProperties/in\"/>.",
 						},
 						"data": {
 							TypeSpec: schema.TypeSpec{
 								Ref: "#/types/docs:index:ResourceData",
 							},
-							Description: "<pulumi ref=\"#/types/docs:index:ResourceData/properties/state\"/> will have internal data about this resource.",
+							Description: "<pulumi ref=\"#/types/docs:index:ResourceData/properties/state\"/> will have internal " +
+								"data about this resource.",
 						},
 					},
 					Required: []string{"out", "data"},
@@ -88,7 +93,8 @@ func (p *DocsProvider) GetSchema(
 						TypeSpec: schema.TypeSpec{
 							Type: "boolean",
 						},
-						Description: "Will be used to set <pulumi ref=\"#/resources/docs:index:Resource/properties/in\"/> and <pulumi ref=\"#/resources/docs:index:Resource/properties/out\"/>.",
+						Description: "Will be used to set <pulumi ref=\"#/resources/docs:index:Resource/properties/in\"/> and " +
+							"<pulumi ref=\"#/resources/docs:index:Resource/properties/out\"/>.",
 					},
 				},
 				RequiredInputs: []string{"in"},
@@ -96,7 +102,8 @@ func (p *DocsProvider) GetSchema(
 		},
 		Functions: map[string]schema.FunctionSpec{
 			"docs:index:fun": {
-				Description: "<pulumi ref=\"#/functions/docs:index:fun\"/> is a basic function for setting <pulumi ref=\"#/resources/docs:index:Resource/properties/in\"/> on <pulumi ref=\"#/resources/docs:index:Resource\"/>.",
+				Description: "<pulumi ref=\"#/functions/docs:index:fun\"/> is a basic function for setting <pulumi " +
+					"ref=\"#/resources/docs:index:Resource/properties/in\"/> on <pulumi ref=\"#/resources/docs:index:Resource\"/>.",
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -116,7 +123,9 @@ func (p *DocsProvider) GetSchema(
 							TypeSpec: schema.TypeSpec{
 								Type: "boolean",
 							},
-							Description: "Will be the opposite of <pulumi ref=\"#/functions/docs:index:fun/inputs/properties/in\"/> can be used to set <pulumi ref=\"#/resources/docs:index:Resource/inputProperties/in\"/>.",
+							Description: "Will be the opposite of <pulumi " +
+								"ref=\"#/functions/docs:index:fun/inputs/properties/in\"/> can be used to set <pulumi " +
+								"ref=\"#/resources/docs:index:Resource/inputProperties/in\"/>.",
 						},
 					},
 					Required: []string{"out"},
@@ -126,8 +135,9 @@ func (p *DocsProvider) GetSchema(
 		Types: map[string]schema.ComplexTypeSpec{
 			"docs:index:ResourceData": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: "<pulumi ref=\"#/types/docs:index:ResourceData\"/> is a basic type used in <pulumi ref=\"#/resources/docs:index:Resource\"/>.",
-					Type:        "object",
+					Description: "<pulumi ref=\"#/types/docs:index:ResourceData\"/> is a basic type used in <pulumi " +
+						"ref=\"#/resources/docs:index:Resource\"/>.",
+					Type: "object",
 					Properties: map[string]schema.PropertySpec{
 						"state": {
 							TypeSpec: schema.TypeSpec{

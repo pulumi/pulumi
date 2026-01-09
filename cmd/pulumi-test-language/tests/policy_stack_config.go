@@ -16,9 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -71,17 +69,21 @@ func init() {
 				Config: config.Map{
 					config.MustMakeKey("policy-stack-config", "value"): config.NewValue("false"),
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.ErrorContains(l, err, "BAIL: step generator errored")
 					validate(l, events, "false")
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					err := res.Err
+					events := res.Events
+
 					require.ErrorContains(l, err,
 						"BAIL: resource urn:pulumi:test::policy-stack-config::simple:index:Resource::res is invalid")
 					validate(l, events, "false")
@@ -94,17 +96,21 @@ func init() {
 				Config: config.Map{
 					config.MustMakeKey("policy-stack-config", "value"): config.NewValue("true"),
 				},
-				AssertPreview: func(
-					l *L, projectDirectory string, err error, plan *deploy.Plan,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
 					require.ErrorContains(l, err, "BAIL: step generator errored")
 					validate(l, events, "true")
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error, snap *deploy.Snapshot,
-					changes display.ResourceChanges, events []engine.Event, sdks map[string]string,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					err := res.Err
+					events := res.Events
+
 					require.ErrorContains(l, err,
 						"BAIL: resource urn:pulumi:test::policy-stack-config::simple:index:Resource::res is invalid")
 					validate(l, events, "true")
