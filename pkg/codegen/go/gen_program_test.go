@@ -16,7 +16,7 @@ package gen
 
 import (
 	"bytes"
-	"os"
+	ioFS "io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -36,8 +36,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/zclconf/go-cty/cty"
 )
-
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestGenerateProgramVersionSelection(t *testing.T) {
 	t.Parallel()
@@ -432,20 +430,19 @@ func TestSecondLastIndex(t *testing.T) {
 }
 
 func newTestGenerator(t *testing.T, testFile string) *generator {
-	path := filepath.Join(testdataPath, testFile)
-	contents, err := os.ReadFile(path)
-	require.NoErrorf(t, err, "could not read %v: %v", path, err)
+	contents, err := ioFS.ReadFile(utils.GetTestdataFS(), testFile)
+	require.NoErrorf(t, err, "could not read %v: %v", testFile, err)
 
 	parser := syntax.NewParser()
-	err = parser.ParseFile(bytes.NewReader(contents), filepath.Base(path))
+	err = parser.ParseFile(bytes.NewReader(contents), filepath.Base(testFile))
 	if err != nil {
-		t.Fatalf("could not read %v: %v", path, err)
+		t.Fatalf("could not read %v: %v", testFile, err)
 	}
 	if parser.Diagnostics.HasErrors() {
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath)))
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(utils.GetTestdataFS())))
 	if err != nil {
 		t.Fatalf("could not bind program: %v", err)
 	}
@@ -483,7 +480,7 @@ func parseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+	options = append(options, pcl.PluginHost(utils.NewHost(utils.GetTestdataFS())))
 
 	return pcl.BindProgram(parser.Files, options...)
 }

@@ -19,8 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -43,8 +43,6 @@ import (
 //
 // Aside from just being verbose, the voluminous output makes `gotestsum` analysis less useful and
 // prevents use of the `ci-matrix` tool.
-
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 var nodeAssertions = testutil.DefaultNodeAssertions().Union(testutil.NodeAssertions{
 	KindShortcode: func(t *testing.T, sourceExpected, sourceActual []byte, expected, actual ast.Node) bool {
@@ -138,7 +136,8 @@ func getDocsForPackage(pkg *Package) []doc {
 }
 
 func TestParseAndRenderDocs(t *testing.T) {
-	files, err := os.ReadDir(testdataPath)
+	testdataFS := utils.GetTestdataFS()
+	files, err := fs.ReadDir(testdataFS, ".")
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
@@ -151,10 +150,9 @@ func TestParseAndRenderDocs(t *testing.T) {
 		t.Run(f.Name(), func(t *testing.T) {
 			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
-			path := filepath.Join(testdataPath, f.Name())
-			contents, err := os.ReadFile(path)
+			contents, err := fs.ReadFile(testdataFS, f.Name())
 			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
+				t.Fatalf("could not read %v: %v", f.Name(), err)
 			}
 
 			var spec PackageSpec
@@ -203,7 +201,8 @@ func pkgInfo(t *testing.T, filename string) (string, *semver.Version) {
 func TestReferenceRenderer(t *testing.T) {
 	t.Parallel()
 
-	files, err := os.ReadDir(testdataPath)
+	testdataFS := utils.GetTestdataFS()
+	files, err := fs.ReadDir(testdataFS, ".")
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
@@ -225,7 +224,7 @@ func TestReferenceRenderer(t *testing.T) {
 		t.Run(f.Name(), func(t *testing.T) {
 			t.Parallel()
 
-			host := utils.NewHost(testdataPath)
+			host := utils.NewHost(utils.GetTestdataFS())
 			defer host.Close()
 			loader := NewPluginLoader(host)
 			pkg, err := loader.LoadPackage(name, version)

@@ -37,7 +37,7 @@ import (
 
 func TestGenerateLanguageDefinition(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 
 	cases, err := readTestCases("testdata/cases.json")
 	require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularReferences(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 
 	var generatedProgram strings.Builder
 	generator := func(_ io.Writer, p *pcl.Program) error {
@@ -187,7 +187,7 @@ resource second "aws:s3/bucketObject:BucketObject" {
 func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T) {
 	t.Parallel()
 
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 
 	var generatedProgram strings.Builder
 	generator := func(_ io.Writer, p *pcl.Program) error {

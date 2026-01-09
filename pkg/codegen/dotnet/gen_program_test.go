@@ -16,7 +16,6 @@ package dotnet
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -39,7 +38,6 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 func parseAndBindProgram(t *testing.T,
 	text string,
 	name string,
-	testdataPath string,
 	options ...pcl.BindOption,
 ) (*pcl.Program, hcl.Diagnostics, error) {
 	parser := syntax.NewParser()
@@ -52,7 +50,7 @@ func parseAndBindProgram(t *testing.T,
 	}
 
 	// Prepend the default host so that we can override if necessary.
-	options = append([]pcl.BindOption{pcl.PluginHost(utils.NewHost(testdataPath))}, options...)
+	options = append([]pcl.BindOption{pcl.PluginHost(utils.NewHost(utils.GetTestdataFS()))}, options...)
 	return pcl.BindProgram(parser.Files, options...)
 }
 
@@ -81,8 +79,7 @@ resource "test-organization" "tfe:index/organization:Organization" {
 
 	program, diags, err := parseAndBindProgram(t,
 		source,
-		"main.pp",
-		filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas"))
+		"main.pp")
 
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), "unexpected diags: %v", diags)
@@ -147,8 +144,7 @@ resource "test-organization" "tfe:index/organization:Organization" {
 
 	program, diags, err := parseAndBindProgram(t,
 		source,
-		"main.pp",
-		filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas"))
+		"main.pp")
 
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), "unexpected diags: %v", diags)

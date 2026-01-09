@@ -15,12 +15,11 @@
 package schema
 
 import (
-	"os"
-	"path/filepath"
+	"io/fs"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestEmptySchemaResponse(t *testing.T) {
@@ -40,12 +39,9 @@ func TestEmptySchemaResponse(t *testing.T) {
 }
 
 func BenchmarkSchemaEmptyCheck(b *testing.B) {
-	schemaPath, err := filepath.Abs("../testing/test/testdata/azure-native.json")
-	require.NoError(b, err)
-	largeSchema, err := os.ReadFile(schemaPath)
+	largeSchema, err := fs.ReadFile(utils.GetTestdataFS(), "azure-native.json")
 	if err != nil {
-		b.Fatalf("failed to read schema file, ensure that you have run "+
-			"`make get_schemas` to create schema file %q", schemaPath)
+		b.Fatalf("failed to read schema file: %v", err)
 	}
 
 	b.Run("large-schema-empty-check-time", func(b *testing.B) {

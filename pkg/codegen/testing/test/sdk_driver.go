@@ -527,8 +527,8 @@ type SDKCodegenOptions struct {
 	// of the form "$language/$check" such as "go/compile".
 	Checks map[string]CodegenCheck
 
-	// The tests to run. A testcase `tt` are assumed to be located at
-	// ../testing/test/testdata/${tt.Directory}
+	// The tests to run. A testcase `tt` are assumed to be located in the embedded
+	// testdata filesystem at ${tt.Directory}
 	TestCases []*SDKTest
 }
 
@@ -536,7 +536,7 @@ type SDKCodegenOptions struct {
 // against a particular language's code generator. It also verifies
 // that the generated code is structurally sound.
 //
-// The test files live in `pkg/codegen/testing/test/testdata` and
+// The test files live in `pkg/codegen/testing/utils/testdata` (embedded) and
 // are registered in `var sdkTests` in `sdk_driver.go`.
 //
 // An SDK code generation test files consists of a schema and a set of

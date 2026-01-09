@@ -9,7 +9,7 @@ TestSDKCodegen runs the complete set of SDK code generation tests
 against a particular language's code generator. It also verifies
 that the generated code is structurally sound.
 
-The test files live in `pkg/codegen/testing/test/testdata` and
+The test files live in `pkg/codegen/testing/utils/testdata` (embedded in the binary) and
 are registered in the following globals in pkg/codegen/testing/test.
 
 - sdk_driver.go: `PulumiPulumiSDKTests`

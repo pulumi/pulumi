@@ -25,7 +25,7 @@ import (
 )
 
 // This specifically tests the synced examples from pulumi/yaml with
-// testing/test/testdata/transpiled_examples
+// testing/utils/testdata/transpiled_examples
 //
 //nolint:paralleltest // uses t.Chdir
 func TestGenerateProgram(t *testing.T) {

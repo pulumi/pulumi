@@ -15,7 +15,6 @@
 package python
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -28,8 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
-
 func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
 	parser := syntax.NewParser()
 	err := parser.ParseFile(strings.NewReader(text), name)
@@ -40,7 +37,7 @@ func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOpt
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+	options = append(options, pcl.PluginHost(utils.NewHost(utils.GetTestdataFS())))
 
 	program, diags, err := pcl.BindProgram(parser.Files, options...)
 	if err != nil {

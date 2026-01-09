@@ -16,7 +16,6 @@ package report_test
 
 import (
 	"bytes"
-	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
@@ -29,8 +28,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestReportExample(t *testing.T) {
 	t.Parallel()
@@ -50,7 +47,7 @@ func TestReportExample(t *testing.T) {
 		parser := syntax.NewParser()
 		err := parser.ParseFile(bytes.NewReader([]byte(example.body)), example.title)
 		require.NoError(t, err, "parse failed")
-		program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath)))
+		program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(utils.GetTestdataFS())))
 		if err != nil || diags.HasErrors() {
 			reporter.Report(example.title, "", parser.Files, diags, err)
 			continue
