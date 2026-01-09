@@ -37,7 +37,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestGenerateProgramVersionSelection(t *testing.T) {
 	t.Parallel()
@@ -445,7 +444,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath)))
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(utils.GetTestdataFS())))
 	if err != nil {
 		t.Fatalf("could not bind program: %v", err)
 	}
@@ -483,7 +482,7 @@ func parseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+	options = append(options, pcl.PluginHost(utils.NewHost(utils.GetTestdataFS())))
 
 	return pcl.BindProgram(parser.Files, options...)
 }

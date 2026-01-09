@@ -16,11 +16,13 @@ package test
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,7 +68,7 @@ type TypeNameGeneratorFunc func(t schema.Type) string
 
 func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator NewTypeNameGeneratorFunc) { //nolint:revive
 	// Read in, decode, and import the schema.
-	schemaBytes, err := os.ReadFile(filepath.FromSlash("../testing/test/testdata/types.json"))
+	schemaBytes, err := fs.ReadFile(utils.GetTestdataFS(), "types.json")
 	require.NoError(t, err)
 
 	var pkgSpec schema.PackageSpec
@@ -214,7 +216,7 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 		}
 	}
 
-	f, err := os.Create(filepath.FromSlash("../testing/test/testdata/types.json"))
+	f, err := os.Create(filepath.FromSlash("../utils/testdata/types.json"))
 	require.NoError(t, err)
 	defer f.Close()
 

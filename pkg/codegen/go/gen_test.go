@@ -125,7 +125,7 @@ func readGoPackageInfo(schemaPath string) (*GoPackageInfo, error) {
 //
 // For example for this path:
 //
-// codeDir = "../testing/test/testdata/external-resource-schema/go/"
+// codeDir = "../testing/utils/testdata/external-resource-schema/go/"
 //
 // We will generate "$codeDir/go.mod" using `external-resource-schema` as the module name so that it can compile
 // independently.

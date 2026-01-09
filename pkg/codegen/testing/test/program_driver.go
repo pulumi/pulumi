@@ -17,10 +17,11 @@ package test
 import (
 	"bufio"
 	"bytes"
-	"embed"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -62,8 +63,9 @@ type ProgramTest struct {
 	PluginHost         plugin.Host
 }
 
-//go:embed testdata/*
-var testdata embed.FS
+// testdataWritePath is the filesystem path for writing test outputs (PULUMI_ACCEPT mode).
+// This is separate from the embedded testdata FS to allow updating test expectations.
+const testdataWritePath = "testdata"
 
 // Get batch number k (base-1 indexed) of tests out of n batches total.
 func ProgramTestBatch(k, n int) []ProgramTest {
@@ -180,7 +182,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
 		// Specifically use a simplified azure-native v2.x schema when testing this program
 		// this schema only contains content from the eventgrid module which is sufficient to test with
-		PluginHost: utils.NewHostWithProviders(testdataPath,
+		PluginHost: utils.NewHostWithProviders(utils.GetTestdataFS(),
 			utils.NewSchemaProvider("azure-native", "2.41.0")),
 	},
 	{
@@ -619,35 +621,44 @@ func TestProgramCodegen(
 
 			expectNYIDiags := tt.ExpectNYIDiags.Has(testcase.Language)
 
-			testDir := filepath.Join(testdataPath, tt.Directory+"-pp")
-			pclFile := filepath.Join(testDir, tt.Directory+".pp")
+			// Read from embedded FS
+			testdataFS := utils.GetTestdataFS()
+			testDirPath := path.Join(tt.Directory + "-pp")
+			pclFilePath := path.Join(testDirPath, tt.Directory+".pp")
 			if strings.HasPrefix(tt.Directory, transpiledExamplesDir) {
-				pclFile = filepath.Join(testDir, filepath.Base(tt.Directory)+".pp")
-			}
-			testDir = filepath.Join(testDir, testcase.Language)
-			err = os.MkdirAll(testDir, 0o700)
-			if err != nil && !os.IsExist(err) {
-				t.Fatalf("Failed to create %q: %s", testDir, err)
+				pclFilePath = path.Join(testDirPath, filepath.Base(tt.Directory)+".pp")
 			}
 
-			contents, err := os.ReadFile(pclFile)
+			contents, err := fs.ReadFile(testdataFS, pclFilePath)
 			if err != nil {
-				t.Fatalf("could not read %v: %v", pclFile, err)
+				t.Fatalf("could not read %v: %v", pclFilePath, err)
 			}
 
-			expectedFile := filepath.Join(testDir, tt.Directory+"."+testcase.Extension)
+			// Expected file path in embedded FS
+			expectedFilePath := path.Join(testDirPath, testcase.Language, tt.Directory+"."+testcase.Extension)
 			if strings.HasPrefix(tt.Directory, transpiledExamplesDir) {
-				expectedFile = filepath.Join(testDir, filepath.Base(tt.Directory)+"."+testcase.Extension)
+				expectedFilePath = path.Join(testDirPath, testcase.Language, filepath.Base(tt.Directory)+"."+testcase.Extension)
 			}
-			expected, err := os.ReadFile(expectedFile)
+			expected, err := fs.ReadFile(testdataFS, expectedFilePath)
 			if err != nil && !pulumiAccept {
-				t.Fatalf("could not read %v: %v", expectedFile, err)
+				t.Fatalf("could not read %v: %v", expectedFilePath, err)
+			}
+
+			// Write paths (for PULUMI_ACCEPT mode) use filesystem
+			testDirWrite := filepath.Join(testdataWritePath, tt.Directory+"-pp", testcase.Language)
+			err = os.MkdirAll(testDirWrite, 0o700)
+			if err != nil && !os.IsExist(err) {
+				t.Fatalf("Failed to create %q: %s", testDirWrite, err)
+			}
+			expectedFileWrite := filepath.Join(testDirWrite, tt.Directory+"."+testcase.Extension)
+			if strings.HasPrefix(tt.Directory, transpiledExamplesDir) {
+				expectedFileWrite = filepath.Join(testDirWrite, filepath.Base(tt.Directory)+"."+testcase.Extension)
 			}
 
 			parser := syntax.NewParser()
 			err = parser.ParseFile(bytes.NewReader(contents), tt.Directory+".pp")
 			if err != nil {
-				t.Fatalf("could not read %v: %v", pclFile, err)
+				t.Fatalf("could not read %v: %v", pclFilePath, err)
 			}
 			if parser.Diagnostics.HasErrors() {
 				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
@@ -660,11 +671,14 @@ func TestProgramCodegen(
 			if tt.PluginHost != nil {
 				pluginHost = tt.PluginHost
 			} else {
-				pluginHost = utils.NewHost(testdataPath)
+				pluginHost = utils.NewHost(utils.GetTestdataFS())
 			}
 
 			opts := append(tt.BindOptions, pcl.PluginHost(pluginHost))
-			rootProgramPath := filepath.Join(testdataPath, tt.Directory+"-pp")
+			// TODO: ComponentProgramBinderFromFileSystem needs to be replaced with
+			// ComponentProgramBinderFromFS for embedded FS support. For now, we'll
+			// use the filesystem-based binder which requires the testdata to exist on disk.
+			rootProgramPath := filepath.Join(testdataWritePath, tt.Directory+"-pp")
 			absoluteProgramPath, err := filepath.Abs(rootProgramPath)
 			if err != nil {
 				t.Fatalf("failed to bind program: unable to find the absolute path of %v", rootProgramPath)
@@ -691,13 +705,13 @@ func TestProgramCodegen(
 					Name:    "test",
 					Runtime: workspace.NewProjectRuntimeInfo(testcase.Language, nil),
 				}
-				err = testcase.GenProject(testDir, project, program, nil /*localDependencies*/)
+				err = testcase.GenProject(testDirWrite, project, program, nil /*localDependencies*/)
 				require.NoError(t, err)
 
-				depFilePath := filepath.Join(testDir, testcase.DependencyFile)
-				outfilePath := filepath.Join(testDir, testcase.OutputFile)
+				depFilePath := filepath.Join(testDirWrite, testcase.DependencyFile)
+				outfilePath := filepath.Join(testDirWrite, testcase.OutputFile)
 				CheckVersion(t, tt.Directory, depFilePath, testcase.ExpectedVersion)
-				GenProjectCleanUp(t, testDir, depFilePath, outfilePath)
+				GenProjectCleanUp(t, testDirWrite, depFilePath, outfilePath)
 			}
 			files, diags, err = testcase.GenProgram(program)
 			require.NoError(t, err)
@@ -720,12 +734,12 @@ func TestProgramCodegen(
 			}
 
 			if pulumiAccept {
-				err := os.WriteFile(expectedFile, files[testcase.OutputFile], 0o600)
+				err := os.WriteFile(expectedFileWrite, files[testcase.OutputFile], 0o600)
 				require.NoError(t, err)
 				// generate the rest of the files
 				for fileName, content := range files {
 					if fileName != testcase.OutputFile {
-						outputPath := filepath.Join(testDir, fileName)
+						outputPath := filepath.Join(testDirWrite, fileName)
 						err := os.WriteFile(outputPath, content, 0o600)
 						require.NoError(t, err, "Failed to write file %s", outputPath)
 					}
@@ -735,8 +749,8 @@ func TestProgramCodegen(
 				// assert that the content is correct for the rest of the files
 				for fileName, content := range files {
 					if fileName != testcase.OutputFile {
-						outputPath := filepath.Join(testDir, fileName)
-						outputContent, err := os.ReadFile(outputPath)
+						outputPath := path.Join(testDirPath, testcase.Language, fileName)
+						outputContent, err := fs.ReadFile(testdataFS, outputPath)
 						require.NoError(t, err)
 						assert.Equal(t, string(outputContent), string(content))
 					}
@@ -745,7 +759,7 @@ func TestProgramCodegen(
 			if !skipCompile && testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
 				extraPulumiPackages := codegen.NewStringSet()
 				collectExtraPulumiPackages(program, extraPulumiPackages)
-				testcase.Check(t, expectedFile, extraPulumiPackages)
+				testcase.Check(t, expectedFileWrite, extraPulumiPackages)
 			}
 		})
 	}

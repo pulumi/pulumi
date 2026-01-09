@@ -17,7 +17,6 @@ package pcl
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -28,10 +27,9 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func BenchmarkLoadPackage(b *testing.B) {
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(utils.GetTestdataFS()))
 
 	for n := 0; n < b.N; n++ {
 		_, err := NewPackageCache().loadPackageSchema(context.Background(), loader, "aws", "", "")

@@ -17,9 +17,9 @@ package utils
 
 import (
 	"context"
+	"embed"
 	"fmt"
-	"os"
-	"path/filepath"
+	"io/fs"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -37,10 +37,12 @@ func NewSchemaProvider(name, version string) SchemaProvider {
 	return SchemaProvider{name, version}
 }
 
-// NewHost creates a schema-only plugin host, supporting multiple package versions in tests. This
-// enables running tests offline. If this host is used to load a plugin, that is, to run a Pulumi
+// NewHostWithProviders creates a schema-only plugin host, supporting multiple package versions in tests.
+// This enables running tests offline. If this host is used to load a plugin, that is, to run a Pulumi
 // program, it will panic.
-func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvider) plugin.Host {
+//
+// The schemaFS parameter should be a filesystem containing schema JSON files named as "{package}-{version}.json".
+func NewHostWithProviders(schemaFS fs.FS, providers ...SchemaProvider) plugin.Host {
 	mockProvider := func(name tokens.Package, version string) *deploytest.PluginLoader {
 		return deploytest.NewProviderLoader(name, semver.MustParse(version), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -57,8 +59,8 @@ func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvide
 					}, nil
 				},
 				GetSchemaF: func(_ context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
-					path := filepath.Join(schemaDirectoryPath, fmt.Sprintf("%s-%s.json", name, version))
-					data, err := os.ReadFile(path)
+					filename := fmt.Sprintf("%s-%s.json", name, version)
+					data, err := fs.ReadFile(schemaFS, filename)
 					if err != nil {
 						return plugin.GetSchemaResponse{}, err
 					}
@@ -84,14 +86,16 @@ func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvide
 	)
 }
 
-// NewHost creates a schema-only plugin host, supporting multiple package versions in tests. This
-// enables running tests offline. If this host is used to load a plugin, that is, to run a Pulumi
+// NewHost creates a schema-only plugin host with the default set of provider schemas.
+// This enables running tests offline. If this host is used to load a plugin, that is, to run a Pulumi
 // program, it will panic.
-func NewHost(schemaDirectoryPath string) plugin.Host {
+//
+// The schemaFS parameter should be a filesystem containing schema JSON files named as "{package}-{version}.json".
+func NewHost(schemaFS fs.FS) plugin.Host {
 	// For the pulumi/pulumi repository, this must be kept in sync with the makefile and/or committed
 	// schema files in the given schema directory. This is the minimal set of schemas that must be
 	// supplied.
-	return NewHostWithProviders(schemaDirectoryPath,
+	return NewHostWithProviders(schemaFS,
 		SchemaProvider{"tls", "4.10.0"},
 		SchemaProvider{"aws", "4.15.0"},
 		SchemaProvider{"aws", "4.26.0"},
@@ -112,7 +116,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"aws-native", "0.99.0"},
 		SchemaProvider{"docker", "3.1.0"},
 		SchemaProvider{"std", "1.0.0"},
-		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
+		// PCL examples in 'testing/utils/testdata/transpiled_examples require these versions
 		SchemaProvider{"aws", "5.4.0"},
 		SchemaProvider{"azure-native", "1.56.0"},
 		SchemaProvider{"eks", "0.40.0"},
@@ -146,4 +150,17 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		// parameterized schemas
 		SchemaProvider{"tfe", "0.68.2"},
 	)
+}
+
+//go:embed all:testdata
+var testdata embed.FS
+
+// GetTestdataFS returns the embedded testdata filesystem for use in tests.
+// This is used by all codegen tests to access schema files and test programs.
+func GetTestdataFS() fs.FS {
+	sub, err := fs.Sub(testdata, "testdata")
+	if err != nil {
+		panic(fmt.Sprintf("failed to create testdata sub-filesystem: %v", err))
+	}
+	return sub
 }

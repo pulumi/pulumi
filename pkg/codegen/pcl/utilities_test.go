@@ -38,7 +38,7 @@ func ParseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+	options = append(options, pcl.PluginHost(utils.NewHost(utils.GetTestdataFS())))
 
 	return pcl.BindProgram(parser.Files, options...)
 }

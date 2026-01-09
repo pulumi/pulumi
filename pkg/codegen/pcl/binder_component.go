@@ -15,7 +15,9 @@
 package pcl
 
 import (
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
@@ -123,22 +125,21 @@ func contains(slice []string, item string) bool {
 	return ok
 }
 
-// ComponentProgramBinderFromFileSystem returns the default component program binder which uses the file system
-// to parse and bind PCL files into a program.
-func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
+// ComponentProgramBinderFromFS returns a component program binder that uses the provided
+// filesystem interface to parse and bind PCL files into a program.
+// The fsys parameter is the filesystem to read from, and baseDir is the directory
+// within that filesystem where component source directories are located.
+func ComponentProgramBinderFromFS(fsys fs.FS, baseDir string) ComponentProgramBinder {
 	return func(args ComponentProgramBinderArgs) (*Program, hcl.Diagnostics, error) {
 		var diagnostics hcl.Diagnostics
-		binderDirPath := args.BinderDirPath
 		componentSource := args.ComponentSource
 		nodeRange := args.ComponentNodeRange
 		loader := args.BinderLoader
-		// bind the component here as if it was a new program
-		// this becomes the DirPath for the new binder
-		componentSourceDir := filepath.Join(binderDirPath, componentSource)
+
+		componentPath := path.Join(baseDir, componentSource)
 
 		parser := syntax.NewParser()
-		// Load all .pp files in the components' directory
-		files, err := os.ReadDir(componentSourceDir)
+		files, err := fs.ReadDir(fsys, componentPath)
 		if err != nil {
 			diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 			return nil, diagnostics, nil
@@ -154,17 +155,17 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 				continue
 			}
 			fileName := file.Name()
-			path := filepath.Join(componentSourceDir, fileName)
 
 			if filepath.Ext(fileName) == ".pp" {
-				file, err := os.Open(path)
+				filePath := path.Join(componentPath, fileName)
+				f, err := fsys.Open(filePath)
 				if err != nil {
 					diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 					return nil, diagnostics, err
 				}
 
-				err = parser.ParseFile(file, fileName)
-				contract.IgnoreError(file.Close())
+				err = parser.ParseFile(f, fileName)
+				contract.IgnoreError(f.Close())
 				if err != nil {
 					diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 					return nil, diagnostics, err
@@ -177,10 +178,11 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 			}
 		}
 
+		componentSourceDir := path.Join(baseDir, componentSource)
 		opts := []BindOption{
 			Loader(loader),
 			DirPath(componentSourceDir),
-			ComponentBinder(ComponentProgramBinderFromFileSystem()),
+			ComponentBinder(ComponentProgramBinderFromFS(fsys, baseDir)),
 			Cache(args.PackageCache),
 		}
 
@@ -208,6 +210,19 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		includeSourceDirectoryInDiagnostics(programDiags, componentSourceDir)
 
 		return componentProgram, programDiags, err
+	}
+}
+
+// ComponentProgramBinderFromFileSystem returns the default component program binder which uses the file system
+// to parse and bind PCL files into a program.
+func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
+	return func(args ComponentProgramBinderArgs) (*Program, hcl.Diagnostics, error) {
+		binderDirPath := args.BinderDirPath
+
+		fsys := os.DirFS(binderDirPath)
+
+		binder := ComponentProgramBinderFromFS(fsys, ".")
+		return binder(args)
 	}
 }
 
