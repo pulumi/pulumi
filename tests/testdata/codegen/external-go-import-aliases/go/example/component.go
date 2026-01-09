@@ -9,8 +9,8 @@ import (
 
 	"errors"
 	"external-go-import-aliases/example/internal"
-	awsec2 "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
-	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
+	awsec2 "github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ec2"
+	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/s3"
 	accesscontextmanager "github.com/pulumi/pulumi-google-native/sdk/go/google/accesscontextmanager/v1"
 	dns "github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1"
 	gcpiamv1 "github.com/pulumi/pulumi-google-native/sdk/go/google/iam/v1"

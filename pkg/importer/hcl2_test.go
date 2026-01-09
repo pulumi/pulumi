@@ -425,8 +425,8 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 
 	// Arrange.
 	pkg := tokens.Package("aws")
-	requestVersion := "4.37.0"
-	loadVersion := "4.37.1"
+	requestVersion := "4.26.0"
+	loadVersion := "5.16.2"
 
 	pluginLoader := deploytest.NewProviderLoader(pkg, semver.MustParse(requestVersion), func() (plugin.Provider, error) {
 		return &deploytest.Provider{
@@ -466,7 +466,7 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 				URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				Custom: true,
 				Inputs: resource.PropertyMap{
-					"version": resource.NewProperty("4.37.0"),
+					"version": resource.NewProperty("4.26.0"),
 				},
 			},
 		},
