@@ -24,19 +24,23 @@ import * as util from "util";
  */
 export function defaultErrorMessage(err: any): string {
     if (err?.stack) {
-        // colorize stack trace if exists, but fallback to just the message if inspect fails. See
+        // colorize stack trace if exists, but fallback to uncolorized version if that fails,
+        // and finally to the message/stack directly. See
         // https://github.com/pulumi/pulumi/issues/20567 and https://github.com/pulumi/pulumi/issues/21326
         // where this can cause RangeErrors due to large error objects (e.g., AWS SDK errors with
         // large request/response metadata).
         try {
             return util.inspect(err, { colors: true });
         } catch {
-            // If inspect fails (object too large), fallback to message/stack directly
-            // rather than trying util.inspect again which may also fail.
-            if (typeof err?.message === "string") {
-                return err.stack; // stack includes the message
+            try {
+                return util.inspect(err);
+            } catch {
+                // If both inspect calls fail (object too large), fallback to message/stack directly.
+                if (typeof err?.message === "string") {
+                    return err.stack; // stack includes the message
+                }
+                return String(err);
             }
-            return String(err);
         }
     }
     if (err?.message) {
