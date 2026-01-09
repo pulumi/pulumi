@@ -32,7 +32,7 @@ func DefaultExclusionRules() ExclusionRules {
 	return []ExclusionRule{
 		ExcludeDestroyAndRefreshProgramSet,
 		// TODO[pulumi/pulumi#21404]
-		ExcludeResourcePendingReplacementChangingParentUpdate,
+		ExcludeResourcePendingReplacementChangingParentRefreshProgram,
 		// TODO[pulumi/pulumi#21386]
 		ExcludeChildProviderOfDuplicateResourceRefresh,
 		// TODO[pulumi/pulumi#21277]
@@ -116,13 +116,15 @@ func ExcludeChildProviderOfDuplicateResourceRefresh(
 	return false
 }
 
-func ExcludeResourcePendingReplacementChangingParentUpdate(
+func ExcludeResourcePendingReplacementChangingParentRefreshProgram(
 	snap *SnapshotSpec,
 	prog *ProgramSpec,
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
-	if plan.Operation != PlanOperationUpdate && !plan.RefreshProgram {
+	if plan.Operation != PlanOperationUpdate &&
+		plan.Operation != PlanOperationRefreshV2 &&
+		!plan.RefreshProgram {
 		return false
 	}
 
