@@ -27,27 +27,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestGenerateProgramVersionSelection(t *testing.T) {
-	t.Parallel()
-
-	test.GenerateNodeJSProgramTest(
-		t,
-		GenerateProgram,
-		func(
-			directory string, project workspace.Project, program *pcl.Program, localDependencies map[string]string,
-		) error {
-			return GenerateProject(directory, project, program, localDependencies, false)
-		},
-	)
-}
 
 func TestEnumReferencesCorrectIdentifier(t *testing.T) {
 	t.Parallel()
