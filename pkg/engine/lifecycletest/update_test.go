@@ -20,10 +20,12 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -212,4 +214,89 @@ func TestUpdateWithTargetedParentChildMarkedAsDelete(t *testing.T) {
 	_, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, validationFunc, "1")
 	require.ErrorContains(t, err, "step generator errored")
+}
+
+func TestUpdateWithTargetedResourceChangingParent(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21404]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping test due to underlying panic")
+
+	p := &lt.TestPlan{}
+
+	initialSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    p.NewProviderURN("pkgA", "prov", ""),
+			Custom: true,
+			ID:     "id",
+		}
+		s.Resources = append(s.Resources, prov)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		parent := &resource.State{
+			Type:     "pkgA:m:typA",
+			URN:      p.NewURN("pkgA:m:typA", "parent", ""),
+			Provider: provRef.String(),
+		}
+		s.Resources = append(s.Resources, parent)
+
+		resA := &resource.State{
+			Type:               "pkgA:m:typA",
+			URN:                p.NewURN("pkgA:m:typA", "resA", parent.URN),
+			Custom:             true,
+			ID:                 "id",
+			PendingReplacement: true,
+			Provider:           provRef.String(),
+			Parent:             parent.URN,
+		}
+		s.Resources = append(s.Resources, resA)
+
+		return s
+	}()
+	require.NoError(t, initialSnap.VerifyIntegrity())
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		parentURN := p.NewURN("pkgA:m:typA", "parent", "")
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+			AliasURNs: []resource.URN{
+				p.NewURN("pkgA:m:typA", "resA", parentURN),
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh:        true,
+			RefreshProgram: true,
+		},
+	}
+
+	_, err := lt.TestOp(engine.Update).
+		RunStep(p.GetProject(), p.GetTarget(t, initialSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
 }

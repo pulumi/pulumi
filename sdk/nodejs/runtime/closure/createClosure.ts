@@ -442,6 +442,9 @@ export async function createClosureInfoAsync(
         // actually tried to deserialize the instances/prototypes we have we would end up failing when
         // we hit native functions.
         //
+        // The same applies to async generators, which have their own prototypes separate from
+        // regular generators.
+        //
         // see http://www.ecma-international.org/ecma-262/6.0/#sec-generatorfunction-objects and
         // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
         async function addGeneratorEntriesAsync() {
@@ -453,6 +456,20 @@ export async function createClosureInfoAsync(
             await addEntriesAsync(
                 Object.getPrototypeOf(emptyGenerator.prototype),
                 "Object.getPrototypeOf((function*(){}).prototype)",
+            );
+
+            // Also handle async generators, which have their own separate prototypes
+            // eslint-disable-next-line no-empty,no-empty-function,@typescript-eslint/no-empty-function
+            const emptyAsyncGenerator = async function* (): any {};
+
+            await addEntriesAsync(
+                Object.getPrototypeOf(emptyAsyncGenerator),
+                "Object.getPrototypeOf(async function*(){})",
+            );
+
+            await addEntriesAsync(
+                Object.getPrototypeOf(emptyAsyncGenerator.prototype),
+                "Object.getPrototypeOf((async function*(){}).prototype)",
             );
         }
     }
@@ -788,7 +805,11 @@ async function computeIsAsyncFunction(func: Function): Promise<boolean> {
     // Note, i can't think of a better way to determine this.  This is particularly hard because we
     // can't even necessary refer to async function objects here as this code is rewritten by TS,
     // converting all async functions to non async functions.
-    return func.constructor && func.constructor.name === "AsyncFunction";
+    // Also check for AsyncGeneratorFunction, which has a similar special prototype structure.
+    return (
+        func.constructor &&
+        (func.constructor.name === "AsyncFunction" || func.constructor.name === "AsyncGeneratorFunction")
+    );
 }
 
 function throwSerializationError(func: Function, context: Context, info: string) {

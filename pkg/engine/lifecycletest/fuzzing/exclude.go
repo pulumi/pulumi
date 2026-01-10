@@ -31,6 +31,8 @@ type ExclusionRules []ExclusionRule
 func DefaultExclusionRules() ExclusionRules {
 	return []ExclusionRule{
 		ExcludeDestroyAndRefreshProgramSet,
+		// TODO[pulumi/pulumi#21404]
+		ExcludeResourcePendingReplacementChangingParentRefreshProgram,
 		// TODO[pulumi/pulumi#21386]
 		ExcludeChildProviderOfDuplicateResourceRefresh,
 		// TODO[pulumi/pulumi#21277]
@@ -43,6 +45,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeTargetedResourceWithAliasedParentDestroyV2,
 		// TODO[pulumi/pulumi#21384]
 		ExcludeResourceWithDependencyOnDeletedResourceDestroyV2,
+		// TODO[pulumi/pulumi#21399]
+		ExcludeResourceReferencingAliasedProviderDestroyV2,
 	}
 }
 
@@ -106,6 +110,47 @@ func ExcludeChildProviderOfDuplicateResourceRefresh(
 
 		if urnCounts[res.Parent] > 1 && deletedURNs[res.Parent] {
 			return true
+		}
+	}
+
+	return false
+}
+
+func ExcludeResourcePendingReplacementChangingParentRefreshProgram(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate &&
+		plan.Operation != PlanOperationRefreshV2 &&
+		!plan.RefreshProgram {
+		return false
+	}
+
+	snapParents := make(map[resource.URN]resource.URN)
+	for _, res := range snap.Resources {
+		snapParents[res.URN()] = res.Parent
+	}
+
+	progParents := make(map[resource.URN]resource.URN)
+	aliasMap := make(map[resource.URN]resource.URN)
+	for _, res := range prog.ResourceRegistrations {
+		progParents[res.URN()] = res.Parent
+		for _, alias := range res.Aliases {
+			aliasMap[alias] = res.URN()
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if !res.PendingReplacement {
+			continue
+		}
+
+		if newURN, hasAlias := aliasMap[res.URN()]; hasAlias {
+			if snapParents[res.URN()] != progParents[newURN] {
+				return true
+			}
 		}
 	}
 
@@ -328,6 +373,56 @@ func ExcludeResourceWithDependencyOnDeletedResourceDestroyV2(
 				if deletedURNs[dep] {
 					return true
 				}
+			}
+		}
+	}
+
+	return false
+}
+
+func ExcludeResourceReferencingAliasedProviderDestroyV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	snapProviders := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if providers.IsProviderType(res.Type) {
+			snapProviders[res.URN()] = true
+		}
+	}
+
+	progProviders := make(map[resource.URN]bool)
+	for _, res := range prog.ResourceRegistrations {
+		if providers.IsProviderType(res.Type) {
+			progProviders[res.URN()] = true
+			for _, alias := range res.Aliases {
+				if _, ok := snapProviders[alias]; ok {
+					return true
+				}
+			}
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Provider == "" {
+			continue
+		}
+
+		providerRef, err := providers.ParseReference(res.Provider)
+		if err != nil {
+			continue
+		}
+
+		providerURN := providerRef.URN()
+		if _, inProg := progProviders[providerURN]; inProg {
+			if _, inSnap := snapProviders[providerURN]; inSnap {
+				return true
 			}
 		}
 	}
