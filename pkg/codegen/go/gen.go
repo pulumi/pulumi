@@ -2602,7 +2602,7 @@ func (pkg *pkgContext) genResource(
 			retty = fmt.Sprintf("(%s%sResultOutput, error)", name, methodName)
 		}
 		fmt.Fprintf(w, "\n")
-		ref := codegen.NewDocRef(codegen.DocRefTypeFunction, r.Token, f.Token)
+		ref := codegen.NewDocRef(codegen.DocRefTypeFunction, r.Token, "")
 		pkg.printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, ref, false)
 		fmt.Fprintf(w, "func (r *%s) %s(%s) %s {\n", name, methodName, argsig, retty)
 
