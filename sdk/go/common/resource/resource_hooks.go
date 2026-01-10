@@ -24,4 +24,17 @@ const (
 	AfterUpdate  HookType = "AfterUpdate"
 	BeforeDelete HookType = "BeforeDelete"
 	AfterDelete  HookType = "AfterDelete"
+	OnError      HookType = "OnError"
 )
+
+func IsBeforeHook(hookType HookType) bool {
+	return hookType == BeforeCreate || hookType == BeforeUpdate || hookType == BeforeDelete
+}
+
+func IsAfterHook(hookType HookType) bool {
+	return hookType == AfterCreate || hookType == AfterUpdate || hookType == AfterDelete
+}
+
+func IsErrorHook(hookType HookType) bool {
+	return hookType == OnError
+}

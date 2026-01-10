@@ -485,7 +485,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.ResourceHookRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ResourceHookRequest.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ResourceHookRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -2705,7 +2705,7 @@ proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.prototype.setDelete = fun
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.repeatedFields_ = [1,2,3,4,5,6];
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.repeatedFields_ = [1,2,3,4,5,6,7];
 
 
 
@@ -2743,7 +2743,8 @@ afterCreateList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined
 beforeUpdateList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
 afterUpdateList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
 beforeDeleteList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
-afterDeleteList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f
+afterDeleteList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
+onErrorList: (f = jspb.Message.getRepeatedField(msg, 7)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -2803,6 +2804,10 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.deserializeBinaryFr
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.addAfterDelete(value);
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addOnError(value);
       break;
     default:
       reader.skipField();
@@ -2872,6 +2877,13 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.serializeBinaryToWr
   if (f.length > 0) {
     writer.writeRepeatedString(
       6,
+      f
+    );
+  }
+  f = message.getOnErrorList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      7,
       f
     );
   }
@@ -3097,6 +3109,43 @@ proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addAfterD
  */
 proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.clearAfterDeleteList = function() {
   return this.setAfterDeleteList([]);
+};
+
+
+/**
+ * repeated string on_error = 7;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.getOnErrorList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 7));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.setOnErrorList = function(value) {
+  return jspb.Message.setField(this, 7, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.addOnError = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 7, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.prototype.clearOnErrorList = function() {
+  return this.setOnErrorList([]);
 };
 
 
@@ -8144,6 +8193,13 @@ proto.pulumirpc.TransformInvokeOptions.prototype.clearPluginChecksumsMap = funct
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ResourceHookRequest.repeatedFields_ = [10];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -8182,7 +8238,9 @@ type: jspb.Message.getFieldWithDefault(msg, 4, ""),
 newInputs: (f = msg.getNewInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 newOutputs: (f = msg.getNewOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+failedOperation: (f = jspb.Message.getField(msg, 9)) == null ? undefined : f,
+errorsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -8254,6 +8312,14 @@ proto.pulumirpc.ResourceHookRequest.deserializeBinaryFromReader = function(msg, 
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setOldOutputs(value);
+      break;
+    case 9:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setFailedOperation(value);
+      break;
+    case 10:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addErrors(value);
       break;
     default:
       reader.skipField();
@@ -8342,6 +8408,20 @@ proto.pulumirpc.ResourceHookRequest.serializeBinaryToWriter = function(message, 
       8,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 9));
+  if (f != null) {
+    writer.writeString(
+      9,
+      f
+    );
+  }
+  f = message.getErrorsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      10,
+      f
     );
   }
 };
@@ -8567,6 +8647,79 @@ proto.pulumirpc.ResourceHookRequest.prototype.hasOldOutputs = function() {
 };
 
 
+/**
+ * optional string failed_operation = 9;
+ * @return {string}
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.getFailedOperation = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.setFailedOperation = function(value) {
+  return jspb.Message.setField(this, 9, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.clearFailedOperation = function() {
+  return jspb.Message.setField(this, 9, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.hasFailedOperation = function() {
+  return jspb.Message.getField(this, 9) != null;
+};
+
+
+/**
+ * repeated string errors = 10;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.getErrorsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 10));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.setErrorsList = function(value) {
+  return jspb.Message.setField(this, 10, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.addErrors = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 10, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.clearErrorsList = function() {
+  return this.setErrorsList([]);
+};
+
+
 
 
 
@@ -8599,7 +8752,8 @@ proto.pulumirpc.ResourceHookResponse.prototype.toObject = function(opt_includeIn
  */
 proto.pulumirpc.ResourceHookResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-error: jspb.Message.getFieldWithDefault(msg, 1, "")
+error: jspb.Message.getFieldWithDefault(msg, 1, ""),
+retry: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -8640,6 +8794,10 @@ proto.pulumirpc.ResourceHookResponse.deserializeBinaryFromReader = function(msg,
       var value = /** @type {string} */ (reader.readString());
       msg.setError(value);
       break;
+    case 2:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setRetry(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -8676,6 +8834,13 @@ proto.pulumirpc.ResourceHookResponse.serializeBinaryToWriter = function(message,
       f
     );
   }
+  f = message.getRetry();
+  if (f) {
+    writer.writeBool(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -8694,6 +8859,24 @@ proto.pulumirpc.ResourceHookResponse.prototype.getError = function() {
  */
 proto.pulumirpc.ResourceHookResponse.prototype.setError = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional bool retry = 2;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceHookResponse.prototype.getRetry = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceHookResponse} returns this
+ */
+proto.pulumirpc.ResourceHookResponse.prototype.setRetry = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 2, value);
 };
 
 

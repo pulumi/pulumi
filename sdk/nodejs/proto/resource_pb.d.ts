@@ -416,6 +416,10 @@ export namespace RegisterResourceRequest {
         getAfterDeleteList(): Array<string>;
         setAfterDeleteList(value: Array<string>): ResourceHooksBinding;
         addAfterDelete(value: string, index?: number): string;
+        clearOnErrorList(): void;
+        getOnErrorList(): Array<string>;
+        setOnErrorList(value: Array<string>): ResourceHooksBinding;
+        addOnError(value: string, index?: number): string;
 
         serializeBinary(): Uint8Array;
         toObject(includeInstance?: boolean): ResourceHooksBinding.AsObject;
@@ -435,6 +439,7 @@ export namespace RegisterResourceRequest {
             afterUpdateList: Array<string>,
             beforeDeleteList: Array<string>,
             afterDeleteList: Array<string>,
+            onErrorList: Array<string>,
         }
     }
 
@@ -988,6 +993,15 @@ export class ResourceHookRequest extends jspb.Message {
     getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldOutputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
 
+    hasFailedOperation(): boolean;
+    clearFailedOperation(): void;
+    getFailedOperation(): string | undefined;
+    setFailedOperation(value: string): ResourceHookRequest;
+    clearErrorsList(): void;
+    getErrorsList(): Array<string>;
+    setErrorsList(value: Array<string>): ResourceHookRequest;
+    addErrors(value: string, index?: number): string;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceHookRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ResourceHookRequest): ResourceHookRequest.AsObject;
@@ -1008,12 +1022,16 @@ export namespace ResourceHookRequest {
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
         newOutputs?: google_protobuf_struct_pb.Struct.AsObject,
         oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        failedOperation?: string,
+        errorsList: Array<string>,
     }
 }
 
 export class ResourceHookResponse extends jspb.Message { 
     getError(): string;
     setError(value: string): ResourceHookResponse;
+    getRetry(): boolean;
+    setRetry(value: boolean): ResourceHookResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceHookResponse.AsObject;
@@ -1028,6 +1046,7 @@ export class ResourceHookResponse extends jspb.Message {
 export namespace ResourceHookResponse {
     export type AsObject = {
         error: string,
+        retry: boolean,
     }
 }
 
