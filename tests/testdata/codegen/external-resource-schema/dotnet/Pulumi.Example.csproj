@@ -45,7 +45,7 @@
 
   <ItemGroup>
     <PackageReference Include="Pulumi" Version="3.71" />
-    <PackageReference Include="Pulumi.Aws" Version="5.16.2" ExcludeAssets="contentFiles" />
+    <PackageReference Include="Pulumi.Aws" Version="5.4.0" ExcludeAssets="contentFiles" />
     <PackageReference Include="Pulumi.Kubernetes" Version="3.7.0" ExcludeAssets="contentFiles" />
     <PackageReference Include="Pulumi.Random" Version="4.11.2" ExcludeAssets="contentFiles" />
   </ItemGroup>
