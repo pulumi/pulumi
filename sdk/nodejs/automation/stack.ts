@@ -613,11 +613,6 @@ Event: ${line}\n${e.toString()}`);
                 server.forceShutdown();
             };
             args.push(`--client=127.0.0.1:${port}`);
-
-            // When using an inline program, default to running the program unless explicitly disabled.
-            if (opts?.runProgram === undefined) {
-                args.push("--run-program=true");
-            }
         }
         args.push("--exec-kind", kind);
 
@@ -841,11 +836,6 @@ Event: ${line}\n${e.toString()}`);
                 server.forceShutdown();
             };
             args.push(`--client=127.0.0.1:${port}`);
-
-            // When using an inline program, default to running the program unless explicitly disabled.
-            if (opts?.runProgram === undefined) {
-                args.push("--run-program=true");
-            }
         }
         args.push("--exec-kind", kind);
 

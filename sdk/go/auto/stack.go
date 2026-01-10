@@ -848,11 +848,6 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) ([]string
 		closer = server
 
 		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
-
-		// When using an inline program, default to running the program unless explicitly disabled.
-		if o.RunProgram == nil {
-			args = append(args, "--run-program=true")
-		}
 	}
 	args = append(args, "--exec-kind="+kind)
 
@@ -1132,11 +1127,6 @@ func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) ([]string, io.C
 		closer = server
 
 		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
-
-		// When using an inline program, default to running the program unless explicitly disabled.
-		if destroyOpts.RunProgram == nil {
-			args = append(args, "--run-program=true")
-		}
 	}
 	args = append(args, "--exec-kind="+kind)
 
