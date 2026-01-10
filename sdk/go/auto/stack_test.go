@@ -354,6 +354,80 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	assert.Contains(t, args, "--clear-pending-creates")
 }
 
+// TestRefreshInlineProgramRunProgram verifies that when using an inline program,
+// --run-program=true is automatically added unless explicitly disabled.
+func TestRefreshInlineProgramRunProgram(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	// Create an inline program stack
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		return nil
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = s.Workspace().RemoveStack(ctx, s.Name())
+	}()
+
+	// When RunProgram is nil (not specified), inline programs should automatically get --run-program=true
+	args, closer, err := refreshOptsToCmd(&optrefresh.Options{}, &s, true)
+	require.NoError(t, err)
+	if closer != nil {
+		defer closer.Close()
+	}
+	assert.Contains(t, args, "--run-program=true")
+
+	// When RunProgram is explicitly set to false, it should override the default
+	runProgramFalse := false
+	args2, closer2, err := refreshOptsToCmd(&optrefresh.Options{RunProgram: &runProgramFalse}, &s, true)
+	require.NoError(t, err)
+	if closer2 != nil {
+		defer closer2.Close()
+	}
+	assert.Contains(t, args2, "--run-program=false")
+	assert.NotContains(t, args2, "--run-program=true")
+}
+
+// TestDestroyInlineProgramRunProgram verifies that when using an inline program,
+// --run-program=true is automatically added unless explicitly disabled.
+func TestDestroyInlineProgramRunProgram(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	// Create an inline program stack
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		return nil
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = s.Workspace().RemoveStack(ctx, s.Name())
+	}()
+
+	// When RunProgram is nil (not specified), inline programs should automatically get --run-program=true
+	args, closer, err := destroyOptsToCmd(&optdestroy.Options{}, &s)
+	require.NoError(t, err)
+	if closer != nil {
+		defer closer.Close()
+	}
+	assert.Contains(t, args, "--run-program=true")
+
+	// When RunProgram is explicitly set to false, it should override the default
+	runProgramFalse := false
+	args2, closer2, err := destroyOptsToCmd(&optdestroy.Options{RunProgram: &runProgramFalse}, &s)
+	require.NoError(t, err)
+	if closer2 != nil {
+		defer closer2.Close()
+	}
+	assert.Contains(t, args2, "--run-program=false")
+	assert.NotContains(t, args2, "--run-program=true")
+}
+
 func TestRename(t *testing.T) {
 	t.Parallel()
 

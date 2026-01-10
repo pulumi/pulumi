@@ -721,6 +721,10 @@ class Stack:
 
             args.append(f"--client=127.0.0.1:{port}")
 
+            # When using an inline program, default to running the program unless explicitly disabled.
+            if run_program is None:
+                args.append("--run-program=true")
+
         args.extend(["--exec-kind", kind])
 
         log_watcher_thread = None
@@ -983,6 +987,10 @@ class Stack:
             on_exit = on_exit_fn
 
             args.append(f"--client=127.0.0.1:{port}")
+
+            # When using an inline program, default to running the program unless explicitly disabled.
+            if run_program is None:
+                args.append("--run-program=true")
 
         args.extend(["--exec-kind", kind])
 
