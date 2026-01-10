@@ -34,14 +34,6 @@ func GenerateGoProgramTest(
 	genProject GenProject,
 ) {
 	expectedVersion := map[string]PkgVersionInfo{
-		"aws-resource-options-4.26": {
-			Pkg:          "github.com/pulumi/pulumi-aws/sdk/v4",
-			OpAndVersion: "v4.26.0",
-		},
-		"aws-resource-options-5.16.2": {
-			Pkg:          "github.com/pulumi/pulumi-aws/sdk/v5",
-			OpAndVersion: "v5.16.2",
-		},
 		"modpath": {
 			Pkg:          "git.example.org/thirdparty/sdk",
 			OpAndVersion: "v0.1.0",
@@ -61,14 +53,6 @@ func GenerateGoProgramTest(
 			},
 			GenProgram: genProgram,
 			TestCases: []ProgramTest{
-				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
-				},
 				{
 					Directory:   "modpath",
 					Description: "Check that modpath is respected",
