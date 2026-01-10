@@ -1497,7 +1497,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType, usingGene
 
 	fmt.Fprintln(w, "const (")
 	for _, e := range enumType.Elements {
-		enumElemRef := codegen.NewDocRef(codegen.DocRefTypeTypeProperty, enumType.Token, e.Name)
+		enumElemRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
 		pkg.printCommentWithDeprecationMessage(w, e.Comment, e.DeprecationMessage, enumElemRef, true)
 
 		elementName := e.Name
