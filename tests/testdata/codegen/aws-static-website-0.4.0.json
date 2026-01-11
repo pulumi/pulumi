@@ -50,7 +50,7 @@
         "cloudfrontFunctionAssociations": {
           "type": "array",
           "items": {
-            "$ref": "/aws/v5.16.2/schema.json#/types/aws:cloudfront%2FDistributionOrderedCacheBehaviorFunctionAssociation:DistributionOrderedCacheBehaviorFunctionAssociation"
+            "$ref": "/aws/v5.4.0/schema.json#/types/aws:cloudfront%2FDistributionOrderedCacheBehaviorFunctionAssociation:DistributionOrderedCacheBehaviorFunctionAssociation"
           },
           "description": "A config block that triggers a cloudfront\nfunction with specific actions.\n",
           "language": {
@@ -60,13 +60,13 @@
           }
         },
         "forwardedValues": {
-          "$ref": "/aws/v5.16.2/schema.json#/types/aws:cloudfront%2FDistributionDefaultCacheBehaviorForwardedValues:DistributionDefaultCacheBehaviorForwardedValues",
+          "$ref": "/aws/v5.4.0/schema.json#/types/aws:cloudfront%2FDistributionDefaultCacheBehaviorForwardedValues:DistributionDefaultCacheBehaviorForwardedValues",
           "description": "The forwarded values configuration that specifies how CloudFront handles query strings, cookies and headers."
         },
         "lambdaFunctionAssociations": {
           "type": "array",
           "items": {
-            "$ref": "/aws/v5.16.2/schema.json#/types/aws:cloudfront%2FDistributionOrderedCacheBehaviorLambdaFunctionAssociation:DistributionOrderedCacheBehaviorLambdaFunctionAssociation"
+            "$ref": "/aws/v5.4.0/schema.json#/types/aws:cloudfront%2FDistributionOrderedCacheBehaviorLambdaFunctionAssociation:DistributionOrderedCacheBehaviorLambdaFunctionAssociation"
           },
           "description": "A config block that triggers a lambda\nfunction with specific actions.\n",
           "language": {
@@ -86,10 +86,10 @@
     "aws-static-website:index:PublicBucketPolicy": {
       "properties": {
         "ownershipControls": {
-          "$ref": "/aws/v5.16.2/schema.json#/resources/aws:s3%2FbucketOwnershipControls:BucketOwnershipControls"
+          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:s3%2FbucketOwnershipControls:BucketOwnershipControls"
         },
         "publicAccessBlock": {
-          "$ref": "/aws/v5.16.2/schema.json#/resources/aws:s3%2FbucketPublicAccessBlock:BucketPublicAccessBlock"
+          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:s3%2FbucketPublicAccessBlock:BucketPublicAccessBlock"
         }
       },
       "type": "object",
@@ -99,7 +99,7 @@
       ],
       "inputProperties": {
         "bucket": {
-          "$ref": "/aws/v5.16.2/schema.json#/resources/aws:s3%2Fbucket:Bucket",
+          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:s3%2Fbucket:Bucket",
           "description": "The bucket to apply the public policy to."
         }
       },

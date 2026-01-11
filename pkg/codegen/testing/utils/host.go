@@ -93,8 +93,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 	// supplied.
 	return NewHostWithProviders(schemaDirectoryPath,
 		SchemaProvider{"tls", "4.10.0"},
-		SchemaProvider{"aws", "4.26.0"},
-		SchemaProvider{"aws", "5.16.2"},
 		SchemaProvider{"azure", "4.18.0"},
 		SchemaProvider{"random", "4.11.2"},
 		SchemaProvider{"kubernetes", "3.7.0"},
