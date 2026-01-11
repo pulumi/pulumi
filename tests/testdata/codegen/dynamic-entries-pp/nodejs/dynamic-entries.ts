@@ -8,7 +8,7 @@ const domainName = config.get("domainName") || "";
 const validationMethod = config.get("validationMethod") || "DNS";
 const alternativeNames = config.getObject<any>("alternativeNames") || {};
 const certificate = new aws.acm.Certificate("certificate", {
-    subjectAlternativeNames: Object.entries(alternativeNames).map(([k, v]) => ({key: k, value: v})).map(entry => entry.value),
+    subjectAlternativeNames: Object.entries(alternativeNames).map(([k, v]) => ({key: k, value: v})).map(entry => (entry.value)),
     domainName: domainName,
     validationMethod: validationMethod,
 });
