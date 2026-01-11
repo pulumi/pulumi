@@ -29,6 +29,16 @@ import (
 
 type SimpleProvider struct {
 	plugin.UnimplementedProvider
+
+	// The version of the simple provider. Defaults to 2.0.0
+	Version *semver.Version
+}
+
+func (p *SimpleProvider) version() semver.Version {
+	if p.Version == nil {
+		return semver.MustParse("2.0.0")
+	}
+	return *p.Version
 }
 
 var _ plugin.Provider = (*SimpleProvider)(nil)
@@ -61,7 +71,7 @@ func (p *SimpleProvider) GetSchema(
 
 	pkg := schema.PackageSpec{
 		Name:    "simple",
-		Version: "2.0.0",
+		Version: p.version().String(),
 		Resources: map[string]schema.ResourceSpec{
 			"simple:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -101,9 +111,9 @@ func (p *SimpleProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "2.0.0" {
+	if version.StringValue() != p.version().String() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 2.0.0"),
+			Failures: makeCheckFailure("version", "version is not "+p.version().String()),
 		}, nil
 	}
 
@@ -186,7 +196,7 @@ func (p *SimpleProvider) Update(
 }
 
 func (p *SimpleProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.MustParse("2.0.0")
+	ver := p.version()
 	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
