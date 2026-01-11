@@ -979,7 +979,11 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			switch ut := ut.(type) {
 			case *model.OpaqueType:
 				if isOptional {
-					return g.argumentTypeNamePtr(ut, isInput)
+					res := g.argumentTypeName(ut, isInput)
+					if !strings.HasPrefix(res, "pulumi.") {
+						return "*" + res
+					}
+					return res
 				}
 				return g.argumentTypeName(ut, isInput)
 			case *model.ConstType:
@@ -997,14 +1001,6 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		contract.Failf("unexpected destType type %T", destType)
 	}
 	return ""
-}
-
-func (g *generator) argumentTypeNamePtr(destType model.Type, isInput bool) (result string) {
-	res := g.argumentTypeName(destType, isInput)
-	if !strings.HasPrefix(res, "pulumi.") {
-		return "*" + res
-	}
-	return res
 }
 
 func (g *generator) genRelativeTraversal(w io.Writer,
