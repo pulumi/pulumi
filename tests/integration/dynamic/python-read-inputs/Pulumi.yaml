@@ -1,0 +1,3 @@
+name: dynamic_python_read_inputs
+description: Tests that dynamic providers can return inputs from read() for accurate diffs after refresh.
+runtime: python

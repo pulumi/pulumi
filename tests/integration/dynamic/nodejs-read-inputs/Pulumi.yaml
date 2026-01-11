@@ -1,0 +1,3 @@
+name: nodejs-dynamic-provider-read-inputs
+runtime: nodejs
+description: Tests that dynamic providers can return inputs from read() for accurate diffs after refresh.
