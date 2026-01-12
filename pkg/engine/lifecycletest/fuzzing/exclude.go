@@ -39,6 +39,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeUpdateWithDependencyOnAliasedResource,
 		// TODO[pulumi/pulumi#21386]
 		ExcludeChildProviderOfDuplicateResourceRefresh,
+		// TODO[pulumi/pulumi#21431]
+		ExcludeTargetsRefreshV2,
 		// TODO[pulumi/pulumi#21277]
 		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
 		// TODO[pulumi/pulumi#21347]
@@ -536,6 +538,23 @@ func ExcludeResourceDeletedWithMarkedForDeletionResourceUpdate(
 		if res.DeletedWith != "" && deletedResources[res.DeletedWith] {
 			return true
 		}
+	}
+
+	return false
+}
+
+func ExcludeTargetsRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 {
+		return false
+	}
+
+	if len(plan.TargetURNs) > 0 {
+		return true
 	}
 
 	return false
