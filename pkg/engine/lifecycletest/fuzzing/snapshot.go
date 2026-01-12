@@ -376,6 +376,7 @@ func generatedOldResourceSpec(
 		// retained on deletion but its replacement isn't.
 		r.Protect = rapid.Bool().Draw(t, "OldResourceSpec.Protect")
 		r.RetainOnDelete = rapid.Bool().Draw(t, "OldResourceSpec.RetainOnDelete")
+		r.PendingReplacement = false
 
 		rds.ApplyTo(r)
 
