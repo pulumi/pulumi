@@ -779,9 +779,6 @@ func (d *Deployment) RunErrorHooks(
 		if err != nil {
 			return false, fmt.Errorf("error hook %q was not registered", hookName)
 		}
-		if d.opts != nil && d.opts.DryRun && !hook.OnDryRun {
-			continue
-		}
 		logging.V(9).Infof("calling error hook %q for urn %s", hookName, urn)
 		retry, err := hook.Callback(
 			d.Ctx().Base(),

@@ -1196,6 +1196,79 @@ class ResourceHookRequest(google.protobuf.message.Message):
     OLD_INPUTS_FIELD_NUMBER: builtins.int
     NEW_OUTPUTS_FIELD_NUMBER: builtins.int
     OLD_OUTPUTS_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """the urn of the resource for which the hook is called."""
+    id: builtins.str
+    """the optional urn of the resource for which the hook is called."""
+    name: builtins.str
+    """the name of the resource for which the hook is called."""
+    type: builtins.str
+    """the type of the resource for which the hook is called."""
+    @property
+    def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional checked new inputs of the resource."""
+
+    @property
+    def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional checked old inputs of the resource."""
+
+    @property
+    def new_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional new outputs of the resource."""
+
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional old outputs of the resource."""
+
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        id: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        new_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
+
+global___ResourceHookRequest = ResourceHookRequest
+
+@typing.final
+class ResourceHookResponse(google.protobuf.message.Message):
+    """ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ERROR_FIELD_NUMBER: builtins.int
+    error: builtins.str
+    """an optional error message to return from the hook."""
+    def __init__(
+        self,
+        *,
+        error: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["error", b"error"]) -> None: ...
+
+global___ResourceHookResponse = ResourceHookResponse
+
+@typing.final
+class ErrorHookRequest(google.protobuf.message.Message):
+    """ErrorHookRequest is the request object for error hook callbacks in CallbackInvokeRequest."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URN_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    NEW_INPUTS_FIELD_NUMBER: builtins.int
+    OLD_INPUTS_FIELD_NUMBER: builtins.int
+    NEW_OUTPUTS_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
     FAILED_OPERATION_FIELD_NUMBER: builtins.int
     ERRORS_FIELD_NUMBER: builtins.int
     urn: builtins.str
@@ -1207,7 +1280,7 @@ class ResourceHookRequest(google.protobuf.message.Message):
     type: builtins.str
     """the type of the resource for which the hook is called."""
     failed_operation: builtins.str
-    """for on_error, the operation that failed (create, update, or delete)."""
+    """the operation that failed (create, update, or delete)."""
     @property
     def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
         """the optional checked new inputs of the resource."""
@@ -1226,7 +1299,7 @@ class ResourceHookRequest(google.protobuf.message.Message):
 
     @property
     def errors(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """for on_error, the errors that have been seen so far."""
+        """the errors that have been seen so far (newest-first)."""
 
     def __init__(
         self,
@@ -1239,18 +1312,17 @@ class ResourceHookRequest(google.protobuf.message.Message):
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
         new_outputs: google.protobuf.struct_pb2.Struct | None = ...,
         old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
-        failed_operation: builtins.str | None = ...,
+        failed_operation: builtins.str = ...,
         errors: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_failed_operation", b"_failed_operation", "failed_operation", b"failed_operation", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_failed_operation", b"_failed_operation", "errors", b"errors", "failed_operation", b"failed_operation", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["_failed_operation", b"_failed_operation"]) -> typing.Literal["failed_operation"] | None: ...
+    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["errors", b"errors", "failed_operation", b"failed_operation", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
 
-global___ResourceHookRequest = ResourceHookRequest
+global___ErrorHookRequest = ErrorHookRequest
 
 @typing.final
-class ResourceHookResponse(google.protobuf.message.Message):
-    """ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse."""
+class ErrorHookResponse(google.protobuf.message.Message):
+    """ErrorHookResponse is the response object for error hook callbacks in CallbackInvokeResponse."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -1259,7 +1331,7 @@ class ResourceHookResponse(google.protobuf.message.Message):
     error: builtins.str
     """an optional error message to return from the hook."""
     retry: builtins.bool
-    """for on_error, whether we should retry the operation."""
+    """whether we should retry the operation."""
     def __init__(
         self,
         *,
@@ -1268,7 +1340,7 @@ class ResourceHookResponse(google.protobuf.message.Message):
     ) -> None: ...
     def ClearField(self, field_name: typing.Literal["error", b"error", "retry", b"retry"]) -> None: ...
 
-global___ResourceHookResponse = ResourceHookResponse
+global___ErrorHookResponse = ErrorHookResponse
 
 @typing.final
 class RegisterPackageRequest(google.protobuf.message.Message):
@@ -1394,3 +1466,28 @@ class RegisterResourceHookRequest(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["callback", b"callback", "name", b"name", "on_dry_run", b"on_dry_run"]) -> None: ...
 
 global___RegisterResourceHookRequest = RegisterResourceHookRequest
+
+@typing.final
+class RegisterErrorHookRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    CALLBACK_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """The name of the hook. Must be unique within a program, registering the
+    same name twice is an error.
+    """
+    @property
+    def callback(self) -> pulumi.callback_pb2.Callback:
+        """the callback that the engine can call to run the hook."""
+
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        callback: pulumi.callback_pb2.Callback | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["callback", b"callback"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["callback", b"callback", "name", b"name"]) -> None: ...
+
+global___RegisterErrorHookRequest = RegisterErrorHookRequest

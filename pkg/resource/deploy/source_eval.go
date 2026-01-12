@@ -1880,7 +1880,6 @@ func (rm *resmon) RegisterErrorHook(
 	hook := ErrorHook{
 		Name:     req.Name,
 		Callback: wrapped,
-		OnDryRun: req.OnDryRun,
 	}
 	err = rm.resourceHooks.RegisterErrorHook(hook)
 	return nil, err

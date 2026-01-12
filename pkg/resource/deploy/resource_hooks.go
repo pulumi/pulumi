@@ -67,7 +67,6 @@ type ResourceHook struct {
 type ErrorHook struct {
 	Name     string            // The unqiue name of the hook.
 	Callback ErrorHookFunction // The callback of the hook.
-	OnDryRun bool              // Whether to run this hook for previews or not.
 }
 
 // ResourceHooks is a registry of all resource hooks provided by a program.

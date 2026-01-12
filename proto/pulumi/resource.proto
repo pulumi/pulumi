@@ -391,5 +391,4 @@ message RegisterErrorHookRequest {
     // same name twice is an error.
     string name = 1;
     Callback callback = 2; // the callback that the engine can call to run the hook.
-    bool on_dry_run = 3; // whether to run the hook on dry runs.
 }

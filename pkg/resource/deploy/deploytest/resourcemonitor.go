@@ -307,9 +307,9 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 }
 
 func NewErrorHook(
-	monitor *ResourceMonitor, callbacks *CallbackServer, name string, f ErrorHookFunc, onDryRun bool,
+	monitor *ResourceMonitor, callbacks *CallbackServer, name string, f ErrorHookFunc,
 ) (*ResourceHook, error) {
-	req, err := prepareErrorHook(callbacks, name, f, onDryRun)
+	req, err := prepareErrorHook(callbacks, name, f)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func NewErrorHook(
 	}, nil
 }
 
-func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc, onDryRun bool) (
+func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 	*pulumirpc.RegisterErrorHookRequest, error,
 ) {
 	wrapped := func(request []byte) (proto.Message, error) {
@@ -391,7 +391,6 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc, o
 	req := &pulumirpc.RegisterErrorHookRequest{
 		Name:     name,
 		Callback: callback,
-		OnDryRun: onDryRun,
 	}
 	return req, nil
 }

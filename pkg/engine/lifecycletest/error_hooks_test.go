@@ -81,7 +81,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 				hook1Op = failedOperation
 				require.NotEmpty(t, errs)
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
@@ -95,7 +95,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 				hook2Op = failedOperation
 				require.NotEmpty(t, errs)
 				return false, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -170,7 +170,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 				hook1Op = failedOperation
 				require.NotEmpty(t, errs)
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
@@ -184,7 +184,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 				hook2Op = failedOperation
 				require.NotEmpty(t, errs)
 				return false, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
@@ -273,7 +273,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 				hook1Op = failedOperation
 				require.NotEmpty(t, errs)
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
@@ -287,7 +287,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 				hook2Op = failedOperation
 				require.NotEmpty(t, errs)
 				return false, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		if programCreate {
@@ -368,7 +368,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_RetryIfAnyHookRet
 			) (bool, error) {
 				hookCalls++
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 		hooks = []*deploytest.ResourceHook{h}
 
@@ -493,7 +493,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_RetryIfAnyHookRet
 			) (bool, error) {
 				hookCalls++
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 		hooks = []*deploytest.ResourceHook{h}
 
@@ -640,7 +640,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_RetryIfAnyHookRet
 			) (bool, error) {
 				hookCalls++
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 		hooks = []*deploytest.ResourceHook{h}
 
@@ -772,7 +772,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 			) (bool, error) {
 				hookCalls++
 				return false, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -838,7 +838,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 			) (bool, error) {
 				hookCalls++
 				return false, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
@@ -906,7 +906,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 			) (bool, error) {
 				hookCalls++
 				return false, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		if programCreate {
@@ -970,7 +970,7 @@ func TestErrorHooks_NotCalledOnSuccess_Update(t *testing.T) {
 			) (bool, error) {
 				hookCalls++
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
@@ -1040,7 +1040,7 @@ func TestErrorHooks_NotCalledOnSuccess_Delete(t *testing.T) {
 			) (bool, error) {
 				hookCalls++
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		if programCreate {
@@ -1111,7 +1111,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 				hookCalls++
 				require.NotEmpty(t, errs)
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1198,7 +1198,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 				hookCalls++
 				require.NotEmpty(t, errs)
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
@@ -1305,7 +1305,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 				hookCalls++
 				require.NotEmpty(t, errs)
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		if programCreate {
@@ -1422,7 +1422,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 					require.Equal(t, []string{"create failed 2", "create failed 1"}, errs)
 				}
 				return hookCalls == 1, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1494,7 +1494,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 					require.Equal(t, []string{"update failed 2", "update failed 1"}, errs)
 				}
 				return hookCalls == 1, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
@@ -1573,7 +1573,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 					require.Equal(t, []string{"delete failed 2", "delete failed 1"}, errs)
 				}
 				return hookCalls == 1, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		if programCreate {
@@ -1662,7 +1662,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 					resAHooks++
 				}
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
@@ -1673,7 +1673,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 					resBHooks++
 				}
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		inputsA := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
@@ -1764,7 +1764,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 					resAHooks++
 				}
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
@@ -1775,7 +1775,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 					resBHooks++
 				}
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		inputsA := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
@@ -1869,7 +1869,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 					resAHooks++
 				}
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
@@ -1880,7 +1880,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 					resBHooks++
 				}
 				return true, nil
-			}, true)
+			})
 		require.NoError(t, err)
 
 		if programCreate {
