@@ -345,7 +345,7 @@ func TestPlanFlag(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	integration.CreateBasicPulumiRepo(e)
-	e.ImportDirectory("../integration/iterative-constraints")
+	e.ImportDirectory("iterative-constraints")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.18.3")
 	e.RunCommand("pulumi", "install")
