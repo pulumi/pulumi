@@ -196,3 +196,103 @@ func TestJoinStoreValuesReturnsEarlyWhenKeyFound(t *testing.T) {
 	assert.GreaterOrEqual(t, count, 1)
 	assert.LessOrEqual(t, count, 2)
 }
+
+func TestJoinStoreRaw(t *testing.T) {
+	t.Parallel()
+
+	store1 := env.MapStore{"KEY1": "value1_from_store1", "KEY2": "value2_from_store1"}
+	store2 := env.MapStore{"KEY2": "value2_from_store2", "KEY3": "value3_from_store2"}
+	store3 := env.MapStore{"KEY4": "value4_from_store3"}
+
+	tests := []struct {
+		name      string
+		stores    []env.Store
+		key       string
+		wantValue string
+		wantOk    bool
+	}{
+		{
+			name:      "gets value from first store",
+			stores:    []env.Store{store1, store2, store3},
+			key:       "KEY1",
+			wantValue: "value1_from_store1",
+			wantOk:    true,
+		},
+		{
+			name:      "gets value from first store when key exists in multiple stores",
+			stores:    []env.Store{store1, store2, store3},
+			key:       "KEY2",
+			wantValue: "value2_from_store1",
+			wantOk:    true,
+		},
+		{
+			name:      "gets value from later store when not in first",
+			stores:    []env.Store{store1, store2, store3},
+			key:       "KEY3",
+			wantValue: "value3_from_store2",
+			wantOk:    true,
+		},
+		{
+			name:      "gets value from last store",
+			stores:    []env.Store{store1, store2, store3},
+			key:       "KEY4",
+			wantValue: "value4_from_store3",
+			wantOk:    true,
+		},
+		{
+			name:      "returns false for non-existent key",
+			stores:    []env.Store{store1, store2, store3},
+			key:       "NONEXISTENT",
+			wantValue: "",
+			wantOk:    false,
+		},
+		{
+			name:      "returns false when stores are empty",
+			stores:    []env.Store{},
+			key:       "ANY_KEY",
+			wantValue: "",
+			wantOk:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			joined := env.JoinStore(tt.stores...)
+			val, ok := joined.Raw(tt.key)
+			assert.Equal(t, tt.wantOk, ok)
+			assert.Equal(t, tt.wantValue, val)
+		})
+	}
+}
+
+func TestEnvStoreValues(t *testing.T) {
+	t.Parallel()
+
+	testKey1 := "PULUMI_TEST_ENV_STORE_KEY1"
+	testKey2 := "PULUMI_TEST_ENV_STORE_KEY2"
+	testValue1 := "test_value_1"
+	testValue2 := "test_value_2"
+
+	// Set test environment variables
+	t.Setenv(testKey1, testValue1)
+	t.Setenv(testKey2, testValue2)
+
+	store := env.NewEnvStore()
+
+	// Collect all values from the store
+	allValues := maps.Collect(store.Values())
+
+	// Verify our test keys are present
+	assert.Equal(t, testValue1, allValues[testKey1])
+	assert.Equal(t, testValue2, allValues[testKey2])
+
+	// Verify that the store can retrieve values via Raw
+	val, ok := store.Raw(testKey1)
+	assert.True(t, ok)
+	assert.Equal(t, testValue1, val)
+
+	val, ok = store.Raw(testKey2)
+	assert.True(t, ok)
+	assert.Equal(t, testValue2, val)
+}

@@ -109,6 +109,12 @@ func (m MapStore) Values() iter.Seq2[string, string] {
 // Setting this value is not thread safe, and should be restricted to testing.
 var Global Store = envStore{}
 
+// NewEnvStore returns a new Store that reads from the OS environment.
+// This is primarily useful for testing.
+func NewEnvStore() Store {
+	return envStore{}
+}
+
 // An environmental variable.
 type Var struct {
 	name        string
