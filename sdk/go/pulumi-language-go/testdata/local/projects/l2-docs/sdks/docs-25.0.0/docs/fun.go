@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// {{$ ref #/functions/docs:index:fun $}} is a basic function for setting {{$ ref #/resources/docs:index:Resource/properties/in $}} on {{$ ref #/resources/docs:index:Resource $}}.
+// is a basic function for setting  on .
 func Fun(ctx *pulumi.Context, args *FunArgs, opts ...pulumi.InvokeOption) (*FunResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv FunResult
@@ -23,12 +23,12 @@ func Fun(ctx *pulumi.Context, args *FunArgs, opts ...pulumi.InvokeOption) (*FunR
 }
 
 type FunArgs struct {
-	// Will be used to set {{$ ref #/functions/docs:index:fun/outputs/properties/out $}}.
+	// Will be used to set .
 	In bool `pulumi:"in"`
 }
 
 type FunResult struct {
-	// Will be the opposite of {{$ ref #/functions/docs:index:fun/inputs/properties/in $}} can be used to set {{$ ref #/resources/docs:index:Resource/inputProperties/in $}}.
+	// Will be the opposite of  can be used to set .
 	Out bool `pulumi:"out"`
 }
 
@@ -42,7 +42,7 @@ func FunOutput(ctx *pulumi.Context, args FunOutputArgs, opts ...pulumi.InvokeOpt
 }
 
 type FunOutputArgs struct {
-	// Will be used to set {{$ ref #/functions/docs:index:fun/outputs/properties/out $}}.
+	// Will be used to set .
 	In pulumi.BoolInput `pulumi:"in"`
 }
 
@@ -64,7 +64,7 @@ func (o FunResultOutput) ToFunResultOutputWithContext(ctx context.Context) FunRe
 	return o
 }
 
-// Will be the opposite of {{$ ref #/functions/docs:index:fun/inputs/properties/in $}} can be used to set {{$ ref #/resources/docs:index:Resource/inputProperties/in $}}.
+// Will be the opposite of  can be used to set .
 func (o FunResultOutput) Out() pulumi.BoolOutput {
 	return o.ApplyT(func(v FunResult) bool { return v.Out }).(pulumi.BoolOutput)
 }

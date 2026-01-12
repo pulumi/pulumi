@@ -24,7 +24,7 @@ class ResourceArgs:
         """
         The set of arguments for constructing a Resource resource.
 
-        :param pulumi.Input[_builtins.bool] in_: Will be used to set {{$ ref #/resources/docs:index:Resource/properties/in $}} and {{$ ref #/resources/docs:index:Resource/properties/out $}}.
+        :param pulumi.Input[_builtins.bool] in_: Will be used to set Resource.in_ and Resource.out.
         """
         pulumi.set(__self__, "in_", in_)
 
@@ -32,7 +32,7 @@ class ResourceArgs:
     @pulumi.getter(name="in")
     def in_(self) -> pulumi.Input[_builtins.bool]:
         """
-        Will be used to set {{$ ref #/resources/docs:index:Resource/properties/in $}} and {{$ ref #/resources/docs:index:Resource/properties/out $}}.
+        Will be used to set Resource.in_ and Resource.out.
         """
         return pulumi.get(self, "in_")
 
@@ -50,11 +50,11 @@ class Resource(pulumi.CustomResource):
                  in_: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         """
-        {{$ ref #/resources/docs:index:Resource $}} is a basic resource. Use {{$ ref #/functions/docs:index:fun $}} to set {{$ ref#/resources/docs:index:Resource/inputProperties/in $}} using {{$ ref #/functions/docs:index:fun/outputs/properties/out $}}.
+         is a basic resource. Use  to set  using .
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[_builtins.bool] in_: Will be used to set {{$ ref #/resources/docs:index:Resource/properties/in $}} and {{$ ref #/resources/docs:index:Resource/properties/out $}}.
+        :param pulumi.Input[_builtins.bool] in_: Will be used to set Resource.in_ and Resource.out.
         """
         ...
     @overload
@@ -63,7 +63,7 @@ class Resource(pulumi.CustomResource):
                  args: ResourceArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        {{$ ref #/resources/docs:index:Resource $}} is a basic resource. Use {{$ ref #/functions/docs:index:fun $}} to set {{$ ref#/resources/docs:index:Resource/inputProperties/in $}} using {{$ ref #/functions/docs:index:fun/outputs/properties/out $}}.
+         is a basic resource. Use  to set  using .
 
         :param str resource_name: The name of the resource.
         :param ResourceArgs args: The arguments to use to populate this resource's properties.
@@ -126,7 +126,7 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter
     def data(self) -> pulumi.Output['outputs.ResourceData']:
         """
-        {{$ ref #/types/docs:index:ResourceData/properties/state $}} will have internal data about this resource.
+        Docs_index__resource_data.state will have internal data about this resource.
         """
         return pulumi.get(self, "data")
 
@@ -134,7 +134,7 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter(name="in")
     def in_(self) -> pulumi.Output[Optional[_builtins.bool]]:
         """
-        Will be set to the same as {{$ ref #/resources/docs:index:Resource/inputProperties/in $}}.
+        Will be set to the same as ResourceArgs.in_.
         """
         return pulumi.get(self, "in_")
 
@@ -142,7 +142,7 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter
     def out(self) -> pulumi.Output[_builtins.bool]:
         """
-        Will be set to the opposite of {{$ ref #/resources/docs:index:Resource/inputProperties/in $}}.
+        Will be set to the opposite of ResourceArgs.in_.
         """
         return pulumi.get(self, "out")
 

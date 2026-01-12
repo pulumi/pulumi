@@ -6,11 +6,11 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
 /**
- * {{$ ref #/types/docs:index:ResourceData $}} is a basic type used in {{$ ref #/resources/docs:index:Resource $}}.
+ * ResourceData is a basic type used in Resource.
  */
 export interface ResourceData {
     /**
-     * A property of {{$ ref #/types/docs:index:ResourceData $}}.
+     * A property of ResourceData.
      */
     state: string;
 }

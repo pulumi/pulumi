@@ -177,7 +177,7 @@ func interpretPulumiRefs(node ast.Node, resolveRefToName PulumiRefResolver) {
 			}
 
 			textNode := ast.NewString([]byte(name))
-			node.InsertBefore(node, c, textNode)
+			node.InsertAfter(node, c, textNode)
 			node.RemoveChild(node, c)
 		}
 	}

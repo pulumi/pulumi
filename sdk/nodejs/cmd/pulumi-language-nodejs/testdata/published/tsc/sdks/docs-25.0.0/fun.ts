@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 /**
- * {{$ ref #/functions/docs:index:fun $}} is a basic function for setting {{$ ref #/resources/docs:index:Resource/properties/in $}} on {{$ ref #/resources/docs:index:Resource $}}.
+ *  is a basic function for setting  on .
  */
 export function fun(args: FunArgs, opts?: pulumi.InvokeOptions): Promise<FunResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
@@ -16,19 +16,19 @@ export function fun(args: FunArgs, opts?: pulumi.InvokeOptions): Promise<FunResu
 
 export interface FunArgs {
     /**
-     * Will be used to set {{$ ref #/functions/docs:index:fun/outputs/properties/out $}}.
+     * Will be used to set FunResult.out.
      */
     in: boolean;
 }
 
 export interface FunResult {
     /**
-     * Will be the opposite of {{$ ref #/functions/docs:index:fun/inputs/properties/in $}} can be used to set {{$ ref #/resources/docs:index:Resource/inputProperties/in $}}.
+     * Will be the opposite of FunArgs.in can be used to set ResourceArgs.in.
      */
     readonly out: boolean;
 }
 /**
- * {{$ ref #/functions/docs:index:fun $}} is a basic function for setting {{$ ref #/resources/docs:index:Resource/properties/in $}} on {{$ ref #/resources/docs:index:Resource $}}.
+ *  is a basic function for setting  on .
  */
 export function funOutput(args: FunOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<FunResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
@@ -39,7 +39,7 @@ export function funOutput(args: FunOutputArgs, opts?: pulumi.InvokeOutputOptions
 
 export interface FunOutputArgs {
     /**
-     * Will be used to set {{$ ref #/functions/docs:index:fun/outputs/properties/out $}}.
+     * Will be used to set FunResult.out.
      */
     in: pulumi.Input<boolean>;
 }
