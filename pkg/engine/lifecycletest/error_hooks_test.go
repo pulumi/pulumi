@@ -69,7 +69,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		hook1, err := deploytest.NewHook(monitor, callbacks, "hook1",
+		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
 				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
@@ -83,7 +83,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 			}, true)
 		require.NoError(t, err)
 
-		hook2, err := deploytest.NewHook(monitor, callbacks, "hook2",
+		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
 				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
@@ -157,7 +157,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		hook1, err := deploytest.NewHook(monitor, callbacks, "hook1",
+		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
 				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
@@ -171,7 +171,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 			}, true)
 		require.NoError(t, err)
 
-		hook2, err := deploytest.NewHook(monitor, callbacks, "hook2",
+		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
 				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
@@ -259,7 +259,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		hook1, err := deploytest.NewHook(monitor, callbacks, "hook1",
+		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
 				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
@@ -273,7 +273,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 			}, true)
 		require.NoError(t, err)
 
-		hook2, err := deploytest.NewHook(monitor, callbacks, "hook2",
+		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
 				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
@@ -373,7 +373,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create(t *testing.T) {
 
 				var hooks []*deploytest.ResourceHook
 				if s.withHooks {
-					h, err := deploytest.NewHook(monitor, callbacks, "hook",
+					h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 						func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 							_, _, _, _ resource.PropertyMap, _ string, _ []string,
 						) (bool, error) {
@@ -466,7 +466,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update(t *testing.T) {
 
 				var hooks []*deploytest.ResourceHook
 				if s.withHooks {
-					h, err := deploytest.NewHook(monitor, callbacks, "hook",
+					h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 						func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 							_, _, _, _ resource.PropertyMap, _ string, _ []string,
 						) (bool, error) {
@@ -568,7 +568,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete(t *testing.T) {
 
 				var hooks []*deploytest.ResourceHook
 				if s.withHooks {
-					h, err := deploytest.NewHook(monitor, callbacks, "hook",
+					h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 						func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 							_, _, _, _ resource.PropertyMap, _ string, _ []string,
 						) (bool, error) {
@@ -647,7 +647,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -712,7 +712,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -779,7 +779,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -838,7 +838,7 @@ func TestErrorHooks_NotCalledOnSuccess_Create(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -895,7 +895,7 @@ func TestErrorHooks_NotCalledOnSuccess_Update(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -964,7 +964,7 @@ func TestErrorHooks_NotCalledOnSuccess_Delete(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -1029,7 +1029,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
@@ -1107,7 +1107,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
@@ -1204,7 +1204,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
@@ -1309,7 +1309,7 @@ func TestErrorHooks_RetryOnceThenSuccess_HookCalledOnce_Create(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -1373,7 +1373,7 @@ func TestErrorHooks_RetryOnceThenSuccess_HookCalledOnce_Update(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -1444,7 +1444,7 @@ func TestErrorHooks_RetryOnceThenSuccess_HookCalledOnce_Delete(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -1513,7 +1513,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
@@ -1584,7 +1584,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
@@ -1662,7 +1662,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		h, err := deploytest.NewHook(monitor, callbacks, "hook",
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
@@ -1754,7 +1754,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		hA, err := deploytest.NewHook(monitor, callbacks, "hook-A",
+		hA, err := deploytest.NewErrorHook(monitor, callbacks, "hook-A",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -1765,7 +1765,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 			}, true)
 		require.NoError(t, err)
 
-		hB, err := deploytest.NewHook(monitor, callbacks, "hook-B",
+		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -1855,7 +1855,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		hA, err := deploytest.NewHook(monitor, callbacks, "hook-A",
+		hA, err := deploytest.NewErrorHook(monitor, callbacks, "hook-A",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -1866,7 +1866,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 			}, true)
 		require.NoError(t, err)
 
-		hB, err := deploytest.NewHook(monitor, callbacks, "hook-B",
+		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -1959,7 +1959,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		hA, err := deploytest.NewHook(monitor, callbacks, "hook-A",
+		hA, err := deploytest.NewErrorHook(monitor, callbacks, "hook-A",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
@@ -1970,7 +1970,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 			}, true)
 		require.NoError(t, err)
 
-		hB, err := deploytest.NewHook(monitor, callbacks, "hook-B",
+		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {

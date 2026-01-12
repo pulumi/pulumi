@@ -290,7 +290,7 @@ func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	if _, err := s.Deployment().RunHooks(
+	if err := s.Deployment().RunHooks(
 		s.new.ResourceHooks[resource.BeforeCreate],
 		resource.BeforeCreate,
 		s.new.ID,
@@ -301,8 +301,6 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		nil, /* oldInputs */
 		nil, /* newOutputs */
 		nil, /* oldOutputs */
-		"",  /* failedOperation */
-		nil, /* errorMessages */
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -367,9 +365,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				return resp.Status == resource.StatusPartialFailure
 			},
 			func(resp plugin.CreateResponse, failures []string) (bool, error) {
-				shouldRetry, err := s.Deployment().RunHooks(
+				shouldRetry, err := s.Deployment().RunErrorHooks(
 					s.new.ResourceHooks[resource.OnError],
-					resource.OnError,
 					s.new.ID,
 					s.new.URN,
 					s.URN().Name(),
@@ -454,7 +451,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	if s.new.Custom {
-		if _, err := s.Deployment().RunHooks(
+		if err := s.Deployment().RunHooks(
 			s.new.ResourceHooks[resource.AfterCreate],
 			resource.AfterCreate,
 			s.new.ID,
@@ -465,8 +462,6 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			nil, /* oldInputs */
 			s.new.Outputs,
 			nil, /* oldOutputs */
-			"",  /* failedOperation */
-			nil, /* errorMessages */
 		); err != nil {
 			return resourceStatus, complete, err
 		}
@@ -592,7 +587,7 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	if _, err := s.Deployment().RunHooks(
+	if err := s.Deployment().RunHooks(
 		s.old.ResourceHooks[resource.BeforeDelete],
 		resource.BeforeDelete,
 		s.old.ID,
@@ -603,8 +598,6 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Inputs,
 		nil, /* newOutputs */
 		s.old.Outputs,
-		"",  /* failedOperation */
-		nil, /* errorMessages */
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -682,9 +675,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			},
 
 			func(_ plugin.DeleteResponse, failures []string) (bool, error) {
-				shouldRetry, err := s.Deployment().RunHooks(
+				shouldRetry, err := s.Deployment().RunErrorHooks(
 					s.old.ResourceHooks[resource.OnError],
-					resource.OnError,
 					s.old.ID,
 					s.old.URN,
 					s.URN().Name(),
@@ -760,7 +752,7 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// custom and component resources here in the step. When a component resource
 	// is deleted, we of course never run its constructor, and so there's never
 	// any `RegisterResourceOutputs` call.
-	if _, err := s.Deployment().RunHooks(
+	if err := s.Deployment().RunHooks(
 		s.old.ResourceHooks[resource.AfterDelete],
 		resource.AfterDelete,
 		s.old.ID,
@@ -771,8 +763,6 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Inputs,
 		nil, /* newOutputs */
 		s.old.Outputs,
-		"",  /* failedOperation */
-		nil, /* errorMessages */
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -929,7 +919,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.Modified = s.old.Modified
 	s.new.Lock.Unlock()
 
-	if _, err := s.Deployment().RunHooks(
+	if err := s.Deployment().RunHooks(
 		s.new.ResourceHooks[resource.BeforeUpdate],
 		resource.BeforeUpdate,
 		s.new.ID,
@@ -940,8 +930,6 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Inputs,
 		nil, /* newOutputs */
 		s.old.Outputs,
-		"",  /* failedOperation */
-		nil, /* errorMessages */
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -1007,9 +995,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				return resp.Status == resource.StatusPartialFailure
 			},
 			func(resp plugin.UpdateResponse, failures []string) (bool, error) {
-				shouldRetry, err := s.Deployment().RunHooks(
+				shouldRetry, err := s.Deployment().RunErrorHooks(
 					s.new.ResourceHooks[resource.OnError],
-					resource.OnError,
 					s.new.ID,
 					s.new.URN,
 					s.URN().Name(),
@@ -1080,7 +1067,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// `RegisterResourceOutputs` is called for the resource. This happens in
 	// `stepExecutor.executeRegisterResourceOutputs.`
 	if s.old.Custom {
-		if _, err := s.Deployment().RunHooks(
+		if err := s.Deployment().RunHooks(
 			s.new.ResourceHooks[resource.AfterUpdate],
 			resource.AfterUpdate,
 			s.new.ID,
@@ -1091,8 +1078,6 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.old.Inputs,
 			s.new.Outputs,
 			s.old.Outputs,
-			"",  /* failedOperation */
-			nil, /* errorMessages */
 		); err != nil {
 			return resourceStatus, nil, err
 		}

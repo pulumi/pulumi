@@ -1702,8 +1702,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
 		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-		failedOperation string, errorMessages []string,
-	) (bool, error) {
+	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
 		mOpts := plugin.MarshalOptions{
@@ -1716,46 +1715,40 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 		if newInputs != nil {
 			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
 			if err != nil {
-				return false, fmt.Errorf("marshaling new inputs for resource hook %q: %w", name, err)
+				return fmt.Errorf("marshaling new inputs for resource hook %q: %w", name, err)
 			}
 		}
 		if oldInputs != nil {
 			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
 			if err != nil {
-				return false, fmt.Errorf("marshaling old inputs for resource hook %q: %w", name, err)
+				return fmt.Errorf("marshaling old inputs for resource hook %q: %w", name, err)
 			}
 		}
 		if newOutputs != nil {
 			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
 			if err != nil {
-				return false, fmt.Errorf("marshaling new outputs for resource hook %q: %w", name, err)
+				return fmt.Errorf("marshaling new outputs for resource hook %q: %w", name, err)
 			}
 		}
 		if oldOutputs != nil {
 			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
 			if err != nil {
-				return false, fmt.Errorf("marshaling old outputs for resource hook %q: %w", name, err)
+				return fmt.Errorf("marshaling old outputs for resource hook %q: %w", name, err)
 			}
-		}
-		var failedOperationPtr *string
-		if failedOperation != "" {
-			failedOperationPtr = &failedOperation
 		}
 
 		reqBytes, err := proto.Marshal(&pulumirpc.ResourceHookRequest{
-			Urn:             string(urn),
-			Id:              string(id),
-			Name:            name,
-			Type:            string(typ),
-			NewInputs:       mNewInputs,
-			OldInputs:       mOldInputs,
-			NewOutputs:      mNewOutputs,
-			OldOutputs:      mOldOutputs,
-			FailedOperation: failedOperationPtr,
-			Errors:          errorMessages,
+			Urn:        string(urn),
+			Id:         string(id),
+			Name:       name,
+			Type:       string(typ),
+			NewInputs:  mNewInputs,
+			OldInputs:  mOldInputs,
+			NewOutputs: mNewOutputs,
+			OldOutputs: mOldOutputs,
 		})
 		if err != nil {
-			return false, fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
+			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
 		}
 		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
 			Token:   cb.Token,
@@ -1763,22 +1756,18 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 		})
 		if err != nil {
 			logging.V(6).Infof("ResourceHook %q call error: %v", name, err)
-			return false, err
+			return err
 		}
 		var response pulumirpc.ResourceHookResponse
 		err = proto.Unmarshal(resp.Response, &response)
 		if err != nil {
-			return false, fmt.Errorf("unmarshaling resource hook response for %q: %w", name, err)
+			return fmt.Errorf("unmarshaling resource hook response for %q: %w", name, err)
 		}
-		if errorMessages != nil {
-			logging.V(6).Infof("ResourceHook %s returned %q, retry=%v", name, response.Error, response.Retry)
-		} else {
-			logging.V(6).Infof("ResourceHook %s returned %q", name, response.Error)
-		}
+		logging.V(6).Infof("ResourceHook %s returned %q", name, response.Error)
 		if response.Error != "" {
-			return false, errors.New(response.Error)
+			return errors.New(response.Error)
 		}
-		return response.Retry, nil
+		return nil
 	}, nil
 }
 
@@ -1796,6 +1785,104 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 		OnDryRun: req.OnDryRun,
 	}
 	err = rm.resourceHooks.RegisterResourceHook(hook)
+	return nil, err
+}
+
+func (rm *resmon) wrapErrorHookCallback(
+	name string, cb *pulumirpc.Callback,
+) (ErrorHookFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context, urn resource.URN, id resource.ID,
+		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		failedOperation string, errorMessages []string,
+	) (bool, error) {
+		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
+		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
+		mOpts := plugin.MarshalOptions{
+			Label:            fmt.Sprintf("ResourceMonitor.ErrorHook(%s, %s)", name, urn),
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if newInputs != nil {
+			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling new inputs for resource error hook %q: %w", name, err)
+			}
+		}
+		if oldInputs != nil {
+			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling old inputs for resource error hook %q: %w", name, err)
+			}
+		}
+		if newOutputs != nil {
+			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling new outputs for resource error hook %q: %w", name, err)
+			}
+		}
+		if oldOutputs != nil {
+			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling old outputs for resource error hook %q: %w", name, err)
+			}
+		}
+		reqBytes, err := proto.Marshal(&pulumirpc.ErrorHookRequest{
+			Urn:             string(urn),
+			Id:              string(id),
+			Name:            name,
+			Type:            string(typ),
+			NewInputs:       mNewInputs,
+			OldInputs:       mOldInputs,
+			NewOutputs:      mNewOutputs,
+			OldOutputs:      mOldOutputs,
+			FailedOperation: failedOperation,
+			Errors:          errorMessages,
+		})
+		if err != nil {
+			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)
+		}
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   cb.Token,
+			Request: reqBytes,
+		})
+		if err != nil {
+			logging.V(6).Infof("ErrorHook %q call error: %v", name, err)
+			return false, err
+		}
+		var response pulumirpc.ErrorHookResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return false, fmt.Errorf("unmarshaling error hook response for %q: %w", name, err)
+		}
+		logging.V(6).Infof("ErrorHook %s returned %q, retry=%v", name, response.Error, response.Retry)
+		if response.Error != "" {
+			return false, errors.New(response.Error)
+		}
+		return response.Retry, nil
+	}, nil
+}
+
+func (rm *resmon) RegisterErrorHook(
+	ctx context.Context, req *pulumirpc.RegisterErrorHookRequest,
+) (*emptypb.Empty, error) {
+	logging.V(6).Infof("RegisterErrorHook %q", req.Name)
+	wrapped, err := rm.wrapErrorHookCallback(req.Name, req.Callback)
+	if err != nil {
+		return nil, err
+	}
+	hook := ErrorHook{
+		Name:     req.Name,
+		Callback: wrapped,
+		OnDryRun: req.OnDryRun,
+	}
+	err = rm.resourceHooks.RegisterErrorHook(hook)
 	return nil, err
 }
 

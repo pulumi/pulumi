@@ -185,6 +185,17 @@ type ResourceHookFunc func(
 	errors []string,
 ) (retry bool, err error)
 
+type ErrorHookFunc func(
+	ctx context.Context,
+	urn resource.URN,
+	id resource.ID,
+	name string,
+	typ tokens.Type,
+	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	failedOperation string,
+	errors []string,
+) (retry bool, err error)
+
 func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest_ResourceHooksBinding {
 	m := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
 	for _, hook := range binding.BeforeCreate {
@@ -237,6 +248,84 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
 		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
+		mOpts := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if req.NewInputs != nil {
+			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling new inputs: %w", err)
+			}
+		}
+		if req.OldInputs != nil {
+			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
+			}
+		}
+		if req.NewOutputs != nil {
+			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling new outputs: %w", err)
+			}
+		}
+		if req.OldOutputs != nil {
+			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
+			}
+		}
+		_, err = f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
+			newInputs, oldInputs, newOutputs, oldOutputs, "", nil)
+		if err != nil {
+			return &pulumirpc.ResourceHookResponse{
+				Error: err.Error(),
+			}, nil
+		}
+		return &pulumirpc.ResourceHookResponse{}, nil
+	}
+	callback, err := callbacks.Allocate(wrapped)
+	if err != nil {
+		return nil, err
+	}
+	req := &pulumirpc.RegisterResourceHookRequest{
+		Name:     name,
+		Callback: callback,
+		OnDryRun: onDryRun,
+	}
+	return req, nil
+}
+
+func NewErrorHook(
+	monitor *ResourceMonitor, callbacks *CallbackServer, name string, f ErrorHookFunc, onDryRun bool,
+) (*ResourceHook, error) {
+	req, err := prepareErrorHook(callbacks, name, f, onDryRun)
+	if err != nil {
+		return nil, err
+	}
+	err = monitor.RegisterErrorHook(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+	return &ResourceHook{
+		Name:     name,
+		callback: req.Callback,
+	}, nil
+}
+
+func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc, onDryRun bool) (
+	*pulumirpc.RegisterErrorHookRequest, error,
+) {
+	wrapped := func(request []byte) (proto.Message, error) {
+		var req pulumirpc.ErrorHookRequest
+		err := proto.Unmarshal(request, &req)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
 		var failedOperation string
 		mOpts := plugin.MarshalOptions{
 			KeepUnknowns:     true,
@@ -268,23 +357,23 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
-		if req.FailedOperation != nil {
-			switch *req.FailedOperation {
+		if req.FailedOperation != "" {
+			switch req.FailedOperation {
 			case "create", "update", "delete":
-				failedOperation = *req.FailedOperation
+				failedOperation = req.FailedOperation
 			default:
-				return nil, fmt.Errorf("invalid failed operation: %q", *req.FailedOperation)
+				return nil, fmt.Errorf("invalid failed operation: %q", req.FailedOperation)
 			}
 		}
 
 		retry, err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
 			newInputs, oldInputs, newOutputs, oldOutputs, failedOperation, req.Errors)
 		if err != nil {
-			return &pulumirpc.ResourceHookResponse{
+			return &pulumirpc.ErrorHookResponse{
 				Error: err.Error(),
 			}, nil
 		}
-		return &pulumirpc.ResourceHookResponse{
+		return &pulumirpc.ErrorHookResponse{
 			Retry: retry,
 		}, nil
 	}
@@ -292,7 +381,7 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 	if err != nil {
 		return nil, err
 	}
-	req := &pulumirpc.RegisterResourceHookRequest{
+	req := &pulumirpc.RegisterErrorHookRequest{
 		Name:     name,
 		Callback: callback,
 		OnDryRun: onDryRun,
@@ -754,6 +843,13 @@ func (rm *ResourceMonitor) SignalAndWaitForShutdown(ctx context.Context) error {
 func (rm *ResourceMonitor) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest,
 ) error {
 	_, err := rm.resmon.RegisterResourceHook(ctx, req)
+	return err
+}
+
+func (rm *ResourceMonitor) RegisterErrorHook(
+	ctx context.Context, req *pulumirpc.RegisterErrorHookRequest,
+) error {
+	_, err := rm.resmon.RegisterErrorHook(ctx, req)
 	return err
 }
 
