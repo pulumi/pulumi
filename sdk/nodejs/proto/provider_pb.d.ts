@@ -63,11 +63,6 @@ export class ProviderHandshakeResponse extends jspb.Message {
     getSupportsAutonamingConfiguration(): boolean;
     setSupportsAutonamingConfiguration(value: boolean): ProviderHandshakeResponse;
 
-    hasPulumiVersionRange(): boolean;
-    clearPulumiVersionRange(): void;
-    getPulumiVersionRange(): string | undefined;
-    setPulumiVersionRange(value: string): ProviderHandshakeResponse;
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
     static toObject(includeInstance: boolean, msg: ProviderHandshakeResponse): ProviderHandshakeResponse.AsObject;
@@ -84,7 +79,6 @@ export namespace ProviderHandshakeResponse {
         acceptResources: boolean,
         acceptOutputs: boolean,
         supportsAutonamingConfiguration: boolean,
-        pulumiVersionRange?: string,
     }
 }
 
