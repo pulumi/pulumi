@@ -314,14 +314,12 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		return builtins, nil
 	}
 
-	descriptor := workspace.PackageDescriptor{
-		PluginDescriptor: workspace.PluginDescriptor{
-			Kind:              apitype.ResourcePlugin,
-			Name:              string(pkg),
-			Version:           version,
-			PluginDownloadURL: downloadURL,
-			Checksums:         checksums,
-		},
+	descriptor := workspace.PluginDescriptor{
+		Kind:              apitype.ResourcePlugin,
+		Name:              string(pkg),
+		Version:           version,
+		PluginDownloadURL: downloadURL,
+		Checksums:         checksums,
 	}
 
 	provider, err := host.Provider(descriptor)
@@ -349,7 +347,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor.PluginDescriptor, log)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log)
 	if err != nil {
 		return nil, err
 	}
@@ -572,8 +570,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		AllowUnknowns: true,
 	})
 	if len(resp.Failures) != 0 || err != nil {
-		closeErr := r.host.CloseProvider(provider)
-		contract.IgnoreError(closeErr)
+		contract.IgnoreClose(provider)
 		return plugin.CheckResponse{Failures: resp.Failures}, err
 	}
 
@@ -667,8 +664,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.
 	if diff.Replace() {
-		closeErr := r.host.CloseProvider(provider)
-		contract.IgnoreError(closeErr)
+		contract.IgnoreClose(provider)
 	}
 
 	logging.V(7).Infof("%s: executed (%#v, %#v)", label, diff.Changes, diff.ReplaceKeys)
@@ -744,8 +740,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		ID:     &res.ID,
 		Inputs: FilterProviderConfig(res.Inputs),
 	}); err != nil {
-		closeErr := r.host.CloseProvider(provider)
-		contract.IgnoreError(closeErr)
+		contract.IgnoreClose(provider)
 		return fmt.Errorf("configure provider '%v': %w", urn, err)
 	}
 
@@ -884,8 +879,7 @@ func (r *Registry) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.D
 		return plugin.DeleteResponse{}, nil
 	}
 
-	closeErr := r.host.CloseProvider(provider)
-	contract.IgnoreError(closeErr)
+	contract.IgnoreClose(provider)
 	return plugin.DeleteResponse{}, nil
 }
 
@@ -911,9 +905,9 @@ func (r *Registry) Call(context.Context, plugin.CallRequest) (plugin.CallRespons
 	return plugin.CallResult{}, errors.New("the provider registry is not callable")
 }
 
-func (r *Registry) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (r *Registry) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	// return an error: this should not be called for the provider registry
-	return workspace.PluginInfo{}, errors.New("the provider registry does not report plugin info")
+	return plugin.PluginInfo{}, errors.New("the provider registry does not report plugin info")
 }
 
 func (r *Registry) SignalCancellation(context.Context) error {

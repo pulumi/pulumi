@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"strconv"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type Type int
@@ -182,7 +183,12 @@ func (c Value) unmarshalObject() (object, error) {
 		}
 		return newObject(int64(i)), nil
 	case TypeBool:
-		return newObject(c.value == "true"), nil
+		b, err := strconv.ParseBool(c.value)
+		if err != nil {
+			logging.Warningf("Failed to parse boolean value '%s': %v. Defaulting to false.", c.value, err)
+			return newObject(false), nil
+		}
+		return newObject(b), nil
 	case TypeFloat:
 		f, err := strconv.ParseFloat(c.value, 64)
 		if err != nil {

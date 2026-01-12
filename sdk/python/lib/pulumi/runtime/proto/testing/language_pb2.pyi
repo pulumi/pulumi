@@ -128,6 +128,7 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     PROGRAM_OVERRIDES_FIELD_NUMBER: builtins.int
     POLICY_PACK_DIRECTORY_FIELD_NUMBER: builtins.int
     LOCAL_FIELD_NUMBER: builtins.int
+    PROVIDERS_DIRECTORY_FIELD_NUMBER: builtins.int
     language_plugin_name: builtins.str
     language_plugin_target: builtins.str
     snapshot_directory: builtins.str
@@ -145,6 +146,8 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     """
     local: builtins.bool
     """If true, tests will be run in "local" mode, meaning all SDKs will be generated with the `--local` flag and not packed."""
+    providers_directory: builtins.str
+    """The path to a directory containing provider plugins to be used for the "provider-" tests."""
     @property
     def snapshot_edits(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PrepareLanguageTestsRequest.Replacement]: ...
     @property
@@ -170,8 +173,9 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
         program_overrides: collections.abc.Mapping[builtins.str, global___PrepareLanguageTestsRequest.ProgramOverride] | None = ...,
         policy_pack_directory: builtins.str = ...,
         local: builtins.bool = ...,
+        providers_directory: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_info", b"language_info", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "local", b"local", "policy_pack_directory", b"policy_pack_directory", "program_overrides", b"program_overrides", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_info", b"language_info", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "local", b"local", "policy_pack_directory", b"policy_pack_directory", "program_overrides", b"program_overrides", "providers_directory", b"providers_directory", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
 
 global___PrepareLanguageTestsRequest = PrepareLanguageTestsRequest
 

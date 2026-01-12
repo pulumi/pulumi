@@ -278,7 +278,8 @@ func installPackagesFromProject(
 
 			parameters := &plugin.ParameterizeArgs{Args: packageSpec.Parameters}
 			_, _, diags, err := packages.InstallPackage(
-				proj, pctx, proj.RuntimeInfo().Name(), pctx.Root, installSource, parameters, registry)
+				proj, pctx, proj.RuntimeInfo().Name(), pctx.Root, installSource, parameters, registry,
+				env.Global())
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				return errors.Join(

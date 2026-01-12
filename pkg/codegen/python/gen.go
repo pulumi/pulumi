@@ -1896,7 +1896,9 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
 	}
-	fmt.Fprintf(w, "    '%s',\n", name)
+	if fun.Plain {
+		fmt.Fprintf(w, "    '%s',\n", name)
+	}
 	if fun.NeedsOutputVersion() {
 		fmt.Fprintf(w, "    '%s_output',\n", name)
 	}
@@ -2029,8 +2031,10 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	// generate plain invoke
-	if err := genFunctionDef(retTypeName, true /* plain */); err != nil {
-		return "", err
+	if fun.Plain {
+		if err := genFunctionDef(retTypeName, true /* plain */); err != nil {
+			return "", err
+		}
 	}
 
 	if fun.NeedsOutputVersion() {

@@ -498,7 +498,8 @@ snapshotEditsList: jspb.Message.toObjectList(msg.getSnapshotEditsList(),
 languageInfo: jspb.Message.getFieldWithDefault(msg, 8, ""),
 programOverridesMap: (f = msg.getProgramOverridesMap()) ? f.toObject(includeInstance, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.toObject) : [],
 policyPackDirectory: jspb.Message.getFieldWithDefault(msg, 10, ""),
-local: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
+local: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
+providersDirectory: jspb.Message.getFieldWithDefault(msg, 12, "")
   };
 
   if (includeInstance) {
@@ -581,6 +582,10 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.deserializeBinaryFromReader 
     case 11:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setLocal(value);
+      break;
+    case 12:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setProvidersDirectory(value);
       break;
     default:
       reader.skipField();
@@ -683,6 +688,13 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.serializeBinaryToWriter = fu
   if (f) {
     writer.writeBool(
       11,
+      f
+    );
+  }
+  f = message.getProvidersDirectory();
+  if (f.length > 0) {
+    writer.writeString(
+      12,
       f
     );
   }
@@ -1255,6 +1267,24 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getLocal = functio
  */
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setLocal = function(value) {
   return jspb.Message.setProto3BooleanField(this, 11, value);
+};
+
+
+/**
+ * optional string providers_directory = 12;
+ * @return {string}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getProvidersDirectory = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 12, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setProvidersDirectory = function(value) {
+  return jspb.Message.setProto3StringField(this, 12, value);
 };
 
 

@@ -472,8 +472,6 @@ func prepareConfig(
 
 //nolint:paralleltest // changes global ConfigFile variable
 func TestConfigSet(t *testing.T) {
-	ctx := context.Background()
-
 	cases := []struct {
 		name     string
 		args     []string
@@ -552,7 +550,7 @@ func TestConfigSet(t *testing.T) {
 
 			ws := &pkgWorkspace.MockContext{}
 
-			err := configSetCmd.Run(ctx, ws, c.args, &project, &s)
+			err := configSetCmd.Run(t.Context(), ws, c.args, &project, &s)
 			require.NoError(t, err)
 
 			// verify the config was set
@@ -904,4 +902,463 @@ func (m *mockEncrypterFactory) GetEncrypter(
 	_ *workspace.ProjectStack,
 ) (config.Encrypter, cmdStack.SecretsManagerState, error) {
 	return m.encrypter, cmdStack.SecretsManagerUnchanged, nil
+}
+
+//nolint:paralleltest // changes global ConfigFile variable
+func TestConfigPathOperations(t *testing.T) {
+	type testArgs struct {
+		Key                   string
+		Value                 string
+		Secret                bool
+		Path                  bool
+		TopLevelKey           string
+		TopLevelExpectedValue string
+		ExpectFailure         bool
+	}
+
+	tests := [][]testArgs{
+		{
+			{
+				Key:                   "testProject:aConfigValue",
+				Value:                 "this value is a value",
+				TopLevelKey:           "testProject:aConfigValue",
+				TopLevelExpectedValue: "this value is a value",
+			},
+			{
+				Key:                   "testProject:anotherConfigValue",
+				Value:                 "this value is another value",
+				TopLevelKey:           "testProject:anotherConfigValue",
+				TopLevelExpectedValue: "this value is another value",
+			},
+			{
+				Key:                   "testProject:bEncryptedSecret",
+				Value:                 "this super secret is encrypted",
+				Secret:                true,
+				TopLevelKey:           "testProject:bEncryptedSecret",
+				TopLevelExpectedValue: "this super secret is encrypted",
+			},
+			{
+				Key:                   "testProject:anotherEncryptedSecret",
+				Value:                 "another encrypted secret",
+				Secret:                true,
+				TopLevelKey:           "testProject:anotherEncryptedSecret",
+				TopLevelExpectedValue: "another encrypted secret",
+			},
+			// Overwriting a top-level string value is allowed.
+			{
+				Key:                   "testProject:aConfigValue.inner",
+				Value:                 "new value",
+				Path:                  true,
+				TopLevelKey:           "testProject:aConfigValue",
+				TopLevelExpectedValue: `{"inner":"new value"}`,
+			},
+			{
+				Key:                   "testProject:anotherConfigValue[0]",
+				Value:                 "new value",
+				Path:                  true,
+				TopLevelKey:           "testProject:anotherConfigValue",
+				TopLevelExpectedValue: `["new value"]`,
+			},
+			{
+				Key:                   "testProject:bEncryptedSecret.inner",
+				Value:                 "new value",
+				Path:                  true,
+				TopLevelKey:           "testProject:bEncryptedSecret",
+				TopLevelExpectedValue: `{"inner":"new value"}`,
+			},
+			{
+				Key:                   "testProject:anotherEncryptedSecret[0]",
+				Value:                 "new value",
+				Path:                  true,
+				TopLevelKey:           "testProject:anotherEncryptedSecret",
+				TopLevelExpectedValue: `["new value"]`,
+			},
+		},
+		{
+			{
+				Key:                   "testProject:[]",
+				Value:                 "square brackets value",
+				TopLevelKey:           "testProject:[]",
+				TopLevelExpectedValue: "square brackets value",
+			},
+			{
+				Key:                   "testProject:x.y",
+				Value:                 "x.y value",
+				TopLevelKey:           "testProject:x.y",
+				TopLevelExpectedValue: "x.y value",
+			},
+			{
+				Key:                   "testProject:0",
+				Value:                 "0 value",
+				Path:                  true,
+				TopLevelKey:           "testProject:0",
+				TopLevelExpectedValue: "0 value",
+			},
+			{
+				Key:                   "testProject:true",
+				Value:                 "value",
+				Path:                  true,
+				TopLevelKey:           "testProject:true",
+				TopLevelExpectedValue: "value",
+			},
+		},
+		{
+			{
+				Key:                   `testProject:["test.Key"]`,
+				Value:                 "test key value",
+				Path:                  true,
+				TopLevelKey:           "testProject:test.Key",
+				TopLevelExpectedValue: "test key value",
+			},
+			{
+				Key:                   `testProject:nested["test.Key"]`,
+				Value:                 "nested test key value",
+				Path:                  true,
+				TopLevelKey:           "testProject:nested",
+				TopLevelExpectedValue: `{"test.Key":"nested test key value"}`,
+			},
+			{
+				Key:                   "testProject:outer.inner",
+				Value:                 "value",
+				Path:                  true,
+				TopLevelKey:           "testProject:outer",
+				TopLevelExpectedValue: `{"inner":"value"}`,
+			},
+
+			// Wrong type
+			{Key: "testProject:outer[0]", Value: "v", Path: true, ExpectFailure: true},
+			{Key: "testProject:outer.inner.nested", Value: "v", Path: true, ExpectFailure: true},
+			{Key: "testProject:outer.inner[0]", Value: "v", Path: true, ExpectFailure: true},
+		},
+		{
+			{
+				Key:                   "testProject:names[0]",
+				Value:                 "a",
+				Path:                  true,
+				TopLevelKey:           "testProject:names",
+				TopLevelExpectedValue: `["a"]`,
+			},
+			{
+				Key:                   "testProject:names[1]",
+				Value:                 "b",
+				Path:                  true,
+				TopLevelKey:           "testProject:names",
+				TopLevelExpectedValue: `["a","b"]`,
+			},
+			{
+				Key:                   "testProject:names[2]",
+				Value:                 "c",
+				Path:                  true,
+				TopLevelKey:           "testProject:names",
+				TopLevelExpectedValue: `["a","b","c"]`,
+			},
+			{
+				Key:                   "testProject:names[3]",
+				Value:                 "super secret name",
+				Path:                  true,
+				Secret:                true,
+				TopLevelKey:           "testProject:names",
+				TopLevelExpectedValue: `["a","b","c","super secret name"]`,
+			},
+
+			// Index out of range.
+			{Key: "testProject:names[-1]", Value: "v", Path: true, ExpectFailure: true},
+			{Key: "testProject:names[5]", Value: "v", Path: true, ExpectFailure: true},
+
+			// Wrong type
+			{Key: "testProject:names.nested", Value: "v", Path: true, ExpectFailure: true},
+		},
+		{
+			{
+				Key:                   "testProject:servers[0].port",
+				Value:                 "80",
+				Path:                  true,
+				TopLevelKey:           "testProject:servers",
+				TopLevelExpectedValue: `[{"port":80}]`,
+			},
+			{
+				Key:                   "testProject:servers[0].host",
+				Value:                 "example",
+				Path:                  true,
+				TopLevelKey:           "testProject:servers",
+				TopLevelExpectedValue: `[{"host":"example","port":80}]`,
+			},
+		},
+		{
+			{
+				Key:                   "testProject:a.b[0].c",
+				Value:                 "true",
+				Path:                  true,
+				TopLevelKey:           "testProject:a",
+				TopLevelExpectedValue: `{"b":[{"c":true}]}`,
+			},
+			{
+				Key:                   "testProject:a.b[1].c",
+				Value:                 "false",
+				Path:                  true,
+				TopLevelKey:           "testProject:a",
+				TopLevelExpectedValue: `{"b":[{"c":true},{"c":false}]}`,
+			},
+		},
+		{
+			{
+				Key:                   "testProject:tokens[0]",
+				Value:                 "shh",
+				Path:                  true,
+				Secret:                true,
+				TopLevelKey:           "testProject:tokens",
+				TopLevelExpectedValue: `["shh"]`,
+			},
+			{
+				Key:                   "testProject:foo.bar",
+				Value:                 "don't tell",
+				Path:                  true,
+				Secret:                true,
+				TopLevelKey:           "testProject:foo",
+				TopLevelExpectedValue: `{"bar":"don't tell"}`,
+			},
+		},
+		{
+			{
+				Key:                   "testProject:semiInner.a.b.c.d",
+				Value:                 "1",
+				Path:                  true,
+				TopLevelKey:           "testProject:semiInner",
+				TopLevelExpectedValue: `{"a":{"b":{"c":{"d":1}}}}`,
+			},
+			{
+				Key:                   "testProject:wayInner.a.b.c.d.e.f.g.h.i.j.k",
+				Value:                 "false",
+				Path:                  true,
+				TopLevelKey:           "testProject:wayInner",
+				TopLevelExpectedValue: `{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":{"j":{"k":false}}}}}}}}}}}`,
+			},
+		},
+		{
+			{
+				Key:                   "testProject:foo1[0]",
+				Value:                 "false",
+				Path:                  true,
+				TopLevelKey:           "testProject:foo1",
+				TopLevelExpectedValue: `[false]`,
+			},
+			{
+				Key:                   "testProject:foo2[0]",
+				Value:                 "true",
+				Path:                  true,
+				TopLevelKey:           "testProject:foo2",
+				TopLevelExpectedValue: `[true]`,
+			},
+			{
+				Key:                   "testProject:foo3[0]",
+				Value:                 "10",
+				Path:                  true,
+				TopLevelKey:           "testProject:foo3",
+				TopLevelExpectedValue: `[10]`,
+			},
+			{
+				Key:                   "testProject:foo4[0]",
+				Value:                 "0",
+				Path:                  true,
+				TopLevelKey:           "testProject:foo4",
+				TopLevelExpectedValue: `[0]`,
+			},
+			{
+				Key:                   "testProject:foo5[0]",
+				Value:                 "00",
+				Path:                  true,
+				TopLevelKey:           "testProject:foo5",
+				TopLevelExpectedValue: `["00"]`,
+			},
+			{
+				Key:                   "testProject:foo6[0]",
+				Value:                 "01",
+				Path:                  true,
+				TopLevelKey:           "testProject:foo6",
+				TopLevelExpectedValue: `["01"]`,
+			},
+			{
+				Key:                   "testProject:foo7[0]",
+				Value:                 "0123456",
+				Path:                  true,
+				TopLevelKey:           "testProject:foo7",
+				TopLevelExpectedValue: `["0123456"]`,
+			},
+		},
+		{
+			{
+				Key:                   "testProject:bar1.inner",
+				Value:                 "false",
+				Path:                  true,
+				TopLevelKey:           "testProject:bar1",
+				TopLevelExpectedValue: `{"inner":false}`,
+			},
+			{
+				Key:                   "testProject:bar2.inner",
+				Value:                 "true",
+				Path:                  true,
+				TopLevelKey:           "testProject:bar2",
+				TopLevelExpectedValue: `{"inner":true}`,
+			},
+			{
+				Key:                   "testProject:bar3.inner",
+				Value:                 "10",
+				Path:                  true,
+				TopLevelKey:           "testProject:bar3",
+				TopLevelExpectedValue: `{"inner":10}`,
+			},
+			{
+				Key:                   "testProject:bar4.inner",
+				Value:                 "0",
+				Path:                  true,
+				TopLevelKey:           "testProject:bar4",
+				TopLevelExpectedValue: `{"inner":0}`,
+			},
+			{
+				Key:                   "testProject:bar5.inner",
+				Value:                 "00",
+				Path:                  true,
+				TopLevelKey:           "testProject:bar5",
+				TopLevelExpectedValue: `{"inner":"00"}`,
+			},
+			{
+				Key:                   "testProject:bar6.inner",
+				Value:                 "01",
+				Path:                  true,
+				TopLevelKey:           "testProject:bar6",
+				TopLevelExpectedValue: `{"inner":"01"}`,
+			},
+			{
+				Key:                   "testProject:bar7.inner",
+				Value:                 "0123456",
+				Path:                  true,
+				TopLevelKey:           "testProject:bar7",
+				TopLevelExpectedValue: `{"inner":"0123456"}`,
+			},
+		},
+		{
+			// Syntax errors.
+			{Key: "testProject:root[", Value: "v", Path: true, ExpectFailure: true},
+			{Key: `testProject:root["nested]`, Value: "v", Path: true, ExpectFailure: true},
+			{Key: "testProject:root.array[abc]", Value: "v", Path: true, ExpectFailure: true},
+			// First path segment must be a non-empty string.
+			{Key: `testProject:[""]`, Value: "v", Path: true, ExpectFailure: true},
+			{Key: "testProject:[0]", Value: "v", Path: true, ExpectFailure: true},
+			{Key: "testProject:.foo", Value: "v", Path: true, ExpectFailure: true},
+			{Key: "testProject:.[0]", Value: "v", Path: true, ExpectFailure: true},
+			// A "secure" key that is a map with a single string value is reserved by the system.
+			{Key: "testProject:key.secure", Value: "v", Path: true, ExpectFailure: true},
+			{Key: "testProject:super.nested.map.secure", Value: "v", Path: true, ExpectFailure: true},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run("", func(t *testing.T) {
+			project := workspace.Project{
+				Name: "testProject",
+			}
+
+			s := backend.MockStack{
+				RefF: func() backend.StackReference {
+					return &backend.MockStackReference{
+						NameV: tokens.MustParseStackName("testStack"),
+					}
+				},
+				ConfigLocationF: func() backend.StackConfigLocation {
+					return backend.StackConfigLocation{}
+				},
+				DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+					return &secrets.MockSecretsManager{
+						TypeF: func() string { return "mock" },
+						EncrypterF: func() config.Encrypter {
+							return &secrets.MockEncrypter{
+								EncryptValueF: func(plaintext string) string {
+									return base64.StdEncoding.EncodeToString([]byte(plaintext))
+								},
+							}
+						},
+						DecrypterF: func() config.Decrypter {
+							return &secrets.MockDecrypter{
+								DecryptValueF: func(ciphertext string) string {
+									decoded, _ := base64.StdEncoding.DecodeString(ciphertext)
+									return string(decoded)
+								},
+							}
+						},
+					}, nil
+				},
+			}
+
+			tmpdir := t.TempDir()
+			cmdStack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
+			defer func() {
+				cmdStack.ConfigFile = ""
+			}()
+
+			ws := &pkgWorkspace.MockContext{
+				ReadProjectF: func() (*workspace.Project, string, error) {
+					return &project, tmpdir, nil
+				},
+			}
+
+			for _, operation := range test {
+				configSetCmd := &configSetCmd{
+					Path:   operation.Path,
+					Secret: operation.Secret,
+					LoadProjectStack: func(
+						_ context.Context,
+						diags diag.Sink,
+						project *workspace.Project,
+						_ backend.Stack,
+					) (*workspace.ProjectStack, error) {
+						data, err := os.ReadFile(cmdStack.ConfigFile)
+						if os.IsNotExist(err) {
+							return &workspace.ProjectStack{
+								Config: config.Map{},
+							}, nil
+						}
+						require.NoError(t, err)
+						return workspace.LoadProjectStackBytes(diags, project, data, "Pulumi.stack.yaml", encoding.YAML)
+					},
+				}
+
+				err := configSetCmd.Run(t.Context(), ws, []string{operation.Key, operation.Value}, &project, &s)
+				if operation.ExpectFailure {
+					require.Error(t, err)
+					continue
+				}
+				require.NoError(t, err)
+
+				// Validate that the config was correct using getConfig
+				key, err := config.ParseKey(operation.TopLevelKey)
+				require.NoError(t, err)
+
+				ps, err := cmdStack.LoadProjectStack(t.Context(), cmdutil.Diag(), &project, &s)
+				require.NoError(t, err)
+
+				cfg, err := ps.Config.Copy(config.NopDecrypter, config.NopEncrypter)
+				require.NoError(t, err)
+
+				v, ok, err := cfg.Get(key, false)
+				require.NoError(t, err)
+				require.True(t, ok, "key %s not found", operation.TopLevelKey)
+
+				// Decrypt if needed
+				var actualValue string
+				if v.Secure() {
+					secretsManager, err := s.DefaultSecretManager(ps)
+					require.NoError(t, err)
+					decrypter := secretsManager.Decrypter()
+					actualValue, err = v.Value(decrypter)
+					require.NoError(t, err)
+				} else {
+					var err error
+					actualValue, err = v.Value(config.NopDecrypter)
+					require.NoError(t, err)
+				}
+
+				require.Equal(t, operation.TopLevelExpectedValue, actualValue)
+			}
+		})
+	}
 }

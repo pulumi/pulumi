@@ -2416,15 +2416,14 @@ func TestPythonComponentProviderException(t *testing.T) {
 }
 
 // Test that resource references work
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonComponentProviderResourceReference(t *testing.T) {
+	t.Parallel()
 	// TODO[pulumi/pulumi#18437]: Run this test on windows
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
 	// Manually set pulumi home so we can pass it to `plugin install`.
-	for _, runtime := range []string{"yaml", "python"} {
+	for _, runtime := range []string{"yaml", "python"} { //nolint:paralleltest // ProgramTest calls t.Parallel()
 		t.Run(runtime, func(t *testing.T) {
 			pulumiHome := t.TempDir()
 			integration.ProgramTest(t, &integration.ProgramTestOptions{

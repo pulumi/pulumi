@@ -1,0 +1,5 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Fix RangeError in defaultErrorMessage when error objects are large
+

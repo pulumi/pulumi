@@ -117,11 +117,11 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 	return "", false, nil
 }
 
-func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *languageRuntime) GetPluginInfo() (plugin.PluginInfo, error) {
 	if p.closed {
-		return workspace.PluginInfo{}, ErrLanguageRuntimeIsClosed
+		return plugin.PluginInfo{}, ErrLanguageRuntimeIsClosed
 	}
-	return workspace.PluginInfo{Name: "TestLanguage"}, nil
+	return plugin.PluginInfo{}, nil
 }
 
 func (p *languageRuntime) InstallDependencies(

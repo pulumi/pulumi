@@ -406,7 +406,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 	return plug, nil
 }
 
-func (host *pluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+func (host *pluginHost) Provider(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
@@ -505,17 +505,6 @@ func (host *pluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
 
 func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.PolicyAnalyzer(nm, "", nil)
-}
-
-func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
-	if host.isClosed() {
-		return ErrHostIsClosed
-	}
-	host.m.Lock()
-	defer host.m.Unlock()
-
-	delete(host.plugins, provider)
-	return nil
 }
 
 func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {

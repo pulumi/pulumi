@@ -16,6 +16,7 @@ package lifecycletest
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/blang/semver"
@@ -373,6 +374,59 @@ func TestInitErrorsStep(t *testing.T) {
 			assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
 			assert.Empty(t, snap.Resources[1].InitErrors)
 		})
+}
+
+func TestInitErrorsIgnoreChanges(t *testing.T) {
+	t.Parallel()
+
+	// Create new resource for this snapshot.
+	lt.NewTestBuilder(t, &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:    "pulumi:providers:pkgA",
+				URN:     "urn:pulumi:test::test::pulumi:providers:pkgA::default",
+				Custom:  true,
+				Delete:  false,
+				ID:      "935b2216-aec5-4810-96fd-5f6eae57ac88",
+				Outputs: resource.PropertyMap{},
+				Inputs:  resource.PropertyMap{},
+			},
+			{
+				Type:     "pkgA:m:typA",
+				URN:      "urn:pulumi:test::test::pkgA:m:typA::resA",
+				Custom:   true,
+				ID:       "my-resource-id",
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::default::935b2216-aec5-4810-96fd-5f6eae57ac88",
+				InitErrors: []string{
+					`errors should yield an empty update to "continue" awaiting initialization.`,
+				},
+				Outputs: resource.PropertyMap{},
+				Inputs:  resource.PropertyMap{},
+			},
+		},
+	}).
+		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
+			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				return plugin.CreateResponse{
+					ID:         "my-resource-id",
+					Properties: req.Properties,
+					Status:     resource.StatusOK,
+				}, nil
+			},
+			UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+				if len(req.IgnoreChanges) == 0 {
+					return plugin.UpdateResponse{}, errors.New("expected ignoreChanges")
+				}
+				return plugin.UpdateResponse{Properties: req.OldOutputs}, nil
+			},
+		}).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				IgnoreChanges: []string{"property"},
+			})
+			require.NoError(t, err)
+			return nil
+		}, false)
 }
 
 func TestReadNilOutputs(t *testing.T) {

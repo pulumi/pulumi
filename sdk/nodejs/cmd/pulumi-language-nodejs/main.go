@@ -114,13 +114,6 @@ func main() {
 	var tracing string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.Bool("typescript", true,
-		"[obsolete] Use ts-node at runtime to support typescript source natively")
-	flag.String("root", "", "[obsolete] Project root path to use")
-	flag.String("tsconfig", "",
-		"[obsolete] Path to tsconfig.json to use")
-	flag.String("nodeargs", "", "[obsolete] Arguments for the Node process")
-	flag.String("packagemanager", "", "[obsolete] Packagemanager to use (auto, npm, yarn, pnpm or bun)")
 	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 	flag.Parse()
 
@@ -1029,10 +1022,11 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
-	if host.forceTsc {
-		// If we're forcing tsc for conformance testing this is our chance to run it before actually running the program.
-		// We probably want to see about making something like this an explicit "pulumi build" step, but for now shim'ing this
-		// in here works well enough for conformance testing.
+	if host.forceTsc && !req.IsPlugin {
+		// If we're forcing tsc for conformance testing this is our chance to run it before actually running the
+		// program. We probably want to see about making something like this an explicit "pulumi build" step, but for
+		// now shim'ing this in here works well enough for conformance testing. Note that we skip this step when
+		// installing dependencies for plugins, as they may not be written in typescript or have tsc configured.
 		tscCmd := exec.Command("npx", "tsc")
 		tscCmd.Dir = req.Info.ProgramDirectory
 		if err := runWithOutput(tscCmd, stdout, stderr); err != nil {
@@ -1517,7 +1511,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
-	ctx := context.Background()
+	ctx := server.Context()
 
 	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
@@ -1584,7 +1578,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	args = append(args, req.Args...)
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.Command(nodeBin, args...)
+	cmd := exec.CommandContext(ctx, nodeBin, args...)
 	cmd.Dir = req.Pwd
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr

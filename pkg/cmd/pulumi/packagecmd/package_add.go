@@ -16,6 +16,7 @@ package packagecmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -115,6 +116,7 @@ from the parameters, as in:
 				pluginSource,
 				parameters,
 				pluginOrProject.reg,
+				env.Global(),
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
@@ -131,25 +133,32 @@ from the parameters, as in:
 				return nil
 			}
 
-			version := ""
-			if pkg.Version != nil {
-				version = pkg.Version.String()
-			} else if len(pluginSplit) == 2 {
-				version = pluginSplit[1]
-			}
-			if pkg.Parameterization != nil {
-				source = pkg.Parameterization.BaseProvider.Name
-				version = pkg.Parameterization.BaseProvider.Version.String()
-			}
-			if len(parameters.Args) > 0 && packageSpec != nil {
-				packageSpec.Parameters = parameters.Args
-			} else if packageSpec == nil {
-				packageSpec = &workspace.PackageSpec{
-					Source:     source,
-					Version:    version,
-					Parameters: parameters.Args,
+			// TODO[#21349]:  We can't bake  a path into  Pulumi.yaml until we  use [packageresolution.Resolve]
+			// when loading a new context, so condense local paths to the name of the package.
+			//
+			// This is wrong, but its less wrong then producing a Pulumi.yaml that `pulumi` can't process
+			// (#21348).
+			if plugin.IsLocalPluginPath(cmd.Context(), packageSpec.Source) {
+				f, err := os.Stat(packageSpec.Source)
+				if err != nil && !errors.Is(err, os.ErrNotExist) {
+					return err
+				}
+				if !f.IsDir() {
+					if pkg.Parameterization == nil {
+						packageSpec.Source = pkg.Name
+						if pkg.Version != nil {
+							packageSpec.Version = pkg.Version.String()
+						}
+					} else {
+						packageSpec.Source = pkg.Parameterization.BaseProvider.Name
+						packageSpec.Version = pkg.Parameterization.BaseProvider.Version.String()
+					}
 				}
 			}
+
+			contract.Assertf(packageSpec != nil, "packageSpec should be nil if & only if source is file based")
+			packageSpec.Parameters = parameters.Args
+
 			pluginOrProject.proj.AddPackage(pkg.Name, *packageSpec)
 
 			fileName := filepath.Base(pluginOrProject.projectFilePath)

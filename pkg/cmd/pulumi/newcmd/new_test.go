@@ -1021,7 +1021,6 @@ Available Templates:
   aws-fsharp                         A minimal AWS F# Pulumi program
   aws-go                             A minimal AWS Go Pulumi program
   aws-java                           A minimal AWS Java Pulumi program
-  aws-javascript                     A minimal AWS JavaScript Pulumi program
   aws-python                         A minimal AWS Python Pulumi program
   aws-scala                          A minimal AWS Scala Pulumi program
   aws-typescript                     A minimal AWS TypeScript Pulumi program
@@ -1096,7 +1095,6 @@ Available Templates:
   aws-fsharp                         A minimal AWS F# Pulumi program
   aws-go                             A minimal AWS Go Pulumi program
   aws-java                           A minimal AWS Java Pulumi program
-  aws-javascript                     A minimal AWS JavaScript Pulumi program
   aws-python                         A minimal AWS Python Pulumi program
   aws-scala                          A minimal AWS Scala Pulumi program
   aws-typescript                     A minimal AWS TypeScript Pulumi program
@@ -1128,7 +1126,6 @@ Available Templates:
   aws-fsharp                              A minimal AWS F# Pulumi program
   aws-go                                  A minimal AWS Go Pulumi program
   aws-java                                A minimal AWS Java Pulumi program
-  aws-javascript                          A minimal AWS JavaScript Pulumi program
   aws-python                              A minimal AWS Python Pulumi program
   aws-scala                               A minimal AWS Scala Pulumi program
   aws-typescript                          A minimal AWS TypeScript Pulumi program

@@ -39,7 +39,7 @@ import (
 
 type testPluginHost struct {
 	t             *testing.T
-	provider      func(descriptor workspace.PackageDescriptor) (plugin.Provider, error)
+	provider      func(descriptor workspace.PluginDescriptor) (plugin.Provider, error)
 	closeProvider func(provider plugin.Provider) error
 }
 
@@ -78,12 +78,8 @@ func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
 
-func (host *testPluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+func (host *testPluginHost) Provider(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 	return host.provider(descriptor)
-}
-
-func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
-	return host.closeProvider(provider)
 }
 
 func (host *testPluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime, error) {
@@ -163,9 +159,8 @@ func (prov *testProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (prov *testProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{
-		Name:    "testProvider",
+func (prov *testProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
+	return plugin.PluginInfo{
 		Version: &prov.version,
 	}, nil
 }
@@ -191,7 +186,7 @@ type providerLoader struct {
 func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
 	return &testPluginHost{
 		t: t,
-		provider: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		provider: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 			var best *providerLoader
 			for _, l := range loaders {
 				if string(l.pkg) != descriptor.Name {

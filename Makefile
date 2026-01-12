@@ -38,7 +38,7 @@ TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
 # The number of Rapid checks to perform when fuzzing lifecycle tests. See the documentation on Rapid at
 # https://pkg.go.dev/pgregory.net/rapid#section-readme or the lifecycle test documentation under
 # pkg/engine/lifecycletest for more information.
-LIFECYCLE_TEST_FUZZ_CHECKS ?= 1000
+LIFECYCLE_TEST_FUZZ_CHECKS ?= 10000
 
 ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 .make/ensure/phony: sdk/go.mod pkg/go.mod tests/go.mod
@@ -249,35 +249,23 @@ schema-%: .make/ensure/curl .make/ensure/jq
 #
 # pkg/codegen/testing/test/helpers.go depends on some of this list, update that file on changes.
 #
-# pkg/codegen/schema/schema_test.go depends on kubernetes@3.7.2, update that file on changes.
+# pkg/codegen/schema/schema_test.go depends on kubernetes@3.7.0, update that file on changes.
 #
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
 # separate commit from other changes, as online code review tools may balk at rendering these diffs.
 get_schemas: \
-			schema-aws!4.15.0           \
 			schema-aws!4.26.0           \
-			schema-aws!4.36.0           \
-			schema-aws!4.37.1           \
 			schema-aws!5.4.0            \
 			schema-aws!5.16.2           \
-			schema-azure-native!1.28.0  \
-			schema-azure-native!1.29.0  \
 			schema-azure-native!1.56.0  \
 			schema-azure!4.18.0         \
 			schema-kubernetes!3.0.0     \
 			schema-kubernetes!3.7.0     \
-			schema-kubernetes!3.7.2     \
-			schema-random!4.2.0         \
-			schema-random!4.3.1         \
 			schema-random!4.11.2        \
-			schema-eks!0.37.1           \
 			schema-eks!0.40.0           \
-			schema-docker!3.1.0         \
 			schema-docker!4.0.0-alpha.0 \
 			schema-awsx!1.0.0-beta.5    \
-			schema-aws-native!0.13.0    \
 			schema-google-native!0.18.2 \
-			schema-google-native!0.27.0 \
 			schema-tls!4.10.0
 
 .PHONY: changelog

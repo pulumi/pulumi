@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // A provider where the inputs are a subset of outputs for testing unknown values in programs.
@@ -50,9 +49,9 @@ func (p *OutputProvider) Pkg() tokens.Package {
 	return "output"
 }
 
-func (p *OutputProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *OutputProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("23.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

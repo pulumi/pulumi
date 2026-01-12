@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // A small provider with a single resource "Resource" that has a boolean, number, string, array, and map property.
@@ -231,9 +230,9 @@ func (p *PrimitiveProvider) Create(
 	}, nil
 }
 
-func (p *PrimitiveProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *PrimitiveProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("7.0.0")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

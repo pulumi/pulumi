@@ -233,7 +233,7 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 func (e *Environment) GetCommandResultsIn(dir string, command string, args ...string) (string, string, error) {
 	e.Helper()
 
-	cmd := e.SetupCommandIn(context.TODO(), dir, command, args...)
+	cmd := e.SetupCommandIn(e.Context(), dir, command, args...)
 	e.Logf("Running command %v %v", cmd.Path, strings.Join(args, " "))
 
 	// Buffer STDOUT and STDERR so we can return them later.

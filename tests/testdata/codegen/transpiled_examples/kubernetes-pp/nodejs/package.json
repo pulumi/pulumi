@@ -1,6 +1,6 @@
 {
     "dependencies": {
-        "@pulumi/kubernetes": "^3.7.2",
+        "@pulumi/kubernetes": "^3.7.0",
         "@pulumi/pulumi": "latest"
     },
     "devDependencies": {

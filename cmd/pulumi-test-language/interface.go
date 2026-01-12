@@ -38,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -294,20 +293,11 @@ func (l *providerLoader) LoadPackageReferenceV2(
 	}
 
 	// Defer to the host to find the provider for the given package descriptor.
-	workspaceDescriptor := workspace.PackageDescriptor{
-		PluginDescriptor: workspace.PluginDescriptor{
-			Kind:              apitype.ResourcePlugin,
-			Name:              descriptor.Name,
-			Version:           descriptor.Version,
-			PluginDownloadURL: descriptor.DownloadURL,
-		},
-	}
-	if descriptor.Parameterization != nil {
-		workspaceDescriptor.Parameterization = &workspace.Parameterization{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version,
-			Value:   descriptor.Parameterization.Value,
-		}
+	workspaceDescriptor := workspace.PluginDescriptor{
+		Kind:              apitype.ResourcePlugin,
+		Name:              descriptor.Name,
+		Version:           descriptor.Version,
+		PluginDownloadURL: descriptor.DownloadURL,
 	}
 
 	provider, err := l.host.Provider(workspaceDescriptor)
@@ -448,6 +438,7 @@ type testToken struct {
 	ProgramOverrides     map[string]programOverride
 	PolicyPackDirectory  string
 	Local                bool
+	ProvidersDirectory   string
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -560,6 +551,15 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		}
 	}
 
+	var providersDirectory string
+	// Same as the policy pack directory, absolute the providers directory if set.
+	if req.ProvidersDirectory != "" {
+		providersDirectory, err = filepath.Abs(req.ProvidersDirectory)
+		if err != nil {
+			return nil, fmt.Errorf("get absolute path for providers directory %s: %w", req.ProvidersDirectory, err)
+		}
+	}
+
 	tokenBytes, err := json.Marshal(&testToken{
 		LanguagePluginName:   req.LanguagePluginName,
 		LanguagePluginTarget: req.LanguagePluginTarget,
@@ -572,6 +572,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		ProgramOverrides:     programOverrides,
 		PolicyPackDirectory:  policyPackDirectory,
 		Local:                req.Local,
+		ProvidersDirectory:   providersDirectory,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -671,30 +672,19 @@ func (eng *languageTestServer) RunLanguageTest(
 		pctx, token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	// And now replace the context host with our own test host
-	providers := make(map[string]func() plugin.Provider)
-	for _, provider := range test.Providers {
-		p := provider()
-
-		version, err := getProviderVersion(p)
-		if err != nil {
-			return nil, err
-		}
-		providers[fmt.Sprintf("%s@%s", p.Pkg(), version)] = provider
-	}
-
 	host := &testHost{
 		engine:      eng,
 		ctx:         pctx,
 		host:        pctx.Host,
 		runtime:     languageClient,
 		runtimeName: token.LanguagePluginName,
-		providers:   providers,
+		providers:   make(map[string]func() (plugin.Provider, error)),
 		connections: make(map[plugin.Provider]io.Closer),
 	}
 
 	pctx.Host = host
 
-	// Generate SDKs for all the packages we need
+	// Setup a schema loader for any package lookups, installs and code generation.
 	loader := &providerLoader{
 		language:     token.LanguagePluginName,
 		languageInfo: token.LanguageInfo,
@@ -707,6 +697,68 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 	defer contract.IgnoreClose(grpcServer)
 
+	// And fill that host with our test providers
+	for _, provider := range test.Providers {
+		p := provider()
+		version, err := getProviderVersion(p)
+		if err != nil {
+			return nil, err
+		}
+		key := fmt.Sprintf("%s@%s", p.Pkg(), version)
+
+		// If this is a provider that should be overridden using the languages plugin directory try and do that now.
+		pkg := p.Pkg().String()
+		if slices.Contains(test.LanguageProviders, pkg) {
+			if token.ProvidersDirectory == "" {
+				return nil, fmt.Errorf("provider %s should be loaded from language providers directory, "+
+					"but no providers directory was specified", pkg)
+			}
+
+			sourceDirectory := filepath.Join(token.ProvidersDirectory, pkg)
+
+			// Copy to a new targetDirectory so we don't mutate the original test data
+			targetDirectory := filepath.Join(token.TemporaryDirectory, "providers", pkg)
+			err = copyDirectory(os.DirFS(sourceDirectory), ".", targetDirectory, nil, nil)
+			if err != nil {
+				return nil, fmt.Errorf("copy provider test data: %w", err)
+			}
+
+			// Link the provider program to the core SDK and install its dependencies
+			providerInfo := plugin.NewProgramInfo(targetDirectory, targetDirectory, ".", nil)
+
+			linkDeps := []workspace.LinkablePackageDescriptor{{
+				Path: token.CoreArtifact,
+				Descriptor: workspace.PackageDescriptor{
+					PluginDescriptor: workspace.PluginDescriptor{
+						Name: "pulumi",
+					},
+				},
+			}}
+			_, err = languageClient.Link(providerInfo, linkDeps, grpcServer.Addr())
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
+			}
+
+			resp := installDependencies(languageClient, providerInfo, true /* isPlugin */)
+			if resp != nil {
+				return resp, nil
+			}
+
+			host.providers[key] = func() (plugin.Provider, error) {
+				pluginProvider, err := plugin.NewProviderFromPath(host, pctx, p.Pkg(), targetDirectory)
+				if err != nil {
+					return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
+				}
+				return pluginProvider, nil
+			}
+		} else {
+			host.providers[key] = func() (plugin.Provider, error) {
+				return provider(), nil
+			}
+		}
+	}
+
+	// Generate SDKs for all the packages we need
 	artifactsDir := filepath.Join(token.TemporaryDirectory, "artifacts")
 
 	// For each test run collect the packages reported by PCL
@@ -772,6 +824,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// We always override the core "pulumi" package to point to the local core SDK we built as part of test
 	// setup.
+	sdks := map[string]string{}
 	localDependencies := map[string]string{}
 	if token.CoreArtifact != "" {
 		localDependencies["pulumi"] = token.CoreArtifact
@@ -798,6 +851,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		for _, pkg := range packages {
 			sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
 			sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
+			sdks[sdkName] = sdkTempDir
 			// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. We do this
 			// using a per-sdk lock for fine grained control. The generated SDK artifacts are then cached, and will be
 			// reused.
@@ -1016,6 +1070,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				for _, pkg := range packages {
 					sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
 					sdkTargetDir := filepath.Join(projectDir, "sdks", sdkName)
+					sdks[sdkName] = sdkTargetDir
 
 					schemaBytes, err := pkg.MarshalJSON()
 					if err != nil {
@@ -1398,8 +1453,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			// if no assertPreview is provided for the test run, we create a default implementation
 			// where we simply assert that the preview changes did not error
 			assertPreview = func(
-				l *tests.L, proj string, err error, p *deploy.Plan,
-				changes display.ResourceChanges, events []engine.Event,
+				l *tests.L, args tests.AssertPreviewArgs,
 			) {
 				require.NoErrorf(l, err, "expected no error in preview")
 			}
@@ -1425,7 +1479,14 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// assert preview results
 		previewResult := tests.WithL(func(l *tests.L) {
-			assertPreview(l, projectDir, res, plan, previewChanges, events)
+			assertPreview(l, tests.AssertPreviewArgs{
+				ProjectDirectory: projectDir,
+				Err:              res,
+				Plan:             plan,
+				Changes:          previewChanges,
+				Events:           events,
+				SDKs:             sdks,
+			})
 		})
 
 		if previewResult.Failed {
@@ -1475,7 +1536,14 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		result = tests.WithL(func(l *tests.L) {
-			run.Assert(l, projectDir, res, snap, changes, events)
+			run.Assert(l, tests.AssertArgs{
+				ProjectDirectory: projectDir,
+				Err:              res,
+				Snap:             snap,
+				Changes:          changes,
+				Events:           events,
+				SDKs:             sdks,
+			})
 		})
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{

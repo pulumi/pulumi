@@ -101,9 +101,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try":                         "Temporarily disabled until pr #18915 is submitted",
-	"l1-builtin-can":                         "Temporarily disabled until pr #18916 is submitted",
-	"l2-resource-option-replacement-trigger": "To be added in #20940",
+	"l1-builtin-try": "Temporarily disabled until pr #18915 is submitted",
+	"l1-builtin-can": "Temporarily disabled until pr #18916 is submitted",
 }
 
 func TestLanguage(t *testing.T) {
@@ -220,7 +219,8 @@ func TestLanguage(t *testing.T) {
 							Replacement: "ROOT/artifacts",
 						},
 					},
-					LanguageInfo: languageInfo,
+					LanguageInfo:       languageInfo,
+					ProvidersDirectory: "testdata/providers",
 				})
 				require.NoError(t, err)
 
@@ -231,6 +231,11 @@ func TestLanguage(t *testing.T) {
 						// We can skip the l1- local tests without any SDK there's nothing new being tested here.
 						if local && strings.HasPrefix(tt, "l1-") {
 							t.Skip("Skipping l1- tests in local mode")
+						}
+
+						// Only bother testing the provider plugin tests once.
+						if strings.HasPrefix(tt, "provider-") && config.name != "default" {
+							t.Skip("Skipping non-default provider tests")
 						}
 
 						if config.typechecker == "pyright" && tt == "l3-component-simple" {

@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Stress-test union type support in the schema.
@@ -115,9 +114,9 @@ func (p *UnionProvider) CheckConfig(
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }
 
-func (p *UnionProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *UnionProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse(p.version())
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

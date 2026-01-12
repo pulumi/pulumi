@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -55,9 +54,9 @@ func (p *CallProvider) Pkg() tokens.Package {
 	return "call"
 }
 
-func (p *CallProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *CallProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	version := semver.MustParse("15.7.9")
-	info := workspace.PluginInfo{Version: &version}
+	info := plugin.PluginInfo{Version: &version}
 	return info, nil
 }
 

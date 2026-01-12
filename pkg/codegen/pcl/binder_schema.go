@@ -521,7 +521,7 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 				return a, true
 			}
 		}
-		schemas := codegen.Set{}
+		schemas := newOrderedSet[schema.Type]()
 		for _, t := range t.ElementTypes {
 			if s, ok := GetSchemaForType(t); ok {
 				if union, ok := s.(*schema.UnionType); ok {
@@ -533,12 +533,12 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 				}
 			}
 		}
-		if len(schemas) == 0 {
+		if schemas.Len() == 0 {
 			return nil, false
 		}
-		schemaTypes := slice.Prealloc[schema.Type](len(schemas))
-		for t := range schemas {
-			schemaTypes = append(schemaTypes, t.(schema.Type))
+		schemaTypes := slice.Prealloc[schema.Type](schemas.Len())
+		for t := range schemas.Iter() {
+			schemaTypes = append(schemaTypes, t)
 		}
 		if len(schemaTypes) == 1 {
 			return schemaTypes[0], true

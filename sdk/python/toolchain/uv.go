@@ -159,10 +159,7 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	// We now have either a uv.lock or at least a pyproject.toml file, and we can use uv
 	// install the dependencies.
 	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
-	if err := syncCmd.Run(); err != nil {
-		return errutil.ErrorWithStderr(err, "error installing dependencies")
-	}
-	return nil
+	return errutil.ErrorWithStderr(syncCmd.Run(), "error installing dependencies")
 }
 
 // PrepareProject prepares a project for use with uv. It will create a suitable pyproject.toml project file. If a

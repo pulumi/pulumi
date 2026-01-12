@@ -36,7 +36,7 @@ func ProviderFactoryFromHost(ctx context.Context, host plugin.Host) ProviderFact
 			return nil, fmt.Errorf("provider factory must be a resource plugin package, was %v", descriptor.Kind)
 		}
 
-		provider, err := host.Provider(descriptor)
+		provider, err := host.Provider(descriptor.PluginDescriptor)
 		if err != nil {
 			desc := descriptor.PackageName()
 			v := descriptor.PackageVersion()
@@ -59,24 +59,6 @@ func ProviderFactoryFromHost(ctx context.Context, host plugin.Host) ProviderFact
 			}
 		}
 
-		return &hostManagedProvider{
-			Provider: provider,
-			host:     host,
-		}, nil
+		return provider, nil
 	}
-}
-
-// hostManagedProvider wraps a Provider such that it can be closed by the host that created it.
-type hostManagedProvider struct {
-	plugin.Provider
-
-	host plugin.Host
-}
-
-var _ plugin.Provider = (*hostManagedProvider)(nil)
-
-// Overrides the wrapped provider's implementation of Provider.Close to ask the managing plugin host to close the
-// provider.
-func (pc *hostManagedProvider) Close() error {
-	return pc.host.CloseProvider(pc.Provider)
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -289,6 +290,11 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	}
 
 	if handshakeRes != nil {
+		if err := validatePulumiVersionRange(handshakeRes.PulumiVersionRange, version.Version, string(pkg)); err != nil {
+			contract.IgnoreClose(p)
+			return nil, err
+		}
+
 		p.protocol = &pluginProtocol{
 			acceptSecrets:                   handshakeRes.AcceptSecrets,
 			acceptResources:                 handshakeRes.AcceptResources,
@@ -342,6 +348,7 @@ func handshake(
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		PulumiVersionRange:              res.GetPulumiVersionRange(),
 	}, nil
 }
 
@@ -370,7 +377,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 }
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
-func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
+func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path string) (Provider, error) {
 	env := os.Environ()
 
 	handshake := func(
@@ -406,9 +413,15 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
 		legacyPreview: legacyPreview,
 		configSource:  &promise.CompletionSource[pluginConfig]{},
+		pkg:           pkg,
 	}
 
 	if handshakeRes != nil {
+		if err := validatePulumiVersionRange(handshakeRes.PulumiVersionRange, version.Version, string(pkg)); err != nil {
+			contract.IgnoreClose(p)
+			return nil, err
+		}
+
 		p.protocol = &pluginProtocol{
 			acceptSecrets:                   handshakeRes.AcceptSecrets,
 			acceptResources:                 handshakeRes.AcceptResources,
@@ -511,6 +524,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		PulumiVersionRange:              res.GetPulumiVersionRange(),
 	}, nil
 }
 
@@ -2140,7 +2154,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 }
 
 // GetPluginInfo returns this plugin's information.
-func (p *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
+func (p *provider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 	label := p.label() + ".GetPluginInfo()"
 	logging.V(7).Infof("%s executing", label)
 
@@ -2154,28 +2168,20 @@ func (p *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, err
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
 			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
-			return workspace.PluginInfo{}, rpcError
+			return PluginInfo{}, rpcError
 		}
 
 		if v := resp.Version; v != "" {
 			sv, err := semver.ParseTolerant(v)
 			if err != nil {
-				return workspace.PluginInfo{}, err
+				return PluginInfo{}, err
 			}
 			version = &sv
 		}
 	}
 
-	path := ""
-	if p.plug != nil {
-		path = p.plug.Bin
-	}
-
 	logging.V(7).Infof("%s success (#version=%v) success", label, version)
-	return workspace.PluginInfo{
-		Name:    string(p.pkg),
-		Path:    path,
-		Kind:    apitype.ResourcePlugin,
+	return PluginInfo{
 		Version: version,
 	}, nil
 }

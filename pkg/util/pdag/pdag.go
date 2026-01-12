@@ -262,25 +262,60 @@ func (g *DAG[T]) Walk(ctx context.Context, process func(context.Context, T) erro
 		o.applyWalkOption(&opts)
 	}
 
+	// If parallelism is 1, we can do a fully sync walk.
+	//
+	// This isn't change user observable compared to the async walk with max 1 worked
+	// thread, but it does make the stack traces much nicer when "process" panics.
+	if opts.maxProcs == 1 {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		for node, done := range g.Drain(ctx) {
+			if err := context.Cause(ctx); err != nil {
+				return err
+			}
+			err := process(ctx, node)
+			done()
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	wg, ctx := errgroup.WithContext(ctx)
 	if opts.maxProcs > 0 {
 		wg.SetLimit(opts.maxProcs)
 	}
 
 	var cancelError error
+	var panicError any //  Used to record any panic in a processing node
 	for node, done := range g.Drain(ctx) {
 		if err := ctx.Err(); err != nil {
 			cancelError = err
 			break
 		}
-		wg.Go(func() error {
+		wg.Go(func() (err error) {
 			defer done()
+			defer func() {
+				p := recover()
+				if p == nil {
+					return
+				}
+				panicError = p
+				err = errors.Join(err, errProcessPanicked) // To stop execution
+			}()
 			return process(ctx, node)
 		})
 	}
 
-	return errors.Join(wg.Wait(), cancelError)
+	err := errors.Join(wg.Wait(), cancelError)
+	if panicError != nil {
+		panic(panicError) // propagate the panic
+	}
+	return err
 }
+
+var errProcessPanicked = errors.New("the process panicked")
 
 // Node is a reference to a node in a [DAG].
 //

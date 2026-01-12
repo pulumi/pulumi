@@ -46,7 +46,7 @@ type testHost struct {
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
 	runtimeName string
-	providers   map[string]func() plugin.Provider
+	providers   map[string]func() (plugin.Provider, error)
 
 	connections map[plugin.Provider]io.Closer
 
@@ -115,7 +115,7 @@ func (h *testHost) ListAnalyzers() []plugin.Analyzer {
 	return h.policies
 }
 
-func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+func (h *testHost) Provider(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 	// If we've not been given a version, we'll try and find the provider by name alone, picking the latest if there are
 	// multiple versions of the named provider. Otherwise, we can attempt to find an exact match.
 	var key string
@@ -133,14 +133,27 @@ func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Prov
 			if parts[0] == key {
 				v := semver.MustParse(parts[1])
 				if provider == nil || v.GT(version) {
-					provider = p()
+					var err error
+					provider, err = p()
+					if err != nil {
+						return nil, fmt.Errorf("initializing provider %s: %w", k, err)
+					}
 					version = v
 				}
 			}
 		}
 	} else {
 		key = fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
-		provider = h.providers[key]()
+		var err error
+		providerFactory, ok := h.providers[key]
+		if !ok {
+			return nil, fmt.Errorf("unknown provider %s", key)
+		}
+
+		provider, err = providerFactory()
+		if err != nil {
+			return nil, fmt.Errorf("initializing provider %s: %w", key, err)
+		}
 	}
 
 	if provider == nil {
@@ -154,15 +167,6 @@ func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Prov
 	h.connections[grpcProvider] = closer
 
 	return grpcProvider, nil
-}
-
-func (h *testHost) CloseProvider(provider plugin.Provider) error {
-	closer, ok := h.connections[provider]
-	if !ok {
-		return fmt.Errorf("unknown provider %v", provider)
-	}
-	delete(h.connections, provider)
-	return closer.Close()
 }
 
 // LanguageRuntime returns the language runtime initialized by the test host.
@@ -188,8 +192,11 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plu
 	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
 	// that that returned the expected plugins (with expected versions).
 	expected := mapset.NewSet[string]()
-	for _, provider := range h.providers {
-		p := provider()
+	for name, provider := range h.providers {
+		p, err := provider()
+		if err != nil {
+			return fmt.Errorf("initializing provider %s for ensure plugins: %w", name, err)
+		}
 		pkg := p.Pkg()
 		version, err := getProviderVersion(p)
 		if err != nil {
@@ -220,8 +227,11 @@ func (h *testHost) ResolvePlugin(
 	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
-		for _, provider := range h.providers {
-			p := provider()
+		for name, provider := range h.providers {
+			p, err := provider()
+			if err != nil {
+				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", name, err)
+			}
 			pkg := p.Pkg()
 			providerVersion, err := getProviderVersion(p)
 			if err != nil {

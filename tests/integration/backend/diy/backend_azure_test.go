@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +46,12 @@ func TestAzureLoginSasToken(t *testing.T) {
 
 //nolint:paralleltest // this test uses the global azure login state
 func TestAzureLoginAzLogin(t *testing.T) {
+	// NOTE: This test requires a valid AZURE_CLIENT_SECRET. Unfortunately the longest time these
+	// can be valid is 2 years. When this test fails (after 2027-12-22), the secret will need to
+	// be rotated. This can be done by navigating to the `pulumi-test` app in the Azure portal, and
+	// creating a new client secret under "Certificates & secrets". Create a new client secret from
+	// there and update the GitHub Actions secret `AZURE_CLIENT_SECRET` with the new value.
+
 	t.Chdir("project")
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
 	clientID := os.Getenv("AZURE_CLIENT_ID")
@@ -59,11 +65,11 @@ func TestAzureLoginAzLogin(t *testing.T) {
 	t.Setenv("AZURE_STORAGE_SAS_TOKEN", "")
 
 	//nolint:gosec // this is a test
-	err := exec.Command("az", "login", "--service-principal",
+	out, err := exec.Command("az", "login", "--service-principal",
 		"--username", os.Getenv("AZURE_CLIENT_ID"),
 		"--password", os.Getenv("AZURE_CLIENT_SECRET"),
-		"--tenant", os.Getenv("AZURE_TENANT_ID")).Run()
-	require.NoError(t, err)
+		"--tenant", os.Getenv("AZURE_TENANT_ID")).CombinedOutput()
+	require.NoError(t, err, "%s: %q", err, out)
 
 	t.Cleanup(func() {
 		err := exec.Command("az", "logout").Run()

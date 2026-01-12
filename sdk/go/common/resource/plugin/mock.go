@@ -31,8 +31,7 @@ type MockHost struct {
 	AnalyzerF           func(nm tokens.QName) (Analyzer, error)
 	PolicyAnalyzerF     func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
 	ListAnalyzersF      func() []Analyzer
-	ProviderF           func(descriptor workspace.PackageDescriptor) (Provider, error)
-	CloseProviderF      func(provider Provider) error
+	ProviderF           func(descriptor workspace.PluginDescriptor) (Provider, error)
 	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
 	EnsurePluginsF      func(plugins []workspace.PluginDescriptor, kinds Flags) error
 	ResolvePluginF      func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
@@ -85,18 +84,11 @@ func (m *MockHost) ListAnalyzers() []Analyzer {
 	return nil
 }
 
-func (m *MockHost) Provider(descriptor workspace.PackageDescriptor) (Provider, error) {
+func (m *MockHost) Provider(descriptor workspace.PluginDescriptor) (Provider, error) {
 	if m.ProviderF != nil {
 		return m.ProviderF(descriptor)
 	}
 	return nil, errors.New("Provider not implemented")
-}
-
-func (m *MockHost) CloseProvider(provider Provider) error {
-	if m.CloseProviderF != nil {
-		return m.CloseProviderF(provider)
-	}
-	return nil
 }
 
 func (m *MockHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
@@ -177,7 +169,7 @@ type MockProvider struct {
 	ConstructF          func(context.Context, ConstructRequest) (ConstructResponse, error)
 	InvokeF             func(context.Context, InvokeRequest) (InvokeResponse, error)
 	CallF               func(context.Context, CallRequest) (CallResponse, error)
-	GetPluginInfoF      func(context.Context) (workspace.PluginInfo, error)
+	GetPluginInfoF      func(context.Context) (PluginInfo, error)
 	SignalCancellationF func(context.Context) error
 	GetMappingF         func(context.Context, GetMappingRequest) (GetMappingResponse, error)
 	GetMappingsF        func(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
@@ -306,11 +298,11 @@ func (m *MockProvider) Call(ctx context.Context, req CallRequest) (CallResponse,
 	return CallResponse{}, errors.New("Call not implemented")
 }
 
-func (m *MockProvider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
+func (m *MockProvider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 	if m.GetPluginInfoF != nil {
 		return m.GetPluginInfoF(ctx)
 	}
-	return workspace.PluginInfo{}, errors.New("GetPluginInfo not implemented")
+	return PluginInfo{}, errors.New("GetPluginInfo not implemented")
 }
 
 func (m *MockProvider) SignalCancellation(ctx context.Context) error {

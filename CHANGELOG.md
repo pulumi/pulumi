@@ -1,5 +1,89 @@
 # Changelog
 
+## 3.215.0 (2026-01-07)
+
+
+### Features
+
+- [cli/plugin] Allow plugins to specify a supported version range for the CLI
+  [#21335](https://github.com/pulumi/pulumi/pull/21335)
+
+
+### Bug Fixes
+
+- [cli] Filter internal properties like __defaults from diff display
+  [#21359](https://github.com/pulumi/pulumi/pull/21359)
+
+- [cli/config] Make `config set --type bool` accept different spellings of boolean values instead of only lowercase "true"
+  [#21314](https://github.com/pulumi/pulumi/pull/21314)
+
+- [sdk/python] Fix import_resources with converter failing due to --stack argument placement
+  [#21373](https://github.com/pulumi/pulumi/pull/21373)
+
+
+### Miscellaneous
+
+- [cli] Update pulumi-dotnet to 3.96.1
+
+- [cli/package] Remove superfluous version string
+  [#21351](https://github.com/pulumi/pulumi/pull/21351)
+
+## 3.214.1 (2026-01-03)
+
+
+### Bug Fixes
+
+- [cli/package] Preserve existing behavior when `pulumi package add` is used with a local provider
+  [#21350](https://github.com/pulumi/pulumi/pull/21350)
+
+- [pkg] Create namespace aliases to avoid Pulumi namespace collisions during codegen
+  [#21325](https://github.com/pulumi/pulumi/pull/21325)
+
+## 3.214.0 (2025-12-30)
+
+
+### Features
+
+- [cli] Add --config and --config-path options to destroy and refresh
+  [#21299](https://github.com/pulumi/pulumi/pull/21299)
+
+- [sdkgen] Add `OutputStyleOnly` flag to functions to not emit their plain variants
+  [#21198](https://github.com/pulumi/pulumi/pull/21198)
+
+- [sdk/python] Add support for `replacement_trigger` in the Python SDK
+  [#20940](https://github.com/pulumi/pulumi/pull/20940)
+
+
+### Bug Fixes
+
+- [engine] Pass ignoreChanges when issuing no-diff updates that resolve initErrors
+  [#21319](https://github.com/pulumi/pulumi/pull/21319)
+
+- [programgen] Fix a bug in programgen binding to invokes from parameterized packages
+  [#21284](https://github.com/pulumi/pulumi/pull/21284)
+
+- [cli/plugin] Fix plugin download URL overrides for fallback mechanism
+  [#21095](https://github.com/pulumi/pulumi/pull/21095)
+
+
+### Miscellaneous
+
+- [pkg] Upgrade pulumi-java to 1.20.0
+
+## 3.213.0 (2025-12-17)
+
+
+### Bug Fixes
+
+- [sdkgen/go] Generate three-level nested builtin output types for Go SDK
+  [#21248](https://github.com/pulumi/pulumi/pull/21248)
+
+
+### Miscellaneous
+
+- [pkg] Move plugin downloading from pkg into sdk
+  [#21220](https://github.com/pulumi/pulumi/pull/21220)
+
 ## 3.212.0 (2025-12-12)
 
 

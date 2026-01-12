@@ -759,7 +759,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		!sdkproviders.IsProviderType(goal.Type) {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
-		go func() {
+		go PanicRecovery(sg.deployment.panicErrs, func() {
 			// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
 			// but a goroutine blocked on Result and then posting to a channel is very cheap.
 			state, err := cts.Promise().Result(context.Background())
@@ -779,7 +779,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				invalid:               invalid,
 				err:                   err,
 			}
-		}()
+		})
 
 		oldViews := sg.deployment.GetOldViews(old.URN)
 		step := NewRefreshStep(sg.deployment, cts, old, oldViews, new)
@@ -989,7 +989,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromImport when it resolves
-		go func() {
+		go PanicRecovery(sg.deployment.panicErrs, func() {
 			// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
 			// but a goroutine blocked on Result and then posting to a channel is very cheap.
 			old, err := cts.Promise().Result(context.Background())
@@ -1050,7 +1050,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 				randomSeed:            randomSeed,
 				isImported:            true,
 			}
-		}()
+		})
 
 		sg.imports[urn] = true
 		if isReplace := old != nil && !recreating; isReplace {
@@ -2020,7 +2020,17 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	if hasInitErrors {
 		sg.updates[urn] = true
 		oldViews := sg.deployment.GetOldViews(old.URN)
-		return []Step{NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, nil, nil, nil, oldViews)}, nil
+		return []Step{NewUpdateStep(
+			sg.deployment,
+			event,
+			old,
+			new,
+			diff.StableKeys,
+			diff.ChangedKeys,
+			diff.DetailedDiff,
+			goal.IgnoreChanges,
+			oldViews,
+		)}, nil
 	}
 
 	// Else there are no changes needed
@@ -2705,7 +2715,7 @@ func (sg *stepGenerator) diff(
 
 	// Else setup a promise for it so our caller will yield a DiffStep.
 	pcs := &promise.CompletionSource[plugin.DiffResult]{}
-	go func() {
+	go PanicRecovery(sg.deployment.panicErrs, func() {
 		// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
 		// but a goroutine blocked on Result and then posting to a channel is very cheap.
 		diff, err := pcs.Promise().Result(context.Background())
@@ -2720,7 +2730,7 @@ func (sg *stepGenerator) diff(
 			autonaming: autonaming,
 			randomSeed: randomSeed,
 		}
-	}()
+	})
 	return plugin.DiffResult{}, pcs, nil
 }
 

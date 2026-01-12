@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -231,9 +230,9 @@ func (p *ConfigGrpcProvider) GetSchema(
 	return plugin.GetSchemaResponse{Schema: schemaBytes}, nil
 }
 
-func (p *ConfigGrpcProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *ConfigGrpcProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse(p.version())
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }

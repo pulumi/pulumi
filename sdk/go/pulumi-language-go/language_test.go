@@ -238,6 +238,12 @@ func TestLanguage(t *testing.T) {
 						t.Skip("Skipping l1- tests in local mode")
 					}
 
+					// TODO[https://github.com/pulumi/pulumi/issues/21292]: Skip provider tests for now, we test these
+					// with NodeJS and Python only.
+					if strings.HasPrefix(tt, "provider-") {
+						t.Skip("Skipping provider tests")
+					}
+
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
 					}

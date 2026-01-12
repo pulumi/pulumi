@@ -371,14 +371,14 @@ type SchemaVersion = string
 // should be in sync with the makefile.
 const (
 	AwsSchema              SchemaVersion = "4.26.0"
-	AzureNativeSchema      SchemaVersion = "1.29.0"
+	AzureNativeSchema      SchemaVersion = "1.56.0"
 	AzureSchema            SchemaVersion = "4.18.0"
-	KubernetesSchema       SchemaVersion = "3.7.2"
+	KubernetesSchema       SchemaVersion = "3.7.0"
 	RandomSchema           SchemaVersion = "4.11.2"
-	EksSchema              SchemaVersion = "0.37.1"
+	EksSchema              SchemaVersion = "0.40.0"
 	AwsStaticWebsiteSchema SchemaVersion = "0.4.0"
 	AwsNativeSchema        SchemaVersion = "0.99.0"
 )
 
 // PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests
-const PulumiDotnetSDKVersion = "3.95.0"
+const PulumiDotnetSDKVersion = "3.96.1"

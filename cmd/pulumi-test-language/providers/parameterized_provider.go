@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"unicode"
 
 	"github.com/blang/semver"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type ParameterizedProvider struct {
@@ -53,6 +53,13 @@ func (p *ParameterizedProvider) Pkg() tokens.Package {
 	return "parameterized"
 }
 
+func title(s string) string {
+	if s == "" {
+		return s
+	}
+	return string(unicode.ToUpper(rune(s[0]))) + s[1:]
+}
+
 func (p *ParameterizedProvider) GetSchema(
 	_ context.Context, req plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
@@ -74,6 +81,7 @@ func (p *ParameterizedProvider) GetSchema(
 	}
 
 	token := fmt.Sprintf("%s:index:%s", subpackage, parameterizedResource)
+	functionToken := fmt.Sprintf("%s:index:do%s", subpackage, title(parameterizedResource))
 	componentToken := token + "Component"
 	parameterizedResourceSpec := schema.ObjectTypeSpec{
 		Type: "object",
@@ -106,6 +114,32 @@ func (p *ParameterizedProvider) GetSchema(
 			componentToken: {
 				IsComponent:    true,
 				ObjectTypeSpec: parameterizedResourceSpec,
+			},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			functionToken: {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"input": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"input"},
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"output": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"output"},
+				},
 			},
 		},
 		Parameterization: &schema.ParameterizationSpec{
@@ -239,9 +273,9 @@ func (p *ParameterizedProvider) Create(
 	}, nil
 }
 
-func (p *ParameterizedProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *ParameterizedProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	ver := semver.MustParse("1.2.3")
-	return workspace.PluginInfo{
+	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
 }
@@ -258,6 +292,32 @@ func (p *ParameterizedProvider) Construct(
 		Outputs: resource.PropertyMap{
 			"parameterValue": resource.NewProperty(string(p.parameterValue) + "Component"),
 		},
+	}, nil
+}
+
+func (p *ParameterizedProvider) Invoke(
+	ctx context.Context,
+	req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	functionToken := fmt.Sprintf("%s:index:do%s", p.parameterPackage, title(string(p.parameterValue)))
+	if string(req.Tok) != functionToken {
+		return plugin.InvokeResponse{}, fmt.Errorf("invalid function token: %s. Expected %s", req.Tok, functionToken)
+	}
+
+	input, ok := req.Args["input"]
+	if !ok {
+		return plugin.InvokeResponse{}, errors.New("missing required argument 'input'")
+	}
+	if !input.IsString() {
+		return plugin.InvokeResponse{}, fmt.Errorf("expected input to be a string, got %s", input.TypeString())
+	}
+
+	outputs := resource.PropertyMap{
+		"output": resource.NewProperty(input.StringValue() + string(p.parameterValue)),
+	}
+
+	return plugin.InvokeResponse{
+		Properties: outputs,
 	}, nil
 }
 

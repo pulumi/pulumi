@@ -106,7 +106,8 @@ func (defaultPluginManager) HasPlugin(spec workspace.PluginDescriptor) bool {
 }
 
 func (defaultPluginManager) HasPluginGTE(spec workspace.PluginDescriptor) (bool, error) {
-	return workspace.HasPluginGTE(spec)
+	has, _, err := workspace.HasPluginGTE(spec)
+	return has, err
 }
 
 func (defaultPluginManager) GetLatestPluginVersion(
@@ -318,8 +319,8 @@ func GetRequiredPlugins(
 		})
 	} else {
 		plugins = append(plugins, workspace.PluginDescriptor{
-			Name:    langInfo.Name,
-			Kind:    langInfo.Kind,
+			Name:    runtime,
+			Kind:    apitype.LanguagePlugin,
 			Version: langInfo.Version,
 		})
 	}
