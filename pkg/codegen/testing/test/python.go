@@ -33,7 +33,7 @@ func GeneratePythonProgramTest(
 	genProject GenProject,
 ) {
 	expectedVersion := map[string]PkgVersionInfo{
-		"aws-resource-options-4.3.8": {
+		"aws-resource-options-4.26": {
 			Pkg:          "pulumi-aws",
 			OpAndVersion: "==4.26.0",
 		},

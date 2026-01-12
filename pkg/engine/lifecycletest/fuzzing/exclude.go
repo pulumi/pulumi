@@ -32,7 +32,7 @@ func DefaultExclusionRules() ExclusionRules {
 	return []ExclusionRule{
 		ExcludeDestroyAndRefreshProgramSet,
 		// TODO[pulumi/pulumi#21404]
-		ExcludeResourcePendingReplacementChangingParentUpdate,
+		ExcludeResourcePendingReplacementChangingParentRefreshProgram,
 		// TODO[pulumi/pulumi#21386]
 		ExcludeChildProviderOfDuplicateResourceRefresh,
 		// TODO[pulumi/pulumi#21277]
@@ -47,6 +47,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeResourceWithDependencyOnDeletedResourceDestroyV2,
 		// TODO[pulumi/pulumi#21399]
 		ExcludeResourceReferencingAliasedProviderDestroyV2,
+		// TODO[pulumi/pulumi#21402]
+		ExcludeRefreshWithTargetedProviderParentChangeDestroyV2,
 	}
 }
 
@@ -116,13 +118,15 @@ func ExcludeChildProviderOfDuplicateResourceRefresh(
 	return false
 }
 
-func ExcludeResourcePendingReplacementChangingParentUpdate(
+func ExcludeResourcePendingReplacementChangingParentRefreshProgram(
 	snap *SnapshotSpec,
 	prog *ProgramSpec,
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
-	if plan.Operation != PlanOperationUpdate && !plan.RefreshProgram {
+	if plan.Operation != PlanOperationUpdate &&
+		plan.Operation != PlanOperationRefreshV2 &&
+		!plan.RefreshProgram {
 		return false
 	}
 
@@ -422,6 +426,45 @@ func ExcludeResourceReferencingAliasedProviderDestroyV2(
 			if _, inSnap := snapProviders[providerURN]; inSnap {
 				return true
 			}
+		}
+	}
+
+	return false
+}
+
+func ExcludeRefreshWithTargetedProviderParentChangeDestroyV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	snapParents := make(map[resource.URN]resource.URN)
+	for _, res := range snap.Resources {
+		snapParents[res.URN()] = res.Parent
+	}
+
+	targetURNs := make(map[resource.URN]bool)
+	for _, res := range plan.TargetURNs {
+		targetURNs[res] = true
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if !providers.IsProviderType(res.Type) {
+			continue
+		}
+
+		snapParent, inSnap := snapParents[res.URN()]
+		if inSnap && snapParent == res.Parent {
+			continue
+		}
+
+		res.Parent = snapParent
+		if targetURNs[res.URN()] {
+			return true
 		}
 	}
 
