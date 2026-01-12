@@ -326,299 +326,408 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 	require.Len(t, snap.Resources, 0)
 }
 
-func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create(t *testing.T) {
+func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_RetryIfAnyHookReturnsTrue(t *testing.T) {
 	t.Parallel()
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			createCalls := 0
 
-	type scenario struct {
-		name          string
-		withHooks     bool
-		expectFailure bool
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if req.Preview {
+						return plugin.CreateResponse{Status: resource.StatusOK}, nil
+					}
+					createCalls++
+					if createCalls == 1 {
+						return plugin.CreateResponse{
+							ID:     resource.ID("partial-id-" + req.URN.Name()),
+							Status: resource.StatusPartialFailure,
+						}, errors.New("create failed")
+					}
+					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
 	}
-	scenarios := []scenario{
-		{name: "retry_if_any_hook_returns_true", withHooks: true, expectFailure: false},
-		{name: "no_retry_when_no_hooks", withHooks: false, expectFailure: true},
-	}
 
-	for _, s := range scenarios {
-		t.Run(s.name, func(t *testing.T) {
-			t.Parallel()
-			loaders := []*deploytest.ProviderLoader{
-				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-					createCalls := 0
+	hookCalls := 0
 
-					return &deploytest.Provider{
-						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-							if req.Preview {
-								return plugin.CreateResponse{Status: resource.StatusOK}, nil
-							}
-							createCalls++
-							if createCalls == 1 {
-								return plugin.CreateResponse{
-									ID:     resource.ID("partial-id-" + req.URN.Name()),
-									Status: resource.StatusPartialFailure,
-								}, errors.New("create failed")
-							}
-							return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
-						},
-					}, nil
-				}),
-			}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
 
-			hookCalls := 0
+		var hooks []*deploytest.ResourceHook
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
+			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
+				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+			) (bool, error) {
+				hookCalls++
+				return true, nil
+			}, true)
+		require.NoError(t, err)
+		hooks = []*deploytest.ResourceHook{h}
 
-			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				callbacks, err := deploytest.NewCallbacksServer()
-				require.NoError(t, err)
-				defer func() { require.NoError(t, callbacks.Close()) }()
-
-				var hooks []*deploytest.ResourceHook
-				if s.withHooks {
-					h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
-						func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-							_, _, _, _ resource.PropertyMap, _ string, _ []string,
-						) (bool, error) {
-							hookCalls++
-							return true, nil
-						}, true)
-					require.NoError(t, err)
-					hooks = []*deploytest.ResourceHook{h}
-				}
-
-				_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-					Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
-					ResourceHookBindings: deploytest.ResourceHookBindings{
-						OnError: hooks,
-					},
-				})
-				require.NoError(t, err)
-
-				err = monitor.SignalAndWaitForShutdown(context.Background())
-				require.NoError(t, err)
-				return nil
-			})
-
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-			p := &lt.TestPlan{
-				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-			}
-			project := p.GetProject()
-			_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-			if s.expectFailure {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-
-			if s.withHooks {
-				require.Equal(t, 1, hookCalls)
-			} else {
-				require.Equal(t, 0, hookCalls)
-			}
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				OnError: hooks,
+			},
 		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Equal(t, 1, hookCalls)
 }
 
-func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update(t *testing.T) {
+func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHooks(t *testing.T) {
 	t.Parallel()
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			createCalls := 0
 
-	type scenario struct {
-		name          string
-		withHooks     bool
-		expectFailure bool
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if req.Preview {
+						return plugin.CreateResponse{Status: resource.StatusOK}, nil
+					}
+					createCalls++
+					if createCalls == 1 {
+						return plugin.CreateResponse{
+							ID:     resource.ID("partial-id-" + req.URN.Name()),
+							Status: resource.StatusPartialFailure,
+						}, errors.New("create failed")
+					}
+					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
 	}
-	scenarios := []scenario{
-		{name: "retry_if_any_hook_returns_true", withHooks: true, expectFailure: false},
-		{name: "no_retry_when_no_hooks", withHooks: false, expectFailure: true},
-	}
 
-	for _, s := range scenarios {
-		t.Run(s.name, func(t *testing.T) {
-			t.Parallel()
-			loaders := []*deploytest.ProviderLoader{
-				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-					updateCalls := 0
+	hookCalls := 0
 
-					return &deploytest.Provider{
-						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-							return plugin.CreateResponse{ID: "id", Properties: req.Properties, Status: resource.StatusOK}, nil
-						},
-						UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-							if req.Preview {
-								return plugin.UpdateResponse{Status: resource.StatusOK}, nil
-							}
-							updateCalls++
-							if updateCalls == 1 {
-								return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("update failed")
-							}
-							return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
-						},
-					}, nil
-				}),
-			}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
 
-			hookCalls := 0
-			isUpdate := false
+		// No error hooks.
+		var hooks []*deploytest.ResourceHook
 
-			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				callbacks, err := deploytest.NewCallbacksServer()
-				require.NoError(t, err)
-				defer func() { require.NoError(t, callbacks.Close()) }()
-
-				var hooks []*deploytest.ResourceHook
-				if s.withHooks {
-					h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
-						func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-							_, _, _, _ resource.PropertyMap, _ string, _ []string,
-						) (bool, error) {
-							hookCalls++
-							return true, nil
-						}, true)
-					require.NoError(t, err)
-					hooks = []*deploytest.ResourceHook{h}
-				}
-
-				inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
-				if isUpdate {
-					inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
-				}
-
-				_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-					Inputs: inputs,
-					ResourceHookBindings: deploytest.ResourceHookBindings{
-						OnError: hooks,
-					},
-				})
-				require.NoError(t, err)
-
-				err = monitor.SignalAndWaitForShutdown(context.Background())
-				require.NoError(t, err)
-				return nil
-			})
-
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-			p := &lt.TestPlan{
-				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-			}
-			project := p.GetProject()
-
-			// Create
-			snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-			require.NoError(t, err)
-
-			// Update
-			isUpdate = true
-			_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-			if s.expectFailure {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-
-			if s.withHooks {
-				require.Equal(t, 1, hookCalls)
-			} else {
-				require.Equal(t, 0, hookCalls)
-			}
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				OnError: hooks,
+			},
 		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.Error(t, err)
+	require.Equal(t, 0, hookCalls)
 }
 
-func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete(t *testing.T) {
+func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_RetryIfAnyHookReturnsTrue(t *testing.T) {
 	t.Parallel()
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			updateCalls := 0
 
-	type scenario struct {
-		name          string
-		withHooks     bool
-		expectFailure bool
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{ID: "id", Properties: req.Properties, Status: resource.StatusOK}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					if req.Preview {
+						return plugin.UpdateResponse{Status: resource.StatusOK}, nil
+					}
+					updateCalls++
+					if updateCalls == 1 {
+						return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("update failed")
+					}
+					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
 	}
-	scenarios := []scenario{
-		{name: "retry_if_any_hook_returns_true", withHooks: true, expectFailure: false},
-		{name: "no_retry_when_no_hooks", withHooks: false, expectFailure: true},
-	}
 
-	for _, s := range scenarios {
-		t.Run(s.name, func(t *testing.T) {
-			t.Parallel()
-			loaders := []*deploytest.ProviderLoader{
-				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-					deleteCalls := 0
+	hookCalls := 0
+	isUpdate := false
 
-					return &deploytest.Provider{
-						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-							return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
-						},
-						DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-							deleteCalls++
-							if deleteCalls == 1 {
-								return plugin.DeleteResponse{Status: resource.StatusPartialFailure}, errors.New("delete failed")
-							}
-							return plugin.DeleteResponse{Status: resource.StatusOK}, nil
-						},
-					}, nil
-				}),
-			}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
 
-			hookCalls := 0
-			programCreate := true
+		var hooks []*deploytest.ResourceHook
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
+			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
+				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+			) (bool, error) {
+				hookCalls++
+				return true, nil
+			}, true)
+		require.NoError(t, err)
+		hooks = []*deploytest.ResourceHook{h}
 
-			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				callbacks, err := deploytest.NewCallbacksServer()
-				require.NoError(t, err)
-				defer func() { require.NoError(t, callbacks.Close()) }()
+		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		if isUpdate {
+			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+		}
 
-				var hooks []*deploytest.ResourceHook
-				if s.withHooks {
-					h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
-						func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-							_, _, _, _ resource.PropertyMap, _ string, _ []string,
-						) (bool, error) {
-							hookCalls++
-							return true, nil
-						}, true)
-					require.NoError(t, err)
-					hooks = []*deploytest.ResourceHook{h}
-				}
-
-				if programCreate {
-					_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-						ResourceHookBindings: deploytest.ResourceHookBindings{
-							OnError: hooks,
-						},
-					})
-					require.NoError(t, err)
-				}
-
-				err = monitor.SignalAndWaitForShutdown(context.Background())
-				require.NoError(t, err)
-				return nil
-			})
-
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-			p := &lt.TestPlan{
-				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-			}
-			project := p.GetProject()
-
-			// Create
-			snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-			require.NoError(t, err)
-
-			// Delete
-			programCreate = false
-			_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-			if s.expectFailure {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-
-			if s.withHooks {
-				require.Equal(t, 1, hookCalls)
-			} else {
-				require.Equal(t, 0, hookCalls)
-			}
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				OnError: hooks,
+			},
 		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
+	project := p.GetProject()
+
+	// Create
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Update
+	isUpdate = true
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Equal(t, 1, hookCalls)
+}
+
+func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_NoRetryWhenNoHooks(t *testing.T) {
+	t.Parallel()
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			updateCalls := 0
+
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{ID: "id", Properties: req.Properties, Status: resource.StatusOK}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					if req.Preview {
+						return plugin.UpdateResponse{Status: resource.StatusOK}, nil
+					}
+					updateCalls++
+					if updateCalls == 1 {
+						return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("update failed")
+					}
+					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hookCalls := 0
+	isUpdate := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		// No error hooks.
+		var hooks []*deploytest.ResourceHook
+
+		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		if isUpdate {
+			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+		}
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				OnError: hooks,
+			},
+		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	// Create
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Update
+	isUpdate = true
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.Error(t, err)
+	require.Equal(t, 0, hookCalls)
+}
+
+func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_RetryIfAnyHookReturnsTrue(t *testing.T) {
+	t.Parallel()
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			deleteCalls := 0
+
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					deleteCalls++
+					if deleteCalls == 1 {
+						return plugin.DeleteResponse{Status: resource.StatusPartialFailure}, errors.New("delete failed")
+					}
+					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hookCalls := 0
+	programCreate := true
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		var hooks []*deploytest.ResourceHook
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
+			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
+				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+			) (bool, error) {
+				hookCalls++
+				return true, nil
+			}, true)
+		require.NoError(t, err)
+		hooks = []*deploytest.ResourceHook{h}
+
+		if programCreate {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				ResourceHookBindings: deploytest.ResourceHookBindings{
+					OnError: hooks,
+				},
+			})
+			require.NoError(t, err)
+		}
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	// Create
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Delete
+	programCreate = false
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Equal(t, 1, hookCalls)
+}
+
+func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_NoRetryWhenNoHooks(t *testing.T) {
+	t.Parallel()
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			deleteCalls := 0
+
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					deleteCalls++
+					if deleteCalls == 1 {
+						return plugin.DeleteResponse{Status: resource.StatusPartialFailure}, errors.New("delete failed")
+					}
+					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hookCalls := 0
+	programCreate := true
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		// No error hooks.
+		var hooks []*deploytest.ResourceHook
+
+		if programCreate {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				ResourceHookBindings: deploytest.ResourceHookBindings{
+					OnError: hooks,
+				},
+			})
+			require.NoError(t, err)
+		}
+
+		err = monitor.SignalAndWaitForShutdown(context.Background())
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	// Create
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Delete
+	programCreate = false
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.Error(t, err)
+	require.Equal(t, 0, hookCalls)
 }
 
 func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
