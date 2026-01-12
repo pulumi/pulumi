@@ -42,6 +42,10 @@ func IsProviderType(typ tokens.Type) bool {
 	if !tokens.Token(typ).HasModuleMember() {
 		return false
 	}
+	if strings.Contains(string(typ), "$") {
+		parts := strings.SplitN(string(typ), "$", 2)
+		typ = tokens.Type(parts[1])
+	}
 	return typ.Module() == "pulumi:providers" && typ.Name() != ""
 }
 

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg
+  description: Fix IsProviderType when the provider has a parent

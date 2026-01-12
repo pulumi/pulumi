@@ -32,6 +32,13 @@ func TestRoundTripProviderType(t *testing.T) {
 	assert.True(t, IsProviderType(MakeProviderType(pkg)))
 }
 
+func TestProviderTypeWithParent(t *testing.T) {
+	t.Parallel()
+
+	token := "a:b:c$pulumi:providers:abc"
+	assert.True(t, IsProviderType(tokens.Type(token)))
+}
+
 func TestParseReferenceInvalidURN(t *testing.T) {
 	t.Parallel()
 
