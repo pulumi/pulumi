@@ -51,6 +51,10 @@ var nodeAssertions = testutil.DefaultNodeAssertions().Union(testutil.NodeAsserti
 		shortcodeExpected, shortcodeActual := expected.(*Shortcode), actual.(*Shortcode)
 		return testutil.AssertEqualBytes(t, shortcodeExpected.Name, shortcodeActual.Name)
 	},
+	KindRef: func(t *testing.T, sourceExpected, sourceActual []byte, expected, actual ast.Node) bool {
+		refExpected, refActual := expected.(*Ref), actual.(*Ref)
+		return testutil.AssertEqualBytes(t, refExpected.Destination, refActual.Destination)
+	},
 })
 
 type doc struct {
@@ -255,6 +259,65 @@ func TestReferenceRenderer(t *testing.T) {
 
 				assert.Equal(t, expected, string(actual))
 			}
+		})
+	}
+}
+
+func TestRefParsing(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		input       string
+		destination string
+	}{
+		{
+			name:        "simple resource ref",
+			input:       "See {{% ref #/resources/pkg:index:Resource %}} for more info.",
+			destination: "#/resources/pkg:index:Resource",
+		},
+		{
+			name:        "function ref",
+			input:       "Use {{% ref #/functions/pkg:mod:getFunc %}}.",
+			destination: "#/functions/pkg:mod:getFunc",
+		},
+		{
+			name:        "type ref",
+			input:       "The {{% ref #/types/pkg:index:MyType %}} type.",
+			destination: "#/types/pkg:index:MyType",
+		},
+		{
+			name:        "property ref",
+			input:       "The {{% ref #/resources/pkg:index:Res/properties/prop %}} property.",
+			destination: "#/resources/pkg:index:Res/properties/prop",
+		},
+		{
+			name:        "ref at start of line",
+			input:       "{{% ref #/resources/pkg:mod:Res %}} is a resource.",
+			destination: "#/resources/pkg:mod:Res",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			parsed := ParseDocs([]byte(tt.input))
+
+			// Walk the AST to find the Ref node.
+			var foundRef *Ref
+			err := ast.Walk(parsed, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+				if entering {
+					if ref, ok := node.(*Ref); ok {
+						foundRef = ref
+						return ast.WalkStop, nil
+					}
+				}
+				return ast.WalkContinue, nil
+			})
+			require.NoError(t, err)
+			require.NotNil(t, foundRef, "expected to find a Ref node in the parsed AST")
+			assert.Equal(t, tt.destination, string(foundRef.Destination))
 		})
 	}
 }
