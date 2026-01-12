@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// If any hook returns true, we retry the operation.
 func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 	t.Parallel()
 
@@ -126,6 +127,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 }
 
+// If any hook returns true, we retry the operation.
 func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 	t.Parallel()
 
@@ -228,6 +230,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 	require.Equal(t, "update", hook2Op)
 }
 
+// If any hook returns true, we retry the operation.
 func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 	t.Parallel()
 
@@ -326,6 +329,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 	require.Len(t, snap.Resources, 0)
 }
 
+// Hooks get called on create failure.
 func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_RetryIfAnyHookReturnsTrue(t *testing.T) {
 	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
@@ -391,6 +395,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_RetryIfAnyHookRet
 	require.Equal(t, 1, hookCalls)
 }
 
+// With no hooks, the operation fails as usual.
 func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHooks(t *testing.T) {
 	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
@@ -448,6 +453,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHook
 	require.Equal(t, 0, hookCalls)
 }
 
+// Hooks get called on update failure.
 func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_RetryIfAnyHookReturnsTrue(t *testing.T) {
 	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
@@ -526,6 +532,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_RetryIfAnyHookRet
 	require.Equal(t, 1, hookCalls)
 }
 
+// With no hooks, the operation fails as usual.
 func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_NoRetryWhenNoHooks(t *testing.T) {
 	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
@@ -596,6 +603,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_NoRetryWhenNoHook
 	require.Equal(t, 0, hookCalls)
 }
 
+// Hooks get called on delete failure.
 func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_RetryIfAnyHookReturnsTrue(t *testing.T) {
 	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
@@ -667,6 +675,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_RetryIfAnyHookRet
 	require.Equal(t, 1, hookCalls)
 }
 
+// With no hooks, the operation fails as usual.
 func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_NoRetryWhenNoHooks(t *testing.T) {
 	t.Parallel()
 	loaders := []*deploytest.ProviderLoader{
@@ -730,6 +739,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_NoRetryWhenNoHook
 	require.Equal(t, 0, hookCalls)
 }
 
+// If all hooks return false, we do not retry.
 func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 	t.Parallel()
 
@@ -788,6 +798,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 	require.Equal(t, 1, hookCalls)
 }
 
+// If all hooks return false, we do not retry.
 func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 	t.Parallel()
 
@@ -864,6 +875,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 	require.Equal(t, 1, hookCalls)
 }
 
+// If all hooks return false, we do not retry.
 func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 	t.Parallel()
 
@@ -927,59 +939,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 	require.Equal(t, 1, hookCalls)
 }
 
-func TestErrorHooks_NotCalledOnSuccess_Create(t *testing.T) {
-	t.Parallel()
-
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{
-				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
-				},
-			}, nil
-		}),
-	}
-
-	hookCalls := 0
-
-	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		callbacks, err := deploytest.NewCallbacksServer()
-		require.NoError(t, err)
-		defer func() { require.NoError(t, callbacks.Close()) }()
-
-		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
-			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
-			) (bool, error) {
-				hookCalls++
-				return true, nil
-			}, true)
-		require.NoError(t, err)
-
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
-			ResourceHookBindings: deploytest.ResourceHookBindings{
-				OnError: []*deploytest.ResourceHook{h},
-			},
-		})
-		require.NoError(t, err)
-
-		err = monitor.SignalAndWaitForShutdown(context.Background())
-		require.NoError(t, err)
-		return nil
-	})
-
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-	}
-	project := p.GetProject()
-	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.NoError(t, err)
-
-	require.Equal(t, 0, hookCalls)
-}
-
+// Hooks don't get called on success.
 func TestErrorHooks_NotCalledOnSuccess_Update(t *testing.T) {
 	t.Parallel()
 
@@ -1049,6 +1009,7 @@ func TestErrorHooks_NotCalledOnSuccess_Update(t *testing.T) {
 	require.Equal(t, 0, hookCalls)
 }
 
+// Successful delete, error hook not called.
 func TestErrorHooks_NotCalledOnSuccess_Delete(t *testing.T) {
 	t.Parallel()
 
@@ -1114,9 +1075,11 @@ func TestErrorHooks_NotCalledOnSuccess_Delete(t *testing.T) {
 	require.Equal(t, 0, hookCalls)
 }
 
+// The hook only gets tried up to 100 times.
 func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 	t.Parallel()
 
+	createCalls := 0
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1124,6 +1087,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 					if req.Preview {
 						return plugin.CreateResponse{Status: resource.StatusOK}, nil
 					}
+					createCalls++
 					return plugin.CreateResponse{
 						ID:     resource.ID("partial-id-" + req.URN.Name()),
 						Status: resource.StatusPartialFailure,
@@ -1133,6 +1097,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 		}),
 	}
 
+	hookCalls := 0
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		callbacks, err := deploytest.NewCallbacksServer()
 		require.NoError(t, err)
@@ -1143,6 +1108,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				// Always retry until max retries is reached.
+				hookCalls++
 				require.NotEmpty(t, errs)
 				return true, nil
 			}, true)
@@ -1170,6 +1136,11 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 		require.Error(t, err)
 		require.ErrorContains(t, err, "maximum number of error hook retries reached")
 
+		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
+		// is reached (without running hooks again on the final failure).
+		require.Equal(t, 100, createCalls)
+		require.Equal(t, 99, hookCalls)
+
 		sawWarning := false
 		for _, evt := range evts {
 			if evt.Type != DiagEvent {
@@ -1190,9 +1161,11 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 	require.Error(t, err)
 }
 
+// The hook only gets tried up to 100 times.
 func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 	t.Parallel()
 
+	updateCalls := 0
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1203,6 +1176,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 					if req.Preview {
 						return plugin.UpdateResponse{Status: resource.StatusOK}, nil
 					}
+					updateCalls++
 					return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("update failed")
 				},
 			}, nil
@@ -1210,6 +1184,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 	}
 
 	isUpdate := false
+	hookCalls := 0
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		callbacks, err := deploytest.NewCallbacksServer()
@@ -1220,6 +1195,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
+				hookCalls++
 				require.NotEmpty(t, errs)
 				return true, nil
 			}, true)
@@ -1250,6 +1226,11 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
 		require.Error(t, err)
 		require.ErrorContains(t, err, "maximum number of error hook retries reached")
+
+		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
+		// is reached (without running hooks again on the final failure).
+		require.Equal(t, 100, updateCalls)
+		require.Equal(t, 99, hookCalls)
 
 		sawWarning := false
 		for _, evt := range evts {
@@ -1290,9 +1271,11 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 	require.Error(t, err)
 }
 
+// The hook only gets tried up to 100 times.
 func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 	t.Parallel()
 
+	deleteCalls := 0
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1300,6 +1283,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					deleteCalls++
 					return plugin.DeleteResponse{Status: resource.StatusPartialFailure}, errors.New("delete failed")
 				},
 			}, nil
@@ -1307,6 +1291,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 	}
 
 	programCreate := true
+	hookCalls := 0
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		callbacks, err := deploytest.NewCallbacksServer()
@@ -1317,6 +1302,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
 				_, _, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
+				hookCalls++
 				require.NotEmpty(t, errs)
 				return true, nil
 			}, true)
@@ -1348,6 +1334,11 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
 		require.Error(t, err)
 		require.ErrorContains(t, err, "maximum number of error hook retries reached")
+
+		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
+		// is reached (without running hooks again on the final failure).
+		require.Equal(t, 100, deleteCalls)
+		require.Equal(t, 99, hookCalls)
 
 		sawWarning := false
 		for _, evt := range evts {
@@ -1387,210 +1378,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestErrorHooks_RetryOnceThenSuccess_HookCalledOnce_Create(t *testing.T) {
-	t.Parallel()
-
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			createCalls := 0
-			return &deploytest.Provider{
-				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					if req.Preview {
-						return plugin.CreateResponse{Status: resource.StatusOK}, nil
-					}
-					createCalls++
-					if createCalls == 1 {
-						return plugin.CreateResponse{
-							ID:     resource.ID("partial-id-" + req.URN.Name()),
-							Status: resource.StatusPartialFailure,
-						}, errors.New("create failed")
-					}
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
-				},
-			}, nil
-		}),
-	}
-
-	hookCalls := 0
-
-	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		callbacks, err := deploytest.NewCallbacksServer()
-		require.NoError(t, err)
-		defer func() { require.NoError(t, callbacks.Close()) }()
-
-		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
-			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
-			) (bool, error) {
-				hookCalls++
-				return true, nil
-			}, true)
-		require.NoError(t, err)
-
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
-			ResourceHookBindings: deploytest.ResourceHookBindings{
-				OnError: []*deploytest.ResourceHook{h},
-			},
-		})
-		require.NoError(t, err)
-
-		err = monitor.SignalAndWaitForShutdown(context.Background())
-		require.NoError(t, err)
-		return nil
-	})
-
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-	}
-	project := p.GetProject()
-	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.NoError(t, err)
-	require.Equal(t, 1, hookCalls)
-}
-
-func TestErrorHooks_RetryOnceThenSuccess_HookCalledOnce_Update(t *testing.T) {
-	t.Parallel()
-
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			updateCalls := 0
-			return &deploytest.Provider{
-				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
-				},
-				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					if req.Preview {
-						return plugin.UpdateResponse{Status: resource.StatusOK}, nil
-					}
-					updateCalls++
-					if updateCalls == 1 {
-						return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("update failed")
-					}
-					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
-				},
-			}, nil
-		}),
-	}
-
-	hookCalls := 0
-	isUpdate := false
-
-	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		callbacks, err := deploytest.NewCallbacksServer()
-		require.NoError(t, err)
-		defer func() { require.NoError(t, callbacks.Close()) }()
-
-		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
-			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
-			) (bool, error) {
-				hookCalls++
-				return true, nil
-			}, true)
-		require.NoError(t, err)
-
-		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
-		if isUpdate {
-			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
-		}
-
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: inputs,
-			ResourceHookBindings: deploytest.ResourceHookBindings{
-				OnError: []*deploytest.ResourceHook{h},
-			},
-		})
-		require.NoError(t, err)
-
-		err = monitor.SignalAndWaitForShutdown(context.Background())
-		require.NoError(t, err)
-		return nil
-	})
-
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-	}
-	project := p.GetProject()
-
-	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.NoError(t, err)
-
-	isUpdate = true
-	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.NoError(t, err)
-	require.Equal(t, 1, hookCalls)
-}
-
-func TestErrorHooks_RetryOnceThenSuccess_HookCalledOnce_Delete(t *testing.T) {
-	t.Parallel()
-
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			deleteCalls := 0
-			return &deploytest.Provider{
-				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
-				},
-				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-					deleteCalls++
-					if deleteCalls == 1 {
-						return plugin.DeleteResponse{Status: resource.StatusPartialFailure}, errors.New("delete failed")
-					}
-					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
-				},
-			}, nil
-		}),
-	}
-
-	hookCalls := 0
-	programCreate := true
-
-	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		callbacks, err := deploytest.NewCallbacksServer()
-		require.NoError(t, err)
-		defer func() { require.NoError(t, callbacks.Close()) }()
-
-		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
-			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
-			) (bool, error) {
-				hookCalls++
-				return true, nil
-			}, true)
-		require.NoError(t, err)
-
-		if programCreate {
-			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				ResourceHookBindings: deploytest.ResourceHookBindings{
-					OnError: []*deploytest.ResourceHook{h},
-				},
-			})
-			require.NoError(t, err)
-		}
-
-		err = monitor.SignalAndWaitForShutdown(context.Background())
-		require.NoError(t, err)
-		return nil
-	})
-
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-	}
-	project := p.GetProject()
-
-	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.NoError(t, err)
-
-	programCreate = false
-	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.NoError(t, err)
-	require.Equal(t, 1, hookCalls)
-}
-
+// Retrying and then failing still fails.
 func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 	t.Parallel()
 
@@ -1660,6 +1448,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 	require.Equal(t, 2, hookCalls)
 }
 
+// Retrying and then failing still fails.
 func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 	t.Parallel()
 
@@ -1741,6 +1530,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 	require.Equal(t, 2, hookCalls)
 }
 
+// Retrying and then failing still fails.
 func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 	t.Parallel()
 
@@ -1815,6 +1605,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 	require.Equal(t, 2, hookCalls)
 }
 
+// Retries are resource-independent.
 func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 	t.Parallel()
 
@@ -1918,6 +1709,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 	require.GreaterOrEqual(t, resBHooks, 2)
 }
 
+// Retries are resource-independent.
 func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 	t.Parallel()
 
@@ -2025,6 +1817,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 	require.Equal(t, resBHooks, 2)
 }
 
+// Retries are resource-independent.
 func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 	t.Parallel()
 
