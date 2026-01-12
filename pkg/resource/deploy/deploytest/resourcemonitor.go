@@ -181,9 +181,7 @@ type ResourceHookFunc func(
 	name string,
 	typ tokens.Type,
 	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
-	failedOperation string,
-	errors []string,
-) (retry bool, err error)
+) error
 
 type ErrorHookFunc func(
 	ctx context.Context,
@@ -278,8 +276,17 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
-		_, err = f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
-			newInputs, oldInputs, newOutputs, oldOutputs, "", nil)
+		err = f(
+			context.Background(),
+			resource.URN(req.Urn),
+			resource.ID(req.Id),
+			req.Name,
+			tokens.Type(req.Type),
+			newInputs,
+			oldInputs,
+			newOutputs,
+			oldOutputs,
+		)
 		if err != nil {
 			return &pulumirpc.ResourceHookResponse{
 				Error: err.Error(),
