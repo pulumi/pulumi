@@ -72,12 +72,12 @@ type Ref struct {
 	ast.BaseInline
 
 	// Destination is the reference destination (e.g. "#/resources/pkg:index:res").
-	Destination []byte
+	Destination string
 }
 
 func (r *Ref) Dump(w io.Writer, source []byte, level int) {
 	m := map[string]string{
-		"Destination": string(r.Destination),
+		"Destination": r.Destination,
 	}
 	ast.DumpHelper(w, r, source, level, m, nil)
 }
@@ -91,7 +91,7 @@ func (*Ref) Kind() ast.NodeKind {
 }
 
 // NewRef creates a new Ref with the given destination.
-func NewRef(destination []byte) *Ref {
+func NewRef(destination string) *Ref {
 	return &Ref{Destination: destination}
 }
 
@@ -263,7 +263,7 @@ func (refParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) as
 	// Advance past the entire shortcode.
 	block.Advance(end + 3) // advance past `%}}`
 
-	return NewRef(destination)
+	return NewRef(string(destination))
 }
 
 // ParseDocs parses the given documentation text as Markdown with shortcodes and returns the AST.

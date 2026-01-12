@@ -126,9 +126,9 @@ func TestInterpretPulumiRefs(t *testing.T) {
 	t.Run("ResolvesKnownRefs", func(t *testing.T) {
 		t.Parallel()
 
-		description := "This is a reference to <pulumi ref=\"#/resources/aws:s3:bucket\" /> and one to the " +
-			"<pulumi ref=\"#/resources/azure:storage:storageAccount/properties/region\" /> property."
-		expected := "This is a reference to s3.bucket and one to the region property."
+		description := "This is a reference to {{% ref #/resources/aws:s3:bucket %}} and one to the " +
+			"{{% ref #/resources/azure:storage:storageAccount/properties/region %}} property."
+		expected := "This is a reference to s3.bucket and one to the region property.\n"
 		result := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
 			//nolint:exhaustive
 			switch ref.Type {
@@ -144,9 +144,9 @@ func TestInterpretPulumiRefs(t *testing.T) {
 	t.Run("FallsBackWhenNotMapped", func(t *testing.T) {
 		t.Parallel()
 
-		description := "This is a reference to <pulumi ref=\"#/resources/unknown:resource:type/properties/myProperty\"/>" +
-			" and to <pulumi ref=\"#/resources/unknown:resource:type\" />."
-		expected := "This is a reference to myProperty and to unknown:resource:type."
+		description := "This is a reference to {{% ref #/resources/unknown:resource:type/properties/myProperty %}}" +
+			" and to {{% ref #/resources/unknown:resource:type %}}."
+		expected := "This is a reference to myProperty and to unknown:resource:type.\n"
 		result := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
 			return "", false
 		})
@@ -168,7 +168,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		t.Parallel()
 
 		description := "This description has no Pulumi references."
-		expected := "This description has no Pulumi references."
+		expected := "This description has no Pulumi references.\n"
 		result := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
 			return "ResolvedName", true
 		})

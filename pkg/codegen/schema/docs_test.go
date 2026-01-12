@@ -53,7 +53,7 @@ var nodeAssertions = testutil.DefaultNodeAssertions().Union(testutil.NodeAsserti
 	},
 	KindRef: func(t *testing.T, sourceExpected, sourceActual []byte, expected, actual ast.Node) bool {
 		refExpected, refActual := expected.(*Ref), actual.(*Ref)
-		return testutil.AssertEqualBytes(t, refExpected.Destination, refActual.Destination)
+		return assert.Equal(t, refExpected.Destination, refActual.Destination)
 	},
 })
 

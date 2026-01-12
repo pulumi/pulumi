@@ -15,16 +15,11 @@
 package codegen
 
 import (
-	"bytes"
 	"fmt"
 	"net/url"
 	"strings"
 
 	"github.com/pgavlin/goldmark/ast"
-	"github.com/pgavlin/goldmark/renderer"
-	"github.com/pgavlin/goldmark/renderer/markdown"
-	"github.com/pgavlin/goldmark/util"
-	"golang.org/x/net/html"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -160,6 +155,34 @@ func FilterExamples(description string, lang string) string {
 
 type PulumiRefResolver func(ref DocRef) (string, bool)
 
+func interpretPulumiRefs(node ast.Node, resolveRefToName PulumiRefResolver) {
+	var c, next ast.Node
+	for c = node.FirstChild(); c != nil; c = next {
+		interpretPulumiRefs(c, resolveRefToName)
+
+		next = c.NextSibling()
+		switch c := c.(type) {
+		case *schema.Ref:
+			ref := parseDocRef(c.Destination)
+
+			name, ok := resolveRefToName(ref)
+			if !ok {
+				if ref.Property != "" {
+					name = ref.Property
+				} else if ref.Token != "" {
+					name = ref.Token.DisplayName()
+				} else {
+					name = ref.Ref
+				}
+			}
+
+			textNode := ast.NewString([]byte(name))
+			node.InsertBefore(node, c, textNode)
+			node.RemoveChild(node, c)
+		}
+	}
+}
+
 func InterpretPulumiRefs(description string, resolveRefToName PulumiRefResolver) string {
 	if description == "" {
 		return ""
@@ -167,96 +190,8 @@ func InterpretPulumiRefs(description string, resolveRefToName PulumiRefResolver)
 
 	source := []byte(description)
 	parsed := schema.ParseDocs(source)
-
-	md := &markdown.Renderer{}
-
-	refRenderer := &pulumiRefNodeRenderer{resolveRefToName, 0}
-	r := renderer.NewRenderer(renderer.WithNodeRenderers(
-		util.Prioritized(refRenderer, 100),
-		util.Prioritized(schema.NewRenderer(), 150),
-		util.Prioritized(md, 200),
-	))
-	var buf bytes.Buffer
-	err := r.Render(&buf, source, parsed)
-	contract.AssertNoErrorf(err, "error rendering docs")
-	// Avoid reformatting if no refs found.
-	if refRenderer.renderedCount == 0 {
-		return description
-	}
-	newDescription := buf.String()
-	// Cut trailing newline if the original description didn't have one.
-	if !strings.HasSuffix(description, "\n") {
-		newDescription, _ = strings.CutSuffix(newDescription, "\n")
-	}
-	return newDescription
-}
-
-type pulumiRefNodeRenderer struct {
-	resolveRefToName PulumiRefResolver
-	renderedCount    int
-}
-
-func (r *pulumiRefNodeRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindRawHTML,
-		func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-			if !entering {
-				return ast.WalkContinue, nil
-			}
-
-			raw := n.(*ast.RawHTML)
-			var htmlSource bytes.Buffer
-			for i := range raw.Segments.Len() {
-				segment := raw.Segments.At(i)
-				htmlSource.Write(segment.Value(source))
-			}
-
-			ref, ok := parsePulumiRef(htmlSource.String())
-			var err error
-			if !ok {
-				_, err = writer.Write(htmlSource.Bytes())
-			} else {
-				name, ok := r.resolveRefToName(ref)
-				if !ok {
-					name = defaultRefRender(ref)
-				}
-				_, err = writer.Write([]byte(name))
-				r.renderedCount++
-			}
-			if err != nil {
-				return ast.WalkStop, fmt.Errorf("error writing pulumi ref: %w", err)
-			}
-
-			return ast.WalkSkipChildren, nil
-		},
-	)
-}
-
-func defaultRefRender(docRef DocRef) string {
-	if docRef.Property != "" {
-		return docRef.Property
-	}
-	if docRef.Token != "" {
-		return docRef.Token.DisplayName()
-	}
-	return docRef.Ref
-}
-
-func parsePulumiRef(htmlFragment string) (DocRef, bool) {
-	nodes, err := html.ParseFragment(strings.NewReader(htmlFragment), &html.Node{Type: html.ElementNode})
-	if err != nil || len(nodes) != 1 {
-		return DocRef{}, false
-	}
-	node := nodes[0]
-	if node.Type != html.ElementNode || node.Data != "pulumi" {
-		return DocRef{}, false
-	}
-
-	for _, attr := range node.Attr {
-		if attr.Key == "ref" {
-			return parseDocRef(attr.Val), true
-		}
-	}
-	return DocRef{}, false
+	interpretPulumiRefs(parsed, resolveRefToName)
+	return schema.RenderDocsToString(source, parsed)
 }
 
 type DocRefType string
