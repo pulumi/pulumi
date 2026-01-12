@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: protobuf
+  description: Remove ProviderHandshakeResponse.pulumi_version_range
