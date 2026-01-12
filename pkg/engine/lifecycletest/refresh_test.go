@@ -2936,3 +2936,199 @@ func TestRefreshDeletedResourceWithChild(t *testing.T) {
 		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+func TestRefreshV2TargetedWithPropertyDependencies(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21431]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, repro for snapshot integrity issue")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provider",
+			Custom: true,
+			ID:     "id1",
+		}
+		s.Resources = append(s.Resources, prov)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		res := &resource.State{
+			Type:     "pkgA:index:Resource",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Resource::resource",
+			Custom:   true,
+			ID:       "id2",
+			Provider: provRef.String(),
+		}
+		s.Resources = append(s.Resources, res)
+
+		comp := &resource.State{
+			Type:     "pkgA:index:Component",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Component::component",
+			Provider: provRef.String(),
+			PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+				"input": {
+					res.URN,
+				},
+			},
+		}
+		s.Resources = append(s.Resources, comp)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "provider", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		res, err := monitor.RegisterResource("pkgA:index:Resource", "resource", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:Component", "component", false, deploytest.ResourceOptions{
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"input": {
+					res.URN,
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provider",
+			}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+func TestRefreshV2TargetNotInProgram(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21431]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, repro for snapshot integrity issue")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		provA := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
+			Custom: true,
+			ID:     "id",
+		}
+		s.Resources = append(s.Resources, provA)
+
+		provRefA, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resA := &resource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:   true,
+			ID:       "id",
+			Provider: provRefA.String(),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		resB := &resource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resB",
+			Provider: provRefA.String(),
+		}
+		s.Resources = append(s.Resources, resB)
+
+		resC := &resource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resC",
+			Provider: provRefA.String(),
+			Dependencies: []resource.URN{
+				resA.URN,
+			},
+		}
+		s.Resources = append(s.Resources, resC)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", false, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test-stack::test-project::pkgA:m:typA::resB",
+			}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
