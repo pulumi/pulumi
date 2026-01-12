@@ -39,16 +39,16 @@ class NodePoolAutoscaling(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 location_policy: Optional['pulumi_google_native.container.v1.NodePoolAutoscalingLocationPolicy'] = None):
+                 location_policy: Optional['pulumi_google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem'] = None):
         """
-        :param 'pulumi_google_native.container.v1.NodePoolAutoscalingLocationPolicy' location_policy: Location policy used when scaling up a nodepool.
+        :param 'pulumi_google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem' location_policy: Location policy used when scaling up a nodepool.
         """
         if location_policy is not None:
             pulumi.set(__self__, "location_policy", location_policy)
 
     @_builtins.property
     @pulumi.getter(name="locationPolicy")
-    def location_policy(self) -> Optional['pulumi_google_native.container.v1.NodePoolAutoscalingLocationPolicy']:
+    def location_policy(self) -> Optional['pulumi_google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem']:
         """
         Location policy used when scaling up a nodepool.
         """

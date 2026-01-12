@@ -45,7 +45,7 @@
 
   <ItemGroup>
     <PackageReference Include="Pulumi" Version="[3.76.1.0,4)" />
-    <PackageReference Include="Pulumi.AzureNative" Version="1.28.*" ExcludeAssets="contentFiles" />
+    <PackageReference Include="Pulumi.AzureNative" Version="1.56.*" ExcludeAssets="contentFiles" />
   </ItemGroup>
 
   <ItemGroup>

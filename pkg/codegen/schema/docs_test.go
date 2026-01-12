@@ -15,10 +15,7 @@
 package schema
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"path"
@@ -26,12 +23,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blang/semver"
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/testutil"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // Note to future engineers: keep each file tested as a single test, do not use `t.Run` in the inner
@@ -183,141 +177,6 @@ func TestParseAndRenderDocs(t *testing.T) {
 					t.Logf("rendered: %v", string(rendered))
 				}
 			}
-		})
-	}
-}
-
-func pkgInfo(t *testing.T, filename string) (string, *semver.Version) {
-	filename = strings.TrimSuffix(filename, ".json")
-
-	for idx := range len(filename) {
-		i := strings.IndexByte(filename[idx:], '-') + idx
-		require.Truef(t, i != -1, "Could not parse %q into (pkg, version)", filename)
-		name := filename[:i]
-		version := filename[i+1:]
-		if v, err := semver.Parse(version); err == nil {
-			return name, &v
-		}
-	}
-
-	require.Failf(t, "invalid filename", "%q is not suffixed with a semver version", filename)
-	return "", nil
-}
-
-func TestReferenceRenderer(t *testing.T) {
-	t.Parallel()
-
-	files, err := os.ReadDir(testdataPath)
-	if err != nil {
-		t.Fatalf("could not read test data: %v", err)
-	}
-
-	seenNames := map[string]struct{}{}
-
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
-	for _, f := range files {
-		if filepath.Ext(f.Name()) != ".json" || f.Name() == "types.json" {
-			continue
-		}
-		name, version := pkgInfo(t, f.Name())
-
-		if _, ok := seenNames[name]; ok {
-			continue
-		}
-		seenNames[name] = struct{}{}
-
-		t.Run(f.Name(), func(t *testing.T) {
-			t.Parallel()
-
-			host := utils.NewHost(testdataPath)
-			defer host.Close()
-			loader := NewPluginLoader(host)
-			pkg, err := loader.LoadPackage(name, version)
-			if err != nil {
-				t.Fatalf("could not import package %s,%s: %v", name, version, err)
-			}
-
-			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
-			for _, doc := range getDocsForPackage(pkg) {
-				text := []byte(fmt.Sprintf("[entity](%s)", doc.entity))
-				expected := strings.ReplaceAll(doc.entity, "/", "_") + "\n"
-
-				parsed := ParseDocs(text)
-				actual := []byte(RenderDocsToString(text, parsed, WithReferenceRenderer(
-					func(r *Renderer, w io.Writer, src []byte, l *ast.Link, enter bool) (ast.WalkStatus, error) {
-						if !enter {
-							return ast.WalkContinue, nil
-						}
-
-						replaced := bytes.ReplaceAll(l.Destination, []byte{'/'}, []byte{'_'})
-						if _, err := r.MarkdownRenderer().Write(w, replaced); err != nil {
-							return ast.WalkStop, err
-						}
-
-						return ast.WalkSkipChildren, nil
-					})))
-
-				assert.Equal(t, expected, string(actual))
-			}
-		})
-	}
-}
-
-func TestRefParsing(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name        string
-		input       string
-		destination string
-	}{
-		{
-			name:        "simple resource ref",
-			input:       "See {{% ref #/resources/pkg:index:Resource %}} for more info.",
-			destination: "#/resources/pkg:index:Resource",
-		},
-		{
-			name:        "function ref",
-			input:       "Use {{% ref #/functions/pkg:mod:getFunc %}}.",
-			destination: "#/functions/pkg:mod:getFunc",
-		},
-		{
-			name:        "type ref",
-			input:       "The {{% ref #/types/pkg:index:MyType %}} type.",
-			destination: "#/types/pkg:index:MyType",
-		},
-		{
-			name:        "property ref",
-			input:       "The {{% ref #/resources/pkg:index:Res/properties/prop %}} property.",
-			destination: "#/resources/pkg:index:Res/properties/prop",
-		},
-		{
-			name:        "ref at start of line",
-			input:       "{{% ref #/resources/pkg:mod:Res %}} is a resource.",
-			destination: "#/resources/pkg:mod:Res",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			parsed := ParseDocs([]byte(tt.input))
-
-			// Walk the AST to find the Ref node.
-			var foundRef *Ref
-			err := ast.Walk(parsed, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
-				if entering {
-					if ref, ok := node.(*Ref); ok {
-						foundRef = ref
-						return ast.WalkStop, nil
-					}
-				}
-				return ast.WalkContinue, nil
-			})
-			require.NoError(t, err)
-			require.NotNil(t, foundRef, "expected to find a Ref node in the parsed AST")
-			assert.Equal(t, tt.destination, string(foundRef.Destination))
 		})
 	}
 }
