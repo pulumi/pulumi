@@ -140,6 +140,43 @@ export namespace StartDebuggingRequest {
     }
 }
 
+export class CheckPulumiVersionRequest extends jspb.Message { 
+    getPulumiVersionRange(): string;
+    setPulumiVersionRange(value: string): CheckPulumiVersionRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckPulumiVersionRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckPulumiVersionRequest): CheckPulumiVersionRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckPulumiVersionRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckPulumiVersionRequest;
+    static deserializeBinaryFromReader(message: CheckPulumiVersionRequest, reader: jspb.BinaryReader): CheckPulumiVersionRequest;
+}
+
+export namespace CheckPulumiVersionRequest {
+    export type AsObject = {
+        pulumiVersionRange: string,
+    }
+}
+
+export class CheckPulumiVersionResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckPulumiVersionResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckPulumiVersionResponse): CheckPulumiVersionResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckPulumiVersionResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckPulumiVersionResponse;
+    static deserializeBinaryFromReader(message: CheckPulumiVersionResponse, reader: jspb.BinaryReader): CheckPulumiVersionResponse;
+}
+
+export namespace CheckPulumiVersionResponse {
+    export type AsObject = {
+    }
+}
+
 export enum LogSeverity {
     DEBUG = 0,
     INFO = 1,

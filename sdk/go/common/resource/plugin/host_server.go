@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -147,4 +148,11 @@ func (eng *hostServer) StartDebugging(ctx context.Context,
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (eng *hostServer) CheckPulumiVersion(ctx context.Context,
+	req *pulumirpc.CheckPulumiVersionRequest,
+) (*pulumirpc.CheckPulumiVersionResponse, error) {
+	return &pulumirpc.CheckPulumiVersionResponse{},
+		validatePulumiVersionRange(req.PulumiVersionRange, version.Version)
 }
