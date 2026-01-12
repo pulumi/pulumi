@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -312,4 +313,115 @@ func TestZeroExitcode(t *testing.T) {
 	// separately.
 	require.ErrorContains(t, err, "could not read plugin [")
 	require.ErrorContains(t, err, "test-plugin-exit]: EOF")
+}
+
+func TestCheckVersionRange(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name               string
+		cliVersion         string
+		pulumiVersionRange string
+		expectedError      string
+	}{
+		{
+			name:               "exact match",
+			cliVersion:         "3.0.0",
+			pulumiVersionRange: "3.0.0",
+		},
+		{
+			name:               "greater than",
+			cliVersion:         "3.1.0",
+			pulumiVersionRange: ">=3.0.0",
+		},
+		{
+			name:               "within range",
+			cliVersion:         "3.5.0",
+			pulumiVersionRange: ">=3.0.0 <4.0.0",
+		},
+		{
+			name:               "too old",
+			cliVersion:         "2.9.0",
+			pulumiVersionRange: ">=3.0.0",
+			//nolint:lll
+			expectedError: "CLI version 2.9.0 does not satisfy the version range \">=3.0.0\" requested by the provider test.",
+		},
+		{
+			name:               "too new",
+			cliVersion:         "4.0.0",
+			pulumiVersionRange: "<4.0.0",
+			//nolint:lll
+			expectedError: "CLI version 4.0.0 does not satisfy the version range \"<4.0.0\" requested by the provider test.",
+		},
+		{
+			name:               "exclude",
+			cliVersion:         "3.1.0",
+			pulumiVersionRange: ">=3.0.0 !3.1.0",
+			//nolint:lll
+			expectedError: "CLI version 3.1.0 does not satisfy the version range \">=3.0.0 !3.1.0\" requested by the provider test.",
+		},
+		{
+			name:               "exclude 2",
+			cliVersion:         "3.1.1",
+			pulumiVersionRange: ">=3.0.0 !3.1.0",
+		},
+		{
+			name:               "exclude 3",
+			cliVersion:         "3.0.1",
+			pulumiVersionRange: ">=3.0.0 !3.1.0",
+		},
+		{
+			name:               "no range",
+			cliVersion:         "1.0.0",
+			pulumiVersionRange: "",
+		},
+		{
+			name:               "no cli version",
+			cliVersion:         "",
+			pulumiVersionRange: "1.2.3",
+		},
+		{
+			name:               "cli dev version ok",
+			cliVersion:         "3.215.0-alpha.x75fc436",
+			pulumiVersionRange: ">=3.214.0",
+		},
+		{
+			name:               "cli dev version bad",
+			cliVersion:         "3.215.0-alpha.x75fc436",
+			pulumiVersionRange: ">=3.215.0",
+			//nolint:lll
+			expectedError: "CLI version 3.215.0-alpha.x75fc436 does not satisfy the version range \">=3.215.0\" requested by the provider test.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := validatePulumiVersionRange(tt.pulumiVersionRange, tt.cliVersion, "test")
+
+			if tt.expectedError != "" {
+				require.ErrorContains(t, err, tt.expectedError)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// Test a provider that has an incompatible version range in its `PulumiPlugin.yaml`.
+//
+//nolint:paralleltest // Modifying the global version.Version
+func TestPulumiVersionRangeYaml(t *testing.T) {
+	d := diagtest.LogSink(t)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { ctx.Close() })
+
+	oldVersion := version.Version
+	version.Version = "3.1.2"
+	t.Cleanup(func() { version.Version = oldVersion })
+
+	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-cli-version"))
+	require.ErrorContains(t, err, "failed to load plugin testdata/test-plugin-cli-version: Pulumi CLI version 3.1.2 "+
+		"does not satisfy the version range \">=100.0.0\" requested by the provider testdata/test-plugin-cli-version.")
 }

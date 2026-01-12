@@ -1430,8 +1430,14 @@ class Stack:
         envs = {**envs, **self.workspace.env_vars}
 
         additional_args = self.workspace.serialize_args_for_op(self.name)
-        args.extend(additional_args)
-        args.extend(["--stack", self.name])
+        stack_args = ["--stack", self.name]
+
+        if "--" in args:
+            separator_index = args.index("--")
+            args[separator_index:separator_index] = additional_args + stack_args
+        else:
+            args.extend(additional_args + stack_args)
+
         result = self.workspace.pulumi_command.run(
             args, self.workspace.work_dir, envs, on_output, on_error
         )

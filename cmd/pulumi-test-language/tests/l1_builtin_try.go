@@ -15,9 +15,6 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
@@ -32,11 +29,11 @@ func init() {
 					config.MustMakeKey("l1-builtin-try", "aMap"):     config.NewObjectValue("{\"a\": \"MOK\"}"),
 					config.MustMakeKey("l1-builtin-try", "anObject"): config.NewObjectValue("{\"a\": \"OOK\", \"opt\": null}"),
 				},
-				Assert: func(l *L,
-					projectDirectory string, err error,
-					snap *deploy.Snapshot, changes display.ResourceChanges,
-					events []engine.Event,
-				) {
+				Assert: func(l *L, res AssertArgs) {
+					err := res.Err
+					snap := res.Snap
+					changes := res.Changes
+
 					RequireStackResource(l, err, changes)
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")

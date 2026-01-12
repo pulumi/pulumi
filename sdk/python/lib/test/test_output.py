@@ -42,7 +42,7 @@ def pulumi_test(coro):
     return wrapper
 
 
-class OutputSecretTests(unittest.TestCase):
+class OutputSecretTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_secret(self):
         x = Output.secret("foo")
@@ -62,7 +62,7 @@ class OutputSecretTests(unittest.TestCase):
         self.assertFalse(y_is_secret)
 
 
-class OutputFromInputTests(unittest.TestCase):
+class OutputFromInputTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_unwrap_empty_dict(self):
         x = Output.from_input({})
@@ -277,7 +277,7 @@ class Obj:
         self.x = x
 
 
-class OutputHoistingTests(unittest.TestCase):
+class OutputHoistingTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_item(self):
         o = Output.from_input([1, 2, 3])
@@ -306,7 +306,7 @@ class OutputHoistingTests(unittest.TestCase):
                 print(i)
 
 
-class OutputStrTests(unittest.TestCase):
+class OutputStrTests(unittest.IsolatedAsyncioTestCase):
     output_str_message = """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
@@ -411,7 +411,7 @@ class OutputApplyTests(unittest.TestCase):
             test()
 
 
-class OutputAllTests(unittest.TestCase):
+class OutputAllTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_args(self):
         o1 = Output.from_input(1)
@@ -429,7 +429,7 @@ class OutputAllTests(unittest.TestCase):
         self.assertEqual(x_val, {"x": 1, "y": "hi"})
 
 
-class OutputFormatTests(unittest.TestCase):
+class OutputFormatTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_nothing(self):
         x = Output.format("blank format")
@@ -452,7 +452,7 @@ class OutputFormatTests(unittest.TestCase):
         self.assertEqual(x_val, "1, hi")
 
 
-class OutputJsonDumpsTests(unittest.TestCase):
+class OutputJsonDumpsTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_basic(self):
         i = Output.from_input([0, 1])
@@ -544,7 +544,7 @@ class OutputJsonDumpsTests(unittest.TestCase):
         self.assertEqual(await x.is_known(), True)
 
 
-class OutputJsonLoadsTests(unittest.TestCase):
+class OutputJsonLoadsTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_basic(self):
         i = Output.from_input("[0, 1]")
@@ -554,7 +554,7 @@ class OutputJsonLoadsTests(unittest.TestCase):
         self.assertEqual(await x.is_known(), True)
 
 
-class OutputSerializationTests(unittest.TestCase):
+class OutputSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_get_raises(self):
         i = Output.from_input("hello")
@@ -628,7 +628,7 @@ class OutputSerializationTests(unittest.TestCase):
             i.is_secret()
 
 
-class DeferredOutputTests(unittest.TestCase):
+class DeferredOutputTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_deferred_output(self):
         output, resolve = pulumi.deferred_output()

@@ -1,0 +1,18 @@
+exports.handler = __f0;
+
+var __f0_prototype = Object.create(Object.getPrototypeOf((async function*(){}).prototype));
+Object.defineProperty(__f0, "prototype", { writable: true, value: __f0_prototype });
+
+function __f0() {
+  return (function() {
+    with({ delay: 100, message: "Hello from captured variable", this: undefined, arguments: undefined }) {
+
+return function* () {
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    yield message;
+    console.log("World");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -413,6 +413,7 @@ func GeneratedProgramSpec(
 				newSS.AddResource(r)
 			} else if action == ProgramSpecUpdate {
 				r := ss.Resources[i].Copy()
+				updateDependencies(r)
 				AddTag(r, UpdatedProgramResource)
 
 				// We'll generate a new set of dependencies for the updated resource, which means we'll automatically take any

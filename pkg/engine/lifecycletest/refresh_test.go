@@ -2842,3 +2842,97 @@ func TestRefreshV2FailedRead(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	require.Equal(t, resource.ID("id-resA"), snap.Resources[1].ID)
 }
+
+func TestRefreshDeletedResourceWithChild(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21386]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, repro for snapshot integrity issue")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		provA := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
+			Custom: true,
+			ID:     "id-provA",
+		}
+		s.Resources = append(s.Resources, provA)
+
+		provARef, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resA := &resource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:   true,
+			ID:       "id-resA",
+			Provider: provARef.String(),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		provB := &resource.State{
+			Type:   "pulumi:providers:pkgB",
+			URN:    "urn:pulumi:test-stack::test-project::pkgA:m:typA$pulumi:providers:pkgB::provB",
+			Custom: true,
+			ID:     "id-provB",
+			Parent: resA.URN,
+		}
+		s.Resources = append(s.Resources, provB)
+
+		resADeleted := &resource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:   true,
+			Delete:   true,
+			ID:       "id-resA",
+			Provider: provARef.String(),
+		}
+		s.Resources = append(s.Resources, resADeleted)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+			Status:     resource.StatusOK,
+		}, nil
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: readF,
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: readF,
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:             t,
+		HostF:         hostF,
+		UpdateOptions: UpdateOptions{},
+	}
+
+	_, err := lt.TestOp(Refresh).
+		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
