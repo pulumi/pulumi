@@ -38,7 +38,7 @@ func DefaultExclusionRules() ExclusionRules {
 		// TODO[pulumi/pulumi#21277]
 		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
 		// TODO[pulumi/pulumi#21347]
-		ExcludeResourceWithTargetedDependencyDestroyV2,
+		ExcludeResourceWithTargetedDependency,
 		// TODO[pulumi/pulumi#21282]
 		ExcludeTargetedAliasDestroyV2,
 		// TODO[pulumi/pulumi#21364]
@@ -184,16 +184,16 @@ func ExcludeTargetedAliasDestroyV2(
 	return false
 }
 
-// ExcludeResourceWithTargetedDependencyDestroyV2 excludes snapshots where a resource has a
+// ExcludeResourceWithTargetedDependency excludes snapshots where a resource has a
 // dependency (Parent, DeletedWith, Dependencies, or PropertyDependencies) pointing to a targeted
 // resource during a destroy v2 operation.
-func ExcludeResourceWithTargetedDependencyDestroyV2(
+func ExcludeResourceWithTargetedDependency(
 	spec *SnapshotSpec,
 	prog *ProgramSpec,
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
-	if plan.Operation != PlanOperationDestroyV2 {
+	if plan.Operation != PlanOperationDestroyV2 && plan.Operation != PlanOperationRefreshV2 {
 		return false
 	}
 
