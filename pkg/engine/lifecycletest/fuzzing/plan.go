@@ -167,8 +167,7 @@ var operationSpecs = []OperationSpec{
 	// PlanOperationRefreshV2,
 	// TODO[pulumi/pulumi#21271]: uncomment when destroy operations are stable
 	// PlanOperationDestroy,
-	// TODO[pulumi/pulumi#21244]: uncomment when destroyV2 operations are stable
-	// PlanOperationDestroyV2,
+	PlanOperationDestroyV2,
 }
 
 // Given a SnapshotSpec and a set of options, returns a rapid.Generator that will produce PlanSpecs that can be executed
