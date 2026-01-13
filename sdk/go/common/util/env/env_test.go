@@ -267,8 +267,6 @@ func TestJoinStoreRaw(t *testing.T) {
 }
 
 func TestEnvStoreValues(t *testing.T) {
-	t.Parallel()
-
 	testKey1 := "PULUMI_TEST_ENV_STORE_KEY1"
 	testKey2 := "PULUMI_TEST_ENV_STORE_KEY2"
 	testValue1 := "test_value_1"

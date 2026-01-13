@@ -30,6 +30,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Store holds a collection of key, value? pairs.
@@ -83,9 +85,7 @@ func (envStore) Values() iter.Seq2[string, string] {
 		vars := os.Environ()
 		for _, v := range vars {
 			parts := strings.SplitN(v, "=", 2)
-			if len(parts) == 1 {
-				panic("os.Environ promises that this won't happen")
-			}
+			contract.Assertf(len(parts) == 2, "invalid return value from os.Environ: %q", v)
 			if !yield(parts[0], parts[1]) {
 				break
 			}
