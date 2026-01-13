@@ -49,7 +49,8 @@ const (
 	nameKey             resource.PropertyKey = "name"
 	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
 	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
-	envOverridesKey     resource.PropertyKey = "envOverrides"
+	envOverridesKey     resource.PropertyKey = "envOverrides"   // Value overrides: "KEY": "value" sets KEY=value
+	envVarMappingsKey   resource.PropertyKey = "envVarMappings" // Remappings: "NEW_KEY": "OLD_KEY" means if NEW_KEY exists, provider sees OLD_KEY=value(NEW_KEY)
 
 	// versionKey is the key used to store the version of the provider in the Pulumi state. This is _not_ treated as an
 	// internal key. As such a provider can't define it's own configuration key "version". However the "version" that is
@@ -244,6 +245,8 @@ func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.P
 		base64.StdEncoding.EncodeToString(value.Value))
 }
 
+// GetEnvironmentOverrides fetches environment variable value overrides.
+// Returns an env.Store with key -> value pairs that will be set for the provider.
 func GetEnvironmentOverrides(
 	inputs resource.PropertyMap,
 ) (env.Store, error) {
@@ -264,6 +267,34 @@ func GetEnvironmentOverrides(
 		if !v.IsString() {
 			return nil, fmt.Errorf("'%s' values must be strings", envOverridesKey)
 		}
+		result[string(k)] = v.StringValue()
+	}
+	return result, nil
+}
+
+// GetEnvironmentVariableMappings fetches environment variable remappings.
+// Returns a map of NEW_KEY -> OLD_KEY mappings.
+// If NEW_KEY exists in the environment, the provider will see OLD_KEY=value(NEW_KEY).
+func GetEnvironmentVariableMappings(
+	inputs resource.PropertyMap,
+) (map[string]string, error) {
+	internalInputs, err := getInternal(inputs)
+	if err != nil {
+		return nil, err
+	}
+	mappings, ok := internalInputs[envVarMappingsKey]
+	if !ok {
+		return nil, nil
+	}
+	if !mappings.IsObject() {
+		return nil, fmt.Errorf("'%s' must be an object", envVarMappingsKey)
+	}
+	result := make(map[string]string)
+	for k, v := range mappings.ObjectValue() {
+		if !v.IsString() {
+			return nil, fmt.Errorf("'%s[%s]' must be a string", envVarMappingsKey, k)
+		}
+		// NEW_KEY -> OLD_KEY: take value from NEW_KEY, apply to OLD_KEY
 		result[string(k)] = v.StringValue()
 	}
 	return result, nil
@@ -589,10 +620,37 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		}}}, nil
 	}
 
-	e := envutil.NewEnv(envutil.JoinStore(envOverrides, env.Global().GetStore()))
+	envVarMappings, err := GetEnvironmentVariableMappings(req.News)
+	if err != nil {
+		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
+			Property: "envVarMappings", Reason: err.Error(),
+		}}}, nil
+	}
+
+	// Build the environment: start with global, apply value overrides, then apply remappings
+	baseStore := env.Global().GetStore()
+	if envOverrides != nil {
+		baseStore = envutil.JoinStore(envOverrides, baseStore)
+	}
+
+	// Apply remappings: if NEW_KEY exists in the environment, set OLD_KEY=value(NEW_KEY)
+	if envVarMappings != nil && len(envVarMappings) > 0 {
+		mappedStore := make(env.MapStore)
+		for newKey, oldKey := range envVarMappings {
+			// Check if NEW_KEY exists in the current environment
+			if value, ok := baseStore.Raw(newKey); ok {
+				// Provider sees OLD_KEY with the value from NEW_KEY
+				mappedStore[oldKey] = value
+			}
+		}
+		if len(mappedStore) > 0 {
+			baseStore = envutil.JoinStore(mappedStore, baseStore)
+		}
+	}
+
+	e := envutil.NewEnv(baseStore)
 	// TODO: We should thread checksums through here.
 	// TODO: We should thead the env though here.
-	// panic(fmt.Sprintf("envOverrides: %v", envOverrides.Values()))
 	provider, err := loadParameterizedProvider(
 		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 	if err != nil {
@@ -764,7 +822,34 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("get environment overrides for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		e := envutil.NewEnv(envutil.JoinStore(envOverrides, env.Global().GetStore()))
+
+		envVarMappings, err := GetEnvironmentVariableMappings(res.Inputs)
+		if err != nil {
+			return fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, urn, err)
+		}
+
+		// Build the environment: start with global, apply value overrides, then apply remappings
+		baseStore := env.Global().GetStore()
+		if envOverrides != nil {
+			baseStore = envutil.JoinStore(envOverrides, baseStore)
+		}
+
+		// Apply remappings: if NEW_KEY exists in the environment, set OLD_KEY=value(NEW_KEY)
+		if envVarMappings != nil && len(envVarMappings) > 0 {
+			mappedStore := make(env.MapStore)
+			for newKey, oldKey := range envVarMappings {
+				// Check if NEW_KEY exists in the current environment
+				if value, ok := baseStore.Raw(newKey); ok {
+					// Provider sees OLD_KEY with the value from NEW_KEY
+					mappedStore[oldKey] = value
+				}
+			}
+			if len(mappedStore) > 0 {
+				baseStore = envutil.JoinStore(mappedStore, baseStore)
+			}
+		}
+
+		e := envutil.NewEnv(baseStore)
 		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
@@ -840,7 +925,35 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("get environment overrides for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		e := envutil.NewEnv(envutil.JoinStore(envOverrides, env.Global().GetStore()))
+
+		envVarMappings, err := GetEnvironmentVariableMappings(req.Properties)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, req.URN, err)
+		}
+
+		// Build the environment: start with global, apply value overrides, then apply remappings
+		baseStore := env.Global().GetStore()
+		if envOverrides != nil {
+			baseStore = envutil.JoinStore(envOverrides, baseStore)
+		}
+
+		// Apply remappings: if NEW_KEY exists in the environment, set OLD_KEY=value(NEW_KEY)
+		if envVarMappings != nil && len(envVarMappings) > 0 {
+			mappedStore := make(env.MapStore)
+			for newKey, oldKey := range envVarMappings {
+				// Check if NEW_KEY exists in the current environment
+				if value, ok := baseStore.Raw(newKey); ok {
+					// Provider sees OLD_KEY with the value from NEW_KEY
+					mappedStore[oldKey] = value
+				}
+			}
+			if len(mappedStore) > 0 {
+				baseStore = envutil.JoinStore(mappedStore, baseStore)
+			}
+		}
+
+		e := envutil.NewEnv(baseStore)
 		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
