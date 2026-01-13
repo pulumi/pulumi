@@ -96,7 +96,10 @@ func ExcludeChildProviderOfDuplicateResourceRefresh(
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
-	if plan.Operation != PlanOperationRefresh && !plan.Refresh && !plan.RefreshProgram {
+	if plan.Operation != PlanOperationRefresh &&
+		plan.Operation != PlanOperationRefreshV2 &&
+		!plan.Refresh &&
+		!plan.RefreshProgram {
 		return false
 	}
 
