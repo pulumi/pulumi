@@ -42,9 +42,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -2942,4 +2944,20 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	frames := runtime.CallersFrames(pcs[:])
 	frame, _ := frames.Next()
 	return ctx.getSourcePositionForFrame(frame)
+}
+
+func (ctx *Context) CheckPulumiVersion(rg string) error {
+	_, err := ctx.state.engine.CheckPulumiVersion(ctx.Context(), &pulumirpc.CheckPulumiVersionRequest{
+		PulumiVersionRange: rg,
+	})
+	if err != nil {
+		if rpcError, ok := rpcerror.FromError(err); ok {
+			if rpcError.Code() == codes.Unimplemented {
+				return nil
+			}
+			return rpcError
+		}
+		return err
+	}
+	return nil
 }

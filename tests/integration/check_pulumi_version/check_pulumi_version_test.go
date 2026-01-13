@@ -43,6 +43,11 @@ func TestCheckPulumiVersionSDK(t *testing.T) {
 			dependencies:  []string{"@pulumi/pulumi"},
 			errorContains: "index.ts:4",
 		},
+		{
+			runtime:       "go",
+			dependencies:  []string{"github.com/pulumi/pulumi/sdk/v3"},
+			errorContains: "", // no stack traces in Go!
+		},
 	}
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, tc := range testCases {
@@ -59,7 +64,9 @@ func TestCheckPulumiVersionSDK(t *testing.T) {
 							require.Regexp(t, "Pulumi CLI version .* does not satisfy the version range \"=3\\.1\\.2\"",
 								event.DiagnosticEvent.Message)
 							foundError = true
-							require.Contains(t, event.DiagnosticEvent.Message, tc.errorContains)
+							if tc.errorContains != "" {
+								require.Contains(t, event.DiagnosticEvent.Message, tc.errorContains)
+							}
 						}
 					}
 					b, err := json.Marshal(stack.Events)
