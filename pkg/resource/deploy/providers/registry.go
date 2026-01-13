@@ -300,6 +300,27 @@ func GetEnvironmentVariableMappings(
 	return result, nil
 }
 
+// SetEnvironmentOverrides sets environment variable value overrides in the given property map.
+func SetEnvironmentOverrides(inputs resource.PropertyMap, overrides map[string]string) {
+	internalInputs := addOrGetInternal(inputs)
+	propMap := make(resource.PropertyMap)
+	for k, v := range overrides {
+		propMap[resource.PropertyKey(k)] = resource.NewProperty(v)
+	}
+	internalInputs[envOverridesKey] = resource.NewProperty(propMap)
+}
+
+// SetEnvironmentVariableMappings sets environment variable remappings in the given property map.
+// The mappings map should be NEW_KEY -> OLD_KEY (if NEW_KEY exists, provider sees OLD_KEY=value(NEW_KEY)).
+func SetEnvironmentVariableMappings(inputs resource.PropertyMap, mappings map[string]string) {
+	internalInputs := addOrGetInternal(inputs)
+	propMap := make(resource.PropertyMap)
+	for newKey, oldKey := range mappings {
+		propMap[resource.PropertyKey(newKey)] = resource.NewProperty(oldKey)
+	}
+	internalInputs[envVarMappingsKey] = resource.NewProperty(propMap)
+}
+
 // GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
 // parameterization property is not present, this function returns nil.
 func GetProviderParameterization(
