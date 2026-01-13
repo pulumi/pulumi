@@ -38,6 +38,11 @@ func TestCheckPulumiVersionSDK(t *testing.T) {
 			},
 			errorContains: "__main__.py\", line 3", // We can see where the exception originated
 		},
+		{
+			runtime:       "nodejs",
+			dependencies:  []string{"@pulumi/pulumi"},
+			errorContains: "index.ts:4",
+		},
 	}
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, tc := range testCases {

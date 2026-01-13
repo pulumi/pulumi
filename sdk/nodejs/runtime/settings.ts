@@ -721,3 +721,37 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
         );
     });
 }
+
+/**
+ * Checks if the engine we are connected to is compatible with the passed in version range. If the version is not
+ * compatible with the specified range, an exception is raised.
+ *
+ * @param range
+ *  The range to check. The supported syntax for the range is that of
+ *  https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
+ *  together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
+ *  Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
+ */
+export async function checkPulumiVersion(range: string): Promise<void> {
+    const engineRef = getEngine();
+    if (!engineRef) {
+        return;
+    }
+    const req = new engproto.CheckPulumiVersionRequest();
+    req.setPulumiVersionRange(range);
+    return new Promise<void>((resolve, reject) => {
+        engineRef.checkPulumiVersion(
+            req,
+            (err: grpc.ServiceError | null, resp: engproto.CheckPulumiVersionResponse | undefined) => {
+                // If the engine we're speaking to isn't doesn't implement checkPulumiVersion just ignore it.
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return resolve();
+                }
+                if (err) {
+                    return reject(err);
+                }
+                return resolve();
+            },
+        );
+    });
+}

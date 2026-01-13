@@ -1,0 +1,6 @@
+{
+  "name": "nodejs",
+  "peerDependencies": {
+    "@pulumi/pulumi": "*"
+  }
+}
