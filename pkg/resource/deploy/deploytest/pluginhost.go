@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -267,6 +267,12 @@ func (e *hostEngine) SetRootResource(_ context.Context,
 func (e *hostEngine) StartDebugging(ctx context.Context,
 	req *pulumirpc.StartDebuggingRequest,
 ) (*emptypb.Empty, error) {
+	return nil, errors.New("unsupported")
+}
+
+func (e *hostEngine) CheckPulumiVersion(ctx context.Context,
+	req *pulumirpc.CheckPulumiVersionRequest,
+) (*pulumirpc.CheckPulumiVersionResponse, error) {
 	return nil, errors.New("unsupported")
 }
 

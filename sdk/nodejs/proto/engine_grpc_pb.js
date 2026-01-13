@@ -1,7 +1,7 @@
 // GENERATED CODE -- DO NOT EDIT!
 
 // Original file comments:
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,28 @@ function serialize_google_protobuf_Empty(arg) {
 
 function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_CheckPulumiVersionRequest(arg) {
+  if (!(arg instanceof pulumi_engine_pb.CheckPulumiVersionRequest)) {
+    throw new Error('Expected argument of type pulumirpc.CheckPulumiVersionRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CheckPulumiVersionRequest(buffer_arg) {
+  return pulumi_engine_pb.CheckPulumiVersionRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_CheckPulumiVersionResponse(arg) {
+  if (!(arg instanceof pulumi_engine_pb.CheckPulumiVersionResponse)) {
+    throw new Error('Expected argument of type pulumirpc.CheckPulumiVersionResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CheckPulumiVersionResponse(buffer_arg) {
+  return pulumi_engine_pb.CheckPulumiVersionResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_GetRootResourceRequest(arg) {
@@ -152,6 +174,18 @@ startDebugging: {
     requestDeserialize: deserialize_pulumirpc_StartDebuggingRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // CheckPulumiVersion checks that the version of the engine satisfies the passed in range.
+checkPulumiVersion: {
+    path: '/pulumirpc.Engine/CheckPulumiVersion',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_engine_pb.CheckPulumiVersionRequest,
+    responseType: pulumi_engine_pb.CheckPulumiVersionResponse,
+    requestSerialize: serialize_pulumirpc_CheckPulumiVersionRequest,
+    requestDeserialize: deserialize_pulumirpc_CheckPulumiVersionRequest,
+    responseSerialize: serialize_pulumirpc_CheckPulumiVersionResponse,
+    responseDeserialize: deserialize_pulumirpc_CheckPulumiVersionResponse,
   },
 };
 
