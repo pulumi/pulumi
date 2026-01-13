@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2025-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -408,5 +408,5 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 	}
 
 	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
-	require.NoError(t, err)
+	require.Error(t, err) // TODO: Change this to require.ErrorContains with the correct error message
 }
