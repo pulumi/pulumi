@@ -18,12 +18,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -141,7 +141,10 @@ func processCommand(cmd *cobra.Command, isRoot bool) any {
 		command.Documentation = strings.TrimSpace(cmd.Short)
 	}
 
-	command.Arguments = inferArguments(cmd)
+	args := inferArguments(cmd)
+	if args != nil {
+		command.Arguments = args
+	}
 	return command
 }
 
@@ -231,6 +234,7 @@ type HomogeneousArguments struct {
 
 type ArgSpec struct {
 	Name string `json:"name"`
+	Type string `json:"type,omitempty"`
 }
 
 type Cardinality struct {
@@ -239,51 +243,66 @@ type Cardinality struct {
 }
 
 func inferArguments(cmd *cobra.Command) any {
-	if detected := detectKnownArgumentPredicate(cmd); detected != nil {
-		return detected
-	}
-
-	return HeterogeneousArguments{
-		Type:              "heterogeneous",
-		Specifications:    []ArgSpec{},
-		RequiredArguments: 0,
-	}
-}
-
-func detectKnownArgumentPredicate(cmd *cobra.Command) any {
-	if cmd.Args == nil {
+	// Try to extract arguments from constrictor annotations
+	constrictorArgs, err := constrictor.ExtractArgs(cmd)
+	if err != nil {
 		return nil
 	}
 
-	argsFunc := reflect.ValueOf(cmd.Args)
-	if argsFunc.Kind() != reflect.Func {
-		return nil
-	}
-
-	knownPredicates := []struct {
-		name string
-		fn   any
-	}{
-		{"cmdutil.NoArgs", cmdutil.NoArgs},
-		{"cobra.NoArgs", cobra.NoArgs},
-		{"cobra.ArbitraryArgs", cobra.ArbitraryArgs},
-	}
-
-	for _, pred := range knownPredicates {
-		predFunc := reflect.ValueOf(pred.fn)
-		if predFunc.Kind() == reflect.Func {
-			if argsFunc.Pointer() == predFunc.Pointer() {
-				// For NoArgs, return empty arguments
-				if pred.name == "cmdutil.NoArgs" || pred.name == "cobra.NoArgs" {
-					return HeterogeneousArguments{
-						Type:              "heterogeneous",
-						Specifications:    []ArgSpec{},
-						RequiredArguments: 0,
-					}
-				}
-			}
-		}
+	if constrictorArgs != nil {
+		return convertConstrictorArguments(constrictorArgs)
 	}
 
 	return nil
+}
+
+func convertConstrictorArguments(args *constrictor.Arguments) any {
+	if args == nil {
+		return HeterogeneousArguments{
+			Type:              "heterogeneous",
+			Specifications:    []ArgSpec{},
+			RequiredArguments: 0,
+		}
+	}
+
+	argCount := len(args.Args)
+	required := args.Required
+
+	// No arguments.
+	if argCount == 0 && required == 0 && !args.Variadic {
+		return HeterogeneousArguments{
+			Type:              "heterogeneous",
+			Specifications:    []ArgSpec{},
+			RequiredArguments: 0,
+		}
+	}
+
+	// Convert constrictor Args to ArgSpecs.
+	specs := make([]ArgSpec, argCount)
+	for i, arg := range args.Args {
+		specs[i] = ArgSpec{
+			Name: arg.Name,
+			Type: arg.Type,
+		}
+	}
+
+	// For monotyped variadic arguments, use the homogeneous format.
+	if args.Variadic && argCount == 1 {
+		cardinality := Cardinality{
+			AtLeast: required,
+		}
+
+		return HomogeneousArguments{
+			Type:          "homogeneous",
+			Specification: specs[0],
+			Cardinality:   cardinality,
+		}
+	}
+
+	// Otherwise, assume heterogeneous.
+	return HeterogeneousArguments{
+		Type:              "heterogeneous",
+		Specifications:    specs,
+		RequiredArguments: required,
+	}
 }

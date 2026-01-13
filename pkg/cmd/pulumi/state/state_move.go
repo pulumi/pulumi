@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -64,14 +65,13 @@ func newStateMoveCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use:   "move [flags] <urn>...",
+		Use:   "move",
 		Short: "Move resources from one stack to another",
 		Long: `Move resources from one stack to another
 
 This command can be used to move resources from one stack to another. This can be useful when
 splitting a stack into multiple stacks or when merging multiple stacks into one.
 `,
-		Args: cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -130,6 +130,14 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Automatically approve and perform the move")
 	cmd.Flags().BoolVarP(&includeParents, "include-parents", "", false,
 		"Include all the parents of the moved resources as well")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "urn", Type: "string"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
 
 	return cmd
 }
