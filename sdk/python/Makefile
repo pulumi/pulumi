@@ -8,7 +8,9 @@ $(info    VERSION       = $(VERSION))
 $(info    PYPI_VERSION  = $(PYPI_VERSION))
 endif
 
-PROJECT_PKGS    := $(shell go list -C cmd/pulumi-language-python ./...)
+PROJECT_PKGS = $(shell go list -C cmd/pulumi-language-python ./...)
+
+_ := $(shell go build -o build/helpmakego github.com/iwahbe/helpmakego)
 
 include ../../build/common.mk
 
@@ -24,16 +26,21 @@ ensure_lowest:: .make/ensure/uv
 	../../scripts/retry uv venv --allow-existing
 	../../scripts/retry uv sync --dev --resolution lowest-direct
 
-build_package:: ensure
+build_package: build/pulumi-${PYPI_VERSION}-py3-none-any.whl build/pulumi-${PYPI_VERSION}.tar.gz
+build/pulumi-${PYPI_VERSION}-py3-none-any.whl build/pulumi-${PYPI_VERSION}.tar.gz: $(shell uv run --with hatchling python -- scripts/build_inputs.py)
 	uv run -m build --outdir ./build --installer uv
+	@touch $@
 
-build_plugin: ../../bin/pulumi-language-python
-	cp ./cmd/pulumi-language-python-exec ../../bin/
-	cp ./dist/pulumi-resource-pulumi-python ../../bin/
-	cp ./dist/pulumi-analyzer-policy-python ../../bin/
+build_plugin: ../../bin/pulumi-language-python  \
+	../../bin/pulumi-language-python-exec   \
+	../../bin/pulumi-resource-pulumi-python \
+	../../bin/pulumi-analyzer-policy-python
 
-.PHONY: ../../bin/pulumi-language-python
-../../bin/pulumi-language-python:
+../../bin/pulumi-language-python-exec:   ./cmd/pulumi-language-python-exec ; cp $< $@
+../../bin/pulumi-resource-pulumi-python: ./dist/pulumi-resource-pulumi-python ; cp $< $@
+../../bin/pulumi-analyzer-policy-python: ./dist/pulumi-analyzer-policy-python ; cp $< $@
+
+../../bin/pulumi-language-python: $(shell build/helpmakego cmd/pulumi-language-python)
 	go build -C cmd/pulumi-language-python \
 		-o ../../$@ \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
