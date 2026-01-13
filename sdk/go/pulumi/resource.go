@@ -550,6 +550,8 @@ type resourceOptions struct {
 	ReplaceWith             []Resource
 	Parameterization        []byte
 	Hooks                   *ResourceHookBinding
+	EnvOverrides            map[string]string // environment variable value overrides for provider resources (key -> value)
+	EnvVarMappings          map[string]string // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
 }
 
 func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
@@ -1135,6 +1137,42 @@ func Parameterization(parameter []byte) ResourceOrInvokeOption {
 			ro.Parameterization = parameter
 		case io != nil:
 			io.Parameterization = parameter
+		}
+	})
+}
+
+// EnvOverrides sets environment variable value overrides for provider resources.
+// The map should contain key -> value pairs that will be set as environment variables
+// when the provider plugin is launched.
+// This option only applies to provider resources (pulumi:providers:*).
+func EnvOverrides(overrides map[string]string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		if overrides != nil {
+			if ro.EnvOverrides == nil {
+				ro.EnvOverrides = make(map[string]string)
+			}
+			for k, v := range overrides {
+				ro.EnvOverrides[k] = v
+			}
+		}
+	})
+}
+
+// EnvVarMappings sets environment variable remappings for provider resources.
+// The map should contain NEW_KEY -> OLD_KEY pairs. If NEW_KEY exists in the environment,
+// the provider will see OLD_KEY with that value.
+// For example, {"MY_SPECIAL_AZ_LOGIN": "AZ_LOGIN"} means if MY_SPECIAL_AZ_LOGIN exists,
+// the provider will see AZ_LOGIN=value(MY_SPECIAL_AZ_LOGIN).
+// This option only applies to provider resources (pulumi:providers:*).
+func EnvVarMappings(mappings map[string]string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		if mappings != nil {
+			if ro.EnvVarMappings == nil {
+				ro.EnvVarMappings = make(map[string]string)
+			}
+			for k, v := range mappings {
+				ro.EnvVarMappings[k] = v
+			}
 		}
 	})
 }

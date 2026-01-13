@@ -286,6 +286,12 @@ export class RegisterResourceRequest extends jspb.Message {
     setHidediffsList(value: Array<string>): RegisterResourceRequest;
     addHidediffs(value: string, index?: number): string;
 
+    getEnvoverridesMap(): jspb.Map<string, string>;
+    clearEnvoverridesMap(): void;
+
+    getEnvvarmappingsMap(): jspb.Map<string, string>;
+    clearEnvvarmappingsMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RegisterResourceRequest): RegisterResourceRequest.AsObject;
@@ -340,6 +346,10 @@ export namespace RegisterResourceRequest {
         packageref: string,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
         hidediffsList: Array<string>,
+
+        envoverridesMap: Array<[string, string]>,
+
+        envvarmappingsMap: Array<[string, string]>,
     }
 
 

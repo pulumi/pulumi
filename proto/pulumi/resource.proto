@@ -181,6 +181,8 @@ message RegisterResourceRequest {
     // The resource hooks that should run at certain points in the resource's lifecycle.
     optional ResourceHooksBinding hooks = 34;
     repeated string hideDiffs = 37;
+    map<string, string> envOverrides = 40;     // environment variable value overrides for provider resources (key -> value)
+    map<string, string> envVarMappings = 41;   // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
 }
 
 enum Result {
