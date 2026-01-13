@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -143,7 +144,16 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			defer grpcServer.Close()
 
 			// Prepare environment variables for the plugin
-			pluginEnv := preparePluginEnv(ws, grpcServer)
+			pluginEnvStrings := preparePluginEnv(ws, grpcServer)
+			// Convert []string to env.Env
+			pluginEnvMap := make(env.MapStore)
+			for _, envVar := range pluginEnvStrings {
+				parts := strings.SplitN(envVar, "=", 2)
+				if len(parts) == 2 {
+					pluginEnvMap[parts[0]] = parts[1]
+				}
+			}
+			pluginEnv := env.NewEnv(pluginEnvMap)
 
 			plugin, err := plugin.ExecPlugin(pctx, pluginPath, source, kind, pluginArgs, "", pluginEnv, false)
 			if err != nil {

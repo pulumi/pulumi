@@ -20,8 +20,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"sync"
+
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
@@ -254,6 +255,18 @@ func GetEnvironmentOverrides(
 	if !ok {
 		return nil, nil
 	}
+	if !overrides.IsObject() {
+		return nil, fmt.Errorf("'%s' must be an object", envOverridesKey)
+	}
+	// Convert PropertyMap to map[string]string for env.MapStore
+	result := make(env.MapStore)
+	for k, v := range overrides.ObjectValue() {
+		if !v.IsString() {
+			return nil, fmt.Errorf("'%s' values must be strings", envOverridesKey)
+		}
+		result[string(k)] = v.StringValue()
+	}
+	return result, nil
 }
 
 // GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
@@ -579,6 +592,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	e := envutil.NewEnv(envutil.JoinStore(envOverrides, env.Global().GetStore()))
 	// TODO: We should thread checksums through here.
 	// TODO: We should thead the env though here.
+	// panic(fmt.Sprintf("envOverrides: %v", envOverrides.Values()))
 	provider, err := loadParameterizedProvider(
 		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 	if err != nil {
@@ -746,7 +760,12 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		envOverrides, err := GetEnvironmentOverrides(res.Inputs)
+		if err != nil {
+			return fmt.Errorf("get environment overrides for %v provider '%v': %w", providerPkg, urn, err)
+		}
+		e := envutil.NewEnv(envutil.JoinStore(envOverrides, env.Global().GetStore()))
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -816,7 +835,13 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		envOverrides, err := GetEnvironmentOverrides(req.Properties)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("get environment overrides for %v provider '%v': %w", providerPkg, req.URN, err)
+		}
+		e := envutil.NewEnv(envutil.JoinStore(envOverrides, env.Global().GetStore()))
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)
