@@ -98,7 +98,8 @@ func fakeFunc() {
 
 	example1ShortCode := `{{% example %}}` + "\n" + example1 + "\n" + `{{% /example %}}`
 	example2ShortCode := `{{% example %}}` + "\n" + example2 + "\n" + `{{% /example %}}`
-	description := `Some other {{% ref #/resources/aws:s3:bucket %}} shortcode content. {{% examples %}}` + "\n" + example1ShortCode + "\n" + example2ShortCode + "\n" + `{{% /examples %}}`
+	description := `Some other {{% ref #/resources/aws:s3:bucket %}} shortcode content.` +
+		` {{% examples %}}` + "\n" + example1ShortCode + "\n" + example2ShortCode + "\n" + `{{% /examples %}}`
 
 	t.Run("EveryExampleHasRelevantCodeSnippet", func(t *testing.T) {
 		t.Parallel()
