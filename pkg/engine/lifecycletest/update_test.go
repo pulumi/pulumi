@@ -416,6 +416,12 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 
 	// TODO[pulumi/pulumi#21433]: Fix the underlying issue and re-enable this test.
 	t.Skip("Skipping test due to underlying snapshot integrity issue")
+	// Note: this test might be testing an invalid scenario, and maybe we should try to prevent
+	// that scenario in the first place. It might not be possible to get into this scenario except via state edits
+	// though, you'd need a replace operation which failed to delete the old resource, and then you'd have to
+	// manually state edit to remove the newly replaced copy of the resource. Maybe we should just make that
+	// initial state an SIE? Check that all dependencies are pointing to existing resources, so
+	// you wouldn't even be able to import a state like that.
 
 	p := &lt.TestPlan{}
 	project := p.GetProject()
