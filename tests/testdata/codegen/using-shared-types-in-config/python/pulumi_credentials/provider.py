@@ -27,6 +27,7 @@ class ProviderArgs:
                  password: Optional[pulumi.Input[_builtins.str]] = None):
         """
         The set of arguments for constructing a Provider resource.
+
         :param pulumi.Input['HashKind'] hash: The (entirely uncryptographic) hash function used to encode the "password".
         :param pulumi.Input[_builtins.str] user: The username. Its important but not secret.
         :param pulumi.Input[_builtins.str] password: The password. It is very secret.

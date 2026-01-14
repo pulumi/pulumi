@@ -25,6 +25,7 @@ class ProviderArgs:
                  secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]]] = None):
         """
         The set of arguments for constructing a Provider resource.
+
         :param pulumi.Input[Union[_builtins.str, 'Color']] favorite_color: this is a relaxed string enum which can also be set via env var
         :param pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]] secret_sandwiches: Super duper secret sandwiches.
         """

@@ -31,6 +31,7 @@ class StorageAccountKeyResponseResult(dict):
                  value: _builtins.str):
         """
         An access key for the storage account.
+
         :param _builtins.str creation_time: Creation time of the key, in round trip date format.
         :param _builtins.str key_name: Name of the key.
         :param _builtins.str permissions: Permissions for the key -- read-only or full permissions.

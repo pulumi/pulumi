@@ -39,6 +39,7 @@ class KubeClientSettingsArgs:
                  timeout: Optional[pulumi.Input[_builtins.int]] = None):
         """
         Options for tuning the Kubernetes client used by a Provider.
+
         :param pulumi.Input[_builtins.int] timeout: Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.
         """
         if timeout is None:

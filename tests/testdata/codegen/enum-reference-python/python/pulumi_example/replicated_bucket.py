@@ -24,6 +24,7 @@ class ReplicatedBucketArgs:
                  destination_region: pulumi.Input[_builtins.str]):
         """
         The set of arguments for constructing a ReplicatedBucket resource.
+
         :param pulumi.Input[_builtins.str] destination_region: Region to which data should be replicated.
         """
         pulumi.set(__self__, "destination_region", destination_region)

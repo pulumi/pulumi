@@ -78,6 +78,7 @@ class IndexingPolicyResponse(dict):
                  composite_indexes: Optional[Sequence[Sequence['outputs.CompositePathResponse']]] = None):
         """
         Cosmos DB indexing policy
+
         :param Sequence[Sequence['CompositePathResponse']] composite_indexes: List of composite path list
         """
         if composite_indexes is not None:

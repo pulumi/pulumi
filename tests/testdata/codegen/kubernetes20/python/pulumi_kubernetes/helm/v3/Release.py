@@ -24,6 +24,7 @@ class ReleaseArgs:
                  values: Optional[pulumi.Input[Mapping[str, Any]]] = None):
         """
         The set of arguments for constructing a Release resource.
+
         :param pulumi.Input[_builtins.str] chart: Chart name to be installed. A path may be used.
         :param pulumi.Input[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]] value_yaml_files: List of assets (raw yaml files). Content is read and merged with values.
         :param pulumi.Input[Mapping[str, Any]] values: Custom values set for the release.
