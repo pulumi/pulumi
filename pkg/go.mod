@@ -43,7 +43,7 @@ require (
 	gocloud.dev v0.37.0
 	gocloud.dev/secrets/hashivault v0.37.0
 	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/net v0.47.0
+	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.18.0
 	google.golang.org/api v0.169.0
