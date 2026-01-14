@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,6 +33,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
+	"github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/ryboe/q"
 )
 
 type DebugInterceptor struct {
@@ -201,12 +204,37 @@ func (*DebugInterceptor) track(log *debugInterceptorLogEntry, err error) {
 }
 
 func (i *DebugInterceptor) trackRequest(log *debugInterceptorLogEntry, req any) {
+	// Debug: Check if this is a RegisterResourceRequest with envVarMappings
+	q.Q("trackRequest: method", log.Method, "reqType", reflect.TypeOf(req))
+	if rr, ok := req.(*pulumirpc.RegisterResourceRequest); ok {
+		mappings := rr.GetEnvVarMappings()
+		q.Q("trackRequest: RegisterResourceRequest", "hasEnvVarMappings", len(mappings) > 0, "mappings", mappings, "len", len(mappings))
+	} else {
+		q.Q("trackRequest: NOT a RegisterResourceRequest", "type", reflect.TypeOf(req))
+	}
 	j, err := i.transcode(req)
 	if err != nil {
 		i.track(log, err)
 	} else {
 		log.Request = j
 		log.Progress = "request_started"
+		// Debug: Check what was actually serialized
+		if rr, ok := req.(*pulumirpc.RegisterResourceRequest); ok {
+			mappings := rr.GetEnvVarMappings()
+			if len(mappings) > 0 {
+				// Check if envVarMappings is in the JSON
+				jsonStr := string(j)
+				if !strings.Contains(jsonStr, "envVarMappings") {
+					previewLen := 200
+					if len(jsonStr) < previewLen {
+						previewLen = len(jsonStr)
+					}
+					q.Q("trackRequest: WARNING - envVarMappings not in JSON!", "mappings", mappings, "jsonPreview", jsonStr[:previewLen])
+				} else {
+					q.Q("trackRequest: envVarMappings found in JSON", "mappings", mappings)
+				}
+			}
+		}
 	}
 }
 
@@ -239,7 +267,13 @@ func (*DebugInterceptor) transcode(obj any) (json.RawMessage, error) {
 				reflect.TypeOf(obj))
 	}
 
-	buf, err := protojson.Marshal(m)
+	// Use EmitUnpopulated to ensure all fields (including maps with entries) are included
+	// Note: UseProtoNames uses protobuf field names, but we want to use JSON names from the json tag
+	opts := protojson.MarshalOptions{
+		EmitUnpopulated: true,
+		UseProtoNames:   false, // Use JSON field names from json tags instead
+	}
+	buf, err := opts.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
