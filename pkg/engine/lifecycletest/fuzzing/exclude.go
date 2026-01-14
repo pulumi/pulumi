@@ -33,6 +33,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeDestroyAndRefreshProgramSet,
 		// TODO[pulumi/pulumi#21404]
 		ExcludeResourcePendingReplacementChangingParentRefreshProgram,
+		// TODO[pulumi/pulumi#21426]
+		ExcludeUpdateWithDependencyOnAliasedResource,
 		// TODO[pulumi/pulumi#21386]
 		ExcludeChildProviderOfDuplicateResourceRefresh,
 		// TODO[pulumi/pulumi#21277]
@@ -152,6 +154,50 @@ func ExcludeResourcePendingReplacementChangingParentRefreshProgram(
 		if newURN, hasAlias := aliasMap[res.URN()]; hasAlias {
 			if snapParents[res.URN()] != progParents[newURN] {
 				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func ExcludeUpdateWithDependencyOnAliasedResource(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate {
+		return false
+	}
+
+	aliasMap := make(map[resource.URN]bool)
+	for _, res := range prog.ResourceRegistrations {
+		for _, alias := range res.Aliases {
+			aliasMap[alias] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent != "" && aliasMap[res.Parent] {
+			return true
+		}
+
+		if res.DeletedWith != "" && aliasMap[res.DeletedWith] {
+			return true
+		}
+
+		for _, dep := range res.Dependencies {
+			if aliasMap[dep] {
+				return true
+			}
+		}
+
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if aliasMap[dep] {
+					return true
+				}
 			}
 		}
 	}
