@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 /**
- *  is a basic function for setting  on .
+ * fun is a basic function for setting Resource.in on Resource.
  */
 export function fun(args: FunArgs, opts?: pulumi.InvokeOptions): Promise<FunResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
@@ -28,7 +28,7 @@ export interface FunResult {
     readonly out: boolean;
 }
 /**
- *  is a basic function for setting  on .
+ * fun is a basic function for setting Resource.in on Resource.
  */
 export function funOutput(args: FunOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<FunResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});

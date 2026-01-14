@@ -98,13 +98,14 @@ func fakeFunc() {
 
 	example1ShortCode := `{{% example %}}` + "\n" + example1 + "\n" + `{{% /example %}}`
 	example2ShortCode := `{{% example %}}` + "\n" + example2 + "\n" + `{{% /example %}}`
-	description := `{{% examples %}}` + "\n" + example1ShortCode + "\n" + example2ShortCode + "\n" + `{{% /examples %}}`
+	description := `Some other {{% ref #/resources/aws:s3:bucket %}} shortcode content. {{% examples %}}` + "\n" + example1ShortCode + "\n" + example2ShortCode + "\n" + `{{% /examples %}}`
 
 	t.Run("EveryExampleHasRelevantCodeSnippet", func(t *testing.T) {
 		t.Parallel()
 
 		strippedDescription := FilterExamples(description, "typescript")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
+		assert.Contains(t, strippedDescription, "Some other {{% ref #/resources/aws:s3:bucket %}} shortcode content.")
 		assert.Contains(t, strippedDescription, "Example 1", "expected Example 1 section")
 		assert.Contains(t, strippedDescription, "Example 2", "expected Example 2 section")
 	})
@@ -114,6 +115,7 @@ func fakeFunc() {
 
 		strippedDescription := FilterExamples(description, "go")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
+		assert.Contains(t, strippedDescription, "Some other {{% ref #/resources/aws:s3:bucket %}} shortcode content.")
 		assert.Contains(t, strippedDescription, "Example 1", "expected Example 1 section")
 		assert.NotContains(t, strippedDescription, "Example 2",
 			"unexpected Example 2 section. section should have been excluded")

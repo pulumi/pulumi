@@ -50,7 +50,7 @@ class Resource(pulumi.CustomResource):
                  in_: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         """
-         is a basic resource. Use  to set  using .
+        Resource is a basic resource. Use fun to set in_ using FunResult.out.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
@@ -63,7 +63,7 @@ class Resource(pulumi.CustomResource):
                  args: ResourceArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-         is a basic resource. Use  to set  using .
+        Resource is a basic resource. Use fun to set in_ using FunResult.out.
 
         :param str resource_name: The name of the resource.
         :param ResourceArgs args: The arguments to use to populate this resource's properties.

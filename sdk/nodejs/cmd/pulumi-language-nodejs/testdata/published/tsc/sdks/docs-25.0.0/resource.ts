@@ -7,7 +7,7 @@ import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
 /**
- *  is a basic resource. Use  to set  using .
+ * Resource is a basic resource. Use fun to set ResourceArgs.in using FunResult.out.
  */
 export class Resource extends pulumi.CustomResource {
     /**
