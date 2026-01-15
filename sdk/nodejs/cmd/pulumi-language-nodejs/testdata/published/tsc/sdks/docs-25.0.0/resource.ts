@@ -81,7 +81,7 @@ export class Resource extends pulumi.CustomResource {
  */
 export interface ResourceArgs {
     /**
-     * Will be used to set Resource.in and Resource.out.
+     * Will be used to set ResourceArgs.in and Resource.out.
      */
     in: pulumi.Input<boolean>;
 }

@@ -93,7 +93,7 @@ func (p *DocsProvider) GetSchema(
 						TypeSpec: schema.TypeSpec{
 							Type: "boolean",
 						},
-						Description: "Will be used to set {{% ref #/resources/docs:index:Resource/properties/in %}} and " +
+						Description: "Will be used to set {{% ref #/resources/docs:index:Resource/inputProperties/in %}} and " +
 							"{{% ref #/resources/docs:index:Resource/properties/out %}}.",
 					},
 				},
@@ -103,7 +103,7 @@ func (p *DocsProvider) GetSchema(
 		Functions: map[string]schema.FunctionSpec{
 			"docs:index:fun": {
 				Description: "{{% ref #/functions/docs:index:fun %}} is a basic function for setting {{% ref " +
-					"#/resources/docs:index:Resource/properties/in %}} on {{% ref #/resources/docs:index:Resource %}}.",
+					"#/resources/docs:index:Resource/inputProperties/in %}} on {{% ref #/resources/docs:index:Resource %}}.",
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{

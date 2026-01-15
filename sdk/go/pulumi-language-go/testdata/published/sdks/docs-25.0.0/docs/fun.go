@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Fun is a basic function for setting Resource.In on Resource.
+// Fun is a basic function for setting ResourceArgs.In on Resource.
 func Fun(ctx *pulumi.Context, args *FunArgs, opts ...pulumi.InvokeOption) (*FunResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv FunResult

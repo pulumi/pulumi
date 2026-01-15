@@ -67,13 +67,13 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
-	// Will be used to set Resource.In and Resource.Out.
+	// Will be used to set ResourceArgs.In and Resource.Out.
 	In bool `pulumi:"in"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	// Will be used to set Resource.In and Resource.Out.
+	// Will be used to set ResourceArgs.In and Resource.Out.
 	In pulumi.BoolInput
 }
 
