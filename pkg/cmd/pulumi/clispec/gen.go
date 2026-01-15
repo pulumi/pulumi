@@ -32,7 +32,7 @@ import (
 // but that seems like the wrong approach. Potentially, we'll come back to this later and maybe extend the Cobra
 // command structure to reify the argument structure.
 func NewGenCLISpecCmd(root *cobra.Command) *cobra.Command {
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:    "generate-cli-spec",
 		Short:  "Generate Pulumi CLI specification as JSON",
 		Hidden: true,
@@ -48,14 +48,6 @@ func NewGenCLISpecCmd(root *cobra.Command) *cobra.Command {
 			return nil
 		},
 	}
-
-	constrictor.AttachArgs(cmd, &constrictor.Arguments{
-		Args:     []constrictor.Arg{},
-		Required: 0,
-		Variadic: false,
-	})
-
-	return cmd
 }
 
 // -- SPECIFICATION
@@ -68,52 +60,41 @@ type Specification struct {
 func generateSpec(cmd *cobra.Command) Specification {
 	return Specification{
 		ExecutablePath: "pulumi",
-		Structure:      processCommand(cmd, true),
+		Structure:      processCommand(cmd),
 	}
 }
 
 // -- COMMANDS
 
 type MenuStructure struct {
-	Type           string          `json:"type"`
-	AvailableFlags map[string]Flag `json:"available_flags"`
-	Commands       map[string]any  `json:"commands,omitempty"`
+	Type     string          `json:"type"`
+	Flags    map[string]Flag `json:"flags"`
+	Commands map[string]any  `json:"commands,omitempty"`
 }
 
 type CommandStructure struct {
-	Type           string          `json:"type"`
-	AvailableFlags map[string]Flag `json:"available_flags"`
-	Arguments      any             `json:"arguments,omitempty"`
-	Documentation  string          `json:"documentation,omitempty"`
+	Type              string          `json:"type"`
+	Flags             map[string]Flag `json:"flags"`
+	Arguments         any             `json:"arguments,omitempty"`
+	Documentation     string          `json:"documentation,omitempty"`
+	RunsPulumiProgram bool            `json:"runs_pulumi_program,omitempty"`
 }
 
-func processCommand(cmd *cobra.Command, isRoot bool) any {
-	if cmd.Hidden && !isRoot {
-		return nil
-	}
-
+func processCommand(cmd *cobra.Command) any {
 	subcommands := cmd.Commands()
-	isMenu := false
-
-	for _, subcmd := range subcommands {
-		if !subcmd.Hidden {
-			isMenu = true
-			break
-		}
-	}
-
+	isMenu := len(subcommands) > 0
 	flags := extractFlags(cmd)
 
 	// Menus are commands that have (visible) subcommands.
 	if isMenu {
 		menu := MenuStructure{
-			Type:           "menu",
-			AvailableFlags: flags,
-			Commands:       make(map[string]any),
+			Type:     "menu",
+			Flags:    flags,
+			Commands: make(map[string]any),
 		}
 
 		for _, subcmd := range subcommands {
-			processed := processCommand(subcmd, false)
+			processed := processCommand(subcmd)
 			if processed != nil {
 				menu.Commands[subcmd.Name()] = processed
 			}
@@ -124,8 +105,8 @@ func processCommand(cmd *cobra.Command, isRoot bool) any {
 
 	// Commands are considered the "leaves" of the tree.
 	command := CommandStructure{
-		Type:           "command",
-		AvailableFlags: flags,
+		Type:  "command",
+		Flags: flags,
 	}
 
 	if cmd.Long != "" {
@@ -138,6 +119,11 @@ func processCommand(cmd *cobra.Command, isRoot bool) any {
 	if args != nil {
 		command.Arguments = args
 	}
+
+	if cmd.Flags().Lookup("client") != nil {
+		command.RunsPulumiProgram = true
+	}
+
 	return command
 }
 
@@ -154,59 +140,33 @@ type Flag struct {
 func extractFlags(cmd *cobra.Command) map[string]Flag {
 	flags := make(map[string]Flag)
 
-	root := cmd
-	for root.HasParent() {
-		root = root.Parent()
-	}
-
-	// Persistent flags are just "stuff inherited from the parent". We don't have to recurse any higher,
-	// as the parent command's persistent flags will become persistent flags in the child.
-	root.PersistentFlags().VisitAll(func(f *pflag.Flag) {
-		if !f.Hidden {
-			flag := extractFlagInfo(f)
-			if flag != nil {
-				flags[flag.LongName] = *flag
-			}
+	cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
+		flag := &Flag{
+			LongName:      f.Name,
+			Documentation: f.Usage,
 		}
-	})
 
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if !f.Hidden {
-			flag := extractFlagInfo(f)
-			if flag != nil {
-				// Local flags override persistent flags with the same name
-				flags[flag.LongName] = *flag
-			}
+		if f.Shorthand != "" && f.Shorthand != " " {
+			flag.ShortName = f.Shorthand
 		}
+
+		flagType := f.Value.Type()
+		switch flagType {
+		case "bool":
+			flag.Type = "boolean"
+		case "stringSlice", "stringArray":
+			flag.Type = "string"
+			flag.Repeatable = true
+		case "int", "int32", "int64":
+			flag.Type = "int"
+		default:
+			flag.Type = "string"
+		}
+
+		flags[flag.LongName] = *flag
 	})
 
 	return flags
-}
-
-func extractFlagInfo(f *pflag.Flag) *Flag {
-	flag := &Flag{
-		LongName:      f.Name,
-		Documentation: f.Usage,
-	}
-
-	if f.Shorthand != "" && f.Shorthand != " " {
-		flag.ShortName = f.Shorthand
-	}
-
-	flagType := f.Value.Type()
-	switch flagType {
-	case "bool":
-		flag.Type = "boolean"
-	case "stringSlice", "stringArray":
-		flag.Type = "string"
-		flag.Repeatable = true
-	case "int", "int32", "int64":
-		flag.Type = "int"
-	default:
-		flag.Type = "string"
-	}
-
-	return flag
 }
 
 // -- ARGUMENTS

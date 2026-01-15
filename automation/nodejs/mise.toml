@@ -1,0 +1,4 @@
+[tools]
+bat = "latest"
+node = "latest"
+npm = "latest"

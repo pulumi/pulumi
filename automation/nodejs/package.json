@@ -1,0 +1,29 @@
+{
+  "main": "index.js",
+  "name": "automatic-automation",
+  "scripts": {
+    "start": "tsx source/index.ts"
+  },
+  "type": "module",
+  "version": "1.0.0",
+  "dependencies": {
+    "@types/joi": "^17.2.2",
+    "joi": "^17.13.3",
+    "ts-morph": "^25.0.1"
+  },
+  "devDependencies": {
+    "@pulumi/pulumi": "^3.160.0",
+    "@types/node": "^22.13.16",
+    "@types/pluralize": "^0.0.33",
+    "camelize": "^1.0.1",
+    "child_process": "^1.0.2",
+    "commander": "^13.1.0",
+    "cpy": "^11.1.0",
+    "load-json-file": "^7.0.1",
+    "pascalize": "^1.0.1",
+    "pluralize": "^8.0.0",
+    "tsx": "^4.19.3",
+    "util": "^0.12.5",
+    "uuid": "^11.1.0"
+  }
+}
