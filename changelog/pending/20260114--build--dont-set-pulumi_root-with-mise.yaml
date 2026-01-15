@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: build
+  description: Don't set PULUMI_ROOT with mise
