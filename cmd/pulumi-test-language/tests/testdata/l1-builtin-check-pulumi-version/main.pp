@@ -1,3 +1,3 @@
 pulumi {
-    pulumiVersionRange = "=3.1.2"
+    requiredVersionRange = "=3.1.2"
 }
