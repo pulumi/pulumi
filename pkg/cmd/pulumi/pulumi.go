@@ -466,12 +466,12 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				events.NewReplayEventsCmd(),
 			},
 		},
-		// AI Commands relating to specifically the Pulumi AI service
+		// AI Commands relating specifically to the Pulumi AI service
 		//     and its related features
 		{
 			Name: "AI Commands",
 			Commands: []*cobra.Command{
-				ai.NewAICommand(),
+				ai.NewAICommand(pkgWorkspace.Instance),
 			},
 		},
 	})

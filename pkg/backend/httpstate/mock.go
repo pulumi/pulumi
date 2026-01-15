@@ -34,6 +34,7 @@ type MockHTTPBackend struct {
 	) (*apitype.ResourceSearchResponse, error)
 	FNaturalLanguageSearch func(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
 	FPromptAI              func(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
+	FCreateNeoTask         func(ctx context.Context, stackRef backend.StackReference, prompt string) (string, error)
 	FStackConsoleURL       func(stackRef backend.StackReference) (string, error)
 	FRunDeployment         func(
 		ctx context.Context,
@@ -64,6 +65,12 @@ func (b *MockHTTPBackend) PromptAI(
 	ctx context.Context, requestBody AIPromptRequestBody,
 ) (*http.Response, error) {
 	return b.FPromptAI(ctx, requestBody)
+}
+
+func (b *MockHTTPBackend) CreateNeoTask(
+	ctx context.Context, stackRef backend.StackReference, prompt string,
+) (string, error) {
+	return b.FCreateNeoTask(ctx, stackRef, prompt)
 }
 
 func (b *MockHTTPBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {

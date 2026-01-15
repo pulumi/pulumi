@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,16 +19,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"strings"
 
-	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -74,9 +73,8 @@ func (l *PulumiAILanguage) Type() string {
 }
 
 type aiWebCmd struct {
-	appURL            string
-	disableAutoSubmit bool
-	language          PulumiAILanguage
+	language PulumiAILanguage
+	ws       pkgWorkspace.Context
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -92,76 +90,84 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 		cmd.Stdout = os.Stdout
 	}
 
+	if len(args) == 0 {
+		return errors.New(
+			"prompt must be provided.\n" +
+				"Example: 'pulumi ai web \"Create an S3 bucket in Python\"'",
+		)
+	}
+
+	prompt := args[0]
+
+	project, _, err := cmd.ws.ReadProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return err
+	}
+
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
-	requestURL, err := url.Parse(cmd.appURL)
+
+	opts := display.Options{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+
+	b, err := cmd.currentBackend(ctx, cmd.ws, cmdBackend.DefaultLoginManager, project, opts)
+	if err != nil {
+		return fmt.Errorf("failed to get current backend: %w", err)
+	}
+
+	// Check if it's a cloud backend
+	cloudBackend, isCloud := b.(httpstate.Backend)
+	if !isCloud {
+		return errors.New("Neo tasks are only available with the Pulumi Cloud backend. " +
+			"Please run 'pulumi login' to connect to Pulumi Cloud.")
+	}
+
+	// Try to get the current stack for context
+	var stackRef backend.StackReference
+	stack, err := state.CurrentStack(ctx, cmd.ws, b)
+	if err == nil && stack != nil {
+		stackRef = stack.Ref()
+	}
+
+	neoURL, err := cloudBackend.CreateNeoTask(ctx, stackRef, prompt)
 	if err != nil {
 		return err
 	}
-	query := requestURL.Query()
-	if len(args) > 0 {
-		query.Set("prompt", args[0])
-	}
-	if !cmd.disableAutoSubmit {
-		if len(args) == 0 {
-			return errors.New(
-				"prompt must be provided when auto-submit is enabled.\n" +
-					"Example: 'pulumi ai web \"Create an S3 bucket in Python\"'\n" +
-					"Alternatively, use --no-auto-submit to open the app without a prompt",
-			)
-		}
-		query.Set("autoSubmit", "true")
-	}
-	if cmd.language == "" {
-		cmd.language = TypeScript // TODO: default to the language of the current project if one is present
-	}
-	query.Set("language", cmd.language.String())
 
-	requestURL.RawQuery = query.Encode()
-	if err = browser.OpenURL(requestURL.String()); err != nil {
-		fmt.Printf("We couldn't launch your web browser for some reason. Please visit:\n\n%s\n\n"+
-			"to continue your Pulumi AI session.\n", requestURL)
-		return errors.Join(err, fmt.Errorf("failed to open URL: %s", requestURL.String()))
-	}
-
+	fmt.Fprintf(cmd.Stdout, "\nNeo task created successfully!\n")
+	fmt.Fprintf(cmd.Stdout, "View your task at:\n%s\n\n", neoURL)
 	return nil
 }
 
-func newAIWebCommand() *cobra.Command {
+func newAIWebCommand(ws pkgWorkspace.Context) *cobra.Command {
 	var aiwebcmd aiWebCmd
-	aiwebcmd.appURL = env.AIServiceEndpoint.Value()
-	if aiwebcmd.appURL == "" {
-		aiwebcmd.appURL = "https://www.pulumi.com/ai"
-	}
+	aiwebcmd.ws = ws
+
 	cmd := &cobra.Command{
-		Use:   "web <prompt|--no-auto-submit>",
-		Short: "Opens Pulumi AI in your local browser",
-		Long: `Opens Pulumi AI in your local browser
+		Use:   "web <prompt>",
+		Short: "Create a Neo task with the given prompt",
+		Long: `Create a Neo task with the given prompt
 
-This command opens the Pulumi AI web app in your local default browser.
-It can be further initialized by providing a prompt to pre-fill in the app,
-with the default behavior then automatically submitting that prompt to Pulumi AI.
-
-If you do not want to submit the prompt to Pulumi AI, you can opt-out of this
-by passing the --no-auto-submit flag.
+This command creates a new Neo task in Pulumi Cloud with your prompt and
+provides you with a link to view it. Neo is Pulumi's AI assistant that
+can help you with infrastructure as code tasks.
 
 Example:
   pulumi ai web "Create an S3 bucket in Python"
+  pulumi ai web "Deploy a containerized web app to AWS"
 `,
-		Args: cmdutil.MaximumNArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return aiwebcmd.Run(ctx, args)
 		},
 	}
-	cmd.PersistentFlags().BoolVar(
-		&aiwebcmd.disableAutoSubmit, "no-auto-submit", false,
-		"Opt-out of automatically submitting the prompt to Pulumi AI",
-	)
 	cmd.PersistentFlags().VarP(
 		&aiwebcmd.language, "language", "l",
-		"Language to use for the prompt - this defaults to TypeScript. [TypeScript, Python, Go, C#, Java, YAML]",
+		"Language preference for the Neo task (currently not used but reserved for future use). "+
+			"[TypeScript, Python, Go, C#, Java, YAML]",
 	)
 	return cmd
 }

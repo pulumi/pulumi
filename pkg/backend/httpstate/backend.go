@@ -187,6 +187,8 @@ type Backend interface {
 		ctx context.Context, orgName string, query string,
 	) (*apitype.ResourceSearchResponse, error)
 	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
+	// CreateNeoTask creates a new Neo task with the given prompt and returns the task URL.
+	CreateNeoTask(ctx context.Context, stackRef backend.StackReference, prompt string) (string, error)
 	// Capabilities returns the capabilities of the backend indicating what features are available.
 	Capabilities(ctx context.Context) apitype.Capabilities
 }
@@ -1415,6 +1417,46 @@ func (b *cloudBackend) PromptAI(
 		return nil, fmt.Errorf("failed to submit AI prompt: %s", res.Status)
 	}
 	return res, nil
+}
+
+func (b *cloudBackend) CreateNeoTask(
+	ctx context.Context, stackRef backend.StackReference, prompt string,
+) (string, error) {
+	// Get the organization name from the stack reference
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		// If we can't get stack identifier, try to get default org
+		orgName, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
+		if err != nil {
+			return "", fmt.Errorf("failed to get organization: %w", err)
+		}
+		if orgName == "" {
+			// Fallback to username if no default org
+			userName, _, _, err := b.CurrentUser()
+			if err != nil {
+				return "", fmt.Errorf("failed to get current user: %w", err)
+			}
+			orgName = userName
+		}
+		// Create the task
+		taskID, err := b.Client().CreateNeoTask(ctx, orgName, prompt)
+		if err != nil {
+			return "", fmt.Errorf("failed to create Neo task: %w", err)
+		}
+		// Construct URL using CloudConsoleURL
+		neoURL := b.CloudConsoleURL(orgName, "neo", "tasks", taskID)
+		return neoURL, nil
+	}
+
+	// Create the task using the org from the stack
+	taskID, err := b.Client().CreateNeoTask(ctx, stackID.Owner, prompt)
+	if err != nil {
+		return "", fmt.Errorf("failed to create Neo task: %w", err)
+	}
+
+	// Construct URL using CloudConsoleURL
+	neoURL := b.CloudConsoleURL(stackID.Owner, "neo", "tasks", taskID)
+	return neoURL, nil
 }
 
 func (b *cloudBackend) renderAndSummarizeOutput(
