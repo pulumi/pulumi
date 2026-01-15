@@ -119,6 +119,12 @@ config "key" "string" {
 }
 ```
 
+### Pulumi
+
+The `pulumi` block defines program level options. It currently provides the single option `requiredVersionRange`, which validates that the program is running against a compatible engien version. See [plugin.ValidatePulumiVersionRange](gh-file:pulumi#sdk/go/common/resource/plugin/plugin.go#L636).
+
+Only one `pulumi` block can be defined per program.
+
 (pcl-invoke)=
 ### `invoke`
 
@@ -161,7 +167,3 @@ captured by the `pulumiBuiltins` function in
 Syntax and type checking </pkg/codegen/hcl2/README>
 Binding </pkg/codegen/pcl/binding>
 :::
-
-### NameForThePulumiBlock
-
-The `pulumi` block (blocks?) does this and that
