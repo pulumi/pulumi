@@ -249,6 +249,11 @@ func TestStackReference_GetOutputDetails(t *testing.T) {
 			name: "does-not-exist",
 			// want empty struct
 		},
+		{
+			desc: "non secret does not require decryption",
+			name: "bucket",
+			want: StackReferenceOutputDetails{Value: "mybucket-1234"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -269,3 +274,4 @@ func TestStackReference_GetOutputDetails(t *testing.T) {
 		})
 	}
 }
+
