@@ -617,8 +617,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 
-	if program.Config.PulumiVersionRange != "" {
-		g.Fprintf(w, "pulumi.check_pulumi_version('%s')\n\n", program.Config.PulumiVersionRange)
+	if program.Config.RequiredVersionRange != "" {
+		g.Fprintf(w, "pulumi.check_pulumi_version('%s')\n\n", program.Config.RequiredVersionRange)
 	}
 }
 

@@ -735,13 +735,13 @@ func ReadPulumiBlocks(files []*syntax.File) (PulumiConfig, hcl.Diagnostics) {
 				if node.Body != nil {
 					for _, attribute := range node.Body.Attributes {
 						switch attribute.Name {
-						case "pulumiVersionRange":
+						case "requiredVersionRange":
 							version, err := evaluateLiteralExpr(attribute.Expr)
 							if err != nil {
-								diagnostics = append(diagnostics, errorf(attribute.Range(), "pulumiVersionRange: %s", err))
+								diagnostics = append(diagnostics, errorf(attribute.Range(), "requiredVersionRange: %s", err))
 								continue
 							}
-							config.PulumiVersionRange = version
+							config.RequiredVersionRange = version
 						}
 					}
 				}

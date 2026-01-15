@@ -31,8 +31,8 @@ import (
 
 // PulumiConfig represents the configuration for a Pulumi program.
 type PulumiConfig struct {
-	// PulumiVersionRange is the version range of the engine that the program is compatible with.
-	PulumiVersionRange string
+	// RequiredVersionRange is the version range of the engine that the program is compatible with.
+	RequiredVersionRange string
 }
 
 // Node represents a single definition in a program or component.
