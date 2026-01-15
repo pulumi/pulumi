@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -187,8 +188,15 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Comman
 
 			var be pkgBackend.Backend
 			if oidcToken != "" {
+				// Extract defaults from JWT token before creating auth context
+				resolvedOrg, resolvedTeam, resolvedUser, innerErr := extractOIDCDefaults(
+					oidcOrg, oidcTeam, oidcUser, oidcToken)
+				if innerErr != nil {
+					return fmt.Errorf("problem logging in: %w", innerErr)
+				}
+
 				authContext, innerErr := workspace.NewAuthContextForTokenExchange(
-					oidcOrg, oidcTeam, oidcUser, oidcToken, oidcExpiration)
+					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration)
 				if innerErr != nil {
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
@@ -287,4 +295,106 @@ func chooseAccount(accounts map[string]workspace.Account, opts display.Options) 
 	}
 
 	return option, nil
+}
+
+// extractOIDCDefaults extracts organization, team, and user defaults from a JWT token.
+// Returns the resolved org, team, user values after applying JWT defaults to CLI flags.
+// Security Note: ParseUnverified is safe here because:
+// 1. We only extract metadata (org/team/user) to validate against explicit flags
+// 2. The full JWT is sent to Pulumi Cloud for proper signature verification
+// 3. We never use these claims for authentication - only for validation and user convenience
+func extractOIDCDefaults(organization, team, user, token string) (string, string, string, error) {
+	if token == "" {
+		return organization, team, user, nil
+	}
+
+	// Parse JWT claims to extract organization and scope
+	var jwtOrg, jwtTeam, jwtUser string
+	parser := jwt.NewParser()
+	claims := jwt.MapClaims{}
+	_, _, err := parser.ParseUnverified(token, claims)
+	if err == nil {
+		// Extract organization from aud claim
+		// Format: urn:pulumi:org:<org-name>
+		if aud, ok := claims["aud"].(string); ok {
+			if strings.HasPrefix(aud, "urn:pulumi:org:") {
+				parts := strings.Split(aud, ":")
+				if len(parts) == 4 {
+					jwtOrg = parts[3]
+				}
+			}
+		}
+
+		// Extract team, user, or runner from scope claim
+		// Scope can be a string or array of strings
+		// Formats: "team:<team-name>", "user:<user-login>", "runner:<runner-name>"
+		if scopeClaim, ok := claims["scope"]; ok {
+			var scopes []string
+			switch v := scopeClaim.(type) {
+			case string:
+				// Single scope as string, may be space-separated
+				scopes = strings.Fields(v)
+			case []any:
+				// Array of scopes
+				for _, s := range v {
+					if str, ok := s.(string); ok {
+						scopes = append(scopes, str)
+					}
+				}
+			}
+			for _, scope := range scopes {
+				if strings.HasPrefix(scope, "team:") {
+					jwtTeam = strings.TrimPrefix(scope, "team:")
+				} else if strings.HasPrefix(scope, "user:") {
+					jwtUser = strings.TrimPrefix(scope, "user:")
+				}
+				// Note: runner scope not yet implemented in CLI
+			}
+		}
+	}
+
+	// Validate that JWT doesn't contain both team and user in scope
+	// This is not supported by the backend - team and user are mutually exclusive
+	if jwtTeam != "" && jwtUser != "" {
+		return "", "", "", fmt.Errorf(
+			"JWT scope contains both team '%s' and user '%s'. "+
+				"Only one of team or user may be specified for token exchange",
+			jwtTeam, jwtUser)
+	}
+
+	// Validate that explicit flags don't conflict with JWT claims
+	if organization != "" && jwtOrg != "" && organization != jwtOrg {
+		return "", "", "", fmt.Errorf(
+			"--oidc-org '%s' conflicts with JWT aud claim organization '%s'. "+
+				"The JWT aud claim takes precedence during token exchange. "+
+				"Either omit --oidc-org to use the JWT value, or ensure they match",
+			organization, jwtOrg)
+	}
+	if team != "" && jwtTeam != "" && team != jwtTeam {
+		return "", "", "", fmt.Errorf(
+			"--oidc-team '%s' conflicts with JWT scope team '%s'. "+
+				"The JWT scope takes precedence during token exchange. "+
+				"Either omit --oidc-team to use the JWT value, or ensure they match",
+			team, jwtTeam)
+	}
+	if user != "" && jwtUser != "" && user != jwtUser {
+		return "", "", "", fmt.Errorf(
+			"--oidc-user '%s' conflicts with JWT scope user '%s'. "+
+				"The JWT scope takes precedence during token exchange. "+
+				"Either omit --oidc-user to use the JWT value, or ensure they match",
+			user, jwtUser)
+	}
+
+	// Use JWT values if explicit flags not provided
+	if organization == "" && jwtOrg != "" {
+		organization = jwtOrg
+	}
+	if team == "" && jwtTeam != "" {
+		team = jwtTeam
+	}
+	if user == "" && jwtUser != "" {
+		user = jwtUser
+	}
+
+	return organization, team, user, nil
 }
