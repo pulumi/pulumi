@@ -403,6 +403,56 @@ func DeserializeStackOutputs(
 		})
 }
 
+func deploymentContainsSecrets(deployment apitype.DeploymentV3) bool {
+	for _, res := range deployment.Resources {
+		if resourceContainsSecrets(res.Outputs) {
+			return true
+		}
+		if resourceContainsSecrets(res.Inputs) {
+			return true
+		}
+	}
+
+	for _, op := range deployment.PendingOperations {
+		if resourceContainsSecrets(op.Resource.Outputs) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func resourceContainsSecrets(props map[string]any) bool {
+	for _, v := range props {
+		if propertyValueContainsSecrets(v) {
+			return true
+		}
+	}
+	return false
+}
+
+func propertyValueContainsSecrets(v any) bool {
+	switch v := v.(type) {
+	case map[string]any:
+		// Check for Pulumi secret signature
+		if sig, ok := v[resource.SigKey]; ok && sig == resource.SecretSig {
+			return true
+		}
+		for _, child := range v {
+			if propertyValueContainsSecrets(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range v {
+			if propertyValueContainsSecrets(child) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
 func DeserializeDeploymentV3(
 	ctx context.Context,
@@ -415,43 +465,74 @@ func DeserializeDeploymentV3(
 		return nil, err
 	}
 
-	secretsManager, err := initializeSecretsManager(deployment, secretsProv)
-	if err != nil {
-		return nil, err
-	}
-
 	type deserializedData struct {
 		resources []*resource.State
 		ops       []resource.Operation
 	}
 
-	data, err := BatchDecrypt(
-		ctx,
-		secretsManager,
-		func(ctx context.Context, dec config.Decrypter) (deserializedData, error) {
-			// For every serialized resource vertex, create a ResourceDeployment out of it.
-			resources := slice.Prealloc[*resource.State](len(deployment.Resources))
-			for _, res := range deployment.Resources {
-				desres, err := DeserializeResource(res, dec)
-				if err != nil {
-					return deserializedData{}, err
-				}
-				resources = append(resources, desres)
-			}
+	var (
+		data           deserializedData
+		secretsManager secrets.Manager
+	)
 
-			ops := slice.Prealloc[resource.Operation](len(deployment.PendingOperations))
-			for _, op := range deployment.PendingOperations {
-				desop, err := DeserializeOperation(op, dec)
-				if err != nil {
-					return deserializedData{}, err
-				}
-				ops = append(ops, desop)
-			}
+	if deploymentContainsSecrets(deployment) {
+		// 🔐 Secrets exist → initialize secrets manager and decrypt
+		secretsManager, err = initializeSecretsManager(deployment, secretsProv)
+		if err != nil {
+			return nil, err
+		}
 
-			return deserializedData{resources: resources, ops: ops}, nil
-		})
-	if err != nil {
-		return nil, err
+		data, err = BatchDecrypt(
+			ctx,
+			secretsManager,
+			func(ctx context.Context, dec config.Decrypter) (deserializedData, error) {
+				resources := slice.Prealloc[*resource.State](len(deployment.Resources))
+				for _, res := range deployment.Resources {
+					desres, err := DeserializeResource(res, dec)
+					if err != nil {
+						return deserializedData{}, err
+					}
+					resources = append(resources, desres)
+				}
+
+				ops := slice.Prealloc[resource.Operation](len(deployment.PendingOperations))
+				for _, op := range deployment.PendingOperations {
+					desop, err := DeserializeOperation(op, dec)
+					if err != nil {
+						return deserializedData{}, err
+					}
+					ops = append(ops, desop)
+				}
+
+				return deserializedData{resources: resources, ops: ops}, nil
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// 🔓 No secrets → no secrets manager, no decrypt
+		secretsManager = nil
+
+		resources := slice.Prealloc[*resource.State](len(deployment.Resources))
+		for _, res := range deployment.Resources {
+			desres, err := DeserializeResource(res, config.NopDecrypter)
+			if err != nil {
+				return nil, err
+			}
+			resources = append(resources, desres)
+		}
+
+		ops := slice.Prealloc[resource.Operation](len(deployment.PendingOperations))
+		for _, op := range deployment.PendingOperations {
+			desop, err := DeserializeOperation(op, config.NopDecrypter)
+			if err != nil {
+				return nil, err
+			}
+			ops = append(ops, desop)
+		}
+
+		data = deserializedData{resources: resources, ops: ops}
 	}
 
 	metadata := deploy.SnapshotMetadata{}
