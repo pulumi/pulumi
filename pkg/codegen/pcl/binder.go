@@ -718,7 +718,7 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 func ReadPulumiBlock(files []*syntax.File) (PulumiConfig, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 	config := PulumiConfig{}
-	seenPulumiBlock := true
+	seenPulumiBlock := false
 	for _, file := range files {
 		for _, node := range model.SourceOrderBody(file.Body) {
 			switch node := node.(type) {
