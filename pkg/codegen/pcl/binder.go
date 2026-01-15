@@ -214,7 +214,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 
 	var diagnostics hcl.Diagnostics
 
-	config, diags := ReadPulumiBlocks(files)
+	config, diags := ReadPulumiBlock(files)
 	diagnostics = append(diagnostics, diags...)
 
 	// Load package descriptors from the files
@@ -715,9 +715,10 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 	return packageDescriptors, diagnostics
 }
 
-func ReadPulumiBlocks(files []*syntax.File) (PulumiConfig, hcl.Diagnostics) {
+func ReadPulumiBlock(files []*syntax.File) (PulumiConfig, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 	config := PulumiConfig{}
+	seenPulumiBlock := true
 	for _, file := range files {
 		for _, node := range model.SourceOrderBody(file.Body) {
 			switch node := node.(type) {
@@ -727,9 +728,14 @@ func ReadPulumiBlocks(files []*syntax.File) (PulumiConfig, hcl.Diagnostics) {
 					//    pulumi { ... }
 					continue
 				}
+				if seenPulumiBlock {
+					diagnostics = append(diagnostics, errorf(node.Range(), "only one pulumi block is allowed"))
+					continue
+				}
+				seenPulumiBlock = true
 				labels := node.Labels
 				if len(labels) != 0 {
-					diagnostics = append(diagnostics, labelsErrorf(node, "pulumi blocks must not have any labels"))
+					diagnostics = append(diagnostics, labelsErrorf(node, "pulumi block must not have any labels"))
 					continue
 				}
 				if node.Body != nil {
