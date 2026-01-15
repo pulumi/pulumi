@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -214,6 +214,9 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 
 	var diagnostics hcl.Diagnostics
 
+	config, diags := ReadPulumiBlocks(files)
+	diagnostics = append(diagnostics, diags...)
+
 	// Load package descriptors from the files
 	descriptorMap, descriptorDiags := ReadAllPackageDescriptors(files)
 	diagnostics = append(diagnostics, descriptorDiags...)
@@ -244,6 +247,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 
 	return &Program{
 		Nodes:  b.nodes,
+		Config: config,
 		files:  files,
 		binder: b,
 	}, diagnostics, nil
@@ -709,6 +713,42 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 		}
 	}
 	return packageDescriptors, diagnostics
+}
+
+func ReadPulumiBlocks(files []*syntax.File) (PulumiConfig, hcl.Diagnostics) {
+	var diagnostics hcl.Diagnostics
+	config := PulumiConfig{}
+	for _, file := range files {
+		for _, node := range model.SourceOrderBody(file.Body) {
+			switch node := node.(type) {
+			case *hclsyntax.Block:
+				if node.Type != "pulumi" {
+					// we only care about pulumi config blocks of the form:
+					//    pulumi { ... }
+					continue
+				}
+				labels := node.Labels
+				if len(labels) != 0 {
+					diagnostics = append(diagnostics, labelsErrorf(node, "pulumi blocks must not have any labels"))
+					continue
+				}
+				if node.Body != nil {
+					for _, attribute := range node.Body.Attributes {
+						switch attribute.Name {
+						case "pulumiVersionRange":
+							version, err := evaluateLiteralExpr(attribute.Expr)
+							if err != nil {
+								diagnostics = append(diagnostics, errorf(attribute.Range(), "pulumiVersionRange: %s", err))
+								continue
+							}
+							config.PulumiVersionRange = version
+						}
+					}
+				}
+			}
+		}
+	}
+	return config, diagnostics
 }
 
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an

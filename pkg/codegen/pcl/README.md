@@ -161,3 +161,7 @@ captured by the `pulumiBuiltins` function in
 Syntax and type checking </pkg/codegen/hcl2/README>
 Binding </pkg/codegen/pcl/binding>
 :::
+
+### NameForThePulumiBlock
+
+The `pulumi` block (blocks?) does this and that
