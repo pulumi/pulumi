@@ -616,6 +616,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
+
+	if program.Config.PulumiVersionRange != "" {
+		g.Fprintf(w, "pulumi.check_pulumi_version('%s')\n\n", program.Config.PulumiVersionRange)
+	}
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {

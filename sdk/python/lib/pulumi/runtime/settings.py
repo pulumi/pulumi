@@ -306,8 +306,12 @@ def check_pulumi_version(rg: str) -> None:
                 engine_pb2.CheckPulumiVersionRequest(pulumi_version_range=rg)
             )
         except grpc.RpcError as exn:
-            if exn.code() != grpc.StatusCode.UNIMPLEMENTED:
-                raise grpc_error_to_exception(exn) from None
+            if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
+                raise Exception(
+                    "The installed version of the CLI does not support the `CheckPulumiVersion` RPC. "
+                    + " Please upgrade the Pulumu CLI"
+                )
+            raise grpc_error_to_exception(exn) from None
 
 
 async def monitor_supports_feature(feature: str) -> bool:
