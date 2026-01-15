@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -541,7 +542,6 @@ func NewNewCmd() *cobra.Command {
 			"* `pulumi new --language <language>`\n" +
 			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
 			"Any missing but required information will be prompted for.\n",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
@@ -646,6 +646,14 @@ func NewNewCmd() *cobra.Command {
 		"Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "template", Type: "string", Usage: "template|url"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

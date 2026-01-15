@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -39,8 +40,7 @@ const (
 func newStackInitCmd() *cobra.Command {
 	var sicmd stackInitCmd
 	cmd := &cobra.Command{
-		Use:   "init [<org-name>/]<stack-name>",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "init",
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
@@ -91,6 +91,15 @@ func newStackInitCmd() *cobra.Command {
 		&sicmd.remoteConfig, "remote-config", false, "Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-config")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "stack-name", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cmd
 }
 

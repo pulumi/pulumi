@@ -19,9 +19,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -36,8 +36,7 @@ func newPolicyEnableCmd() *cobra.Command {
 	args := policyEnableArgs{}
 
 	cmd := &cobra.Command{
-		Use:   "enable <org-name>/<policy-pack-name> <latest|version>",
-		Args:  cmdutil.ExactArgs(2),
+		Use:   "enable",
 		Short: "Enable a Policy Pack for a Pulumi organization",
 		Long: "Enable a Policy Pack for a Pulumi organization. " +
 			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
@@ -81,6 +80,15 @@ func newPolicyEnableCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&args.config, "config", "",
 		"The file path for the Policy Pack configuration file")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "policy-pack-name", Type: "string", Usage: "org-name/policy-pack-name"},
+			{Name: "version", Type: "string", Usage: "latest|version"},
+		},
+		Required: 2,
+		Variadic: false,
+	})
 
 	return cmd
 }

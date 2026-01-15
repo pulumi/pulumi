@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -87,13 +88,8 @@ func NewDestroyCmd() *cobra.Command {
 	// Flags for Neo.
 	var neoEnabled bool
 
-	use, cmdArgs := "destroy", cmdutil.NoArgs
-	if deployment.RemoteSupported() {
-		use, cmdArgs = "destroy [url]", cmdutil.MaximumNArgs(1)
-	}
-
 	cmd := &cobra.Command{
-		Use:        use,
+		Use:        "destroy",
 		Aliases:    []string{"down", "dn"},
 		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
 		Short:      "Destroy all existing resources in the stack",
@@ -107,7 +103,6 @@ func NewDestroyCmd() *cobra.Command {
 			"`--remove` flag to delete the stack and its config file.\n" +
 			"\n" +
 			"Warning: this command is generally irreversible and should be used with great care.",
-		Args: cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -491,6 +486,24 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&client, "client", "", "The address of an existing language runtime host to connect to")
 	_ = cmd.PersistentFlags().MarkHidden("client")
+
+	var argsSpec *constrictor.Arguments
+	if deployment.RemoteSupported() {
+		argsSpec = &constrictor.Arguments{
+			Args: []constrictor.Arg{
+				{Name: "url", Type: "string"},
+			},
+			Required: 0,
+			Variadic: false,
+		}
+	} else {
+		argsSpec = &constrictor.Arguments{
+			Args:     []constrictor.Arg{},
+			Required: 0,
+			Variadic: false,
+		}
+	}
+	constrictor.AttachArgs(cmd, argsSpec)
 
 	return cmd
 }

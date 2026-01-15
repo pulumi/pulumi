@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -53,7 +54,7 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var oidcExpiration string
 
 	cmd := &cobra.Command{
-		Use:   "login [<url>]",
+		Use:   "login",
 		Short: "Log in to the Pulumi Cloud",
 		Long: "Log in to the Pulumi Cloud.\n" +
 			"\n" +
@@ -105,7 +106,6 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"PostgreSQL:\n" +
 			"\n" +
 			"    $ pulumi login postgres://username:password@hostname:5432/database\n",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOptions := display.Options{
@@ -239,6 +239,14 @@ func NewLoginCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&oidcExpiration, "oidc-expiration", "",
 		"The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "url", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

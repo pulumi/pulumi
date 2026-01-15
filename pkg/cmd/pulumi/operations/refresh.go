@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -87,13 +88,8 @@ func NewRefreshCmd() *cobra.Command {
 	// Flags for Neo.
 	var neoEnabled bool
 
-	use, cmdArgs := "refresh", cmdutil.NoArgs
-	if deployment.RemoteSupported() {
-		use, cmdArgs = "refresh [url]", cmdutil.MaximumNArgs(1)
-	}
-
 	cmd := &cobra.Command{
-		Use:   use,
+		Use:   "refresh",
 		Short: "Refresh the resources in a stack",
 		Long: "Refresh the resources in a stack.\n" +
 			"\n" +
@@ -104,7 +100,6 @@ func NewRefreshCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -457,6 +452,24 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&client, "client", "", "The address of an existing language runtime host to connect to")
 	_ = cmd.PersistentFlags().MarkHidden("client")
+
+	var argsSpec *constrictor.Arguments
+	if deployment.RemoteSupported() {
+		argsSpec = &constrictor.Arguments{
+			Args: []constrictor.Arg{
+				{Name: "url", Type: "string"},
+			},
+			Required: 0,
+			Variadic: false,
+		}
+	} else {
+		argsSpec = &constrictor.Arguments{
+			Args:     []constrictor.Arg{},
+			Required: 0,
+			Variadic: false,
+		}
+	}
+	constrictor.AttachArgs(cmd, argsSpec)
 
 	return cmd
 }

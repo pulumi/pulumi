@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -166,7 +167,7 @@ func newStateRenameCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "rename [resource URN] [new name]",
+		Use:   "rename",
 		Short: "Renames a resource from a stack's state",
 		Long: `Renames a resource from a stack's state
 
@@ -178,7 +179,6 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
-		Args:    cmdutil.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -251,5 +251,15 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		"The name of the stack to operate on. Defaults to the current stack")
 
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "urn", Type: "string"},
+			{Name: "new-name", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cmd
 }

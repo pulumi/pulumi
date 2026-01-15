@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -46,8 +47,7 @@ type stackChangeSecretsProviderCmd struct {
 func newStackChangeSecretsProviderCmd() *cobra.Command {
 	var scspcmd stackChangeSecretsProviderCmd
 	cmd := &cobra.Command{
-		Use:   "change-secrets-provider <new-secrets-provider>",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "change-secrets-provider",
 		Short: "Change the secrets provider for a stack",
 		Long: "Change the secrets provider for a stack. " +
 			"Valid secret providers types are `default`, `passphrase`, `awskms`, `azurekeyvault`, `gcpkms`, `hashivault`.\n\n" +
@@ -76,6 +76,14 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&scspcmd.stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "new-secrets-provider", Type: "string"},
+		},
+		Required: 1,
+		Variadic: false,
+	})
 
 	return cmd
 }

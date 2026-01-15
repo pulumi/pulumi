@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/spf13/cobra"
@@ -39,7 +40,6 @@ func newStackExportCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "export",
-		Args:  cmdutil.MaximumNArgs(0),
 		Short: "Export a stack's deployment to standard out",
 		Long: "Export a stack's deployment to standard out.\n" +
 			"\n" +
@@ -142,5 +142,12 @@ func newStackExportCmd() *cobra.Command {
 		&version, "version", "", "", "Previous stack version to export. (If unset, will export the latest.)")
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in exported stack. Defaults to `false`")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cmd
 }

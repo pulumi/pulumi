@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -68,7 +69,6 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 		Long: "Lists all configuration values for a specific stack. To add a new configuration value, run\n" +
 			"`pulumi config set`. To remove an existing value run `pulumi config rm`. To get the value of\n" +
 			"for a specific configuration key, use `pulumi config get <key-name>`.",
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -151,6 +151,12 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.AddCommand(newConfigCopyCmd(ws, &stack))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack))
 
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cmd
 }
 
@@ -159,11 +165,10 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var destinationStackName string
 
 	cpCommand := &cobra.Command{
-		Use:   "cp [key]",
+		Use:   "cp",
 		Short: "Copy config to another stack",
 		Long: "Copies the config from the current stack to the destination stack. If `key` is omitted,\n" +
 			"then all of the config from the current stack will be copied to the destination stack.",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -272,6 +277,14 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 		&destinationStackName, "dest", "d", "",
 		"The name of the new stack to copy the config to")
 
+	constrictor.AttachArgs(cpCommand, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "key", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cpCommand
 }
 
@@ -281,7 +294,7 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var path bool
 
 	getCmd := &cobra.Command{
-		Use:   "get <key>",
+		Use:   "get",
 		Short: "Get a single configuration value",
 		Long: "Get a single configuration value.\n\n" +
 			"The `--path` flag can be used to get a value inside a map or list:\n\n" +
@@ -289,7 +302,6 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 			"if the value of `outer` is a map `inner: value`.\n" +
 			"  - `pulumi config get --path 'names[0]'` will get the value of the first item, " +
 			"if the value of `names` is a list.",
-		Args: cmdutil.SpecificArgs([]string{"key"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -328,6 +340,14 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 		&path, "path", false,
 		"The key contains a path to a property in a map or list to get")
 
+	constrictor.AttachArgs(getCmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "key", Type: "string"},
+		},
+		Required: 1,
+		Variadic: false,
+	})
+
 	return getCmd
 }
 
@@ -335,7 +355,7 @@ func newConfigRmCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	var path bool
 
 	rmCmd := &cobra.Command{
-		Use:   "rm <key>",
+		Use:   "rm",
 		Short: "Remove configuration value",
 		Long: "Remove configuration value.\n\n" +
 			"The `--path` flag can be used to remove a value inside a map or list:\n\n" +
@@ -343,7 +363,6 @@ func newConfigRmCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 			"if the value of `outer` is a map `inner: value`.\n" +
 			"  - `pulumi config rm --path 'names[0]'` will remove the first item, " +
 			"if the value of `names` is a list.",
-		Args: cmdutil.SpecificArgs([]string{"key"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -399,6 +418,14 @@ func newConfigRmCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 		&path, "path", false,
 		"The key contains a path to a property in a map or list to remove")
 
+	constrictor.AttachArgs(rmCmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "key", Type: "string"},
+		},
+		Required: 1,
+		Variadic: false,
+	})
+
 	return rmCmd
 }
 
@@ -414,7 +441,6 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 			"    `inner` key of the `outer` map, the first key of the `foo` list and `key1`.\n" +
 			"  - `pulumi config rm-all outer.inner 'foo[0]' key1` will remove the literal" +
 			"    `outer.inner`, `foo[0]` and `key1` keys",
-		Args: cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -472,6 +498,14 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 		&path, "path", false,
 		"Parse the keys as paths in a map or list rather than raw strings")
 
+	constrictor.AttachArgs(rmAllCmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "key", Type: "string"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
 	return rmAllCmd
 }
 
@@ -480,7 +514,6 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 	refreshCmd := &cobra.Command{
 		Use:   "refresh",
 		Short: "Update the local configuration based on the most recent deployment of the stack",
-		Args:  cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -597,6 +630,12 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 	refreshCmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false, "Overwrite configuration file, if it exists, without creating a backup")
 
+	constrictor.AttachArgs(refreshCmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return refreshCmd
 }
 
@@ -614,7 +653,7 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	configSetCmd := &configSetCmd{LoadProjectStack: cmdStack.LoadProjectStack}
 
 	setCmd := &cobra.Command{
-		Use:   "set [flags] <key> [--] [value]",
+		Use:   "set",
 		Short: "Set configuration value",
 		Long: "Configuration values can be accessed when a stack is being deployed and used to configure behavior. \n" +
 			"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
@@ -629,7 +668,6 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 			"When setting the config for a path, \"true\" and \"false\" are treated as boolean values, and\n" +
 			"integers are treated as numbers. All other values are treated as strings.  Top level entries\n" +
 			"are always treated as strings.",
-		Args: cmdutil.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -672,6 +710,15 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 		&configSetCmd.Type, "type", "", "Save the value as the given type.  Allowed values are string, bool, int, and float")
 	setCmd.MarkFlagsMutuallyExclusive("secret", "plaintext", "type")
 	setCmd.DisableFlagsInUseLine = true
+
+	constrictor.AttachArgs(setCmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "key", Type: "string"},
+			{Name: "value", Type: "string"},
+		},
+		Required: 1,
+		Variadic: false,
+	})
 
 	return setCmd
 }
@@ -790,7 +837,7 @@ func newConfigSetAllCmd(
 	var jsonArg string
 
 	setCmd := &cobra.Command{
-		Use:   "set-all --plaintext key1=value1 --plaintext key2=value2 --secret key3=value3",
+		Use:   "set-all",
 		Short: "Set multiple configuration values",
 		Long: "pulumi set-all allows you to set multiple configuration values in one command.\n\n" +
 			"Each key-value pair must be preceded by either the `--secret` or the `--plaintext` flag to denote whether \n" +
@@ -806,7 +853,6 @@ func newConfigSetAllCmd(
 			"The `--json` flag can be used to pass a JSON string from which values should be read.\n" +
 			"The JSON string should follow the same format as that produced by `pulumi config --json`. If the\n" +
 			"`--json` option is passed, the `--plaintext`, `--secret` and `--path` flags must not be used.",
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -968,6 +1014,12 @@ func newConfigSetAllCmd(
 		&jsonArg, "json", "",
 		"Read values from a JSON string in the format produced by 'pulumi config --json'",
 	)
+
+	constrictor.AttachArgs(setCmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return setCmd
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -34,8 +35,7 @@ import (
 func newStackRenameCmd() *cobra.Command {
 	var stack string
 	cmd := &cobra.Command{
-		Use:   "rename <new-stack-name>",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "rename",
 		Short: "Rename an existing stack",
 		Long: "Rename an existing stack.\n" +
 			"\n" +
@@ -109,5 +109,14 @@ func newStackRenameCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "new-stack-name", Type: "string"},
+		},
+		Required: 1,
+		Variadic: false,
+	})
+
 	return cmd
 }

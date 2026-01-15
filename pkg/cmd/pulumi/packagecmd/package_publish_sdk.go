@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -33,8 +34,7 @@ import (
 func newPackagePublishSdkCmd() *cobra.Command {
 	var path string
 	cmd := &cobra.Command{
-		Use:    "publish-sdk <language>",
-		Args:   cobra.RangeArgs(0, 1),
+		Use:    "publish-sdk",
 		Short:  "Publish a package SDK to supported package registries.",
 		Hidden: !env.Dev.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -63,6 +63,15 @@ func newPackagePublishSdkCmd() *cobra.Command {
 		`The path to the root of your package.
 	Example: ./sdk/nodejs
 	`)
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "language", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cmd
 }
 

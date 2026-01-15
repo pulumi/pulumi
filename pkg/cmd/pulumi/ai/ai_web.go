@@ -27,9 +27,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -135,7 +135,7 @@ func newAIWebCommand() *cobra.Command {
 		aiwebcmd.appURL = "https://www.pulumi.com/ai"
 	}
 	cmd := &cobra.Command{
-		Use:   "web <prompt|--no-auto-submit>",
+		Use:   "web",
 		Short: "Opens Pulumi AI in your local browser",
 		Long: `Opens Pulumi AI in your local browser
 
@@ -149,7 +149,6 @@ by passing the --no-auto-submit flag.
 Example:
   pulumi ai web "Create an S3 bucket in Python"
 `,
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return aiwebcmd.Run(ctx, args)
@@ -163,5 +162,14 @@ Example:
 		&aiwebcmd.language, "language", "l",
 		"Language to use for the prompt - this defaults to TypeScript. [TypeScript, Python, Go, C#, Java, YAML]",
 	)
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "prompt", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cmd
 }

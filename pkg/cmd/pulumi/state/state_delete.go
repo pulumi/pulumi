@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -40,7 +41,7 @@ func newStateDeleteCommand(ws pkgWorkspace.Context, lm backend.LoginManager) *co
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "delete [resource URN]",
+		Use:   "delete",
 		Short: "Deletes a resource from a stack's state",
 		Long: `Deletes a resource from a stack's state
 
@@ -55,7 +56,6 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -150,5 +150,14 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
 	cmd.Flags().BoolVar(&all, "all", false, "Delete all resources in the stack")
 	cmd.Flags().BoolVar(&targetDependents, "target-dependents", false, "Delete the URN and all its dependents")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "urn", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cmd
 }

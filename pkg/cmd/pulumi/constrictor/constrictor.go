@@ -33,6 +33,11 @@ type Arg struct {
 
 	// The type of the argument, defaulting to "string".
 	Type string `json:"type,omitempty"`
+
+	// Usage is an optional override for how this argument appears in the usage string.
+	// If not provided, Name is used. This allows specifying formats like "<org-name>/<policy-pack-name>"
+	// instead of just the argument name.
+	Usage string `json:"usage,omitempty"`
 }
 
 // The specification for command arguments.
@@ -189,11 +194,17 @@ func generateUseString(spec *Arguments) (string, error) {
 
 	var parts []string
 	for i, arg := range spec.Args {
+		// Use Usage if provided, otherwise fall back to Name
+		argName := arg.Usage
+		if argName == "" {
+			argName = arg.Name
+		}
+
 		var part string
 		if i < spec.Required {
-			part = "<" + arg.Name + ">"
+			part = "<" + argName + ">"
 		} else {
-			part = "[" + arg.Name + "]"
+			part = "[" + argName + "]"
 		}
 		parts = append(parts, part)
 	}

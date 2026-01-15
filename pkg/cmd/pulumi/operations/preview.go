@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	pkgPlan "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
@@ -292,13 +293,8 @@ func NewPreviewCmd() *cobra.Command {
 	// Flags for Neo.
 	var neoEnabled bool
 
-	use, cmdArgs := "preview", cmdutil.NoArgs
-	if deployment.RemoteSupported() {
-		use, cmdArgs = "preview [url]", cmdutil.MaximumNArgs(1)
-	}
-
 	cmd := &cobra.Command{
-		Use:        use,
+		Use:        "preview",
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
 		Short:      "Show a preview of updates to a stack's resources",
@@ -313,7 +309,6 @@ func NewPreviewCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
@@ -727,6 +722,24 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+
+	var argsSpec *constrictor.Arguments
+	if deployment.RemoteSupported() {
+		argsSpec = &constrictor.Arguments{
+			Args: []constrictor.Arg{
+				{Name: "url", Type: "string"},
+			},
+			Required: 0,
+			Variadic: false,
+		}
+	} else {
+		argsSpec = &constrictor.Arguments{
+			Args:     []constrictor.Arg{},
+			Required: 0,
+			Variadic: false,
+		}
+	}
+	constrictor.AttachArgs(cmd, argsSpec)
 
 	return cmd
 }

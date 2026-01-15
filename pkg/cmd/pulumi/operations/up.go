@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
@@ -517,7 +518,7 @@ func NewUpCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        "up [template|url]",
+		Use:        "up",
 		Aliases:    []string{"update"},
 		SuggestFor: []string{"apply", "deploy", "push"},
 		Short:      "Create or update the resources in a stack",
@@ -535,7 +536,6 @@ func NewUpCmd() *cobra.Command {
 			"\n" +
 			"Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary\n" +
 			" project is created, deployed, and then deleted, leaving only the stack state.",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
@@ -843,6 +843,14 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "template", Type: "string", Usage: "template|url"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

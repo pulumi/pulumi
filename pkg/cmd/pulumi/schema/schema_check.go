@@ -27,8 +27,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -41,7 +41,6 @@ func newSchemaCheckCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "check",
-		Args:  cmdutil.ExactArgs(1),
 		Short: "Check a Pulumi package schema for errors",
 		Long: "Check a Pulumi package schema for errors.\n" +
 			"\n" +
@@ -90,6 +89,14 @@ func newSchemaCheckCommand() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(&schemaCheckArgs.allowDanglingReferences, "allow-dangling-references", false,
 		"Whether references to nonexistent types should be considered errors")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "schema-file", Type: "string"},
+		},
+		Required: 1,
+		Variadic: false,
+	})
 
 	return cmd
 }

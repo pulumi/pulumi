@@ -27,6 +27,7 @@ import (
 
 	"github.com/blang/semver"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
@@ -48,8 +49,7 @@ func newPluginInstallCmd(packageResolutionOptions packageresolution.Options) *co
 	var picmd pluginInstallCmd
 	picmd.packageResolutionOptions = packageResolutionOptions
 	cmd := &cobra.Command{
-		Use:   "install [KIND NAME [VERSION]]",
-		Args:  cmdutil.MaximumNArgs(3),
+		Use:   "install",
 		Short: "Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
 			"\n" +
@@ -78,6 +78,16 @@ func newPluginInstallCmd(packageResolutionOptions packageresolution.Options) *co
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 	cmd.PersistentFlags().StringVar(&picmd.checksum,
 		"checksum", "", "The expected SHA256 checksum for the plugin archive")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "kind", Type: "string"},
+			{Name: "name", Type: "string"},
+			{Name: "version", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

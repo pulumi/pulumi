@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -37,14 +38,13 @@ func newStateTaintCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "taint [resource URN...]",
+		Use:   "taint",
 		Short: "Taint one or more resources in the stack's state",
 		Long: `Taint one or more resources in the stack's state.
 
 This has the effect of ensuring the resources are destroyed and recreated upon the next ` + "`pulumi up`" + `.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
-		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -85,6 +85,14 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "urn", Type: "string"},
+		},
+		Required: 0,
+		Variadic: true,
+	})
 
 	return cmd
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -40,8 +41,7 @@ func newGenSdkCommand() *cobra.Command {
 	var version string
 	var local bool
 	cmd := &cobra.Command{
-		Use:   "gen-sdk <schema_source> [provider parameters]",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "gen-sdk",
 		Short: "Generate SDK(s) from a package or schema",
 		Long: `Generate SDK(s) from a package or schema.
 
@@ -122,5 +122,13 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 	cmd.Flags().StringVar(&version, "version", "", "The provider plugin version to generate the SDK for")
 	cmd.Flags().BoolVar(&local, "local", false, "Generate an SDK appropriate for local usage")
 	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "schema-source", Type: "string", Usage: "package-name|plugin-path"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
 	return cmd
 }

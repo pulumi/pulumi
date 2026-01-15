@@ -29,6 +29,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -54,7 +55,6 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"This command aggregates log entries associated with the resources in a stack from the corresponding\n" +
 			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
-		Args: cmdutil.NoArgs,
 		RunE: func(cobraCmd *cobra.Command, args []string) error {
 			ctx := cobraCmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -210,6 +210,12 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	logsCmd.PersistentFlags().StringVarP(
 		&resource, "resource", "r", "",
 		"Only return logs for the requested resource ('name', 'type::name' or full URN).  Defaults to returning all logs.")
+
+	constrictor.AttachArgs(logsCmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return logsCmd
 }

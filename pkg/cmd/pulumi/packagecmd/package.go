@@ -15,7 +15,7 @@
 package packagecmd
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +26,6 @@ func NewPackageCmd() *cobra.Command {
 		Long: `Work with Pulumi packages
 
 Install and configure Pulumi packages and their plugins and SDKs.`,
-		Args: cmdutil.NoArgs,
 	}
 	cmd.AddCommand(
 		newExtractSchemaCommand(),
@@ -39,5 +38,12 @@ Install and configure Pulumi packages and their plugins and SDKs.`,
 		newPackageDeleteCmd(),
 		newPackageInfoCmd(),
 	)
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cmd
 }

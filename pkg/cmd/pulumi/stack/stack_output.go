@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -45,8 +46,7 @@ import (
 func newStackOutputCmd() *cobra.Command {
 	var socmd stackOutputCmd
 	cmd := &cobra.Command{
-		Use:   "output [property-name]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "output",
 		Short: "Show a stack's output properties",
 		Long: "Show a stack's output properties.\n" +
 			"\n" +
@@ -65,6 +65,14 @@ func newStackOutputCmd() *cobra.Command {
 		&socmd.stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVar(
 		&socmd.showSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "property-name", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

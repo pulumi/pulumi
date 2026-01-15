@@ -22,10 +22,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // Used to replace the `## <command>` line in generated markdown files.
@@ -63,9 +62,8 @@ func generateMetaDescription(title, commandName string) string {
 // NewGenMarkdownCmd returns a new command that, when run, generates CLI documentation as Markdown files.
 // It is hidden by default since it's not commonly used outside of our own build processes.
 func NewGenMarkdownCmd(root *cobra.Command) *cobra.Command {
-	return &cobra.Command{
-		Use:    "gen-markdown <DIR>",
-		Args:   cmdutil.ExactArgs(1),
+	cmd := &cobra.Command{
+		Use:    "gen-markdown",
 		Short:  "Generate Pulumi CLI documentation as Markdown (one file per command)",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -130,4 +128,14 @@ func NewGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "dir", Type: "string"},
+		},
+		Required: 1,
+		Variadic: false,
+	})
+
+	return cmd
 }

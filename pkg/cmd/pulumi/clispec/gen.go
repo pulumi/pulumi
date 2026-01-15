@@ -17,14 +17,12 @@ package clispec
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // NewGenCLISpecCmd returns a new command that, when run, generates a CLI specification JSON file.
@@ -34,35 +32,30 @@ import (
 // but that seems like the wrong approach. Potentially, we'll come back to this later and maybe extend the Cobra
 // command structure to reify the argument structure.
 func NewGenCLISpecCmd(root *cobra.Command) *cobra.Command {
-	return &cobra.Command{
-		Use:    "generate-cli-spec [OUTPUT_PATH]",
-		Args:   cmdutil.MaximumNArgs(1),
+	cmd := &cobra.Command{
+		Use:    "generate-cli-spec",
 		Short:  "Generate Pulumi CLI specification as JSON",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			outputPath := "specification.json"
-			if len(args) > 0 {
-				outputPath = args[0]
-			}
-
 			spec := generateSpec(root)
 
-			file, err := os.Create(outputPath)
-			if err != nil {
-				return fmt.Errorf("failed to create specification: %w", err)
-			}
-			defer file.Close()
-
-			encoder := json.NewEncoder(file)
+			encoder := json.NewEncoder(cmd.OutOrStdout())
 			encoder.SetIndent("", "  ")
 			if err := encoder.Encode(spec); err != nil {
 				return fmt.Errorf("failed to encode specification: %w", err)
 			}
 
-			fmt.Printf("CLI specification written to: %s\n", outputPath)
 			return nil
 		},
 	}
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
+
+	return cmd
 }
 
 // -- SPECIFICATION
@@ -82,16 +75,16 @@ func generateSpec(cmd *cobra.Command) Specification {
 // -- COMMANDS
 
 type MenuStructure struct {
-	Type           string         `json:"type"`
-	AvailableFlags []Flag         `json:"available_flags"`
-	Commands       map[string]any `json:"commands,omitempty"`
+	Type           string          `json:"type"`
+	AvailableFlags map[string]Flag `json:"available_flags"`
+	Commands       map[string]any  `json:"commands,omitempty"`
 }
 
 type CommandStructure struct {
-	Type           string `json:"type"`
-	AvailableFlags []Flag `json:"available_flags"`
-	Arguments      any    `json:"arguments,omitempty"`
-	Documentation  string `json:"documentation,omitempty"`
+	Type           string          `json:"type"`
+	AvailableFlags map[string]Flag `json:"available_flags"`
+	Arguments      any             `json:"arguments,omitempty"`
+	Documentation  string          `json:"documentation,omitempty"`
 }
 
 func processCommand(cmd *cobra.Command, isRoot bool) any {
@@ -158,9 +151,8 @@ type Flag struct {
 	Repeatable    bool   `json:"repeatable,omitempty"`
 }
 
-func extractFlags(cmd *cobra.Command) []Flag {
-	flags := []Flag{}
-	seen := make(map[string]bool)
+func extractFlags(cmd *cobra.Command) map[string]Flag {
+	flags := make(map[string]Flag)
 
 	root := cmd
 	for root.HasParent() {
@@ -172,9 +164,8 @@ func extractFlags(cmd *cobra.Command) []Flag {
 	root.PersistentFlags().VisitAll(func(f *pflag.Flag) {
 		if !f.Hidden {
 			flag := extractFlagInfo(f)
-			if flag != nil && !seen[flag.LongName] {
-				flags = append(flags, *flag)
-				seen[flag.LongName] = true
+			if flag != nil {
+				flags[flag.LongName] = *flag
 			}
 		}
 	})
@@ -182,9 +173,9 @@ func extractFlags(cmd *cobra.Command) []Flag {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
 		if !f.Hidden {
 			flag := extractFlagInfo(f)
-			if flag != nil && !seen[flag.LongName] {
-				flags = append(flags, *flag)
-				seen[flag.LongName] = true
+			if flag != nil {
+				// Local flags override persistent flags with the same name
+				flags[flag.LongName] = *flag
 			}
 		}
 	})

@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/graph"
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -58,8 +59,7 @@ func newStackGraphCmd() *cobra.Command {
 	var cmdOpts graphCommandOptions
 
 	cmd := &cobra.Command{
-		Use:   "graph [filename]",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "graph",
 		Short: "Export a stack's dependency graph to a file",
 		Long: "Export a stack's dependency graph to a file.\n" +
 			"\n" +
@@ -127,6 +127,15 @@ func newStackGraphCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&cmdOpts.dotFragment, "dot-fragment", "",
 		"An optional DOT fragment that will be inserted at the top of the digraph element. "+
 			"This can be used for styling the graph elements, setting graph properties etc.")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "filename", Type: "string"},
+		},
+		Required: 1,
+		Variadic: false,
+	})
+
 	return cmd
 }
 

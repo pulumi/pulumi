@@ -17,7 +17,7 @@ package config
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,6 @@ func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 		Use:   "ls",
 		Short: "Lists imported environments.",
 		Long:  "Lists the environments imported into a stack's configuration.",
-		Args:  cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
@@ -40,6 +39,12 @@ func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonOut, "json", "j", false,
 		"Emit output as JSON")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

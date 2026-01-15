@@ -26,6 +26,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
@@ -52,7 +53,6 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install",
-		Args:  cmdutil.NoArgs,
 		Short: "Install packages and plugins for the current program or policy pack.",
 		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
@@ -224,6 +224,12 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 		"no-dependencies", false, "Skip installing dependencies")
 	cmd.PersistentFlags().BoolVar(&useLanguageVersionTools,
 		"use-language-version-tools", false, "Use language version tools to setup and install the language runtime")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

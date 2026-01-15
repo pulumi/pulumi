@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -36,7 +37,6 @@ func newStackImportCmd() *cobra.Command {
 	var stackName string
 	cmd := &cobra.Command{
 		Use:   "import",
-		Args:  cmdutil.MaximumNArgs(0),
 		Short: "Import a deployment from standard in into an existing stack",
 		Long: "Import a deployment from standard in into an existing stack.\n" +
 			"\n" +
@@ -103,6 +103,12 @@ func newStackImportCmd() *cobra.Command {
 		"Force the import to occur, even if apparent errors are discovered beforehand (not recommended)")
 	cmd.PersistentFlags().StringVarP(
 		&file, "file", "", "", "A filename to read stack input from")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

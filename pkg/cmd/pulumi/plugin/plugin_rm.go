@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -38,8 +39,7 @@ func newPluginRmCmd() *cobra.Command {
 	var all bool
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "rm [KIND [NAME [VERSION]]]",
-		Args:  cmdutil.MaximumNArgs(3),
+		Use:   "rm",
 		Short: "Remove one or more plugins from the download cache",
 		Long: "Remove one or more plugins from the download cache.\n" +
 			"\n" +
@@ -138,6 +138,16 @@ func newPluginRmCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "kind", Type: "string"},
+			{Name: "name", Type: "string"},
+			{Name: "version", Type: "string", Usage: "version|range"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

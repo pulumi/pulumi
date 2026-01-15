@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -71,8 +72,7 @@ func newPackagePublishCmd() *cobra.Command {
 	var pkgPublishCmd packagePublishCmd
 
 	cmd := &cobra.Command{
-		Use:   "publish <provider|schema> --readme <path> [--] [provider-parameter...]",
-		Args:  cmdutil.MinimumNArgs(1),
+		Use:   "publish",
 		Short: "Publish a package to the Private Registry",
 		Long: "Publish a package to the Private Registry.\n\n" +
 			"This command publishes a package to the Private Registry. The package can be a provider " +
@@ -121,6 +121,14 @@ func newPackagePublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&args.installDocsPath, "installation-configuration", "",
 		"Path to the installation configuration markdown file")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "provider", Type: "string"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
 
 	return cmd
 }

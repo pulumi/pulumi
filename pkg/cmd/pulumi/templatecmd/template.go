@@ -15,7 +15,7 @@
 package templatecmd
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
 )
 
@@ -26,10 +26,16 @@ func NewTemplateCmd() *cobra.Command {
 		Long: `Work with Pulumi templates
 
 Publish and manage Pulumi templates.`,
-		Args: cmdutil.NoArgs,
 	}
 	cmd.AddCommand(
 		newTemplatePublishCmd(),
 	)
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cmd
 }

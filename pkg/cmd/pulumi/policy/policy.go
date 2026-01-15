@@ -15,7 +15,7 @@
 package policy
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +23,6 @@ func NewPolicyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "policy",
 		Short: "Manage resource policies",
-		Args:  cmdutil.NoArgs,
 	}
 
 	cmd.AddCommand(newPolicyDisableCmd())
@@ -34,6 +33,12 @@ func NewPolicyCmd() *cobra.Command {
 	cmd.AddCommand(newPolicyPublishCmd())
 	cmd.AddCommand(newPolicyRmCmd())
 	cmd.AddCommand(newPolicyValidateCmd())
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

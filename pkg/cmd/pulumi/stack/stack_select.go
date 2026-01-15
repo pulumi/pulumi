@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -35,7 +36,7 @@ func newStackSelectCmd() *cobra.Command {
 	var secretsProvider string
 	var create bool
 	cmd := &cobra.Command{
-		Use:   "select [<stack>]",
+		Use:   "select",
 		Short: "Switch the current workspace to the given stack",
 		Long: "Switch the current workspace to the given stack.\n" +
 			"\n" +
@@ -44,7 +45,6 @@ func newStackSelectCmd() *cobra.Command {
 			"\n" +
 			"If no <stack> argument is supplied, you will be prompted to select one interactively.\n" +
 			"If provided stack name is not found you may pass the --create flag to create and select it",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -127,5 +127,14 @@ func newStackSelectCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default",
 		"Use with --create flag, "+possibleSecretsProviderChoices)
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "stack", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
+
 	return cmd
 }

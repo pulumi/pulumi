@@ -20,6 +20,7 @@ import (
 	"os"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -31,8 +32,7 @@ import (
 
 func newExtractSchemaCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get-schema <schema_source> [provider parameters]",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "get-schema",
 		Short: "Get the schema.json from a package",
 		Long: `Get the schema.json from a package.
 
@@ -84,5 +84,13 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			return nil
 		},
 	}
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "schema-source", Type: "string", Usage: "package-name|plugin-path"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
 	return cmd
 }

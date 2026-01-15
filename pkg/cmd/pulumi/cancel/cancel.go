@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -35,8 +36,7 @@ func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var yes bool
 	var stack string
 	cmd := &cobra.Command{
-		Use:   "cancel [<stack-name>]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "cancel",
 		Short: "Cancel a stack's currently running update, if any",
 		Long: "Cancel a stack's currently running update, if any.\n" +
 			"\n" +
@@ -101,6 +101,14 @@ func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "stack-name", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

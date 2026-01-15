@@ -20,7 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
 )
 
@@ -28,8 +28,7 @@ func newPolicyValidateCmd() *cobra.Command {
 	var argConfig string
 
 	cmd := &cobra.Command{
-		Use:   "validate-config <org-name>/<policy-pack-name> <version>",
-		Args:  cmdutil.ExactArgs(2),
+		Use:   "validate-config",
 		Short: "Validate a Policy Pack configuration",
 		Long:  "Validate a Policy Pack configuration against the configuration schema of the specified version.",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
@@ -69,6 +68,15 @@ func newPolicyValidateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&argConfig, "config", "",
 		"The file path for the Policy Pack configuration file")
 	cmd.MarkFlagRequired("config") //nolint:errcheck
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "policy-pack-name", Type: "string", Usage: "org-name/policy-pack-name"},
+			{Name: "version", Type: "string"},
+		},
+		Required: 2,
+		Variadic: false,
+	})
 
 	return cmd
 }

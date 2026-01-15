@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -44,8 +45,7 @@ func newStackRmCmd() *cobra.Command {
 	var preserveConfig bool
 	var removeBackups bool
 	cmd := &cobra.Command{
-		Use:   "rm [<stack-name>]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "rm",
 		Short: "Remove a stack and its configuration",
 		Long: "Remove a stack and its configuration\n" +
 			"\n" +
@@ -141,6 +141,14 @@ func newStackRmCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&removeBackups, "remove-backups", false,
 		"Additionally remove backups of the stack, if using the DIY backend")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "stack-name", Type: "string"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -39,8 +40,7 @@ func newPackageDeleteCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "delete <source>/<publisher>/<name>@<version>",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "delete",
 		Short: "Delete a package version from the registry",
 		Long: `Delete a package version from the Pulumi Registry.
 
@@ -149,6 +149,14 @@ You must have publish permissions for the package to delete it.`,
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with deletion anyway")
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args: []constrictor.Arg{
+			{Name: "package-name", Type: "string", Usage: "[[<source>/]<publisher>/]<name>[@<version>]"},
+		},
+		Required: 1,
+		Variadic: false,
+	})
 
 	return cmd
 }

@@ -15,8 +15,8 @@
 package deployment
 
 import (
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,6 @@ func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 		Long: "Manage stack deployments on Pulumi Cloud.\n" +
 			"\n" +
 			"Use this command to trigger deployment jobs and manage deployment settings.",
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -42,6 +41,12 @@ func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd.AddCommand(newDeploymentSettingsCmd())
 	cmd.AddCommand(newDeploymentRunCmd(ws))
+
+	constrictor.AttachArgs(cmd, &constrictor.Arguments{
+		Args:     []constrictor.Arg{},
+		Required: 0,
+		Variadic: false,
+	})
 
 	return cmd
 }

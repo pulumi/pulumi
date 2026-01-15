@@ -34,7 +34,6 @@ func newAboutEnvCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "env",
 		Short: "An overview of the environmental variables used by pulumi",
-		Args:  cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			table := cmdutil.Table{
 				Headers: []string{"Variable", "Description", "Value"},
