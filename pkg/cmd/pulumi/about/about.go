@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -65,7 +66,6 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			" - the current project\n" +
 			" - the current stack\n" +
 			" - the current backend\n",
-		Args: cmdutil.MaximumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
@@ -76,6 +76,8 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newAboutEnvCmd())
 
