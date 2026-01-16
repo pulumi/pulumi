@@ -59,10 +59,6 @@ func TestAIWebCommand_RequiresCloudBackend(t *testing.T) {
 	assert.Contains(t, err.Error(), "Neo tasks are only available with the Pulumi Cloud backend")
 }
 
-// TestAIWebCommand_CreatesNeoTask would need more comprehensive mocking
-// to test the full flow. This is left as a TODO for a more complete
-// integration test setup.
-
 // Mock types for testing
 type mockNonCloudBackend struct {
 	backend.Backend
