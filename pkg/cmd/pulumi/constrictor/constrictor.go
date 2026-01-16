@@ -128,7 +128,7 @@ func createUsageString(name string, arguments *Arguments) string {
 		return name
 	}
 
-	var parts []string = []string{name}
+	parts := []string{name}
 	for index, argument := range arguments.Arguments {
 		if argument.Usage != "" {
 			parts = append(parts, argument.Usage)
