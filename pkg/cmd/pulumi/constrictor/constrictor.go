@@ -106,11 +106,11 @@ func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
 func createCobraArgsPredicate(specification *Arguments) cobra.PositionalArgs {
 	return cmdutil.ArgsFunc(func(cmd *cobra.Command, arguments []string) error {
 		if len(arguments) < specification.Required {
-			return fmt.Errorf("must have at least %d arguments", specification.Required)
+			return fmt.Errorf("requires at least %d arg(s), only received %d", len(specification.Arguments), len(arguments))
 		}
 
 		if !specification.Variadic && len(arguments) > len(specification.Arguments) {
-			return fmt.Errorf("must have at most %d arguments", len(specification.Arguments))
+			return fmt.Errorf("accepts at most %d arg(s), received %d", len(specification.Arguments), len(arguments))
 		}
 
 		// We don't currently type-check in the arguments predicate, but we could.
