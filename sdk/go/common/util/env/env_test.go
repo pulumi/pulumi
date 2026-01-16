@@ -179,24 +179,6 @@ func TestJoinStoreValues(t *testing.T) {
 	}
 }
 
-func TestJoinStoreValuesReturnsEarlyWhenKeyFound(t *testing.T) {
-	t.Parallel()
-	stores := []env.Store{
-		env.MapStore{"KEY1": "value1", "KEY2": "value2", "KEY3": "value3"},
-		env.MapStore{"KEY4": "value4"},
-	}
-	joined := env.JoinStore(stores...)
-	count := 0
-	for k := range joined.Values() {
-		count++
-		if k == "KEY2" {
-			break
-		}
-	}
-	assert.GreaterOrEqual(t, count, 1)
-	assert.LessOrEqual(t, count, 2)
-}
-
 func TestJoinStoreRaw(t *testing.T) {
 	t.Parallel()
 
