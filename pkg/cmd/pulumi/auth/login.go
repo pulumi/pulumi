@@ -313,43 +313,45 @@ func extractOIDCDefaults(organization, team, user, token string) (string, string
 	parser := jwt.NewParser()
 	claims := jwt.MapClaims{}
 	_, _, err := parser.ParseUnverified(token, claims)
-	if err == nil {
-		// Extract organization from aud claim
-		// Format: urn:pulumi:org:<org-name>
-		if aud, ok := claims["aud"].(string); ok {
-			if strings.HasPrefix(aud, "urn:pulumi:org:") {
-				parts := strings.Split(aud, ":")
-				if len(parts) == 4 {
-					jwtOrg = parts[3]
+	if err != nil {
+		return organization, team, user, nil
+	}
+
+	// Extract organization from aud claim
+	// Format: urn:pulumi:org:<org-name>
+	if aud, ok := claims["aud"].(string); ok {
+		if strings.HasPrefix(aud, "urn:pulumi:org:") {
+			parts := strings.Split(aud, ":")
+			if len(parts) == 4 {
+				jwtOrg = parts[3]
+			}
+		}
+	}
+
+	// Extract team, user, or runner from scope claim
+	// Scope can be a string or array of strings
+	// Formats: "team:<team-name>", "user:<user-login>", "runner:<runner-name>"
+	if scopeClaim, ok := claims["scope"]; ok {
+		var scopes []string
+		switch v := scopeClaim.(type) {
+		case string:
+			// Single scope as string, may be space-separated
+			scopes = strings.Fields(v)
+		case []any:
+			// Array of scopes
+			for _, s := range v {
+				if str, ok := s.(string); ok {
+					scopes = append(scopes, str)
 				}
 			}
 		}
-
-		// Extract team, user, or runner from scope claim
-		// Scope can be a string or array of strings
-		// Formats: "team:<team-name>", "user:<user-login>", "runner:<runner-name>"
-		if scopeClaim, ok := claims["scope"]; ok {
-			var scopes []string
-			switch v := scopeClaim.(type) {
-			case string:
-				// Single scope as string, may be space-separated
-				scopes = strings.Fields(v)
-			case []any:
-				// Array of scopes
-				for _, s := range v {
-					if str, ok := s.(string); ok {
-						scopes = append(scopes, str)
-					}
-				}
+		for _, scope := range scopes {
+			if strings.HasPrefix(scope, "team:") {
+				jwtTeam = strings.TrimPrefix(scope, "team:")
+			} else if strings.HasPrefix(scope, "user:") {
+				jwtUser = strings.TrimPrefix(scope, "user:")
 			}
-			for _, scope := range scopes {
-				if strings.HasPrefix(scope, "team:") {
-					jwtTeam = strings.TrimPrefix(scope, "team:")
-				} else if strings.HasPrefix(scope, "user:") {
-					jwtUser = strings.TrimPrefix(scope, "user:")
-				}
-				// Note: runner scope not yet implemented in CLI
-			}
+			// Note: runner scope not yet implemented in CLI
 		}
 	}
 
