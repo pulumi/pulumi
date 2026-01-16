@@ -314,7 +314,7 @@ function makeFunctionDeclaration(
 
     if (v.startsWith("*")) {
         v = v.slice(1).trimLeft();
-        prefix = isAsync ? "async function* " : "function* ";
+        prefix = (isAsync ? "async " : "") + "function* ";
     }
 
     const openParenIndex = v.indexOf("(");
