@@ -16,7 +16,6 @@ package httpstate
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -70,7 +69,7 @@ func (b *MockHTTPBackend) PromptAI(
 func (b *MockHTTPBackend) CreateNeoTask(
 	ctx context.Context, stackRef backend.StackReference, prompt string,
 ) (string, error) {
-	return "", errors.New("CreateNeoTask not implemented in mock")
+	return "", nil
 }
 
 func (b *MockHTTPBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
