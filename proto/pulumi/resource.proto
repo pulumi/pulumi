@@ -43,6 +43,11 @@ service ResourceMonitor {
     // steps of a resource's lifecycle.
     rpc RegisterResourceHook(RegisterResourceHookRequest) returns (google.protobuf.Empty) {}
 
+    // Register an error hook that can be called by the engine when an operation fails and is retryable.
+    //
+    // Error hooks are a separate type of hook to other life cycle hooks as they have different inputs and outputs.
+    rpc RegisterErrorHook(RegisterErrorHookRequest) returns (google.protobuf.Empty) {}
+
     // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
     // Multiple requests are idempotent and guaranteed to return the same result.
     rpc RegisterPackage(RegisterPackageRequest) returns (RegisterPackageResponse) {}
@@ -176,6 +181,7 @@ message RegisterResourceRequest {
         repeated string after_update = 4;
         repeated string before_delete = 5;
         repeated string after_delete = 6;
+        repeated string on_error = 7;
     }
 
     // The resource hooks that should run at certain points in the resource's lifecycle.
@@ -331,6 +337,26 @@ message ResourceHookResponse {
     string error = 1; // an optional error message to return from the hook.
 }
 
+// ErrorHookRequest is the request object for error hook callbacks in CallbackInvokeRequest.
+message ErrorHookRequest {
+    string urn = 1; // the urn of the resource for which the hook is called.
+    string id = 2; // the optional urn of the resource for which the hook is called.
+    string name = 3; // the name of the resource for which the hook is called.
+    string type = 4; // the type of the resource for which the hook is called.
+    google.protobuf.Struct new_inputs = 5; // the optional checked new inputs of the resource.
+    google.protobuf.Struct old_inputs = 6; // the optional checked old inputs of the resource.
+    google.protobuf.Struct new_outputs = 7; // the optional new outputs of the resource.
+    google.protobuf.Struct old_outputs = 8; // the optional old outputs of the resource.
+    string failed_operation = 9; // the operation that failed (create, read, update, or delete).
+    repeated string errors = 10; // the errors that have been seen so far (newest-first).
+}
+
+// ErrorHookResponse is the response object for error hook callbacks in CallbackInvokeResponse.
+message ErrorHookResponse {
+    string error = 1; // an optional error message to return from the hook.
+    bool retry = 2; // whether we should retry the operation.
+}
+
 message RegisterPackageRequest {
     string name = 1; // the plugin name.
     string version = 2; // the plugin version.
@@ -358,4 +384,11 @@ message RegisterResourceHookRequest {
     string name = 1;
     Callback callback = 2; // the callback that the engine can call to run the hook.
     bool on_dry_run = 3; // whether to run the hook on dry runs.
+}
+
+message RegisterErrorHookRequest {
+    // The name of the hook. Must be unique within a program, registering the
+    // same name twice is an error.
+    string name = 1;
+    Callback callback = 2; // the callback that the engine can call to run the hook.
 }

@@ -1379,6 +1379,10 @@ export namespace ConstructRequest {
         getAfterDeleteList(): Array<string>;
         setAfterDeleteList(value: Array<string>): ResourceHooksBinding;
         addAfterDelete(value: string, index?: number): string;
+        clearOnErrorList(): void;
+        getOnErrorList(): Array<string>;
+        setOnErrorList(value: Array<string>): ResourceHooksBinding;
+        addOnError(value: string, index?: number): string;
 
         serializeBinary(): Uint8Array;
         toObject(includeInstance?: boolean): ResourceHooksBinding.AsObject;
@@ -1398,6 +1402,7 @@ export namespace ConstructRequest {
             afterUpdateList: Array<string>,
             beforeDeleteList: Array<string>,
             afterDeleteList: Array<string>,
+            onErrorList: Array<string>,
         }
     }
 

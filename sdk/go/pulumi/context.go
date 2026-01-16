@@ -74,6 +74,7 @@ type contextState struct {
 	supportsInvokeTransforms bool         // true if remote invoke transforms are supported by pulumi
 	supportsParameterization bool         // true if package references and parameterized providers are supported by pulumi
 	supportsResourceHooks    bool         // true if resource hooks are supported by pulumi
+	supportsErrorHooks       bool         // true if error hooks are supported by pulumi
 	rpcs                     int          // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
@@ -192,6 +193,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsErrorHooks, err := supportsFeature("errorHooks")
+	if err != nil {
+		return nil, err
+	}
+
 	contextState := &contextState{
 		info:                     info,
 		exports:                  make(map[string]Input),
@@ -208,6 +214,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsInvokeTransforms: supportsInvokeTransforms,
 		supportsParameterization: supportsParameterization,
 		supportsResourceHooks:    supportsResourceHooks,
+		supportsErrorHooks:       supportsErrorHooks,
 		registeredOutputs:        make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)

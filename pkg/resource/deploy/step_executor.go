@@ -283,7 +283,7 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		if s, ok := reg.(*CreateStep); ok {
 			if err := s.Deployment().RunHooks(
 				s.new.ResourceHooks[resource.AfterCreate],
-				false, /* isBeforeHook */
+				resource.AfterCreate,
 				s.new.ID,
 				s.new.URN,
 				s.new.URN.Name(),
@@ -298,7 +298,7 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		} else if s, ok := reg.(*UpdateStep); ok {
 			if err := s.Deployment().RunHooks(
 				s.new.ResourceHooks[resource.AfterUpdate],
-				false, /* isBeforeHook */
+				resource.AfterUpdate,
 				s.new.ID,
 				s.new.URN,
 				s.new.URN.Name(),
