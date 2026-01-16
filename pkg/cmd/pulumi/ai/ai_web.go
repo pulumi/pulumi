@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -33,48 +32,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type PulumiAILanguage string
-
-const (
-	TypeScript PulumiAILanguage = "TypeScript"
-	Python     PulumiAILanguage = "Python"
-	Go         PulumiAILanguage = "Go"
-	CSharp     PulumiAILanguage = "C#"
-	Java       PulumiAILanguage = "Java"
-	YAML       PulumiAILanguage = "YAML"
-)
-
-func (l *PulumiAILanguage) String() string {
-	return string(*l)
-}
-
-func (l *PulumiAILanguage) Set(v string) error {
-	switch strings.ToLower(v) {
-	case "typescript", "ts":
-		*l = TypeScript
-	case "python", "py":
-		*l = Python
-	case "go", "golang":
-		*l = Go
-	case "c#", "csharp":
-		*l = CSharp
-	case "java":
-		*l = Java
-	case "yaml":
-		*l = YAML
-	default:
-		return fmt.Errorf("invalid language %q", v)
-	}
-	return nil
-}
-
-func (l *PulumiAILanguage) Type() string {
-	return "string"
-}
-
 type aiWebCmd struct {
-	language PulumiAILanguage
-	ws       pkgWorkspace.Context
+	ws pkgWorkspace.Context
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -164,10 +123,5 @@ Example:
 			return aiwebcmd.Run(ctx, args)
 		},
 	}
-	cmd.PersistentFlags().VarP(
-		&aiwebcmd.language, "language", "l",
-		"Language preference for the Neo task (currently not used but reserved for future use). "+
-			"[TypeScript, Python, Go, C#, Java, YAML]",
-	)
 	return cmd
 }
