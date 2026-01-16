@@ -1,0 +1,5 @@
+name: l1-builtin-check-pulumi-version
+runtime:
+  name: nodejs
+  options:
+    typescript: false

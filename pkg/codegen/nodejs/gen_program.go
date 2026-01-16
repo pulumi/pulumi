@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -529,6 +529,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) error {
 	for _, preambleHelperMethodBody := range programImports.preambleHelperMethods.SortedValues() {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
+
+	if program.Config.RequiredVersionRange != "" {
+		g.Fprintf(w, "pulumi.checkPulumiVersion('%s')\n\n", program.Config.RequiredVersionRange)
+	}
+
 	return nil
 }
 
