@@ -45,7 +45,7 @@ service ResourceMonitor {
 
     // Register an error hook that can be called by the engine when an operation fails and is retryable.
     //
-    // This is separate from RegisterResourceHook so the protocol does not imply that all hooks can request retries.
+    // Error hooks are a separate type of hook to other life cycle hooks as they have different inputs and outputs.
     rpc RegisterErrorHook(RegisterErrorHookRequest) returns (google.protobuf.Empty) {}
 
     // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
