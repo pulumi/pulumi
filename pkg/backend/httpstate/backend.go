@@ -1422,11 +1422,12 @@ func (b *cloudBackend) PromptAI(
 func (b *cloudBackend) CreateNeoTask(
 	ctx context.Context, stackRef backend.StackReference, prompt string,
 ) (string, error) {
-	// Get the organization name from the stack reference
+	var orgName string
+
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		// If we can't get stack identifier, try to get default org
-		orgName, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
+		orgName, err = backend.GetDefaultOrg(ctx, b, b.currentProject)
 		if err != nil {
 			return "", fmt.Errorf("failed to get organization: %w", err)
 		}
@@ -1438,24 +1439,16 @@ func (b *cloudBackend) CreateNeoTask(
 			}
 			orgName = userName
 		}
-		// Create the task
-		taskID, err := b.Client().CreateNeoTask(ctx, orgName, prompt)
-		if err != nil {
-			return "", fmt.Errorf("failed to create Neo task: %w", err)
-		}
-		// Construct URL using CloudConsoleURL
-		neoURL := b.CloudConsoleURL(orgName, "neo", "tasks", taskID)
-		return neoURL, nil
+	} else {
+		orgName = stackID.Owner
 	}
 
-	// Create the task using the org from the stack
-	taskID, err := b.Client().CreateNeoTask(ctx, stackID.Owner, prompt)
+	taskID, err := b.Client().CreateNeoTask(ctx, orgName, prompt)
 	if err != nil {
 		return "", fmt.Errorf("failed to create Neo task: %w", err)
 	}
 
-	// Construct URL using CloudConsoleURL
-	neoURL := b.CloudConsoleURL(stackID.Owner, "neo", "tasks", taskID)
+	neoURL := b.CloudConsoleURL(orgName, "neo", "tasks", taskID)
 	return neoURL, nil
 }
 
