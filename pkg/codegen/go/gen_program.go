@@ -1057,7 +1057,23 @@ func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 
 func (g *generator) genHelpers(w io.Writer) {
 	for _, v := range g.arrayHelpers {
-		v.generateHelperMethod(w)
+		inputType := strings.TrimSuffix(v.destType, "Array")
+		parts := strings.Split(inputType, ".")
+		contract.Assertf(len(parts) == 2, "genHelpers inputType expected to have two parts.")
+		typ := parts[1]
+		promptType := typ
+		if t, ok := primitives[typ]; ok {
+			promptType = t
+		}
+
+		fnName := v.getFnName()
+		fmt.Fprintf(w, "func %s(arr []%s) %s {\n", fnName, promptType, v.destType)
+		fmt.Fprintf(w, "var pulumiArr %s\n", v.destType)
+		fmt.Fprintf(w, "for _, v := range arr {\n")
+		fmt.Fprintf(w, "pulumiArr = append(pulumiArr, %s(v))\n", inputType)
+		fmt.Fprintf(w, "}\n")
+		fmt.Fprintf(w, "return pulumiArr\n")
+		fmt.Fprintf(w, "}\n")
 	}
 }
 

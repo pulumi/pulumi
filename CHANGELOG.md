@@ -1,5 +1,48 @@
 # Changelog
 
+## 3.216.0 (2026-01-16)
+
+
+### Features
+
+- [build] Don't set PULUMI_ROOT with mise
+  [#21457](https://github.com/pulumi/pulumi/pull/21457)
+
+- [cli] Default to Pulumi Cloud when using an OIDC token for login
+  [#21322](https://github.com/pulumi/pulumi/pull/21322)
+
+- [engine] Add CheckPulumiVersion RPC to the engine
+  [#21429](https://github.com/pulumi/pulumi/pull/21429)
+
+- [protobuf] Remove ProviderHandshakeResponse.pulumi_version_range
+  [#21438](https://github.com/pulumi/pulumi/pull/21438)
+
+- [sdk/nodejs] Allow dynamic providers to return inputs from read() for accurate diffs after refresh
+  [#21315](https://github.com/pulumi/pulumi/pull/21315)
+
+- [sdk/nodejs] Add support for serializing async generators
+  [#21410](https://github.com/pulumi/pulumi/pull/21410)
+
+- [sdk/python] Allow dynamic providers to return inputs from read() for accurate diffs after refresh
+  [#21315](https://github.com/pulumi/pulumi/pull/21315)
+
+
+### Bug Fixes
+
+- [engine] Optimize StackReference performance
+  [#21446](https://github.com/pulumi/pulumi/pull/21446)
+
+- [cli/display] Fix message renderer on windows
+  [#21401](https://github.com/pulumi/pulumi/pull/21401)
+
+- [sdk/nodejs] Fix RangeError in defaultErrorMessage when error objects are large
+  [#21409](https://github.com/pulumi/pulumi/pull/21409)
+
+
+### Miscellaneous
+
+- [sdk/dotnet] Update dotnet to v3.97.0
+
 ## 3.215.0 (2026-01-07)
 
 

@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -429,4 +429,10 @@ func (m *mockEngine) StartDebugging(ctx context.Context, in *pulumirpc.StartDebu
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
+}
+
+func (e *mockEngine) CheckPulumiVersion(ctx context.Context, req *pulumirpc.CheckPulumiVersionRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.CheckPulumiVersionResponse, error) {
+	return &pulumirpc.CheckPulumiVersionResponse{}, nil
 }
