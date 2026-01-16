@@ -320,7 +320,7 @@ registerResourceHook: {
   },
   // Register an error hook that can be called by the engine when an operation fails and is retryable.
 //
-// This is separate from RegisterResourceHook so the protocol does not imply that all hooks can request retries.
+// Error hooks are a separate type of hook to other life cycle hooks as they have different inputs and outputs.
 registerErrorHook: {
     path: '/pulumirpc.ResourceMonitor/RegisterErrorHook',
     requestStream: false,

@@ -95,7 +95,7 @@ class ResourceMonitorStub:
     ]
     """Register an error hook that can be called by the engine when an operation fails and is retryable.
 
-    This is separate from RegisterResourceHook so the protocol does not imply that all hooks can request retries.
+    Error hooks are a separate type of hook to other life cycle hooks as they have different inputs and outputs.
     """
 
     RegisterPackage: grpc.UnaryUnaryMultiCallable[
@@ -177,7 +177,7 @@ class ResourceMonitorAsyncStub:
     ]
     """Register an error hook that can be called by the engine when an operation fails and is retryable.
 
-    This is separate from RegisterResourceHook so the protocol does not imply that all hooks can request retries.
+    Error hooks are a separate type of hook to other life cycle hooks as they have different inputs and outputs.
     """
 
     RegisterPackage: grpc.aio.UnaryUnaryMultiCallable[
@@ -279,7 +279,7 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
         """Register an error hook that can be called by the engine when an operation fails and is retryable.
 
-        This is separate from RegisterResourceHook so the protocol does not imply that all hooks can request retries.
+        Error hooks are a separate type of hook to other life cycle hooks as they have different inputs and outputs.
         """
 
     

@@ -69,7 +69,7 @@ type ResourceMonitorClient interface {
 	RegisterResourceHook(ctx context.Context, in *RegisterResourceHookRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Register an error hook that can be called by the engine when an operation fails and is retryable.
 	//
-	// This is separate from RegisterResourceHook so the protocol does not imply that all hooks can request retries.
+	// Error hooks are a separate type of hook to other life cycle hooks as they have different inputs and outputs.
 	RegisterErrorHook(ctx context.Context, in *RegisterErrorHookRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 	// Multiple requests are idempotent and guaranteed to return the same result.
@@ -232,7 +232,7 @@ type ResourceMonitorServer interface {
 	RegisterResourceHook(context.Context, *RegisterResourceHookRequest) (*emptypb.Empty, error)
 	// Register an error hook that can be called by the engine when an operation fails and is retryable.
 	//
-	// This is separate from RegisterResourceHook so the protocol does not imply that all hooks can request retries.
+	// Error hooks are a separate type of hook to other life cycle hooks as they have different inputs and outputs.
 	RegisterErrorHook(context.Context, *RegisterErrorHookRequest) (*emptypb.Empty, error)
 	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 	// Multiple requests are idempotent and guaranteed to return the same result.

@@ -1280,7 +1280,7 @@ class ErrorHookRequest(google.protobuf.message.Message):
     type: builtins.str
     """the type of the resource for which the hook is called."""
     failed_operation: builtins.str
-    """the operation that failed (create, update, or delete)."""
+    """the operation that failed (create, read, update, or delete)."""
     @property
     def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
         """the optional checked new inputs of the resource."""

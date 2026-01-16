@@ -1827,7 +1827,7 @@ type ErrorHookRequest struct {
 	OldInputs       *structpb.Struct       `protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`                   // the optional checked old inputs of the resource.
 	NewOutputs      *structpb.Struct       `protobuf:"bytes,7,opt,name=new_outputs,json=newOutputs,proto3" json:"new_outputs,omitempty"`                // the optional new outputs of the resource.
 	OldOutputs      *structpb.Struct       `protobuf:"bytes,8,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"`                // the optional old outputs of the resource.
-	FailedOperation string                 `protobuf:"bytes,9,opt,name=failed_operation,json=failedOperation,proto3" json:"failed_operation,omitempty"` // the operation that failed (create, update, or delete).
+	FailedOperation string                 `protobuf:"bytes,9,opt,name=failed_operation,json=failedOperation,proto3" json:"failed_operation,omitempty"` // the operation that failed (create, read, update, or delete).
 	Errors          []string               `protobuf:"bytes,10,rep,name=errors,proto3" json:"errors,omitempty"`                                         // the errors that have been seen so far (newest-first).
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
