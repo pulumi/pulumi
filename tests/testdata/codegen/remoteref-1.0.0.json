@@ -9,7 +9,7 @@
     "remoteref:index:Root": {
       "properties": {
         "ec2": {
-          "$ref": "/aws/v5.16.2/schema.json#/resources/aws:ec2/instance:Instance"
+          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:ec2/instance:Instance"
         }
       },
       "required": ["ec2"],

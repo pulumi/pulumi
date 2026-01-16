@@ -27,48 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
-func GeneratePythonProgramTest(
-	t *testing.T,
-	genProgram GenProgram,
-	genProject GenProject,
-) {
-	expectedVersion := map[string]PkgVersionInfo{
-		"aws-resource-options-4.26": {
-			Pkg:          "pulumi-aws",
-			OpAndVersion: "==4.26.0",
-		},
-		"aws-resource-options-5.16.2": {
-			Pkg:          "pulumi-aws",
-			OpAndVersion: "==5.16.2",
-		},
-	}
-
-	TestProgramCodegen(t,
-		ProgramCodegenOptions{
-			Language:   "python",
-			Extension:  "py",
-			OutputFile: "__main__.py",
-			Check:      checkPython,
-			GenProgram: genProgram,
-			TestCases: []ProgramTest{
-				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
-				},
-			},
-
-			IsGenProject:    true,
-			GenProject:      genProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "requirements.txt",
-		},
-	)
-}
-
 func GeneratePythonBatchTest(t *testing.T, rootDir string, genProgram GenProgram, testCases []ProgramTest) {
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
