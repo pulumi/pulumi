@@ -1124,7 +1124,7 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
 
 	if opts.Aliases != nil {
-		appendOption("Aliases", opts.Aliases, model.NewListType(model.AliasType))
+		appendOption("Aliases", opts.Aliases, model.NewListType(pcl.AliasType))
 	}
 	if opts.Parent != nil {
 		appendOption("Parent", opts.Parent, model.DynamicType)
