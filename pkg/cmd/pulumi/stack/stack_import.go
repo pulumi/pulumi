@@ -93,7 +93,7 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 
 			// If this snapshot is using the service secret manager but for a _different_ stack, we need to
 			// reconfigure it for the target stack we're importing into.
-			if snapshot.SecretsManager.Type() == service.Type {
+			if snapshot.SecretsManager != nil && snapshot.SecretsManager.Type() == service.Type {
 				// Pass a dummy ProjectStack here since DefaultSecretManger will want to write to it to say no
 				// encryption is in use, but for import purposes we don't care about that.
 				ps := workspace.ProjectStack{}
