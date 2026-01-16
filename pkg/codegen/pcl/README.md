@@ -121,7 +121,7 @@ config "key" "string" {
 
 ### Pulumi
 
-The `pulumi` block defines program level options. It currently provides the single option `requiredVersionRange`, which validates that the program is running against a compatible engien version. See [plugin.ValidatePulumiVersionRange](gh-file:pulumi#sdk/go/common/resource/plugin/plugin.go#L636).
+The `pulumi` block defines program level options. It currently provides the single option `requiredVersionRange`, which validates that the program is running against a compatible engine version. See [plugin.ValidatePulumiVersionRange](gh-file:pulumi#sdk/go/common/resource/plugin/plugin.go#L636).
 
 Only one `pulumi` block can be defined per program.
 
