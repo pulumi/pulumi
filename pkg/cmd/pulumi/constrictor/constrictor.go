@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -103,7 +104,7 @@ func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
 // The only thing we need to worry about is the upper and lower bound of
 // arguments as this is all we can do with the arguments predicate anyway.
 func createCobraArgsPredicate(specification *Arguments) cobra.PositionalArgs {
-	return func(cmd *cobra.Command, arguments []string) error {
+	return cmdutil.ArgsFunc(func(cmd *cobra.Command, arguments []string) error {
 		if len(arguments) < specification.Required {
 			return fmt.Errorf("must have at least %d arguments", specification.Required)
 		}
@@ -114,7 +115,7 @@ func createCobraArgsPredicate(specification *Arguments) cobra.PositionalArgs {
 
 		// We don't currently type-check in the arguments predicate, but we could.
 		return nil
-	}
+	})
 }
 
 // Create a usage string for a Cobra command from an arguments specification.
