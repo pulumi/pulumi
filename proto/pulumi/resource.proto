@@ -347,7 +347,7 @@ message ErrorHookRequest {
     google.protobuf.Struct old_inputs = 6; // the optional checked old inputs of the resource.
     google.protobuf.Struct new_outputs = 7; // the optional new outputs of the resource.
     google.protobuf.Struct old_outputs = 8; // the optional old outputs of the resource.
-    string failed_operation = 9; // the operation that failed (create, update, or delete).
+    string failed_operation = 9; // the operation that failed (create, read, update, or delete).
     repeated string errors = 10; // the errors that have been seen so far (newest-first).
 }
 
