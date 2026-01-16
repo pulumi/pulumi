@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ package httpstate
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -70,7 +70,7 @@ func (b *MockHTTPBackend) PromptAI(
 func (b *MockHTTPBackend) CreateNeoTask(
 	ctx context.Context, stackRef backend.StackReference, prompt string,
 ) (string, error) {
-	return "", fmt.Errorf("CreateNeoTask not implemented in mock")
+	return "", errors.New("CreateNeoTask not implemented in mock")
 }
 
 func (b *MockHTTPBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
