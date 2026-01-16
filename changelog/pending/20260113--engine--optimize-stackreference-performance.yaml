@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Optimize StackReference performance

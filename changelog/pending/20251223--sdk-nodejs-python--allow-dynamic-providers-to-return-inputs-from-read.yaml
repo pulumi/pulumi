@@ -1,7 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Allow dynamic providers to return inputs from read() for accurate diffs after refresh
-- type: feat
-  scope: sdk/python
-  description: Allow dynamic providers to return inputs from read() for accurate diffs after refresh

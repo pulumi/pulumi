@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/dotnet
-  description: Update dotnet to v3.97.0
