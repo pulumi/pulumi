@@ -2085,6 +2085,32 @@ func TestNodejsDynamicProviderConfig(t *testing.T) {
 	})
 }
 
+// Tests that dynamic providers can return inputs from read() for accurate diffs after refresh.
+// Regression test for https://github.com/pulumi/pulumi/issues/13839
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsDynamicProviderReadInputs(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("dynamic", "nodejs-read-inputs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Verify the resource was created
+			require.NotNil(t, stackInfo.Outputs["resourceId"])
+
+			// Find the dynamic resource and verify it has inputs
+			for _, res := range stackInfo.Deployment.Resources {
+				if res.Type == "pulumi-nodejs:dynamic:Resource" {
+					// After refresh, the inputs should include "value" from read()
+					require.NotNil(t, res.Inputs, "resource should have inputs")
+					// The __provider key should always be present
+					assert.Contains(t, res.Inputs, "__provider")
+				}
+			}
+		},
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/12301
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -2658,7 +2684,6 @@ func TestNodejsSourcemapTest(t *testing.T) {
 func TestNodejsSourcemapProgramTypescript(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Verbose:       true,
 		Dir:           filepath.Join("nodejs", "sourcemap-in-program"),
 		Dependencies:  []string{"@pulumi/pulumi"},
 		ExpectFailure: true,
@@ -2667,33 +2692,18 @@ func TestNodejsSourcemapProgramTypescript(t *testing.T) {
 			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
 		},
 	})
-	t.Logf("stderr: %s", stderr.String())
-}
-
-type writer struct {
-	buffer bytes.Buffer
-	t      *testing.T
-}
-
-func (w *writer) Write(p []byte) (n int, err error) {
-	w.buffer.Write(p)
-	w.t.Logf("%s", p)
-	return len(p), nil
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNodejsSourcemapProgramJavascript(t *testing.T) {
-	stderr := &writer{t: t}
+	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           filepath.Join("nodejs", "sourcemap-in-program-precompiled"),
 		Dependencies:  []string{"@pulumi/pulumi"},
 		ExpectFailure: true,
-		Stdout:        &writer{t: t},
 		Stderr:        stderr,
-		Verbose:       true,
-		DebugLogLevel: 10,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.buffer.String())
+			require.Regexp(t, "Error: this is a test error\n.*at willThrow.*index.ts:6:15", stderr.String())
 		},
 	})
 }
