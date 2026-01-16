@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -3895,12 +3895,12 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x1esupports_refresh_before_update\x18\x06 \x01(\bR\x1bsupportsRefreshBeforeUpdate\x12.\n" +
 	"\x13invoke_with_preview\x18\a \x01(\bR\x11invokeWithPreviewB\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
-	"\x12_program_directory\"\xe0\x01\n" +
+	"\x12_program_directory\"\xfc\x01\n" +
 	"\x19ProviderHandshakeResponse\x12%\n" +
 	"\x0eaccept_secrets\x18\x01 \x01(\bR\racceptSecrets\x12)\n" +
 	"\x10accept_resources\x18\x02 \x01(\bR\x0facceptResources\x12%\n" +
 	"\x0eaccept_outputs\x18\x03 \x01(\bR\racceptOutputs\x12J\n" +
-	"!supports_autonaming_configuration\x18\x04 \x01(\bR\x1fsupportsAutonamingConfiguration\"\xad\x02\n" +
+	"!supports_autonaming_configuration\x18\x04 \x01(\bR\x1fsupportsAutonamingConfigurationJ\x04\b\x05\x10\x06R\x14pulumi_version_range\"\xad\x02\n" +
 	"\x13ParameterizeRequest\x12C\n" +
 	"\x04args\x18\x01 \x01(\v2-.pulumirpc.ParameterizeRequest.ParametersArgsH\x00R\x04args\x12F\n" +
 	"\x05value\x18\x02 \x01(\v2..pulumirpc.ParameterizeRequest.ParametersValueH\x00R\x05value\x1a$\n" +

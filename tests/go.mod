@@ -3,7 +3,7 @@ module github.com/pulumi/pulumi/tests
 go 1.24.7
 
 replace (
-	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
+	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.8.3
 	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 	github.com/pulumi/pulumi/pkg/v3 => ../pkg
 	github.com/pulumi/pulumi/sdk/v3 => ../sdk
@@ -25,7 +25,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/pulumi/pkg/v3 v3.156.0
-	github.com/pulumi/pulumi/sdk/v3 v3.213.0
+	github.com/pulumi/pulumi/sdk/v3 v3.216.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.37.0

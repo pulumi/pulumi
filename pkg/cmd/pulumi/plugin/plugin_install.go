@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,13 +22,13 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
-	"github.com/pulumi/pulumi/pkg/v3/util"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -43,9 +43,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPluginInstallCmd(packageResolutionOptions packageresolution.Options) *cobra.Command {
+func newPluginInstallCmd() *cobra.Command {
 	var picmd pluginInstallCmd
-	picmd.packageResolutionOptions = packageResolutionOptions
 	cmd := &cobra.Command{
 		Use:   "install [KIND NAME [VERSION]]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -93,8 +92,6 @@ type pluginInstallCmd struct {
 	color    colors.Colorization
 	registry registry.Registry
 
-	packageResolutionOptions packageresolution.Options
-
 	pluginGetLatestVersion func(
 		workspace.PluginDescriptor, context.Context,
 	) (*semver.Version, error) // == workspace.PluginSpec.GetLatestVersion
@@ -129,11 +126,13 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	// Parse the kind, name, and version, if specified.
 	var installs []workspace.PluginDescriptor
 	if len(args) > 0 {
+		var kind apitype.PluginKind
 		if !apitype.IsPluginKind(args[0]) {
 			return fmt.Errorf("unrecognized plugin kind: %s", args[0])
 		} else if len(args) < 2 {
 			return errors.New("missing plugin name argument")
 		}
+		kind = apitype.PluginKind(args[0])
 
 		var version *semver.Version
 		if len(args) == 3 {
@@ -159,7 +158,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		pluginSpec, err := workspace.NewPluginDescriptor(ctx,
-			args[1], apitype.PluginKind(args[0]), version, cmd.serverURL, checksums)
+			args[1], kind, version, cmd.serverURL, checksums)
 		if err != nil {
 			return err
 		}
@@ -168,7 +167,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		// distributed with Pulumi itself. But we turn this check off if PULUMI_DEV is set so we can
 		// test installing plugins that are being moved to their own distribution (such as when we move
 		// pulumi-nodejs).
-		if !cmd.env.GetBool(env.Dev) && workspace.IsPluginBundled(pluginSpec.Kind, pluginSpec.Name) {
+		if !cmd.env.GetBool(env.Dev) && workspace.IsPluginBundled(kind, pluginSpec.Name) {
 			return fmt.Errorf(
 				"the %v %v plugin is bundled with Pulumi, and cannot be directly installed"+
 					" with this command. If you need to reinstall this plugin, reinstall"+
@@ -178,43 +177,53 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			)
 		}
 
-		// Try and set known plugin download URLs
-		if urlSet := util.SetKnownPluginDownloadURL(&pluginSpec); urlSet {
-			cmd.diag.Infof(
-				diag.Message("", "Plugin download URL set to %s"), pluginSpec.PluginDownloadURL)
-		}
+		if kind == apitype.ResourcePlugin {
+			if cmd.file == "" {
+				cwd, err := os.Getwd()
+				if err != nil {
+					return fmt.Errorf("getting current working directory: %w", err)
+				}
 
-		if pluginSpec.Kind == apitype.ResourcePlugin && // The registry only supports resource plugins
-			pluginSpec.PluginDownloadURL == "" && // Don't override explicit pluginDownloadURLs
-			cmd.file == "" { // We don't need help looking up the download URL when we are not downloading a file
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("getting current working directory: %w", err)
+				source := args[1]
+				var version string
+				if parts := strings.SplitN(args[1], "@", 2); len(parts) > 1 {
+					source = parts[0]
+					version = parts[1]
+					if len(args) > 2 {
+						return fmt.Errorf(`cannot specify both "@%s" and "%s" as a version`, version, args[2])
+					}
+				} else if len(args) > 2 {
+					version = args[2]
+				}
+				packageSpec := workspace.PackageSpec{
+					Source:            source,
+					Checksums:         checksums,
+					PluginDownloadURL: cmd.serverURL,
+					Version:           version,
+				}
+
+				if bp, _, err := workspace.LoadBaseProjectFrom(cwd); err == nil {
+					if p, ok := bp.GetPackageSpecs()[pluginSpec.Name]; ok {
+						packageSpec = p
+					}
+				} else if !errors.Is(err, workspace.ErrBaseProjectNotFound) {
+					return err
+				}
+
+				updatedSpec, err := cmd.resolvePluginSpec(ctx, packageSpec)
+				if err != nil {
+					return err
+				}
+				pluginSpec = updatedSpec
 			}
-
-			var project workspace.BaseProject
-			if bp, _, err := workspace.LoadBaseProjectFrom(cwd); err == nil {
-				project = bp
-			} else if !errors.Is(err, workspace.ErrBaseProjectNotFound) {
-				return err
-			}
-
-			updatedSpec, err := cmd.resolvePluginSpec(ctx, pluginSpec, project)
-			if err != nil {
-				return err
-			}
-			pluginSpec = updatedSpec
-		}
-
-		// If we don't have a version try to look one up
-		if version == nil && pluginSpec.Version == nil {
+		} else if version == nil && pluginSpec.Version == nil {
+			// If we don't have a version try to look one up
 			latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec, ctx)
 			if err != nil {
 				return err
 			}
 			pluginSpec.Version = latestVersion
 		}
-
 		installs = append(installs, pluginSpec)
 	} else {
 		if cmd.file != "" {
@@ -230,9 +239,9 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			return err
 		}
 		for _, plugin := range plugins {
-			// Skip language plugins; by definition, we already have one installed.
-			// TODO[pulumi/pulumi#956]: eventually we will want to honor and install these in the usual way.
-			if plugin.Kind != apitype.LanguagePlugin {
+			// TODO[pulumi/pulumi#956]: eventually we will want to honor and
+			// install all plugins in the usual way.
+			if !workspace.IsPluginBundled(plugin.Kind, plugin.Name) {
 				installs = append(installs, plugin)
 			}
 		}
@@ -251,7 +260,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 					continue
 				}
 			} else {
-				if has, _ := workspace.HasPluginGTE(install); has {
+				if has, _, _ := workspace.HasPluginGTE(install); has {
 					logging.V(1).Infof("%s skipping install (existing >= match)", label)
 					continue
 				}
@@ -344,11 +353,15 @@ func getFilePayload(file string, spec workspace.PluginDescriptor) (pluginstorage
 
 // resolvePluginSpec resolves plugin specifications using various resolution strategies.
 func (cmd *pluginInstallCmd) resolvePluginSpec(
-	ctx context.Context, pluginSpec workspace.PluginDescriptor, project workspace.BaseProject,
+	ctx context.Context, pluginSpec workspace.PackageSpec,
 ) (workspace.PluginDescriptor, error) {
-	resolutionEnv := cmd.packageResolutionOptions
 	result, err := packageresolution.Resolve(
-		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, resolutionEnv, project)
+		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, packageresolution.Options{
+			ResolveWithRegistry: cmd.env.GetBool(env.Experimental) &&
+				!cmd.env.GetBool(env.DisableRegistryResolve),
+			ResolveVersionWithLocalWorkspace:           cmd.reinstall,
+			AllowNonInvertableLocalWorkspaceResolution: cmd.reinstall,
+		})
 	if err != nil {
 		var packageNotFoundErr *packageresolution.PackageNotFoundError
 		if errors.As(err, &packageNotFoundErr) {
@@ -363,16 +376,14 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 	}
 
 	switch res := result.(type) {
-	case packageresolution.LocalPathResult,
-		packageresolution.ExternalSourceResult,
-		packageresolution.InstalledInWorkspaceResult:
-		return pluginSpec, nil
-	case packageresolution.RegistryResult:
-		pluginSpec.Name = res.Metadata.Name
-		pluginSpec.PluginDownloadURL = res.Metadata.PluginDownloadURL
-		return pluginSpec, nil
+	case packageresolution.PathResolution:
+		return workspace.PluginDescriptor{Name: res.Path, Kind: apitype.ResourcePlugin}, nil
+	case packageresolution.PackageResolution:
+		return res.Pkg.PluginDescriptor, nil
+	case packageresolution.PluginResolution:
+		return res.Pkg.PluginDescriptor, nil
 	default:
 		contract.Failf("Unexpected result type: %T", result)
-		return pluginSpec, nil
+		return workspace.PluginDescriptor{}, nil
 	}
 }

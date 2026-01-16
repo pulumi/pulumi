@@ -2085,6 +2085,32 @@ func TestNodejsDynamicProviderConfig(t *testing.T) {
 	})
 }
 
+// Tests that dynamic providers can return inputs from read() for accurate diffs after refresh.
+// Regression test for https://github.com/pulumi/pulumi/issues/13839
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsDynamicProviderReadInputs(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("dynamic", "nodejs-read-inputs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Verify the resource was created
+			require.NotNil(t, stackInfo.Outputs["resourceId"])
+
+			// Find the dynamic resource and verify it has inputs
+			for _, res := range stackInfo.Deployment.Resources {
+				if res.Type == "pulumi-nodejs:dynamic:Resource" {
+					// After refresh, the inputs should include "value" from read()
+					require.NotNil(t, res.Inputs, "resource should have inputs")
+					// The __provider key should always be present
+					assert.Contains(t, res.Inputs, "__provider")
+				}
+			}
+		},
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/12301
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -2725,7 +2751,7 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	yamlString := string(yamlContent)
 	require.Contains(t, yamlString, "packages:")
 	require.Contains(t, yamlString, "tls-self-signed-cert: "+
-		"github.com/pulumi/component-test-providers/test-provider@0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
+		"github.com/pulumi/component-test-providers/test-provider@d47cf0910e0450400775594609ee82566d1fb355")
 }
 
 func TestPackagesInstall(t *testing.T) {
@@ -2897,7 +2923,7 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	require.Contains(t, yamlString, "packages:")
 	require.Contains(t, yamlString,
 		"tls-self-signed-cert: github.com/pulumi/component-test-providers/test-provider@"+
-			"0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
+			"52a8a71555d964542b308da197755c64dbe63352")
 
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
@@ -3024,33 +3050,33 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 
 // Tests that we can run a Node.js component provider using component_provider_host
 func TestNodejsComponentProviderRun(t *testing.T) {
+	t.Parallel()
+
+	//nolint:paralleltest // t.Parallel is called by integration.ProgramTest
 	for _, runtime := range []string{"yaml", "python", "nodejs-pnpm", "nodejs-npm"} {
 		t.Run(runtime, func(t *testing.T) {
-			// This uses the random plugin so needs to be able to download it
-			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
-
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				NoParallel: true,
 				PrepareProject: func(info *engine.Projinfo) error {
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installNodejsProviderDependencies(t, providerPath)
 
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
+					cmd.Env = append(os.Environ(), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 					out, err := cmd.CombinedOutput()
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 
-					if runtime != "yaml" {
-						cmd := exec.Command("pulumi", "install")
-						cmd.Dir = info.Root
-						out, err := cmd.CombinedOutput()
-						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-					}
+					cmd = exec.Command("pulumi", "install")
+					cmd.Dir = info.Root
+					cmd.Env = append(os.Environ(), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+					out, err = cmd.CombinedOutput()
+					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 
 					return nil
 				},
 				Dir:             filepath.Join("component_provider", "nodejs", "component-provider-host"),
 				RelativeWorkDir: runtime,
+				Env:             []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false"},
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					t.Logf("Outputs: %v", stack.Outputs)
 					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))

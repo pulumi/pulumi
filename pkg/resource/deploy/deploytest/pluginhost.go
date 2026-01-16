@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -270,6 +270,12 @@ func (e *hostEngine) StartDebugging(ctx context.Context,
 	return nil, errors.New("unsupported")
 }
 
+func (e *hostEngine) CheckPulumiVersion(ctx context.Context,
+	req *pulumirpc.CheckPulumiVersionRequest,
+) (*pulumirpc.CheckPulumiVersionResponse, error) {
+	return nil, errors.New("unsupported")
+}
+
 type PluginHostFactory func() plugin.Host
 
 type pluginHost struct {
@@ -505,17 +511,6 @@ func (host *pluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
 
 func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.PolicyAnalyzer(nm, "", nil)
-}
-
-func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
-	if host.isClosed() {
-		return ErrHostIsClosed
-	}
-	host.m.Lock()
-	defer host.m.Unlock()
-
-	delete(host.plugins, provider)
-	return nil
 }
 
 func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {

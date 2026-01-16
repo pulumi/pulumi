@@ -25,13 +25,13 @@ import (
 	"text/template"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -165,12 +165,11 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	fmt.Fprint(cmd.parent.stdout, preview)
 
 	if !cmd.yes {
-		save, err := confirmation.New("Save?", confirmation.Yes).RunPrompt()
-		if err != nil {
-			return err
-		}
-		if !save {
+		response := ui.PromptUser("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
+		switch response {
+		case "no":
 			return errors.New("canceled")
+		case "yes":
 		}
 	}
 

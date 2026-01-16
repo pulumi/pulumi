@@ -63,6 +63,8 @@ const (
 
 var enableLegacyPluginBehavior = os.Getenv("PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH") != ""
 
+var ErrGetLatestVersionNotSupported = errors.New("GetLatestVersion is not supported for plugins from http sources")
+
 // pluginDownloadURLOverrides is a variable instead of a constant so it can be set using the `-X` `ldflag` at build
 // time, if necessary. When non-empty, it's parsed into `pluginDownloadURLOverridesParsed` in `init()`. The expected
 // format is `regexp=URL`, and multiple pairs can be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`.
@@ -237,6 +239,10 @@ func (source *getPulumiSource) Download(
 		return nil, -1, err
 	}
 	return getHTTPResponse(req)
+}
+
+func (source *getPulumiSource) url() string {
+	return "https://get.pulumi.com/releases/plugins"
 }
 
 // gitlabSource can download a plugin from gitlab releases.
@@ -694,7 +700,7 @@ func (source *httpSource) GetLatestVersion(
 	ctx context.Context,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
-	return nil, errors.New("GetLatestVersion is not supported for plugins from http sources")
+	return nil, ErrGetLatestVersionNotSupported
 }
 
 func interpolateURL(serverURL string, name string, version semver.Version, os, arch string) string {
@@ -785,6 +791,19 @@ func (source *fallbackSource) Download(
 
 	// Fallback to get.pulumi.com
 	pulumi := newGetPulumiSource(source.name, source.kind)
+	// Check if there's a URL override for the get.pulumi.com URL.
+	// Note: This check is necessary because GetSource() checks overrides against fallbackSource.URL()
+	// which returns the GitHub URL, not the get.pulumi.com URL. When we actually fall back to
+	// get.pulumi.com here, we need to check if there's an override for that specific URL.
+	if overrideURL, ok := pluginDownloadURLOverridesParsed.get(pulumi.url()); ok {
+		logging.V(1).Infof("Applying URL override for %s: %s -> %s", source.name, pulumi.url(), overrideURL)
+		overrideSource, err := newPluginSource(source.name, source.kind, overrideURL)
+		if err != nil {
+			return nil, 0, fmt.Errorf("unable to construct override for %q: %w", source.name, err)
+		}
+		return overrideSource.Download(ctx, version, opSy, arch, getHTTPResponse)
+	}
+
 	return pulumi.Download(ctx, version, opSy, arch, getHTTPResponse)
 }
 
@@ -912,6 +931,17 @@ type PackageDescriptor struct {
 	// An optional parameterization to apply to the providing plugin to produce
 	// the package.
 	Parameterization *Parameterization
+}
+
+// A resolved plugin with parameterization arguments.
+//
+// This is different then a [PackageDescriptor], which holds a parameterization value.
+type UnresolvedPackageDescriptor struct {
+	// The fully resolved plugin descriptor.
+	PluginDescriptor
+
+	// The parameterization args to be applied against the plugin descriptor.
+	ParameterizationArgs []string
 }
 
 func NewPackageDescriptor(spec PluginDescriptor, parameterization *Parameterization) PackageDescriptor {
@@ -1798,17 +1828,18 @@ func HasPlugin(spec PluginDescriptor) bool {
 	return false
 }
 
-// HasPluginGTE returns true if the given plugin exists at the given version number or greater.
-func HasPluginGTE(spec PluginDescriptor) (bool, error) {
+// HasPluginGTE returns the version selected if the given plugin exists at the given
+// version number or greater.
+func HasPluginGTE(spec PluginDescriptor) (bool, *semver.Version, error) {
 	// If an exact match, return true right away.
 	if HasPlugin(spec) {
-		return true, nil
+		return true, spec.Version, nil
 	}
 
 	// Otherwise, load up the list of plugins and find one with the same name/type and >= version.
 	plugs, err := GetPlugins()
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	// If we're not doing the legacy plugin behavior and we've been asked for a specific version, do the same plugin
@@ -1820,7 +1851,10 @@ func HasPluginGTE(spec PluginDescriptor) (bool, error) {
 	} else {
 		match = LegacySelectCompatiblePlugin(plugs, spec)
 	}
-	return match != nil, nil
+	if match != nil {
+		return true, match.Version, nil
+	}
+	return false, nil, nil
 }
 
 // GetPolicyDir returns the directory in which an organization's Policy Packs on the current machine are managed.

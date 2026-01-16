@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -115,6 +115,7 @@ type PackageSpec struct {
 	// - A simple name, like "pkg"
 	// - A registry double or triple: "org/pkg", "source/org/pkg"
 	// - A git URL, "git://github.com/pulumi/pulumi-example/path"
+	// - An un-prefixed URL, like github.com/pulumi/pulumi-example/path
 	// - A local path, like /usr/bin/pkg
 	Source string
 	// The version of the provider, may be Semver 2.0 or a git hash.
@@ -135,7 +136,7 @@ type PackageSpec struct {
 
 type packageSpecMarshalled struct {
 	Source            string            `json:"source" yaml:"source"`
-	Version           string            `json:"version" yaml:"version"`
+	Version           string            `json:"version,omitzero" yaml:"version,omitempty"`
 	Parameters        []string          `json:"parameters,omitzero" yaml:"parameters,omitempty"`
 	Checksums         map[string][]byte `json:"checksums,omitzero" yaml:"checksums,omitempty"`
 	PluginDownloadURL string            `json:"pluginDownloadURL,omitzero" yaml:"pluginDownloadURL,omitempty"`
@@ -900,6 +901,12 @@ type PluginProject struct {
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
 	// Packages is a map of package dependencies that can be either strings or PackageSpecs
 	Packages map[string]PackageSpec `json:"packages,omitempty" yaml:"packages,omitempty"`
+	// The CLI version range required for this provider to work correctly. If no version range is specified, the
+	// provider will be considered compatible with any CLI version. The supported syntax for ranges is that of
+	// https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
+	// together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
+	// Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
+	PulumiVersionRange string `json:"pulumiVersionRange" yaml:"pulumiVersionRange"`
 }
 
 var _ BaseProject = (*PluginProject)(nil)

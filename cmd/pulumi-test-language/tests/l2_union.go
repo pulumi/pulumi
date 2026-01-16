@@ -16,9 +16,6 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
@@ -30,14 +27,8 @@ func init() {
 			func() plugin.Provider { return &providers.UnionProvider{} },
 		},
 		Runs: []TestRun{{
-			Assert: func(
-				l *L,
-				s1 string,
-				err error,
-				snapshot *deploy.Snapshot,
-				changes display.ResourceChanges,
-				e []engine.Event,
-			) {
+			Assert: func(l *L, res AssertArgs) {
+				err, snapshot, changes := res.Err, res.Snap, res.Changes
 				RequireStackResource(l, err, changes)
 				stack := RequireSingleResource(l, snapshot.Resources, "pulumi:pulumi:Stack")
 

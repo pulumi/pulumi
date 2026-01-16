@@ -119,6 +119,10 @@ func AssertEqual(expected, actual *apitype.DeploymentV3) error {
 		if len(mr.Inputs) == 0 {
 			mr.Inputs = make(map[string]any)
 		}
+		// Normalize ReplaceWith
+		if len(mr.ReplaceWith) == 0 {
+			mr.ReplaceWith = nil
+		}
 		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
 	}
 
@@ -144,6 +148,10 @@ func AssertEqual(expected, actual *apitype.DeploymentV3) error {
 		}
 		if len(jr.Inputs) == 0 {
 			jr.Inputs = make(map[string]any)
+		}
+		// Normalize ReplaceWith
+		if len(jr.ReplaceWith) == 0 {
+			jr.ReplaceWith = nil
 		}
 		for _, mr := range resourcesMap[jr.URN] {
 			if diff := deep.Equal(jr, mr); diff != nil {

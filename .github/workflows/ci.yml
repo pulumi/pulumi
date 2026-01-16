@@ -75,7 +75,7 @@ on:
         description: "Azure client ID, required to run tests against Azure"
       AZURE_CLIENT_SECRET:
         required: false
-        description: "Azure clients secret, needs to be rotated before 2025-12-21 (see the pulumi-test user in Azure portal)"
+        description: "Azure clients secret, needs to be rotated before 2027-12-22 (see the TestAzureLoginAzLogin test for detailed instructions)"
       AZURE_STORAGE_SAS_TOKEN:
         required: false
         description: "Azure storage SAS token, required to run tests against Azure"
@@ -453,6 +453,23 @@ jobs:
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
       version-set: ${{ toJson(matrix.version-set) }}
+    secrets: inherit
+
+  fuzz-test:
+    name: Fuzz Test
+    uses: ./.github/workflows/ci-run-test.yml
+    needs: [matrix]
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ubuntu-latest
+      test-name: Fuzz test
+      test-command: make test_lifecycle_fuzz
+      is-integration-test: false
+      enable-coverage: false
+      enable-journaling: ${{ inputs.enable-journaling }}
+      test-retries: ${{ inputs.test-retries }}
+      version-set: ${{ needs.matrix.outputs.version-set }}
     secrets: inherit
 
   test-collect-reports:

@@ -151,7 +151,7 @@ def pulumi_test(coro):
     return wrapper
 
 
-class NextSerializationTests(unittest.TestCase):
+class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_list(self):
         test_list = [1, 2, 3]
@@ -1363,7 +1363,7 @@ class BarArgs:
         pulumi.set(self, "tag_args", tag_args)
 
 
-class InputTypeSerializationTests(unittest.TestCase):
+class InputTypeSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_simple_input_type(self):
         it = FooArgs(first_arg="hello", second_arg=42)
@@ -1420,7 +1420,7 @@ class FloatEnum(float, Enum):
     ZERO_POINT_ONE = 0.1
 
 
-class EnumSerializationTests(unittest.TestCase):
+class EnumSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_string_enum(self):
         one = StrEnum.ONE
@@ -1524,7 +1524,7 @@ class DeserializationOutput(dict):
     def some_bar(self) -> Mapping[str, SomeFooOutput]: ...  # type: ignore
 
 
-class TypeMetaDataSerializationTests(unittest.TestCase):
+class TypeMetaDataSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_serialize(self):
         # The transformer should never be called.
@@ -1616,7 +1616,7 @@ class TypeMetaDataSerializationTests(unittest.TestCase):
         self.assertEqual({"the_second": "later"}, result.some_bar["a"]["the_second"])
 
 
-class OutputValueSerializationTests(unittest.TestCase):
+class OutputValueSerializationTests(unittest.IsolatedAsyncioTestCase):
     async def assertOutputEqual(self, first: Output[Any], second: Output[Any]):
         async def urns(res: Set[Resource]) -> Set[str]:
             return cast(Set[str], {await r.urn.future() for r in res})

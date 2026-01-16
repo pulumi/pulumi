@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -160,9 +160,11 @@ var defaultPlanSpecOptions = PlanSpecOptions{
 }
 
 var operationSpecs = []OperationSpec{
-	PlanOperationUpdate,
+	// TODO[pulumi/pulumi#21275], [pulumi/pulumi#21273]: uncomment when update operations are stable
+	// PlanOperationUpdate,
 	PlanOperationRefresh,
-	PlanOperationRefreshV2,
+	// TODO[pulumi/pulumi#21274]: uncomment when refreshV2 operations are stable
+	// PlanOperationRefreshV2,
 	PlanOperationDestroy,
 	PlanOperationDestroyV2,
 }

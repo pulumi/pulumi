@@ -13,7 +13,7 @@ resource webSecGrp "aws:ec2/securityGroup:SecurityGroup" {
 	}]
 
 	options {
-		version = "4.37.1"
+		version = "4.26.0"
 	}
 }
 
@@ -36,7 +36,7 @@ resource webServer "aws:ec2/instance:Instance" {
 	vpcSecurityGroupIds = [webSecGrp.id]
 
 	options {
-		version = "4.37.1"
+		version = "4.26.0"
 	}
 }
 

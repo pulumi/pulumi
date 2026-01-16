@@ -570,8 +570,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		AllowUnknowns: true,
 	})
 	if len(resp.Failures) != 0 || err != nil {
-		closeErr := r.host.CloseProvider(provider)
-		contract.IgnoreError(closeErr)
+		contract.IgnoreClose(provider)
 		return plugin.CheckResponse{Failures: resp.Failures}, err
 	}
 
@@ -665,8 +664,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.
 	if diff.Replace() {
-		closeErr := r.host.CloseProvider(provider)
-		contract.IgnoreError(closeErr)
+		contract.IgnoreClose(provider)
 	}
 
 	logging.V(7).Infof("%s: executed (%#v, %#v)", label, diff.Changes, diff.ReplaceKeys)
@@ -742,8 +740,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		ID:     &res.ID,
 		Inputs: FilterProviderConfig(res.Inputs),
 	}); err != nil {
-		closeErr := r.host.CloseProvider(provider)
-		contract.IgnoreError(closeErr)
+		contract.IgnoreClose(provider)
 		return fmt.Errorf("configure provider '%v': %w", urn, err)
 	}
 
@@ -882,8 +879,7 @@ func (r *Registry) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.D
 		return plugin.DeleteResponse{}, nil
 	}
 
-	closeErr := r.host.CloseProvider(provider)
-	contract.IgnoreError(closeErr)
+	contract.IgnoreClose(provider)
 	return plugin.DeleteResponse{}, nil
 }
 

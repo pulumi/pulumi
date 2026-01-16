@@ -69,8 +69,6 @@ type Host interface {
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
 	Provider(descriptor workspace.PluginDescriptor) (Provider, error)
-	// CloseProvider closes the given provider plugin and deregisters it from this host.
-	CloseProvider(provider Provider) error
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
 	LanguageRuntime(runtime string) (LanguageRuntime, error)
@@ -549,7 +547,28 @@ func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor) (Provid
 	}
 
 	provider := plugin.(Provider)
-	return provider, nil
+	return hostManagedProvider{provider, host}, nil
+}
+
+// hostManagedProvider wraps a Provider such that it can be closed by the host that created it.
+type hostManagedProvider struct {
+	Provider
+
+	host *defaultHost
+}
+
+// Overrides the wrapped provider's implementation of Provider.Close to ask the managing plugin host to close the
+// provider.
+func (pc hostManagedProvider) Close() error {
+	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
+	_, err := pc.host.loadPlugin(pc.host.loadRequests, func() (any, error) {
+		if err := pc.Provider.Close(); err != nil {
+			return nil, err
+		}
+		delete(pc.host.resourcePlugins, pc.Provider)
+		return nil, nil
+	})
+	return err
 }
 
 func (host *defaultHost) LanguageRuntime(runtime string,
@@ -651,18 +670,6 @@ func (host *defaultHost) SignalCancellation() error {
 			}
 		}
 		return nil, result
-	})
-	return err
-}
-
-func (host *defaultHost) CloseProvider(provider Provider) error {
-	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
-	_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		if err := provider.Close(); err != nil {
-			return nil, err
-		}
-		delete(host.resourcePlugins, provider)
-		return nil, nil
 	})
 	return err
 }

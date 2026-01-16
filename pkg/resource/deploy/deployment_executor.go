@@ -207,6 +207,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		}
 	}()
 
+	contract.Assertf(!ex.deployment.opts.RefreshProgram || !ex.deployment.opts.DestroyProgram,
+		"cannot have both RefreshProgram and DestroyProgram set to true")
+
 	// Set up a step generator for this deployment.
 	mode := updateMode
 	if ex.deployment.opts.DestroyProgram {
