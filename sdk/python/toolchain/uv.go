@@ -59,7 +59,7 @@ func newUv(root, virtualenv string) (*uv, error) {
 	_, err := exec.LookPath("uv")
 	if err != nil {
 		return nil, errors.New("Could not find `uv` executable.\n" +
-			"Install uv and make sure is is in your PATH.")
+			"Install uv and make sure is in your PATH.")
 	}
 
 	if virtualenv == "" {
@@ -130,7 +130,7 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 			if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
 			}
-			// No pyproject.toml found, this is likely a template with a requirements.txt, convert it to a
+			// No pyproject.toml found, this likely a template with a requirements.txt, convert it to a
 			// pyproject.toml file.
 			// We can't use workspace.LoadProject here because the workspace module depends on toolchain.
 			// TODO: https://github.com/pulumi/pulumi/issues/20953
@@ -189,7 +189,7 @@ func (u *uv) PrepareProject(
 	deleteHello := false
 	if u.version.LT(semver.MustParse("0.6.0")) {
 		// The `--bare` option prevents `uv init` from creating a
-		// `main.py` file, but this is only available in uv 0.6. Prior
+		// `main.py` file, but this only available in uv 0.6. Prior
 		// to 0.6, uv always creates a `hello.py` file, which we
 		// manually delete below.
 		// https://github.com/astral-sh/uv/blob/main/CHANGELOG.md#060
@@ -333,7 +333,7 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// Note that we do not use `uv run python` here because this results in a
-	// process tree of `python-language-runtime -> uv -> python`. This is
+	// process tree of `python-language-runtime -> uv -> python`. This
 	// problematic because on error we kill the plugin and its children, but not
 	// the children of the children. On macOS and Linux, when uv is killed, it
 	// kills its children, so we have no problem here. On Windows however, it

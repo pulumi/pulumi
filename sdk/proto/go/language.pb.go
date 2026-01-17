@@ -2141,10 +2141,10 @@ type LanguageHandshakeRequest struct {
 	// The gRPC address of the engine calling the language host.
 	EngineAddress string `protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
 	// The optional root directory, where the `PulumiPlugin.yaml` file or language binary is located. This can't be sent
-	// when the engine is attaching to a language via a port number.
+	// when the engine is attaching to a language via port number.
 	RootDirectory *string `protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
 	// The optional absolute path to the directory of the language program to execute. Generally, but not required to
-	// be, underneath the root directory. This can't be sent when the engine is attaching to a language via a port
+	// be, underneath the root directory. This can't be sent when the engine is attaching to a language via port
 	// number.
 	ProgramDirectory *string `protobuf:"bytes,3,opt,name=program_directory,json=programDirectory,proto3,oneof" json:"program_directory,omitempty"`
 	unknownFields    protoimpl.UnknownFields
@@ -2247,7 +2247,7 @@ type LinkRequest struct {
 	// The target of a codegen.LoaderServer to use for loading schemas.
 	LoaderTarget string `protobuf:"bytes,2,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// Local dependencies that should be linked into the program or plugin's language specific project files.
-	// Each dependency has a path to a a language specific artifact. This can be a binary artifact like a
+	// Each dependency has a path to a language specific artifact. This can be a binary artifact like a
 	// Python wheel or a tar.gz for Node.js, or a source directory.
 	Packages      []*LinkRequest_LinkDependency `protobuf:"bytes,3,rep,name=packages,proto3" json:"packages,omitempty"`
 	unknownFields protoimpl.UnknownFields

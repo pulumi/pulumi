@@ -59,7 +59,7 @@ func newPoetry(directory string) (*poetry, error) {
 	poetryPath, err := exec.LookPath("poetry")
 	if err != nil {
 		return nil, errors.New("Could not find `poetry` executable.\n" +
-			"Install poetry and make sure is is in your PATH, or set the toolchain option in Pulumi.yaml to `pip`.")
+			"Install poetry and make sure is in your PATH, or set the toolchain option in Pulumi.yaml to `pip`.")
 	}
 	versionOut, err := poetryVersionOutput(poetryPath)
 	if err != nil {
@@ -122,7 +122,7 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
 		}
-		// No pyproject.toml found, this is likely a template with a requirements.txt, convert it to a
+		// No pyproject.toml found, this likely a template with a requirements.txt, convert it to a
 		// pyproject.toml file.
 		// We can't use workspace.LoadProject here because the workspace module depends on toolchain.
 		// TODO: https://github.com/pulumi/pulumi/issues/20953

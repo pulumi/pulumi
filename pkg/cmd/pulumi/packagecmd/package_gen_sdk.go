@@ -86,7 +86,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				}
 				pkg.Version = &pkgVersion
 			}
-			// Normalize from well known language names the the matching runtime names.
+			// Normalize from well known language names the matching runtime names.
 			switch language {
 			case "csharp", "c#":
 				language = "dotnet"
