@@ -464,7 +464,7 @@ func NewRefreshCmd() *cobra.Command {
 type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
 
 // filterMapPendingCreates applies f to each pending create. If f returns nil, then the op
-// is deleted. Otherwise is is replaced by the returned op.
+// is deleted. Otherwise is replaced by the returned op.
 func filterMapPendingCreates(
 	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
 ) error {

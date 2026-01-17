@@ -1255,7 +1255,7 @@ class LinkRequest(google.protobuf.message.Message):
     @property
     def packages(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___LinkRequest.LinkDependency]:
         """Local dependencies that should be linked into the program or plugin's language specific project files.
-        Each dependency has a path to a a language specific artifact. This can be a binary artifact like a
+        Each dependency has a path to a language specific artifact. This can be a binary artifact like a
         Python wheel or a tar.gz for Node.js, or a source directory.
         """
 

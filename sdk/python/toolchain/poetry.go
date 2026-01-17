@@ -59,7 +59,7 @@ func newPoetry(directory string) (*poetry, error) {
 	poetryPath, err := exec.LookPath("poetry")
 	if err != nil {
 		return nil, errors.New("Could not find `poetry` executable.\n" +
-			"Install poetry and make sure is is in your PATH, or set the toolchain option in Pulumi.yaml to `pip`.")
+			"Install poetry and make sure it is in your PATH, or set the toolchain option in Pulumi.yaml to `pip`.")
 	}
 	versionOut, err := poetryVersionOutput(poetryPath)
 	if err != nil {

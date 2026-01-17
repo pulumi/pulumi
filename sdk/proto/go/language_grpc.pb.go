@@ -109,7 +109,7 @@ type LanguageRuntimeClient interface {
 	// libraries for Java) required by a program.
 	GetProgramDependencies(ctx context.Context, in *GetProgramDependenciesRequest, opts ...grpc.CallOption) (*GetProgramDependenciesResponse, error)
 	// `RunPlugin` is used to execute a program written in this host's language that implements a Pulumi
-	// [plugin](plugins). It it is plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
+	// [plugin](plugins). It is to plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
 	// expected to terminate until instructed/for a long time, this method returns a stream of
 	// [](pulumirpc.RunPluginResponse) messages containing information about standard error and output, as well as the
 	// exit code of the plugin when it does terminate.
@@ -399,7 +399,7 @@ type LanguageRuntimeServer interface {
 	// libraries for Java) required by a program.
 	GetProgramDependencies(context.Context, *GetProgramDependenciesRequest) (*GetProgramDependenciesResponse, error)
 	// `RunPlugin` is used to execute a program written in this host's language that implements a Pulumi
-	// [plugin](plugins). It it is plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
+	// [plugin](plugins). It is to plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
 	// expected to terminate until instructed/for a long time, this method returns a stream of
 	// [](pulumirpc.RunPluginResponse) messages containing information about standard error and output, as well as the
 	// exit code of the plugin when it does terminate.
