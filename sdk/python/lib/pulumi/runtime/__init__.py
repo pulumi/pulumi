@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2026, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ from .settings import (
     reset_options,
     get_root_resource,
     get_root_directory,
+    check_pulumi_version,
 )
 
 from .stack import (
@@ -94,6 +95,7 @@ __all__ = [
     "reset_options",
     "get_root_resource",
     "get_root_directory",
+    "check_pulumi_version",
     # stack
     "run_in_stack",
     "register_stack_transformation",

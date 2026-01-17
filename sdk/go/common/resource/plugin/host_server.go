@@ -154,5 +154,5 @@ func (eng *hostServer) CheckPulumiVersion(ctx context.Context,
 	req *pulumirpc.CheckPulumiVersionRequest,
 ) (*pulumirpc.CheckPulumiVersionResponse, error) {
 	return &pulumirpc.CheckPulumiVersionResponse{},
-		validatePulumiVersionRange(req.PulumiVersionRange, version.Version)
+		ValidatePulumiVersionRange(req.PulumiVersionRange, version.Version)
 }

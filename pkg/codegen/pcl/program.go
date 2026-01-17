@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/spf13/afero"
 )
+
+// PulumiConfig represents the configuration for a Pulumi program.
+type PulumiConfig struct {
+	// RequiredVersionRange is the version range of the engine that the program is compatible with.
+	RequiredVersionRange string
+}
 
 // Node represents a single definition in a program or component.
 // Nodes may be config, locals, resources, components, or outputs.
@@ -88,7 +94,8 @@ func (*node) isNode() {}
 
 // Program represents a semantically-analyzed Pulumi HCL2 program.
 type Program struct {
-	Nodes []Node
+	Nodes  []Node
+	Config PulumiConfig
 
 	files []*syntax.File
 
