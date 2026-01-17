@@ -29,6 +29,9 @@
 
 ### Bug Fixes
 
+- [engine] Fix provider registry race condition in parallel delete-before-replace
+  [#20529](https://github.com/pulumi/pulumi/issues/20529)
+
 - [engine] Optimize StackReference performance
   [#21446](https://github.com/pulumi/pulumi/pull/21446)
 
