@@ -139,7 +139,7 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.RunPluginResponse,
     ]
     """`RunPlugin` is used to execute a program written in this host's language that implements a Pulumi
-    [plugin](plugins). It it is plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
+    [plugin](plugins). It is to plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
     expected to terminate until instructed/for a long time, this method returns a stream of
     [](pulumirpc.RunPluginResponse) messages containing information about standard error and output, as well as the
     exit code of the plugin when it does terminate.
@@ -309,7 +309,7 @@ class LanguageRuntimeAsyncStub:
         pulumi.language_pb2.RunPluginResponse,
     ]
     """`RunPlugin` is used to execute a program written in this host's language that implements a Pulumi
-    [plugin](plugins). It it is plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
+    [plugin](plugins). It is to plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
     expected to terminate until instructed/for a long time, this method returns a stream of
     [](pulumirpc.RunPluginResponse) messages containing information about standard error and output, as well as the
     exit code of the plugin when it does terminate.
@@ -501,7 +501,7 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         context: _ServicerContext,
     ) -> typing.Union[collections.abc.Iterator[pulumi.language_pb2.RunPluginResponse], collections.abc.AsyncIterator[pulumi.language_pb2.RunPluginResponse]]:
         """`RunPlugin` is used to execute a program written in this host's language that implements a Pulumi
-        [plugin](plugins). It it is plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
+        [plugin](plugins). It is to plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
         expected to terminate until instructed/for a long time, this method returns a stream of
         [](pulumirpc.RunPluginResponse) messages containing information about standard error and output, as well as the
         exit code of the plugin when it does terminate.

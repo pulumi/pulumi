@@ -2141,10 +2141,10 @@ type LanguageHandshakeRequest struct {
 	// The gRPC address of the engine calling the language host.
 	EngineAddress string `protobuf:"bytes,1,opt,name=engine_address,json=engineAddress,proto3" json:"engine_address,omitempty"`
 	// The optional root directory, where the `PulumiPlugin.yaml` file or language binary is located. This can't be sent
-	// when the engine is attaching to a language via port number.
+	// when the engine is attaching to a language via a port number.
 	RootDirectory *string `protobuf:"bytes,2,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
 	// The optional absolute path to the directory of the language program to execute. Generally, but not required to
-	// be, underneath the root directory. This can't be sent when the engine is attaching to a language via port
+	// be, underneath the root directory. This can't be sent when the engine is attaching to a language via a port
 	// number.
 	ProgramDirectory *string `protobuf:"bytes,3,opt,name=program_directory,json=programDirectory,proto3,oneof" json:"program_directory,omitempty"`
 	unknownFields    protoimpl.UnknownFields

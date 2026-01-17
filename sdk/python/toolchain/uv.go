@@ -59,7 +59,7 @@ func newUv(root, virtualenv string) (*uv, error) {
 	_, err := exec.LookPath("uv")
 	if err != nil {
 		return nil, errors.New("Could not find `uv` executable.\n" +
-			"Install uv and make sure is in your PATH.")
+			"Install uv and make sure it is in your PATH.")
 	}
 
 	if virtualenv == "" {
