@@ -674,7 +674,12 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 // Same executes as part of the "Same" step for a provider that has not changed. It configures the provider
 // instance with the given state and fixes up aliases.
-func (r *Registry) Same(ctx context.Context, res *resource.State) error {
+//
+// If fromCheck is true, we attempt to reuse a provider registered during Check/Diff. This should be true
+// when called from SameStep.Apply after the Check→Diff flow determined the provider hasn't changed.
+// If fromCheck is false (e.g., called from EnsureProvider for dependency diffing), we always load fresh
+// and do not touch the UnconfiguredID entry, which may be in use by a concurrent provider update.
+func (r *Registry) Same(ctx context.Context, res *resource.State, fromCheck bool) error {
 	urn := res.URN
 	if !providers.IsProviderType(urn.Type()) {
 		return fmt.Errorf("urn %v is not a provider type", urn)
@@ -686,7 +691,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	}
 
 	ref := mustNewReference(urn, res.ID)
-	logging.V(7).Infof("Same(%v)", ref)
+	logging.V(7).Infof("Same(%v, fromCheck=%v)", ref, fromCheck)
 
 	// If this provider is already configured, then we're done.
 	_, ok := r.GetProvider(ref)
@@ -697,7 +702,15 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	// We may have started this provider up for Check/Diff, but then decided to Same it, if so we can just
 	// reuse that instance, but as we're now configuring it remove the unconfigured ID from the provider map
 	// so nothing else tries to use it.
-	provider, ok := r.deleteProvider(mustNewReference(urn, UnconfiguredID))
+	//
+	// IMPORTANT: We only do this when fromCheck is true (i.e., we're coming from SameStep.Apply after Check/Diff).
+	// When fromCheck is false (e.g., called from EnsureProvider for dependency diffing), we must NOT touch
+	// the UnconfiguredID entry, as it may belong to a concurrent provider update operation (Check→Diff→Update).
+	// See https://github.com/pulumi/pulumi/issues/20529
+	var provider plugin.Provider
+	if fromCheck {
+		provider, ok = r.deleteProvider(mustNewReference(urn, UnconfiguredID))
+	}
 	if !ok {
 		// Else we need to load it fresh
 		providerPkg := providers.GetProviderPackage(urn.Type())

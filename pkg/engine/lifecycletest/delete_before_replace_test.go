@@ -32,6 +32,7 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -939,4 +940,151 @@ func TestDBRParallel(t *testing.T) {
 			require.Len(t, snap.Resources, 3)
 		})
 	}
+}
+
+// TestDBRProviderUpgrade tests a race condition that can occur when a provider is being updated
+// at the same time as a resource with delete-before-replace is being replaced.
+// The issue is that calculateDependentReplacements may try to load the old provider from state
+// via EnsureProvider->Same, while the provider update flow (Check->Diff->Update) is in progress.
+// Both flows race for the UnconfiguredID provider entry in the registry.
+// See https://github.com/pulumi/pulumi/issues/20529
+func TestDBRProviderUpgrade(t *testing.T) {
+	t.Parallel()
+
+	// Helper to create a new pkgA provider instance.
+	// Each call returns a fresh instance to avoid "already configured" assertions
+	// when multiple provider instances are loaded concurrently.
+	newPkgAProvider := func() *deploytest.Provider {
+		return &deploytest.Provider{
+			DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+				if !req.OldInputs["version"].DeepEquals(req.NewInputs["version"]) {
+					return plugin.DiffResult{
+						Changes:     plugin.DiffSome,
+						ChangedKeys: []resource.PropertyKey{"version"},
+					}, nil
+				}
+				return plugin.DiffResult{}, nil
+			},
+			DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+				if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					return plugin.DiffResult{
+						Changes:     plugin.DiffSome,
+						ChangedKeys: []resource.PropertyKey{"foo"},
+					}, nil
+				}
+				return plugin.DiffResult{}, nil
+			},
+			DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+				return plugin.DeleteResponse{
+					Status: resource.StatusOK,
+				}, nil
+			},
+		}
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.1.1"), func() (plugin.Provider, error) {
+			return newPkgAProvider(), nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.2.1"), func() (plugin.Provider, error) {
+			return newPkgAProvider(), nil
+		}),
+		// Provider B has a resource where changing "length" triggers delete-before-replace
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldInputs["length"].DeepEquals(req.NewInputs["length"]) {
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ChangedKeys: []resource.PropertyKey{"length"},
+							ReplaceKeys: []resource.PropertyKey{"length"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	var step int
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		length, provAVersion := 16.0, "1.1.1"
+		if step == 1 {
+			// In step 1, we change both the provider version and the resource property that triggers DBR
+			length, provAVersion = 17.0, "1.2.1"
+		}
+
+		// Register provA, resB, and resA in parallel.
+		// provA is being updated (version change).
+		// resB has a property change that triggers delete-before-replace.
+		// resA depends on both provA (its provider) and resB (property dependency).
+		// This creates a race where calculateDependentReplacements for resB needs to diff resA,
+		// which requires loading provA from state, while provA's update is in progress.
+
+		provAPromise := promise.Run(func() (*deploytest.RegisterResourceResponse, error) {
+			return monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
+				deploytest.ResourceOptions{
+					Version: provAVersion,
+				})
+		})
+
+		resBPromise := promise.Run(func() (*deploytest.RegisterResourceResponse, error) {
+			dbr := true
+			return monitor.RegisterResource("pkgB:m:typB", "resB", true, deploytest.ResourceOptions{
+				Inputs:              resource.PropertyMap{"length": resource.NewProperty(length)},
+				DeleteBeforeReplace: &dbr,
+			})
+		})
+
+		resAPromise := promise.Run(func() (*deploytest.RegisterResourceResponse, error) {
+			provA, err := provAPromise.Result(context.Background())
+			if err != nil {
+				return nil, err
+			}
+
+			provRef, err := providers.NewReference(provA.URN, provA.ID)
+			if err != nil {
+				return nil, err
+			}
+
+			resB, err := resBPromise.Result(context.Background())
+			if err != nil {
+				return nil, err
+			}
+
+			return monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Provider:     provRef.String(),
+				Inputs:       resource.PropertyMap{"foo": resource.NewProperty("foo")},
+				PropertyDeps: map[resource.PropertyKey][]resource.URN{"foo": {resB.URN}},
+			})
+		})
+
+		_, err := resAPromise.Result(context.Background())
+		return err
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			UpdateOptions: UpdateOptions{
+				Parallel: 2,
+			},
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+		},
+	}
+	project := p.GetProject()
+
+	// Step 0: Initial deployment - creates provA v1.1.1, resB with length=16, resA
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	// Step 1: Update - changes provA to v1.2.1 (triggers update) and resB length=17 (triggers DBR)
+	// This should trigger the race condition without the fix.
+	step = 1
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
 }
