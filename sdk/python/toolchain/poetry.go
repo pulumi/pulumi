@@ -122,7 +122,7 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		if !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
 		}
-		// No pyproject.toml found, this likely a template with a requirements.txt, convert it to a
+		// No pyproject.toml found, this is likely a template with a requirements.txt, convert it to a
 		// pyproject.toml file.
 		// We can't use workspace.LoadProject here because the workspace module depends on toolchain.
 		// TODO: https://github.com/pulumi/pulumi/issues/20953
