@@ -16,6 +16,8 @@ package auth
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"io"
 	"testing"
 
@@ -255,6 +257,193 @@ func TestLoginURLResolution(t *testing.T) {
 				assert.Equal(t, tt.expectedURL, captured.url,
 					"login should be called with expected URL")
 			}
+		})
+	}
+}
+
+// createTestJWT creates a test JWT with the given claims.
+// Note: This creates an unsigned JWT for testing purposes only.
+func createTestJWT(claims map[string]any) string {
+	header := map[string]any{
+		"alg": "RS256",
+		"typ": "JWT",
+	}
+	headerJSON, _ := json.Marshal(header)
+	claimsJSON, _ := json.Marshal(claims)
+
+	headerEncoded := base64.RawURLEncoding.EncodeToString(headerJSON)
+	claimsEncoded := base64.RawURLEncoding.EncodeToString(claimsJSON)
+
+	// Create a fake signature (not cryptographically valid, but parseable)
+	signature := base64.RawURLEncoding.EncodeToString([]byte("fake-signature"))
+
+	return headerEncoded + "." + claimsEncoded + "." + signature
+}
+
+func TestExtractOIDCDefaults(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		organization string
+		team         string
+		user         string
+		token        string
+		wantOrg      string
+		wantTeam     string
+		wantUser     string
+		wantErr      bool
+		errContains  string
+	}{
+		{
+			name:         "empty token returns unchanged values",
+			organization: "my-org",
+			team:         "my-team",
+			wantOrg:      "my-org",
+			wantTeam:     "my-team",
+		},
+		{
+			name:         "CLI org used as fallback when JWT has no Pulumi aud",
+			organization: "my-org",
+			token:        createTestJWT(map[string]any{"aud": "https://example.com"}),
+			wantOrg:      "my-org",
+		},
+		{
+			name:    "org extracted from JWT aud claim",
+			token:   createTestJWT(map[string]any{"aud": "urn:pulumi:org:test-org"}),
+			wantOrg: "test-org",
+		},
+		{
+			name: "org extracted from JWT with additional claims",
+			token: createTestJWT(map[string]any{
+				"aud": "urn:pulumi:org:test-org",
+				"iss": "https://oidc.example.com",
+				"exp": 1234567890,
+			}),
+			wantOrg: "test-org",
+		},
+		{
+			name:  "no org provided and no aud claim",
+			token: createTestJWT(map[string]any{"sub": "test"}),
+		},
+		{
+			name:  "no org provided and aud claim is not pulumi format",
+			token: createTestJWT(map[string]any{"aud": "https://example.com"}),
+		},
+		{
+			name:         "conflict: CLI org differs from JWT org",
+			organization: "cli-org",
+			token:        createTestJWT(map[string]any{"aud": "urn:pulumi:org:jwt-org"}),
+			wantErr:      true,
+			errContains:  "--oidc-org 'cli-org' conflicts with JWT aud claim organization 'jwt-org'",
+		},
+		{
+			name:     "team extracted from JWT scope claim",
+			token:    createTestJWT(map[string]any{"aud": "urn:pulumi:org:test-org", "scope": "team:dev-team"}),
+			wantOrg:  "test-org",
+			wantTeam: "dev-team",
+		},
+		{
+			name:        "conflict: CLI team differs from JWT scope team",
+			team:        "cli-team",
+			token:       createTestJWT(map[string]any{"aud": "urn:pulumi:org:test-org", "scope": "team:jwt-team"}),
+			wantErr:     true,
+			errContains: "--oidc-team 'cli-team' conflicts with JWT scope team 'jwt-team'",
+		},
+		{
+			name:         "user extracted from JWT scope claim",
+			organization: "my-org",
+			token:        createTestJWT(map[string]any{"aud": "urn:pulumi:org:my-org", "scope": "user:my-user"}),
+			wantOrg:      "my-org",
+			wantUser:     "my-user",
+		},
+		{
+			name:         "conflict: CLI user differs from JWT scope user",
+			organization: "my-org",
+			user:         "cli-user",
+			token:        createTestJWT(map[string]any{"aud": "urn:pulumi:org:my-org", "scope": "user:jwt-user"}),
+			wantErr:      true,
+			errContains:  "conflicts with JWT scope user",
+		},
+		{
+			name:     "org and team both extracted from JWT",
+			token:    createTestJWT(map[string]any{"aud": "urn:pulumi:org:extracted-org", "scope": "team:extracted-team"}),
+			wantOrg:  "extracted-org",
+			wantTeam: "extracted-team",
+		},
+		{
+			name:         "CLI team used as fallback when JWT has no scope",
+			organization: "my-org",
+			team:         "cli-team",
+			token:        createTestJWT(map[string]any{"aud": "urn:pulumi:org:my-org"}),
+			wantOrg:      "my-org",
+			wantTeam:     "cli-team",
+			wantErr:      false,
+		},
+		{
+			name:         "CLI user used as fallback when JWT has no scope",
+			organization: "my-org",
+			user:         "cli-user",
+			token:        createTestJWT(map[string]any{"aud": "urn:pulumi:org:my-org"}),
+			wantOrg:      "my-org",
+			wantUser:     "cli-user",
+			wantErr:      false,
+		},
+		{
+			name: "org from aud and user from scope",
+			token: createTestJWT(map[string]any{
+				"aud":   "urn:pulumi:org:jwt-org",
+				"scope": "user:jwt-user",
+			}),
+			wantOrg:  "jwt-org",
+			wantUser: "jwt-user",
+		},
+		{
+			name: "scope with multiple values (space-separated string)",
+			token: createTestJWT(map[string]any{
+				"aud":   "urn:pulumi:org:test-org",
+				"scope": "openid team:ci-team profile",
+			}),
+			wantOrg:  "test-org",
+			wantTeam: "ci-team",
+		},
+		{
+			name:  "malformed aud - too few parts",
+			token: createTestJWT(map[string]any{"aud": "urn:pulumi:org"}),
+		},
+		{
+			name: "JWT with both team and user in scope is invalid",
+			token: createTestJWT(map[string]any{
+				"aud": "urn:pulumi:org:test-org", "scope": "team:dev-team user:test-user",
+			}),
+			wantErr:     true,
+			errContains: "JWT scope contains both team 'dev-team' and user 'test-user'",
+		},
+		{
+			name:  "aud with extra parts is ignored",
+			token: createTestJWT(map[string]any{"aud": "urn:pulumi:org:test-org:extra:parts"}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotOrg, gotTeam, gotUser, err := extractOIDCDefaults(
+				tt.organization, tt.team, tt.user, tt.token)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					require.ErrorContains(t, err, tt.errContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantOrg, gotOrg, "organization mismatch")
+			assert.Equal(t, tt.wantTeam, gotTeam, "team mismatch")
+			assert.Equal(t, tt.wantUser, gotUser, "user mismatch")
 		})
 	}
 }
