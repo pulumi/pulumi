@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix provider registry race condition in parallel delete-before-replace
