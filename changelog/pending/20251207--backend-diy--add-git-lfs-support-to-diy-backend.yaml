@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/diy
+  description: Add Git LFS support to DIY backend
