@@ -56,12 +56,14 @@ func (s *StackReference) GetOutput(name StringInput) AnyOutput {
 				return nil, nil
 			}
 
-			ret, secret, _ := unmarshalPropertyValue(s.ctx, v)
-
-			if secret {
-				ret = ToSecret(ret)
+			if !v.IsSecret() {
+				ret, _, _ := unmarshalPropertyValue(s.ctx, v)
+				return ret, nil
 			}
-			return ret, nil
+
+			// Secret path: preserve existing behavior
+			ret, _, _ := unmarshalPropertyValue(s.ctx, v)
+			return ToSecret(ret), nil
 		}).(AnyOutput)
 }
 
