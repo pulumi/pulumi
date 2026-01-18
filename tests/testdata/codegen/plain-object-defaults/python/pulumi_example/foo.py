@@ -27,6 +27,7 @@ class FooArgs:
                  settings: Optional[pulumi.Input['LayeredTypeArgs']] = None):
         """
         The set of arguments for constructing a Foo resource.
+
         :param pulumi.Input['KubeClientSettingsArgs'] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input['KubeClientSettingsArgs'] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input['LayeredTypeArgs'] settings: describing things
