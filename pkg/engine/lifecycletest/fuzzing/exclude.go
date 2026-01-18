@@ -31,6 +31,8 @@ type ExclusionRules []ExclusionRule
 func DefaultExclusionRules() ExclusionRules {
 	return []ExclusionRule{
 		ExcludeDestroyAndRefreshProgramSet,
+		// TODO[pulumi/pulumi#21433]
+		ExcludeResourceDeletedWithMarkedForDeletionResourceUpdate,
 		// TODO[pulumi/pulumi#21404]
 		ExcludeResourcePendingReplacementChangingParentRefreshProgram,
 		// TODO[pulumi/pulumi#21426]
@@ -510,6 +512,28 @@ func ExcludeRefreshWithTargetedProviderParentChangeDestroyV2(
 
 		res.Parent = snapParent
 		if targetURNs[res.URN()] {
+			return true
+		}
+	}
+
+	return false
+}
+
+func ExcludeResourceDeletedWithMarkedForDeletionResourceUpdate(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	_ *PlanSpec,
+) bool {
+	deletedResources := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if res.Delete {
+			deletedResources[res.URN()] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.DeletedWith != "" && deletedResources[res.DeletedWith] {
 			return true
 		}
 	}
