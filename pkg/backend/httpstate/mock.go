@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,6 +64,12 @@ func (b *MockHTTPBackend) PromptAI(
 	ctx context.Context, requestBody AIPromptRequestBody,
 ) (*http.Response, error) {
 	return b.FPromptAI(ctx, requestBody)
+}
+
+func (b *MockHTTPBackend) CreateNeoTask(
+	ctx context.Context, stackRef backend.StackReference, prompt string,
+) (string, error) {
+	return "", nil
 }
 
 func (b *MockHTTPBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
