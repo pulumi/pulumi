@@ -318,7 +318,7 @@ func TestNewRegistryOldState(t *testing.T) {
 		assert.Nil(t, p)
 
 		// "Same" the provider to add it to registry
-		err = r.Same(context.Background(), old)
+		err = r.Same(context.Background(), old, false)
 		require.NoError(t, err)
 
 		// Now we should be able to get it
@@ -367,7 +367,7 @@ func TestCRUD(t *testing.T) {
 		assert.Nil(t, p)
 
 		// "Same" the provider to add it to registry
-		err = r.Same(context.Background(), old)
+		err = r.Same(context.Background(), old, false)
 		require.NoError(t, err)
 
 		// Now we should be able to get it
@@ -553,7 +553,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Nil(t, p)
 
 		// "Same" the provider to add it to registry
-		err = r.Same(context.Background(), old)
+		err = r.Same(context.Background(), old, false)
 		require.NoError(t, err)
 
 		// Now we should be able to get it
