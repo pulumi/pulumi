@@ -38,6 +38,8 @@ func TestVersions(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expected, p, "failed parsing '%s'", ver)
 	}
+
+	assert.True(t, false, "debugging")
 }
 
 func TestPseduoVersion(t *testing.T) {
