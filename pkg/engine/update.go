@@ -186,6 +186,10 @@ type UpdateOptions struct {
 	// Experimental is true if the engine is in experimental mode (i.e. PULUMI_EXPERIMENTAL was set)
 	Experimental bool
 
+	// Strict is true if the update should be constrained to the update plan. Requires GeneratePlan to be true.
+	// (i.e. --strict flag was set)
+	Strict bool
+
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
