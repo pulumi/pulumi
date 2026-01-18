@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/engine
+  description: Add --strict and --iterate up flags
