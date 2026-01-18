@@ -35,6 +35,12 @@ class LanguageServer(LanguageRuntimeServicer):
     def __init__(self, program: PulumiFn) -> None:
         self.program = program
 
+    def About(self, request, context):
+        return language_pb2.AboutResponse(
+            executable=sys.executable,
+            version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        )
+
     def GetRequiredPlugins(self, request, context):
         return language_pb2.GetRequiredPluginsResponse()
 
