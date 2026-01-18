@@ -1421,7 +1421,7 @@ func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL str
 	case "git":
 		return newGitHTTPSSource(url)
 	default:
-		return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
+		return nil, fmt.Errorf("unknown plugin source scheme: %q", url.Scheme)
 	}
 }
 

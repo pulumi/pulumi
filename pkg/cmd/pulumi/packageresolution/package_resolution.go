@@ -399,7 +399,7 @@ func Resolve(
 		if errors.Is(err, registry.ErrNotFound) {
 			registryNotFoundErr = err
 		} else {
-			registryQueryErr = fmt.Errorf("%w: %v", ErrRegistryQuery, err)
+			registryQueryErr = fmt.Errorf("%w: %w", ErrRegistryQuery, err)
 		}
 	}
 
