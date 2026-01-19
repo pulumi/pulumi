@@ -207,6 +207,11 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 ) error {
 	urn := e.URN()
 
+	if _, has := se.pendingNews.Load(urn); !has {
+		e.Done()
+		return nil
+	}
+
 	if finalizingStackOutputs {
 		contract.Assertf(urn.QualifiedType() == resource.RootStackType, "expected a stack resource urn, got %v", urn)
 	}
