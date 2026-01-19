@@ -2,8 +2,6 @@ module pulumi.com/pulumi-debug-plugin
 
 go 1.24.0
 
-toolchain go1.24.12
-
 require (
 	github.com/pulumi/pulumi/sdk/v3 v3.169.0
 	google.golang.org/grpc v1.63.2
