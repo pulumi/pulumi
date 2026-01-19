@@ -47,6 +47,30 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 %[1]s        except:
 %[1]s            continue
 %[1]s    return None
+%[1]s
+%[1]sasync def try_output(*fns):
+%[1]s    if len(fns) == 0:
+%[1]s        raise ValueError("expected at least one argument to try_output")
+%[1]s    head, tail = fns[0], fns[1:]
+%[1]s    try:
+%[1]s        r = head()
+%[1]s        if isinstance(r, pulumi.Output):
+%[1]s            # Each output is tracked in SETTINGS.outputs, and on shutdown
+%[1]s            # we report any failed outputs.
+%[1]s            # Here however we handle the failure explicitly.
+%[1]s            # TODO: How do we nicely untrack the output?
+%[1]s            # Why is this a problem for Python but not Node.js?
+%[1]s            # because a.x is a.apply(lift)? so it is itself an output that we have to await?
+%[1]s            # TODO: figure out why the test passes on Node.js without
+%[1]s            # having to await the output, isn't "map.a" an output
+%[1]s            from pulumi.runtime.settings import SETTINGS
+%[1]s            SETTINGS.outputs.remove(r._future)
+%[1]s            is_secret = await r.is_secret()
+%[1]s            r = await r.future()
+%[1]s            if is_secret: r = pulumi.output.Output.secret(r)
+%[1]s        return r
+%[1]s    except Exception as e:
+%[1]s         return try_output(*tail)
 `,
 			indent,
 		), true
