@@ -128,7 +128,7 @@ type (
 	//	}
 	//
 	// We wouldn't know the name or version of the package (example@<latest>), but we
-	// would know the name and version of the the resolved plugin
+	// would know the name and version of the resolved plugin
 	// (terraform-provider@<latest>).
 	PluginResolution struct {
 		Spec                 workspace.PackageSpec

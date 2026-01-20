@@ -2112,6 +2112,32 @@ func TestNodejsDynamicProviderConfig(t *testing.T) {
 	})
 }
 
+// Tests that dynamic providers can return inputs from read() for accurate diffs after refresh.
+// Regression test for https://github.com/pulumi/pulumi/issues/13839
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsDynamicProviderReadInputs(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("dynamic", "nodejs-read-inputs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Verify the resource was created
+			require.NotNil(t, stackInfo.Outputs["resourceId"])
+
+			// Find the dynamic resource and verify it has inputs
+			for _, res := range stackInfo.Deployment.Resources {
+				if res.Type == "pulumi-nodejs:dynamic:Resource" {
+					// After refresh, the inputs should include "value" from read()
+					require.NotNil(t, res.Inputs, "resource should have inputs")
+					// The __provider key should always be present
+					assert.Contains(t, res.Inputs, "__provider")
+				}
+			}
+		},
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/12301
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()

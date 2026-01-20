@@ -33,12 +33,14 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeDestroyAndRefreshProgramSet,
 		// TODO[pulumi/pulumi#21404]
 		ExcludeResourcePendingReplacementChangingParentRefreshProgram,
+		// TODO[pulumi/pulumi#21426]
+		ExcludeUpdateWithDependencyOnAliasedResource,
 		// TODO[pulumi/pulumi#21386]
 		ExcludeChildProviderOfDuplicateResourceRefresh,
 		// TODO[pulumi/pulumi#21277]
 		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
 		// TODO[pulumi/pulumi#21347]
-		ExcludeResourceWithTargetedDependencyDestroyV2,
+		ExcludeResourceWithTargetedDependency,
 		// TODO[pulumi/pulumi#21282]
 		ExcludeTargetedAliasDestroyV2,
 		// TODO[pulumi/pulumi#21364]
@@ -159,6 +161,50 @@ func ExcludeResourcePendingReplacementChangingParentRefreshProgram(
 	return false
 }
 
+func ExcludeUpdateWithDependencyOnAliasedResource(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate {
+		return false
+	}
+
+	aliasMap := make(map[resource.URN]bool)
+	for _, res := range prog.ResourceRegistrations {
+		for _, alias := range res.Aliases {
+			aliasMap[alias] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent != "" && aliasMap[res.Parent] {
+			return true
+		}
+
+		if res.DeletedWith != "" && aliasMap[res.DeletedWith] {
+			return true
+		}
+
+		for _, dep := range res.Dependencies {
+			if aliasMap[dep] {
+				return true
+			}
+		}
+
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if aliasMap[dep] {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 // ExcludeTargetedAlias excludes programs where a resource is renamed with an old
 // alias, and the new name of the resource is targeted for deletion.
 func ExcludeTargetedAliasDestroyV2(
@@ -184,16 +230,16 @@ func ExcludeTargetedAliasDestroyV2(
 	return false
 }
 
-// ExcludeResourceWithTargetedDependencyDestroyV2 excludes snapshots where a resource has a
+// ExcludeResourceWithTargetedDependency excludes snapshots where a resource has a
 // dependency (Parent, DeletedWith, Dependencies, or PropertyDependencies) pointing to a targeted
 // resource during a destroy v2 operation.
-func ExcludeResourceWithTargetedDependencyDestroyV2(
+func ExcludeResourceWithTargetedDependency(
 	spec *SnapshotSpec,
 	prog *ProgramSpec,
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
-	if plan.Operation != PlanOperationDestroyV2 {
+	if plan.Operation != PlanOperationDestroyV2 && plan.Operation != PlanOperationRefreshV2 {
 		return false
 	}
 

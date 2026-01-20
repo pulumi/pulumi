@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Extract organization, team, and user from OIDC JWT claims during login

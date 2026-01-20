@@ -334,15 +334,8 @@ type ProviderHandshakeResponse struct {
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
 	SupportsAutonamingConfiguration bool `protobuf:"varint,4,opt,name=supports_autonaming_configuration,json=supportsAutonamingConfiguration,proto3" json:"supports_autonaming_configuration,omitempty"`
-	// The CLI version range required for this provider to work correctly. If no version range is specified, the
-	// provider will be considered compatible with any CLI version.
-	// The supported syntax for ranges is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example
-	// ">=3.0.0", or "!3.1.2". Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning
-	// greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
-	// meaning less-than 3.4.0 or greater-than 3.8.0.
-	PulumiVersionRange *string `protobuf:"bytes,5,opt,name=pulumi_version_range,json=pulumiVersionRange,proto3,oneof" json:"pulumi_version_range,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeResponse) Reset() {
@@ -401,13 +394,6 @@ func (x *ProviderHandshakeResponse) GetSupportsAutonamingConfiguration() bool {
 		return x.SupportsAutonamingConfiguration
 	}
 	return false
-}
-
-func (x *ProviderHandshakeResponse) GetPulumiVersionRange() string {
-	if x != nil && x.PulumiVersionRange != nil {
-		return *x.PulumiVersionRange
-	}
-	return ""
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
@@ -3773,6 +3759,7 @@ type ConstructRequest_ResourceHooksBinding struct {
 	AfterUpdate   []string               `protobuf:"bytes,4,rep,name=after_update,json=afterUpdate,proto3" json:"after_update,omitempty"`
 	BeforeDelete  []string               `protobuf:"bytes,5,rep,name=before_delete,json=beforeDelete,proto3" json:"before_delete,omitempty"`
 	AfterDelete   []string               `protobuf:"bytes,6,rep,name=after_delete,json=afterDelete,proto3" json:"after_delete,omitempty"`
+	OnError       []string               `protobuf:"bytes,7,rep,name=on_error,json=onError,proto3" json:"on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3849,6 +3836,13 @@ func (x *ConstructRequest_ResourceHooksBinding) GetAfterDelete() []string {
 	return nil
 }
 
+func (x *ConstructRequest_ResourceHooksBinding) GetOnError() []string {
+	if x != nil {
+		return x.OnError
+	}
+	return nil
+}
+
 // A `PropertyDependencies` list is a set of URNs that a particular property may depend on.
 type ConstructResponse_PropertyDependencies struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -3909,14 +3903,12 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x1esupports_refresh_before_update\x18\x06 \x01(\bR\x1bsupportsRefreshBeforeUpdate\x12.\n" +
 	"\x13invoke_with_preview\x18\a \x01(\bR\x11invokeWithPreviewB\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
-	"\x12_program_directory\"\xb0\x02\n" +
+	"\x12_program_directory\"\xfc\x01\n" +
 	"\x19ProviderHandshakeResponse\x12%\n" +
 	"\x0eaccept_secrets\x18\x01 \x01(\bR\racceptSecrets\x12)\n" +
 	"\x10accept_resources\x18\x02 \x01(\bR\x0facceptResources\x12%\n" +
 	"\x0eaccept_outputs\x18\x03 \x01(\bR\racceptOutputs\x12J\n" +
-	"!supports_autonaming_configuration\x18\x04 \x01(\bR\x1fsupportsAutonamingConfiguration\x125\n" +
-	"\x14pulumi_version_range\x18\x05 \x01(\tH\x00R\x12pulumiVersionRange\x88\x01\x01B\x17\n" +
-	"\x15_pulumi_version_range\"\xad\x02\n" +
+	"!supports_autonaming_configuration\x18\x04 \x01(\bR\x1fsupportsAutonamingConfigurationJ\x04\b\x05\x10\x06R\x14pulumi_version_range\"\xad\x02\n" +
 	"\x13ParameterizeRequest\x12C\n" +
 	"\x04args\x18\x01 \x01(\v2-.pulumirpc.ParameterizeRequest.ParametersArgsH\x00R\x04args\x12F\n" +
 	"\x05value\x18\x02 \x01(\v2..pulumirpc.ParameterizeRequest.ParametersValueH\x00R\x05value\x1a$\n" +
@@ -4140,7 +4132,7 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x17resource_status_address\x18\b \x01(\tR\x15resourceStatusAddress\x122\n" +
 	"\x15resource_status_token\x18\t \x01(\tR\x13resourceStatusToken\x12,\n" +
 	"\told_views\x18\n" +
-	" \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\xa6\x0f\n" +
+	" \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\xc1\x0f\n" +
 	"\x10ConstructRequest\x12\x18\n" +
 	"\aproject\x18\x01 \x01(\tR\aproject\x12\x14\n" +
 	"\x05stack\x18\x02 \x01(\tR\x05stack\x12?\n" +
@@ -4185,14 +4177,15 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v20.pulumirpc.ConstructRequest.PropertyDependenciesR\x05value:\x028\x01\x1a<\n" +
 	"\x0eProvidersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\xee\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\x89\x02\n" +
 	"\x14ResourceHooksBinding\x12#\n" +
 	"\rbefore_create\x18\x01 \x03(\tR\fbeforeCreate\x12!\n" +
 	"\fafter_create\x18\x02 \x03(\tR\vafterCreate\x12#\n" +
 	"\rbefore_update\x18\x03 \x03(\tR\fbeforeUpdate\x12!\n" +
 	"\fafter_update\x18\x04 \x03(\tR\vafterUpdate\x12#\n" +
 	"\rbefore_delete\x18\x05 \x03(\tR\fbeforeDelete\x12!\n" +
-	"\fafter_delete\x18\x06 \x03(\tR\vafterDeleteB\n" +
+	"\fafter_delete\x18\x06 \x03(\tR\vafterDelete\x12\x19\n" +
+	"\bon_error\x18\a \x03(\tR\aonErrorB\n" +
 	"\n" +
 	"\b_protectB\x16\n" +
 	"\x14_deleteBeforeReplaceB\x11\n" +
@@ -4448,7 +4441,6 @@ func file_pulumi_provider_proto_init() {
 	}
 	file_pulumi_plugin_proto_init()
 	file_pulumi_provider_proto_msgTypes[0].OneofWrappers = []any{}
-	file_pulumi_provider_proto_msgTypes[1].OneofWrappers = []any{}
 	file_pulumi_provider_proto_msgTypes[2].OneofWrappers = []any{
 		(*ParameterizeRequest_Args)(nil),
 		(*ParameterizeRequest_Value)(nil),

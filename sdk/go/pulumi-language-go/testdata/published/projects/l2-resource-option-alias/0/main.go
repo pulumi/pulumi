@@ -1,0 +1,43 @@
+package main
+
+import (
+	"example.com/pulumi-simple/sdk/go/v2/simple"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+func main() {
+	pulumi.Run(func(ctx *pulumi.Context) error {
+		// Make a simple resource to use as a parent
+		_, err := simple.NewResource(ctx, "parent", &simple.ResourceArgs{
+			Value: pulumi.Bool(true),
+		})
+		if err != nil {
+			return err
+		}
+		aliasURN, err := simple.NewResource(ctx, "aliasURN", &simple.ResourceArgs{
+			Value: pulumi.Bool(true),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = simple.NewResource(ctx, "aliasName", &simple.ResourceArgs{
+			Value: pulumi.Bool(true),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = simple.NewResource(ctx, "aliasNoParent", &simple.ResourceArgs{
+			Value: pulumi.Bool(true),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = simple.NewResource(ctx, "aliasParent", &simple.ResourceArgs{
+			Value: pulumi.Bool(true),
+		}, pulumi.Parent(aliasURN))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}

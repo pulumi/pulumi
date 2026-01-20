@@ -470,6 +470,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 		case *model.Attribute:
 			var t model.Type
 			switch item.Name {
+			case "aliases":
+				t = model.NewListType(AliasType)
+				resourceOptions.Aliases = item.Value
 			case "range":
 				t = model.NewUnionType(model.BoolType, model.NumberType, model.NewListType(model.DynamicType),
 					model.NewMapType(model.DynamicType))

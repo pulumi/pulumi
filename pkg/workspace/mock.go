@@ -44,3 +44,22 @@ func (c *MockContext) GetStoredCredentials() (workspace.Credentials, error) {
 	}
 	return workspace.Credentials{}, nil
 }
+
+type MockW struct {
+	SettingsF func() *Settings
+	SaveF     func() error
+}
+
+func (m *MockW) Settings() *Settings {
+	if m.SettingsF != nil {
+		return m.SettingsF()
+	}
+	return &Settings{}
+}
+
+func (m *MockW) Save() error {
+	if m.SaveF != nil {
+		return m.SaveF()
+	}
+	return nil
+}

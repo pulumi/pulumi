@@ -160,7 +160,6 @@ func (p *providerServer) Handshake(
 
 		// For features we don't shim, we just pass through the response from the provider as expected.
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
-		PulumiVersionRange:              &res.PulumiVersionRange,
 	}, nil
 }
 
@@ -830,6 +829,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		hooks[resource.AfterUpdate] = binding.GetAfterUpdate()
 		hooks[resource.BeforeDelete] = binding.GetBeforeDelete()
 		hooks[resource.AfterDelete] = binding.GetAfterDelete()
+		hooks[resource.OnError] = binding.GetOnError()
 	}
 
 	replaceWith := make([]resource.URN, len(req.GetReplaceWith()))

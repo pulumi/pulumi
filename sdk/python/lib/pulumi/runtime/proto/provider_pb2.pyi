@@ -101,7 +101,6 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     ACCEPT_RESOURCES_FIELD_NUMBER: builtins.int
     ACCEPT_OUTPUTS_FIELD_NUMBER: builtins.int
     SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
-    PULUMI_VERSION_RANGE_FIELD_NUMBER: builtins.int
     accept_secrets: builtins.bool
     """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
     values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
@@ -120,14 +119,6 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     """True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
     user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
     """
-    pulumi_version_range: builtins.str
-    """The CLI version range required for this provider to work correctly. If no version range is specified, the
-    provider will be considered compatible with any CLI version.
-    The supported syntax for ranges is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example
-    ">=3.0.0", or "!3.1.2". Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning
-    greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
-    meaning less-than 3.4.0 or greater-than 3.8.0.
-    """
     def __init__(
         self,
         *,
@@ -135,11 +126,8 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
         accept_resources: builtins.bool = ...,
         accept_outputs: builtins.bool = ...,
         supports_autonaming_configuration: builtins.bool = ...,
-        pulumi_version_range: builtins.str | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_pulumi_version_range", b"_pulumi_version_range", "pulumi_version_range", b"pulumi_version_range"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_pulumi_version_range", b"_pulumi_version_range", "accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "pulumi_version_range", b"pulumi_version_range", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["_pulumi_version_range", b"_pulumi_version_range"]) -> typing.Literal["pulumi_version_range"] | None: ...
+    def ClearField(self, field_name: typing.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
 
 global___ProviderHandshakeResponse = ProviderHandshakeResponse
 
@@ -1712,6 +1700,7 @@ class ConstructRequest(google.protobuf.message.Message):
         AFTER_UPDATE_FIELD_NUMBER: builtins.int
         BEFORE_DELETE_FIELD_NUMBER: builtins.int
         AFTER_DELETE_FIELD_NUMBER: builtins.int
+        ON_ERROR_FIELD_NUMBER: builtins.int
         @property
         def before_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
@@ -1724,6 +1713,8 @@ class ConstructRequest(google.protobuf.message.Message):
         def before_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
         def after_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        @property
+        def on_error(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         def __init__(
             self,
             *,
@@ -1733,8 +1724,9 @@ class ConstructRequest(google.protobuf.message.Message):
             after_update: collections.abc.Iterable[builtins.str] | None = ...,
             before_delete: collections.abc.Iterable[builtins.str] | None = ...,
             after_delete: collections.abc.Iterable[builtins.str] | None = ...,
+            on_error: collections.abc.Iterable[builtins.str] | None = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update", "on_error", b"on_error"]) -> None: ...
 
     PROJECT_FIELD_NUMBER: builtins.int
     STACK_FIELD_NUMBER: builtins.int

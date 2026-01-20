@@ -2247,7 +2247,7 @@ type LinkRequest struct {
 	// The target of a codegen.LoaderServer to use for loading schemas.
 	LoaderTarget string `protobuf:"bytes,2,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// Local dependencies that should be linked into the program or plugin's language specific project files.
-	// Each dependency has a path to a a language specific artifact. This can be a binary artifact like a
+	// Each dependency has a path to a language specific artifact. This can be a binary artifact like a
 	// Python wheel or a tar.gz for Node.js, or a source directory.
 	Packages      []*LinkRequest_LinkDependency `protobuf:"bytes,3,rep,name=packages,proto3" json:"packages,omitempty"`
 	unknownFields protoimpl.UnknownFields

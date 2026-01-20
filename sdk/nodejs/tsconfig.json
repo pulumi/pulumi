@@ -122,7 +122,8 @@
         "tests/provider/experimental/schema.spec.ts",
         "tests_with_mocks/mocks.spec.ts",
         "npm/testdata/nested/project/index.ts",
-        "types/arborist.d.ts"
+        "types/arborist.d.ts",
+        "types/fdir.d.ts"
     ],
     "ts-node": {
         "files": true

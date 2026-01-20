@@ -1122,6 +1122,10 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	}
 
 	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
+
+	if opts.Aliases != nil {
+		appendOption("Aliases", opts.Aliases, model.NewListType(pcl.AliasType))
+	}
 	if opts.Parent != nil {
 		appendOption("Parent", opts.Parent, model.DynamicType)
 	}
@@ -1205,6 +1209,38 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 		// Some resource options have syntactic/type transformations.
 		valBuffer := &bytes.Buffer{}
 		switch attr.Name {
+		case "Aliases":
+			// Aliases is a []string, but we need to lift it to pulumi.Alias[]
+			g.Fgenf(valBuffer, "[]pulumi.Alias{")
+			for i, expr := range attr.Value.(*model.TupleConsExpression).Expressions {
+				if i > 0 {
+					g.Fgenf(valBuffer, ", ")
+				}
+				// If the expression is a string literal, we can inline it directly.
+				if expr.Type().Equals(model.StringType) {
+					g.Fgenf(valBuffer, "pulumi.Alias{ URN: pulumi.URN(%v) }", expr)
+					continue
+				}
+				// Otherwise pull off the fields dynamically.
+				obj := expr.(*model.ObjectConsExpression)
+				g.Fgenf(valBuffer, "pulumi.Alias{")
+				for _, item := range obj.Items {
+					// We need a literal key here.
+					key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+					contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+					switch key.AsString() {
+					case "name":
+						g.Fgenf(valBuffer, "Name: pulumi.String(%v), ", item.Value)
+					case "noParent":
+						g.Fgenf(valBuffer, "NoParent: pulumi.Bool(%v), ", item.Value)
+					case "parent":
+						g.Fgenf(valBuffer, "Parent: %v, ", item.Value)
+					}
+				}
+				g.Fgenf(valBuffer, "}")
+			}
+			g.Fgenf(valBuffer, "}")
 		case "Import":
 			g.Fgenf(valBuffer, "pulumi.ID(%v)", attr.Value)
 		case "ReplacementTrigger":

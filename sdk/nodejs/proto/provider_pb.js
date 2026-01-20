@@ -1374,8 +1374,7 @@ proto.pulumirpc.ProviderHandshakeResponse.toObject = function(includeInstance, m
 acceptSecrets: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
 acceptResources: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
 acceptOutputs: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
-supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-pulumiVersionRange: (f = jspb.Message.getField(msg, 5)) == null ? undefined : f
+supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -1427,10 +1426,6 @@ proto.pulumirpc.ProviderHandshakeResponse.deserializeBinaryFromReader = function
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setSupportsAutonamingConfiguration(value);
-      break;
-    case 5:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPulumiVersionRange(value);
       break;
     default:
       reader.skipField();
@@ -1486,13 +1481,6 @@ proto.pulumirpc.ProviderHandshakeResponse.serializeBinaryToWriter = function(mes
   if (f) {
     writer.writeBool(
       4,
-      f
-    );
-  }
-  f = /** @type {string} */ (jspb.Message.getField(message, 5));
-  if (f != null) {
-    writer.writeString(
-      5,
       f
     );
   }
@@ -1568,42 +1556,6 @@ proto.pulumirpc.ProviderHandshakeResponse.prototype.getSupportsAutonamingConfigu
  */
 proto.pulumirpc.ProviderHandshakeResponse.prototype.setSupportsAutonamingConfiguration = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
-};
-
-
-/**
- * optional string pulumi_version_range = 5;
- * @return {string}
- */
-proto.pulumirpc.ProviderHandshakeResponse.prototype.getPulumiVersionRange = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.ProviderHandshakeResponse} returns this
- */
-proto.pulumirpc.ProviderHandshakeResponse.prototype.setPulumiVersionRange = function(value) {
-  return jspb.Message.setField(this, 5, value);
-};
-
-
-/**
- * Clears the field making it undefined.
- * @return {!proto.pulumirpc.ProviderHandshakeResponse} returns this
- */
-proto.pulumirpc.ProviderHandshakeResponse.prototype.clearPulumiVersionRange = function() {
-  return jspb.Message.setField(this, 5, undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.ProviderHandshakeResponse.prototype.hasPulumiVersionRange = function() {
-  return jspb.Message.getField(this, 5) != null;
 };
 
 
@@ -10530,7 +10482,7 @@ proto.pulumirpc.ConstructRequest.CustomTimeouts.prototype.setDelete = function(v
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.ConstructRequest.ResourceHooksBinding.repeatedFields_ = [1,2,3,4,5,6];
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.repeatedFields_ = [1,2,3,4,5,6,7];
 
 
 
@@ -10568,7 +10520,8 @@ afterCreateList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined
 beforeUpdateList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
 afterUpdateList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
 beforeDeleteList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
-afterDeleteList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f
+afterDeleteList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
+onErrorList: (f = jspb.Message.getRepeatedField(msg, 7)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -10628,6 +10581,10 @@ proto.pulumirpc.ConstructRequest.ResourceHooksBinding.deserializeBinaryFromReade
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.addAfterDelete(value);
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addOnError(value);
       break;
     default:
       reader.skipField();
@@ -10697,6 +10654,13 @@ proto.pulumirpc.ConstructRequest.ResourceHooksBinding.serializeBinaryToWriter = 
   if (f.length > 0) {
     writer.writeRepeatedString(
       6,
+      f
+    );
+  }
+  f = message.getOnErrorList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      7,
       f
     );
   }
@@ -10922,6 +10886,43 @@ proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.addAfterDelete =
  */
 proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.clearAfterDeleteList = function() {
   return this.setAfterDeleteList([]);
+};
+
+
+/**
+ * repeated string on_error = 7;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.getOnErrorList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 7));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.ConstructRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.setOnErrorList = function(value) {
+  return jspb.Message.setField(this, 7, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.ConstructRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.addOnError = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 7, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ConstructRequest.ResourceHooksBinding} returns this
+ */
+proto.pulumirpc.ConstructRequest.ResourceHooksBinding.prototype.clearOnErrorList = function() {
+  return this.setOnErrorList([]);
 };
 
 

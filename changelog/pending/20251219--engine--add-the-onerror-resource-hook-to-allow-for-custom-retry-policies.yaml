@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Add the `OnError` resource hook to allow for custom retry policies
