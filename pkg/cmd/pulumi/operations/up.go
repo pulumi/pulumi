@@ -465,7 +465,6 @@ func NewUpCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
-
 		opts.Engine = engine.UpdateOptions{
 			ParallelDiff:     env.ParallelDiff.Value(),
 			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
