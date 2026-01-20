@@ -25,9 +25,15 @@ func init() {
 			{
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
 					require.True(l, result.IsBail(res.Err), "expected a bail result on preview")
+					// Ideally we would capture the error logged to stdout/err by the language runtime here, but we
+					// don't have a way to do that.
+					// `Pulumi CLI version .* does not satisfy the version range \"=3\\.1\\.2\"`
 				},
 				Assert: func(l *L, res AssertArgs) {
 					require.True(l, result.IsBail(res.Err), "expected a bail result on up")
+					// Ideally we would capture the error logged to stdout/err by the language runtime here, but we
+					// don't have a way to do that.
+					// `Pulumi CLI version .* does not satisfy the version range \"=3\\.1\\.2\"`
 				},
 			},
 		},
