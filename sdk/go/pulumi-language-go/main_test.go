@@ -108,6 +108,10 @@ func TestGetPackage(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v1.29.0",
 			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
+			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v1.29.0",
@@ -118,6 +122,10 @@ func TestGetPackage(t *testing.T) {
 			Mod: &modInfo{
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v1.29.1-0.20200403140640-efb5e2a48a86",
+			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
 			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
@@ -138,6 +146,10 @@ func TestGetPackage(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "42-42-42",
 			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
+			},
 			ExpectedError: "module does not have semver compatible version",
 		},
 		{
@@ -154,6 +166,10 @@ func TestGetPackage(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v2.0.0-beta.1",
 			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
+			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v2.0.0-beta.1",
@@ -163,6 +179,10 @@ func TestGetPackage(t *testing.T) {
 			Name: "non-zero-patch-module", Mod: &modInfo{
 				Path:    "github.com/pulumi/pulumi-kubernetes/sdk",
 				Version: "v1.5.8",
+			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "kubernetes",
+				Resource: true,
 			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "kubernetes",
@@ -268,7 +288,7 @@ func TestGetPackage(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 
 			cwd := t.TempDir()
 			if c.Mod.Dir == "" {
