@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStringPtrValue(t *testing.T) {
@@ -34,8 +35,8 @@ func TestStringPtrValue(t *testing.T) {
 		NewStringPtrVar(cmd.Flags(), &value, "test-flag", "test usage")
 
 		err := cmd.ParseFlags([]string{"--test-flag=myvalue"})
-		assert.NoError(t, err)
-		assert.NotNil(t, value)
+		require.NoError(t, err)
+		require.NotNil(t, value)
 		assert.Equal(t, "myvalue", *value)
 	})
 
@@ -49,8 +50,8 @@ func TestStringPtrValue(t *testing.T) {
 		NewStringPtrVar(cmd.Flags(), &value, "test-flag", "test usage")
 
 		err := cmd.ParseFlags([]string{"--test-flag"})
-		assert.NoError(t, err)
-		assert.NotNil(t, value)
+		require.NoError(t, err)
+		require.NotNil(t, value)
 		assert.Equal(t, "", *value)
 	})
 
@@ -64,7 +65,7 @@ func TestStringPtrValue(t *testing.T) {
 		NewStringPtrVar(cmd.Flags(), &value, "test-flag", "test usage")
 
 		err := cmd.ParseFlags([]string{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, value)
 	})
 
@@ -78,8 +79,8 @@ func TestStringPtrValue(t *testing.T) {
 		NewStringPtrVar(cmd.Flags(), &value, "test-flag", "test usage")
 
 		err := cmd.ParseFlags([]string{"--test-flag="})
-		assert.NoError(t, err)
-		assert.NotNil(t, value)
+		require.NoError(t, err)
+		require.NotNil(t, value)
 		assert.Equal(t, "", *value)
 	})
 
@@ -93,8 +94,8 @@ func TestStringPtrValue(t *testing.T) {
 		NewStringPtrVar(cmd.Flags(), &value, "test-flag", "test usage")
 
 		err := cmd.ParseFlags([]string{"--test-flag=  spaces  "})
-		assert.NoError(t, err)
-		assert.NotNil(t, value)
+		require.NoError(t, err)
+		require.NotNil(t, value)
 		assert.Equal(t, "  spaces  ", *value)
 	})
 }
