@@ -29,7 +29,7 @@ const cobraAnnotationKey = "constrictor:args"
 // An argument to a Cobra command.
 type Argument struct {
 	// A human-readable name for the argument.
-	Name string `json:"name"`
+	Name string `json:"name"` // required
 	// The type of the argument, defaulting to "string".
 	Type string `json:"type,omitempty"`
 	// How it should appear in the usage string, defaulting to the name. This is
