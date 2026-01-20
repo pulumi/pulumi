@@ -71,6 +71,9 @@ type Marshaler interface {
 // JSON is a Marshaler that marshals and unmarshals JSON with indented printing.
 var JSON Marshaler = &jsonMarshaler{}
 
+// CompactJSON is a Marshaler that marshals and unmarshals JSON without indentation (minified).
+var CompactJSON Marshaler = &compactJSONMarshaler{}
+
 type jsonMarshaler struct{}
 
 func (m *jsonMarshaler) Marshal(v any) ([]byte, error) {
@@ -88,6 +91,16 @@ func (m *jsonMarshaler) Marshal(v any) ([]byte, error) {
 func (m *jsonMarshaler) Unmarshal(data []byte, v any) error {
 	// IDEA: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
 	//     set aside an officially sanctioned area in the metadata for extensibility by 3rd parties.
+	return json.Unmarshal(data, v)
+}
+
+type compactJSONMarshaler struct{}
+
+func (m *compactJSONMarshaler) Marshal(v any) ([]byte, error) {
+	return json.Marshal(v)
+}
+
+func (m *compactJSONMarshaler) Unmarshal(data []byte, v any) error {
 	return json.Unmarshal(data, v)
 }
 

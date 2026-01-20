@@ -213,6 +213,10 @@ func (b *diyBackend) saveCheckpoint(
 	if m == nil {
 		return "", "", fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
+	// Use compact JSON for state files to save space
+	if m == encoding.JSON {
+		m = encoding.CompactJSON
+	}
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
@@ -611,7 +615,7 @@ func (b *diyBackend) addToHistory(ctx context.Context, ref *diyBackendReference,
 	// Prefix for the update and checkpoint files.
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", ref.name, time.Now().UnixNano()))
 
-	m, ext := encoding.JSON, "json"
+	m, ext := encoding.CompactJSON, "json"
 	if b.gzip {
 		m = encoding.Gzip(m)
 		ext += ".gz"
