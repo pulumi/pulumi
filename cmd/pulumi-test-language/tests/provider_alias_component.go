@@ -48,9 +48,9 @@ func init() {
 					assert.Equal(l, stack.URN, component.Parent, "expected stack to be parent of component resource")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
-					simple := RequireSingleNamedResource(l, snap.Resources, "res-child")
+					resChild := RequireSingleNamedResource(l, snap.Resources, "res-child")
 
-					assert.Equal(l, component.URN, simple.Parent, "expected component to be parent of simple resource")
+					assert.Equal(l, component.URN, resChild.Parent, "expected component to be parent of simple resource")
 				},
 			},
 			{
@@ -76,9 +76,9 @@ func init() {
 					assert.Equal(l, parent.URN, component.Parent, "expected parent to be parent of component resource")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
-					simple := RequireSingleNamedResource(l, snap.Resources, "res-child")
+					resChild := RequireSingleNamedResource(l, snap.Resources, "res-child")
 
-					assert.Equal(l, component.URN, simple.Parent, "expected component to be parent of simple resource")
+					assert.Equal(l, component.URN, resChild.Parent, "expected component to be parent of simple resource")
 				},
 			},
 		},
