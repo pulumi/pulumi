@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -631,13 +631,12 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 		return nil, fmt.Errorf("failed to load pulumi-plugin.json: %w", err)
 	}
 
-	if (!strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") && pulumiPlugin == nil) ||
-		(pulumiPlugin != nil && !pulumiPlugin.Resource) {
+	if pulumiPlugin == nil || !pulumiPlugin.Resource {
 		return nil, errors.New("module is not a pulumi provider")
 	}
 
 	var name string
-	if pulumiPlugin != nil && pulumiPlugin.Name != "" {
+	if pulumiPlugin.Name != "" {
 		name = pulumiPlugin.Name
 	} else {
 		// github.com/pulumi/pulumi-aws/sdk/... => aws
@@ -646,7 +645,7 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 	}
 
 	version := m.Version
-	if pulumiPlugin != nil && pulumiPlugin.Version != "" {
+	if pulumiPlugin.Version != "" {
 		version = pulumiPlugin.Version
 	}
 	version, err = normalizeVersion(version)
@@ -656,15 +655,13 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 
 	var server string
 	var parameterization *pulumirpc.PackageParameterization
-	if pulumiPlugin != nil {
-		// There is no way to specify server or parameterization without using `pulumi-plugin.json`.
-		server = pulumiPlugin.Server
-		if pulumiPlugin.Parameterization != nil {
-			parameterization = &pulumirpc.PackageParameterization{
-				Name:    pulumiPlugin.Parameterization.Name,
-				Version: pulumiPlugin.Parameterization.Version,
-				Value:   pulumiPlugin.Parameterization.Value,
-			}
+	// There is no way to specify server or parameterization without using `pulumi-plugin.json`.
+	server = pulumiPlugin.Server
+	if pulumiPlugin.Parameterization != nil {
+		parameterization = &pulumirpc.PackageParameterization{
+			Name:    pulumiPlugin.Parameterization.Name,
+			Version: pulumiPlugin.Parameterization.Version,
+			Value:   pulumiPlugin.Parameterization.Value,
 		}
 	}
 
