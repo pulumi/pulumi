@@ -111,6 +111,9 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 	case *OutputVariable:
 		diags := b.bindOutputVariable(node)
 		diagnostics = append(diagnostics, diags...)
+	case *PulumiBlock:
+		diags := b.bindPulumi(node)
+		diagnostics = append(diagnostics, diags...)
 	default:
 		contract.Failf("unexpected node of type %T (%v)", node, node.SyntaxNode().Range())
 	}
@@ -228,6 +231,20 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.Value))
 		}
 	}
+	node.Definition = block
+	return diagnostics
+}
+
+func (b *binder) bindPulumi(node *PulumiBlock) hcl.Diagnostics {
+	block, diagnostics := model.BindBlock(node.syntax, model.StaticScope(b.root), b.tokens, b.options.modelOptions()...)
+
+	if value, ok := block.Body.Attribute("requiredVersionRange"); ok {
+		node.RequiredVersion = value.Value
+		if model.InputType(model.StringType).ConversionFrom(node.RequiredVersion.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(model.StringType), node.RequiredVersion))
+		}
+	}
+
 	node.Definition = block
 	return diagnostics
 }

@@ -29,12 +29,6 @@ import (
 	"github.com/spf13/afero"
 )
 
-// PulumiConfig represents the configuration for a Pulumi program.
-type PulumiConfig struct {
-	// RequiredVersionRange is the version range of the engine that the program is compatible with.
-	RequiredVersionRange string
-}
-
 // Node represents a single definition in a program or component.
 // Nodes may be config, locals, resources, components, or outputs.
 type Node interface {
@@ -94,8 +88,7 @@ func (*node) isNode() {}
 
 // Program represents a semantically-analyzed Pulumi HCL2 program.
 type Program struct {
-	Nodes  []Node
-	Config PulumiConfig
+	Nodes []Node
 
 	files []*syntax.File
 

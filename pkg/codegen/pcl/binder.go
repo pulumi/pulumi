@@ -214,9 +214,6 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 
 	var diagnostics hcl.Diagnostics
 
-	config, diags := ReadPulumiBlock(files)
-	diagnostics = append(diagnostics, diags...)
-
 	// Load package descriptors from the files
 	descriptorMap, descriptorDiags := ReadAllPackageDescriptors(files)
 	diagnostics = append(diagnostics, descriptorDiags...)
@@ -247,7 +244,6 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 
 	return &Program{
 		Nodes:  b.nodes,
-		Config: config,
 		files:  files,
 		binder: b,
 	}, diagnostics, nil
@@ -493,6 +489,17 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
+			case "pulumi":
+				labels := item.Labels
+				if len(labels) != 0 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "pulumi block must not have any labels"))
+					continue
+				}
+				v := &PulumiBlock{
+					syntax: item,
+				}
+				diags := b.declareNode(PulumiBlockName, v)
+				diagnostics = append(diagnostics, diags...)
 			}
 		}
 	}
@@ -713,48 +720,6 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 		}
 	}
 	return packageDescriptors, diagnostics
-}
-
-func ReadPulumiBlock(files []*syntax.File) (PulumiConfig, hcl.Diagnostics) {
-	var diagnostics hcl.Diagnostics
-	config := PulumiConfig{}
-	seenPulumiBlock := false
-	for _, file := range files {
-		for _, node := range model.SourceOrderBody(file.Body) {
-			switch node := node.(type) {
-			case *hclsyntax.Block:
-				if node.Type != "pulumi" {
-					// we only care about pulumi config blocks of the form:
-					//    pulumi { ... }
-					continue
-				}
-				if seenPulumiBlock {
-					diagnostics = append(diagnostics, errorf(node.Range(), "only one pulumi block is allowed"))
-					continue
-				}
-				seenPulumiBlock = true
-				labels := node.Labels
-				if len(labels) != 0 {
-					diagnostics = append(diagnostics, labelsErrorf(node, "pulumi block must not have any labels"))
-					continue
-				}
-				if node.Body != nil {
-					for _, attribute := range node.Body.Attributes {
-						switch attribute.Name {
-						case "requiredVersionRange":
-							version, err := evaluateLiteralExpr(attribute.Expr)
-							if err != nil {
-								diagnostics = append(diagnostics, errorf(attribute.Range(), "requiredVersionRange: %s", err))
-								continue
-							}
-							config.RequiredVersionRange = version
-						}
-					}
-				}
-			}
-		}
-	}
-	return config, diagnostics
 }
 
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an

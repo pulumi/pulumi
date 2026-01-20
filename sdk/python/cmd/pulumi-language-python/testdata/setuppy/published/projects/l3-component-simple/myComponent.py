@@ -13,6 +13,7 @@ class MyComponent(pulumi.ComponentResource):
         res = simple.Resource(f"{name}-res", value=args["input"],
         opts = pulumi.ResourceOptions(parent=self))
 
+        pulumi.check_pulumi_version(">=3.0.2")
         self.output = res.value
         self.register_outputs({
             'output': res.value

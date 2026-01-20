@@ -97,7 +97,7 @@ func (b *Body) print(w io.Writer, p *printer) {
 	}
 }
 
-// Attribute returns the attribute with the givne in the body if any exists.
+// Attribute returns the attribute with the given name in the body if any exists.
 func (b *Body) Attribute(name string) (*Attribute, bool) {
 	for _, item := range b.Items {
 		if attr, ok := item.(*Attribute); ok && attr.Name == name {

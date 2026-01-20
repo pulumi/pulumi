@@ -274,6 +274,8 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 					}
 					g.genResource(w, node)
 					g.Fgen(w, "\n")
+				case *pcl.PulumiBlock:
+					g.genPulumi(w, node)
 				}
 			}
 
@@ -616,10 +618,6 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
-
-	if program.Config.RequiredVersionRange != "" {
-		g.Fprintf(w, "pulumi.check_pulumi_version('%s')\n\n", program.Config.RequiredVersionRange)
-	}
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {
@@ -634,6 +632,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genOutputVariable(w, n)
 	case *pcl.Component:
 		g.genComponent(w, n)
+	case *pcl.PulumiBlock:
+		g.genPulumi(w, n)
 	}
 }
 
@@ -1283,6 +1283,14 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 
 	// TODO(pdg): trivia
 	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.LogicalName(), value)
+}
+
+func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
+	if v.RequiredVersion != nil {
+		value, temps := g.lowerExpression(v.RequiredVersion, v.Type())
+		g.genTemps(w, temps)
+		g.Fgenf(w, "%spulumi.check_pulumi_version(%v)\n", g.Indent, value)
+	}
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
