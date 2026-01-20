@@ -227,7 +227,7 @@ func NewUpCmd() *cobra.Command {
 			ExcludeDependents:         excludeDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan:    strict,
+			GeneratePlan:    env.Experimental.Value() || strict,
 			Experimental:    env.Experimental.Value(),
 			Strict:          strict,
 			ContinueOnError: continueOnError,
@@ -475,7 +475,7 @@ func NewUpCmd() *cobra.Command {
 			ShowSecrets:      showSecrets,
 			// If the user passed --plan (but no path) then trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: strict,
+			GeneratePlan: env.Experimental.Value() || strict,
 			Experimental: env.Experimental.Value(),
 			Strict:       strict,
 
