@@ -9,7 +9,3 @@ resource "res" "simple:index:Resource" {
 output output {
     value = res.value
 }
-
-pulumi {
-    requiredVersionRange = ">=3.0.2"
-}
