@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -292,6 +293,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		name     string
 		cmd      *cobra.Command
 		environ  []string
+		args     []string
 		metadata map[string]string
 	}{
 		{
@@ -423,6 +425,26 @@ func TestGetCLIMetadata(t *testing.T) {
 				"Environment": "PULUMI_EXPERIMENTAL PULUMI_COPILOT",
 			},
 		},
+		{
+			name: "plugin run with argument",
+			cmd: (func() *cobra.Command {
+				cmd := &cobra.Command{Use: "pulumi"}
+				pluginCmd := &cobra.Command{Use: "plugin"}
+				cmd.AddCommand(pluginCmd)
+				pluginRunCmd := &cobra.Command{Use: "run", Args: cmdutil.MinimumNArgs(1)}
+				pluginCmd.AddCommand(pluginRunCmd)
+				err := pluginRunCmd.Execute()
+				require.NoError(t, err)
+				return pluginRunCmd
+			})(),
+			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
+			args:    []string{"my-plugin"},
+			metadata: map[string]string{
+				"Command":     "pulumi plugin run",
+				"Flags":       "my-plugin",
+				"Environment": "PULUMI_EXPERIMENTAL PULUMI_COPILOT",
+			},
+		},
 	}
 
 	for _, c := range cases {
@@ -430,7 +452,7 @@ func TestGetCLIMetadata(t *testing.T) {
 			t.Parallel()
 
 			// Act.
-			metadata := getCLIMetadata(c.cmd, c.environ)
+			metadata := getCLIMetadata(c.cmd, c.environ, c.args)
 
 			// Assert.
 			require.Equal(t, c.metadata, metadata)
