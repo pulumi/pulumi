@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: protobuf
+  description: Fix alias options being passed to Construct for remote components
