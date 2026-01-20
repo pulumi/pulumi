@@ -126,6 +126,9 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	plan, changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
+	if plan != nil {
+		fmt.Printf("Generated plan with %d resources\n", len(plan.ResourcePlans))
+	}
 	if err != nil {
 		close(eventsChannel)
 		return plan, changes, err
@@ -137,6 +140,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		// If we're running in strict plan mode then return the plan generated, else discard it. The user may
 		// be explicitly setting a plan but that's handled higher up the call stack.
 		if !op.Opts.Engine.Strict {
+			fmt.Printf("Resetting plan to nil because of strict\n")
 			plan = nil
 		}
 		return plan, changes, nil
@@ -298,10 +302,13 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the
 		// newly generated plan
 		if originalPlan != nil {
+			fmt.Printf("Using original plan")
 			op.Opts.Engine.Plan = originalPlan
 		} else if plan != nil {
+			fmt.Printf("Using generated plan")
 			op.Opts.Engine.Plan = plan
 		} else {
+			fmt.Printf("Using no plan")
 			op.Opts.Engine.Plan = nil
 		}
 	}
