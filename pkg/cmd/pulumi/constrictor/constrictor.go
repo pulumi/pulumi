@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -78,9 +79,8 @@ var NoArgs = &Arguments{
 // arguments, or overwrite the Cobra command structure, which would be a much
 // more invasive change.
 func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
-	if cmd == nil || arguments == nil {
-		return // Has no effect.
-	}
+	contract.Requiref(cmd != nil, "cmd", "cannot be nil")
+	contract.Requiref(arguments != nil, "arguments", "cannot be nil")
 
 	cmd.Args = createCobraArgsPredicate(arguments)
 
