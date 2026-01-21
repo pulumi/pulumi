@@ -412,7 +412,7 @@ export async function checkPulumiVersion(range: string): Promise<void> {
                     return reject(
                         new Error(
                             "The installed version of the CLI does not support the `CheckPulumiVersion` RPC. " +
-                                "Please upgrade the Pulumu CLI.",
+                                "Please upgrade the Pulumi CLI.",
                         ),
                     );
                 }
