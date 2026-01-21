@@ -562,7 +562,7 @@ func NewUpCmd() *cobra.Command {
 			// Validate that the user did not pass both --skip-preview and --plan.
 			// Plan requires a preview so these flags are mutually exclusive.
 			if skipPreview && strict {
-				return errors.New("--plan cannot be used with --skip-preview; plan requires a preview")
+				return errors.New("--strict cannot be used with --skip-preview; strict requires a preview")
 			}
 
 			interactive := cmdutil.Interactive()
