@@ -40,7 +40,7 @@ func (p *PulumiBlock) SyntaxNode() hclsyntax.Node {
 }
 
 func (p *PulumiBlock) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
-	return model.NoneType.Traverse(traverser)
+	return model.DynamicType, hcl.Diagnostics{cannotTraversePulumiBlock(traverser.SourceRange())}
 }
 
 func (p *PulumiBlock) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
@@ -52,5 +52,5 @@ func (p *PulumiBlock) Name() string {
 }
 
 func (p *PulumiBlock) Type() model.Type {
-	return model.NoneType
+	return model.DynamicType
 }

@@ -107,3 +107,7 @@ func stringAttributeError(attr *model.Attribute) *hcl.Diagnostic {
 func boolAttributeError(attr *model.Attribute) *hcl.Diagnostic {
 	return errorf(attr.Syntax.Expr.Range(), "attribute %v must be a boolean literal", attr.Name)
 }
+
+func cannotTraversePulumiBlock(rng hcl.Range) *hcl.Diagnostic {
+	return errorf(rng, "pulumi blocks cannot be traversed")
+}
