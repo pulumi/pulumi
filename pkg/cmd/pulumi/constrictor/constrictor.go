@@ -88,9 +88,7 @@ func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
 	cmd.Use = createUsageString(name, arguments)
 
 	serialised, err := json.Marshal(arguments)
-	if err != nil {
-		return // Has no effect.
-	}
+	contract.AssertNoErrorf(err, "failed to marshal arguments")
 
 	if cmd.Annotations == nil {
 		cmd.Annotations = make(map[string]string)
