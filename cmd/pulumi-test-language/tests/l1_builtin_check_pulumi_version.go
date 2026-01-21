@@ -22,6 +22,7 @@ import (
 
 func init() {
 	LanguageTests["l1-builtin-check-pulumi-version"] = LanguageTest{
+		RunsShareSource: true,
 		Runs: []TestRun{
 			{
 				// A version range that is not satisfied by the CLI version used in the tests

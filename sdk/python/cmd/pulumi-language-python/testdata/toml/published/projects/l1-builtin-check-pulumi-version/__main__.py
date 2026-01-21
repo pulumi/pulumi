@@ -1,4 +1,5 @@
 import pulumi
 
-pulumi.check_pulumi_version('=3.1.2')
-
+config = pulumi.Config()
+version = config.require("version")
+pulumi.check_pulumi_version(version)

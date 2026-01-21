@@ -1,7 +1,0 @@
-name: l1-builtin-check-pulumi-version
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    typechecker: pyright
-    virtualenv: venv
