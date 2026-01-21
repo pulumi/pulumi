@@ -50,10 +50,11 @@ type Options struct {
 //
 // The returned workspace must be closed after use.
 func New(
+	packageresolution packageresolution.PluginWorkspace,
 	host plugin.Host, stdout, stderr io.Writer,
-	parentSPan opentracing.Span, options Options,
+	parentSpan opentracing.Span, options Options,
 ) Workspace {
-	return Workspace{packageresolution.DefaultWorkspace(), host, stdout, stderr, options, parentSPan}
+	return Workspace{packageresolution, host, stdout, stderr, options, parentSpan}
 }
 
 type Workspace struct {

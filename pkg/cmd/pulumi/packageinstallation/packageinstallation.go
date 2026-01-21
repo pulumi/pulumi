@@ -35,7 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// Workspace represents the way that [InstallPlugin] and [InstallInProject] interact with
+// Workspace represents the way that [InstallPlugin] and [InstallProjectPlugins] interact with
 // the environment.
 type Workspace interface {
 	packageresolution.PluginWorkspace
@@ -146,13 +146,13 @@ func InstallPlugin(
 	}, nil
 }
 
-// Install all plugins in a project, linking them in as necessary.
+// InstallProjectPlugins installs all plugins in a project, linking them in as necessary.
 //
 // This is conceptually equivalent to calling [InstallPlugin] for each plugin in a
-// project. InstallInProject should be preferred because it deduplicates installs across
+// project. InstallProjectPlugins should be preferred because it deduplicates installs across
 // the whole project installation and shares concurrency limit across all project
 // dependencies.
-func InstallInProject(
+func InstallProjectPlugins(
 	ctx context.Context,
 	project_ workspace.BaseProject, projectDir string,
 	options Options, registry registry.Registry, ws Workspace,

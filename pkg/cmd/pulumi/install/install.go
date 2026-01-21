@@ -224,9 +224,10 @@ func installPackagesFromProject(
 	if err != nil {
 		return err
 	}
-	ws := packageworkspace.New(pctx.Host, stdout, stderr, nil, packageworkspace.Options{
-		UseLanguageVersionTools: useLanguageVersionTools,
-	})
+	ws := packageworkspace.New(packageresolution.DefaultWorkspace(), pctx.Host, stdout, stderr, nil,
+		packageworkspace.Options{
+			UseLanguageVersionTools: useLanguageVersionTools,
+		})
 	opts := packageinstallation.Options{
 		Options: packageresolution.Options{
 			ResolveWithRegistry: env.Experimental.Value() &&
@@ -236,7 +237,7 @@ func installPackagesFromProject(
 		},
 		Concurrency: parallelism,
 	}
-	err = packageinstallation.InstallInProject(ctx, proj, root, opts, registry, ws)
+	err = packageinstallation.InstallProjectPlugins(ctx, proj, root, opts, registry, ws)
 	if e := (packageinstallation.ErrorCyclicDependencies{}); errors.As(err, &e) {
 		err = cmdDiag.FormatCyclicInstallError(ctx, e, root)
 	}

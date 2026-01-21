@@ -522,7 +522,7 @@ func TestInstallInProjectWithSharedDependency(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	err := packageinstallation.InstallInProject(t.Context(), &workspace.Project{
+	err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
 		Name:    "test-project",
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		Packages: map[string]workspace.PackageSpec{
@@ -618,7 +618,7 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	err := packageinstallation.InstallInProject(t.Context(), &workspace.Project{
+	err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
 		Name:    "test-project",
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		Packages: map[string]workspace.PackageSpec{
