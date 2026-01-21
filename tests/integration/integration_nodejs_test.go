@@ -360,7 +360,7 @@ func TestPlanFlag(t *testing.T) {
 	assert.Contains(t, logs,
 		"error: create is not allowed by the plan: no steps were expected for this resource")
 
-	logs, _ = e.RunCommandExpectError("pulumi", "up", "--skip-preview", "--yes")
+	logs, _ = e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	assert.Contains(t, logs, " created\n") // Some number of resources will be created.
 
 	// Clean up.
