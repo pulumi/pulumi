@@ -16,6 +16,7 @@ package pulumi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -67,7 +68,7 @@ func marshalResourceHooks(
 				}
 				hookName = hookPtr.Name
 			default:
-				continue
+				return nil, fmt.Errorf("unknown hook type: %T", hook.Interface())
 			}
 			hookNameValue := reflect.ValueOf(hookName)
 			protoField.Set(reflect.Append(protoField, hookNameValue))
