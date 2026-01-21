@@ -129,7 +129,7 @@ Serverless Lambdas, in minutes:
     ```
 
     The `new` command offers [templates](https://github.com/pulumi/templates/) for all languages and clouds.  Run it without an argument and it'll prompt
-    you with available projects.  This command created an AWS Serverless Lambda project written in JavaScript.
+    you with available projects.  This command creates an Amazon S3 bucket and exports its name.
 
 3. **Deploy to the Cloud**:
 
