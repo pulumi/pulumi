@@ -655,7 +655,6 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 
 	var server string
 	var parameterization *pulumirpc.PackageParameterization
-	// There is no way to specify server or parameterization without using `pulumi-plugin.json`.
 	server = pulumiPlugin.Server
 	if pulumiPlugin.Parameterization != nil {
 		parameterization = &pulumirpc.PackageParameterization{
