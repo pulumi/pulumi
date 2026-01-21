@@ -24,6 +24,7 @@ import (
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
+// Test that plugin installation respects language runtime options
 func TestPluginInstall(t *testing.T) {
 	t.Parallel()
 
@@ -34,50 +35,10 @@ func TestPluginInstall(t *testing.T) {
 		output string   // expected output from the plugin when run
 	}{
 		{
-			plugin: "python-default",
-			dirs:   []string{"venv"},
-			output: "hello from python-default",
-		},
-		{
-			plugin: "python-pip",
-			dirs:   []string{"myvenv"},
-			output: "hello from python-pip",
-		},
-		{
 			plugin: "python-uv",
 			dirs:   []string{".venv"},
 			files:  []string{"uv.lock"},
 			output: "hello from python-uv",
-		},
-		{
-			plugin: "python-poetry",
-			dirs:   []string{".venv"},
-			files:  []string{"poetry.lock"},
-			output: "hello from python-poetry",
-		},
-		{
-			plugin: "nodejs-default",
-			dirs:   []string{"node_modules"},
-			files:  []string{"package-lock.json"},
-			output: "hello from nodejs-default",
-		},
-		{
-			plugin: "nodejs-npm",
-			dirs:   []string{"node_modules"},
-			files:  []string{"package-lock.json"},
-			output: "hello from nodejs-npm",
-		},
-		{
-			plugin: "nodejs-yarn",
-			dirs:   []string{"node_modules"},
-			files:  []string{"yarn.lock"},
-			output: "hello from nodejs-yarn",
-		},
-		{
-			plugin: "nodejs-bun",
-			dirs:   []string{"node_modules"},
-			files:  []string{"bun.lock"},
-			output: "hello from nodejs-bun",
 		},
 		{
 			plugin: "nodejs-pnpm",

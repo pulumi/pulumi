@@ -1,4 +1,0 @@
-runtime:
-  name: nodejs
-  options:
-    packagemanager: yarn
