@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -104,6 +104,8 @@ var expectedFailures = map[string]string{
 	"l2-proxy-index":  "fails to compile",
 	"l1-builtin-try":  "pulumi#18506 Support try in Go program generation",
 	"l1-builtin-can":  "pulumi#18570 Support can in Go program generation",
+
+	"l1-builtin-check-pulumi-version": "not implemented yet",
 
 	// pulumi/pulumi#18345
 	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                                 //nolint:lll
