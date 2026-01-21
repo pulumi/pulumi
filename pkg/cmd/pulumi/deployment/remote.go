@@ -79,7 +79,7 @@ func ValidateUnsupportedRemoteFlags(
 	replaces []string,
 	targetReplaces []string,
 	targetDependents bool,
-	planFilePath *string,
+	planFilePath string,
 	stackConfigFile string,
 	runProgram bool,
 ) error {
@@ -147,7 +147,7 @@ func ValidateUnsupportedRemoteFlags(
 	if targetDependents {
 		return errors.New("--target-dependents is not supported with --remote")
 	}
-	if planFilePath != nil {
+	if planFilePath != "" {
 		return errors.New("--plan is not supported with --remote")
 	}
 	if stackConfigFile != "" {

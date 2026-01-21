@@ -158,7 +158,7 @@ func NewRefreshCmd() *cobra.Command {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, client, jsonDisplay, nil,
 					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
-					false, nil, cmdStack.ConfigFile, runProgram)
+					false, "", cmdStack.ConfigFile, runProgram)
 				if err != nil {
 					return err
 				}

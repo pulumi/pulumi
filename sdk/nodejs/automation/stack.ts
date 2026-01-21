@@ -255,7 +255,7 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.plan !== undefined) {
+            if (opts.plan) {
                 args.push("--plan", opts.plan);
             }
             if (opts.continueOnError) {

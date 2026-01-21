@@ -362,15 +362,10 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			if remoteArgs.Remote {
-				var pfp *string
-				if planFilePath != "" {
-					pfp = &planFilePath
-				}
-
 				err := deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
 					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, nil, replaces,
-					targetReplaces, targetDependents, pfp, cmdStack.ConfigFile, runProgram)
+					targetReplaces, targetDependents, planFilePath, cmdStack.ConfigFile, runProgram)
 				if err != nil {
 					return err
 				}

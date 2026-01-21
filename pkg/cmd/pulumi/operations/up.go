@@ -43,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/util/cobrautil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -121,8 +120,9 @@ func NewUpCmd() *cobra.Command {
 	var targetReplaces []string
 	var targetDependents bool
 	var excludeDependents bool
-	var planFilePath *string
+	var planFilePath string
 	var attachDebugger []string
+	var strict bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -136,7 +136,6 @@ func NewUpCmd() *cobra.Command {
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
 		meta *promise.Promise[map[string]string],
-		strict bool,
 	) error {
 		s, err := cmdStack.RequireStack(
 			ctx,
@@ -166,7 +165,7 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
 
-		m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, planFilePath != nil, cfg, cmd.Flags())
+		m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cfg, cmd.Flags())
 		if err != nil {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
@@ -235,9 +234,9 @@ func NewUpCmd() *cobra.Command {
 			Autonamer:       autonamer,
 		}
 
-		if planFilePath != nil && *planFilePath != "" {
+		if planFilePath != "" {
 			dec := sm.Decrypter()
-			p, err := plan.Read(*planFilePath, dec)
+			p, err := plan.Read(planFilePath, dec)
 			if err != nil {
 				return err
 			}
@@ -285,7 +284,6 @@ func NewUpCmd() *cobra.Command {
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
 		meta *promise.Promise[map[string]string],
-		strict bool,
 	) error {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
@@ -440,7 +438,7 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
 
-		m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, planFilePath != nil, cfg, cmd.Flags())
+		m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cfg, cmd.Flags())
 		if err != nil {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
@@ -561,8 +559,6 @@ func NewUpCmd() *cobra.Command {
 
 			yes = yes || skipPreview || env.SkipConfirmations.Value()
 
-			strict := planFilePath != nil && *planFilePath == ""
-
 			// Validate that the user did not pass both --skip-preview and --plan.
 			// Plan requires a preview so these flags are mutually exclusive.
 			if skipPreview && strict {
@@ -669,7 +665,6 @@ func NewUpCmd() *cobra.Command {
 					opts,
 					cmd,
 					meta,
-					strict,
 				)
 			}
 
@@ -681,7 +676,6 @@ func NewUpCmd() *cobra.Command {
 				opts,
 				cmd,
 				meta,
-				strict,
 			)
 		},
 	}
@@ -818,14 +812,19 @@ func NewUpCmd() *cobra.Command {
 		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'.")
 	cmd.Flag("attach-debugger").NoOptDefVal = "program"
 
-	cobrautil.NewStringPtrVar(cmd.PersistentFlags(),
-		&planFilePath, "plan",
+	cmd.PersistentFlags().StringVar(
+		&planFilePath, "plan", "",
 		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
 			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
 			"of sames).")
 	if !env.Experimental.Value() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("plan"), `Could not mark "plan" as hidden`)
 	}
+
+	cmd.PersistentFlags().BoolVar(
+		&strict, "strict", false,
+		"[EXPERIMENTAL] Enable strict plan behavior: generate a plan during preview and constrain the update "+
+			"to that plan (opt-in). Cannot be used with --skip-preview.")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,
