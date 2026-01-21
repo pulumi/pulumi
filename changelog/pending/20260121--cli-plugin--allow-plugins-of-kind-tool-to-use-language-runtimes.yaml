@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/plugin
+  description: Allow plugins of kind `tool` to use language runtimes
