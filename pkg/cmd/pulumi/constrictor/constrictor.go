@@ -12,6 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package constrictor provides structured argument metadata for Cobra commands.
+//
+// By default, Cobra describes arguments to a command using a predicate: the
+// arguments are provided as a list of strings, and the predicate says whether
+// the arguments are valid. This causes problems when we want to generate code
+// on top of the CLI, as we have no way to interrogate a command's arguments:
+// how many are there, what are their types, which are required, and so on.
+//
+// This library provides a structured format for arguments to Cobra commands
+// that can be stored as an annotation on the command, but can also then be
+// compiled down to an argument predicate for Cobra. As an added benefit, we
+// can also use this structure to generate the usage string to ensure that it
+// stays up-to-date.
+//
+// This library diverges slightly from the way flags work in that all commands
+// must be specified at the same time. This is because we have to know when we
+// have all the argument information in order to compile the predicate. If we
+// didn't do this, we'd either have to have an explicit call to finalise the
+// arguments, or overwrite the Cobra command structure, which would be a much
+// more invasive change.
 package constrictor
 
 import (
@@ -59,25 +79,6 @@ var NoArgs = &Arguments{
 }
 
 // Declare the arguments for a Cobra command.
-//
-// By default, Cobra describes arguments to a command using a predicate: the
-// arguments are provided as a list of strings, and the predicate says whether
-// the arguments are valid. This causes problems when we want to generate code
-// on top of the CLI, as we have no way to interrogate a command's arguments:
-// how many are there, what are their types, which are required, and so on.
-//
-// This library provides a structured format for arguments to Cobra commands
-// that can be stored as an annotation on the command, but can also then be
-// compiled down to an argument predicate for Cobra. As an added benefit, we
-// can also use this structure to generate the usage string to ensure that it
-// stays up-to-date.
-//
-// This library diverges slightly from the way flags work in that all commands
-// must be specified at the same time. This is because we have to know when we
-// have all the argument information in order to compile the predicate. If we
-// didn't do this, we'd either have to have an explicit call to finalise the
-// arguments, or overwrite the Cobra command structure, which would be a much
-// more invasive change.
 func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
 	contract.Requiref(cmd != nil, "cmd", "cannot be nil")
 	contract.Requiref(arguments != nil, "arguments", "cannot be nil")
