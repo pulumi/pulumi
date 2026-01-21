@@ -1,0 +1,7 @@
+{
+    "name": "nodejs-default",
+    "version": "0.0.1",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

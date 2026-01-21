@@ -1,0 +1,4 @@
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
