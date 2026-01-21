@@ -116,7 +116,7 @@ Serverless Lambdas, in minutes:
     [installation instructions](https://www.pulumi.com/docs/iac/download-install/) for additional installation options):
 
     ```bash
-    $ curl -fsSL https://get.pulumi.com/ | sh
+    curl -fsSL https://get.pulumi.com/ | sh
     ```
 
 2. **Create a Project**:
@@ -124,8 +124,8 @@ Serverless Lambdas, in minutes:
     After installing, you can get started with the `pulumi new` command:
 
     ```bash
-    $ mkdir pulumi-demo && cd pulumi-demo
-    $ pulumi new hello-aws-javascript
+    mkdir pulumi-demo && cd pulumi-demo
+    pulumi new hello-aws-javascript
     ```
 
     The `new` command offers templates for all languages and clouds.  Run it without an argument and it'll prompt
@@ -136,7 +136,7 @@ Serverless Lambdas, in minutes:
     Run `pulumi up` to get your code to the cloud:
 
     ```bash
-    $ pulumi up
+    pulumi up
     ```
 
     This makes all cloud resources needed to run your code.  Simply make edits to your project, and subsequent
@@ -147,7 +147,7 @@ Serverless Lambdas, in minutes:
     Now that your code is deployed, you can interact with it.  In the above example, we can curl the endpoint:
 
     ```bash
-    $ curl $(pulumi stack output url)
+    curl $(pulumi stack output url)
     ```
 
 5. **Access the Logs**:
@@ -155,7 +155,7 @@ Serverless Lambdas, in minutes:
     If you're using containers or functions, Pulumi's unified logging command will show all of your logs:
 
     ```bash
-    $ pulumi logs -f
+    pulumi logs -f
     ```
 
 6. **Destroy your Resources**:
@@ -163,7 +163,7 @@ Serverless Lambdas, in minutes:
     After you're done, you can remove all resources created by your program:
 
     ```bash
-    $ pulumi destroy -y
+    pulumi destroy -y
     ```
 
 To learn more, head over to [pulumi.com](https://pulumi.com/) for much more information, including
