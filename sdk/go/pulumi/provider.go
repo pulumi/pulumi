@@ -142,6 +142,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		hooks.AfterUpdate = makeStubHooks(binding.GetAfterUpdate())
 		hooks.BeforeDelete = makeStubHooks(binding.GetBeforeDelete())
 		hooks.AfterDelete = makeStubHooks(binding.GetAfterDelete())
+		hooks.OnError = makeStubErrorHooks(binding.GetOnError())
 	}
 
 	opts := resourceOption(func(ro *resourceOptions) {

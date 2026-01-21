@@ -450,6 +450,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				opts.Hooks.AfterUpdate = makeStubHooks(rpcReq.Options.Hooks.GetAfterUpdate())
 				opts.Hooks.BeforeDelete = makeStubHooks(rpcReq.Options.Hooks.GetBeforeDelete())
 				opts.Hooks.AfterDelete = makeStubHooks(rpcReq.Options.Hooks.GetAfterDelete())
+				opts.Hooks.OnError = makeStubErrorHooks(rpcReq.Options.Hooks.GetOnError())
 			}
 		}
 
@@ -1553,6 +1554,97 @@ func (ctx *Context) registerResourceHook(f ResourceHookFunction) (*pulumirpc.Cal
 			}, nil
 		}
 		return &pulumirpc.ResourceHookResponse{}, nil
+	}
+
+	err := func() error {
+		ctx.state.callbacksLock.Lock()
+		defer ctx.state.callbacksLock.Unlock()
+		if ctx.state.callbacks == nil {
+			c, err := newCallbackServer()
+			if err != nil {
+				return fmt.Errorf("creating callback server: %w", err)
+			}
+			ctx.state.callbacks = c
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	cb, err := ctx.state.callbacks.RegisterCallback(callback)
+	if err != nil {
+		return nil, fmt.Errorf("registering callback: %w", err)
+	}
+
+	return cb, nil
+}
+
+// registerErrorHook starts up a callback server if not already running and registers the given hook function.
+func (ctx *Context) registerErrorHook(f ErrorHookFunction) (*pulumirpc.Callback, error) {
+	if !ctx.state.supportsErrorHooks {
+		return nil, errors.New("the Pulumi CLI does not support error hooks. Please update the Pulumi CLI")
+	}
+
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, request []byte) (proto.Message, error) {
+		var req pulumirpc.ErrorHookRequest
+		err := proto.Unmarshal(request, &req)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
+		mOpts := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if req.NewInputs != nil {
+			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling new inputs: %w", err)
+			}
+		}
+		if req.OldInputs != nil {
+			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
+			}
+		}
+		if req.NewOutputs != nil {
+			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling new outputs: %w", err)
+			}
+		}
+		if req.OldOutputs != nil {
+			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
+			}
+		}
+		args := &ErrorHookArgs{
+			URN:             URN(req.Urn),
+			ID:              ID(req.Id),
+			Name:            req.Name,
+			Type:            tokens.Type(req.Type),
+			NewInputs:       newInputs,
+			OldInputs:       oldInputs,
+			NewOutputs:      newOutputs,
+			OldOutputs:      oldOutputs,
+			FailedOperation: req.FailedOperation,
+			Errors:          req.Errors,
+		}
+		retry, err := f(args)
+		if err != nil {
+			return &pulumirpc.ErrorHookResponse{
+				Error: err.Error(),
+			}, nil
+		}
+		return &pulumirpc.ErrorHookResponse{
+			Retry: retry,
+		}, nil
 	}
 
 	err := func() error {
@@ -2872,6 +2964,35 @@ func (ctx *Context) RegisterResourceHook(
 		}
 	}()
 	hook := &ResourceHook{
+		Name:       name,
+		Callback:   callback,
+		registered: registered.Promise(),
+	}
+	return hook, nil
+}
+
+func (ctx *Context) RegisterErrorHook(
+	name string, callback ErrorHookFunction,
+) (*ErrorHook, error) {
+	registered := &promise.CompletionSource[struct{}]{}
+	go func() {
+		cb, err := ctx.registerErrorHook(callback)
+		if err != nil {
+			registered.Reject(err)
+			return
+		}
+		req := &pulumirpc.RegisterErrorHookRequest{
+			Name:     name,
+			Callback: cb,
+		}
+		_, err = ctx.state.monitor.RegisterErrorHook(ctx.ctx, req)
+		if err != nil {
+			registered.Reject(err)
+		} else {
+			registered.Fulfill(struct{}{})
+		}
+	}()
+	hook := &ErrorHook{
 		Name:       name,
 		Callback:   callback,
 		registered: registered.Promise(),

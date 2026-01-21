@@ -37,6 +37,7 @@ func marshalResourceHooks(
 		"AfterUpdate",
 		"BeforeDelete",
 		"AfterDelete",
+		"OnError",
 	}
 	for _, fieldName := range hookFieldNames {
 		hookSliceField := hooksValue.FieldByName(fieldName)
@@ -53,12 +54,23 @@ func marshalResourceHooks(
 				continue
 			}
 			// Wait for the hook registration to complete.
-			hookPtr := hook.Interface().(*ResourceHook)
-			if _, err := hookPtr.registered.Result(ctx); err != nil {
-				return nil, err
+			var hookName string
+			switch hookPtr := hook.Interface().(type) {
+			case *ResourceHook:
+				if _, err := hookPtr.registered.Result(ctx); err != nil {
+					return nil, err
+				}
+				hookName = hookPtr.Name
+			case *ErrorHook:
+				if _, err := hookPtr.registered.Result(ctx); err != nil {
+					return nil, err
+				}
+				hookName = hookPtr.Name
+			default:
+				continue
 			}
-			hookName := reflect.ValueOf(hookPtr.Name)
-			protoField.Set(reflect.Append(protoField, hookName))
+			hookNameValue := reflect.ValueOf(hookName)
+			protoField.Set(reflect.Append(protoField, hookNameValue))
 		}
 	}
 	return hooks, nil
@@ -79,6 +91,25 @@ func makeStubHooks(names []string) []*ResourceHook {
 		hooks := []*ResourceHook{}
 		for _, name := range names {
 			hooks = append(hooks, &ResourceHook{
+				Name:       name,
+				registered: registered, // mark the stub hook as registered
+			})
+		}
+		return hooks
+	}
+	return stubHook(names)
+}
+
+// makeStubErrorHooks creates a slice of `ErrorHooks` from hook names.
+func makeStubErrorHooks(names []string) []*ErrorHook {
+	// Create a fulfilled promise to mark the stubs as registered.
+	c := promise.CompletionSource[struct{}]{}
+	c.Fulfill(struct{}{})
+	registered := c.Promise()
+	stubHook := func(names []string) []*ErrorHook {
+		hooks := []*ErrorHook{}
+		for _, name := range names {
+			hooks = append(hooks, &ErrorHook{
 				Name:       name,
 				registered: registered, // mark the stub hook as registered
 			})
