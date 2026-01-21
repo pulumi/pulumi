@@ -409,9 +409,12 @@ export async function checkPulumiVersion(range: string): Promise<void> {
             req,
             (err: grpc.ServiceError | null, resp: engproto.CheckPulumiVersionResponse | undefined) => {
                 if (err && err.code === grpc.status.UNIMPLEMENTED) {
-                    return reject(new Error(
-                        "The installed version of the CLI does not support the `CheckPulumiVersion` RPC. "
-                        + "Please upgrade the Pulumu CLI."));
+                    return reject(
+                        new Error(
+                            "The installed version of the CLI does not support the `CheckPulumiVersion` RPC. " +
+                                "Please upgrade the Pulumu CLI.",
+                        ),
+                    );
                 }
                 if (err) {
                     return reject(err);

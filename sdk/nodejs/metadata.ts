@@ -41,7 +41,6 @@ export function getRootDirectory(): string {
     return settings.getRootDirectory();
 }
 
-
 /**
  * Checks if the engine we are connected to is compatible with the passed in version range. If the version is not
  * compatible with the specified range, an exception is raised.
