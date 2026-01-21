@@ -907,6 +907,70 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	return resp.Version, resp.Token, resp.JournalVersion, nil
 }
 
+// BeginUpdate combines CreateUpdate, StartUpdate, ExportStackDeployment, and GetStack into a
+// single API call to reduce latency. Returns all data needed to start the engine execution.
+// This is only supported on backends with the "begin-update" capability.
+func (pc *Client) BeginUpdate(
+	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
+	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
+	tags map[apitype.StackTagName]string, dryRun bool,
+) (*apitype.BeginUpdateResponse, error) {
+	if err := validation.ValidateStackTags(tags); err != nil {
+		return nil, fmt.Errorf("validating stack properties: %w", err)
+	}
+
+	wireConfig := make(map[string]apitype.ConfigValue)
+	for k, cv := range cfg {
+		v, err := cv.Value(config.NopDecrypter)
+		contract.AssertNoErrorf(err, "error fetching config value for key %v", k)
+
+		wireConfig[k.String()] = apitype.ConfigValue{
+			String: v,
+			Secret: cv.Secure(),
+			Object: cv.Object(),
+		}
+	}
+
+	description := ""
+	if proj.Description != nil {
+		description = *proj.Description
+	}
+
+	updateRequest := apitype.UpdateProgramRequest{
+		Name:        string(proj.Name),
+		Runtime:     proj.Runtime.Name(),
+		Main:        proj.Main,
+		Description: description,
+		Config:      wireConfig,
+		Options: apitype.UpdateOptions{
+			LocalPolicyPackPaths: engine.ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks),
+			Color:                colors.Raw,
+			DryRun:               dryRun,
+			Parallel:             opts.Parallel,
+		},
+		Metadata: m,
+	}
+
+	req := apitype.BeginUpdateRequest{
+		// TODO: Do we need to use different endpoints here similar to CreateUpdate?
+		UpdateKind: kind,
+		Program:    updateRequest,
+		Tags:       tags,
+	}
+
+	if env.EnableJournaling.Value() {
+		req.JournalVersion = 1
+	}
+
+	var resp apitype.BeginUpdateResponse
+	path := getStackPath(stack, "begin-update")
+	if err := pc.restCall(ctx, "POST", path, nil, &req, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContToken *string) (
 	apitype.ListPolicyGroupsResponse, *string, error,

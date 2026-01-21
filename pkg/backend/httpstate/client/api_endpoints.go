@@ -106,6 +106,7 @@ func init() {
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/destroy", "createDestroy")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/preview", "createPreview")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/update", "createUpdate")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/begin-update", "beginUpdate")
 
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}", "getUpdateStatus")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}", "startUpdate")
