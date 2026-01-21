@@ -6,6 +6,6 @@ resource "res" "simple:index:Resource" {
     value = input
 }
 
-output output {
+output output { 
     value = res.value
 }

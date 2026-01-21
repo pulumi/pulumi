@@ -2,6 +2,6 @@ component someComponent "./myComponent" {
     input = true
 }
 
-output result {
+output result { 
     value = someComponent.output
 }
