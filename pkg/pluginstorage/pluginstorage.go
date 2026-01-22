@@ -18,3 +18,75 @@
 // Right now, this is pending a refactor to move methods like [(workspace.PluginSpec).Dir]
 // and all functions that deal with <name>.lock & <name>.partial files to this package.
 package pluginstorage
+
+import (
+	"context"
+
+	"github.com/blang/semver"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+)
+
+var Instance Context = defaultContext{}
+
+type Context interface {
+	HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool
+	HasPluginGTE(ctx context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error)
+	IsExternalURL(ctx context.Context, source string) bool
+	GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
+}
+
+type defaultContext struct{}
+
+func (defaultContext) HasPlugin(_ context.Context, spec workspace.PluginDescriptor) bool {
+	return workspace.HasPlugin(spec)
+}
+
+func (defaultContext) HasPluginGTE(_ context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
+	return workspace.HasPluginGTE(spec)
+}
+
+func (defaultContext) IsExternalURL(_ context.Context, source string) bool {
+	return workspace.IsExternalURL(source)
+}
+
+func (defaultContext) GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
+	return spec.GetLatestVersion(ctx)
+}
+
+var _ Context = MockContext{}
+
+type MockContext struct {
+	HasPluginF        func(ctx context.Context, spec workspace.PluginDescriptor) bool
+	HasPluginGTEF     func(ctx context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error)
+	IsExternalURLF    func(ctx context.Context, source string) bool
+	GetLatestVersionF func(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
+}
+
+func (m MockContext) HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool {
+	if m.HasPluginF != nil {
+		return m.HasPluginF(ctx, spec)
+	}
+	return false
+}
+
+func (m MockContext) HasPluginGTE(ctx context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
+	if m.HasPluginGTEF != nil {
+		return m.HasPluginGTEF(ctx, spec)
+	}
+	return false, nil, nil
+}
+
+func (m MockContext) IsExternalURL(ctx context.Context, source string) bool {
+	if m.IsExternalURLF != nil {
+		return m.IsExternalURLF(ctx, source)
+	}
+	return workspace.IsExternalURL(source)
+}
+
+func (m MockContext) GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
+	if m.GetLatestVersionF != nil {
+		return m.GetLatestVersionF(ctx, spec)
+	}
+	return nil, workspace.ErrGetLatestVersionNotSupported
+}

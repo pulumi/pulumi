@@ -356,7 +356,7 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 	ctx context.Context, pluginSpec workspace.PackageSpec,
 ) (workspace.PluginDescriptor, error) {
 	result, err := packageresolution.Resolve(
-		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, packageresolution.Options{
+		ctx, cmd.registry, pluginstorage.Instance, pluginSpec, packageresolution.Options{
 			ResolveWithRegistry: cmd.env.GetBool(env.Experimental) &&
 				!cmd.env.GetBool(env.DisableRegistryResolve),
 			ResolveVersionWithLocalWorkspace:           cmd.reinstall,

@@ -99,23 +99,25 @@ func (w *recordingWorkspace) finish(args ...any) {
 	w.steps[len(w.steps)-1] += formatArgs(args)
 }
 
-func (w *recordingWorkspace) HasPlugin(spec workspace.PluginDescriptor) bool {
+func (w *recordingWorkspace) HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool {
 	w.start("HasPlugin", spec)
-	result := w.w.HasPlugin(spec)
+	result := w.w.HasPlugin(ctx, spec)
 	w.finish(result)
 	return result
 }
 
-func (w *recordingWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
+func (w *recordingWorkspace) HasPluginGTE(
+	ctx context.Context, spec workspace.PluginDescriptor,
+) (bool, *semver.Version, error) {
 	w.start("HasPluginGTE", spec)
-	ok, version, err := w.w.HasPluginGTE(spec)
+	ok, version, err := w.w.HasPluginGTE(ctx, spec)
 	w.finish(ok, version, err)
 	return ok, version, err
 }
 
-func (w *recordingWorkspace) IsExternalURL(source string) bool {
+func (w *recordingWorkspace) IsExternalURL(ctx context.Context, source string) bool {
 	w.start("IsExternalURL", source)
-	result := w.w.IsExternalURL(source)
+	result := w.w.IsExternalURL(ctx, source)
 	w.finish(result)
 	return result
 }
