@@ -130,7 +130,7 @@ func (w Workspace) DownloadPlugin(
 	util.SetKnownPluginVersion(&pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
-		pluginSpec.Version, err = pluginSpec.GetLatestVersion(ctx)
+		pluginSpec.Version, err = pluginstorage.Instance.GetLatestVersion(ctx, pluginSpec)
 		if err != nil {
 			return "", nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
 		}

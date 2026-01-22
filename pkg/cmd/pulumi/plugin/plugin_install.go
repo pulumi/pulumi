@@ -255,12 +255,12 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
 		if !cmd.reinstall {
 			if cmd.exact {
-				if workspace.HasPlugin(install) {
+				if pluginstorage.Instance.HasPlugin(ctx, install) {
 					logging.V(1).Infof("%s skipping install (existing == match)", label)
 					continue
 				}
 			} else {
-				if has, _, _ := workspace.HasPluginGTE(install); has {
+				if has, _, _ := pluginstorage.Instance.HasPluginGTE(ctx, install); has {
 					logging.V(1).Infof("%s skipping install (existing >= match)", label)
 					continue
 				}
