@@ -15,10 +15,8 @@
 package install
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,15 +24,9 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
-	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -111,8 +103,8 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					// registry.
 					reg := unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
 
-					if err := installPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
-						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+					if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
+						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
 
@@ -146,9 +138,9 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			// Process packages section from Pulumi.yaml. Do so before installing language-specific dependencies,
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
-			if err := installPackagesFromProject(cmd.Context(), proj, root,
+			if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
-				parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(),
+				parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
 			); err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
 			}
@@ -209,41 +201,6 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 		"use-language-version-tools", false, "Use language version tools to setup and install the language runtime")
 
 	return cmd
-}
-
-// installPackagesFromProject processes packages specified in the Pulumi.yaml file
-// and installs them using similar logic to the 'pulumi package add' command
-func installPackagesFromProject(
-	ctx context.Context, proj workspace.BaseProject, root string, registry registry.Registry,
-	parallelism int, useLanguageVersionTools bool,
-	stdout, stderr io.Writer,
-) error {
-	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil)
-	if err != nil {
-		return err
-	}
-	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, stdout, stderr, nil,
-		packageworkspace.Options{
-			UseLanguageVersionTools: useLanguageVersionTools,
-		})
-	opts := packageinstallation.Options{
-		Options: packageresolution.Options{
-			ResolveWithRegistry: env.Experimental.Value() &&
-				!env.DisableRegistryResolve.Value(),
-			ResolveVersionWithLocalWorkspace:           true,
-			AllowNonInvertableLocalWorkspaceResolution: true,
-		},
-		Concurrency: parallelism,
-	}
-	err = packageinstallation.InstallProjectPlugins(ctx, proj, root, opts, registry, ws)
-	if e := (packageinstallation.ErrorCyclicDependencies{}); errors.As(err, &e) {
-		err = cmdDiag.FormatCyclicInstallError(ctx, e, root)
-	}
-
-	return errors.Join(err, pctx.Close())
 }
 
 func shouldInstallPolicyPackDependencies() (bool, error) {
