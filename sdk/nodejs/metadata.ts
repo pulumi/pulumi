@@ -51,6 +51,6 @@ export function getRootDirectory(): string {
  *  together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
  *  Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
  */
-export async function checkPulumiVersion(range: string): Promise<void> {
-    return settings.checkPulumiVersion(range);
+export function requirePulumiVersion(range: string): Promise<void> {
+    return settings.requirePulumiVersion(range);
 }

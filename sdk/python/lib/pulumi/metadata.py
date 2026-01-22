@@ -43,7 +43,7 @@ def get_root_directory() -> str:
     return settings.get_root_directory()
 
 
-def check_pulumi_version(rg: str) -> None:
+def require_pulumi_version(rg: str) -> None:
     """
     Checks if the engine we are connected to is compatible with the passed in version range. If the version is not
     compatible with the specified range, an exception is raised.
@@ -54,4 +54,4 @@ def check_pulumi_version(rg: str) -> None:
            exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or
            greater-than 3.8.0.
     """
-    settings.check_pulumi_version(rg)
+    settings.require_pulumi_version(rg)

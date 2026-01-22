@@ -1459,7 +1459,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
 	if v.RequiredVersion != nil {
 		value := g.lowerExpression(v.RequiredVersion, v.Type())
-		g.Fgenf(w, "%spulumi.checkPulumiVersion(%v)\n", g.Indent, value)
+		g.Fgenf(w, "%spulumi.requirePulumiVersion(%v);\n", g.Indent, value)
 	}
 }
 

@@ -288,7 +288,7 @@ def set_root_resource(root: Resource):
 ROOT: ContextVar[Optional[Resource]] = ContextVar("root_resource", default=None)
 
 
-def check_pulumi_version(rg: str) -> None:
+def require_pulumi_version(rg: str) -> None:
     """
     Checks if the engine we are connected to is compatible with the passed in version range. If the version is not
     compatible with the specified range, an exception is raised.

@@ -1289,7 +1289,7 @@ func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
 	if v.RequiredVersion != nil {
 		value, temps := g.lowerExpression(v.RequiredVersion, v.Type())
 		g.genTemps(w, temps)
-		g.Fgenf(w, "%spulumi.check_pulumi_version(%v)\n", g.Indent, value)
+		g.Fgenf(w, "%spulumi.require_pulumi_version(%v)\n", g.Indent, value)
 	}
 }
 

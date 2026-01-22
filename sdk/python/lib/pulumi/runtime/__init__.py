@@ -41,7 +41,7 @@ from .settings import (
     reset_options,
     get_root_resource,
     get_root_directory,
-    check_pulumi_version,
+    require_pulumi_version,
 )
 
 from .stack import (
@@ -95,7 +95,7 @@ __all__ = [
     "reset_options",
     "get_root_resource",
     "get_root_directory",
-    "check_pulumi_version",
+    "require_pulumi_version",
     # stack
     "run_in_stack",
     "register_stack_transformation",
