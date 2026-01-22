@@ -228,7 +228,6 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 
 		// Runtime options are passed as environment variables to the provider, this is _currently_ used by
 		// dynamic providers to do things like lookup the virtual environment to use.
-		// TODO: get extra env from e
 
 		optionsStore := env.MapStore{}
 

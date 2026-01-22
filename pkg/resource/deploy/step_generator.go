@@ -28,7 +28,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	mapset "github.com/deckarep/golang-set/v2"
-
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -661,7 +660,6 @@ func (sg *stepGenerator) getOldResource(
 
 func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
 	var invalid bool // will be set to true if this object fails validation.
-
 	goal := event.Goal()
 
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
@@ -710,6 +708,17 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	if old != nil {
 		refreshBeforeUpdate = old.RefreshBeforeUpdate
 	}
+
+	// Extract envVarMappings from provider properties if this is a provider resource.
+	var envVarMappings map[string]string
+	if sdkproviders.IsProviderType(goal.Type) {
+		var err error
+		envVarMappings, err = providers.GetEnvironmentVariableMappings(goal.Properties)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to get environment variable mappings: %w", err)
+		}
+	}
+
 	new := resource.NewState{
 		Type:                    goal.Type,
 		URN:                     urn,
@@ -745,6 +754,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
+		EnvVarMappings:          envVarMappings,
 	}.Make()
 	if sdkproviders.IsProviderType(goal.Type) {
 		sg.providers[urn] = new

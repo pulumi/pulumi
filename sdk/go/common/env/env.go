@@ -26,8 +26,6 @@ import (
 
 type Env = env.Env
 
-type Store = env.Store
-
 type MapStore = env.MapStore
 
 func NewEnv(s env.Store) env.Env { return env.NewEnv(s) }
