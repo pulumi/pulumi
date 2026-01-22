@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"sync"
 
-	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
-
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
@@ -36,9 +34,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/ryboe/q"
 )
 
 const (
@@ -50,7 +48,6 @@ const (
 	nameKey             resource.PropertyKey = "name"
 	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
 	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
-	envOverridesKey     resource.PropertyKey = "envOverrides"   // Value overrides: "KEY": "value" sets KEY=value
 	envVarMappingsKey   resource.PropertyKey = "envVarMappings" // Remappings: "NEW_KEY": "OLD_KEY" means if NEW_KEY exists, provider sees OLD_KEY=value(NEW_KEY)
 
 	// versionKey is the key used to store the version of the provider in the Pulumi state. This is _not_ treated as an
@@ -246,33 +243,6 @@ func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.P
 		base64.StdEncoding.EncodeToString(value.Value))
 }
 
-// GetEnvironmentOverrides fetches environment variable value overrides.
-// Returns an env.Store with key -> value pairs that will be set for the provider.
-func GetEnvironmentOverrides(
-	inputs resource.PropertyMap,
-) (env.Store, error) {
-	internalInputs, err := getInternal(inputs)
-	if err != nil {
-		return nil, err
-	}
-	overrides, ok := internalInputs[envOverridesKey]
-	if !ok {
-		return nil, nil
-	}
-	if !overrides.IsObject() {
-		return nil, fmt.Errorf("'%s' must be an object", envOverridesKey)
-	}
-	// Convert PropertyMap to map[string]string for env.MapStore
-	result := make(env.MapStore)
-	for k, v := range overrides.ObjectValue() {
-		if !v.IsString() {
-			return nil, fmt.Errorf("'%s' values must be strings", envOverridesKey)
-		}
-		result[string(k)] = v.StringValue()
-	}
-	return result, nil
-}
-
 // GetEnvironmentVariableMappings fetches environment variable remappings.
 // Returns a map of NEW_KEY -> OLD_KEY mappings.
 // If NEW_KEY exists in the environment, the provider will see OLD_KEY=value(NEW_KEY).
@@ -299,16 +269,6 @@ func GetEnvironmentVariableMappings(
 		result[string(k)] = v.StringValue()
 	}
 	return result, nil
-}
-
-// SetEnvironmentOverrides sets environment variable value overrides in the given property map.
-func SetEnvironmentOverrides(inputs resource.PropertyMap, overrides map[string]string) {
-	internalInputs := addOrGetInternal(inputs)
-	propMap := make(resource.PropertyMap)
-	for k, v := range overrides {
-		propMap[resource.PropertyKey(k)] = resource.NewProperty(v)
-	}
-	internalInputs[envOverridesKey] = resource.NewProperty(propMap)
 }
 
 // SetEnvironmentVariableMappings sets environment variable remappings in the given property map.
@@ -635,13 +595,6 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		}}}, nil
 	}
 
-	envOverrides, err := GetEnvironmentOverrides(req.News)
-	if err != nil {
-		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
-			Property: "envOverrides", Reason: err.Error(),
-		}}}, nil
-	}
-
 	envVarMappings, err := GetEnvironmentVariableMappings(req.News)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
@@ -649,13 +602,8 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		}}}, nil
 	}
 
-	q.Q("Check: GetEnvironmentVariableMappings", req.URN, "mappings", envVarMappings)
-
-	// Build the environment: start with global, apply value overrides, then apply remappings
+	// Build the environment: start with global, then apply remappings
 	baseStore := env.Global().GetStore()
-	if envOverrides != nil {
-		baseStore = envutil.JoinStore(envOverrides, baseStore)
-	}
 
 	// Apply remappings: if NEW_KEY exists in the environment, set OLD_KEY=value(NEW_KEY)
 	if envVarMappings != nil && len(envVarMappings) > 0 {
@@ -665,14 +613,10 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 			if value, ok := baseStore.Raw(newKey); ok {
 				// Provider sees OLD_KEY with the value from NEW_KEY
 				mappedStore[oldKey] = value
-				q.Q("Check: Provider env var mapping", req.URN, newKey, "->", oldKey, "value", value)
-			} else {
-				q.Q("Check: Provider env var mapping skipped", req.URN, newKey, "->", oldKey, "reason", "source key not found")
 			}
 		}
 		if len(mappedStore) > 0 {
 			baseStore = envutil.JoinStore(mappedStore, baseStore)
-			q.Q("Check: Provider applied env var mappings", req.URN, "count", len(mappedStore))
 		}
 	}
 
@@ -688,13 +632,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 			relevantKeys = append(relevantKeys, newKey)
 		}
 	}
-	for _, key := range relevantKeys {
-		if value, ok := baseStore.Raw(key); ok {
-			q.Q("Check: Provider env var", req.URN, key, "=", value)
-		}
-	}
 	// TODO: We should thread checksums through here.
-	// TODO: We should thead the env though here.
 	provider, err := loadParameterizedProvider(
 		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 	if err != nil {
@@ -861,25 +799,13 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		// TODO: We should thread checksums through here.
-		envOverrides, err := GetEnvironmentOverrides(res.Inputs)
-		if err != nil {
-			return fmt.Errorf("get environment overrides for %v provider '%v': %w", providerPkg, urn, err)
-		}
-
 		envVarMappings, err := GetEnvironmentVariableMappings(res.Inputs)
 		if err != nil {
 			return fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, urn, err)
 		}
 
-		q.Q("Same: GetEnvironmentVariableMappings", urn, "mappings", envVarMappings)
-
-		// Build the environment: start with global, apply value overrides, then apply remappings
+		// Build the environment: start with global, then apply remappings
 		baseStore := env.Global().GetStore()
-		if envOverrides != nil {
-			baseStore = envutil.JoinStore(envOverrides, baseStore)
-		}
-
 		// Apply remappings: if NEW_KEY exists in the environment, set OLD_KEY=value(NEW_KEY)
 		if envVarMappings != nil && len(envVarMappings) > 0 {
 			mappedStore := make(env.MapStore)
@@ -888,14 +814,10 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 				if value, ok := baseStore.Raw(newKey); ok {
 					// Provider sees OLD_KEY with the value from NEW_KEY
 					mappedStore[oldKey] = value
-					q.Q("Same: Provider env var mapping", urn, newKey, "->", oldKey, "value", value)
-				} else {
-					q.Q("Same: Provider env var mapping skipped", urn, newKey, "->", oldKey, "reason", "source key not found")
 				}
 			}
 			if len(mappedStore) > 0 {
 				baseStore = envutil.JoinStore(mappedStore, baseStore)
-				q.Q("Same: Provider applied env var mappings", urn, "count", len(mappedStore))
 			}
 		}
 
@@ -911,11 +833,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 				relevantKeys = append(relevantKeys, newKey)
 			}
 		}
-		for _, key := range relevantKeys {
-			if value, ok := baseStore.Raw(key); ok {
-				q.Q("Same: Provider env var", urn, key, "=", value)
-			}
-		}
+		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
@@ -985,12 +903,6 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		// TODO: We should thread checksums through here.
-		envOverrides, err := GetEnvironmentOverrides(req.Properties)
-		if err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown},
-				fmt.Errorf("get environment overrides for %v provider '%v': %w", providerPkg, req.URN, err)
-		}
 
 		envVarMappings, err := GetEnvironmentVariableMappings(req.Properties)
 		if err != nil {
@@ -998,13 +910,8 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 				fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 
-		q.Q("Create: GetEnvironmentVariableMappings", req.URN, "mappings", envVarMappings)
-
-		// Build the environment: start with global, apply value overrides, then apply remappings
+		// Build the environment: start with global, then apply remappings
 		baseStore := env.Global().GetStore()
-		if envOverrides != nil {
-			baseStore = envutil.JoinStore(envOverrides, baseStore)
-		}
 
 		// Apply remappings: if NEW_KEY exists in the environment, set OLD_KEY=value(NEW_KEY)
 		if envVarMappings != nil && len(envVarMappings) > 0 {
@@ -1014,14 +921,10 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 				if value, ok := baseStore.Raw(newKey); ok {
 					// Provider sees OLD_KEY with the value from NEW_KEY
 					mappedStore[oldKey] = value
-					q.Q("Create: Provider env var mapping", req.URN, newKey, "->", oldKey, "value", value)
-				} else {
-					q.Q("Create: Provider env var mapping skipped", req.URN, newKey, "->", oldKey, "reason", "source key not found")
 				}
 			}
 			if len(mappedStore) > 0 {
 				baseStore = envutil.JoinStore(mappedStore, baseStore)
-				q.Q("Create: Provider applied env var mappings", req.URN, "count", len(mappedStore))
 			}
 		}
 
@@ -1037,12 +940,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 				relevantKeys = append(relevantKeys, newKey)
 			}
 		}
-		for _, key := range relevantKeys {
-			if value, ok := baseStore.Raw(key); ok {
-				q.Q("Create: Provider env var", req.URN, key, "=", value)
-			}
-		}
-
+		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},

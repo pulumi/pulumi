@@ -502,7 +502,6 @@ func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor, e env.E
 		if err != nil {
 			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
 		}
-
 		plug, err := NewProvider(
 			host, host.ctx, descriptor,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName, e)

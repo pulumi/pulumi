@@ -45,7 +45,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/ryboe/q"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -1848,7 +1847,7 @@ func (ctx *Context) registerResource(
 				deleteBeforeReplace = *options.DeleteBeforeReplace
 			}
 
-			req := &pulumirpc.RegisterResourceRequest{
+			resp, err = ctx.state.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
 				Type:                       t,
 				Name:                       name,
 				Parent:                     inputs.parent,
@@ -1884,18 +1883,8 @@ func (ctx *Context) registerResource(
 				SupportsResultReporting:    true,
 				PackageRef:                 packageRef,
 				Hooks:                      hooks,
-				EnvOverrides:               inputs.envOverrides,
 				EnvVarMappings:             inputs.envVarMappings,
-			}
-			if len(req.EnvVarMappings) > 0 {
-				q.Q("RegisterResource REQUEST", t, name, "req.EnvVarMappings", req.EnvVarMappings, "len", len(req.EnvVarMappings))
-			}
-			resp, err = ctx.state.monitor.RegisterResource(ctx.ctx, req)
-			q.Q("in RegisterResource")
-			if len(inputs.envVarMappings) > 0 {
-				q.Q("RegisterResource", t, name, "envVarMappings", inputs.envVarMappings)
-			}
-			q.Q("did something happen here")
+			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
 			} else {
@@ -2364,7 +2353,6 @@ type resourceInputs struct {
 	hideDiffs               []string
 	replaceWith             []string
 	replacementTrigger      *structpb.Value
-	envOverrides            map[string]string
 	envVarMappings          map[string]string
 }
 
@@ -2667,7 +2655,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		deletedWithURN = urn
 	}
 
-	inputs := &resourceInputs{
+	return &resourceInputs{
 		parent:                  string(resOpts.parentURN),
 		deps:                    deps,
 		protect:                 res.getProtect(),
@@ -2690,15 +2678,8 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		deletedWith:             string(deletedWithURN),
 		replaceWith:             replaceWithURNs,
 		replacementTrigger:      replacementTriggerValue,
-		envOverrides:            opts.EnvOverrides,
 		envVarMappings:          opts.EnvVarMappings,
-	}
-
-	if len(opts.EnvVarMappings) > 0 {
-		q.Q("prepareResourceInputs", t, "envVarMappings", opts.EnvVarMappings)
-	}
-
-	return inputs, nil
+	}, nil
 }
 
 func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_CustomTimeouts {
