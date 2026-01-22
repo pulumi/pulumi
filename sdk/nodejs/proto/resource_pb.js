@@ -1843,7 +1843,6 @@ supportsresultreporting: jspb.Message.getBooleanFieldWithDefault(msg, 32, false)
 packageref: jspb.Message.getFieldWithDefault(msg, 33, ""),
 hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
 hidediffsList: (f = jspb.Message.getRepeatedField(msg, 37)) == null ? undefined : f,
-envoverridesMap: (f = msg.getEnvoverridesMap()) ? f.toObject(includeInstance, undefined) : [],
 envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
@@ -2050,12 +2049,6 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 37:
       var value = /** @type {string} */ (reader.readString());
       msg.addHidediffs(value);
-      break;
-    case 40:
-      var value = msg.getEnvoverridesMap();
-      reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
-         });
       break;
     case 41:
       var value = msg.getEnvvarmappingsMap();
@@ -2363,10 +2356,6 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       37,
       f
     );
-  }
-  f = message.getEnvoverridesMap(true);
-  if (f && f.getLength() > 0) {
-    f.serializeBinary(40, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
   f = message.getEnvvarmappingsMap(true);
   if (f && f.getLength() > 0) {
@@ -4159,29 +4148,6 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addHidediffs = function(value,
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearHidediffsList = function() {
   return this.setHidediffsList([]);
-};
-
-
-/**
- * map<string, string> envOverrides = 40;
- * @param {boolean=} opt_noLazyCreate Do not create the map if
- * empty, instead returning `undefined`
- * @return {!jspb.Map<string,string>}
- */
-proto.pulumirpc.RegisterResourceRequest.prototype.getEnvoverridesMap = function(opt_noLazyCreate) {
-  return /** @type {!jspb.Map<string,string>} */ (
-      jspb.Message.getMapField(this, 40, opt_noLazyCreate,
-      null));
-};
-
-
-/**
- * Clears values from the map. The map will be non-null.
- * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
- */
-proto.pulumirpc.RegisterResourceRequest.prototype.clearEnvoverridesMap = function() {
-  this.getEnvoverridesMap().clear();
-  return this;
 };
 
 
