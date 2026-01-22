@@ -125,11 +125,11 @@ Serverless Lambdas, in minutes:
 
     ```bash
     mkdir pulumi-demo && cd pulumi-demo
-    pulumi new aws-typescript
+    pulumi new serverless-aws-typescript
     ```
 
     The `new` command offers [templates](https://github.com/pulumi/templates/) for all languages and clouds.  Run it without an argument and it'll prompt
-    you with available projects.  This command creates an Amazon S3 bucket and exports its name.
+    you with available projects.  This command creates an AWS Serverless Lambda project written in TypeScript.
 
 3. **Deploy to the Cloud**:
 
