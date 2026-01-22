@@ -39,7 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-var _ packageinstallation.Workspace = &recordingWorkspace{}
+var _ packageinstallation.Context = &recordingWorkspace{}
 
 func (w *recordingWorkspace) save(t *testing.T) {
 	t.Helper()
@@ -86,7 +86,7 @@ func (w *recordingWorkspace) save(t *testing.T) {
 }
 
 type recordingWorkspace struct {
-	w     packageinstallation.Workspace
+	w     packageinstallation.Context
 	steps []string
 }
 

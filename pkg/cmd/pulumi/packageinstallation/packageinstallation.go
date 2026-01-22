@@ -35,9 +35,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// Workspace represents the way that [InstallPlugin] and [InstallProjectPlugins] interact with
+// Context represents the way that [InstallPlugin] and [InstallProjectPlugins] interact with
 // the environment.
-type Workspace interface {
+type Context interface {
 	packageresolution.PluginWorkspace
 
 	// Get the path that a plugin is at.
@@ -110,7 +110,7 @@ type RunPlugin = func(ctx context.Context, wd string) (plugin.Provider, error)
 // If baseProject & projectDir are zero values, then InstallPlugin will just install the
 // plugin.
 //
-// IO operations are intermediates by the passed in [Workspace] and
+// IO operations are intermediates by the passed in [Context] and
 // [registry.Registry]. Both may be operated on in parallel if options.Concurrency > 1 or
 // if it's unset.
 //
@@ -127,7 +127,7 @@ func InstallPlugin(
 	spec workspace.PackageSpec,
 	baseProject workspace.BaseProject, projectDir string,
 	options Options,
-	registry registry.Registry, ws Workspace,
+	registry registry.Registry, ws Context,
 ) (RunPlugin, error) {
 	var runBundle runBundle
 
@@ -155,7 +155,7 @@ func InstallPlugin(
 func InstallProjectPlugins(
 	ctx context.Context,
 	project_ workspace.BaseProject, projectDir string,
-	options Options, registry registry.Registry, ws Workspace,
+	options Options, registry registry.Registry, ws Context,
 ) error {
 	setup := func(ctx context.Context, state state, root pdag.Node) error {
 		return ensureProjectDependencies(ctx, state, root, project[workspace.BaseProject]{
@@ -169,7 +169,7 @@ func InstallProjectPlugins(
 
 func runInstall(
 	ctx context.Context,
-	options Options, registry registry.Registry, ws Workspace,
+	options Options, registry registry.Registry, ws Context,
 	setup func(ctx context.Context, state state, root pdag.Node) error,
 ) error {
 	dag := pdag.New[step]()
@@ -289,7 +289,7 @@ type step interface {
 }
 
 type state struct {
-	ws       Workspace
+	ws       Context
 	registry registry.Registry
 	options  Options
 	dag      *pdag.DAG[step]

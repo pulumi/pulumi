@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-var _ packageinstallation.Workspace = invariantWorkspace{}
+var _ packageinstallation.Context = invariantWorkspace{}
 
 func newInvariantWorkspace(t *testing.T, workDirs []string, plugins []invariantPlugin) *invariantWorkspace {
 	pluginMap := make(map[string]*invariantPlugin, len(plugins))

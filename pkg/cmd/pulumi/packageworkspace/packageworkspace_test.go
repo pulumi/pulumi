@@ -19,6 +19,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 )
 
-// Check that [packageworkspace.Workspace] implements [packageinstallation.Workspace]
+// Check that [packageworkspace.Workspace] implements [packageinstallation.Context]
 // without importing [packageinstallation] from [packageworkspace].
-var _ packageinstallation.Workspace = packageworkspace.Workspace{}
+var _ packageinstallation.Context = packageworkspace.Workspace{}

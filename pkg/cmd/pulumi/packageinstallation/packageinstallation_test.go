@@ -31,9 +31,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Check that [packageworkspace.Workspace] implements [packageinstallation.Workspace]
+// Check that [packageworkspace.Workspace] implements [packageinstallation.Context]
 // without importing [packageworkspace] from [packageinstallation].
-var _ packageinstallation.Workspace = packageworkspace.Workspace{}
+var _ packageinstallation.Context = packageworkspace.Workspace{}
 
 func TestInstallAlreadyInstalledPackage(t *testing.T) {
 	t.Parallel()
