@@ -42,9 +42,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -2949,4 +2951,28 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	frames := runtime.CallersFrames(pcs[:])
 	frame, _ := frames.Next()
 	return ctx.getSourcePositionForFrame(frame)
+}
+
+// CheckPulumiVersion validates that the engine we are connected to is compatible with the passed in version range. If
+// the version is not compatible with the specified range, an exception is raised.
+//
+// The supported syntax for the range is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example
+// ">=3.0.0", or "!3.1.2". Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning
+// greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
+// meaning less-than 3.4.0 or greater-than 3.8.0.
+func (ctx *Context) CheckPulumiVersion(rg string) error {
+	_, err := ctx.state.engine.CheckPulumiVersion(ctx.Context(), &pulumirpc.CheckPulumiVersionRequest{
+		PulumiVersionRange: rg,
+	})
+	if err != nil {
+		if rpcError, ok := rpcerror.FromError(err); ok {
+			if rpcError.Code() == codes.Unimplemented {
+				return errors.New("The installed version of the CLI does not support the `CheckPulumiVersion` RPC. " +
+					"Please upgrade the Pulumi CLI.")
+			}
+			return rpcError
+		}
+		return err
+	}
+	return nil
 }

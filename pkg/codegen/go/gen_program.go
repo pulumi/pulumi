@@ -382,6 +382,8 @@ func (g *generator) genComponentDefinition(w io.Writer, componentName string, co
 				})
 
 				g.genComponent(w, node)
+			case *pcl.PulumiBlock:
+				g.genPulumi(w, node)
 			}
 		}
 
@@ -1089,6 +1091,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genConfigVariable(w, n)
 	case *pcl.LocalVariable:
 		g.genLocalVariable(w, n)
+	case *pcl.PulumiBlock:
+		g.genPulumi(w, n)
 	}
 }
 
@@ -1989,6 +1993,18 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		}
 		g.Fgenf(w, "%s = param\n", name)
 		g.Fgen(w, "}\n")
+	}
+}
+
+func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
+	if v.RequiredVersion != nil {
+		value, temps := g.lowerExpression(v.RequiredVersion, v.Type())
+		g.genTemps(w, temps)
+		g.Fgenf(w, "%sif err := ctx.CheckPulumiVersion(%v); err != nil {\n", g.Indent, value)
+		g.Indented(func() {
+			g.Fgenf(w, "%sreturn err\n", g.Indent)
+		})
+		g.Fgenf(w, "%s}\n", g.Indent)
 	}
 }
 
