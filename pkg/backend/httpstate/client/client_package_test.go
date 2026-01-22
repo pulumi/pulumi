@@ -334,7 +334,7 @@ func TestPublishPackage(t *testing.T) {
 					},
 				},
 			},
-			errorMessage: "failed to upload schema: 400 Bad Request",
+			errorMessage: "400 Bad Request",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -380,12 +380,11 @@ func TestPublishPackage(t *testing.T) {
 
 			// Create client pointing to our test server
 			client := &Client{
-				apiURL:     server.URL,
-				apiToken:   "fake-token",
-				httpClient: httpClient,
+				apiURL:   server.URL,
+				apiToken: "fake-token",
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
-						client: newHTTPClient(),
+						client: httpClient,
 					},
 				},
 			}
