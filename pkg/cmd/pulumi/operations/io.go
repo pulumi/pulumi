@@ -73,7 +73,7 @@ func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*works
 			dir, err := os.ReadDir(".")
 			// if we encounter _any_ error reading the directory, just return the original error
 			if err != nil {
-				return nil, "", fmt.Errorf("bad: %w", oerr)
+				return nil, "", oerr
 			}
 			for _, fi := range dir {
 				if !fi.IsDir() && filepath.Ext(fi.Name()) == ".tf" {
