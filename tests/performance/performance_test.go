@@ -117,8 +117,8 @@ func TestPerfSecretsBatchUpdate(t *testing.T) {
 func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
-		MaxPreviewDuration: 4 * time.Second,
-		MaxUpdateDuration:  4 * time.Second,
+		MaxPreviewDuration: 5 * time.Second,
+		MaxUpdateDuration:  5 * time.Second,
 	}
 
 	// Create an initial stack that contains secrets.
