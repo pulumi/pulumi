@@ -451,8 +451,17 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 
 	// Hydrate the input resource reference, whether it's a plain value or an output (that should be known and resolved).
 	var inputRef resource.ResourceReference
+	if req.Inputs["inputRef"].IsNull() {
+		return plugin.ConstructResponse{}, fmt.Errorf("inputRef is null")
+	}
+
 	if req.Inputs["inputRef"].IsOutput() {
-		inputRef = req.Inputs["inputRef"].OutputValue().Element.ResourceReferenceValue()
+		element := req.Inputs["inputRef"].OutputValue().Element
+		if element.IsNull() {
+			return plugin.ConstructResponse{}, fmt.Errorf("inputRef output is null")
+		}
+
+		inputRef = element.ResourceReferenceValue()
 	} else {
 		inputRef = req.Inputs["inputRef"].ResourceReferenceValue()
 	}
