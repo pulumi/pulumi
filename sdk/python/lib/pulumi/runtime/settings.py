@@ -309,7 +309,7 @@ def check_pulumi_version(rg: str) -> None:
             if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
                 raise Exception(
                     "The installed version of the CLI does not support the `CheckPulumiVersion` RPC. "
-                    + "Please upgrade the Pulumu CLI."
+                    + "Please upgrade the Pulumi CLI."
                 )
             raise grpc_error_to_exception(exn) from None
 
