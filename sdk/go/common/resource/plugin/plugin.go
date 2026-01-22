@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/ryboe/q"
 	"io"
 	"os"
 	"os/exec"
@@ -453,17 +452,6 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	})
 
 	var environment []string
-	if e != nil {
-		q.Q(e)
-		if e.GetStore() != nil {
-			q.Q(e.GetStore())
-		} else {
-			q.Q("e.GetStore was nil")
-		}
-	} else {
-		q.Q("e was nil")
-	}
-
 	if e != nil && e.GetStore() != nil {
 		for k, v := range e.GetStore().Values() {
 			environment = append(environment, k+"="+v)

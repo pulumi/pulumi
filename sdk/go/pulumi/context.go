@@ -1791,6 +1791,11 @@ func (ctx *Context) registerResource(
 				Hooks:                      hooks,
 				EnvVarMappings:             inputs.envVarMappings,
 			})
+			if err != nil {
+				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
+			} else {
+				logging.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
+			}
 		}
 
 		if resp != nil {

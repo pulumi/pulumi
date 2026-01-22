@@ -25,8 +25,6 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/ryboe/q"
-
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -710,13 +708,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// Extract envVarMappings from provider properties if this is a provider resource.
 	var envVarMappings map[string]string
 	if sdkproviders.IsProviderType(goal.Type) {
-		q.Q("step_generator: provider", urn, "goal.Properties.__internal", goal.Properties["__internal"])
 		var err error
 		envVarMappings, err = providers.GetEnvironmentVariableMappings(goal.Properties)
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to get environment variable mappings: %w", err)
 		}
-		q.Q("step_generator: provider", urn, "envVarMappings extracted", envVarMappings)
 	}
 
 	new := resource.NewState{

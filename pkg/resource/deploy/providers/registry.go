@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"sync"
 
-	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
-
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
@@ -36,9 +34,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/ryboe/q"
 )
 
 const (
@@ -604,8 +602,6 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		}}}, nil
 	}
 
-	q.Q("Check: GetEnvironmentVariableMappings", req.URN, "mappings", envVarMappings)
-
 	// Build the environment: start with global, then apply remappings
 	baseStore := env.Global().GetStore()
 
@@ -617,14 +613,10 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 			if value, ok := baseStore.Raw(newKey); ok {
 				// Provider sees OLD_KEY with the value from NEW_KEY
 				mappedStore[oldKey] = value
-				q.Q("Check: Provider env var mapping", req.URN, newKey, "->", oldKey, "value", value)
-			} else {
-				q.Q("Check: Provider env var mapping skipped", req.URN, newKey, "->", oldKey, "reason", "source key not found")
 			}
 		}
 		if len(mappedStore) > 0 {
 			baseStore = envutil.JoinStore(mappedStore, baseStore)
-			q.Q("Check: Provider applied env var mappings", req.URN, "count", len(mappedStore))
 		}
 	}
 
@@ -640,13 +632,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 			relevantKeys = append(relevantKeys, newKey)
 		}
 	}
-	for _, key := range relevantKeys {
-		if value, ok := baseStore.Raw(key); ok {
-			q.Q("Check: Provider env var", req.URN, key, "=", value)
-		}
-	}
 	// TODO: We should thread checksums through here.
-	// TODO: We should thead the env though here.
 	provider, err := loadParameterizedProvider(
 		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 	if err != nil {
@@ -813,14 +799,10 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		// TODO: We should thread checksums through here.
-
 		envVarMappings, err := GetEnvironmentVariableMappings(res.Inputs)
 		if err != nil {
 			return fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, urn, err)
 		}
-
-		q.Q("Same: GetEnvironmentVariableMappings", urn, "mappings", envVarMappings)
 
 		// Build the environment: start with global, then apply remappings
 		baseStore := env.Global().GetStore()
@@ -832,14 +814,10 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 				if value, ok := baseStore.Raw(newKey); ok {
 					// Provider sees OLD_KEY with the value from NEW_KEY
 					mappedStore[oldKey] = value
-					q.Q("Same: Provider env var mapping", urn, newKey, "->", oldKey, "value", value)
-				} else {
-					q.Q("Same: Provider env var mapping skipped", urn, newKey, "->", oldKey, "reason", "source key not found")
 				}
 			}
 			if len(mappedStore) > 0 {
 				baseStore = envutil.JoinStore(mappedStore, baseStore)
-				q.Q("Same: Provider applied env var mappings", urn, "count", len(mappedStore))
 			}
 		}
 
@@ -855,11 +833,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 				relevantKeys = append(relevantKeys, newKey)
 			}
 		}
-		for _, key := range relevantKeys {
-			if value, ok := baseStore.Raw(key); ok {
-				q.Q("Same: Provider env var", urn, key, "=", value)
-			}
-		}
+		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
@@ -929,15 +903,12 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		// TODO: We should thread checksums through here.
 
 		envVarMappings, err := GetEnvironmentVariableMappings(req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-
-		q.Q("Create: GetEnvironmentVariableMappings", req.URN, "mappings", envVarMappings)
 
 		// Build the environment: start with global, then apply remappings
 		baseStore := env.Global().GetStore()
@@ -950,14 +921,10 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 				if value, ok := baseStore.Raw(newKey); ok {
 					// Provider sees OLD_KEY with the value from NEW_KEY
 					mappedStore[oldKey] = value
-					q.Q("Create: Provider env var mapping", req.URN, newKey, "->", oldKey, "value", value)
-				} else {
-					q.Q("Create: Provider env var mapping skipped", req.URN, newKey, "->", oldKey, "reason", "source key not found")
 				}
 			}
 			if len(mappedStore) > 0 {
 				baseStore = envutil.JoinStore(mappedStore, baseStore)
-				q.Q("Create: Provider applied env var mappings", req.URN, "count", len(mappedStore))
 			}
 		}
 
@@ -973,12 +940,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 				relevantKeys = append(relevantKeys, newKey)
 			}
 		}
-		for _, key := range relevantKeys {
-			if value, ok := baseStore.Raw(key); ok {
-				q.Q("Create: Provider env var", req.URN, key, "=", value)
-			}
-		}
-
+		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},

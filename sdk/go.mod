@@ -50,7 +50,6 @@ require (
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/esc v0.17.0
-	github.com/ryboe/q v1.0.24
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/sync v0.12.0
 	golang.org/x/term v0.37.0
@@ -74,8 +73,6 @@ require (
 	github.com/go-git/go-billy/v5 v5.6.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/iwahbe/helpmakego v0.4.1 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
