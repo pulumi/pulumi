@@ -1207,5 +1207,6 @@ func TestTerraformUp(t *testing.T) {
 	_, stderr := e.RunCommandExpectError("pulumi", "up")
 	assert.Contains(t, stderr, "no project file found however, a Terraform configuration file was detected. "+
 		"To convert this configuration to a Pulumi project, "+
-		"please see the documentation at https://www.pulumi.com/docs/iac/guides/migration/migrating-to-pulumi/from-terraform/")
+		"please see the documentation at "+
+		"https://www.pulumi.com/docs/iac/guides/migration/migrating-to-pulumi/from-terraform/")
 }
