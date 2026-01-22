@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"os"
 	"path/filepath"
 	"strings"
@@ -502,7 +503,7 @@ func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor, e env.E
 		if err != nil {
 			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
 		}
-
+		q.Q("host.Provider environment: ", e)
 		plug, err := NewProvider(
 			host, host.ctx, descriptor,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName, e)
