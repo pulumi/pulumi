@@ -1422,6 +1422,9 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	for _, env := range pt.opts.CreateEnvironments {
 		name := pt.opts.getEnvNameWithOwner(env.Name)
 
+		owner := os.Getenv("PULUMI_TEST_OWNER")
+		pt.t.Logf("Creating env name=%s, env.Name=%s PULUMI_TEST_OWNER=%s", name, env.Name, owner)
+
 		envFile, err := func() (string, error) {
 			temp, err := os.CreateTemp(pt.t.TempDir(), fmt.Sprintf("pulumi-env-%v-*", env.Name))
 			if err != nil {
