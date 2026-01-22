@@ -140,10 +140,6 @@ func (w invariantWorkspace) HasPluginGTE(
 	return true, gte.Version, nil
 }
 
-func (w invariantWorkspace) IsExternalURL(ctx context.Context, source string) bool {
-	return workspace.IsExternalURL(source)
-}
-
 func (w invariantWorkspace) GetLatestVersion(
 	ctx context.Context, spec workspace.PluginDescriptor,
 ) (*semver.Version, error) {

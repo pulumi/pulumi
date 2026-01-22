@@ -115,13 +115,6 @@ func (w *recordingWorkspace) HasPluginGTE(
 	return ok, version, err
 }
 
-func (w *recordingWorkspace) IsExternalURL(ctx context.Context, source string) bool {
-	w.start("IsExternalURL", source)
-	result := w.w.IsExternalURL(ctx, source)
-	w.finish(result)
-	return result
-}
-
 func (w *recordingWorkspace) GetLatestVersion(
 	ctx context.Context, spec workspace.PluginDescriptor,
 ) (*semver.Version, error) {

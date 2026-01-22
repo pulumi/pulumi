@@ -32,7 +32,6 @@ var Instance Context = defaultContext{}
 type Context interface {
 	HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool
 	HasPluginGTE(ctx context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error)
-	IsExternalURL(ctx context.Context, source string) bool
 	GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
 }
 
@@ -46,10 +45,6 @@ func (defaultContext) HasPluginGTE(_ context.Context, spec workspace.PluginDescr
 	return workspace.HasPluginGTE(spec)
 }
 
-func (defaultContext) IsExternalURL(_ context.Context, source string) bool {
-	return workspace.IsExternalURL(source)
-}
-
 func (defaultContext) GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
 	return spec.GetLatestVersion(ctx)
 }
@@ -59,7 +54,6 @@ var _ Context = MockContext{}
 type MockContext struct {
 	HasPluginF        func(ctx context.Context, spec workspace.PluginDescriptor) bool
 	HasPluginGTEF     func(ctx context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error)
-	IsExternalURLF    func(ctx context.Context, source string) bool
 	GetLatestVersionF func(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
 }
 
@@ -75,13 +69,6 @@ func (m MockContext) HasPluginGTE(ctx context.Context, spec workspace.PluginDesc
 		return m.HasPluginGTEF(ctx, spec)
 	}
 	return false, nil, nil
-}
-
-func (m MockContext) IsExternalURL(ctx context.Context, source string) bool {
-	if m.IsExternalURLF != nil {
-		return m.IsExternalURLF(ctx, source)
-	}
-	return workspace.IsExternalURL(source)
 }
 
 func (m MockContext) GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {

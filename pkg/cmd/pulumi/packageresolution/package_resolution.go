@@ -340,7 +340,7 @@ func Resolve(
 		return naiveResolution(spec, naivePackageDescriptor, false), nil
 	}
 
-	if ws.IsExternalURL(ctx, spec.Source) || naivePackageDescriptor.IsGitPlugin() {
+	if workspace.IsExternalURL(spec.Source) || naivePackageDescriptor.IsGitPlugin() {
 		return remoteResolution()
 	}
 

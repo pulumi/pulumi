@@ -1,4 +1,3 @@
-IsExternalURL{"opentofu/airbytehq/airbyte"} -> {false}
 HasPlugin{PluginDescriptor{Name:"airbyte", Kind:"resource", Version:Version{Minor:13}}} -> {false}
 DownloadPlugin{ctx, PluginDescriptor{Name:"terraform-provider", Kind:"resource", Version:Version{Major:1, Patch:2}}} -> {"$HOME/.pulumi/plugins/resource-terraform-provider-v1.0.2", <func(bool)>, nil}
 LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-terraform-provider-v1.0.2"} -> {nil, "", wrapErrors{msg:"no project file found and no plugin file found", errs:[2]{errorString{s:"no project file found"}, errorString{s:"no plugin file found"}}}}
