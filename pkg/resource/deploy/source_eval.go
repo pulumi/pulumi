@@ -2501,9 +2501,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if opts.GetPluginDownloadUrl() != "" {
 			providers.SetProviderURL(props, opts.GetPluginDownloadUrl())
 		}
-		if len(req.GetEnvOverrides()) > 0 {
-			providers.SetEnvironmentOverrides(props, req.GetEnvOverrides())
-		}
 		if len(req.GetEnvVarMappings()) > 0 {
 			providers.SetEnvironmentVariableMappings(props, req.GetEnvVarMappings())
 		}

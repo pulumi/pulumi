@@ -19,8 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -35,10 +34,12 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
@@ -968,8 +969,8 @@ func convertNotApplicable(protoNotApplicable []*pulumirpc.PolicyNotApplicable) [
 	})
 }
 
-// constructEnv creates a slice of key/value pairs to be used as the environment for the policy pack process. Each entry
-// is of the form "key=value". Config is passed as an environment variable (including unecrypted secrets), similar to
+// constructEnv creates an Environment containing a store of key/value pairs to be used for the policy pack process.
+// Config is passed as an environment variable (including unencrypted secrets), similar to
 // how config is passed to each language runtime plugin.
 func constructEnv(opts *PolicyAnalyzerOptions, runtime string) (env.Env, error) {
 
