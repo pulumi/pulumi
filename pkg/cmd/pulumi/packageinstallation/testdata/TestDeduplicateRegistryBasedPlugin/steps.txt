@@ -5,8 +5,7 @@ HasPlugin{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"
 HasPluginGTE{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false, nil, nil}
 GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {nil, nil}
 DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-plugin-a", <func(bool)>, nil}
-DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-a"} -> {"$HOME/.pulumi/plugins/resource-plugin-a/PulumiPlugin.yaml", nil}
-LoadPluginProject{ctx, "$HOME/.pulumi/plugins/resource-plugin-a/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[2]{"plugin-b":PackageSpec{Source:"plugin-b", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}, "plugin-d":PackageSpec{Source:"plugin-d"}}}, nil}
+LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-a"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[2]{"plugin-b":PackageSpec{Source:"plugin-b", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}, "plugin-d":PackageSpec{Source:"plugin-d"}}}, "$HOME/.pulumi/plugins/resource-plugin-a/PulumiPlugin.yaml", nil}
 HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false, nil, nil}
 IsExternalURL{"plugin-b"} -> {false}
@@ -18,11 +17,9 @@ HasPluginGTE{PluginDescriptor{Name:"plugin-d", Kind:"resource"}} -> {false, nil,
 IsExternalURL{"plugin-d"} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"shared-plugin", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/shared-plugin-1.0.0.tar.gz"}} -> {false, nil, nil}
 DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-plugin-b", <func(bool)>, nil}
-DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b"} -> {"$HOME/.pulumi/plugins/resource-plugin-b/PulumiPlugin.yaml", nil}
-LoadPluginProject{ctx, "$HOME/.pulumi/plugins/resource-plugin-b/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-c":PackageSpec{Source:"plugin-c"}}}, nil}
+LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-c":PackageSpec{Source:"plugin-c"}}}, "$HOME/.pulumi/plugins/resource-plugin-b/PulumiPlugin.yaml", nil}
 DownloadPlugin{ctx, PluginDescriptor{Name:"shared-plugin", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/shared-plugin-1.0.0.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-shared-plugin-v1.0.0", <func(bool)>, nil}
-DetectPluginPathAt{ctx, "$HOME/.pulumi/plugins/resource-shared-plugin-v1.0.0"} -> {"$HOME/.pulumi/plugins/resource-shared-plugin-v1.0.0/PulumiPlugin.yaml", nil}
-LoadPluginProject{ctx, "$HOME/.pulumi/plugins/resource-shared-plugin-v1.0.0/PulumiPlugin.yaml"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, nil}
+LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-shared-plugin-v1.0.0"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, "$HOME/.pulumi/plugins/resource-shared-plugin-v1.0.0/PulumiPlugin.yaml", nil}
 HasPlugin{PluginDescriptor{Name:"plugin-c", Kind:"resource"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-c", Kind:"resource"}} -> {false, nil, nil}
 IsExternalURL{"plugin-c"} -> {false}

@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -51,14 +52,16 @@ type Options struct {
 // The returned workspace must be closed after use.
 func New(
 	packageresolution packageresolution.PluginWorkspace,
+	pkgworkspace pkgWorkspace.Context,
 	host plugin.Host, stdout, stderr io.Writer,
 	parentSpan opentracing.Span, options Options,
 ) Workspace {
-	return Workspace{packageresolution, host, stdout, stderr, options, parentSpan}
+	return Workspace{packageresolution, pkgworkspace, host, stdout, stderr, options, parentSpan}
 }
 
 type Workspace struct {
 	packageresolution.PluginWorkspace
+	pkgWorkspace.Context
 	host           plugin.Host
 	stdout, stderr io.Writer
 	options        Options
@@ -115,10 +118,6 @@ func (Workspace) IsExecutable(ctx context.Context, binaryPath string) (bool, err
 	return info.Mode()&0o111 != 0 && !info.IsDir(), nil
 }
 
-func (Workspace) LoadPluginProject(ctx context.Context, path string) (*workspace.PluginProject, error) {
-	return workspace.LoadPluginProject(path)
-}
-
 // Download a plugin onto disk, returning the path the plugin was downloaded to.
 func (w Workspace) DownloadPlugin(
 	ctx context.Context, pluginSpec workspace.PluginDescriptor,
@@ -163,10 +162,6 @@ func (w Workspace) DownloadPlugin(
 		return "", nil, err
 	}
 	return filepath.Join(outDir, pluginSpec.SubDir()), cleanup, nil
-}
-
-func (Workspace) DetectPluginPathAt(ctx context.Context, path string) (string, error) {
-	return workspace.DetectPluginPathAt(path)
 }
 
 // Link a package into a project, generating an SDK if appropriate.

@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -151,13 +152,6 @@ func (w *recordingWorkspace) IsExecutable(ctx context.Context, binaryPath string
 	return result, err
 }
 
-func (w *recordingWorkspace) LoadPluginProject(ctx context.Context, path string) (*workspace.PluginProject, error) {
-	w.start("LoadPluginProject", ctx, path)
-	project, err := w.w.LoadPluginProject(ctx, path)
-	w.finish(project, err)
-	return project, err
-}
-
 func (w *recordingWorkspace) DownloadPlugin(
 	ctx context.Context, plugin workspace.PluginDescriptor,
 ) (string, packageinstallation.MarkInstallationDone, error) {
@@ -171,11 +165,34 @@ func (w *recordingWorkspace) DownloadPlugin(
 	}, err
 }
 
-func (w *recordingWorkspace) DetectPluginPathAt(ctx context.Context, path string) (string, error) {
-	w.start("DetectPluginPathAt", ctx, path)
-	pluginPath, err := w.w.DetectPluginPathAt(ctx, path)
-	w.finish(pluginPath, err)
-	return pluginPath, err
+func (w *recordingWorkspace) New() (pkgWorkspace.W, error) {
+	w.start("New")
+	result, err := w.w.New()
+	w.finish(result, err)
+	return result, err
+}
+
+func (w *recordingWorkspace) ReadProject() (*workspace.Project, string, error) {
+	w.start("ReadProject")
+	project, path, err := w.w.ReadProject()
+	w.finish(project, path, err)
+	return project, path, err
+}
+
+func (w *recordingWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
+	w.start("GetStoredCredentials")
+	creds, err := w.w.GetStoredCredentials()
+	w.finish(creds, err)
+	return creds, err
+}
+
+func (w *recordingWorkspace) LoadPluginProjectAt(
+	ctx context.Context, path string,
+) (*workspace.PluginProject, string, error) {
+	w.start("LoadPluginProjectAt", ctx, path)
+	project, filePath, err := w.w.LoadPluginProjectAt(ctx, path)
+	w.finish(project, filePath, err)
+	return project, filePath, err
 }
 
 func (w *recordingWorkspace) LinkPackage(

@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -39,6 +40,7 @@ import (
 // the environment.
 type Context interface {
 	packageresolution.PluginWorkspace
+	pkgWorkspace.Context
 
 	// Get the path that a plugin is at.
 	GetPluginPath(ctx context.Context, plugin workspace.PluginDescriptor) (string, error)
@@ -55,12 +57,8 @@ type Context interface {
 	// returned.
 	IsExecutable(ctx context.Context, binaryPath string) (bool, error)
 
-	LoadPluginProject(ctx context.Context, path string) (*workspace.PluginProject, error)
-
 	// Download a plugin onto disk, returning the path the plugin was downloaded to.
 	DownloadPlugin(ctx context.Context, plugin workspace.PluginDescriptor) (string, MarkInstallationDone, error)
-
-	DetectPluginPathAt(ctx context.Context, path string) (string, error)
 
 	// Link a package into a project, generating an SDK if appropriate.
 	//
@@ -391,7 +389,7 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 	downloadCleanup *downloadCleanup,
 	runBundleOut *runBundle,
 ) error {
-	filePath, err := state.ws.DetectPluginPathAt(ctx, projectDir)
+	pluginProject, _, err := state.ws.LoadPluginProjectAt(ctx, projectDir)
 	switch {
 	// There is a PulumiPlugin file, so it may have dependencies. We need to
 	// gather dependencies and install them before we can run the install
@@ -399,11 +397,6 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 	case err == nil:
 		runBundleOut.pluginPath = projectDir
 		runBundleOut.name = name
-		pluginProject, err := state.ws.LoadPluginProject(ctx, filePath)
-		if err != nil {
-			return err
-		}
-
 		install, installReady := state.dag.NewNode(installStep{
 			downloadCleanup: downloadCleanup,
 			project: project[*workspace.PluginProject]{
