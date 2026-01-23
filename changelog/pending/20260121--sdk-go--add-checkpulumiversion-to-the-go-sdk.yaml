@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/go
-  description: Add CheckPulumiVersion to the Go SDK
+  description: Add RequirePulumiVersion to the Go SDK

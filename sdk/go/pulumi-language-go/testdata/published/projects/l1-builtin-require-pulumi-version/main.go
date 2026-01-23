@@ -9,7 +9,7 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		cfg := config.New(ctx, "")
 		version := cfg.Require("version")
-		if err := ctx.CheckPulumiVersion(version); err != nil {
+		if err := ctx.RequirePulumiVersion(version); err != nil {
 			return err
 		}
 		return nil

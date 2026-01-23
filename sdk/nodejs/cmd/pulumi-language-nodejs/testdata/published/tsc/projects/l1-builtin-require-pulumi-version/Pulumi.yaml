@@ -1,4 +1,4 @@
-name: l1-builtin-check-pulumi-version
+name: l1-builtin-require-pulumi-version
 runtime:
   name: nodejs
   options:

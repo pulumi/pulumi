@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/nodejs
-  description: Add checkPulumiVersion to the Node.js SDK
+  description: Add requirePulumiVersion to the Node.js SDK

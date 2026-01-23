@@ -178,7 +178,7 @@ class StartDebuggingRequest(google.protobuf.message.Message):
 global___StartDebuggingRequest = StartDebuggingRequest
 
 @typing.final
-class CheckPulumiVersionRequest(google.protobuf.message.Message):
+class RequirePulumiVersionRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PULUMI_VERSION_RANGE_FIELD_NUMBER: builtins.int
@@ -196,10 +196,10 @@ class CheckPulumiVersionRequest(google.protobuf.message.Message):
     ) -> None: ...
     def ClearField(self, field_name: typing.Literal["pulumi_version_range", b"pulumi_version_range"]) -> None: ...
 
-global___CheckPulumiVersionRequest = CheckPulumiVersionRequest
+global___RequirePulumiVersionRequest = RequirePulumiVersionRequest
 
 @typing.final
-class CheckPulumiVersionResponse(google.protobuf.message.Message):
+class RequirePulumiVersionResponse(google.protobuf.message.Message):
     """empty"""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
@@ -208,4 +208,4 @@ class CheckPulumiVersionResponse(google.protobuf.message.Message):
         self,
     ) -> None: ...
 
-global___CheckPulumiVersionResponse = CheckPulumiVersionResponse
+global___RequirePulumiVersionResponse = RequirePulumiVersionResponse

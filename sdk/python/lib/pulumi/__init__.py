@@ -60,7 +60,7 @@ from .metadata import (
     get_project,
     get_stack,
     get_root_directory,
-    check_pulumi_version,
+    require_pulumi_version,
 )
 
 from .resource import (
@@ -162,7 +162,7 @@ __all__ = [
     "get_project",
     "get_stack",
     "get_root_directory",
-    "check_pulumi_version",
+    "require_pulumi_version",
     # resource
     "Alias",
     "Resource",

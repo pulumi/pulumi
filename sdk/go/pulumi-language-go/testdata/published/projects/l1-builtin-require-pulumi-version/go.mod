@@ -1,4 +1,4 @@
-module l1-builtin-check-pulumi-version
+module l1-builtin-require-pulumi-version
 
 go 1.23
 

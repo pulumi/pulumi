@@ -270,9 +270,9 @@ func (e *hostEngine) StartDebugging(ctx context.Context,
 	return nil, errors.New("unsupported")
 }
 
-func (e *hostEngine) CheckPulumiVersion(ctx context.Context,
-	req *pulumirpc.CheckPulumiVersionRequest,
-) (*pulumirpc.CheckPulumiVersionResponse, error) {
+func (e *hostEngine) RequirePulumiVersion(ctx context.Context,
+	req *pulumirpc.RequirePulumiVersionRequest,
+) (*pulumirpc.RequirePulumiVersionResponse, error) {
 	return nil, errors.New("unsupported")
 }
 

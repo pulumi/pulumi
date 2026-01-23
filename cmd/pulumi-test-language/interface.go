@@ -206,7 +206,7 @@ type languageTestServer struct {
 	// Used by the Log method to track the last message logged, this is so we can elide duplicate messages.
 	previousMessage string
 
-	cliVersion string // Used by CheckPulumiVersion to mock the CLI version
+	cliVersion string // Used by RequirePulumiVersion to mock the CLI version
 }
 
 func (eng *languageTestServer) Address() string {
@@ -274,12 +274,12 @@ func (eng *languageTestServer) Log(_ context.Context, req *pulumirpc.LogRequest)
 	return &pbempty.Empty{}, nil
 }
 
-func (eng *languageTestServer) CheckPulumiVersion(ctx context.Context, req *pulumirpc.CheckPulumiVersionRequest,
-) (*pulumirpc.CheckPulumiVersionResponse, error) {
+func (eng *languageTestServer) RequirePulumiVersion(ctx context.Context, req *pulumirpc.RequirePulumiVersionRequest,
+) (*pulumirpc.RequirePulumiVersionResponse, error) {
 	if err := plugin.ValidatePulumiVersionRange(req.PulumiVersionRange, eng.cliVersion); err != nil {
 		return nil, err
 	}
-	return &pulumirpc.CheckPulumiVersionResponse{}, nil
+	return &pulumirpc.RequirePulumiVersionResponse{}, nil
 }
 
 // A providerLoader is a schema loader that loads schemas from a given set of providers.

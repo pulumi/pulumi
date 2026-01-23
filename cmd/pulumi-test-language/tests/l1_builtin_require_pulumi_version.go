@@ -21,13 +21,13 @@ import (
 )
 
 func init() {
-	LanguageTests["l1-builtin-check-pulumi-version"] = LanguageTest{
+	LanguageTests["l1-builtin-require-pulumi-version"] = LanguageTest{
 		RunsShareSource: true,
 		Runs: []TestRun{
 			{
 				// A version range that is not satisfied by the CLI version used in the tests
 				Config: config.Map{
-					config.MustMakeKey("l1-builtin-check-pulumi-version", "version"): config.NewValue("=3.1.2"),
+					config.MustMakeKey("l1-builtin-require-pulumi-version", "version"): config.NewValue("=3.1.2"),
 				},
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
 					require.True(l, result.IsBail(res.Err), "expected a bail result on preview")
@@ -45,7 +45,7 @@ func init() {
 			{
 				// A version range that is satisfied by the CLI version used in the tests
 				Config: config.Map{
-					config.MustMakeKey("l1-builtin-check-pulumi-version", "version"): config.NewValue(">=3.0.0"),
+					config.MustMakeKey("l1-builtin-require-pulumi-version", "version"): config.NewValue(">=3.0.0"),
 				},
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
 					require.Nil(l, res.Err)

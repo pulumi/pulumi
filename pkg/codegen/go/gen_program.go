@@ -2000,7 +2000,7 @@ func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
 	if v.RequiredVersion != nil {
 		value, temps := g.lowerExpression(v.RequiredVersion, v.Type())
 		g.genTemps(w, temps)
-		g.Fgenf(w, "%sif err := ctx.CheckPulumiVersion(%v); err != nil {\n", g.Indent, value)
+		g.Fgenf(w, "%sif err := ctx.RequirePulumiVersion(%v); err != nil {\n", g.Indent, value)
 		g.Indented(func() {
 			g.Fgenf(w, "%sreturn err\n", g.Indent)
 		})
