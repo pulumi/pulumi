@@ -1,0 +1,5 @@
+name: l2-resource-option-ignore-changes
+runtime:
+  name: nodejs
+  options:
+    typescript: false
