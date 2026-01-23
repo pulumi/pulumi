@@ -412,7 +412,7 @@ export function requirePulumiVersion(range: string): Promise<void> {
                     return reject(
                         new Error(
                             "The installed version of the CLI does not support the `RequirePulumiVersion` RPC. " +
-                            "Please upgrade the Pulumi CLI.",
+                                "Please upgrade the Pulumi CLI.",
                         ),
                     );
                 }
