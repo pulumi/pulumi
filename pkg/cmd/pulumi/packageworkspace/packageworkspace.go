@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
@@ -51,7 +50,7 @@ type Options struct {
 //
 // The returned workspace must be closed after use.
 func New(
-	packageresolution packageresolution.PluginWorkspace,
+	packageresolution pluginstorage.Context,
 	pkgworkspace pkgWorkspace.Context,
 	host plugin.Host, stdout, stderr io.Writer,
 	parentSpan opentracing.Span, options Options,
@@ -59,9 +58,14 @@ func New(
 	return Workspace{packageresolution, pkgworkspace, host, stdout, stderr, options, parentSpan}
 }
 
+type (
+	pluginStorageContext = pluginstorage.Context
+	pkgWorkspaceContext  = pkgWorkspace.Context
+)
+
 type Workspace struct {
-	packageresolution.PluginWorkspace
-	pkgWorkspace.Context
+	pluginStorageContext
+	pkgWorkspaceContext
 	host           plugin.Host
 	stdout, stderr io.Writer
 	options        Options
@@ -126,7 +130,7 @@ func (w Workspace) DownloadPlugin(
 	util.SetKnownPluginVersion(&pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
-		pluginSpec.Version, err = pluginSpec.GetLatestVersion(ctx)
+		pluginSpec.Version, err = pluginstorage.Instance.GetLatestVersion(ctx, pluginSpec)
 		if err != nil {
 			return "", nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
 		}

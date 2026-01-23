@@ -27,6 +27,7 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -39,7 +40,7 @@ import (
 // Context represents the way that [InstallPlugin] and [InstallProjectPlugins] interact with
 // the environment.
 type Context interface {
-	packageresolution.PluginWorkspace
+	pluginstorage.Context
 	pkgWorkspace.Context
 
 	// Get the path that a plugin is at.

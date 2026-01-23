@@ -1,6 +1,5 @@
 HasPlugin{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false, nil, nil}
-IsExternalURL{"plugin-a"} -> {false}
 HasPlugin{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {false, nil, nil}
 GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}} -> {Version{Major:1}, nil}
@@ -8,13 +7,11 @@ DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-a", Kind:"resource", Version:V
 LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-a-v1.0.0"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[2]{"plugin-b":PackageSpec{Source:"plugin-b", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}, "plugin-c":PackageSpec{Source:"plugin-c", PluginDownloadURL:"https://example.com/plugin-c.tar.gz"}}}, "$HOME/.pulumi/plugins/resource-plugin-a-v1.0.0/PulumiPlugin.yaml", nil}
 HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false, nil, nil}
-IsExternalURL{"plugin-b"} -> {false}
 HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false, nil, nil}
 GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-b", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {Version{Major:2}, nil}
 HasPlugin{PluginDescriptor{Name:"plugin-c", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-c.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-c", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-c.tar.gz"}} -> {false, nil, nil}
-IsExternalURL{"plugin-c"} -> {false}
 HasPlugin{PluginDescriptor{Name:"plugin-c", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-c.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-c", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-c.tar.gz"}} -> {false, nil, nil}
 GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-c", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-c.tar.gz"}} -> {Version{Major:3}, nil}
@@ -24,13 +21,11 @@ DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-c", Kind:"resource", Version:V
 LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-c-v3.0.0"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-d":PackageSpec{Source:"plugin-d", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}}}, "$HOME/.pulumi/plugins/resource-plugin-c-v3.0.0/PulumiPlugin.yaml", nil}
 HasPlugin{PluginDescriptor{Name:"plugin-d", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-d", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}} -> {false, nil, nil}
-IsExternalURL{"plugin-d"} -> {false}
 HasPlugin{PluginDescriptor{Name:"plugin-d", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-d", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}} -> {false, nil, nil}
 GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-d", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}} -> {Version{Major:3}, nil}
 HasPlugin{PluginDescriptor{Name:"plugin-d", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-d", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}} -> {false, nil, nil}
-IsExternalURL{"plugin-d"} -> {false}
 HasPlugin{PluginDescriptor{Name:"plugin-d", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"plugin-d", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}} -> {false, nil, nil}
 GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-d", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-d.tar.gz"}} -> {Version{Major:3}, nil}

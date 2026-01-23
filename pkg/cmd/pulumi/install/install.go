@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -224,7 +225,7 @@ func installPackagesFromProject(
 	if err != nil {
 		return err
 	}
-	ws := packageworkspace.New(packageresolution.DefaultWorkspace(), pkgWorkspace.Instance, pctx.Host, stdout, stderr, nil,
+	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, stdout, stderr, nil,
 		packageworkspace.Options{
 			UseLanguageVersionTools: useLanguageVersionTools,
 		})

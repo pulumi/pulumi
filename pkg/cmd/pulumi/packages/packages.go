@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -550,7 +551,7 @@ func ProviderFromSource(
 	result, err := packageresolution.Resolve(
 		pctx.Base(),
 		reg,
-		packageresolution.DefaultWorkspace(),
+		pluginstorage.Instance,
 		packageSpec,
 		packageresolution.Options{
 			ResolveWithRegistry: e.GetBool(env.Experimental) &&

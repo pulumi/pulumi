@@ -22,43 +22,13 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type mockWorkspace struct {
-	hasPlugin        func(spec workspace.PluginDescriptor) bool
-	hasPluginGTE     func(spec workspace.PluginDescriptor) (bool, *semver.Version, error)
-	getLatestVersion func(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
-}
-
-func (m mockWorkspace) GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
-	if m.getLatestVersion != nil {
-		return m.getLatestVersion(ctx, spec)
-	}
-	return nil, workspace.ErrGetLatestVersionNotSupported
-}
-
-func (m mockWorkspace) HasPlugin(spec workspace.PluginDescriptor) bool {
-	if m.hasPlugin != nil {
-		return m.hasPlugin(spec)
-	}
-	return false
-}
-
-func (m mockWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
-	if m.hasPluginGTE != nil {
-		return m.hasPluginGTE(spec)
-	}
-	return false, nil, nil
-}
-
-func (m mockWorkspace) IsExternalURL(source string) bool {
-	return workspace.IsExternalURL(source)
-}
 
 func TestResolvePackage(t *testing.T) {
 	t.Parallel()
@@ -67,7 +37,7 @@ func TestResolvePackage(t *testing.T) {
 		name             string
 		options          *Options
 		pluginSpec       workspace.PackageSpec
-		workspace        PluginWorkspace
+		workspace        pluginstorage.Context
 		registryResponse func() (registry.Registry, error)
 		expected         Resolution
 		expectedErr      error
@@ -121,8 +91,8 @@ func TestResolvePackage(t *testing.T) {
 		{
 			name:       "not found + pre-registry package",
 			pluginSpec: workspace.PackageSpec{Source: "aws"}, // aws is in the pre-registry allowlist
-			workspace: mockWorkspace{
-				getLatestVersion: func(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
+			workspace: pluginstorage.MockContext{
+				GetLatestVersionF: func(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
 					if spec.Name == "aws" {
 						return &semver.Version{Major: 7, Minor: 14}, nil
 					}
@@ -152,8 +122,8 @@ func TestResolvePackage(t *testing.T) {
 		{
 			name:       "git based pluginDownloadURL",
 			pluginSpec: workspace.PackageSpec{Source: "example-plugin", PluginDownloadURL: "git://github.com/example/plugin"},
-			workspace: mockWorkspace{
-				getLatestVersion: func(_ context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
+			workspace: pluginstorage.MockContext{
+				GetLatestVersionF: func(_ context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
 					require.Equal(t, "example-plugin", spec.Name)
 					require.Equal(t, "git://github.com/example/plugin", spec.PluginDownloadURL)
 					return &semver.Version{Pre: []semver.PRVersion{{VersionStr: "x123456"}}}, nil
@@ -178,7 +148,7 @@ func TestResolvePackage(t *testing.T) {
 			// This needs to be a real repo, since workspace.NewPluginDescriptor doesn't facilitate mocking.
 			name:       "git based source",
 			pluginSpec: workspace.PackageSpec{Source: "github.com/pulumi/component-test-providers/test-provider"},
-			workspace:  mockWorkspace{},
+			workspace:  pluginstorage.MockContext{},
 			expected: PackageResolution{
 				Spec: workspace.PackageSpec{
 					Source:  "github.com/pulumi/component-test-providers/test-provider",
@@ -217,8 +187,8 @@ func TestResolvePackage(t *testing.T) {
 			name:       "pre-registry package with registry disabled",
 			options:    &Options{ResolveWithRegistry: false},
 			pluginSpec: workspace.PackageSpec{Source: "aws"},
-			workspace: mockWorkspace{
-				getLatestVersion: func(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
+			workspace: pluginstorage.MockContext{
+				GetLatestVersionF: func(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error) {
 					if spec.Name != "aws" {
 						panic(fmt.Sprintf("unexpected spec: %#v", spec))
 					}
@@ -265,8 +235,8 @@ func TestResolvePackage(t *testing.T) {
 			pluginSpec: workspace.PackageSpec{
 				Source: "installed-pkg", Version: "1.2.3",
 			},
-			workspace: mockWorkspace{
-				hasPlugin: func(spec workspace.PluginDescriptor) bool {
+			workspace: pluginstorage.MockContext{
+				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) bool {
 					return spec.Name == "installed-pkg" &&
 						spec.Version != nil &&
 						spec.Version.EQ(semver.Version{Major: 1, Minor: 2, Patch: 3})
@@ -292,11 +262,11 @@ func TestResolvePackage(t *testing.T) {
 				ResolveWithRegistry:                        true,
 			},
 			pluginSpec: workspace.PackageSpec{Source: "installed-pkg"},
-			workspace: mockWorkspace{
-				hasPluginGTE: func(spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
+			workspace: pluginstorage.MockContext{
+				HasPluginGTEF: func(_ context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
 					return spec.Name == "installed-pkg", &semver.Version{Major: 3}, nil
 				},
-				hasPlugin: func(spec workspace.PluginDescriptor) bool {
+				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) bool {
 					return spec.Name == "installed-pkg" &&
 						spec.Version != nil && spec.Version.EQ(semver.Version{Major: 3})
 				},
@@ -318,7 +288,7 @@ func TestResolvePackage(t *testing.T) {
 			name:       "not installed in workspace, fallback to registry",
 			options:    &Options{ResolveWithRegistry: true},
 			pluginSpec: workspace.PackageSpec{Source: "registry-pkg"},
-			workspace:  mockWorkspace{},
+			workspace:  pluginstorage.MockContext{},
 			registryResponse: func() (registry.Registry, error) {
 				meta := apitype.PackageMetadata{
 					Name:              "registry-pkg",
@@ -361,7 +331,7 @@ func TestResolvePackage(t *testing.T) {
 			name:       "registry name",
 			options:    &Options{ResolveWithRegistry: true},
 			pluginSpec: workspace.PackageSpec{Source: "org/registry-pkg"},
-			workspace:  mockWorkspace{},
+			workspace:  pluginstorage.MockContext{},
 			registryResponse: func() (registry.Registry, error) {
 				meta := apitype.PackageMetadata{
 					Name:              "registry-pkg",
@@ -406,7 +376,7 @@ func TestResolvePackage(t *testing.T) {
 				Source:     "param-pkg",
 				Parameters: []string{"arg1"},
 			},
-			workspace: mockWorkspace{},
+			workspace: pluginstorage.MockContext{},
 			registryResponse: func() (registry.Registry, error) {
 				meta := apitype.PackageMetadata{
 					Name:              "param-pkg",
@@ -454,7 +424,7 @@ func TestResolvePackage(t *testing.T) {
 				Source:     "already-param-pkg",
 				Parameters: []string{"arg1"},
 			},
-			workspace: mockWorkspace{},
+			workspace: pluginstorage.MockContext{},
 			registryResponse: func() (registry.Registry, error) {
 				meta := apitype.PackageMetadata{
 					Name:      "already-param-pkg",
@@ -496,7 +466,7 @@ func TestResolvePackage(t *testing.T) {
 		{
 			name:       "metadata with parameterization populates Pkg.Parameterization",
 			pluginSpec: workspace.PackageSpec{Source: "parameterized-pkg"},
-			workspace:  mockWorkspace{},
+			workspace:  pluginstorage.MockContext{},
 			registryResponse: func() (registry.Registry, error) {
 				meta := apitype.PackageMetadata{
 					Name:      "parameterized-pkg",
@@ -554,14 +524,14 @@ func TestResolvePackage(t *testing.T) {
 			name:       "registry resolution with matching major version locally installed and in registry",
 			options:    &Options{ResolveWithRegistry: true},
 			pluginSpec: workspace.PackageSpec{Source: "major-match-pkg"},
-			workspace: mockWorkspace{
-				hasPluginGTE: func(spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
+			workspace: pluginstorage.MockContext{
+				HasPluginGTEF: func(_ context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
 					if spec.Name == "major-match-pkg" && spec.Version != nil && spec.Version.Major == 2 {
 						return true, &semver.Version{Major: 2, Minor: 1, Patch: 0}, nil
 					}
 					return false, nil, nil
 				},
-				hasPlugin: func(spec workspace.PluginDescriptor) bool {
+				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) bool {
 					return spec.Name == "major-match-pkg" &&
 						spec.Version != nil &&
 						spec.Version.EQ(semver.Version{Major: 2, Minor: 1, Patch: 0})
@@ -614,8 +584,8 @@ func TestResolvePackage(t *testing.T) {
 			name:       "registry resolution with matching major version locally but not in registry",
 			options:    &Options{ResolveWithRegistry: true},
 			pluginSpec: workspace.PackageSpec{Source: "major-match-not-in-registry"},
-			workspace: mockWorkspace{
-				hasPluginGTE: func(spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
+			workspace: pluginstorage.MockContext{
+				HasPluginGTEF: func(_ context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
 					if spec.Name == "major-match-not-in-registry" && spec.Version != nil && spec.Version.Major == 2 {
 						return true, &semver.Version{Major: 2, Minor: 1, Patch: 0}, nil
 					}
@@ -680,7 +650,7 @@ func TestResolvePackage(t *testing.T) {
 					"windows-amd64": []byte("ghi789"),
 				},
 			},
-			workspace: mockWorkspace{},
+			workspace: pluginstorage.MockContext{},
 			registryResponse: func() (registry.Registry, error) {
 				meta := apitype.PackageMetadata{
 					Name:              "checksum-pkg",
@@ -734,7 +704,7 @@ func TestResolvePackage(t *testing.T) {
 			options: &Options{
 				AllowNonInvertableLocalWorkspaceResolution: false,
 			},
-			workspace: mockWorkspace{},
+			workspace: pluginstorage.MockContext{},
 			pluginSpec: workspace.PackageSpec{
 				Source:            "some-pkg",
 				PluginDownloadURL: "https://www.example.com/some-pkg.tar.gz",
@@ -753,7 +723,7 @@ func TestResolvePackage(t *testing.T) {
 		},
 		{
 			name:      "handle pulumiverse packages",
-			workspace: mockWorkspace{},
+			workspace: pluginstorage.MockContext{},
 			pluginSpec: workspace.PackageSpec{
 				Source: "aquasec", // In the pulumiverse
 			},
@@ -794,7 +764,7 @@ func TestResolvePackage(t *testing.T) {
 
 			ws := tt.workspace
 			if ws == nil {
-				ws = DefaultWorkspace()
+				ws = pluginstorage.Instance
 			}
 
 			result, err := Resolve(

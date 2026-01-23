@@ -1,6 +1,5 @@
 HasPlugin{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false, nil, nil}
-IsExternalURL{"external-package"} -> {false}
 HasPlugin{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false}
 HasPluginGTE{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false, nil, nil}
 GetLatestVersion{ctx, PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {Version{Major:6}, nil}

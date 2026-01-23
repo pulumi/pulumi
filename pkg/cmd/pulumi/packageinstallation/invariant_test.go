@@ -90,7 +90,7 @@ type invariantPlugin struct {
 	linked []string
 }
 
-func (w invariantWorkspace) HasPlugin(spec workspace.PluginDescriptor) bool {
+func (w invariantWorkspace) HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool {
 	w.rw.RLock()
 	defer w.rw.RUnlock()
 	for _, candidate := range w.plugins {
@@ -105,7 +105,9 @@ func (w invariantWorkspace) HasPlugin(spec workspace.PluginDescriptor) bool {
 	return false
 }
 
-func (w invariantWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
+func (w invariantWorkspace) HasPluginGTE(
+	ctx context.Context, spec workspace.PluginDescriptor,
+) (bool, *semver.Version, error) {
 	w.rw.RLock()
 
 	var gte *workspace.PluginDescriptor
@@ -127,7 +129,7 @@ func (w invariantWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool,
 	if gte == nil {
 		// We have found a version with no version
 		spec.Version = nil
-		if w.HasPlugin(spec) {
+		if w.HasPlugin(ctx, spec) {
 			return true, nil, nil
 		}
 		return false, nil, nil
@@ -137,8 +139,6 @@ func (w invariantWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool,
 	}
 	return true, gte.Version, nil
 }
-
-func (w invariantWorkspace) IsExternalURL(source string) bool { return workspace.IsExternalURL(source) }
 
 func (w invariantWorkspace) GetLatestVersion(
 	ctx context.Context, spec workspace.PluginDescriptor,
