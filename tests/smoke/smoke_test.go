@@ -1194,3 +1194,19 @@ func TestPrintLogfilePath(t *testing.T) {
 	_, err := os.Stat(logFilePath)
 	require.NoError(t, err, "log file should exist at %s", logFilePath)
 }
+
+// Test that we error to look at convert documentation if we see .tf files and no project.
+func TestTerraformUp(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("testdata/aws_tf")
+
+	_, stderr := e.RunCommandExpectError("pulumi", "up")
+	assert.Contains(t, stderr, "no project file found however, a Terraform configuration file was detected. "+
+		"To convert this configuration to a Pulumi project, "+
+		"please see the documentation at "+
+		"https://www.pulumi.com/docs/iac/guides/migration/migrating-to-pulumi/from-terraform/")
+}
