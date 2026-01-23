@@ -66,6 +66,58 @@ func TestInstallAlreadyInstalledPackage(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestDoNotInstallDependenciesOfAlreadyInstalledPackage(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name: "already-installed",
+				Kind: apitype.ResourcePlugin,
+			},
+			downloaded: true,
+			installed:  true,
+			project: &workspace.PluginProject{
+				Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+				Packages: map[string]workspace.PackageSpec{
+					"dependency": {
+						Source:            "dependency",
+						PluginDownloadURL: "https://example.com/dependency.tar.gz",
+					},
+				},
+			},
+		},
+		{
+			d: workspace.PluginDescriptor{
+				Name: "dependency",
+				Kind: apitype.ResourcePlugin,
+			},
+			project: &workspace.PluginProject{
+				Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+			},
+		},
+	})
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+		Source: "already-installed",
+	}, nil, "", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: 1,
+	}, nil, rws)
+	require.NoError(t, err)
+	_, err = run(t.Context(), "/tmp")
+	require.NoError(t, err)
+
+	dependencyPath := "$HOME/.pulumi/plugins/resource-dependency"
+	require.False(t, ws.plugins[dependencyPath].downloaded,
+		"dependency should NOT be downloaded when parent is already installed")
+}
+
 func TestInstallExternalBinaryPackage(t *testing.T) {
 	t.Parallel()
 

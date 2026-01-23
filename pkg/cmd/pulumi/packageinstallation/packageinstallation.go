@@ -390,14 +390,15 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 	downloadCleanup *downloadCleanup,
 	runBundleOut *runBundle,
 ) error {
-	pluginProject, _, err := state.ws.LoadPluginProjectAt(ctx, projectDir)
-	switch {
+	pluginProject, err := ensureProjectDir(ctx, state, parent, name, projectDir, downloadCleanup, runBundleOut)
+	if err != nil {
+		return err
+	}
+
 	// There is a PulumiPlugin file, so it may have dependencies. We need to
 	// gather dependencies and install them before we can run the install
 	// here.
-	case err == nil:
-		runBundleOut.pluginPath = projectDir
-		runBundleOut.name = name
+	if pluginProject != nil {
 		install, installReady := state.dag.NewNode(installStep{
 			downloadCleanup: downloadCleanup,
 			project: project[*workspace.PluginProject]{
@@ -412,6 +413,22 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 			proj:       pluginProject,
 			projectDir: projectDir,
 		})
+	}
+	return nil
+}
+
+func ensureProjectDir(
+	ctx context.Context, state state,
+	parent pdag.Node, name, projectDir string,
+	downloadCleanup *downloadCleanup,
+	runBundleOut *runBundle,
+) (*workspace.PluginProject, error) {
+	pluginProject, _, err := state.ws.LoadPluginProjectAt(ctx, projectDir)
+	switch {
+	case err == nil:
+		runBundleOut.pluginPath = projectDir
+		runBundleOut.name = name
+		return pluginProject, nil
 
 	// We didn't detect a PulumiPlugin file. This may be a binary plugin, so
 	// let's check. If there is a appropriately named binary there, we are
@@ -424,7 +441,7 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 		}
 		isExec, err := state.ws.IsExecutable(ctx, binaryPath)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
+			return nil, err
 		} else if isExec {
 			runBundleOut.pluginPath = binaryPath
 			runBundleOut.name = name
@@ -433,13 +450,13 @@ func ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
 				downloadCleanup.f(true)
 				downloadCleanup.called = true
 			}
-			return nil
+			return nil, nil
 		}
-		return fmt.Errorf("expected %q to have an executable named %q or a PulumiPlugin file", name, binaryName)
+		return nil, fmt.Errorf("expected %q to have an executable named %q or a PulumiPlugin file", name, binaryName)
 
 	// An unknown error was returned, so bubble the error up.
 	default:
-		return err
+		return nil, err
 	}
 }
 
@@ -624,13 +641,11 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 			if err != nil {
 				return err
 			}
-			// If it's already installed, we should just load it, but we still
-			// need to run install for it & it's dependencies.
-			//
-			// TODO: Add a test for running an install where: X -> Y -> Z and
-			// both X & Y are installed, but Z has been manually uninstalled.
-			return ensureDownloadedPluginDirHasDependenciesAndIsInstalled(
+			// If it's already installed in it's Pulumi managed location, then assuming it was installed
+			// successfully we shouldn't need to do anything else.
+			_, err = ensureProjectDir(
 				ctx, p, specFinished, descriptor.Name, pluginDir, nil, step.runBundleOut)
+			return err
 		}
 
 		// Start with the download. The downloadStep will take care of attaching

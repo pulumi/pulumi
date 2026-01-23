@@ -1,0 +1,4 @@
+HasPlugin{PluginDescriptor{Name:"already-installed", Kind:"resource"}} -> {true}
+GetPluginPath{ctx, PluginDescriptor{Name:"already-installed", Kind:"resource"}} -> {"$HOME/.pulumi/plugins/resource-already-installed", nil}
+LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-already-installed"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"dependency":PackageSpec{Source:"dependency", PluginDownloadURL:"https://example.com/dependency.tar.gz"}}}, "$HOME/.pulumi/plugins/resource-already-installed/PulumiPlugin.yaml", nil}
+RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-already-installed", "already-installed", nil} -> {nil, nil}

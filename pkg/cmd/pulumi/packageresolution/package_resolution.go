@@ -117,7 +117,7 @@ type (
 	PackageResolution struct {
 		Spec                 workspace.PackageSpec
 		Pkg                  workspace.PackageDescriptor
-		InstalledInWorkspace bool
+		InstalledInWorkspace bool // If package is already installed in the global workplace.
 	}
 	// A fully resolved plugin with not yet resolved parameterization.
 	//
