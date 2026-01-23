@@ -24,9 +24,9 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -197,19 +197,20 @@ func (w invariantWorkspace) IsExecutable(ctx context.Context, binaryPath string)
 	return false, nil
 }
 
-func (w invariantWorkspace) LoadPluginProject(ctx context.Context, path string) (*workspace.PluginProject, error) {
-	pluginPath := filepath.ToSlash(filepath.Dir(path))
-	pl, ok := w.plugins[pluginPath]
-	if !ok {
-		assert.Failf(w.t, "", "LoadPluginProject(%q) called on non-existent plugin", pluginPath)
-		return nil, assert.AnError
+func (w invariantWorkspace) LoadPluginProjectAt(
+	ctx context.Context, path string,
+) (*workspace.PluginProject, string, error) {
+	path = filepath.ToSlash(path)
+	pl, ok := w.plugins[path]
+	if !ok || !pl.pathVisible {
+		assert.Failf(w.t, "", "LoadPluginProjectAt(%q) called on non-existent plugin (pathVisible=%t)", path, pl.pathVisible)
+		return nil, "", assert.AnError
 	}
-	if !pl.projectDetected {
-		assert.Failf(w.t, "", "LoadPluginProject(%q) called on project before DetectPluginPathAt", path)
-		return nil, assert.AnError
+	if pl.project == nil {
+		return nil, "", workspace.ErrBaseProjectNotFound
 	}
-	require.NotNil(w.t, pl.project, "We shouldn't be able to detect a nil project")
-	return pl.project, nil
+	pl.projectDetected = true
+	return pl.project, filepath.ToSlash(filepath.Join(path, "PulumiPlugin.yaml")), nil
 }
 
 func (w invariantWorkspace) DownloadPlugin(
@@ -226,18 +227,16 @@ func (w invariantWorkspace) DownloadPlugin(
 	return p, func(success bool) {}, nil
 }
 
-func (w invariantWorkspace) DetectPluginPathAt(ctx context.Context, path string) (string, error) {
-	path = filepath.ToSlash(path)
-	pl, ok := w.plugins[path]
-	if !ok || !pl.pathVisible {
-		assert.Failf(w.t, "", "DetectPluginPathAt(%q) called on non-existent plugin (pathVisible=%t)", path, pl.pathVisible)
-		return "", assert.AnError
-	}
-	if pl.project == nil {
-		return "", workspace.ErrBaseProjectNotFound
-	}
-	pl.projectDetected = true
-	return filepath.ToSlash(filepath.Join(path, "PulumiPlugin.yaml")), nil
+func (w invariantWorkspace) New() (pkgWorkspace.W, error) {
+	return nil, assert.AnError
+}
+
+func (w invariantWorkspace) ReadProject() (*workspace.Project, string, error) {
+	return nil, "", assert.AnError
+}
+
+func (w invariantWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
+	return workspace.Credentials{}, nil
 }
 
 func (w invariantWorkspace) LinkPackage(
