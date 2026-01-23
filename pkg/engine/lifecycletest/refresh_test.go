@@ -2936,3 +2936,124 @@ func TestRefreshDeletedResourceWithChild(t *testing.T) {
 		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+// TestRefreshPreservesInputsWhenReadReturnsNoInputs tests the behavior when a custom resource is refreshed
+// and the Read method returns new outputs but not inputs. This is mostly for the display testing to
+// regression test https://github.com/pulumi/pulumi/issues/13839.
+func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+		},
+	}
+
+	const resType = "pkgA:m:typA"
+	urnA := p.NewURN(resType, "resA", "")
+
+	// Create initial resource state with both inputs and outputs
+	initialInputs := resource.PropertyMap{
+		"inputProp": resource.NewProperty("oldInputValue"),
+	}
+	initialOutputs := resource.PropertyMap{
+		"inputProp":  resource.NewProperty("oldInputValue"),
+		"outputProp": resource.NewProperty("oldOutputValue"),
+	}
+
+	oldResources := []*resource.State{
+		{
+			Type:    urnA.Type(),
+			URN:     urnA,
+			Custom:  true,
+			ID:      "resA-id",
+			Inputs:  initialInputs,
+			Outputs: initialOutputs,
+		},
+	}
+
+	oldSnapshot := &deploy.Snapshot{
+		Resources: oldResources,
+	}
+
+	// The Read method will return new outputs but no inputs
+	newOutputsFromRead := resource.PropertyMap{
+		"inputProp":  resource.NewProperty("newInputValue"),
+		"outputProp": resource.NewProperty("newOutputValue"),
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(ctx context.Context, dr plugin.DiffRequest) (plugin.DiffResult, error) {
+					if dr.OldOutputs["inputProp"] != dr.NewInputs["inputProp"] {
+						return plugin.DiffResult{
+							Changes: plugin.DiffSome,
+						}, nil
+					}
+					return plugin.DiffResult{
+						Changes: plugin.DiffNone,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// Return new outputs but no inputs
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Outputs: newOutputsFromRead,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				UpdateF: func(ctx context.Context, ur plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{
+						Properties: resource.PropertyMap{
+							"inputProp": ur.NewInputs["inputProp"],
+							"outputProp": resource.NewProperty(
+								strings.ReplaceAll(ur.NewInputs["inputProp"].StringValue(), "Input", "Output")),
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	updatedInputs := resource.PropertyMap{
+		"inputProp": resource.NewProperty("updatedInputValue"),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: updatedInputs,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p.Steps = []lt.TestStep{
+		{Op: Update},
+		{Op: Refresh},
+	}
+
+	snap := p.Run(t, oldSnapshot)
+
+	// Verify the final snapshot state
+	require.Len(t, snap.Resources, 2, "expected provider and resource in snapshot")
+
+	var finalResource *resource.State
+	for _, r := range snap.Resources {
+		if r.URN == urnA {
+			finalResource = r
+			break
+		}
+	}
+
+	require.NotNil(t, finalResource, "resource should exist in final snapshot")
+
+	// Assert that inputs were not updated, but the outputs were in final snapshot
+	assert.Equal(t, updatedInputs, finalResource.Inputs,
+		"inputs are not updated in final snapshot when Read returns no inputs")
+}
