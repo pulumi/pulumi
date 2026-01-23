@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -443,7 +444,8 @@ func ProviderFromSource(
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
 		Concurrency: concurrency,
-	}, reg, packageworkspace.New(pctx.Host, os.Stderr, os.Stderr, nil, packageworkspace.Options{}))
+	}, reg, packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, os.Stderr, os.Stderr,
+		nil, packageworkspace.Options{}))
 	if err != nil {
 		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to install %q: %w", packageSource, err)
 	}

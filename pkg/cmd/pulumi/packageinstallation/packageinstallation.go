@@ -133,7 +133,7 @@ func InstallPlugin(
 	baseProject workspace.BaseProject, projectDir string,
 	options Options,
 	registry registry.Registry, ws Context,
-) (RunPlugin, error) {
+) (RunPlugin, workspace.PackageSpec, error) {
 	var runBundle runBundle
 	var resolvedSpec workspace.PackageSpec
 
