@@ -1,5 +1,8 @@
+IsExecutable{ctx, "/work"} -> {false, nil}
 LoadPluginProjectAt{ctx, "/work"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"./pkg-c"}}}, "/work/PulumiPlugin.yaml", nil}
+IsExecutable{ctx, "/work/project/pkg-b"} -> {false, nil}
 LoadPluginProjectAt{ctx, "/work/project/pkg-b"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"nodejs"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"../../pkg-c"}}}, "/work/project/pkg-b/PulumiPlugin.yaml", nil}
+IsExecutable{ctx, "/work/pkg-c"} -> {false, nil}
 LoadPluginProjectAt{ctx, "/work/pkg-c"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}, "/work/pkg-c/PulumiPlugin.yaml", nil}
 InstallPluginAt{ctx, "/work/pkg-c", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}} -> {nil}
 RunPackage{ctx, "/work", "/work/pkg-c", "pkg-c", nil} -> {invariantProvider{path:"/work/pkg-c"}, nil}
