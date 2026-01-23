@@ -531,7 +531,7 @@ func (b *diyBackend) upgradeStack(
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
-// can support.  Importantly, s3/azblob/gs paths should not be be touched. This will only affect
+// can support.  Importantly, s3/azblob/gs paths should not be touched. This will only affect
 // file:// paths which have a few oddities around them that we want to ensure work properly.
 func massageBlobPath(path string) (string, error) {
 	if !strings.HasPrefix(path, FilePathPrefix) {
@@ -1227,7 +1227,7 @@ func (b *diyBackend) apply(
 	case apitype.PreviewUpdate:
 		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		_, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.ResourceImportUpdate:
 		_, changes, updateErr = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
 	case apitype.RefreshUpdate:

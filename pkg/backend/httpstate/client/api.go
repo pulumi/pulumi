@@ -211,6 +211,20 @@ type defaultHTTPClient struct {
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
+	requestSpan, ctx := opentracing.StartSpanFromContext(
+		req.Context(),
+		"HTTP request",
+		opentracing.Tag{Key: "method", Value: req.Method},
+		opentracing.Tag{Key: "url", Value: req.URL},
+		opentracing.Tag{Key: "retry", Value: policy.String()},
+	)
+	defer requestSpan.Finish()
+
+	req = req.WithContext(ctx)
+
+	// Add a User-Agent header to distinguish the pulumi CLI from other clients.
+	req.Header.Set("User-Agent", UserAgent())
+
 	// Wait 1s before retrying on failure. Then increase by 2x until the
 	// maximum delay is reached. Stop after maxRetryCount requests have
 	// been made.
@@ -264,12 +278,12 @@ func pulumiAPICall(ctx context.Context,
 		bodyReader = bytes.NewReader(body)
 	}
 
-	req, err := http.NewRequest(method, url, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 	if err != nil {
 		return "", nil, fmt.Errorf("creating new HTTP request: %w", err)
 	}
 
-	req = req.WithContext(ctx)
+	// Set the content type: all of our input here is JSON.
 	req.Header.Set("Content-Type", "application/json")
 
 	// Set headers from the incoming options.
@@ -277,9 +291,6 @@ func pulumiAPICall(ctx context.Context,
 		req.Header[k] = v
 	}
 
-	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
-	// backwards compatibility.
-	req.Header.Set("User-Agent", UserAgent())
 	// Specify the specific API version we accept.
 	req.Header.Add("Accept", "application/vnd.pulumi+8")
 
@@ -387,6 +398,8 @@ func decodeError(respBody []byte, statusCode int, opts httpCallOptions, reqID st
 
 // restClient is an abstraction for calling the Pulumi REST API.
 type restClient interface {
+	HTTPClient() httpClient
+
 	Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
 		respObj any, tok accessToken, opts httpCallOptions) error
 }
@@ -394,6 +407,11 @@ type restClient interface {
 // defaultRESTClient is the default implementation for calling the Pulumi REST API.
 type defaultRESTClient struct {
 	client httpClient
+}
+
+// HTTPClient returns the HTTP client for this REST client.
+func (c *defaultRESTClient) HTTPClient() httpClient {
+	return c.client
 }
 
 // Call calls the Pulumi REST API marshalling reqObj to JSON and using that as

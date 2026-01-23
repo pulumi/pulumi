@@ -1385,7 +1385,7 @@ func (ur *UpResult) GetPermalink() (string, error) {
 	return GetPermalink(ur.StdOut)
 }
 
-// ErrParsePermalinkFailed occurs when the the generated permalink URL can't be found in the op result
+// ErrParsePermalinkFailed occurs when the generated permalink URL can't be found in the op result
 var ErrParsePermalinkFailed = errors.New("failed to get permalink")
 
 // GetPermalink returns the permalink URL in the Pulumi Console for the update

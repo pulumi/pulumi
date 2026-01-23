@@ -85,7 +85,7 @@ const (
 	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
 
 	// A exit-code we recognize when the python process exits.  If we see this error, there's no
-	// need for us to print any additional error messages since the user already got a a good
+	// need for us to print any additional error messages since the user already got a good
 	// one they can handle.
 	pythonProcessExitedAfterShowingUserActionableMessage = 32
 

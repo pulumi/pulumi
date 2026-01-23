@@ -803,8 +803,26 @@ func (p *providerServer) Construct(ctx context.Context,
 	}
 
 	aliases := make([]resource.Alias, len(req.GetAliases()))
-	for i, urn := range req.GetAliases() {
-		aliases[i] = resource.Alias{URN: resource.URN(urn)}
+	for i, alias := range req.GetAliases() {
+		var result resource.Alias
+		switch a := alias.Alias.(type) {
+		case *pulumirpc.Alias_Spec_:
+			result = resource.Alias{
+				Name:    a.Spec.Name,
+				Type:    a.Spec.Type,
+				Project: a.Spec.Project,
+				Stack:   a.Spec.Stack,
+			}
+			switch p := a.Spec.Parent.(type) {
+			case *pulumirpc.Alias_Spec_ParentUrn:
+				result.Parent = resource.URN(p.ParentUrn)
+			case *pulumirpc.Alias_Spec_NoParent:
+				result.NoParent = p.NoParent
+			}
+		case *pulumirpc.Alias_Urn:
+			result = resource.Alias{URN: resource.URN(a.Urn)}
+		}
+		aliases[i] = result
 	}
 	dependencies := make([]resource.URN, len(req.GetDependencies()))
 	for i, urn := range req.GetDependencies() {
@@ -829,6 +847,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		hooks[resource.AfterUpdate] = binding.GetAfterUpdate()
 		hooks[resource.BeforeDelete] = binding.GetBeforeDelete()
 		hooks[resource.AfterDelete] = binding.GetAfterDelete()
+		hooks[resource.OnError] = binding.GetOnError()
 	}
 
 	replaceWith := make([]resource.URN, len(req.GetReplaceWith()))

@@ -338,6 +338,36 @@ func TestStackOutputsJSON(t *testing.T) {
 `, stdout)
 }
 
+func TestStrictFlag(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	integration.CreateBasicPulumiRepo(e)
+	e.ImportDirectory("iterative-constraints")
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.18.3")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "stack", "init", "strict-flag")
+
+	_, stderr := e.RunCommandExpectError("pulumi", "up", "--skip-preview", "--strict")
+	assert.Equal(t,
+		"error: --strict cannot be used with --skip-preview; strict requires a preview",
+		strings.Trim(stderr, "\r\n"))
+
+	logs, _ := e.RunCommandExpectError("pulumi", "up", "--strict", "--yes")
+	assert.Contains(t, logs,
+		"error: create is not allowed by the plan: no steps were expected for this resource")
+
+	logs, _ = e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+	assert.Contains(t, logs, " created\n") // Some number of resources will be created.
+
+	// Clean up.
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "strict-flag", "--yes")
+}
+
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -2849,7 +2879,8 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 	// The install command should detect and report this cycle.
 	stdout, stderr := e.RunCommandExpectError("pulumi", "install")
 	require.Containsf(t, stderr,
-		"Cycle found: typescript-a -> typescript-b -> typescript-a\n",
+		"installing `packages` from Pulumi.yaml: cycle found: "+filepath.Join("..", "ts-provider-a")+" -> "+
+			filepath.Join("..", "ts-provider-b")+" -> "+filepath.Join("..", "ts-provider-a")+"\n",
 		"Stdout is %q", stdout)
 }
 

@@ -27,4 +27,11 @@ var (
 	ResourcePropertyType model.Type = model.NewOpaqueType("Property")
 	// AssetOrArchiveType represents the set of Pulumi Archive values.
 	AssetOrArchiveType model.Type = model.NewUnionType(ArchiveType, AssetType)
+	// AliasType represents a type for the alias resource option. Aliases are either a string (single URN) or an object
+	// (with "name" and "parent", etc fields).
+	AliasType = model.NewUnionType(model.StringType, model.NewObjectType(map[string]model.Type{
+		"name":     model.NewOptionalType(model.StringType),
+		"noParent": model.NewOptionalType(model.BoolType),
+		"parent":   model.NewOptionalType(model.DynamicType),
+	}))
 )

@@ -551,22 +551,13 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 	}
 }
 
-type mockWorkspace struct {
-	readProjectErr error
-}
-
-var _ pkgWorkspace.Context = &mockWorkspace{}
-
-func (m *mockWorkspace) New() (pkgWorkspace.W, error) {
-	return nil, m.readProjectErr
-}
-
-func (m *mockWorkspace) ReadProject() (*workspace.Project, string, error) {
-	return nil, "", m.readProjectErr
-}
-
-func (m *mockWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
-	return workspace.Credentials{}, nil
+func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
+	return &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) { return nil, readProjectErr },
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return nil, "", readProjectErr
+		},
+	}
 }
 
 //nolint:paralleltest // This test uses the global pkgWorkspace.Instance variable
@@ -593,9 +584,9 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	customErr := errors.New("custom project read error")
 	originalWorkspace := pkgWorkspace.Instance
 	t.Cleanup(func() { pkgWorkspace.Instance = originalWorkspace })
-	pkgWorkspace.Instance = &mockWorkspace{readProjectErr: customErr}
+	pkgWorkspace.Instance = newMockTemplateWorkspace(customErr)
 
-	err := cmd.Run(context.Background(), publishPackageArgs{readmePath: "README.md"},
+	err := cmd.Run(t.Context(), publishPackageArgs{readmePath: "README.md"},
 		"test-source", nil /* packageParams */)
 
 	assert.Error(t, err)

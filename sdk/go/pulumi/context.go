@@ -42,9 +42,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -74,6 +76,7 @@ type contextState struct {
 	supportsInvokeTransforms bool         // true if remote invoke transforms are supported by pulumi
 	supportsParameterization bool         // true if package references and parameterized providers are supported by pulumi
 	supportsResourceHooks    bool         // true if resource hooks are supported by pulumi
+	supportsErrorHooks       bool         // true if error hooks are supported by pulumi
 	rpcs                     int          // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
@@ -192,6 +195,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsErrorHooks, err := supportsFeature("errorHooks")
+	if err != nil {
+		return nil, err
+	}
+
 	contextState := &contextState{
 		info:                     info,
 		exports:                  make(map[string]Input),
@@ -208,6 +216,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsInvokeTransforms: supportsInvokeTransforms,
 		supportsParameterization: supportsParameterization,
 		supportsResourceHooks:    supportsResourceHooks,
+		supportsErrorHooks:       supportsErrorHooks,
 		registeredOutputs:        make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
@@ -2942,4 +2951,28 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	frames := runtime.CallersFrames(pcs[:])
 	frame, _ := frames.Next()
 	return ctx.getSourcePositionForFrame(frame)
+}
+
+// RequirePulumiVersion validates that the engine we are connected to is compatible with the passed in version range. If
+// the version is not compatible with the specified range, an error is returned.
+//
+// The supported syntax for the range is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example
+// ">=3.0.0", or "!3.1.2". Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning
+// greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
+// meaning less-than 3.4.0 or greater-than 3.8.0.
+func (ctx *Context) RequirePulumiVersion(rg string) error {
+	_, err := ctx.state.engine.RequirePulumiVersion(ctx.Context(), &pulumirpc.RequirePulumiVersionRequest{
+		PulumiVersionRange: rg,
+	})
+	if err != nil {
+		if rpcError, ok := rpcerror.FromError(err); ok {
+			if rpcError.Code() == codes.Unimplemented {
+				return errors.New("The installed version of the CLI does not support the `RequirePulumiVersion` RPC. " +
+					"Please upgrade the Pulumi CLI.")
+			}
+			return rpcError
+		}
+		return err
+	}
+	return nil
 }

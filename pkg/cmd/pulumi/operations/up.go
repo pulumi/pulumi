@@ -122,6 +122,7 @@ func NewUpCmd() *cobra.Command {
 	var excludeDependents bool
 	var planFilePath string
 	var attachDebugger []string
+	var strict bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -225,8 +226,9 @@ func NewUpCmd() *cobra.Command {
 			ExcludeDependents:         excludeDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan:    true,
+			GeneratePlan:    env.Experimental.Value() || strict,
 			Experimental:    env.Experimental.Value(),
+			Strict:          strict,
 			ContinueOnError: continueOnError,
 			AttachDebugger:  attachDebugger,
 			Autonamer:       autonamer,
@@ -469,10 +471,11 @@ func NewUpCmd() *cobra.Command {
 			Refresh:          refreshOption,
 			RefreshProgram:   runProgram,
 			ShowSecrets:      showSecrets,
-			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
+			// If the user passed --plan (but no path) then trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: env.Experimental.Value(),
+			GeneratePlan: env.Experimental.Value() || strict,
 			Experimental: env.Experimental.Value(),
+			Strict:       strict,
 
 			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
@@ -555,6 +558,12 @@ func NewUpCmd() *cobra.Command {
 			}
 
 			yes = yes || skipPreview || env.SkipConfirmations.Value()
+
+			// Validate that the user did not pass both --skip-preview and --plan.
+			// Plan requires a preview so these flags are mutually exclusive.
+			if skipPreview && strict {
+				return errors.New("--strict cannot be used with --skip-preview; strict requires a preview")
+			}
 
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
@@ -811,6 +820,11 @@ func NewUpCmd() *cobra.Command {
 	if !env.Experimental.Value() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("plan"), `Could not mark "plan" as hidden`)
 	}
+
+	cmd.PersistentFlags().BoolVar(
+		&strict, "strict", false,
+		"[EXPERIMENTAL] Enable strict plan behavior: generate a plan during preview and constrain the update "+
+			"to that plan (opt-in). Cannot be used with --skip-preview.")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -160,6 +160,7 @@ func Start(ctx context.Context) (LanguageTestServer, error) {
 		cancel:      make(chan bool),
 		sdkLocks:    gsync.Map[string, *sync.Mutex]{},
 		artifactMap: gsync.Map[string, string]{},
+		cliVersion:  "3.200.0",
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -204,6 +205,8 @@ type languageTestServer struct {
 	logRepeat int
 	// Used by the Log method to track the last message logged, this is so we can elide duplicate messages.
 	previousMessage string
+
+	cliVersion string // Used by RequirePulumiVersion to mock the CLI version
 }
 
 func (eng *languageTestServer) Address() string {
@@ -269,6 +272,14 @@ func (eng *languageTestServer) Log(_ context.Context, req *pulumirpc.LogRequest)
 	}
 
 	return &pbempty.Empty{}, nil
+}
+
+func (eng *languageTestServer) RequirePulumiVersion(ctx context.Context, req *pulumirpc.RequirePulumiVersionRequest,
+) (*pulumirpc.RequirePulumiVersionResponse, error) {
+	if err := plugin.ValidatePulumiVersionRange(req.PulumiVersionRange, eng.cliVersion); err != nil {
+		return nil, err
+	}
+	return &pulumirpc.RequirePulumiVersionResponse{}, nil
 }
 
 // A providerLoader is a schema loader that loads schemas from a given set of providers.

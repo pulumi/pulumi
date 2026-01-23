@@ -373,6 +373,12 @@ func (m *mockMonitor) RegisterResourceHook(ctx context.Context, in *pulumirpc.Re
 	panic("not implemented")
 }
 
+func (m *mockMonitor) RegisterErrorHook(ctx context.Context, in *pulumirpc.RegisterErrorHookRequest,
+	opts ...grpc.CallOption,
+) (*emptypb.Empty, error) {
+	panic("not implemented")
+}
+
 func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.RegisterPackageRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.RegisterPackageResponse, error) {
@@ -431,8 +437,8 @@ func (m *mockEngine) StartDebugging(ctx context.Context, in *pulumirpc.StartDebu
 	return &emptypb.Empty{}, nil
 }
 
-func (e *mockEngine) CheckPulumiVersion(ctx context.Context, req *pulumirpc.CheckPulumiVersionRequest,
+func (e *mockEngine) RequirePulumiVersion(ctx context.Context, req *pulumirpc.RequirePulumiVersionRequest,
 	opts ...grpc.CallOption,
-) (*pulumirpc.CheckPulumiVersionResponse, error) {
-	return &pulumirpc.CheckPulumiVersionResponse{}, nil
+) (*pulumirpc.RequirePulumiVersionResponse, error) {
+	return &pulumirpc.RequirePulumiVersionResponse{}, nil
 }

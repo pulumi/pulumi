@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package constrictor provides structured argument metadata for Cobra commands.
+//
+// By default, Cobra describes arguments to a command using a predicate: the
+// arguments are provided as a list of strings, and the predicate says whether
+// the arguments are valid. This causes problems when we want to generate code
+// on top of the CLI, as we have no way to interrogate a command's arguments:
+// how many are there, what are their types, which are required, and so on.
+//
+// This library provides a structured format for arguments to Cobra commands
+// that can be stored as an annotation on the command, but can also then be
+// compiled down to an argument predicate for Cobra. As an added benefit, we
+// can also use this structure to generate the usage string to ensure that it
+// stays up-to-date.
+//
+// This library diverges slightly from the way flags work in that all commands
+// must be specified at the same time. This is because we have to know when we
+// have all the argument information in order to compile the predicate. If we
+// didn't do this, we'd either have to have an explicit call to finalise the
+// arguments, or overwrite the Cobra command structure, which would be a much
+// more invasive change.
 package constrictor
 
 import (
@@ -20,6 +40,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +50,7 @@ const cobraAnnotationKey = "constrictor:args"
 // An argument to a Cobra command.
 type Argument struct {
 	// A human-readable name for the argument.
-	Name string `json:"name"`
+	Name string `json:"name"` // required
 	// The type of the argument, defaulting to "string".
 	Type string `json:"type,omitempty"`
 	// How it should appear in the usage string, defaulting to the name. This is
@@ -58,29 +79,9 @@ var NoArgs = &Arguments{
 }
 
 // Declare the arguments for a Cobra command.
-//
-// By default, Cobra describes arguments to a command using a predicate: the
-// arguments are provided as a list of strings, and the predicate says whether
-// the arguments are valid. This causes problems when we want to generate code
-// on top of the CLI, as we have no way to interrogate a command's arguments:
-// how many are there, what are their types, which are required, and so on.
-//
-// This library provides a structured format for arguments to Cobra commands
-// that can be stored as an annotation on the command, but can also then be
-// compiled down to an argument predicate for Cobra. As an added benefit, we
-// can also use this structure to generate the usage string to ensure that it
-// stays up-to-date.
-//
-// This library diverges slightly from the way flags work in that all commands
-// must be specified at the same time. This is because we have to know when we
-// have all the argument information in order to compile the predicate. If we
-// didn't do this, we'd either have to have an explicit call to finalise the
-// arguments, or overwrite the Cobra command structure, which would be a much
-// more invasive change.
 func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
-	if cmd == nil || arguments == nil {
-		return // Has no effect.
-	}
+	contract.Requiref(cmd != nil, "cmd", "cannot be nil")
+	contract.Requiref(arguments != nil, "arguments", "cannot be nil")
 
 	cmd.Args = createCobraArgsPredicate(arguments)
 
@@ -88,9 +89,7 @@ func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
 	cmd.Use = createUsageString(name, arguments)
 
 	serialised, err := json.Marshal(arguments)
-	if err != nil {
-		return // Has no effect.
-	}
+	contract.AssertNoErrorf(err, "failed to marshal arguments")
 
 	if cmd.Annotations == nil {
 		cmd.Annotations = make(map[string]string)
@@ -105,12 +104,16 @@ func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
 // arguments as this is all we can do with the arguments predicate anyway.
 func createCobraArgsPredicate(specification *Arguments) cobra.PositionalArgs {
 	return cmdutil.ArgsFunc(func(cmd *cobra.Command, arguments []string) error {
+		if specification.Required == len(specification.Arguments) && len(specification.Arguments) != len(arguments) {
+			return fmt.Errorf("accepts %d arg(s), received %d", len(specification.Arguments), len(arguments))
+		}
+
 		if len(arguments) < specification.Required {
-			return fmt.Errorf("must have at least %d arguments", specification.Required)
+			return fmt.Errorf("requires at least %d arg(s), only received %d", len(specification.Arguments), len(arguments))
 		}
 
 		if !specification.Variadic && len(arguments) > len(specification.Arguments) {
-			return fmt.Errorf("must have at most %d arguments", len(specification.Arguments))
+			return fmt.Errorf("accepts at most %d arg(s), received %d", len(specification.Arguments), len(arguments))
 		}
 
 		// We don't currently type-check in the arguments predicate, but we could.

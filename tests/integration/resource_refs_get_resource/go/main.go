@@ -106,7 +106,7 @@ func NewContainer(ctx *pulumi.Context, name string, child ChildInput,
 	}
 	// Wait to make sure RegisterResourceOutputs has actually finished registering the resource outputs.
 	//
-	// RegisterResourceOutputs does most of its work in a a goroutine, as does RegisterComponentResource.  This
+	// RegisterResourceOutputs does most of its work in a goroutine, as does RegisterComponentResource.  This
 	// means RegisterResourceOutputs is inheritly racy with the resource being read later.  This test explicitly
 	// tests roundtripping a container component resource, which means we need to read the outputs registered
 	// through RegisterResourceOutputs later, making the test racy.  We can work around this by making sure the

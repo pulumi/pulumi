@@ -53,7 +53,7 @@ func (c Colorization) ColorizeWithMaxWidth(v string, maxWidth int) string {
 // TrimColorizedString takes a string with embedded color tags and returns a new string (still with
 // embedded color tags) such that the number of user-perceived characters (grapheme clusters) in
 // the result is no greater than maxWidth. This is useful for scenarios where the string has to be
-// printed in a a context where there is a max allowed width. In these scenarios, we can't just
+// printed in a context where there is a max allowed width. In these scenarios, we can't just
 // measure the length of the string as the embedded color tags would count against it, even though
 // they end up with no length when actually interpreted by the console.
 func TrimColorizedString(v string, maxWidth int) string {

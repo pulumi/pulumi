@@ -96,15 +96,21 @@ func (NopPluginManager) GetPluginPath(
 	return "installed", nil
 }
 
-func (NopPluginManager) HasPlugin(spec workspace.PluginDescriptor) bool {
+func (NopPluginManager) IsExternalURL(ctx context.Context, source string) bool {
+	return workspace.IsExternalURL(source)
+}
+
+func (NopPluginManager) HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool {
 	return true
 }
 
-func (NopPluginManager) HasPluginGTE(spec workspace.PluginDescriptor) (bool, error) {
-	return true, nil
+func (NopPluginManager) HasPluginGTE(
+	ctx context.Context, spec workspace.PluginDescriptor,
+) (bool, *semver.Version, error) {
+	return true, nil, nil
 }
 
-func (NopPluginManager) GetLatestPluginVersion(
+func (NopPluginManager) GetLatestVersion(
 	ctx context.Context,
 	spec workspace.PluginDescriptor,
 ) (*semver.Version, error) {

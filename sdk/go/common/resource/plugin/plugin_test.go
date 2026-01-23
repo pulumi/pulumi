@@ -397,7 +397,7 @@ func TestCheckVersionRange(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validatePulumiVersionRange(tt.pulumiVersionRange, tt.cliVersion)
+			err := ValidatePulumiVersionRange(tt.pulumiVersionRange, tt.cliVersion)
 
 			if tt.expectedError != "" {
 				require.ErrorContains(t, err, tt.expectedError)

@@ -108,6 +108,10 @@ func TestGetPackage(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v1.29.0",
 			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
+			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v1.29.0",
@@ -118,6 +122,10 @@ func TestGetPackage(t *testing.T) {
 			Mod: &modInfo{
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v1.29.1-0.20200403140640-efb5e2a48a86",
+			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
 			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
@@ -138,6 +146,10 @@ func TestGetPackage(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "42-42-42",
 			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
+			},
 			ExpectedError: "module does not have semver compatible version",
 		},
 		{
@@ -154,6 +166,10 @@ func TestGetPackage(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v2.0.0-beta.1",
 			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
+			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v2.0.0-beta.1",
@@ -163,6 +179,10 @@ func TestGetPackage(t *testing.T) {
 			Name: "non-zero-patch-module", Mod: &modInfo{
 				Path:    "github.com/pulumi/pulumi-kubernetes/sdk",
 				Version: "v1.5.8",
+			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "kubernetes",
+				Resource: true,
 			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "kubernetes",
@@ -474,10 +494,10 @@ func (m *mockEngine) StartDebugging(ctx context.Context, in *pulumirpc.StartDebu
 	return &emptypb.Empty{}, nil
 }
 
-func (e *mockEngine) CheckPulumiVersion(ctx context.Context, req *pulumirpc.CheckPulumiVersionRequest,
+func (e *mockEngine) RequirePulumiVersion(ctx context.Context, req *pulumirpc.RequirePulumiVersionRequest,
 	opts ...grpc.CallOption,
-) (*pulumirpc.CheckPulumiVersionResponse, error) {
-	return &pulumirpc.CheckPulumiVersionResponse{}, nil
+) (*pulumirpc.RequirePulumiVersionResponse, error) {
+	return &pulumirpc.RequirePulumiVersionResponse{}, nil
 }
 
 func TestCompileProgram(t *testing.T) {

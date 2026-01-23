@@ -462,7 +462,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		var runtimeInfo workspace.ProjectRuntimeInfo
 		var pulumiVersionRange string
 		switch kind { //nolint:exhaustive // golangci-lint v2 upgrade
-		case apitype.ResourcePlugin, apitype.ConverterPlugin:
+		case apitype.ResourcePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
@@ -480,7 +480,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, errors.New("language plugins must be executable binaries")
 		}
 
-		if err := validatePulumiVersionRange(pulumiVersionRange, version.Version); err != nil {
+		if err := ValidatePulumiVersionRange(pulumiVersionRange, version.Version); err != nil {
 			return nil, err
 		}
 
@@ -627,12 +627,12 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}, nil
 }
 
-// validatePulumiVersionRange validates that the CLI version satisfies the passed version range. The supported syntax
+// ValidatePulumiVersionRange validates that the CLI version satisfies the passed version range. The supported syntax
 // for ranges is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2".
 // Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and
 // not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or
 // greater-than 3.8.0.
-func validatePulumiVersionRange(pulumiVersionRange, cliVersion string) error {
+func ValidatePulumiVersionRange(pulumiVersionRange, cliVersion string) error {
 	// The cliVersion is the build version and will usually be set when running the Pulumi CLI, however it may be empty
 	// when running non-integration tests.
 	if pulumiVersionRange != "" && cliVersion != "" {

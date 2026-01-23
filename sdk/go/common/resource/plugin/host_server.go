@@ -150,9 +150,9 @@ func (eng *hostServer) StartDebugging(ctx context.Context,
 	return &emptypb.Empty{}, nil
 }
 
-func (eng *hostServer) CheckPulumiVersion(ctx context.Context,
-	req *pulumirpc.CheckPulumiVersionRequest,
-) (*pulumirpc.CheckPulumiVersionResponse, error) {
-	return &pulumirpc.CheckPulumiVersionResponse{},
-		validatePulumiVersionRange(req.PulumiVersionRange, version.Version)
+func (eng *hostServer) RequirePulumiVersion(ctx context.Context,
+	req *pulumirpc.RequirePulumiVersionRequest,
+) (*pulumirpc.RequirePulumiVersionResponse, error) {
+	return &pulumirpc.RequirePulumiVersionResponse{},
+		ValidatePulumiVersionRange(req.PulumiVersionRange, version.Version)
 }
