@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Allow `pulumi new` to be used on templates with a `packages:` section in the `Pulumi.yaml`

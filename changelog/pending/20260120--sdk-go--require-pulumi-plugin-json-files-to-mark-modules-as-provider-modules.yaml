@@ -1,7 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: 
-    Require `pulumi-plugin.json` files to mark modules as provider modules.
-    *BREAKING CHANGE*: Provider modules must now include a `pulumi-plugin.json` file with `"resource": true` to be
-    recognized as provider modules.
