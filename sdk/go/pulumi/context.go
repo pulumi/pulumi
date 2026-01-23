@@ -1593,7 +1593,7 @@ func (ctx *Context) registerErrorHook(f ErrorHookFunction) (*pulumirpc.Callback,
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
-		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
+		var newInputs, oldInputs, oldOutputs resource.PropertyMap
 		mOpts := plugin.MarshalOptions{
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
@@ -1612,12 +1612,6 @@ func (ctx *Context) registerErrorHook(f ErrorHookFunction) (*pulumirpc.Callback,
 				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
 			}
 		}
-		if req.NewOutputs != nil {
-			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, mOpts)
-			if err != nil {
-				return nil, fmt.Errorf("unmarshaling new outputs: %w", err)
-			}
-		}
 		if req.OldOutputs != nil {
 			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
 			if err != nil {
@@ -1631,7 +1625,6 @@ func (ctx *Context) registerErrorHook(f ErrorHookFunction) (*pulumirpc.Callback,
 			Type:            tokens.Type(req.Type),
 			NewInputs:       newInputs,
 			OldInputs:       oldInputs,
-			NewOutputs:      newOutputs,
 			OldOutputs:      oldOutputs,
 			FailedOperation: req.FailedOperation,
 			Errors:          req.Errors,

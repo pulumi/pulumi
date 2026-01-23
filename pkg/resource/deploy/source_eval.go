@@ -1799,11 +1799,11 @@ func (rm *resmon) wrapErrorHookCallback(
 	}
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		name string, typ tokens.Type, newInputs, oldInputs, oldOutputs resource.PropertyMap,
 		failedOperation string, errorMessages []string,
 	) (bool, error) {
 		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
-		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
+		var mNewInputs, mOldInputs, mOldOutputs *structpb.Struct
 		mOpts := plugin.MarshalOptions{
 			Label:            fmt.Sprintf("ResourceMonitor.ErrorHook(%s, %s)", name, urn),
 			KeepUnknowns:     true,
@@ -1823,12 +1823,6 @@ func (rm *resmon) wrapErrorHookCallback(
 				return false, fmt.Errorf("marshaling old inputs for resource error hook %q: %w", name, err)
 			}
 		}
-		if newOutputs != nil {
-			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
-			if err != nil {
-				return false, fmt.Errorf("marshaling new outputs for resource error hook %q: %w", name, err)
-			}
-		}
 		if oldOutputs != nil {
 			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
 			if err != nil {
@@ -1842,7 +1836,6 @@ func (rm *resmon) wrapErrorHookCallback(
 			Type:            string(typ),
 			NewInputs:       mNewInputs,
 			OldInputs:       mOldInputs,
-			NewOutputs:      mNewOutputs,
 			OldOutputs:      mOldOutputs,
 			FailedOperation: failedOperation,
 			Errors:          errorMessages,

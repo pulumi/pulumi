@@ -361,11 +361,11 @@ type ResourceHookArgs struct {
 //
 // Depending on the failed operation, only some of the new/old inputs/outputs are set.
 //
-// | Failed Operation | old_inputs | new_inputs | old_outputs | new_outputs |
-// | ---------------- | ---------- | ---------- | ----------- | ----------- |
-// | create           |            | ✓          |             |             |
-// | update           | ✓          | ✓          | ✓           |             |
-// | delete           | ✓          |            | ✓           |             |
+// | Failed Operation | old_inputs | new_inputs | old_outputs |
+// | ---------------- | ---------- | ---------- | ----------- |
+// | create           |            | ✓          |             |
+// | update           | ✓          | ✓          | ✓           |
+// | delete           | ✓          |            | ✓           |
 type ErrorHookArgs struct {
 	URN             URN                  // The URN of the resource that triggered the hook.
 	ID              ID                   // The ID of the resource that triggered the hook.
@@ -373,7 +373,6 @@ type ErrorHookArgs struct {
 	Type            tokens.Type          // The type of the resource that triggered the hook.
 	NewInputs       resource.PropertyMap // The new inputs of the resource that triggered the hook.
 	OldInputs       resource.PropertyMap // The old inputs of the resource that triggered the hook.
-	NewOutputs      resource.PropertyMap // The new outputs of the resource that triggered the hook.
 	OldOutputs      resource.PropertyMap // The old outputs of the resource that triggered the hook.
 	FailedOperation string               // The operation that failed (create, update, or delete).
 	Errors          []string             // The errors that have been seen so far (newest first).

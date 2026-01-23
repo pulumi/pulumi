@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -33,7 +34,7 @@ func TestGoErrorHooks(t *testing.T) {
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			requirePrinted(t, stack, "info", "onError was called")
+			testutil.RequirePrinted(t, stack, "info", "onError was called")
 		},
 	})
 }
