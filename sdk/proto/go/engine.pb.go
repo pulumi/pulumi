@@ -393,7 +393,7 @@ func (x *StartDebuggingRequest) GetMessage() string {
 	return ""
 }
 
-type CheckPulumiVersionRequest struct {
+type RequirePulumiVersionRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A version range to check against the engine (CLI) version. If the version is not compatible with the specified
 	// range, an error is returned. The supported syntax for ranges is that of
@@ -405,20 +405,20 @@ type CheckPulumiVersionRequest struct {
 	sizeCache          protoimpl.SizeCache
 }
 
-func (x *CheckPulumiVersionRequest) Reset() {
-	*x = CheckPulumiVersionRequest{}
+func (x *RequirePulumiVersionRequest) Reset() {
+	*x = RequirePulumiVersionRequest{}
 	mi := &file_pulumi_engine_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CheckPulumiVersionRequest) String() string {
+func (x *RequirePulumiVersionRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CheckPulumiVersionRequest) ProtoMessage() {}
+func (*RequirePulumiVersionRequest) ProtoMessage() {}
 
-func (x *CheckPulumiVersionRequest) ProtoReflect() protoreflect.Message {
+func (x *RequirePulumiVersionRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_engine_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -430,38 +430,38 @@ func (x *CheckPulumiVersionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CheckPulumiVersionRequest.ProtoReflect.Descriptor instead.
-func (*CheckPulumiVersionRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use RequirePulumiVersionRequest.ProtoReflect.Descriptor instead.
+func (*RequirePulumiVersionRequest) Descriptor() ([]byte, []int) {
 	return file_pulumi_engine_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *CheckPulumiVersionRequest) GetPulumiVersionRange() string {
+func (x *RequirePulumiVersionRequest) GetPulumiVersionRange() string {
 	if x != nil {
 		return x.PulumiVersionRange
 	}
 	return ""
 }
 
-type CheckPulumiVersionResponse struct {
+type RequirePulumiVersionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CheckPulumiVersionResponse) Reset() {
-	*x = CheckPulumiVersionResponse{}
+func (x *RequirePulumiVersionResponse) Reset() {
+	*x = RequirePulumiVersionResponse{}
 	mi := &file_pulumi_engine_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CheckPulumiVersionResponse) String() string {
+func (x *RequirePulumiVersionResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CheckPulumiVersionResponse) ProtoMessage() {}
+func (*RequirePulumiVersionResponse) ProtoMessage() {}
 
-func (x *CheckPulumiVersionResponse) ProtoReflect() protoreflect.Message {
+func (x *RequirePulumiVersionResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_engine_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -473,8 +473,8 @@ func (x *CheckPulumiVersionResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CheckPulumiVersionResponse.ProtoReflect.Descriptor instead.
-func (*CheckPulumiVersionResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use RequirePulumiVersionResponse.ProtoReflect.Descriptor instead.
+func (*RequirePulumiVersionResponse) Descriptor() ([]byte, []int) {
 	return file_pulumi_engine_proto_rawDescGZIP(), []int{7}
 }
 
@@ -498,21 +498,21 @@ const file_pulumi_engine_proto_rawDesc = "" +
 	"\x17SetRootResourceResponse\"b\n" +
 	"\x15StartDebuggingRequest\x12/\n" +
 	"\x06config\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06config\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"M\n" +
-	"\x19CheckPulumiVersionRequest\x120\n" +
-	"\x14pulumi_version_range\x18\x01 \x01(\tR\x12pulumiVersionRange\"\x1c\n" +
-	"\x1aCheckPulumiVersionResponse*:\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"O\n" +
+	"\x1bRequirePulumiVersionRequest\x120\n" +
+	"\x14pulumi_version_range\x18\x01 \x01(\tR\x12pulumiVersionRange\"\x1e\n" +
+	"\x1cRequirePulumiVersionResponse*:\n" +
 	"\vLogSeverity\x12\t\n" +
 	"\x05DEBUG\x10\x00\x12\b\n" +
 	"\x04INFO\x10\x01\x12\v\n" +
 	"\aWARNING\x10\x02\x12\t\n" +
-	"\x05ERROR\x10\x032\xab\x03\n" +
+	"\x05ERROR\x10\x032\xb1\x03\n" +
 	"\x06Engine\x126\n" +
 	"\x03Log\x12\x15.pulumirpc.LogRequest\x1a\x16.google.protobuf.Empty\"\x00\x12Z\n" +
 	"\x0fGetRootResource\x12!.pulumirpc.GetRootResourceRequest\x1a\".pulumirpc.GetRootResourceResponse\"\x00\x12Z\n" +
 	"\x0fSetRootResource\x12!.pulumirpc.SetRootResourceRequest\x1a\".pulumirpc.SetRootResourceResponse\"\x00\x12L\n" +
-	"\x0eStartDebugging\x12 .pulumirpc.StartDebuggingRequest\x1a\x16.google.protobuf.Empty\"\x00\x12c\n" +
-	"\x12CheckPulumiVersion\x12$.pulumirpc.CheckPulumiVersionRequest\x1a%.pulumirpc.CheckPulumiVersionResponse\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
+	"\x0eStartDebugging\x12 .pulumirpc.StartDebuggingRequest\x1a\x16.google.protobuf.Empty\"\x00\x12i\n" +
+	"\x14RequirePulumiVersion\x12&.pulumirpc.RequirePulumiVersionRequest\x1a'.pulumirpc.RequirePulumiVersionResponse\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
 	file_pulumi_engine_proto_rawDescOnce sync.Once
@@ -529,17 +529,17 @@ func file_pulumi_engine_proto_rawDescGZIP() []byte {
 var file_pulumi_engine_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_pulumi_engine_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_pulumi_engine_proto_goTypes = []any{
-	(LogSeverity)(0),                   // 0: pulumirpc.LogSeverity
-	(*LogRequest)(nil),                 // 1: pulumirpc.LogRequest
-	(*GetRootResourceRequest)(nil),     // 2: pulumirpc.GetRootResourceRequest
-	(*GetRootResourceResponse)(nil),    // 3: pulumirpc.GetRootResourceResponse
-	(*SetRootResourceRequest)(nil),     // 4: pulumirpc.SetRootResourceRequest
-	(*SetRootResourceResponse)(nil),    // 5: pulumirpc.SetRootResourceResponse
-	(*StartDebuggingRequest)(nil),      // 6: pulumirpc.StartDebuggingRequest
-	(*CheckPulumiVersionRequest)(nil),  // 7: pulumirpc.CheckPulumiVersionRequest
-	(*CheckPulumiVersionResponse)(nil), // 8: pulumirpc.CheckPulumiVersionResponse
-	(*structpb.Struct)(nil),            // 9: google.protobuf.Struct
-	(*emptypb.Empty)(nil),              // 10: google.protobuf.Empty
+	(LogSeverity)(0),                     // 0: pulumirpc.LogSeverity
+	(*LogRequest)(nil),                   // 1: pulumirpc.LogRequest
+	(*GetRootResourceRequest)(nil),       // 2: pulumirpc.GetRootResourceRequest
+	(*GetRootResourceResponse)(nil),      // 3: pulumirpc.GetRootResourceResponse
+	(*SetRootResourceRequest)(nil),       // 4: pulumirpc.SetRootResourceRequest
+	(*SetRootResourceResponse)(nil),      // 5: pulumirpc.SetRootResourceResponse
+	(*StartDebuggingRequest)(nil),        // 6: pulumirpc.StartDebuggingRequest
+	(*RequirePulumiVersionRequest)(nil),  // 7: pulumirpc.RequirePulumiVersionRequest
+	(*RequirePulumiVersionResponse)(nil), // 8: pulumirpc.RequirePulumiVersionResponse
+	(*structpb.Struct)(nil),              // 9: google.protobuf.Struct
+	(*emptypb.Empty)(nil),                // 10: google.protobuf.Empty
 }
 var file_pulumi_engine_proto_depIdxs = []int32{
 	0,  // 0: pulumirpc.LogRequest.severity:type_name -> pulumirpc.LogSeverity
@@ -548,12 +548,12 @@ var file_pulumi_engine_proto_depIdxs = []int32{
 	2,  // 3: pulumirpc.Engine.GetRootResource:input_type -> pulumirpc.GetRootResourceRequest
 	4,  // 4: pulumirpc.Engine.SetRootResource:input_type -> pulumirpc.SetRootResourceRequest
 	6,  // 5: pulumirpc.Engine.StartDebugging:input_type -> pulumirpc.StartDebuggingRequest
-	7,  // 6: pulumirpc.Engine.CheckPulumiVersion:input_type -> pulumirpc.CheckPulumiVersionRequest
+	7,  // 6: pulumirpc.Engine.RequirePulumiVersion:input_type -> pulumirpc.RequirePulumiVersionRequest
 	10, // 7: pulumirpc.Engine.Log:output_type -> google.protobuf.Empty
 	3,  // 8: pulumirpc.Engine.GetRootResource:output_type -> pulumirpc.GetRootResourceResponse
 	5,  // 9: pulumirpc.Engine.SetRootResource:output_type -> pulumirpc.SetRootResourceResponse
 	10, // 10: pulumirpc.Engine.StartDebugging:output_type -> google.protobuf.Empty
-	8,  // 11: pulumirpc.Engine.CheckPulumiVersion:output_type -> pulumirpc.CheckPulumiVersionResponse
+	8,  // 11: pulumirpc.Engine.RequirePulumiVersion:output_type -> pulumirpc.RequirePulumiVersionResponse
 	7,  // [7:12] is the sub-list for method output_type
 	2,  // [2:7] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name

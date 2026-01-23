@@ -402,17 +402,17 @@ export function requirePulumiVersion(range: string): Promise<void> {
     if (!engineRef) {
         return Promise.resolve(undefined);
     }
-    const req = new engproto.CheckPulumiVersionRequest();
+    const req = new engproto.RequirePulumiVersionRequest();
     req.setPulumiVersionRange(range);
     return new Promise<void>((resolve, reject) => {
-        engineRef.checkPulumiVersion(
+        engineRef.requirePulumiVersion(
             req,
-            (err: grpc.ServiceError | null, resp: engproto.CheckPulumiVersionResponse | undefined) => {
+            (err: grpc.ServiceError | null, resp: engproto.RequirePulumiVersionResponse | undefined) => {
                 if (err && err.code === grpc.status.UNIMPLEMENTED) {
                     return reject(
                         new Error(
-                            "The installed version of the CLI does not support the `CheckPulumiVersion` RPC. " +
-                                "Please upgrade the Pulumi CLI.",
+                            "The installed version of the CLI does not support the `RequirePulumiVersion` RPC. " +
+                            "Please upgrade the Pulumi CLI.",
                         ),
                     );
                 }

@@ -68,11 +68,11 @@ class EngineStub:
     should notify the user of how to connect to the debugger.
     """
 
-    CheckPulumiVersion: grpc.UnaryUnaryMultiCallable[
-        pulumi.engine_pb2.CheckPulumiVersionRequest,
-        pulumi.engine_pb2.CheckPulumiVersionResponse,
+    RequirePulumiVersion: grpc.UnaryUnaryMultiCallable[
+        pulumi.engine_pb2.RequirePulumiVersionRequest,
+        pulumi.engine_pb2.RequirePulumiVersionResponse,
     ]
-    """CheckPulumiVersion checks that the version of the engine satisfies the passed in range."""
+    """RequirePulumiVersion checks that the version of the engine satisfies the passed in range."""
 
 class EngineAsyncStub:
     """Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
@@ -108,11 +108,11 @@ class EngineAsyncStub:
     should notify the user of how to connect to the debugger.
     """
 
-    CheckPulumiVersion: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.engine_pb2.CheckPulumiVersionRequest,
-        pulumi.engine_pb2.CheckPulumiVersionResponse,
+    RequirePulumiVersion: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.engine_pb2.RequirePulumiVersionRequest,
+        pulumi.engine_pb2.RequirePulumiVersionResponse,
     ]
-    """CheckPulumiVersion checks that the version of the engine satisfies the passed in range."""
+    """RequirePulumiVersion checks that the version of the engine satisfies the passed in range."""
 
 class EngineServicer(metaclass=abc.ABCMeta):
     """Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
@@ -157,11 +157,11 @@ class EngineServicer(metaclass=abc.ABCMeta):
         """
 
     
-    def CheckPulumiVersion(
+    def RequirePulumiVersion(
         self,
-        request: pulumi.engine_pb2.CheckPulumiVersionRequest,
+        request: pulumi.engine_pb2.RequirePulumiVersionRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.engine_pb2.CheckPulumiVersionResponse, collections.abc.Awaitable[pulumi.engine_pb2.CheckPulumiVersionResponse]]:
-        """CheckPulumiVersion checks that the version of the engine satisfies the passed in range."""
+    ) -> typing.Union[pulumi.engine_pb2.RequirePulumiVersionResponse, collections.abc.Awaitable[pulumi.engine_pb2.RequirePulumiVersionResponse]]:
+        """RequirePulumiVersion checks that the version of the engine satisfies the passed in range."""
 
 def add_EngineServicer_to_server(servicer: EngineServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

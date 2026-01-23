@@ -2961,7 +2961,7 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 // greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
 // meaning less-than 3.4.0 or greater-than 3.8.0.
 func (ctx *Context) RequirePulumiVersion(rg string) error {
-	_, err := ctx.state.engine.CheckPulumiVersion(ctx.Context(), &pulumirpc.CheckPulumiVersionRequest{
+	_, err := ctx.state.engine.RequirePulumiVersion(ctx.Context(), &pulumirpc.RequirePulumiVersionRequest{
 		PulumiVersionRange: rg,
 	})
 	if err != nil {

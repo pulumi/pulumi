@@ -302,13 +302,13 @@ def require_pulumi_version(rg: str) -> None:
     engine = get_engine()
     if engine:
         try:
-            engine.CheckPulumiVersion(
-                engine_pb2.CheckPulumiVersionRequest(pulumi_version_range=rg)
+            engine.RequirePulumiVersion(
+                engine_pb2.RequirePulumiVersionRequest(pulumi_version_range=rg)
             )
         except grpc.RpcError as exn:
             if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
                 raise Exception(
-                    "The installed version of the CLI does not support the `CheckPulumiVersion` RPC. "
+                    "The installed version of the CLI does not support the `RequirePulumiVersion` RPC. "
                     + "Please upgrade the Pulumi CLI."
                 )
             raise grpc_error_to_exception(exn) from None
