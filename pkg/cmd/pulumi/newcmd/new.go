@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -437,6 +438,11 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
+		if err := InstallPackagesFromProject(ctx, proj, root,
+			cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
+			-1, false, os.Stderr, os.Stderr, env.Global()); err != nil {
+			return err
+		}
 		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
 			return err
 		}
