@@ -718,11 +718,14 @@ func (r DiffResult) Replace() bool {
 // Invert computes the inverse diff of the receiver -- the diff that would be
 // required to "undo" this one.
 func (r DiffResult) Invert() DiffResult {
-	detailedDiff := make(map[string]PropertyDiff)
-	for k, v := range r.DetailedDiff {
-		detailedDiff[k] = PropertyDiff{
-			Kind:      v.Kind.Invert(),
-			InputDiff: v.InputDiff,
+	var detailedDiff map[string]PropertyDiff
+	if r.DetailedDiff != nil {
+		detailedDiff = make(map[string]PropertyDiff)
+		for k, v := range r.DetailedDiff {
+			detailedDiff[k] = PropertyDiff{
+				Kind:      v.Kind.Invert(),
+				InputDiff: v.InputDiff,
+			}
 		}
 	}
 
