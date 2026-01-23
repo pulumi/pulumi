@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go,nodejs,python
-  description: Rename checkPulumiVersion to requirePulumiVersion
