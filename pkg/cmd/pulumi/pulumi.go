@@ -610,10 +610,7 @@ func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 
 	if command == "pulumi plugin run" {
 		if len(args) > 0 {
-			if i > 0 {
-				flags.WriteRune(' ')
-			}
-			flags.WriteString(args[0])
+			command += " " + args[0]
 		}
 	}
 

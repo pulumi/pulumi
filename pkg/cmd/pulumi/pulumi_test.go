@@ -440,8 +440,8 @@ func TestGetCLIMetadata(t *testing.T) {
 			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
 			args:    []string{"my-plugin"},
 			metadata: map[string]string{
-				"Command":     "pulumi plugin run",
-				"Flags":       "my-plugin",
+				"Command":     "pulumi plugin run my-plugin",
+				"Flags":       "",
 				"Environment": "PULUMI_EXPERIMENTAL PULUMI_COPILOT",
 			},
 		},
