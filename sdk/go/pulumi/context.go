@@ -2967,7 +2967,7 @@ func (ctx *Context) RequirePulumiVersion(rg string) error {
 	if err != nil {
 		if rpcError, ok := rpcerror.FromError(err); ok {
 			if rpcError.Code() == codes.Unimplemented {
-				return errors.New("The installed version of the CLI does not support the `CheckPulumiVersion` RPC. " +
+				return errors.New("The installed version of the CLI does not support the `RequirePulumiVersion` RPC. " +
 					"Please upgrade the Pulumi CLI.")
 			}
 			return rpcError

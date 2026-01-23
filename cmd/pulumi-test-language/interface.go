@@ -206,7 +206,7 @@ type languageTestServer struct {
 	// Used by the Log method to track the last message logged, this is so we can elide duplicate messages.
 	previousMessage string
 
-	cliVersion string // Used by CheckPulumiVersion to mock the CLI version
+	cliVersion string // Used by RequirePulumiVersion to mock the CLI version
 }
 
 func (eng *languageTestServer) Address() string {
