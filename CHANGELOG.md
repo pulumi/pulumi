@@ -1,5 +1,45 @@
 # Changelog
 
+## 3.217.0 (2026-01-23)
+
+
+### Features
+
+- [cli] Extract organization, team, and user from OIDC JWT claims during login
+  [#21462](https://github.com/pulumi/pulumi/pull/21462)
+
+- [engine] Add the `OnError` resource hook to allow for custom retry policies
+  [#21291](https://github.com/pulumi/pulumi/pull/21291)
+
+- [cli/engine] Add --plan up flag
+  [#21368](https://github.com/pulumi/pulumi/pull/21368)
+
+- [sdk/nodejs] Add requirePulumiVersion to the Node.js SDK
+  [#21528](https://github.com/pulumi/pulumi/pull/21528)
+  [#21478](https://github.com/pulumi/pulumi/pull/21478)
+
+- [sdk/python] Add require_pulumi_version to the Python SDK
+  [#21528](https://github.com/pulumi/pulumi/pull/21528)
+  [#21430](https://github.com/pulumi/pulumi/pull/21430)
+
+- [sdk/go] Add CheckPulumiVersion to the Go SDK
+  [#21528](https://github.com/pulumi/pulumi/pull/21528)
+  [#21514](https://github.com/pulumi/pulumi/pull/21514)
+
+### Bug Fixes
+
+- [auto/python] Implement `About` in Python automation API server
+  [#21479](https://github.com/pulumi/pulumi/pull/21479)
+
+- [engine] When importing a state file that refers to the service backed secret manager, make `stack import` reconfigure it for the target stack if required
+  [#20966](https://github.com/pulumi/pulumi/pull/20966)
+
+- [protobuf] Fix alias options being passed to Construct for remote components
+  [#21050](https://github.com/pulumi/pulumi/pull/21050)
+
+- [sdk/nodejs] Fix issue with serialized async generators
+  [#21484](https://github.com/pulumi/pulumi/pull/21484)
+
 ## 3.216.0 (2026-01-16)
 
 

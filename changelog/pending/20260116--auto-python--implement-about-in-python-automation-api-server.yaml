@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/python
-  description: Implement `About` in Python automation API server
