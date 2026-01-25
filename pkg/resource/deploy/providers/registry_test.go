@@ -989,3 +989,301 @@ func TestRegistry(t *testing.T) {
 		assert.Nil(t, r.SignalCancellation(context.Background()))
 	})
 }
+
+// closableTestProvider is a testProvider that tracks when Close is called.
+type closableTestProvider struct {
+	testProvider
+	closed   bool
+	closedMu sync.Mutex
+}
+
+func (p *closableTestProvider) Close() error {
+	p.closedMu.Lock()
+	defer p.closedMu.Unlock()
+	p.closed = true
+	return nil
+}
+
+func (p *closableTestProvider) IsClosed() bool {
+	p.closedMu.Lock()
+	defer p.closedMu.Unlock()
+	return p.closed
+}
+
+// TestSameUpdateRace_UpdateFirst tests that when Update finishes before Same,
+// Same sees the provider already exists and returns early without creating a new instance.
+func TestSameUpdateRace_UpdateFirst(t *testing.T) {
+	t.Parallel()
+
+	// Create a loader that returns closable providers so we can track closes.
+	var createdProviders []*closableTestProvider
+	var providersMu sync.Mutex
+	loader := &providerLoader{
+		pkg:     "pkgA",
+		version: semver.MustParse("1.0.0"),
+		load: func() (plugin.Provider, error) {
+			p := &closableTestProvider{
+				testProvider: testProvider{
+					pkg:     "pkgA",
+					version: semver.MustParse("1.0.0"),
+					checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						return news, nil, nil
+					},
+					diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+					},
+					config: func(resource.PropertyMap) error { return nil },
+				},
+			}
+			providersMu.Lock()
+			createdProviders = append(createdProviders, p)
+			providersMu.Unlock()
+			return p, nil
+		},
+	}
+	host := newPluginHost(t, []*providerLoader{loader})
+
+	r := NewRegistry(host, false, nil)
+
+	urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
+	id := resource.ID("id1")
+	oldInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0")}
+	newInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0"), "foo": resource.NewProperty("bar")}
+
+	// First, do the Check/Diff/Update flow to register the provider with new config.
+	check, err := r.Check(context.Background(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: oldInputs,
+		News: newInputs,
+	})
+	require.NoError(t, err)
+
+	_, err = r.Diff(context.Background(), plugin.DiffRequest{
+		URN:        urn,
+		ID:         id,
+		OldOutputs: oldInputs,
+		NewInputs:  newInputs,
+	})
+	require.NoError(t, err)
+
+	_, err = r.Update(context.Background(), plugin.UpdateRequest{
+		URN:        urn,
+		ID:         id,
+		OldOutputs: oldInputs,
+		NewInputs:  check.Properties,
+	})
+	require.NoError(t, err)
+
+	// Only one provider should have been created (from Check).
+	providersMu.Lock()
+	assert.Len(t, createdProviders, 1, "Only one provider should be created from Check/Update flow")
+	providersMu.Unlock()
+
+	// Now call Same (as EnsureProvider would) with old state.
+	// Since the provider is already registered, Same should return early.
+	oldState := newProviderState("pkgA", "default", "id1", false, oldInputs)
+	err = r.Same(context.Background(), oldState, false)
+	require.NoError(t, err)
+
+	// Still only one provider should exist - Same should NOT have created a new one.
+	providersMu.Lock()
+	assert.Len(t, createdProviders, 1, "Same should not create a new provider when one already exists")
+	providersMu.Unlock()
+
+	// The existing provider should not be closed.
+	assert.False(t, createdProviders[0].IsClosed(), "Existing provider should not be closed")
+}
+
+// TestSameUpdateRace_SameFirst tests that when Same finishes before Update,
+// Update properly closes Same's provider to avoid leaks.
+func TestSameUpdateRace_SameFirst(t *testing.T) {
+	t.Parallel()
+
+	// Create a loader that returns closable providers so we can track closes.
+	var createdProviders []*closableTestProvider
+	var providersMu sync.Mutex
+	loader := &providerLoader{
+		pkg:     "pkgA",
+		version: semver.MustParse("1.0.0"),
+		load: func() (plugin.Provider, error) {
+			p := &closableTestProvider{
+				testProvider: testProvider{
+					pkg:     "pkgA",
+					version: semver.MustParse("1.0.0"),
+					checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						return news, nil, nil
+					},
+					diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+					},
+					config: func(resource.PropertyMap) error { return nil },
+				},
+			}
+			providersMu.Lock()
+			createdProviders = append(createdProviders, p)
+			providersMu.Unlock()
+			return p, nil
+		},
+	}
+	host := newPluginHost(t, []*providerLoader{loader})
+
+	r := NewRegistry(host, false, nil)
+
+	urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
+	id := resource.ID("id1")
+	oldInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0")}
+	newInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0"), "foo": resource.NewProperty("bar")}
+
+	// First, call Same (as EnsureProvider would) with old state.
+	// This simulates EnsureProvider running before the Update completes.
+	oldState := newProviderState("pkgA", "default", "id1", false, oldInputs)
+	err := r.Same(context.Background(), oldState, false)
+	require.NoError(t, err)
+
+	// One provider should be created from Same.
+	providersMu.Lock()
+	assert.Len(t, createdProviders, 1, "Same should create one provider")
+	sameProvider := createdProviders[0]
+	providersMu.Unlock()
+
+	// Now do the Check/Diff/Update flow.
+	check, err := r.Check(context.Background(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: oldInputs,
+		News: newInputs,
+	})
+	require.NoError(t, err)
+
+	_, err = r.Diff(context.Background(), plugin.DiffRequest{
+		URN:        urn,
+		ID:         id,
+		OldOutputs: oldInputs,
+		NewInputs:  newInputs,
+	})
+	require.NoError(t, err)
+
+	// Two providers now: one from Same, one from Check.
+	providersMu.Lock()
+	assert.Len(t, createdProviders, 2, "Check should create another provider")
+	providersMu.Unlock()
+
+	// Update should close Same's provider because it's overwriting it.
+	_, err = r.Update(context.Background(), plugin.UpdateRequest{
+		URN:        urn,
+		ID:         id,
+		OldOutputs: oldInputs,
+		NewInputs:  check.Properties,
+	})
+	require.NoError(t, err)
+
+	// The provider from Same should now be closed.
+	assert.True(t, sameProvider.IsClosed(), "Same's provider should be closed by Update")
+
+	// The provider from Check/Update should NOT be closed.
+	providersMu.Lock()
+	updateProvider := createdProviders[1]
+	providersMu.Unlock()
+	assert.False(t, updateProvider.IsClosed(), "Update's provider should not be closed")
+}
+
+// TestSameUpdateRace_Concurrent tests the concurrent race between Same and Update.
+// It verifies that regardless of timing, no providers are leaked.
+func TestSameUpdateRace_Concurrent(t *testing.T) {
+	t.Parallel()
+
+	// Run the test multiple times to increase chance of hitting race conditions.
+	for i := 0; i < 100; i++ {
+		func() {
+			// Create a loader that returns closable providers so we can track closes.
+			var createdProviders []*closableTestProvider
+			var providersMu sync.Mutex
+			loader := &providerLoader{
+				pkg:     "pkgA",
+				version: semver.MustParse("1.0.0"),
+				load: func() (plugin.Provider, error) {
+					p := &closableTestProvider{
+						testProvider: testProvider{
+							pkg:     "pkgA",
+							version: semver.MustParse("1.0.0"),
+							checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+								return news, nil, nil
+							},
+							diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+								return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+							},
+							config: func(resource.PropertyMap) error { return nil },
+						},
+					}
+					providersMu.Lock()
+					createdProviders = append(createdProviders, p)
+					providersMu.Unlock()
+					return p, nil
+				},
+			}
+			host := newPluginHost(t, []*providerLoader{loader})
+
+			r := NewRegistry(host, false, nil)
+
+			urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
+			id := resource.ID("id1")
+			oldInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0")}
+			newInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0"), "foo": resource.NewProperty("bar")}
+
+			// Do Check first (outside of goroutines) since Update depends on it.
+			check, err := r.Check(context.Background(), plugin.CheckRequest{
+				URN:  urn,
+				Olds: oldInputs,
+				News: newInputs,
+			})
+			require.NoError(t, err)
+
+			_, err = r.Diff(context.Background(), plugin.DiffRequest{
+				URN:        urn,
+				ID:         id,
+				OldOutputs: oldInputs,
+				NewInputs:  newInputs,
+			})
+			require.NoError(t, err)
+
+			// Now race Same and Update.
+			var wg sync.WaitGroup
+			wg.Add(2)
+
+			go func() {
+				defer wg.Done()
+				oldState := newProviderState("pkgA", "default", "id1", false, oldInputs)
+				_ = r.Same(context.Background(), oldState, false)
+			}()
+
+			go func() {
+				defer wg.Done()
+				_, _ = r.Update(context.Background(), plugin.UpdateRequest{
+					URN:        urn,
+					ID:         id,
+					OldOutputs: oldInputs,
+					NewInputs:  check.Properties,
+				})
+			}()
+
+			wg.Wait()
+
+			// Count how many providers are closed vs open.
+			providersMu.Lock()
+			numProviders := len(createdProviders)
+			var numClosed, numOpen int
+			for _, p := range createdProviders {
+				if p.IsClosed() {
+					numClosed++
+				} else {
+					numOpen++
+				}
+			}
+			providersMu.Unlock()
+
+			// We should have exactly one provider that is NOT closed (the winner).
+			// All other providers should be closed.
+			assert.Equal(t, 1, numOpen, "Exactly one provider should remain open (iteration %d, total=%d, closed=%d)", i, numProviders, numClosed)
+			assert.Equal(t, numProviders-1, numClosed, "All other providers should be closed (iteration %d)", i)
+		}()
+	}
+}

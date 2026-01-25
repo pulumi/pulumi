@@ -425,6 +425,11 @@ func (r *Registry) setProvider(ref providers.Reference, provider plugin.Provider
 	r.m.Lock()
 	defer r.m.Unlock()
 
+	r.setProviderLocked(ref, provider)
+}
+
+// setProviderLocked sets the provider at ref. Must be called with r.m held.
+func (r *Registry) setProviderLocked(ref providers.Reference, provider plugin.Provider) {
 	logging.V(7).Infof("setProvider(%v)", ref)
 
 	r.providers[ref] = provider
@@ -432,6 +437,41 @@ func (r *Registry) setProvider(ref providers.Reference, provider plugin.Provider
 	if alias, ok := r.aliases[ref.URN()]; ok {
 		r.providers[mustNewReference(alias, ref.ID())] = provider
 	}
+}
+
+// setProviderAndCloseOld sets the provider at ref and closes any previously registered provider at that ref.
+// This should be used when overwriting is expected (e.g., Update) to avoid leaking the old provider instance.
+func (r *Registry) setProviderAndCloseOld(ref providers.Reference, provider plugin.Provider) {
+	r.m.Lock()
+	oldProvider, hadOld := r.providers[ref]
+	r.setProviderLocked(ref, provider)
+	r.m.Unlock()
+
+	if hadOld && oldProvider != provider {
+		logging.V(7).Infof("setProviderAndCloseOld(%v): closing old provider", ref)
+		contract.IgnoreClose(oldProvider)
+	}
+}
+
+// setProviderIfNotExists atomically sets the provider at ref only if no provider is currently registered there.
+// Returns true if the provider was set, false if a provider already existed (in which case the caller should
+// close their provider instance to avoid leaks).
+func (r *Registry) setProviderIfNotExists(ref providers.Reference, provider plugin.Provider) bool {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	if _, ok := r.providers[ref]; ok {
+		logging.V(7).Infof("setProviderIfNotExists(%v): already exists", ref)
+		return false
+	}
+
+	logging.V(7).Infof("setProviderIfNotExists(%v): set", ref)
+	r.providers[ref] = provider
+
+	if alias, ok := r.aliases[ref.URN()]; ok {
+		r.providers[mustNewReference(alias, ref.ID())] = provider
+	}
+	return true
 }
 
 func (r *Registry) deleteProvider(ref providers.Reference) (plugin.Provider, bool) {
@@ -759,7 +799,17 @@ func (r *Registry) Same(ctx context.Context, res *resource.State, fromCheck bool
 
 	logging.V(7).Infof("loaded provider %v", ref)
 
-	r.setProvider(ref, provider)
+	// When fromCheck is false, we're loading from state for dependency diffing. Another thread may have
+	// registered the provider (via Update) while we were loading/configuring. Use setProviderIfNotExists
+	// to avoid overwriting and leaking our instance if that happened.
+	if fromCheck {
+		r.setProvider(ref, provider)
+	} else {
+		if !r.setProviderIfNotExists(ref, provider) {
+			// A provider was already registered (likely by a concurrent Update). Close ours to avoid leaks.
+			contract.IgnoreClose(provider)
+		}
+	}
 
 	return nil
 }
@@ -876,8 +926,10 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 		return plugin.UpdateResponse{Status: resource.StatusUnknown}, err
 	}
 
-	// Publish the configured provider.
-	r.setProvider(mustNewReference(req.URN, req.ID), provider)
+	// Publish the configured provider. Use setProviderAndCloseOld because a concurrent Same (from
+	// EnsureProvider for dependency diffing) may have registered an old provider at this ref.
+	// See https://github.com/pulumi/pulumi/issues/20529
+	r.setProviderAndCloseOld(mustNewReference(req.URN, req.ID), provider)
 	return plugin.UpdateResponse{Properties: filteredProperties, Status: resource.StatusOK}, nil
 }
 
