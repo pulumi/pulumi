@@ -189,7 +189,7 @@ type ErrorHookFunc func(
 	id resource.ID,
 	name string,
 	typ tokens.Type,
-	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	newInputs, oldInputs, oldOutputs resource.PropertyMap,
 	failedOperation string,
 	errors []string,
 ) (retry bool, err error)
@@ -332,7 +332,7 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
-		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
+		var newInputs, oldInputs, oldOutputs resource.PropertyMap
 		var failedOperation string
 		mOpts := plugin.MarshalOptions{
 			KeepUnknowns:     true,
@@ -352,12 +352,6 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
 			}
 		}
-		if req.NewOutputs != nil {
-			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, mOpts)
-			if err != nil {
-				return nil, fmt.Errorf("unmarshaling new outputs: %w", err)
-			}
-		}
 		if req.OldOutputs != nil {
 			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
 			if err != nil {
@@ -374,7 +368,7 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 		}
 
 		retry, err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
-			newInputs, oldInputs, newOutputs, oldOutputs, failedOperation, req.Errors)
+			newInputs, oldInputs, oldOutputs, failedOperation, req.Errors)
 		if err != nil {
 			return &pulumirpc.ErrorHookResponse{
 				Error: err.Error(),

@@ -1267,7 +1267,6 @@ class ErrorHookRequest(google.protobuf.message.Message):
     TYPE_FIELD_NUMBER: builtins.int
     NEW_INPUTS_FIELD_NUMBER: builtins.int
     OLD_INPUTS_FIELD_NUMBER: builtins.int
-    NEW_OUTPUTS_FIELD_NUMBER: builtins.int
     OLD_OUTPUTS_FIELD_NUMBER: builtins.int
     FAILED_OPERATION_FIELD_NUMBER: builtins.int
     ERRORS_FIELD_NUMBER: builtins.int
@@ -1290,10 +1289,6 @@ class ErrorHookRequest(google.protobuf.message.Message):
         """the optional checked old inputs of the resource."""
 
     @property
-    def new_outputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the optional new outputs of the resource."""
-
-    @property
     def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
         """the optional old outputs of the resource."""
 
@@ -1310,13 +1305,12 @@ class ErrorHookRequest(google.protobuf.message.Message):
         type: builtins.str = ...,
         new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
-        new_outputs: google.protobuf.struct_pb2.Struct | None = ...,
         old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
         failed_operation: builtins.str = ...,
         errors: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["errors", b"errors", "failed_operation", b"failed_operation", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["errors", b"errors", "failed_operation", b"failed_operation", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___ErrorHookRequest = ErrorHookRequest
 

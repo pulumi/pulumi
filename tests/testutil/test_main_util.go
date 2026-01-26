@@ -15,11 +15,16 @@
 package testutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/stretchr/testify/require"
 )
 
 // If the PULUMI_INTEGRATION_REBUILD_BINARIES environment variable is set to "true", this function will rebuild the
@@ -78,4 +83,25 @@ func InstallPythonProvider() {
 		fmt.Printf("error install requirements for plugin: %v.  Output: %v\n", err, string(stdout))
 		os.Exit(1)
 	}
+}
+
+// RequirePrinted checks that a diagnostic event with the given severity and containing the given text
+// is present in the stack events.
+func RequirePrinted(
+	t *testing.T,
+	stack integration.RuntimeValidationStackInfo,
+	severity string,
+	text string,
+) {
+	found := false
+	for _, event := range stack.Events {
+		if event.DiagnosticEvent != nil &&
+			event.DiagnosticEvent.Severity == severity && strings.Contains(event.DiagnosticEvent.Message, text) {
+			found = true
+			break
+		}
+	}
+	b, err := json.Marshal(stack.Events)
+	require.NoError(t, err)
+	require.True(t, found, "Expected to find printed message: %s, got %s", text, b)
 }

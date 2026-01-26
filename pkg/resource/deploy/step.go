@@ -373,7 +373,6 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.Type(),
 					s.new.Inputs,
 					nil, /* oldInputs */
-					nil, /* newOutputs */
 					nil, /* oldOutputs */
 					"create",
 					failures,
@@ -683,7 +682,6 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.Type(),
 					nil, /* newInputs */
 					s.old.Inputs,
-					nil, /* newOutputs */
 					s.old.Outputs,
 					"delete",
 					failures,
@@ -1003,7 +1001,6 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.Type(),
 					s.new.Inputs,
 					s.old.Inputs,
-					s.new.Outputs,
 					s.old.Outputs,
 					"update",
 					failures,

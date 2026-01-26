@@ -8818,7 +8818,7 @@ proto.pulumirpc.ResourceHookResponse.prototype.setError = function(value) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.ErrorHookRequest.repeatedFields_ = [10];
+proto.pulumirpc.ErrorHookRequest.repeatedFields_ = [9];
 
 
 
@@ -8857,10 +8857,9 @@ name: jspb.Message.getFieldWithDefault(msg, 3, ""),
 type: jspb.Message.getFieldWithDefault(msg, 4, ""),
 newInputs: (f = msg.getNewInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-newOutputs: (f = msg.getNewOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-failedOperation: jspb.Message.getFieldWithDefault(msg, 9, ""),
-errorsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f
+failedOperation: jspb.Message.getFieldWithDefault(msg, 8, ""),
+errorsList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -8926,18 +8925,13 @@ proto.pulumirpc.ErrorHookRequest.deserializeBinaryFromReader = function(msg, rea
     case 7:
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
-      msg.setNewOutputs(value);
-      break;
-    case 8:
-      var value = new google_protobuf_struct_pb.Struct;
-      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setOldOutputs(value);
       break;
-    case 9:
+    case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.setFailedOperation(value);
       break;
-    case 10:
+    case 9:
       var value = /** @type {string} */ (reader.readString());
       msg.addErrors(value);
       break;
@@ -9014,7 +9008,7 @@ proto.pulumirpc.ErrorHookRequest.serializeBinaryToWriter = function(message, wri
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getNewOutputs();
+  f = message.getOldOutputs();
   if (f != null) {
     writer.writeMessage(
       7,
@@ -9022,25 +9016,17 @@ proto.pulumirpc.ErrorHookRequest.serializeBinaryToWriter = function(message, wri
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getOldOutputs();
-  if (f != null) {
-    writer.writeMessage(
-      8,
-      f,
-      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
   f = message.getFailedOperation();
   if (f.length > 0) {
     writer.writeString(
-      9,
+      8,
       f
     );
   }
   f = message.getErrorsList();
   if (f.length > 0) {
     writer.writeRepeatedString(
-      10,
+      9,
       f
     );
   }
@@ -9194,10 +9180,10 @@ proto.pulumirpc.ErrorHookRequest.prototype.hasOldInputs = function() {
 
 
 /**
- * optional google.protobuf.Struct new_outputs = 7;
+ * optional google.protobuf.Struct old_outputs = 7;
  * @return {?proto.google.protobuf.Struct}
  */
-proto.pulumirpc.ErrorHookRequest.prototype.getNewOutputs = function() {
+proto.pulumirpc.ErrorHookRequest.prototype.getOldOutputs = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
     jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 7));
 };
@@ -9207,45 +9193,8 @@ proto.pulumirpc.ErrorHookRequest.prototype.getNewOutputs = function() {
  * @param {?proto.google.protobuf.Struct|undefined} value
  * @return {!proto.pulumirpc.ErrorHookRequest} returns this
 */
-proto.pulumirpc.ErrorHookRequest.prototype.setNewOutputs = function(value) {
-  return jspb.Message.setWrapperField(this, 7, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
- * @return {!proto.pulumirpc.ErrorHookRequest} returns this
- */
-proto.pulumirpc.ErrorHookRequest.prototype.clearNewOutputs = function() {
-  return this.setNewOutputs(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.ErrorHookRequest.prototype.hasNewOutputs = function() {
-  return jspb.Message.getField(this, 7) != null;
-};
-
-
-/**
- * optional google.protobuf.Struct old_outputs = 8;
- * @return {?proto.google.protobuf.Struct}
- */
-proto.pulumirpc.ErrorHookRequest.prototype.getOldOutputs = function() {
-  return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 8));
-};
-
-
-/**
- * @param {?proto.google.protobuf.Struct|undefined} value
- * @return {!proto.pulumirpc.ErrorHookRequest} returns this
-*/
 proto.pulumirpc.ErrorHookRequest.prototype.setOldOutputs = function(value) {
-  return jspb.Message.setWrapperField(this, 8, value);
+  return jspb.Message.setWrapperField(this, 7, value);
 };
 
 
@@ -9263,16 +9212,16 @@ proto.pulumirpc.ErrorHookRequest.prototype.clearOldOutputs = function() {
  * @return {boolean}
  */
 proto.pulumirpc.ErrorHookRequest.prototype.hasOldOutputs = function() {
-  return jspb.Message.getField(this, 8) != null;
+  return jspb.Message.getField(this, 7) != null;
 };
 
 
 /**
- * optional string failed_operation = 9;
+ * optional string failed_operation = 8;
  * @return {string}
  */
 proto.pulumirpc.ErrorHookRequest.prototype.getFailedOperation = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
 };
 
 
@@ -9281,16 +9230,16 @@ proto.pulumirpc.ErrorHookRequest.prototype.getFailedOperation = function() {
  * @return {!proto.pulumirpc.ErrorHookRequest} returns this
  */
 proto.pulumirpc.ErrorHookRequest.prototype.setFailedOperation = function(value) {
-  return jspb.Message.setProto3StringField(this, 9, value);
+  return jspb.Message.setProto3StringField(this, 8, value);
 };
 
 
 /**
- * repeated string errors = 10;
+ * repeated string errors = 9;
  * @return {!Array<string>}
  */
 proto.pulumirpc.ErrorHookRequest.prototype.getErrorsList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 10));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 9));
 };
 
 
@@ -9299,7 +9248,7 @@ proto.pulumirpc.ErrorHookRequest.prototype.getErrorsList = function() {
  * @return {!proto.pulumirpc.ErrorHookRequest} returns this
  */
 proto.pulumirpc.ErrorHookRequest.prototype.setErrorsList = function(value) {
-  return jspb.Message.setField(this, 10, value || []);
+  return jspb.Message.setField(this, 9, value || []);
 };
 
 
@@ -9309,7 +9258,7 @@ proto.pulumirpc.ErrorHookRequest.prototype.setErrorsList = function(value) {
  * @return {!proto.pulumirpc.ErrorHookRequest} returns this
  */
 proto.pulumirpc.ErrorHookRequest.prototype.addErrors = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 10, value, opt_index);
+  return jspb.Message.addToRepeatedField(this, 9, value, opt_index);
 };
 
 

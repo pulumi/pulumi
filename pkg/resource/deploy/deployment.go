@@ -769,7 +769,7 @@ func (d *Deployment) RunHooks(
 // RunErrorHooks runs all error hooks on the given state. A hook that returns an error will cause an error return.
 func (d *Deployment) RunErrorHooks(
 	hooks []string, id resource.ID, urn resource.URN,
-	name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	name string, typ tokens.Type, newInputs, oldInputs, oldOutputs resource.PropertyMap,
 	failedOperation string, errors []string,
 ) (bool, error) {
 	shouldRetry := false
@@ -783,7 +783,7 @@ func (d *Deployment) RunErrorHooks(
 		retry, err := hook.Callback(
 			d.Ctx().Base(),
 			urn, id, name, typ,
-			newInputs, oldInputs, newOutputs, oldOutputs,
+			newInputs, oldInputs, oldOutputs,
 			failedOperation,
 			errors,
 		)
