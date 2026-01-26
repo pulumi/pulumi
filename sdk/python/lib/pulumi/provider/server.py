@@ -290,6 +290,7 @@ class ProviderServicer(ResourceProviderServicer):
         replacement_trigger: Optional[Any] = None
         if request.HasField("replacement_trigger"):
             from pulumi.runtime.resource import _struct_value_to_python
+
             replacement_trigger = _struct_value_to_python(request.replacement_trigger)
 
         custom_timeouts = None
