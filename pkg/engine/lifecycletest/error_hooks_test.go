@@ -72,7 +72,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 
 		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
-				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				_, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -86,7 +86,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
-				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				_, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -161,7 +161,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 
 		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
-				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				_, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -175,7 +175,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
-				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				_, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -264,7 +264,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 
 		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
-				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				_, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -278,7 +278,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
-				_, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				_, _, _ resource.PropertyMap, failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -364,7 +364,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_RetryIfAnyHookRet
 		var hooks []*deploytest.ResourceHook
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return true, nil
@@ -489,7 +489,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_RetryIfAnyHookRet
 		var hooks []*deploytest.ResourceHook
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return true, nil
@@ -636,7 +636,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_RetryIfAnyHookRet
 		var hooks []*deploytest.ResourceHook
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return true, nil
@@ -768,7 +768,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return false, nil
@@ -834,7 +834,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return false, nil
@@ -902,7 +902,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return false, nil
@@ -966,7 +966,7 @@ func TestErrorHooks_NotCalledOnSuccess_Update(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return true, nil
@@ -1036,7 +1036,7 @@ func TestErrorHooks_NotCalledOnSuccess_Delete(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return true, nil
@@ -1105,7 +1105,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				// Always retry until max retries is reached.
 				hookCalls++
@@ -1193,7 +1193,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
 				require.NotEmpty(t, errs)
@@ -1300,7 +1300,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
 				require.NotEmpty(t, errs)
@@ -1412,7 +1412,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
 				switch hookCalls {
@@ -1484,7 +1484,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
 				switch hookCalls {
@@ -1563,7 +1563,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_, _, _ resource.PropertyMap, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
 				switch hookCalls {
@@ -1656,7 +1656,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 
 		hA, err := deploytest.NewErrorHook(monitor, callbacks, "hook-A",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resA" {
 					resAHooks++
@@ -1667,7 +1667,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 
 		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resB" {
 					resBHooks++
@@ -1758,7 +1758,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 
 		hA, err := deploytest.NewErrorHook(monitor, callbacks, "hook-A",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resA" {
 					resAHooks++
@@ -1769,7 +1769,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 
 		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resB" {
 					resBHooks++
@@ -1863,7 +1863,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 
 		hA, err := deploytest.NewErrorHook(monitor, callbacks, "hook-A",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resA" {
 					resAHooks++
@@ -1874,7 +1874,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 
 		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
-				_, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_, _, _ resource.PropertyMap, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resB" {
 					resBHooks++
