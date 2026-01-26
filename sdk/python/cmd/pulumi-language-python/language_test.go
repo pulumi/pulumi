@@ -246,8 +246,8 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 //
 // Python tests are split at the top level so that get-job-matrix.py can split them across multiple runners
 
+//nolint:paralleltest // testLanguageClasses uses t.Setenv
 func TestLanguageDefault(t *testing.T) {
-	t.Parallel()
 	testLanguageWithConfig(t, languageTestConfig{
 		name:        "default",
 		snapshotDir: "setuppy",
@@ -258,8 +258,8 @@ func TestLanguageDefault(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // testLanguageClasses uses t.Setenv
 func TestLanguageTOML(t *testing.T) {
-	t.Parallel()
 	testLanguageWithConfig(t, languageTestConfig{
 		name:        "toml",
 		snapshotDir: "toml",
@@ -270,8 +270,8 @@ func TestLanguageTOML(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // testLanguageClasses uses t.Setenv
 func TestLanguageClasses(t *testing.T) {
-	t.Parallel()
 	testLanguageWithConfig(t, languageTestConfig{
 		name:        "classes",
 		snapshotDir: "classes",
