@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"gopkg.in/yaml.v2"
 )
@@ -124,7 +125,7 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 		}
 	}
 
-	err = CopyAll(out, filepath.Join(tempOut, language))
+	err = fsutil.CopyFile(out, filepath.Join(tempOut, language), nil)
 	if err != nil {
 		return nil, nil, diags, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
@@ -314,45 +315,6 @@ func linkPackage(ctx *LinkPackagesContext) error {
 	}
 
 	fmt.Fprintln(ctx.Writer, instructions)
-	return nil
-}
-
-// CopyAll copies src to dst. If src is a directory, its contents will be copied
-// recursively.
-func CopyAll(dst string, src string) error {
-	info, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
-	if info.IsDir() {
-		// Recursively copy all files in a directory.
-		files, err := os.ReadDir(src)
-		if err != nil {
-			return fmt.Errorf("read dir: %w", err)
-		}
-		for _, file := range files {
-			name := file.Name()
-			copyerr := CopyAll(filepath.Join(dst, name), filepath.Join(src, name))
-			if copyerr != nil {
-				return copyerr
-			}
-		}
-	} else if info.Mode().IsRegular() {
-		// Copy files by reading and rewriting their contents.  Skip other special files.
-		data, err := os.ReadFile(src)
-		if err != nil {
-			return fmt.Errorf("read file: %w", err)
-		}
-		dstdir := filepath.Dir(dst)
-		if err = os.MkdirAll(dstdir, 0o700); err != nil {
-			return err
-		}
-		if err = os.WriteFile(dst, data, info.Mode()); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 

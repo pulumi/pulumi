@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	diagutils "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -263,7 +264,11 @@ func (w Workspace) LinkPackage(
 	if err := os.Mkdir(sdkDir, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
 		return fmt.Errorf("unable to create %q for generated SDKs: %w", sdkDir, err)
 	}
-	if err := os.Rename(tmpDir, out); err != nil {
+
+	// We copy instead of renaming to be robust to multiple FS partitions or drives.
+	//
+	// For example https://github.com/pulumi/pulumi/issues/21547.
+	if err := fsutil.CopyFile(out, tmpDir, nil); err != nil {
 		// If this failed, we still need to clean up tmpDir.
 		return errors.Join(err, os.RemoveAll(tmpDir))
 	}
