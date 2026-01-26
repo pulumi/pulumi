@@ -106,7 +106,7 @@ func TestInstallAlreadyInstalledPlugin(t *testing.T) {
 func TestDoNotInstallDependenciesOfAlreadyInstalledPackage(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name: "already-installed",
@@ -137,7 +137,7 @@ func TestDoNotInstallDependenciesOfAlreadyInstalledPackage(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source: "already-installed",
 	}, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
@@ -153,6 +153,7 @@ func TestDoNotInstallDependenciesOfAlreadyInstalledPackage(t *testing.T) {
 	dependencyPath := "$HOME/.pulumi/plugins/resource-dependency"
 	require.False(t, ws.plugins[dependencyPath].downloaded,
 		"dependency should NOT be downloaded when parent is already installed")
+	require.Equal(t, workspace.PackageSpec{Source: "already-installed"}, spec)
 }
 
 func TestInstallExternalBinaryPackage(t *testing.T) {
