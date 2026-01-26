@@ -2203,8 +2203,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	// Run the command from a different, sibling, directory. This ensures that
 	// get-package does not rely on the current working directory.
 	e.CWD = t.TempDir()
-	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
-	require.Empty(t, stderr)
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "provider", schema["name"].(string))

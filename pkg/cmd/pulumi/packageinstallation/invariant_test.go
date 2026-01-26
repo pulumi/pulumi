@@ -227,6 +227,12 @@ func (w invariantWorkspace) LoadPluginProjectAt(
 	return pl.project, filepath.ToSlash(filepath.Join(path, "PulumiPlugin.yaml")), nil
 }
 
+func (w invariantWorkspace) LoadBaseProjectFrom(
+	ctx context.Context, path string,
+) (workspace.BaseProject, string, error) {
+	return w.LoadPluginProjectAt(ctx, path)
+}
+
 func (w invariantWorkspace) DownloadPlugin(
 	ctx context.Context, plugin workspace.PluginDescriptor,
 ) (string, packageinstallation.MarkInstallationDone, error) {

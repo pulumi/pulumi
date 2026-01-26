@@ -190,6 +190,15 @@ func (w *recordingWorkspace) LoadPluginProjectAt(
 	return project, filePath, err
 }
 
+func (w *recordingWorkspace) LoadBaseProjectFrom(
+	ctx context.Context, path string,
+) (workspace.BaseProject, string, error) {
+	w.start("LoadBaseProjectFrom", ctx, path)
+	project, filePath, err := w.w.LoadBaseProjectFrom(ctx, path)
+	w.finish(project, filePath, err)
+	return project, filePath, err
+}
+
 func (w *recordingWorkspace) LinkPackage(
 	ctx context.Context,
 	project *workspace.ProjectRuntimeInfo, projectDir string,
