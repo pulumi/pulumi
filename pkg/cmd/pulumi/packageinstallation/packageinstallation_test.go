@@ -66,6 +66,39 @@ func TestInstallAlreadyInstalledPackage(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestInstallAlreadyInstalledPlugin(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name:    "plugin",
+				Version: &semver.Version{Major: 1},
+				Kind:    apitype.ResourcePlugin,
+			},
+			downloaded: true,
+			installed:  true,
+			hasBinary:  true,
+		},
+	})
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+		Source: "plugin", Version: "1.0.0",
+		Parameters: []string{"parameterization"},
+	}, nil, "", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: 1,
+	}, nil, rws)
+	require.NoError(t, err)
+	_, err = run(t.Context(), "/tmp")
+	require.NoError(t, err)
+}
+
 func TestDoNotInstallDependenciesOfAlreadyInstalledPackage(t *testing.T) {
 	t.Parallel()
 

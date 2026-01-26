@@ -719,6 +719,19 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 			}
 		}
 
+		if result.InstalledInWorkspace {
+			defer specReady()
+			pluginDir, err := p.ws.GetPluginPath(ctx, descriptor)
+			if err != nil {
+				return err
+			}
+			// If it's already installed in it's Pulumi managed location, then assuming it was installed
+			// successfully we shouldn't need to do anything else.
+			_, err = ensureProjectDir(
+				ctx, p, specFinished, descriptor.Name, pluginDir, nil, step.runBundleOut)
+			return err
+		}
+
 		// Start with the download. The downloadStep will take care of attaching
 		// steps for (2) and (3) to specFinished.
 		download, downloadReady := p.dag.NewNode(downloadStep{
