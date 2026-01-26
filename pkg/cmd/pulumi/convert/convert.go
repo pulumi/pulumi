@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -585,7 +586,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		sdkOut := filepath.Join(targetDirectory, "sdks", pkg.Parameterization.Name)
-		err = packages.CopyAll(sdkOut, filepath.Join(tempOut, language))
+		err = fsutil.CopyFile(sdkOut, filepath.Join(tempOut, language), nil)
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
 		}
