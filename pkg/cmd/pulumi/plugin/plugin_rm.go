@@ -44,13 +44,15 @@ func newPluginRmCmd() *cobra.Command {
 		Long: "Remove one or more plugins from the download cache.\n" +
 			"\n" +
 			"Specify KIND, NAME, and/or VERSION to narrow down what will be removed.\n" +
-			"If none are specified, the entire cache will be cleared.  If only KIND and\n" +
+			"If none are specified, the entire cache will be cleared. If only KIND and\n" +
 			"NAME are specified, but not VERSION, all versions of the plugin with the\n" +
-			"given KIND and NAME will be removed.  VERSION may be a range.\n" +
+			"given KIND and NAME will be removed. VERSION may be a range.\n" +
 			"\n" +
-			"This removal cannot be undone.  If a deleted plugin is subsequently required\n" +
-			"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
-			"using the plugin install command.",
+			"Valid values for KIND are: resource, language, analyzer, converter, and tool.\n" +
+			"\n" +
+			"This removal cannot be undone. If a deleted plugin is subsequently required\n" +
+			"in order to execute a Pulumi program, the Pulumi CLI will often download it\n" +
+			"automatically, or you can manually reinstall it using 'pulumi plugin install'.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			yes = yes || env.SkipConfirmations.Value()
 			opts := display.Options{

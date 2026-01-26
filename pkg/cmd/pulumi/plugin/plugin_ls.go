@@ -34,7 +34,11 @@ func newPluginLsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List plugins",
-		Args:  cmdutil.NoArgs,
+		Long: "List plugins.\n" +
+			"\n" +
+			"Lists plugins that have been installed in the plugin cache. This includes\n" +
+			"resource and converter plugins.",
+		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Produce a list of plugins, sorted by name and version.
 			var plugins []workspace.PluginInfo
