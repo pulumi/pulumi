@@ -238,7 +238,9 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 	}
 }
 
-func TestLanguagePythonDefault(t *testing.T) {
+// Python tests are split at the top level so that get-job-matrix.py can split them across multiple runners
+
+func TestLanguageDefault(t *testing.T) {
 	testLanguageWithConfig(t, languageTestConfig{
 		name:        "default",
 		snapshotDir: "setuppy",
@@ -249,7 +251,7 @@ func TestLanguagePythonDefault(t *testing.T) {
 	})
 }
 
-func TestLanguagePythonTOML(t *testing.T) {
+func TestLanguageTOML(t *testing.T) {
 	testLanguageWithConfig(t, languageTestConfig{
 		name:        "toml",
 		snapshotDir: "toml",
@@ -260,7 +262,7 @@ func TestLanguagePythonTOML(t *testing.T) {
 	})
 }
 
-func TestLanguagePythonClasses(t *testing.T) {
+func TestLanguageClasses(t *testing.T) {
 	testLanguageWithConfig(t, languageTestConfig{
 		name:        "classes",
 		snapshotDir: "classes",
