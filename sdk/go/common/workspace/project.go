@@ -134,6 +134,42 @@ type PackageSpec struct {
 	unmarshalledFromFull bool
 }
 
+func (p PackageSpec) String() string {
+	if len(p.Parameters) == 0 && len(p.Checksums) == 0 && len(p.PluginDownloadURL) == 0 {
+		if len(p.Version) == 0 {
+			return p.Source
+		}
+		return p.Source + "@" + p.Version
+	}
+
+	var b strings.Builder
+	b.WriteString("{ Source: ")
+	b.WriteString(p.Source)
+
+	if len(p.Version) != 0 {
+		b.WriteString(", Version: ")
+		b.WriteString(p.Version)
+	}
+
+	if len(p.Parameters) != 0 {
+		b.WriteString(", Parameters: ")
+		for i, param := range p.Parameters {
+			b.WriteString(param)
+			if i != len(p.Parameters)-1 {
+				b.WriteRune(' ')
+			}
+		}
+	}
+
+	if len(p.PluginDownloadURL) != 0 {
+		b.WriteString(", PluginDownloadURL: ")
+		b.WriteString(p.PluginDownloadURL)
+	}
+	b.WriteString(" }")
+
+	return b.String()
+}
+
 type packageSpecMarshalled struct {
 	Source            string            `json:"source" yaml:"source"`
 	Version           string            `json:"version,omitzero" yaml:"version,omitempty"`

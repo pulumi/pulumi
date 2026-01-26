@@ -436,6 +436,18 @@ func ProviderFromSource(
 	}
 	packageSpec := workspace.PackageSpec{Source: packageSource, Version: version}
 
+	{
+		proj, _, err := pkgWorkspace.Instance.LoadBaseProjectFrom(pctx.Request(), pctx.Pwd)
+		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+			return nil, workspace.PackageSpec{}, fmt.Errorf("error loading Pulumi Project: %w", err)
+		}
+		if proj != nil {
+			if remap, ok := proj.GetPackageSpecs()[packageSource]; ok {
+				packageSpec = remap
+			}
+		}
+	}
+
 	f, spec, err := packageinstallation.InstallPlugin(pctx.Request(), packageSpec, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
 			ResolveWithRegistry: e.GetBool(env.Experimental) &&
@@ -447,11 +459,11 @@ func ProviderFromSource(
 	}, reg, packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, os.Stderr, os.Stderr,
 		nil, packageworkspace.Options{}))
 	if err != nil {
-		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to install %q: %w", packageSource, err)
+		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to install %s: %w", packageSpec, err)
 	}
 	p, err := f(pctx.Request(), ".")
 	if err != nil {
-		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to run %q: %w", packageSource, err)
+		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to run %s: %w", packageSpec, err)
 	}
 	return p, spec, nil
 }
