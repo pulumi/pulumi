@@ -27,12 +27,14 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	opentracing "github.com/opentracing/opentracing-go"
+	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
 
 	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
@@ -751,6 +753,29 @@ func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inCo
 	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
 ) {
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
+}
+
+// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
+func (b *cloudBackend) GetStackPolicyPacks(
+	ctx context.Context, stackRef backend.StackReference,
+) ([]engine.RequiredPolicy, error) {
+	if !b.Capabilities(ctx).StackPolicyPacks {
+		return nil, errors.New("getting stack policies is not supported by the backend")
+	}
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := b.client.GetStackPolicyPacks(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+
+	return slices.Collect(fxs.Map(resp.RequiredPolicies, func(policy apitype.RequiredPolicy) engine.RequiredPolicy {
+		return newCloudRequiredPolicy(b.client, policy, stackID.Owner)
+	})), nil
 }
 
 func (b *cloudBackend) ListTemplates(ctx context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
