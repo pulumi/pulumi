@@ -217,7 +217,7 @@ jobs:
               "$CODEGEN_TESTS_FLAG" \
               --platform windows-latest \
               --version-set current \
-              --partition-module pkg 1 \
+              --partition-module pkg 2 \
               --partition-module sdk 1 \
               --partition-module tests 2 \
               --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
