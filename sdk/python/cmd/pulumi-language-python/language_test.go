@@ -238,6 +238,12 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 	}
 }
 
+// We need to run the python tests multiple times. Once with TOML projects and once with setup.py. We also want to
+// test that explicitly setting the input types works as expected, as well as the default. This shouldn't interact
+// with the project type so we vary both at once. We also want to test that the typechecker works, that doesn't vary
+// by project type but it will vary over classes-vs-dicts. We could run all combinations but we take some time/risk
+// tradeoff here only testing the old classes style with pyright.
+//
 // Python tests are split at the top level so that get-job-matrix.py can split them across multiple runners
 
 func TestLanguageDefault(t *testing.T) {
