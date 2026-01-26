@@ -287,6 +287,11 @@ class ProviderServicer(ResourceProviderServicer):
                 _create_provider_resource(urn) for urn in request.replace_with
             ]
 
+        replacement_trigger: Optional[Any] = None
+        if request.HasField("replacement_trigger"):
+            from pulumi.runtime.resource import _struct_value_to_python
+            replacement_trigger = _struct_value_to_python(request.replacement_trigger)
+
         custom_timeouts = None
         if request.customTimeouts:
             pulumi.resource.CustomTimeouts(
@@ -312,6 +317,7 @@ class ProviderServicer(ResourceProviderServicer):
             retain_on_delete=request.retainOnDelete,
             deleted_with=deleted_with,
             replace_with=replace_with,
+            replacement_trigger=replacement_trigger,
             hooks=resource_hooks,
         )
 

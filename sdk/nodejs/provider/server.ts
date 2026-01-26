@@ -438,6 +438,11 @@ class Server implements grpc.UntypedServiceImplementation {
                     opts.deletedWith = createProviderResource(deletedWith);
                 }
 
+                const replacementTrigger = req.getReplacementTrigger();
+                if (replacementTrigger) {
+                    opts.replacementTrigger = rpc.deserializeProperty(replacementTrigger.toJavaScript(), true);
+                }
+
                 const result = await this.provider.construct(name, type, inputs, opts);
 
                 const resp = new provproto.ConstructResponse();
