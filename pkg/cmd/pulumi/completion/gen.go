@@ -48,7 +48,7 @@ func NewGenCompletionCmd(root *cobra.Command) *cobra.Command {
 		Arguments: []constrictor.Argument{
 			{
 				Name:  "shell",
-				Usage: "<SHELL>",
+				Usage: "<shell>",
 				Type:  "string",
 			},
 		},
