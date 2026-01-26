@@ -18,7 +18,9 @@ import (
 	"context"
 	"maps"
 	"path/filepath"
+	"runtime"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -196,7 +198,12 @@ func (w invariantWorkspace) InstallPluginAt(
 }
 
 func (w invariantWorkspace) IsExecutable(ctx context.Context, binaryPath string) (bool, error) {
-	if _, ok := w.plainBinaryPaths[binaryPath]; ok {
+	normalizedPath := binaryPath
+	if runtime.GOOS == "windows" {
+		normalizedPath = strings.TrimSuffix(binaryPath, ".exe")
+	}
+
+	if _, ok := w.plainBinaryPaths[normalizedPath]; ok {
 		return true, nil
 	}
 	p := filepath.ToSlash(filepath.Dir(binaryPath))
@@ -216,8 +223,12 @@ func (w invariantWorkspace) LoadPluginProjectAt(
 ) (*workspace.PluginProject, string, error) {
 	path = filepath.ToSlash(path)
 	pl, ok := w.plugins[path]
-	if !ok || !pl.pathVisible {
-		assert.Failf(w.t, "", "LoadPluginProjectAt(%q) called on non-existent plugin (pathVisible=%t)", path, pl.pathVisible)
+	if !ok {
+		assert.Failf(w.t, "", "LoadPluginProjectAt(%q) called on non-existent plugin", path)
+		return nil, "", assert.AnError
+	}
+	if !pl.pathVisible {
+		assert.Failf(w.t, "", "LoadPluginProjectAt(%q) called on non-visible plugin", path)
 		return nil, "", assert.AnError
 	}
 	if pl.project == nil {
