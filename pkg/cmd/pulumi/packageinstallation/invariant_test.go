@@ -198,9 +198,9 @@ func (w invariantWorkspace) InstallPluginAt(
 }
 
 func (w invariantWorkspace) IsExecutable(ctx context.Context, binaryPath string) (bool, error) {
-	normalizedPath := binaryPath
+	normalizedPath := filepath.ToSlash(binaryPath)
 	if runtime.GOOS == "windows" {
-		normalizedPath = strings.TrimSuffix(binaryPath, ".exe")
+		normalizedPath = strings.TrimSuffix(normalizedPath, ".exe")
 	}
 
 	if _, ok := w.plainBinaryPaths[normalizedPath]; ok {
