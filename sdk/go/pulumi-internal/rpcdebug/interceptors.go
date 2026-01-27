@@ -239,13 +239,7 @@ func (*DebugInterceptor) transcode(obj any) (json.RawMessage, error) {
 				reflect.TypeOf(obj))
 	}
 
-	// Use EmitUnpopulated to ensure all fields (including maps with entries) are included
-	// Note: UseProtoNames uses protobuf field names, but we want to use JSON names from the json tag
-	opts := protojson.MarshalOptions{
-		EmitUnpopulated: true,
-		UseProtoNames:   false, // Use JSON field names from json tags instead
-	}
-	buf, err := opts.Marshal(m)
+	buf, err := protojson.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
