@@ -367,11 +367,10 @@ func enqueueUnresolvedPackage(
 		done:         ready,
 		runBundleOut: runBundleOut,
 	})
-	// We know that resolving a spec doesn't have any concrete dependencies, so we can kick that off immediately.
-	resolveReady()
-
 	// At minimum, we need to resolve spec before spec is done.
 	contract.AssertNoErrorf(state.dag.NewEdge(resolve, specReady), "linking in a new node is safe")
+	// We know that resolving a spec doesn't have any concrete dependencies, so we can kick that off immediately.
+	resolveReady()
 	return nil
 }
 
@@ -697,8 +696,8 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 			runBundleOut:    step.runBundleOut,
 			downloadCleanup: new(downloadCleanup),
 		})
-		downloadReady()
 		contract.AssertNoErrorf(p.dag.NewEdge(download, specFinished), "new nodes cannot be cyclic")
+		downloadReady()
 		return nil
 
 	case packageresolution.PluginResolution:
@@ -741,8 +740,8 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 			runBundleOut:    step.runBundleOut,
 			downloadCleanup: new(downloadCleanup),
 		})
-		downloadReady()
 		contract.AssertNoErrorf(p.dag.NewEdge(download, specFinished), "new nodes cannot be cyclic")
+		downloadReady()
 		return nil
 	default:
 		panic(fmt.Sprintf("unexpected package resolution result of type %T: %[1]s", result))
