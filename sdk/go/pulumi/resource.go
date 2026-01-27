@@ -585,7 +585,7 @@ type resourceOptions struct {
 	ReplaceWith             []Resource
 	Parameterization        []byte
 	Hooks                   *ResourceHookBinding
-	EnvVarMappings          map[string]string // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
+	EnvVarMappings          map[string]string
 }
 
 func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {

@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"io"
 	"os"
 	"os/exec"
@@ -32,6 +31,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 
 	"github.com/blang/semver"
 	multierror "github.com/hashicorp/go-multierror"
