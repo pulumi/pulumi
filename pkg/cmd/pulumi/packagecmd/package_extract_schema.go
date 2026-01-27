@@ -94,5 +94,9 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 		Variadic: true,
 	})
 
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "get-schema <schema-source> [flags] [--] [provider-parameter]..."
+
 	return cmd
 }

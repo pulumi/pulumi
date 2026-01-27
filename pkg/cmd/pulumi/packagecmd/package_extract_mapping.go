@@ -127,6 +127,10 @@ empty string.`,
 		Variadic: true,
 	})
 
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "get-mapping <key> <schema-source> [provider-key] [flags] [--] [provider-parameter]..."
+
 	cmd.Flags().StringVarP(&out, "out", "o", "", "The file to write the mapping data to")
 
 	return cmd

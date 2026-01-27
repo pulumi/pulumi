@@ -98,6 +98,10 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 		Variadic: true,
 	})
 
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "info <provider|schema|path> [flags] [--] [provider-parameter]..."
+
 	cmd.Flags().StringVarP(&module, "module", "m", "", "Module name")
 	cmd.Flags().StringVarP(&resource, "resource", "r", "", "Resource name")
 	cmd.Flags().StringVarP(&function, "function", "f", "", "Function name")

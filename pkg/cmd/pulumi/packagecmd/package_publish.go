@@ -109,6 +109,10 @@ func newPackagePublishCmd() *cobra.Command {
 		Variadic: true,
 	})
 
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "publish <provider|schema> [flags] [--] [provider-parameter]..."
+
 	cmd.Flags().StringVar(
 		&args.source, "source", defaultPackageSource,
 		"The origin of the package (e.g., 'pulumi', 'private', 'opentofu'). Defaults to 'private'.")

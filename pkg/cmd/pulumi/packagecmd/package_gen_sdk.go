@@ -124,6 +124,10 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 		Variadic: true,
 	})
 
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "gen-sdk <schema-source> [flags] [--] [provider-parameter]..."
+
 	cmd.Flags().StringVarP(&language, "language", "", "all",
 		"The SDK language to generate: [nodejs|python|go|dotnet|java|all]")
 	cmd.Flags().StringVarP(&out, "out", "o", "./sdk",
