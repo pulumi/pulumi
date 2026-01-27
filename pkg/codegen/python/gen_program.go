@@ -826,6 +826,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.ReplaceOnChanges != nil {
 		appendOption("replace_on_changes", opts.ReplaceOnChanges)
 	}
+	if opts.DeleteBeforeReplace != nil {
+		appendOption("delete_before_replace", opts.DeleteBeforeReplace)
+	}
 
 	return block, temps
 }

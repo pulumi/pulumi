@@ -50,6 +50,8 @@ type ResourceOptions struct {
 	HideDiffs model.Expression
 	// A list of properties that should trigger resource replacement when changed.
 	ReplaceOnChanges model.Expression
+	// Whether the old resource should be deleted before creating the new one during replacement.
+	DeleteBeforeReplace model.Expression
 	// The version of the provider for this resource.
 	Version model.Expression
 	// The plugin download URL for this resource.

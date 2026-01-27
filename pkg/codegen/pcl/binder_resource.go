@@ -504,6 +504,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "replaceOnChanges":
 				t = model.NewListType(ResourcePropertyType) // Property paths
 				resourceOptions.ReplaceOnChanges = item.Value
+			case "deleteBeforeReplace":
+				t = model.BoolType
+				resourceOptions.DeleteBeforeReplace = item.Value
 			case "version":
 				t = model.StringType
 				resourceOptions.Version = item.Value
