@@ -282,6 +282,25 @@ func SetEnvironmentVariableMappings(inputs resource.PropertyMap, mappings map[st
 	internalInputs[envVarMappingsKey] = resource.NewProperty(propMap)
 }
 
+// buildEnvWithMappings creates an env.Env with the given mappings applied.
+// Mappings are NEW_KEY -> OLD_KEY: if NEW_KEY exists in the environment, the
+// returned env will have OLD_KEY set to the value of NEW_KEY.
+func buildEnvWithMappings(mappings map[string]string) env.Env {
+	baseStore := env.Global().GetStore()
+	if len(mappings) > 0 {
+		mappedStore := make(env.MapStore)
+		for newKey, oldKey := range mappings {
+			if value, ok := baseStore.Raw(newKey); ok {
+				mappedStore[oldKey] = value
+			}
+		}
+		if len(mappedStore) > 0 {
+			baseStore = envutil.JoinStore(mappedStore, baseStore)
+		}
+	}
+	return envutil.NewEnv(baseStore)
+}
+
 // GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
 // parameterization property is not present, this function returns nil.
 func GetProviderParameterization(
@@ -602,29 +621,9 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		}}}, nil
 	}
 
-	// Build the environment: start with global, then apply remappings
-	baseStore := env.Global().GetStore()
-
-	// Apply remappings: if NEW_KEY exists in the environment, set OLD_KEY=value(NEW_KEY)
-	if envVarMappings != nil && len(envVarMappings) > 0 {
-		mappedStore := make(env.MapStore)
-		for newKey, oldKey := range envVarMappings {
-			// Check if NEW_KEY exists in the current environment
-			if value, ok := baseStore.Raw(newKey); ok {
-				// Provider sees OLD_KEY with the value from NEW_KEY
-				mappedStore[oldKey] = value
-			}
-		}
-		if len(mappedStore) > 0 {
-			baseStore = envutil.JoinStore(mappedStore, baseStore)
-		}
-	}
-
-	e := envutil.NewEnv(baseStore)
-
 	// TODO: We should thread checksums through here.
 	provider, err := loadParameterizedProvider(
-		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
+		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -794,26 +793,9 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 			return fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, urn, err)
 		}
 
-		// Build the environment: start with global, then apply remappings
-		baseStore := env.Global().GetStore()
-		// Apply remappings: if NEW_KEY exists in the environment, set OLD_KEY=value(NEW_KEY)
-		if envVarMappings != nil && len(envVarMappings) > 0 {
-			mappedStore := make(env.MapStore)
-			for newKey, oldKey := range envVarMappings {
-				// Check if NEW_KEY exists in the current environment
-				if value, ok := baseStore.Raw(newKey); ok {
-					// Provider sees OLD_KEY with the value from NEW_KEY
-					mappedStore[oldKey] = value
-				}
-			}
-			if len(mappedStore) > 0 {
-				baseStore = envutil.JoinStore(mappedStore, baseStore)
-			}
-		}
-
-		e := envutil.NewEnv(baseStore)
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
+		provider, err = loadParameterizedProvider(
+			ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -889,28 +871,9 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 				fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 
-		// Build the environment: start with global, then apply remappings
-		baseStore := env.Global().GetStore()
-
-		// Apply remappings: if NEW_KEY exists in the environment, set OLD_KEY=value(NEW_KEY)
-		if envVarMappings != nil && len(envVarMappings) > 0 {
-			mappedStore := make(env.MapStore)
-			for newKey, oldKey := range envVarMappings {
-				// Check if NEW_KEY exists in the current environment
-				if value, ok := baseStore.Raw(newKey); ok {
-					// Provider sees OLD_KEY with the value from NEW_KEY
-					mappedStore[oldKey] = value
-				}
-			}
-			if len(mappedStore) > 0 {
-				baseStore = envutil.JoinStore(mappedStore, baseStore)
-			}
-		}
-
-		e := envutil.NewEnv(baseStore)
-		
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
+		provider, err = loadParameterizedProvider(
+			ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)
