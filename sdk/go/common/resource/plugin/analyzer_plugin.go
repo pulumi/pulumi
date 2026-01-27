@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -209,7 +208,8 @@ func NewPolicyAnalyzer(
 		}
 
 		// Create the environment variables from the options.
-		environment, err := constructEnv(opts, proj.Runtime.Name())
+		var environment env.Env
+		environment, err = constructEnv(opts, proj.Runtime.Name())
 		if err != nil {
 			return nil, err
 		}
@@ -973,7 +973,6 @@ func convertNotApplicable(protoNotApplicable []*pulumirpc.PolicyNotApplicable) [
 // Config is passed as an environment variable (including unencrypted secrets), similar to
 // how config is passed to each language runtime plugin.
 func constructEnv(opts *PolicyAnalyzerOptions, runtime string) (env.Env, error) {
-
 	store := envutil.MapStore{}
 
 	maybeAppendEnv := func(k, v string) {
@@ -1005,7 +1004,6 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) (env.Env, error) 
 		maybeAppendEnv("PULUMI_STACK", opts.Stack)
 		maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(opts.DryRun))
 	}
-	env.Global()
 
 	return envutil.NewEnv(envutil.JoinStore(store, env.Global().GetStore())), nil
 }
