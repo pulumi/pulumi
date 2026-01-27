@@ -232,7 +232,6 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		optionsStore := env.MapStore{}
 
 		for k, v := range options {
-
 			optionsStore["PULUMI_RUNTIME_"+strings.ToUpper(k)] = fmt.Sprintf("%v", v)
 		}
 		if projectName != "" {
@@ -379,7 +378,6 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
 // TODO: must pass env for local plugins to work
 func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path string) (Provider, error) {
-
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*ProviderHandshakeResponse, error) {

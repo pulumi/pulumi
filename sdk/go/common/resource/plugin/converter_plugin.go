@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+
 	"github.com/blang/semver"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/hashicorp/hcl/v2"
