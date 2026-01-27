@@ -19,13 +19,8 @@
 427059480 1564 proto/pulumi/events.proto
 3918828172 30219 proto/pulumi/language.proto
 1674803920 2966 proto/pulumi/plugin.proto
-<<<<<<< HEAD
 2309089116 66225 proto/pulumi/provider.proto
-1561660934 23962 proto/pulumi/resource.proto
-=======
-1727561168 66535 proto/pulumi/provider.proto
-2004055145 22428 proto/pulumi/resource.proto
->>>>>>> 2614e7ba3d (first stab at...protos?)
+1003850490 24213 proto/pulumi/resource.proto
 300043576 5575 proto/pulumi/resource_status.proto
 1184641865 1334 proto/pulumi/source.proto
 2026406979 4421 proto/pulumi/testing/language.proto
