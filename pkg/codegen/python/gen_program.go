@@ -823,6 +823,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.HideDiffs != nil {
 		appendOption("hide_diffs", opts.HideDiffs)
 	}
+	if opts.ReplaceOnChanges != nil {
+		appendOption("replace_on_changes", opts.ReplaceOnChanges)
+	}
 
 	return block, temps
 }

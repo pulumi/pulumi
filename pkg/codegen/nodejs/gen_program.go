@@ -928,6 +928,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.HideDiffs != nil {
 		appendOption("hideDiffs", opts.HideDiffs)
 	}
+	if opts.ReplaceOnChanges != nil {
+		appendOption("replaceOnChanges", opts.ReplaceOnChanges)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
 	}
