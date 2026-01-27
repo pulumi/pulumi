@@ -247,7 +247,12 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			optionsStore["PULUMI_CONFIG"] = jsonConfig
 		}
 
-		e = envutil.NewEnv(envutil.JoinStore(optionsStore, e.GetStore()))
+		// If no env was provided, use the global environment
+		baseStore := env.Global().GetStore()
+		if e != nil {
+			baseStore = e.GetStore()
+		}
+		e = envutil.NewEnv(envutil.JoinStore(optionsStore, baseStore))
 
 		handshake := func(
 			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
