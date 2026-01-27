@@ -52,6 +52,8 @@ type ResourceOptions struct {
 	ReplaceOnChanges model.Expression
 	// Whether the old resource should be deleted before creating the new one during replacement.
 	DeleteBeforeReplace model.Expression
+	// A list of output properties that should be treated as secret, in addition to ones detected from schema.
+	AdditionalSecretOutputs model.Expression
 	// The version of the provider for this resource.
 	Version model.Expression
 	// The plugin download URL for this resource.

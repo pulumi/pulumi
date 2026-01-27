@@ -507,6 +507,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "deleteBeforeReplace":
 				t = model.BoolType
 				resourceOptions.DeleteBeforeReplace = item.Value
+			case "additionalSecretOutputs":
+				t = model.NewListType(model.StringType)
+				resourceOptions.AdditionalSecretOutputs = item.Value
 			case "version":
 				t = model.StringType
 				resourceOptions.Version = item.Value
