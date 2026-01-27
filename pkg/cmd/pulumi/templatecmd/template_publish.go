@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -50,8 +51,7 @@ func newTemplatePublishCmd() *cobra.Command {
 	var args publishTemplateArgs
 
 	cmd := &cobra.Command{
-		Use:   "publish <directory>",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "publish",
 		Short: "Publish a template to the Private Registry",
 		Long: "Publish a template to the Private Registry.\n\n" +
 			"This command publishes a template directory to the Private Registry.",
@@ -61,6 +61,13 @@ func newTemplatePublishCmd() *cobra.Command {
 			return tplPublishCmd.Run(ctx, cmd, args, cliArgs[0])
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "directory"},
+		},
+		Required: 1,
+	})
 
 	cmd.Flags().StringVar(
 		&args.version, "version", "",

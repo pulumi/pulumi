@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -40,8 +41,7 @@ func newGenSdkCommand() *cobra.Command {
 	var version string
 	var local bool
 	cmd := &cobra.Command{
-		Use:   "gen-sdk <schema_source> [provider parameters]",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "gen-sdk",
 		Short: "Generate SDK(s) from a package or schema",
 		Long: `Generate SDK(s) from a package or schema.
 
@@ -114,6 +114,16 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "schema-source"},
+			{Name: "provider-parameter"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
 	cmd.Flags().StringVarP(&language, "language", "", "all",
 		"The SDK language to generate: [nodejs|python|go|dotnet|java|all]")
 	cmd.Flags().StringVarP(&out, "out", "o", "./sdk",

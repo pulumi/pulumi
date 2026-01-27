@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -41,8 +42,7 @@ func newPackageInfoCmd() *cobra.Command {
 	var resource string
 	var function string
 	cmd := &cobra.Command{
-		Use:   "info <provider|schema|path> [provider-parameter...]",
-		Args:  cmdutil.MinimumNArgs(1),
+		Use:   "info",
 		Short: "Show information about a package",
 		Long: `Show information about a package
 
@@ -88,6 +88,15 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			return showProviderInfo(spec, args, stdout)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "provider", Usage: "<provider|schema|path>"},
+			{Name: "provider-parameter"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
 
 	cmd.Flags().StringVarP(&module, "module", "m", "", "Module name")
 	cmd.Flags().StringVarP(&resource, "resource", "r", "", "Resource name")
