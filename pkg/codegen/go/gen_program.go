@@ -1191,6 +1191,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.DeleteBeforeReplace != nil {
 		appendOption("DeleteBeforeReplace", opts.DeleteBeforeReplace, model.BoolType)
 	}
+	if opts.AdditionalSecretOutputs != nil {
+		appendOption("AdditionalSecretOutputs", opts.AdditionalSecretOutputs, model.NewListType(model.StringType))
+	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}
