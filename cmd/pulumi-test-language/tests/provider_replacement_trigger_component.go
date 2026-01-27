@@ -49,7 +49,6 @@ func init() {
 					assert.Equal(l, want, component.Inputs, "expected inputs to be {value: true}")
 					assert.Equal(l, component.Inputs, component.Outputs, "expected inputs and outputs to match")
 
-					// Verify that the replacementTrigger is set on the component
 					require.EqualValues(
 						l, resource.NewProperty("trigger-value"),
 						component.ReplacementTrigger,
@@ -94,9 +93,8 @@ func init() {
 					snap := res.Snap
 					changes := res.Changes
 					events := res.Events
-					RequireStackResource(l, err, changes)
+					require.NoError(l, err, "expected no error")
 
-					// We expect the component to be replaced, so we should see a replace operation
 					require.GreaterOrEqual(l, changes[deploy.OpReplace], 1,
 						"expected at least one replace operation")
 
@@ -109,14 +107,12 @@ func init() {
 					assert.Equal(l, want, component.Inputs, "expected inputs to be {value: true}")
 					assert.Equal(l, component.Inputs, component.Outputs, "expected inputs and outputs to match")
 
-					// Verify that the replacementTrigger has been updated
 					require.EqualValues(
 						l, resource.NewProperty("trigger-value-updated"),
 						component.ReplacementTrigger,
 						"expected component to have updated replacementTrigger",
 					)
 
-					// Verify that the component was actually replaced
 					var ops []display.StepOp
 					for _, evt := range events {
 						switch e := evt.Payload().(type) {
