@@ -207,31 +207,20 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 ) error {
 	urn := e.URN()
 
-	if _, has := se.pendingNews.Load(urn); !has {
-		e.Done()
-		return nil
-	}
-
-	if finalizingStackOutputs {
-		contract.Assertf(urn.QualifiedType() == resource.RootStackType, "expected a stack resource urn, got %v", urn)
-	}
-
-	// If we're not finalizing and we've received an event for the stack's outputs, save the event for finalization
-	// later. We finalize stack outputs at the end of the deployment, so we can determine whether or not the
-	// deployment succeeded. If the deployment was successful, we use the new stack outputs. If there was an error,
-	// we only replace outputs that have new outputs, but to otherwise leave old outputs untouched.
-	if !finalizingStackOutputs && urn.QualifiedType() == resource.RootStackType {
-		se.stackOutputsEvent = e
-		e.Done()
-		return nil
-	}
-
-	// Look up the final state in the pending registration list.
+	// If this resource was filtered out by --target, skip RegisterResourceOutputs entirely.
 	reg, has := se.pendingNews.Load(urn)
 	if !has {
-		return fmt.Errorf("cannot complete a resource '%v' whose registration isn't pending", urn)
+		e.Done()
+		return nil
 	}
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
+
+	if finalizingStackOutputs {
+		contract.Assertf(
+			urn.QualifiedType() == resource.RootStackType,
+			"expected a stack resource urn, got %v", urn,
+		)
+	}
 	se.pendingNews.Delete(urn)
 	// Unconditionally set the resource's outputs to what was provided.  This intentionally overwrites whatever
 	// might already be there, since otherwise "deleting" outputs would have no affect.
