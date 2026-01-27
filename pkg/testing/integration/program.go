@@ -426,7 +426,7 @@ func (opts *ProgramTestOptions) getEnvName(name string) string {
 	contract.IgnoreError(err)
 
 	suffix := hex.EncodeToString(h.Sum(nil))
-	return fmt.Sprintf("%v-%v", name, suffix)
+	return fmt.Sprintf("default/%v-%v", name, suffix)
 }
 
 func (opts *ProgramTestOptions) getEnvNameWithOwner(name string) string {
