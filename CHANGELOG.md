@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.217.1 (2026-01-27)
+
+
+### Features
+
+- [sdk/go] Add support for the `OnError` resource hook
+  [#21515](https://github.com/pulumi/pulumi/pull/21515)
+
+
+### Bug Fixes
+
+- [cli/install] Copy files when linking to be robust to copying across file partitions
+  [#21549](https://github.com/pulumi/pulumi/pull/21549)
+
+- [cli/install] Do not double install plugins with explicit parameterizations
+  [#21548](https://github.com/pulumi/pulumi/pull/21548)
+
+- [cli/install] Copy files when linking instead of renaming
+   [#21549](https://github.com/pulumi/pulumi/pull/21549)
+
+
+**Full Changelog**: https://github.com/pulumi/pulumi/compare/v3.217.0...v3.217.1
+
 ## 3.217.0 (2026-01-23)
 
 
