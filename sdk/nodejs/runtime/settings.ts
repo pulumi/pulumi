@@ -267,6 +267,7 @@ export async function awaitFeatureSupport(): Promise<void> {
             invokeTransforms,
             parameterization,
             resourceHooks,
+            errorHooks,
         ] = await Promise.all(
             [
                 "secrets",
@@ -279,6 +280,7 @@ export async function awaitFeatureSupport(): Promise<void> {
                 "invokeTransforms",
                 "parameterization",
                 "resourceHooks",
+                "errorHooks",
             ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
         );
 
@@ -292,6 +294,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsInvokeTransforms = invokeTransforms;
         store.supportsParameterization = parameterization;
         store.supportsResourceHooks = resourceHooks;
+        store.supportsErrorHooks = errorHooks;
     }
 }
 

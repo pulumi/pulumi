@@ -23,6 +23,8 @@ import {
     ComponentResourceOptions,
     createUrn,
     CustomResourceOptions,
+    ErrorHook,
+    ErrorHookFunction,
     expandProviders,
     ID,
     pkgFromType,
@@ -1108,6 +1110,12 @@ export async function prepareHooks(
         }
     }
 
+    // Handle error hooks separately since they use ErrorHook instead of ResourceHook
+    for (const hook of binding.onError ?? []) {
+        await hook.__registered;
+        req.addOnError(hook.name);
+    }
+
     return req;
 }
 
@@ -1147,6 +1155,40 @@ export class StubResourceHook {
 }
 
 /**
+ * StubErrorHook is an error hook that does nothing.
+ *
+ * Note that we do not subclass {@link ErrorHook} here, because we do
+ * not want to call the super constructor, which would cause a hook
+ * registration.
+ *
+ * We need to reconstruct {@link ErrorHook} instances to set on the
+ * {@link ResourceOption}, but we only have the name available to us. We also
+ * know that these hooks have already been registered, so we can construct
+ * dummy hooks here, that will later be serialized back into list of hook
+ * names.
+ *
+ * @internal
+ */
+export class StubErrorHook {
+    public name: string;
+    public callback: ErrorHookFunction;
+    public __registered: Promise<void>;
+    public readonly __pulumiErrorHook: boolean = true;
+
+    constructor(name: string) {
+        this.name = name;
+        this.callback = () => {
+            return false;
+        };
+        this.__registered = Promise.resolve();
+    }
+
+    public static isInstance(obj: any): obj is ErrorHook {
+        return utils.isInstance<ErrorHook>(obj, "__pulumiErrorHook");
+    }
+}
+
+/**
  * Convert a hook binding from a protobuf message to an {@link ResourceHookBinding} with {@link StubHook}s.
  *
  * @internal
@@ -1162,6 +1204,7 @@ export function hookBindingFromProto(
         resourceHooks.afterUpdate = protoBinding.getAfterUpdateList().map((n) => new StubResourceHook(n));
         resourceHooks.beforeDelete = protoBinding.getBeforeDeleteList().map((n) => new StubResourceHook(n));
         resourceHooks.afterDelete = protoBinding.getAfterDeleteList().map((n) => new StubResourceHook(n));
+        resourceHooks.onError = protoBinding.getOnErrorList().map((n) => new StubErrorHook(n));
         return resourceHooks;
     }
     return;
@@ -1348,4 +1391,17 @@ export async function registerResourceHook(hook: ResourceHook) {
     }
 
     return callbackServer.registerResourceHook(hook);
+}
+
+export async function registerErrorHook(hook: ErrorHook) {
+    if (!getStore().supportsErrorHooks) {
+        throw new Error("The Pulumi CLI does not support error hooks. Please update the Pulumi CLI");
+    }
+
+    const callbackServer = getCallbacks();
+    if (callbackServer === undefined) {
+        throw new Error("Callback server could not initialize");
+    }
+
+    return callbackServer.registerErrorHook(hook);
 }
