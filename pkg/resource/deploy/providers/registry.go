@@ -622,16 +622,6 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 
 	e := envutil.NewEnv(baseStore)
 
-	// Debug: Log relevant env vars that the provider will see
-	relevantKeys := []string{"AZ_LOGIN", "MY_SPECIAL_AZ_LOGIN"}
-	if envVarMappings != nil {
-		for _, oldKey := range envVarMappings {
-			relevantKeys = append(relevantKeys, oldKey)
-		}
-		for newKey := range envVarMappings {
-			relevantKeys = append(relevantKeys, newKey)
-		}
-	}
 	// TODO: We should thread checksums through here.
 	provider, err := loadParameterizedProvider(
 		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
@@ -822,17 +812,6 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		}
 
 		e := envutil.NewEnv(baseStore)
-
-		// Debug: Log relevant env vars that the provider will see
-		relevantKeys := []string{"AZ_LOGIN", "MY_SPECIAL_AZ_LOGIN"}
-		if envVarMappings != nil {
-			for _, oldKey := range envVarMappings {
-				relevantKeys = append(relevantKeys, oldKey)
-			}
-			for newKey := range envVarMappings {
-				relevantKeys = append(relevantKeys, newKey)
-			}
-		}
 		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 		if err != nil {
@@ -929,17 +908,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 		}
 
 		e := envutil.NewEnv(baseStore)
-
-		// Debug: Log relevant env vars that the provider will see
-		relevantKeys := []string{"AZ_LOGIN", "MY_SPECIAL_AZ_LOGIN"}
-		if envVarMappings != nil {
-			for _, oldKey := range envVarMappings {
-				relevantKeys = append(relevantKeys, oldKey)
-			}
-			for newKey := range envVarMappings {
-				relevantKeys = append(relevantKeys, newKey)
-			}
-		}
+		
 		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, e)
 		if err != nil {
