@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -71,8 +72,7 @@ func newPackagePublishCmd() *cobra.Command {
 	var pkgPublishCmd packagePublishCmd
 
 	cmd := &cobra.Command{
-		Use:   "publish <provider|schema> --readme <path> [--] [provider-parameter...]",
-		Args:  cmdutil.MinimumNArgs(1),
+		Use:   "publish",
 		Short: "Publish a package to the Private Registry",
 		Long: "Publish a package to the Private Registry.\n\n" +
 			"This command publishes a package to the Private Registry. The package can be a provider " +
@@ -99,6 +99,19 @@ func newPackagePublishCmd() *cobra.Command {
 			return pkgPublishCmd.Run(ctx, args, cliArgs[0], parameters)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "provider", Usage: "<provider|schema>"},
+			{Name: "provider-parameter"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "publish <provider|schema> [flags] [--] [provider-parameter]..."
 
 	cmd.Flags().StringVar(
 		&args.source, "source", defaultPackageSource,

@@ -19,6 +19,7 @@ import (
 	"os"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -32,8 +33,7 @@ func newExtractMappingCommand() *cobra.Command {
 	var out string
 
 	cmd := &cobra.Command{
-		Use:   "get-mapping <key> <schema_source> [provider key] [provider parameters]",
-		Args:  cobra.MinimumNArgs(2),
+		Use:   "get-mapping",
 		Short: "Get the mapping information for a given key from a package",
 		Long: `Get the mapping information for a given key from a package.
 
@@ -115,6 +115,21 @@ empty string.`,
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "key"},
+			{Name: "schema-source"},
+			{Name: "provider-key"},
+			{Name: "provider-parameter"},
+		},
+		Required: 2,
+		Variadic: true,
+	})
+
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "get-mapping <key> <schema-source> [provider-key] [flags] [--] [provider-parameter]..."
 
 	cmd.Flags().StringVarP(&out, "out", "o", "", "The file to write the mapping data to")
 

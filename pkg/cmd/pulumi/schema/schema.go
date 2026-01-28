@@ -15,7 +15,7 @@
 package schema
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
 )
 
@@ -27,8 +27,9 @@ func NewSchemaCmd() *cobra.Command {
 
 Subcommands of this command can be used to analyze Pulumi package schemas. This can be useful to check hand-authored
 package schemas for errors.`,
-		Args: cmdutil.NoArgs,
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newSchemaCheckCommand())
 	return cmd

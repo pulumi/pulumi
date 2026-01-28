@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -38,8 +39,7 @@ func newPluginRmCmd() *cobra.Command {
 	var all bool
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "rm [KIND [NAME [VERSION]]]",
-		Args:  cmdutil.MaximumNArgs(3),
+		Use:   "rm",
 		Short: "Remove one or more plugins from the download cache",
 		Long: "Remove one or more plugins from the download cache.\n" +
 			"\n" +
@@ -131,6 +131,16 @@ func newPluginRmCmd() *cobra.Command {
 			return result
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "kind"},
+			{Name: "name"},
+			{Name: "version"},
+		},
+		Required: 0,
+		Variadic: false,
+	})
 
 	cmd.PersistentFlags().BoolVarP(
 		&all, "all", "a", false,
