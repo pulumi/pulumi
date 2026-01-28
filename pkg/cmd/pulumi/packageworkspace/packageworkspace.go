@@ -312,7 +312,10 @@ type servers struct {
 	grpc *plugin.GrpcServer
 }
 
-func (w Workspace) servers(ctx context.Context, language string, dir string) (servers, error) {
+func (w Workspace) servers(
+	ctx context.Context, language string, dir string,
+	schemaRef schema.PackageReference,
+) (servers, error) {
 	languageRuntime, err := w.host.LanguageRuntime(language)
 	if err != nil {
 		return servers{}, err
@@ -323,7 +326,9 @@ func (w Workspace) servers(ctx context.Context, language string, dir string) (se
 	})
 
 	pctx := plugin.NewContextWithHost(ctx, d, d, w.host, dir, dir, w.parentSpan)
-	loader := schema.NewPluginLoader(pctx.Host)
+	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx.Host), map[string]schema.PackageReference{
+		schemaRef.Identity(): schemaRef,
+	})
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
 	if err != nil {
@@ -345,7 +350,7 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 	if err != nil {
 		return "", servers{}, fmt.Errorf("unable to make temp dir: %w", err)
 	}
-	s, err := w.servers(ctx, language, tmpDir)
+	s, err := w.servers(ctx, language, tmpDir, pkg.Reference())
 	if err != nil {
 		return "", servers{}, errors.Join(err, os.RemoveAll(tmpDir))
 	}

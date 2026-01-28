@@ -3079,6 +3079,24 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	require.Equal(t, expectedTypes, types)
 }
 
+// Tests that NodeJS correctly generates imports for components sourced from other GitHub orgs.
+func TestNodejsComponentInjectNamespace(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("github_component", "nodejs"))
+	installNodejsProviderDependencies(t, e.RootPath)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "select", "github_component", "--create")
+	_, stderr := e.RunCommand("pulumi", "install")
+	assert.Contains(t, stderr, `import * as testComponent from "@moolumi/test-component";`)
+	e.RunCommand("pulumi", "up", "--yes")
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "output")
+	assert.Equal(t, "the-output", strings.TrimSpace(stdout))
+}
+
 // Tests that we can run a Node.js component provider using component_provider_host
 func TestNodejsComponentProviderRun(t *testing.T) {
 	t.Parallel()
