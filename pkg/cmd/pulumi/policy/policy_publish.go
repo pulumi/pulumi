@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -37,8 +38,7 @@ import (
 func newPolicyPublishCmd() *cobra.Command {
 	var policyPublishCmd policyPublishCmd
 	cmd := &cobra.Command{
-		Use:   "publish [org-name]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "publish",
 		Short: "Publish a Policy Pack to the Pulumi Cloud",
 		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
@@ -47,6 +47,13 @@ func newPolicyPublishCmd() *cobra.Command {
 			return policyPublishCmd.Run(cmd.Context(), cmdBackend.DefaultLoginManager, args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "org-name"},
+		},
+		Required: 0,
+	})
 
 	return cmd
 }
