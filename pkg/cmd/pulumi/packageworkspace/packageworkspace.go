@@ -275,14 +275,6 @@ func (w Workspace) LinkPackage(
 
 	// We have now generated a SDK, the only thing left to do is link it into the existing project.
 
-	// TODO[https://github.com/pulumi/pulumi/issues/21323]: Copied from
-	// [packages.LinkPackage]. This might be true, but we should still call into the
-	// YAML language host (which can then do nothing). Languages should not be special
-	// here.
-	if runtimeInfo.Name() == "yaml" {
-		return nil // Nothing to do for YAML
-	}
-
 	sdkPath, err := filepath.Rel(projectDir, out)
 	if err != nil {
 		return err
