@@ -934,6 +934,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.DeleteBeforeReplace != nil {
 		appendOption("deleteBeforeReplace", opts.DeleteBeforeReplace)
 	}
+	if opts.AdditionalSecretOutputs != nil {
+		appendOption("additionalSecretOutputs", opts.AdditionalSecretOutputs)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
 	}

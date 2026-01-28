@@ -829,6 +829,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.DeleteBeforeReplace != nil {
 		appendOption("delete_before_replace", opts.DeleteBeforeReplace)
 	}
+	if opts.AdditionalSecretOutputs != nil {
+		appendOption("additional_secret_outputs", opts.AdditionalSecretOutputs)
+	}
 
 	return block, temps
 }
