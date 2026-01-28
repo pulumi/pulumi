@@ -1145,7 +1145,6 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		p, ok := r.GetProvider(mustNewReference(urn, create.ID))
 		assert.True(t, ok)
 		assert.True(t, p.(*testProvider).configured)
-
 	})
 }
 
@@ -1155,9 +1154,10 @@ type testPluginHostWithEnvCapture struct {
 	capturedEnv env.Env
 }
 
+//nolint:lll
 func (host *testPluginHostWithEnvCapture) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 	host.capturedEnv = e
-	return host.testPluginHost.provider(descriptor)
+	return host.provider(descriptor)
 }
 
 func TestEnvMappingsPassedToHost(t *testing.T) {
@@ -1172,9 +1172,11 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 				return &testProvider{
 					pkg:     tokens.Package(descriptor.Name),
 					version: semver.MustParse("1.0.0"),
+					//nolint:lll
 					checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 						return news, nil, nil
 					},
+					//nolint:lll
 					diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 						return plugin.DiffResult{}, nil
 					},
