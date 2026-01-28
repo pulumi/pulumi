@@ -234,12 +234,14 @@ func TestReplaceWithAndDeletedWith(t *testing.T) {
 	require.NotNil(t, snap)
 
 	require.Len(t, snap.Resources, 3)
-	require.Equal(t, "created-id-1", snap.Resources[1].ID.String()) // C
-	require.Equal(t, "created-id-2", snap.Resources[2].ID.String()) // A
+	require.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+	require.Equal(t, "created-id-2", snap.Resources[2].ID.String())
 
-	require.Len(t, created, 2) // Created A and C
-	require.Len(t, deleted, 2) // Deleted B, replaced C
+	require.Len(t, created, 2)
+	require.Contains(t, created[0].Name(), "resC")
+	require.Contains(t, created[1].Name(), "resA")
 
+	require.Len(t, deleted, 2)
 	require.Contains(t, deleted[0].Name(), "resB")
 	require.Contains(t, deleted[1].Name(), "resC")
 }
