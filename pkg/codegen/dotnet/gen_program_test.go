@@ -91,6 +91,9 @@ func TestGenerateProgram(t *testing.T) {
 		},
 		GenProgram: GenerateProgram,
 		TestCases:  test.PulumiPulumiProgramTests,
+
+		InputDirectory:  filepath.Join("..", "..", "..", "tests", "testdata", "codegen"),
+		ResultDirectory: "testdata",
 	})
 }
 
