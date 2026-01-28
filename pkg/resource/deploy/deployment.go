@@ -609,14 +609,17 @@ func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
-func (d *Deployment) SameProvider(res *resource.State) error {
+// SameProvider configures a provider from state without changes.
+// If fromCheck is true, the provider was loaded during Check/Diff and we can reuse it.
+// If fromCheck is false (e.g., from EnsureProvider), we load fresh and don't touch UnconfiguredID.
+func (d *Deployment) SameProvider(res *resource.State, fromCheck bool) error {
 	var ctx context.Context
 	if d.ctx == nil {
 		ctx = context.Background()
 	} else {
 		ctx = d.ctx.Base()
 	}
-	return d.providers.Same(ctx, res)
+	return d.providers.Same(ctx, res, fromCheck)
 }
 
 // EnsureProvider ensures that the provider for the given resource is available in the registry. It assumes
@@ -644,7 +647,9 @@ func (d *Deployment) EnsureProvider(provider string) error {
 			return fmt.Errorf("could not find provider %v", providerRef)
 		}
 
-		err := d.SameProvider(providerResource)
+		// fromCheck=false because we're loading from state for dependency diffing,
+		// not from a Check/Diff flow. We must not touch the UnconfiguredID entry.
+		err := d.SameProvider(providerResource, false)
 		if err != nil {
 			return fmt.Errorf("could not create provider %v: %w", providerRef, err)
 		}
