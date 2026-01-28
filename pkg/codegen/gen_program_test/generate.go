@@ -60,26 +60,40 @@ func TestGenerateProgram(t *testing.T) {
 
 	// Change into pkg/codegen/%[2]s
 	os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "%[2]s"))
-	test.GenerateProgramBatchTest("%[2]s")(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(%d, %d))
-}`
+	%[3]s(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(%d, %d))
+}
+`
 
 	n := 6
-	for _, lang := range []string{"dotnet", "go", "nodejs", "python"} {
-		os.RemoveAll(filepath.Join("../", lang, "gen_program_test"))
+
+	langs := []language{
+		{"dotnet", "test.GenerateDotnetBatchTest"},
+		{"go", "test.GenerateGoBatchTest"},
+		{"nodejs", "test.GenerateNodeJSBatchTest"},
+		{"python", "test.GeneratePythonBatchTest"},
+	}
+
+	for _, lang := range langs {
+		os.RemoveAll(filepath.Join("../", lang.path, "gen_program_test"))
 		for i := 1; i <= n; i++ {
 			packageName := fmt.Sprintf("batch%d", i)
-			dir := filepath.Join("../", lang, "gen_program_test", packageName)
+			dir := filepath.Join("../", lang.path, "gen_program_test", packageName)
 			err := os.MkdirAll(dir, 0o755)
 			if err != nil {
 				panic(fmt.Sprintf("unexpected error generating codegen tests: %v", err))
 			}
 			testPath := filepath.Join(dir, "gen_program_test.go")
 
-			sourceCode := fmt.Sprintf(template, packageName, lang, i, n)
+			sourceCode := fmt.Sprintf(template, packageName, lang.path, lang.generateBatchTestFunc, i, n)
 			err = os.WriteFile(testPath, []byte(sourceCode), 0o755) //nolint:gosec
 			if err != nil {
 				panic(fmt.Sprintf("unexpected error generating codegen tests: %v", err))
 			}
 		}
 	}
+}
+
+type language struct {
+	path                  string
+	generateBatchTestFunc string
 }

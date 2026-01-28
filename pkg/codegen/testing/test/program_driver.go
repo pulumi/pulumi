@@ -48,6 +48,13 @@ func transpiled(dir string) string {
 	return filepath.Join(transpiledExamplesDir, dir)
 }
 
+const (
+	TestDotnet = "dotnet"
+	TestGo     = "go"
+	TestNodeJS = "nodejs"
+	TestPython = "python"
+)
+
 var allProgLanguages = codegen.NewStringSet(TestDotnet, TestPython, TestGo, TestNodeJS)
 
 type ProgramTest struct {
