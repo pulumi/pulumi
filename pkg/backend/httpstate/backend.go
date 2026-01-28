@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -1580,6 +1581,23 @@ func (b *cloudBackend) apply(
 	err := backend.CurrentProjectContradictsWorkspace(b.currentProject, stack.Ref())
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// If using the service secrets manager reset it for the current stack.
+	contract.Assertf(op.SecretsManager != nil, "SecretsManager must be non-nil")
+	if op.SecretsManager.Type() == service.Type {
+		// Pass a dummy ProjectStack here since DefaultSecretManger will want to write to it to say no encryption is in
+		// use, but we know that's already the case since we're using the service secrets manager.
+		ps := workspace.ProjectStack{}
+		sm, err := stack.DefaultSecretManager(&ps)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not create service secrets manager for stack %q: %w",
+				stack.Ref().String(), err)
+		}
+		contract.Assertf(
+			ps.EncryptedKey == "" && ps.EncryptionSalt == "" && ps.SecretsProvider == "",
+			"expected ProjectStack to remain unmodified")
+		op.SecretsManager = sm
 	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
