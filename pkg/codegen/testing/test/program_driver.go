@@ -570,6 +570,20 @@ type ProgramCodegenOptions struct {
 	// version prefixed by an operator (i.e. " v5.11.0", ==5.11.0")
 	ExpectedVersion map[string]PkgVersionInfo
 	DependencyFile  string
+
+	// The directory where generated outputs should be put. When unspecified, it defaults to
+	// "../testing/test/testdata/${TestCases[i].Directory}-pp/${Language}".
+	ResultDirectory string
+	// The directory where inputs will be evaluated relative to. When unspecified, it defaults to
+	// "../testing/test/testdata/${TestCases[i].Directory}-pp".
+	InputDirectory string
+}
+
+func (pco ProgramCodegenOptions) inputDirectory() string {
+	if pco.InputDirectory == "" {
+		return testdataPath
+	}
+	return pco.InputDirectory
 }
 
 type PkgVersionInfo struct {
@@ -613,15 +627,20 @@ func TestProgramCodegen(
 
 			expectNYIDiags := tt.ExpectNYIDiags.Has(testcase.Language)
 
-			testDir := filepath.Join(testdataPath, tt.Directory+"-pp")
-			pclFile := filepath.Join(testDir, tt.Directory+".pp")
+			testInputDir := filepath.Join(testcase.inputDirectory(), tt.Directory+"-pp")
+			pclFile := filepath.Join(testInputDir, tt.Directory+".pp")
 			if strings.HasPrefix(tt.Directory, transpiledExamplesDir) {
-				pclFile = filepath.Join(testDir, filepath.Base(tt.Directory)+".pp")
+				pclFile = filepath.Join(testInputDir, filepath.Base(tt.Directory)+".pp")
 			}
-			testDir = filepath.Join(testDir, testcase.Language)
-			err = os.MkdirAll(testDir, 0o700)
-			if err != nil && !os.IsExist(err) {
-				t.Fatalf("Failed to create %q: %s", testDir, err)
+			var testOutDir string
+			if testcase.ResultDirectory != "" {
+				testOutDir = filepath.Join(testcase.ResultDirectory, tt.Directory)
+			} else {
+				testOutDir = filepath.Join(testdataPath, tt.Directory, testcase.Language)
+			}
+			err = os.MkdirAll(testOutDir, 0o700)
+			if err != nil {
+				t.Fatalf("Failed to create %q: %s", testOutDir, err)
 			}
 
 			contents, err := os.ReadFile(pclFile)
@@ -629,9 +648,9 @@ func TestProgramCodegen(
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
 
-			expectedFile := filepath.Join(testDir, tt.Directory+"."+testcase.Extension)
+			expectedFile := filepath.Join(testOutDir, tt.Directory+"."+testcase.Extension)
 			if strings.HasPrefix(tt.Directory, transpiledExamplesDir) {
-				expectedFile = filepath.Join(testDir, filepath.Base(tt.Directory)+"."+testcase.Extension)
+				expectedFile = filepath.Join(testOutDir, filepath.Base(tt.Directory)+"."+testcase.Extension)
 			}
 			expected, err := os.ReadFile(expectedFile)
 			if err != nil && !pulumiAccept {
@@ -685,13 +704,13 @@ func TestProgramCodegen(
 					Name:    "test",
 					Runtime: workspace.NewProjectRuntimeInfo(testcase.Language, nil),
 				}
-				err = testcase.GenProject(testDir, project, program, nil /*localDependencies*/)
+				err = testcase.GenProject(testOutDir, project, program, nil /*localDependencies*/)
 				require.NoError(t, err)
 
-				depFilePath := filepath.Join(testDir, testcase.DependencyFile)
-				outfilePath := filepath.Join(testDir, testcase.OutputFile)
+				depFilePath := filepath.Join(testOutDir, testcase.DependencyFile)
+				outfilePath := filepath.Join(testOutDir, testcase.OutputFile)
 				CheckVersion(t, tt.Directory, depFilePath, testcase.ExpectedVersion)
-				GenProjectCleanUp(t, testDir, depFilePath, outfilePath)
+				GenProjectCleanUp(t, testOutDir, depFilePath, outfilePath)
 			}
 			files, diags, err = testcase.GenProgram(program)
 			require.NoError(t, err)
@@ -719,7 +738,7 @@ func TestProgramCodegen(
 				// generate the rest of the files
 				for fileName, content := range files {
 					if fileName != testcase.OutputFile {
-						outputPath := filepath.Join(testDir, fileName)
+						outputPath := filepath.Join(testOutDir, fileName)
 						err := os.WriteFile(outputPath, content, 0o600)
 						require.NoError(t, err, "Failed to write file %s", outputPath)
 					}
@@ -729,7 +748,7 @@ func TestProgramCodegen(
 				// assert that the content is correct for the rest of the files
 				for fileName, content := range files {
 					if fileName != testcase.OutputFile {
-						outputPath := filepath.Join(testDir, fileName)
+						outputPath := filepath.Join(testOutDir, fileName)
 						outputContent, err := os.ReadFile(outputPath)
 						require.NoError(t, err)
 						assert.Equal(t, string(outputContent), string(content))
