@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ func (cmd *aiCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func NewAICommand() *cobra.Command {
+func NewAICommand(ws pkgWorkspace.Context) *cobra.Command {
 	var aiCommand aiCmd
 	cmd := &cobra.Command{
 		Use:    "ai",
@@ -66,6 +66,6 @@ func NewAICommand() *cobra.Command {
 			return aiCommand.Run(ctx, args)
 		},
 	}
-	cmd.AddCommand(newAIWebCommand())
+	cmd.AddCommand(newAIWebCommand(ws))
 	return cmd
 }
