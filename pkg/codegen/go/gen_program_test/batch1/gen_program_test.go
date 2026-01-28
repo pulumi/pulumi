@@ -33,5 +33,5 @@ func TestGenerateProgram(t *testing.T) {
 
 	// Change into pkg/codegen/go
 	os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "go"))
-	test.GenerateProgramBatchTest("go")(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(1, 6))
+	test.GenerateGoBatchTest(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(1, 6))
 }

@@ -33,5 +33,5 @@ func TestGenerateProgram(t *testing.T) {
 
 	// Change into pkg/codegen/nodejs
 	os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "nodejs"))
-	test.GenerateProgramBatchTest("nodejs")(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(1, 6))
+	test.GenerateNodeJSBatchTest(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(1, 6))
 }

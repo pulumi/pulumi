@@ -33,5 +33,5 @@ func TestGenerateProgram(t *testing.T) {
 
 	// Change into pkg/codegen/dotnet
 	os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "dotnet"))
-	test.GenerateProgramBatchTest("dotnet")(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(3, 6))
+	test.GenerateDotnetBatchTest(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(3, 6))
 }
