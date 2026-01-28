@@ -556,6 +556,50 @@ func TestSendBatchesWaitsForInFlightBatches(t *testing.T) {
 	}
 }
 
+func TestDependingOnElidedEntries(t *testing.T) {
+	t.Parallel()
+
+	c := startTestServer(t, func(w http.ResponseWriter, body apitype.JournalEntries) {
+		for _, entry := range body.Entries {
+			if entry.OperationID == 2 {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	updateIdentifier := client.UpdateIdentifier{
+		StackIdentifier: client.StackIdentifier{
+			Owner:   "org",
+			Project: "project2",
+			Stack:   tokens.MustParseStackName("stack"),
+		},
+		UpdateKind: apitype.UpdateUpdate,
+		UpdateID:   "update-id2",
+	}
+
+	journaler := newJournaler(
+		t.Context(),
+		c,
+		updateIdentifier,
+		&mockTokenSource{},
+		b64.NewBase64SecretsManager(),
+		2,
+		500, // large period to make sure we send a whole batch
+	)
+
+	err := journaler.AddJournalEntry(engine.JournalEntry{SequenceID: 1, OperationID: 1, ElideWrite: true})
+	require.NoError(t, err)
+	err = journaler.AddJournalEntry(engine.JournalEntry{SequenceID: 2, OperationID: 2})
+
+	require.ErrorContains(t, err, "[400]")
+
+	elidedOperation := int64(1)
+	err = journaler.AddJournalEntry(engine.JournalEntry{SequenceID: 3, OperationID: 3, DeleteNew: &elidedOperation})
+	require.ErrorContains(t, err, "dependent elided entry")
+}
+
 type (
 	delayFunc func(int) time.Duration
 	sender    func([]apitype.JournalEntry) error
