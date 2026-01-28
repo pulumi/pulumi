@@ -450,8 +450,8 @@ function copyResources(resources: Set<Resource> | Resource[] | Resource) {
     const copy = Array.isArray(resources)
         ? new Set(resources)
         : resources instanceof Set
-          ? new Set(resources)
-          : new Set([resources]);
+            ? new Set(resources)
+            : new Set([resources]);
     return copy;
 }
 
@@ -972,10 +972,10 @@ export type Unwrap<T> =
     // 2. Otherwise, if we have an output, do the same as a promise and just unwrap the inner type.
     // 3. Otherwise, we have a basic type.  Just unwrap that.
     T extends Promise<infer U1>
-        ? UnwrapSimple<U1>
-        : T extends OutputInstance<infer U2>
-          ? UnwrapSimple<U2>
-          : UnwrapSimple<T>;
+    ? UnwrapSimple<U1>
+    : T extends OutputInstance<infer U2>
+    ? UnwrapSimple<U2>
+    : UnwrapSimple<T>;
 
 type primitive = Function | string | number | boolean | undefined | null;
 
@@ -993,16 +993,16 @@ export type UnwrapSimple<T> =
     //    types have been unwrapped.
     // 5. return 'never' at the end so that if we've missed something we'll discover it.
     T extends primitive
-        ? T
-        : T extends Resource
-          ? T
-          : T extends [any, ...any[]]
-            ? UnwrappedObject<T> // We treat tuples like objects
-            : T extends Array<infer U>
-              ? UnwrappedArray<U>
-              : T extends object
-                ? UnwrappedObject<T>
-                : never;
+    ? T
+    : T extends Resource
+    ? T
+    : T extends [any, ...any[]]
+    ? UnwrappedObject<T> // We treat tuples like objects
+    : T extends Array<infer U>
+    ? UnwrappedArray<U>
+    : T extends object
+    ? UnwrappedObject<T>
+    : never;
 
 export type UnwrappedArray<T> = Array<Unwrap<T>>;
 
@@ -1176,16 +1176,16 @@ export const Output: OutputConstructor = <any>OutputImpl;
 export type Lifted<T> =
     // Specially handle 'string' since TS doesn't map the 'String.Length' property to it.
     T extends string
-        ? LiftedObject<String, NonFunctionPropertyNames<String>>
-        : T extends Array<infer U>
-          ? LiftedArray<U>
-          : T extends object
-            ? LiftedObject<T, NonFunctionPropertyNames<T>>
-            : // fallback to lifting no properties.  Note that `Lifted` is used in
-              //    Output<T> = OutputInstance<T> & Lifted<T>
-              // so returning an empty object just means that we're adding nothing to Output<T>.
-              // This is needed for cases like `Output<any>`.
-              {};
+    ? LiftedObject<String, NonFunctionPropertyNames<String>>
+    : T extends Array<infer U>
+    ? LiftedArray<U>
+    : T extends object
+    ? LiftedObject<T, NonFunctionPropertyNames<T>>
+    : // fallback to lifting no properties.  Note that `Lifted` is used in
+    //    Output<T> = OutputInstance<T> & Lifted<T>
+    // so returning an empty object just means that we're adding nothing to Output<T>.
+    // This is needed for cases like `Output<any>`.
+    {};
 
 // The set of property names in T that are *not* functions.
 type NonFunctionPropertyNames<T> = {
@@ -1196,12 +1196,12 @@ type NonFunctionPropertyNames<T> = {
 // If it's require before, keep it required afterwards.
 export type LiftedObject<T, K extends keyof T> = {
     [P in K]: IsStrictlyAny<T[P]> extends true // If the record value is `any`, leave it as `any`.
-        ? Output<any>
-        : T[P] extends OutputInstance<infer T1>
-          ? Output<T1>
-          : T[P] extends Promise<infer T2>
-            ? Output<T2>
-            : Output<T[P]>;
+    ? Output<any>
+    : T[P] extends OutputInstance<infer T1>
+    ? Output<T1>
+    : T[P] extends Promise<infer T2>
+    ? Output<T2>
+    : Output<T[P]>;
 };
 
 // Credit to StackOverflow user CRice: https://stackoverflow.com/a/61625831
