@@ -51,73 +51,66 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 		},
 	}
 
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "dotnet",
-			Extension:  "cs",
-			OutputFile: "Program.cs",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				checkDotnet(t, path, dependencies, "")
-			},
-			GenProgram: GenerateProgram,
-			TestCases: []test.ProgramTest{
-				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
-				},
-			},
-
-			IsGenProject:    true,
-			GenProject:      GenerateProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "test.csproj",
-
-			InputDirectory:  filepath.Join("..", "..", "..", "tests", "testdata", "codegen"),
-			ResultDirectory: "testdata",
+	test.TestProgramCodegen(t, test.ProgramCodegenOptions{
+		Language:   "dotnet",
+		Extension:  "cs",
+		OutputFile: "Program.cs",
+		Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			checkDotnet(t, path, dependencies)
 		},
-	)
+		GenProgram: GenerateProgram,
+		TestCases: []test.ProgramTest{
+			{
+				Directory:   "aws-resource-options-4.26",
+				Description: "Resource Options",
+			},
+			{
+				Directory:   "aws-resource-options-5.16.2",
+				Description: "Resource Options",
+			},
+		},
+
+		IsGenProject:    true,
+		GenProject:      GenerateProject,
+		ExpectedVersion: expectedVersion,
+		DependencyFile:  "test.csproj",
+
+		InputDirectory:  filepath.Join("..", "..", "..", "tests", "testdata", "codegen"),
+		ResultDirectory: "testdata",
+	})
 }
 
 func TestGenerateProgram(t *testing.T) {
 	t.Parallel()
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "dotnet",
-			Extension:  "cs",
-			OutputFile: "Program.cs",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				checkDotnet(t, path, dependencies, "")
-			},
-			GenProgram: GenerateProgram,
-			TestCases:  test.PulumiPulumiProgramTests,
+	test.TestProgramCodegen(t, test.ProgramCodegenOptions{
+		Language:   "dotnet",
+		Extension:  "cs",
+		OutputFile: "Program.cs",
+		Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			checkDotnet(t, path, dependencies)
 		},
-	)
+		GenProgram: GenerateProgram,
+		TestCases:  test.PulumiPulumiProgramTests,
+	})
 }
 
 // This specifically tests the synced examples from pulumi/yaml with
 // testing/test/testdata/transpiled_examples, as it requires a different SDK path in Check
-//
-//nolint:paralleltest // uses t.Chdir
 func TestGenerateProgramYAML(t *testing.T) {
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "dotnet",
-			Extension:  "cs",
-			OutputFile: "Program.cs",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				checkDotnet(t, path, dependencies, "")
-			},
-			GenProgram: GenerateProgram,
-			TestCases:  test.PulumiPulumiYAMLProgramTests,
-
-			ResultDirectory: "TODO",
-			InputDirectory:  "TODO",
+	t.Parallel()
+	test.TestProgramCodegen(t, test.ProgramCodegenOptions{
+		Language:   "dotnet",
+		Extension:  "cs",
+		OutputFile: "Program.cs",
+		Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			checkDotnet(t, path, dependencies)
 		},
-	)
+		GenProgram: GenerateProgram,
+		TestCases:  test.PulumiPulumiYAMLProgramTests,
+
+		InputDirectory:  filepath.Join("..", "..", "..", "tests", "testdata", "codegen"),
+		ResultDirectory: "testdata",
+	})
 }
 
 func parseAndBindProgram(t *testing.T,
@@ -440,7 +433,7 @@ func (l *inlineLoader) LoadPackageV2(
 	return ref.Definition()
 }
 
-func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
+func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet) {
 	var err error
 	dir := filepath.Dir(path)
 
@@ -481,14 +474,7 @@ func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulu
 	} else {
 		// We would like this regardless of other dependencies, but dotnet
 		// packages do not play well with package references.
-		if pulumiSDKPath != "" {
-			err = integration.RunCommand(t, "add sdk ref",
-				[]string{ex, "add", "reference", pulumiSDKPath},
-				dir, &integration.ProgramTestOptions{})
-			require.NoError(t, err, "Failed to dotnet sdk package reference")
-		} else {
-			dep{"Pulumi", test.PulumiDotnetSDKVersion}.install(t, ex, dir)
-		}
+		dep{"Pulumi", test.PulumiDotnetSDKVersion}.install(t, ex, dir)
 	}
 
 	// Clean up build result
@@ -498,10 +484,10 @@ func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulu
 		err = os.RemoveAll(filepath.Join(dir, "obj"))
 		require.NoError(t, err, "Failed to remove obj result")
 	}()
-	typeCheckDotnet(t, path, dependencies, pulumiSDKPath)
+	typeCheckDotnet(t, path, dependencies)
 }
 
-func typeCheckDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
+func typeCheckDotnet(t *testing.T, path string, dependencies codegen.StringSet) {
 	var err error
 	dir := filepath.Dir(path)
 
