@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -33,7 +34,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "logout <url>",
+		Use:   "logout",
 		Short: "Log out of the Pulumi Cloud",
 		Long: "Log out of the Pulumi Cloud.\n" +
 			"\n" +
@@ -45,7 +46,6 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"\n\n" +
 			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
 			"    $ pulumi logout --all",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {
@@ -92,6 +92,13 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			return err
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "url"},
+		},
+		Required: 0,
+	})
 
 	cmd.PersistentFlags().BoolVar(&all, "all", false,
 		"Logout of all backends")
