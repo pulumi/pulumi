@@ -634,9 +634,9 @@ func TestProgramCodegen(
 			}
 			var testOutDir string
 			if testcase.ResultDirectory != "" {
-				testOutDir = filepath.Join(testcase.ResultDirectory, tt.Directory)
+				testOutDir = filepath.Join(testcase.ResultDirectory, tt.Directory+"-pp")
 			} else {
-				testOutDir = filepath.Join(testdataPath, tt.Directory, testcase.Language)
+				testOutDir = filepath.Join(testdataPath, tt.Directory+"-pp", testcase.Language)
 			}
 			err = os.MkdirAll(testOutDir, 0o700)
 			if err != nil {

@@ -64,7 +64,7 @@ func TestGenerateProgram(t *testing.T) {
 }`
 
 	n := 6
-	for _, lang := range []string{"dotnet", "go", "nodejs", "python"} {
+	for _, lang := range []string{"go", "nodejs", "python"} {
 		os.RemoveAll(filepath.Join("../", lang, "gen_program_test"))
 		for i := 1; i <= n; i++ {
 			packageName := fmt.Sprintf("batch%d", i)

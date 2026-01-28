@@ -82,7 +82,8 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 	)
 }
 
-func GenerateDotnetBatchTest(t *testing.T, rootDir string, genProgram test.GenProgram, testCases []test.ProgramTest) {
+func TestGenerateProgram(t *testing.T) {
+	t.Parallel()
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
 			Language:   "dotnet",
@@ -91,15 +92,17 @@ func GenerateDotnetBatchTest(t *testing.T, rootDir string, genProgram test.GenPr
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkDotnet(t, path, dependencies, "")
 			},
-			GenProgram: genProgram,
-			TestCases:  testCases,
+			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		},
 	)
 }
 
-func GenerateDotnetYAMLBatchTest(t *testing.T, rootDir string, genProgram test.GenProgram) {
-	t.Chdir(filepath.Join(rootDir, "pkg", "codegen", "dotnet"))
-
+// This specifically tests the synced examples from pulumi/yaml with
+// testing/test/testdata/transpiled_examples, as it requires a different SDK path in Check
+//
+//nolint:paralleltest // uses t.Chdir
+func TestGenerateProgramYAML(t *testing.T) {
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
 			Language:   "dotnet",
@@ -108,8 +111,11 @@ func GenerateDotnetYAMLBatchTest(t *testing.T, rootDir string, genProgram test.G
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				checkDotnet(t, path, dependencies, "")
 			},
-			GenProgram: genProgram,
+			GenProgram: GenerateProgram,
 			TestCases:  test.PulumiPulumiYAMLProgramTests,
+
+			ResultDirectory: "TODO",
+			InputDirectory:  "TODO",
 		},
 	)
 }
@@ -471,7 +477,7 @@ func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulu
 		for _, pkg := range pkgs {
 			pkg.install(t, ex, dir)
 		}
-		dep{"Pulumi", PulumiDotnetSDKVersion}.install(t, ex, dir)
+		dep{"Pulumi", test.PulumiDotnetSDKVersion}.install(t, ex, dir)
 	} else {
 		// We would like this regardless of other dependencies, but dotnet
 		// packages do not play well with package references.
@@ -481,7 +487,7 @@ func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulu
 				dir, &integration.ProgramTestOptions{})
 			require.NoError(t, err, "Failed to dotnet sdk package reference")
 		} else {
-			dep{"Pulumi", PulumiDotnetSDKVersion}.install(t, ex, dir)
+			dep{"Pulumi", test.PulumiDotnetSDKVersion}.install(t, ex, dir)
 		}
 	}
 
@@ -533,21 +539,21 @@ func dotnetDependencies(deps codegen.StringSet) []dep {
 	for i, d := range deps.SortedValues() {
 		switch d {
 		case "aws":
-			result[i] = dep{"Pulumi.Aws", AwsSchema}
+			result[i] = dep{"Pulumi.Aws", test.AwsSchema}
 		case "azure-native":
-			result[i] = dep{"Pulumi.AzureNative", AzureNativeSchema}
+			result[i] = dep{"Pulumi.AzureNative", test.AzureNativeSchema}
 		case "azure":
 			// TODO: update constant in test.AzureSchema to v5.x
 			// because it has output-versioned function invokes
 			result[i] = dep{"Pulumi.Azure", "5.12.0"}
 		case "kubernetes":
-			result[i] = dep{"Pulumi.Kubernetes", KubernetesSchema}
+			result[i] = dep{"Pulumi.Kubernetes", test.KubernetesSchema}
 		case "random":
-			result[i] = dep{"Pulumi.Random", RandomSchema}
+			result[i] = dep{"Pulumi.Random", test.RandomSchema}
 		case "aws-static-website":
-			result[i] = dep{"Pulumi.AwsStaticWebsite", AwsStaticWebsiteSchema}
+			result[i] = dep{"Pulumi.AwsStaticWebsite", test.AwsStaticWebsiteSchema}
 		case "aws-native":
-			result[i] = dep{"Pulumi.AwsNative", AwsNativeSchema}
+			result[i] = dep{"Pulumi.AwsNative", test.AwsNativeSchema}
 		default:
 			runes := []rune(d)
 			titlecase := append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...)
