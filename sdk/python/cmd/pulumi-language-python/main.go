@@ -1828,7 +1828,7 @@ func (host *pythonLanguageHost) Link(
 		}
 		var importName string
 		var packageName string
-		if info, ok := pkg.Language["go"]; ok {
+		if info, ok := pkg.Language["python"]; ok {
 			if info, ok := info.(codegen.PackageInfo); ok && info.PackageName != "" {
 				importName = info.PackageName
 				packageName = info.PackageName

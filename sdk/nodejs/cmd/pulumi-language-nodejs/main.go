@@ -2120,7 +2120,7 @@ func (host *nodeLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*
 }
 
 func getNodeJSPkgName(pkg *schema.Package) (string, error) {
-	if info, ok := pkg.Language["go"]; ok {
+	if info, ok := pkg.Language["nodejs"]; ok {
 		if info, ok := info.(nodejs.NodePackageInfo); ok && info.PackageName != "" {
 			return info.PackageName, nil
 		}
