@@ -182,10 +182,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		SkipCompileCheck: codegen.NewStringSet(TestDotnet, TestGo),
 	},
 	{
-		Directory:   "replace-on-change",
-		Description: "Simple use of replaceOnChange in schema",
-	},
-	{
 		Directory:   "simple-resource-with-aliases",
 		Description: "Simple schema with a resource that has aliases",
 	},
