@@ -72,8 +72,6 @@ func newPluginInstallCmd() *cobra.Command {
 			{Name: "name"},
 			{Name: "version"},
 		},
-		Required: 0,
-		Variadic: false,
 	})
 
 	// Constrictor can't express the complexity here. There's error handling to
