@@ -246,7 +246,7 @@ type NewState struct {
 	ResourceHooks map[HookType][]string // required
 
 	// If set, environment variable mappings for provider resources.
-	EnvVarMappings map[string]string // required
+	EnvVarMappings map[string]string
 }
 
 // Make consumes the NewState to create a *State.
