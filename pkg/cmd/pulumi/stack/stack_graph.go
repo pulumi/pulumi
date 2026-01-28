@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/graph"
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -58,8 +59,7 @@ func newStackGraphCmd() *cobra.Command {
 	var cmdOpts graphCommandOptions
 
 	cmd := &cobra.Command{
-		Use:   "graph [filename]",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "graph",
 		Short: "Export a stack's dependency graph to a file",
 		Long: "Export a stack's dependency graph to a file.\n" +
 			"\n" +
@@ -112,6 +112,14 @@ func newStackGraphCmd() *cobra.Command {
 			return file.Close()
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "filename"},
+		},
+		Required: 1,
+	})
+
 	cmd.PersistentFlags().StringVarP(
 		&cmdOpts.stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVar(&cmdOpts.ignoreParentEdges, "ignore-parent-edges", false,
