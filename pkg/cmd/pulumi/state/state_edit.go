@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
@@ -56,7 +57,6 @@ func newStateEditCommand() *cobra.Command {
 This command can be used to surgically edit a stack's state in the editor
 specified by the EDITOR environment variable and will provide the user with
 a preview showing a diff of the altered state.`,
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("pulumi state edit must be run in interactive mode")
@@ -85,6 +85,8 @@ a preview showing a diff of the altered state.`,
 			return nil
 		},
 	}
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.PersistentFlags().StringVar(
 		&stackName, "stack", "",
 		"The name of the stack to operate on. Defaults to the current stack")

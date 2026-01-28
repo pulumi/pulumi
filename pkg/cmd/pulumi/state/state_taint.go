@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 
 	"github.com/spf13/cobra"
 )
@@ -37,14 +38,13 @@ func newStateTaintCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "taint [resource URN...]",
+		Use:   "taint",
 		Short: "Taint one or more resources in the stack's state",
 		Long: `Taint one or more resources in the stack's state.
 
 This has the effect of ensuring the resources are destroyed and recreated upon the next ` + "`pulumi up`" + `.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
-		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -80,6 +80,14 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			return taintResource(ctx, sink, ws, stack, urn, showPrompt)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "resource-urn"},
+		},
+		Required: 0,
+		Variadic: true,
+	})
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
