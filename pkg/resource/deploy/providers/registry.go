@@ -48,7 +48,7 @@ const (
 	nameKey             resource.PropertyKey = "name"
 	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
 	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
-	envVarMappingsKey   resource.PropertyKey = "envVarMappings" // Remappings: "NEW_KEY": "OLD_KEY" means if NEW_KEY exists, provider sees OLD_KEY=value(NEW_KEY)
+	envVarMappingsKey   resource.PropertyKey = "envVarMappings"
 
 	// versionKey is the key used to store the version of the provider in the Pulumi state. This is _not_ treated as an
 	// internal key. As such a provider can't define it's own configuration key "version". However the "version" that is
