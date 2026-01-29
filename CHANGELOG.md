@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.218.0 (2026-01-29)
+
+
+### Features
+
+- [sdk/nodejs] Add support for the `OnError` resource hook
+
+
+### Bug Fixes
+
+- [cli] Allow positional arguments to be passed to `convert` again
+
+- [cli/install] Correctly include git forge organizations as schema namespaces when generating SDKs
+  [#21579](https://github.com/pulumi/pulumi/pull/21579)
+
+- [cli/{install,package}] Correctly grab package names for Python & NodeJS
+  [#21577](https://github.com/pulumi/pulumi/pull/21577)
+
 ## 3.217.1 (2026-01-27)
 
 
