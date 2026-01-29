@@ -1032,6 +1032,49 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		assert.Nil(t, retrieved)
 	})
 
+	t.Run("ErrorWhenInternalNotObject", func(t *testing.T) {
+		t.Parallel()
+
+		// __internal is not an object (it's a string)
+		inputs := resource.PropertyMap{
+			"__internal": resource.NewProperty("not-an-object"),
+		}
+		retrieved, err := GetEnvironmentVariableMappings(inputs)
+		assert.ErrorContains(t, err, "'__internal' must be an object")
+		assert.Nil(t, retrieved)
+	})
+
+	t.Run("ErrorWhenEnvVarMappingsNotObject", func(t *testing.T) {
+		t.Parallel()
+
+		// envVarMappings is not an object (it's a string)
+		inputs := resource.PropertyMap{
+			"__internal": resource.NewProperty(resource.PropertyMap{
+				"envVarMappings": resource.NewProperty("not-an-object"),
+			}),
+		}
+		retrieved, err := GetEnvironmentVariableMappings(inputs)
+		assert.ErrorContains(t, err, "'envVarMappings' must be an object")
+		assert.Nil(t, retrieved)
+	})
+
+	t.Run("ErrorWhenMappingValueNotString", func(t *testing.T) {
+		t.Parallel()
+
+		// A value in envVarMappings is not a string (it's a number)
+		inputs := resource.PropertyMap{
+			"__internal": resource.NewProperty(resource.PropertyMap{
+				"envVarMappings": resource.NewProperty(resource.PropertyMap{
+					"VALID_KEY":   resource.NewProperty("valid-value"),
+					"INVALID_KEY": resource.NewProperty(123.0),
+				}),
+			}),
+		}
+		retrieved, err := GetEnvironmentVariableMappings(inputs)
+		assert.ErrorContains(t, err, "'envVarMappings[INVALID_KEY]' must be a string")
+		assert.Nil(t, retrieved)
+	})
+
 	t.Run("ProviderWithEnvMappings", func(t *testing.T) {
 		t.Parallel()
 
