@@ -33,7 +33,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("../integration/single_resource")
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		e.RunCommandWithRetry("yarn", "install")
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "foo")
@@ -73,7 +73,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("../integration/single_resource")
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		e.RunCommandWithRetry("yarn", "install")
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "foo")

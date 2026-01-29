@@ -144,7 +144,7 @@ func TestProjectMainNodejs(t *testing.T) {
 			return
 		}
 
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		e.RunCommand("pulumi", "preview")
@@ -159,7 +159,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 
 		// yarn link first
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		// then virtually change directory to the location of the nested Pulumi.yaml
 		e.CWD = filepath.Join(e.RootPath, "foo", "bar")
 
@@ -197,7 +197,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 
 	e.ImportDirectory("single_resource")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
 	assert.Contains(t, stderr, "--force")
@@ -326,7 +326,7 @@ func TestStackOutputsJSON(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
@@ -1909,7 +1909,7 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "negative-timings")
@@ -1935,7 +1935,7 @@ func TestAboutNodeJS(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
@@ -1966,7 +1966,7 @@ func TestTSConfigOption(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("tsconfig")
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
