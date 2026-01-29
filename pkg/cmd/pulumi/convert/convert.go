@@ -79,7 +79,9 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"\n" +
 			"Example command usage:" +
 			"\n" +
-			"    pulumi convert --from yaml --language java --out . \n",
+			"    pulumi convert --from yaml --language java --out . \n" +
+			"\n\n" +
+			"Note that certain target languages may require additional arguments to be passed to this command.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
