@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -91,7 +92,6 @@ will not attempt to make or write any changes. If the state is not already
 valid, and remains invalid after repair has been attempted, this command will
 not write any changes.
 `,
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.Flags().Visit(func(f *pflag.Flag) {
 				stateRepair.FlagsString += fmt.Sprintf(" --%s=%q", f.Name, f.Value)
@@ -103,6 +103,8 @@ not write any changes.
 			return err
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.Flags().StringVarP(&stateRepair.Args.Stack,
 		"stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
