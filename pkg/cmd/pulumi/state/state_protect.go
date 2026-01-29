@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -43,7 +44,7 @@ func newStateProtectCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "protect [resource URN...]",
+		Use:   "protect",
 		Short: "protect resource in a stack's state",
 		Long: `Protect resource in a stack's state
 
@@ -60,7 +61,6 @@ the 'protect' resource option and how it can be used to protect resources in you
 To unprotect a resource, use ` + "`pulumi unprotect`" + `on the resource URN.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
-		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -91,6 +91,14 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			return protectMultipleResources(ctx, sink, ws, stack, []string{string(urn)}, showPrompt)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "resource-urn"},
+		},
+		Required: 0,
+		Variadic: true,
+	})
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",

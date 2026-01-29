@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -38,14 +39,13 @@ func newStateUnprotectCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "unprotect [resource URN...]",
+		Use:   "unprotect",
 		Short: "Unprotect resources in a stack's state",
 		Long: `Unprotect resources in a stack's state
 
 This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
-		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -84,6 +84,14 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			return unprotectResource(ctx, sink, ws, stack, urn, showPrompt)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "resource-urn"},
+		},
+		Required: 0,
+		Variadic: true,
+	})
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
