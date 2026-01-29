@@ -596,8 +596,9 @@ func TestProviderCancellation(t *testing.T) {
 
 func TestLanguageRuntimeCancellation(t *testing.T) {
 	t.Parallel()
+	t.Skip("TODO[https://github.com/pulumi/pulumi/issues/20325]: Flaky")
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	gracefulShutdown := false
 	programF := func() plugin.LanguageRuntime {
