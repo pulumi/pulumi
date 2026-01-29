@@ -1,0 +1,15 @@
+{
+  "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
+    "ExampleServer.cs",
+    "Inputs/ServerPropertiesForReplicaArgs.cs",
+    "Inputs/ServerPropertiesForRestoreArgs.cs",
+    "Provider.cs",
+    "Pulumi.Example.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

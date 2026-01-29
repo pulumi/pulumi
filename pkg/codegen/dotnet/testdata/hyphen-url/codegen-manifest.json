@@ -1,0 +1,13 @@
+{
+  "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
+    "Provider.cs",
+    "Pulumi.Registrygeoreplication.csproj",
+    "README.md",
+    "RegistryGeoReplication.cs",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

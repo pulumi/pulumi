@@ -1,0 +1,16 @@
+{
+  "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
+    "Deeply/Nested/Module/README.md",
+    "Deeply/Nested/Module/Resource.cs",
+    "Deeply/Nested/README.md",
+    "Deeply/README.md",
+    "Provider.cs",
+    "Pulumi.FooBar.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}
