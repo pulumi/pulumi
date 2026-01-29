@@ -78,8 +78,7 @@ var NoArgs = &Arguments{
 	Variadic:  false,
 }
 
-// UnrestrictedArgs accepts zero or more arguments. Use for commands that
-// previously had no argument predicate and should accept any trailing args.
+// UnrestrictedArgs accepts zero or more arguments.
 var UnrestrictedArgs = &Arguments{
 	Arguments: []Argument{{Name: "arg"}},
 	Required:  0,
