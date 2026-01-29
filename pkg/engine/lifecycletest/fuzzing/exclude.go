@@ -92,7 +92,7 @@ func ExcludeDestroyAndRefreshProgramSet(
 // can appear after it in the resulting snapshot.
 func ExcludeChildProviderOfDuplicateResourceRefresh(
 	snap *SnapshotSpec,
-	_ *ProgramSpec,
+	prog *ProgramSpec,
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
@@ -120,6 +120,12 @@ func ExcludeChildProviderOfDuplicateResourceRefresh(
 		}
 
 		if urnCounts[res.Parent] > 1 && deletedURNs[res.Parent] {
+			return true
+		}
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent != "" && deletedURNs[res.Parent] {
 			return true
 		}
 	}
