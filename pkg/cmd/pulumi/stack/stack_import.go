@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
@@ -39,7 +40,6 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 	var stackName string
 	cmd := &cobra.Command{
 		Use:   "import",
-		Args:  cmdutil.MaximumNArgs(0),
 		Short: "Import a deployment from standard in into an existing stack",
 		Long: "Import a deployment from standard in into an existing stack.\n" +
 			"\n" +
@@ -115,6 +115,8 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
