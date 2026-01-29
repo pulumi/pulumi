@@ -145,6 +145,33 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		hooks.OnError = makeStubErrorHooks(binding.GetOnError())
 	}
 
+	var replacementTrigger Input
+	if rt := req.GetReplacementTrigger(); rt != nil {
+		pv, err := plugin.UnmarshalPropertyValue(
+			resource.PropertyKey("replacementTrigger"),
+			rt,
+			plugin.MarshalOptions{
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepUnknowns:     req.GetDryRun(),
+				KeepOutputValues: true,
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
+		}
+
+		if pv != nil && !pv.IsNull() { // null = explicitly unset
+			m, err := unmarshalPropertyMap(pulumiCtx, resource.PropertyMap{
+				resource.PropertyKey("replacementTrigger"): *pv,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
+			}
+			replacementTrigger = m["replacementTrigger"]
+		}
+	}
+
 	opts := resourceOption(func(ro *resourceOptions) {
 		ro.Aliases = aliases
 		if len(dependencies) > 0 {
@@ -174,6 +201,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		ro.DeleteBeforeReplace = req.DeleteBeforeReplace
 		ro.IgnoreChanges = append(ro.IgnoreChanges, req.GetIgnoreChanges()...)
 		ro.ReplaceOnChanges = append(ro.ReplaceOnChanges, req.GetReplaceOnChanges()...)
+		ro.ReplacementTrigger = replacementTrigger
 		ro.RetainOnDelete = req.RetainOnDelete
 		ro.Hooks = hooks
 	})

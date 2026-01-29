@@ -639,6 +639,15 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 		},
 		{
+			desc: "replacement trigger",
+			give: ConstructOptions{
+				ReplacementTrigger: resource.NewProperty("trigger-value"),
+			},
+			want: &pulumirpc.ConstructRequest{
+				ReplacementTrigger: structpb.NewStringValue("trigger-value"),
+			},
+		},
+		{
 			desc: "retain on delete",
 			give: ConstructOptions{
 				RetainOnDelete: ptr(true),

@@ -1757,6 +1757,7 @@ class ConstructRequest(google.protobuf.message.Message):
     STACK_TRACE_HANDLE_FIELD_NUMBER: builtins.int
     REPLACE_WITH_FIELD_NUMBER: builtins.int
     ALIASES_FIELD_NUMBER: builtins.int
+    REPLACEMENT_TRIGGER_FIELD_NUMBER: builtins.int
     project: builtins.str
     """The project to which this resource and its nested resources will belong."""
     stack: builtins.str
@@ -1872,6 +1873,12 @@ class ConstructRequest(google.protobuf.message.Message):
     def aliases(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.alias_pb2.Alias]:
         """a list of additional aliases that should be considered the same."""
 
+    @property
+    def replacement_trigger(self) -> google.protobuf.struct_pb2.Value:
+        """If set, the engine will diff this value with the last recorded value, and trigger a replace if they are not
+        equal.
+        """
+
     def __init__(
         self,
         *,
@@ -1903,9 +1910,10 @@ class ConstructRequest(google.protobuf.message.Message):
         stack_trace_handle: builtins.str = ...,
         replace_with: collections.abc.Iterable[builtins.str] | None = ...,
         aliases: collections.abc.Iterable[pulumi.alias_pb2.Alias] | None = ...,
+        replacement_trigger: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "inputs", b"inputs", "protect", b"protect", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "stack_trace_handle", b"stack_trace_handle", "type", b"type"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "inputs", b"inputs", "protect", b"protect", "replacement_trigger", b"replacement_trigger", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "stack_trace_handle", b"stack_trace_handle", "type", b"type"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace"]) -> typing.Literal["deleteBeforeReplace"] | None: ...
     @typing.overload

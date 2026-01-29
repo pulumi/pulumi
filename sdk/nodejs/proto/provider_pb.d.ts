@@ -1261,6 +1261,11 @@ export class ConstructRequest extends jspb.Message {
     setAliasesList(value: Array<pulumi_alias_pb.Alias>): ConstructRequest;
     addAliases(value?: pulumi_alias_pb.Alias, index?: number): pulumi_alias_pb.Alias;
 
+    hasReplacementTrigger(): boolean;
+    clearReplacementTrigger(): void;
+    getReplacementTrigger(): google_protobuf_struct_pb.Value | undefined;
+    setReplacementTrigger(value?: google_protobuf_struct_pb.Value): ConstructRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConstructRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ConstructRequest): ConstructRequest.AsObject;
@@ -1304,6 +1309,7 @@ export namespace ConstructRequest {
         stackTraceHandle: string,
         replaceWithList: Array<string>,
         aliasesList: Array<pulumi_alias_pb.Alias.AsObject>,
+        replacementTrigger?: google_protobuf_struct_pb.Value.AsObject,
     }
 
 
