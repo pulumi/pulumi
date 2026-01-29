@@ -265,11 +265,27 @@ class ContextProperty:
 # To workaround, use a private copy of _LazyModule and LazyLoader (renamed
 # _LazyLoader) from the Python stdlib, which don't have the regression,
 # as suggested by the Python maintainers.
+
+# Standard module introspection attributes that shouldn't trigger a full load.
+# These are typically accessed by tools like debuggers, file watchers, IDEs, etc.
+# See https://github.com/streamlit/streamlit/issues/13530
+_INTROSPECTION_ATTRS = frozenset({
+    "__file__", "__spec__", "__path__", "__name__", "__loader__",
+    "__package__", "__cached__", "__doc__", "__dict__", "__class__",
+})
+
+
 class _LazyModule(types.ModuleType):
     """A subclass of the module type which triggers loading upon attribute access."""
 
     def __getattribute__(self, attr):
         """Trigger the load of the module and return the attribute."""
+        # Don't trigger full load for standard module introspection attributes.
+        # These are typically accessed by tools like debuggers, file watchers,
+        # IDEs, etc. and shouldn't cause a full module load.
+        if attr in _INTROSPECTION_ATTRS:
+            return types.ModuleType.__getattribute__(self, attr)
+
         # All module metadata must be garnered from __spec__ in order to avoid
         # using mutated values.
         # Stop triggering this method.

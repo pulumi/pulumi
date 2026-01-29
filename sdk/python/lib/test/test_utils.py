@@ -17,7 +17,7 @@ import os.path
 
 import unittest
 
-from pulumi._utils import is_empty_function, lazy_import
+from pulumi._utils import is_empty_function, lazy_import, _LazyModule, _INTROSPECTION_ATTRS
 
 
 # Function with return value based on input, called in the non_empty function
@@ -108,3 +108,45 @@ def test_lazy_import():
     assert test.y.foo == "foo"
     assert y.foo == "foo"
     assert id(y) == id(test.y)
+
+
+def test_lazy_module_introspection_attrs_do_not_trigger_load():
+    """Test that accessing introspection attributes doesn't trigger module load.
+
+    This is important for tools like debuggers, file watchers, IDEs, etc.
+    that iterate over sys.modules and check module attributes.
+    See https://github.com/streamlit/streamlit/issues/13530
+    """
+    sys.path.append(os.path.join(os.path.dirname(__file__), "data"))
+
+    # Clear any cached module to ensure fresh lazy load
+    for mod_name in list(sys.modules.keys()):
+        if mod_name.startswith("lazy_import_test"):
+            del sys.modules[mod_name]
+
+    # Create a lazy module
+    module = lazy_import("lazy_import_test.x")
+
+    # Verify it starts as a _LazyModule
+    assert module.__class__ == _LazyModule, "Module should start as _LazyModule"
+
+    # Access introspection attributes - these should NOT trigger loading
+    for attr in _INTROSPECTION_ATTRS:
+        try:
+            getattr(module, attr)
+        except AttributeError:
+            # Some attributes may not exist, that's fine
+            pass
+
+    # Module should still be lazy (not loaded) after accessing introspection attrs
+    assert module.__class__ == _LazyModule, (
+        f"Module should still be _LazyModule after accessing introspection attrs, "
+        f"but was {module.__class__}"
+    )
+
+    # Now access a real attribute - this should trigger loading
+    result = module.foo()
+    assert result == "foo"
+
+    # Module should now be fully loaded
+    assert module.__class__ == type(sys), "Module should now be fully loaded"
