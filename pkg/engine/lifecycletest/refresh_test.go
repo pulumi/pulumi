@@ -3253,3 +3253,96 @@ func TestRefreshV2TargetNotInProgram(t *testing.T) {
 		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+func TestRefreshV2ParentChildOrdering(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21386]: re-enable this test when the underlying issue is fixed
+	t.Skip("Skipping test, repro for snapshot integrity issue")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov0 := &resource.State{
+			Type:   "pulumi:providers:pkgB",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::provB",
+			Custom: true,
+			ID:     "provider-id",
+		}
+		s.Resources = append(s.Resources, prov0)
+
+		provRef0, err := providers.NewReference(prov0.URN, prov0.ID)
+		require.NoError(t, err)
+
+		parent := &resource.State{
+			Type:     "pkgB:m:parentType",
+			URN:      "urn:pulumi:test-stack::test-project::pkgB:m:parentType::parent",
+			Custom:   true,
+			ID:       "parent-id",
+			Provider: provRef0.String(),
+		}
+		s.Resources = append(s.Resources, parent)
+
+		parentDeleted := &resource.State{
+			Type:     "pkgB:m:parentType",
+			URN:      "urn:pulumi:test-stack::test-project::pkgB:m:parentType::parent",
+			Custom:   true,
+			Delete:   true,
+			ID:       "parent-id",
+			Provider: provRef0.String(),
+		}
+		s.Resources = append(s.Resources, parentDeleted)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+			Status:     resource.StatusOK,
+		}, nil
+	}
+
+	reproLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: readF,
+			}, nil
+		}),
+	}
+
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		parent, err := monitor.RegisterResource("pkgB:m:parentType", "parent", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:childType", "child", false, deploytest.ResourceOptions{
+			Parent: parent.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: reproHostF,
+		UpdateOptions: engine.UpdateOptions{
+			RefreshProgram: true,
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
