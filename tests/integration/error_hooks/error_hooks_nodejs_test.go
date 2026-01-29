@@ -25,7 +25,7 @@ import (
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNodejsErrorHooks(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          filepath.Join("nodejs", "step-1"),
+		Dir:          filepath.Join("nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
