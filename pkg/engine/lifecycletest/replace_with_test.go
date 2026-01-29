@@ -238,14 +238,10 @@ func TestReplaceWithAndDeletedWith(t *testing.T) {
 	require.Equal(t, "created-id-2", snap.Resources[2].ID.String())
 
 	require.Len(t, created, 2)
-	createdNames := []string{created[0].Name(), created[1].Name()}
-	require.Contains(t, createdNames, "resC")
-	require.Contains(t, createdNames, "resA")
+	require.ElementsMatch(t, []string{created[0].Name(), created[1].Name()}, []string{"resC", "resA"})
 
 	require.Len(t, deleted, 2)
-	deletedNames := []string{deleted[0].Name(), deleted[1].Name()}
-	require.Contains(t, deletedNames, "resB")
-	require.Contains(t, deletedNames, "resC")
+	require.ElementsMatch(t, []string{deleted[0].Name(), deleted[1].Name()}, []string{"resB", "resC"})
 }
 
 func TestReplaceWithDeleteBeforeReplace(t *testing.T) {
