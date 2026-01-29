@@ -530,6 +530,14 @@ func ProviderFromSource(
 					suggested.Source, suggested.Publisher, suggested.Name, suggested.Version)
 			}
 		}
+
+		if isGitHubTreeURL(packageSpec.Source) {
+			cleanURL := stripGitHubTreePath(packageSpec.Source)
+			return Provider{}, workspace.PackageSpec{}, fmt.Errorf(
+				"No component found at <%s>\nDid you mean <%s>",
+				packageSpec.Source, cleanURL)
+		}
+
 		return Provider{}, workspace.PackageSpec{}, fmt.Errorf("Unable to resolve package from name: %w", err)
 	}
 
@@ -588,4 +596,15 @@ func isExecutable(info fs.FileInfo) bool {
 		return !info.IsDir()
 	}
 	return info.Mode()&0o111 != 0 && !info.IsDir()
+}
+
+func isGitHubTreeURL(url string) bool {
+	return strings.Contains(url, "github.com") && strings.Contains(url, "/tree/")
+}
+
+func stripGitHubTreePath(url string) string {
+	if idx := strings.Index(url, "/tree/"); idx != -1 {
+		return url[:idx]
+	}
+	return url
 }

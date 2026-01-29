@@ -193,3 +193,91 @@ func TestSetSpecNamespace(t *testing.T) {
 		})
 	}
 }
+
+func TestIsGitHubTreeURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		url  string
+		want bool
+	}{
+		{
+			name: "github url with tree",
+			url:  "https://github.com/pulumi/pulumi-aws/tree/main",
+			want: true,
+		},
+		{
+			name: "github url with tree and subdirectory",
+			url:  "https://github.com/pulumi/pulumi-aws/tree/main/examples",
+			want: true,
+		},
+		{
+			name: "github url without tree",
+			url:  "https://github.com/pulumi/pulumi-aws",
+			want: false,
+		},
+		{
+			name: "non-github url",
+			url:  "https://example.com/repo/tree/main",
+			want: false,
+		},
+		{
+			name: "local path",
+			url:  "./my-component",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := isGitHubTreeURL(tt.url)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestStripGitHubTreePath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{
+			name: "github url with tree/main",
+			url:  "https://github.com/pulumi/pulumi-aws/tree/main",
+			want: "https://github.com/pulumi/pulumi-aws",
+		},
+		{
+			name: "github url with tree/main and subdirectory",
+			url:  "https://github.com/pulumi/pulumi-aws/tree/main/examples",
+			want: "https://github.com/pulumi/pulumi-aws",
+		},
+		{
+			name: "github url with tree/v1.0.0",
+			url:  "https://github.com/org/repo/tree/v1.0.0",
+			want: "https://github.com/org/repo",
+		},
+		{
+			name: "url without tree",
+			url:  "https://github.com/pulumi/pulumi-aws",
+			want: "https://github.com/pulumi/pulumi-aws",
+		},
+		{
+			name: "local path",
+			url:  "./my-component",
+			want: "./my-component",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := stripGitHubTreePath(tt.url)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
