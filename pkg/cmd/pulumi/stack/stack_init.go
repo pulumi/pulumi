@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -39,8 +40,7 @@ const (
 func newStackInitCmd() *cobra.Command {
 	var sicmd stackInitCmd
 	cmd := &cobra.Command{
-		Use:   "init [<org-name>/]<stack-name>",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "init",
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
@@ -76,6 +76,14 @@ func newStackInitCmd() *cobra.Command {
 			return sicmd.Run(ctx, args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "stack-name", Usage: "[org-name/]<stack-name>"},
+		},
+		Required: 0,
+	})
+
 	cmd.PersistentFlags().StringVarP(
 		&sicmd.stackName, "stack", "s", "", "The name of the stack to create")
 	cmd.PersistentFlags().StringVar(
