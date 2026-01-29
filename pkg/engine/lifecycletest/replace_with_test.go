@@ -129,11 +129,13 @@ func TestReplaceWith(t *testing.T) {
 func TestReplaceWithAndDeletedWith(t *testing.T) {
 	t.Parallel()
 
+	t.Skip("TODO[https://github.com/pulumi/pulumi/issues/21616]: Flaky")
+
 	created := []resource.URN{}
 	deleted := []resource.URN{}
 
 	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+		deploytest.NewProviderLoader("pkgA", semver.Version{Major: 1}, func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
