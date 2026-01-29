@@ -773,7 +773,7 @@ func (t *TailTest) RemoveFile(name string) {
 func (t *TailTest) RenameFile(oldname string, newname string) {
 	oldname = t.path + "/" + oldname
 	newname = t.path + "/" + newname
-	err := os.Rename(oldname, newname)
+	err := os.Rename(oldname, newname) //nolint:forbidigo // test file
 	if err != nil {
 		t.Fatal(err)
 	}

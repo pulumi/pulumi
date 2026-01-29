@@ -574,7 +574,7 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 			for {
 				_, err = os.Stat(backupFile)
 				if os.IsNotExist(err) {
-					if err = os.Rename(configPath, backupFile); err != nil {
+					if err = os.Rename(configPath, backupFile); err != nil { //nolint:forbidigo // historic os.Rename usage
 						return fmt.Errorf("backing up existing configuration file: %w", err)
 					}
 

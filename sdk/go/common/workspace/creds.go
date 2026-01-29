@@ -348,7 +348,7 @@ func StorePulumiConfig(config PulumiConfig) error {
 	if err != nil {
 		return err
 	}
-	err = os.Rename(tempConfigFile.Name(), configFile)
+	err = os.Rename(tempConfigFile.Name(), configFile) //nolint:forbidigo // historic usage
 	if err != nil {
 		contract.IgnoreError(os.Remove(tempConfigFile.Name()))
 		return err
