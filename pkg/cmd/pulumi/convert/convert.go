@@ -108,7 +108,7 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 		},
 	}
 
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+	constrictor.AttachArguments(cmd, constrictor.UnrestrictedArgs)
 
 	cmd.PersistentFlags().StringVar(
 		&language, "language", "", "Which language plugin to use to generate the Pulumi project")

@@ -78,6 +78,14 @@ var NoArgs = &Arguments{
 	Variadic:  false,
 }
 
+// UnrestrictedArgs accepts zero or more arguments. Use for commands that
+// previously had no argument predicate and should accept any trailing args.
+var UnrestrictedArgs = &Arguments{
+	Arguments: []Argument{{Name: "arg"}},
+	Required:  0,
+	Variadic:  true,
+}
+
 // Declare the arguments for a Cobra command.
 func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
 	contract.Requiref(cmd != nil, "cmd", "cannot be nil")
