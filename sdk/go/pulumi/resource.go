@@ -545,6 +545,10 @@ type ResourceOptions struct {
 	// Hooks are the optional resource hooks to bind to this resource. The hooks
 	// will be invoked during the lifecycle of the resource.
 	Hooks *ResourceHookBinding
+
+	// EnvVarMappings specifies environment variable mappings for provider resources.
+	// Keys are the source environment variable names, values are the target names.
+	EnvVarMappings map[string]string
 }
 
 // NewResourceOptions builds a preview of the effect of the provided options.
@@ -653,6 +657,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		DeletedWith:             ro.DeletedWith,
 		ReplaceWith:             ro.ReplaceWith,
 		Hooks:                   ro.Hooks,
+		EnvVarMappings:          ro.EnvVarMappings,
 	}
 }
 
