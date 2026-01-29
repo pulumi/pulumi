@@ -42,6 +42,9 @@ func TestGeneratePackage(t *testing.T) {
 			"dotnet/test":    testGeneratedPackage,
 		},
 		TestCases: test.PulumiPulumiSDKTests,
+
+		InputDir:  filepath.Join("..", "..", "..", "tests", "testdata", "codegen"),
+		ResultDir: "testdata",
 	})
 }
 
