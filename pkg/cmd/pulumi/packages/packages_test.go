@@ -254,7 +254,7 @@ func TestStripGitHubTreePath(t *testing.T) {
 		{
 			name: "github url with tree/main and subdirectory",
 			url:  "https://github.com/pulumi/pulumi-aws/tree/main/examples",
-			want: "https://github.com/pulumi/pulumi-aws",
+			want: "https://github.com/pulumi/pulumi-aws/examples",
 		},
 		{
 			name: "github url with tree/v1.0.0",
