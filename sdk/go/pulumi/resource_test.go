@@ -566,6 +566,34 @@ func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
 	assert.Equal(t, []string{i1, i2, i2, i3}, opts.ReplaceOnChanges)
 }
 
+func TestResourceOptionMergingEnvVarMappings(t *testing.T) {
+	t.Parallel()
+
+	// EnvVarMappings maps are merged together, last value for a key wins
+	m1 := map[string]string{"SOURCE_VAR": "TARGET_VAR"}
+	m2 := map[string]string{"OTHER_VAR": "ANOTHER_VAR"}
+	m3 := map[string]string{"SOURCE_VAR": "DIFFERENT_TARGET"}
+
+	// two singleton options with different keys
+	opts := merge(EnvVarMappings(m1), EnvVarMappings(m2))
+	assert.Equal(t, map[string]string{
+		"SOURCE_VAR": "TARGET_VAR",
+		"OTHER_VAR":  "ANOTHER_VAR",
+	}, opts.EnvVarMappings)
+
+	// nil m1
+	opts = merge(EnvVarMappings(nil), EnvVarMappings(m2))
+	assert.Equal(t, map[string]string{"OTHER_VAR": "ANOTHER_VAR"}, opts.EnvVarMappings)
+
+	// nil m2
+	opts = merge(EnvVarMappings(m1), EnvVarMappings(nil))
+	assert.Equal(t, map[string]string{"SOURCE_VAR": "TARGET_VAR"}, opts.EnvVarMappings)
+
+	// overlapping keys - last value wins
+	opts = merge(EnvVarMappings(m1), EnvVarMappings(m3))
+	assert.Equal(t, map[string]string{"SOURCE_VAR": "DIFFERENT_TARGET"}, opts.EnvVarMappings)
+}
+
 func TestNewResourceInput(t *testing.T) {
 	t.Parallel()
 
@@ -1135,6 +1163,26 @@ func TestNewResourceOptions(t *testing.T) {
 			desc: "DeletedWith",
 			give: DeletedWith(&testRes{foo: "a"}),
 			want: ResourceOptions{DeletedWith: &testRes{foo: "a"}},
+		},
+		{
+			desc: "EnvVarMappings",
+			give: EnvVarMappings(map[string]string{"SOURCE_VAR": "TARGET_VAR"}),
+			want: ResourceOptions{
+				EnvVarMappings: map[string]string{"SOURCE_VAR": "TARGET_VAR"},
+			},
+		},
+		{
+			desc: "EnvVarMappings/multiple options",
+			give: Composite(
+				EnvVarMappings(map[string]string{"VAR1": "TARGET1"}),
+				EnvVarMappings(map[string]string{"VAR2": "TARGET2"}),
+			),
+			want: ResourceOptions{
+				EnvVarMappings: map[string]string{
+					"VAR1": "TARGET1",
+					"VAR2": "TARGET2",
+				},
+			},
 		},
 	}
 

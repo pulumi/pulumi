@@ -17,6 +17,8 @@ package plugin
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -31,7 +33,7 @@ type MockHost struct {
 	AnalyzerF           func(nm tokens.QName) (Analyzer, error)
 	PolicyAnalyzerF     func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
 	ListAnalyzersF      func() []Analyzer
-	ProviderF           func(descriptor workspace.PluginDescriptor) (Provider, error)
+	ProviderF           func(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
 	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
 	EnsurePluginsF      func(plugins []workspace.PluginDescriptor, kinds Flags) error
 	ResolvePluginF      func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
@@ -84,9 +86,9 @@ func (m *MockHost) ListAnalyzers() []Analyzer {
 	return nil
 }
 
-func (m *MockHost) Provider(descriptor workspace.PluginDescriptor) (Provider, error) {
+func (m *MockHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {
 	if m.ProviderF != nil {
-		return m.ProviderF(descriptor)
+		return m.ProviderF(descriptor, e)
 	}
 	return nil, errors.New("Provider not implemented")
 }

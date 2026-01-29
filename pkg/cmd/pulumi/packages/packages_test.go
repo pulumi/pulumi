@@ -66,7 +66,7 @@ func TestProviderFromSource(t *testing.T) {
 		}
 
 		mockHost := &plugin.MockHost{
-			ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+			ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 				return mockProvider, nil
 			},
 		}

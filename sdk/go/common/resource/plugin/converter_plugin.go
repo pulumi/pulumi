@@ -17,11 +17,11 @@ package plugin
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/blang/semver"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -56,7 +56,7 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 	contract.Assertf(path != "", "unexpected empty path for plugin %s", name)
 
 	plug, _, err := newPlugin(ctx, ctx.Pwd, path, prefix,
-		apitype.ConverterPlugin, []string{}, os.Environ(),
+		apitype.ConverterPlugin, []string{}, env.Global(),
 		testConnection, converterPluginDialOptions(ctx, name, ""),
 		ctx.Host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: name}))
 	if err != nil {
