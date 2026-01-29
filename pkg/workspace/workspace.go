@@ -158,7 +158,7 @@ func atomicWriteFile(path string, b []byte) error {
 	if err = tmp.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmp.Name(), path)
+	return os.Rename(tmp.Name(), path) //nolint:forbidigo // os.Rename is not atomic on windows
 }
 
 func (pw *projectWorkspace) readSettings() error {

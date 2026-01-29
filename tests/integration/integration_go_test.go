@@ -1026,7 +1026,7 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	e.ImportDirectory(filepath.Join("go", "regress-13301"))
 
 	// Rename go.mod.bad to go.mod so that the Go toolchain uses it.
-	require.NoError(t, os.Rename(
+	require.NoError(t, os.Rename( //nolint:forbidigo // os.Rename is OK for tests
 		filepath.Join(e.CWD, "go.mod.bad"),
 		filepath.Join(e.CWD, "go.mod"),
 	))

@@ -296,6 +296,8 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	// If two calls to `plugin install` for the same plugin are racing, the second one will be
 	// unable to rename the directory. That's OK, just ignore the error. The temp directory created
 	// as part of the install will be cleaned up when we exit by the defer above.
+	//
+	//nolint:forbidigo // historic os.Rename usage
 	if err := os.Rename(tempPackageDir, finalDir); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("moving plugin: %w", err)
 	}

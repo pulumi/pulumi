@@ -89,7 +89,7 @@ func newStackRenameCmd() *cobra.Command {
 			case os.IsNotExist(configStatErr):
 				// Stack doesn't have any configuration, ignore.
 			case configStatErr == nil:
-				if err := os.Rename(oldConfigPath, newConfigPath); err != nil {
+				if err := os.Rename(oldConfigPath, newConfigPath); err != nil { //nolint:forbidigo // historic os.Rename usage
 					return fmt.Errorf("renaming configuration file to %s: %w", filepath.Base(newConfigPath), err)
 				}
 			default:

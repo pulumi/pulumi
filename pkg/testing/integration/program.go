@@ -1793,13 +1793,13 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 
 		// Finally, replace our current temp directory with the new one.
 		dirOld := dir + ".old"
-		if err := os.Rename(dir, dirOld); err != nil {
+		if err := os.Rename(dir, dirOld); err != nil { //nolint:forbidigo // test usage is OK
 			return fmt.Errorf("Couldn't rename %v to %v: %w", dir, dirOld, err)
 		}
 
 		// There's a brief window here where the old temp dir name could be taken from us.
 
-		if err := os.Rename(newDir, dir); err != nil {
+		if err := os.Rename(newDir, dir); err != nil { //nolint:forbidigo // test usage is OK
 			return fmt.Errorf("Couldn't rename %v to %v: %w", newDir, dir, err)
 		}
 

@@ -2153,7 +2153,7 @@ func TestRegression12301Node(t *testing.T) {
 			jsonPath := filepath.Join(project.Root, "regression-12301.json")
 			dirName := filepath.Base(project.Root)
 			newPath := filepath.Join(project.Root, "..", dirName+".json")
-			return os.Rename(jsonPath, newPath)
+			return os.Rename(jsonPath, newPath) //nolint:forbidigo // os.Rename is OK for tests
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.Len(t, stack.Outputs, 1)
