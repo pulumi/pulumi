@@ -73,7 +73,7 @@ func TestInstallAlreadyInstalledPackage(t *testing.T) {
 func TestInstallAlreadyInstalledPlugin(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, nil, []invariantPlugin{
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
 		{
 			d: workspace.PluginDescriptor{
 				Name:    "plugin",
@@ -88,7 +88,7 @@ func TestInstallAlreadyInstalledPlugin(t *testing.T) {
 	rws := &recordingWorkspace{ws, nil}
 	defer rws.save(t)
 
-	run, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+	run, _, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
 		Source: "plugin", Version: "1.0.0",
 		Parameters: []string{"parameterization"},
 	}, nil, "", packageinstallation.Options{
