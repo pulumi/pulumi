@@ -320,10 +320,20 @@ func parseRecord(objName string, dest recordDecl, node syntax.Node, noMatchWarni
 	t := v.Type()
 
 	var diags syntax.Diagnostics
+	seenKeys := make(map[string]bool)
 	for i := 0; i < obj.Len(); i++ {
 		kvp := obj.Index(i)
 
 		key := kvp.Key.Value()
+
+		// Add warning diagnostic for duplicate top-level keys
+		if seenKeys[key] {
+			nodeError := syntax.NodeError(kvp.Key, fmt.Sprintf("duplicate key %q", key))
+			nodeError.Severity = hcl.DiagWarning
+			diags = append(diags, nodeError)
+		}
+		seenKeys[key] = true
+
 		var hasMatch bool
 		for _, f := range reflect.VisibleFields(t) {
 			if f.IsExported() && strings.EqualFold(f.Name, key) {
