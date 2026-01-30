@@ -69,11 +69,8 @@ type Context interface {
 	//
 	// project and projectDir describe the where the SDK is being generated and linked into.
 	//
-	// parameters describes any parameters necessary to convert the plugin into a
-	// package.
-	//
-	// The plugin used to generate the SDK will always be installed already, and
-	// should be run from pluginDir.
+	// providers is a running instance of the package being linked into the project. If parameterization is
+	// necessary, then it is already parameterized.
 	LinkPackage(
 		ctx context.Context,
 		project *workspace.ProjectRuntimeInfo, projectDir string,
