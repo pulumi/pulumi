@@ -104,8 +104,10 @@ func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
 // arguments as this is all we can do with the arguments predicate anyway.
 func createCobraArgsPredicate(specification *Arguments) cobra.PositionalArgs {
 	return cmdutil.ArgsFunc(func(cmd *cobra.Command, arguments []string) error {
-		if !specification.Variadic && specification.Required == len(specification.Arguments) && len(specification.Arguments) != len(arguments) {
-			return fmt.Errorf("accepts %d arg(s), received %d", len(specification.Arguments), len(arguments))
+		if !specification.Variadic {
+			if specification.Required == len(specification.Arguments) && len(specification.Arguments) != len(arguments) {
+				return fmt.Errorf("accepts %d arg(s), received %d", len(specification.Arguments), len(arguments))
+			}
 		}
 
 		if len(arguments) < specification.Required {
