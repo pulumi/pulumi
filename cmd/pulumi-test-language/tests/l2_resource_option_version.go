@@ -40,33 +40,33 @@ func init() {
 
 					providers := RequireNResources(l, res.Snap.Resources, "pulumi:providers:simple", 2)
 
-					var providerV1URN, providerV2URN resource.URN
+					var providerV2URN, providerV26URN resource.URN
 					for _, prov := range providers {
 						urnStr := string(prov.URN)
 						if strings.Contains(urnStr, "2_0_0") {
-							providerV1URN = prov.URN
-						} else if strings.Contains(urnStr, "26_0_0") {
 							providerV2URN = prov.URN
+						} else if strings.Contains(urnStr, "26_0_0") {
+							providerV26URN = prov.URN
 						}
 					}
-					require.NotEmpty(l, providerV1URN, "expected to find provider with version 2_0_0")
-					require.NotEmpty(l, providerV2URN, "expected to find provider with version 26_0_0")
+					require.NotEmpty(l, providerV2URN, "expected to find provider with version 2_0_0")
+					require.NotEmpty(l, providerV26URN, "expected to find provider with version 26_0_0")
 
-					withV1 := RequireSingleNamedResource(l, res.Snap.Resources, "withV1")
 					withV2 := RequireSingleNamedResource(l, res.Snap.Resources, "withV2")
+					withV26 := RequireSingleNamedResource(l, res.Snap.Resources, "withV26")
 					withDefault := RequireSingleNamedResource(l, res.Snap.Resources, "withDefault")
 
-					assert.True(l, strings.HasPrefix(withV1.Provider, string(providerV1URN)),
-						"withV1 should use provider version 2.0.0, got provider %s", withV1.Provider)
-					assert.Equal(l, true, withV1.Outputs["value"].BoolValue())
+					assert.Truef(l, strings.HasPrefix(withV2.Provider, string(providerV2URN)),
+						"expected %s to prefix %s", providerV2URN, withV2.Provider)
+					assert.True(l, withV2.Outputs["value"].BoolValue())
 
-					assert.True(l, strings.HasPrefix(withV2.Provider, string(providerV2URN)),
-						"withV2 should use provider version 26.0.0, got provider %s", withV2.Provider)
-					assert.Equal(l, false, withV2.Outputs["value"].BoolValue())
+					assert.Truef(l, strings.HasPrefix(withV26.Provider, string(providerV26URN)),
+						"expected %s to prefix %s", providerV26URN, withV26.Provider)
+					assert.False(l, withV26.Outputs["value"].BoolValue())
 
-					assert.True(l, strings.HasPrefix(withDefault.Provider, string(providerV2URN)),
-						"withDefault should use latest provider version 26.0.0, got provider %s", withDefault.Provider)
-					assert.Equal(l, true, withDefault.Outputs["value"].BoolValue())
+					assert.Truef(l, strings.HasPrefix(withDefault.Provider, string(providerV26URN)),
+						"expected %s to prefix %s", providerV26URN, withDefault.Provider)
+					assert.True(l, withDefault.Outputs["value"].BoolValue())
 				},
 			},
 		},
