@@ -34,4 +34,10 @@ var (
 		"noParent": model.NewOptionalType(model.BoolType),
 		"parent":   model.NewOptionalType(model.DynamicType),
 	}))
+	// CustomTimeoutsType represents the type for custom timeouts resource option.
+	CustomTimeoutsType = model.NewObjectType(map[string]model.Type{
+		"create": model.NewOptionalType(model.StringType),
+		"update": model.NewOptionalType(model.StringType),
+		"delete": model.NewOptionalType(model.StringType),
+	})
 )

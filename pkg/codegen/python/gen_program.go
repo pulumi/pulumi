@@ -832,6 +832,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.AdditionalSecretOutputs != nil {
 		appendOption("additional_secret_outputs", opts.AdditionalSecretOutputs)
 	}
+	if opts.CustomTimeouts != nil {
+		appendOption("custom_timeouts", opts.CustomTimeouts)
+	}
 
 	return block, temps
 }
@@ -888,6 +891,19 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 					g.Fprintf(w, ")")
 				}
 				g.Fprintf(w, "]")
+			} else if attr.Name == "custom_timeouts" {
+				obj := attr.Value.(*model.ObjectConsExpression)
+				g.Fprintf(w, "custom_timeouts=pulumi.CustomTimeouts(")
+				for j, item := range obj.Items {
+					if j > 0 {
+						g.Fprintf(w, ", ")
+					}
+					key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+					contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+					g.Fgenf(w, "%s=%v", key.AsString(), item.Value)
+				}
+				g.Fprintf(w, ")")
 			} else {
 				g.Fgenf(w, "%s=%v", attr.Name, attr.Value)
 			}

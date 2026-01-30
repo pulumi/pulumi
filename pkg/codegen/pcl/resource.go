@@ -56,6 +56,8 @@ type ResourceOptions struct {
 	AdditionalSecretOutputs model.Expression
 	// The version of the provider for this resource.
 	Version model.Expression
+	// CustomTimeouts overrides default timeouts for resource CRUD operations.
+	CustomTimeouts model.Expression
 	// The plugin download URL for this resource.
 	PluginDownloadURL model.Expression
 	// If set, the provider's Delete method will not be called for this resource if the specified resource is being

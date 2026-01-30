@@ -1194,6 +1194,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.AdditionalSecretOutputs != nil {
 		appendOption("AdditionalSecretOutputs", opts.AdditionalSecretOutputs, model.NewListType(model.StringType))
 	}
+	if opts.CustomTimeouts != nil {
+		appendOption("Timeouts", opts.CustomTimeouts, pcl.CustomTimeoutsType)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}
@@ -1252,6 +1255,23 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 					}
 				}
 				g.Fgenf(valBuffer, "}")
+			}
+			g.Fgenf(valBuffer, "}")
+		case "Timeouts":
+			obj := attr.Value.(*model.ObjectConsExpression)
+			g.Fgenf(valBuffer, "&pulumi.CustomTimeouts{")
+			for _, item := range obj.Items {
+				key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+				contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+				switch key.AsString() {
+				case "create":
+					g.Fgenf(valBuffer, "Create: %v, ", item.Value)
+				case "update":
+					g.Fgenf(valBuffer, "Update: %v, ", item.Value)
+				case "delete":
+					g.Fgenf(valBuffer, "Delete: %v, ", item.Value)
+				}
 			}
 			g.Fgenf(valBuffer, "}")
 		case "Import":
