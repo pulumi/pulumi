@@ -26,14 +26,16 @@ import (
 
 type MockHTTPBackend struct {
 	backend.MockBackend
-	FClient   func() *client.Client
-	FCloudURL func() string
-	FSearch   func(ctx context.Context,
+	FClient                func() *client.Client
+	FCloudURL              func() string
+	FCloudConsoleURL       func(paths ...string) string
+	FSearch                func(ctx context.Context,
 		orgName string,
 		queryParams *apitype.PulumiQueryRequest,
 	) (*apitype.ResourceSearchResponse, error)
 	FNaturalLanguageSearch func(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
 	FPromptAI              func(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
+	FCreateNeoTask         func(ctx context.Context, stackRef backend.StackReference, prompt string) (string, error)
 	FStackConsoleURL       func(stackRef backend.StackReference) (string, error)
 	FRunDeployment         func(
 		ctx context.Context,
@@ -54,6 +56,13 @@ func (b *MockHTTPBackend) CloudURL() string {
 	return b.FCloudURL()
 }
 
+func (b *MockHTTPBackend) CloudConsoleURL(paths ...string) string {
+	if b.FCloudConsoleURL != nil {
+		return b.FCloudConsoleURL(paths...)
+	}
+	return ""
+}
+
 func (b *MockHTTPBackend) NaturalLanguageSearch(
 	ctx context.Context, orgName string, query string,
 ) (*apitype.ResourceSearchResponse, error) {
@@ -69,6 +78,9 @@ func (b *MockHTTPBackend) PromptAI(
 func (b *MockHTTPBackend) CreateNeoTask(
 	ctx context.Context, stackRef backend.StackReference, prompt string,
 ) (string, error) {
+	if b.FCreateNeoTask != nil {
+		return b.FCreateNeoTask(ctx, stackRef, prompt)
+	}
 	return "", nil
 }
 

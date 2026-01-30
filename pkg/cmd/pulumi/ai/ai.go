@@ -54,8 +54,8 @@ func NewAICommand(ws pkgWorkspace.Context) *cobra.Command {
 	var aiCommand aiCmd
 	cmd := &cobra.Command{
 		Use:    "ai",
-		Short:  "Basic Pulumi AI CLI commands.",
-		Long:   "Contains the current set of supported CLI functionality for the Pulumi AI service.",
+		Short:  "Pulumi Neo commands.",
+		Long:   "Contains CLI functionality for Pulumi Neo, Pulumi's AI assistant.",
 		Hidden: !env.Experimental.Value(),
 		Args:   cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {

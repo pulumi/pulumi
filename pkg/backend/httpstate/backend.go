@@ -172,6 +172,7 @@ type Backend interface {
 	backend.Backend
 
 	CloudURL() string
+	CloudConsoleURL(paths ...string) string
 
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
