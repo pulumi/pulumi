@@ -26,10 +26,10 @@ import (
 
 type MockHTTPBackend struct {
 	backend.MockBackend
-	FClient                func() *client.Client
-	FCloudURL              func() string
-	FCloudConsoleURL       func(paths ...string) string
-	FSearch                func(ctx context.Context,
+	FClient          func() *client.Client
+	FCloudURL        func() string
+	FCloudConsoleURL func(paths ...string) string
+	FSearch          func(ctx context.Context,
 		orgName string,
 		queryParams *apitype.PulumiQueryRequest,
 	) (*apitype.ResourceSearchResponse, error)
