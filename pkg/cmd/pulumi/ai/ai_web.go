@@ -94,17 +94,11 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 		cmd.Stdout = os.Stdout
 	}
 
-	if len(args) == 0 {
-		return errors.New(
-			"prompt must be provided.\n" +
-				"Example: 'pulumi ai web \"Create an S3 bucket in Python\"'",
-		)
+	var prompt string
+	if len(args) > 0 {
+		prompt = args[0]
 	}
-
-	prompt := args[0]
-
-	// If language is specified, append it to the prompt
-	if cmd.language != "" {
+	if prompt != "" && cmd.language != "" {
 		prompt = fmt.Sprintf("%s\n\nPlease use %s.", prompt, cmd.language)
 	}
 
@@ -146,16 +140,18 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 		}
 	}
 
-	if cmd.disableAutoSubmit {
-		// Build console URL with prompt as query param
+	if cmd.disableAutoSubmit || prompt == "" {
+		// Open Neo console without creating a task
 		consoleURL := cloudBackend.CloudConsoleURL(orgName, "neo", "tasks")
 		parsedURL, err := url.Parse(consoleURL)
 		if err != nil {
 			return fmt.Errorf("failed to parse console URL: %w", err)
 		}
-		query := parsedURL.Query()
-		query.Set("prompt", prompt)
-		parsedURL.RawQuery = query.Encode()
+		if prompt != "" {
+			query := parsedURL.Query()
+			query.Set("prompt", prompt)
+			parsedURL.RawQuery = query.Encode()
+		}
 
 		browserURL := parsedURL.String()
 		if err = cmd.openBrowser(browserURL); err != nil {
@@ -167,7 +163,6 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	// Auto-submit case: create the task via API
 	// Try to get the current stack for context
 	var stackRef backend.StackReference
 	stack, err := state.CurrentStack(ctx, cmd.ws, b)
@@ -198,23 +193,24 @@ func newAIWebCommand(ws pkgWorkspace.Context) *cobra.Command {
 	aiwebcmd.openBrowser = browser.OpenURL
 
 	cmd := &cobra.Command{
-		Use:   "web <prompt>",
-		Short: "Open Pulumi Neo with the given prompt",
-		Long: `Open Pulumi Neo with the given prompt
+		Use:   "web [prompt]",
+		Short: "Open Pulumi Neo in your browser",
+		Long: `Open Pulumi Neo in your browser
 
-This command creates a new Pulumi Neo task in Pulumi Cloud with your prompt
-and opens it in your browser. Pulumi Neo is Pulumi's AI assistant that can
-help you with infrastructure as code tasks.
+This command opens Pulumi Neo, Pulumi's AI assistant that can help you with
+infrastructure as code tasks.
+
+When a prompt is provided, it creates a new task and opens it in your browser.
+Without a prompt, it simply opens the Pulumi Neo interface.
 
 Use --no-auto-submit to open Pulumi Neo with your prompt pre-filled without
 automatically creating a task.
 
 Example:
   pulumi ai web "Create an S3 bucket in Python"
-  pulumi ai web "Deploy a containerized web app to AWS"
   pulumi ai web --no-auto-submit "Help me with my infrastructure"
 `,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return aiwebcmd.Run(ctx, args)

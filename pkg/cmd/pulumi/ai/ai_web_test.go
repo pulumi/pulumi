@@ -17,6 +17,7 @@ package ai
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -29,17 +30,85 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAIWebCommand_RequiresPrompt(t *testing.T) {
+func TestAIWebCommand_OpensNeoWithoutPrompt(t *testing.T) {
 	t.Parallel()
 	var stdout bytes.Buffer
+	var capturedURL string
+	var taskCreated bool
+
 	cmd := &aiWebCmd{
 		Stdout: &stdout,
 		ws:     pkgWorkspace.Instance,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return &httpstate.MockHTTPBackend{
+				MockBackend: backend.MockBackend{
+					GetDefaultOrgF: func(ctx context.Context) (string, error) {
+						return "test-org", nil
+					},
+				},
+				FCloudConsoleURL: func(paths ...string) string {
+					return "https://app.pulumi.com/" + strings.Join(paths, "/")
+				},
+				FCreateNeoTask: func(ctx context.Context, stackRef backend.StackReference, prompt string) (string, error) {
+					taskCreated = true
+					return "https://app.pulumi.com/test-org/neo/tasks/task-123", nil
+				},
+			}, nil
+		},
+		openBrowser: func(url string) error {
+			capturedURL = url
+			return nil
+		},
 	}
 
+	// Should not error - just opens the website
 	err := cmd.Run(context.Background(), []string{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "prompt must be provided")
+	require.NoError(t, err)
+	assert.Equal(t, "https://app.pulumi.com/test-org/neo/tasks", capturedURL)
+	assert.False(t, taskCreated)
+}
+
+func TestAIWebCommand_NoAutoSubmitWithPrompt(t *testing.T) {
+	t.Parallel()
+	var stdout bytes.Buffer
+	var capturedURL string
+	var taskCreated bool
+
+	cmd := &aiWebCmd{
+		Stdout:            &stdout,
+		ws:                pkgWorkspace.Instance,
+		disableAutoSubmit: true,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return &httpstate.MockHTTPBackend{
+				MockBackend: backend.MockBackend{
+					GetDefaultOrgF: func(ctx context.Context) (string, error) {
+						return "test-org", nil
+					},
+				},
+				FCloudConsoleURL: func(paths ...string) string {
+					return "https://app.pulumi.com/" + strings.Join(paths, "/")
+				},
+				FCreateNeoTask: func(ctx context.Context, stackRef backend.StackReference, prompt string) (string, error) {
+					taskCreated = true
+					return "https://app.pulumi.com/test-org/neo/tasks/task-123", nil
+				},
+			}, nil
+		},
+		openBrowser: func(url string) error {
+			capturedURL = url
+			return nil
+		},
+	}
+
+	// Should open with prompt in query string
+	err := cmd.Run(context.Background(), []string{"Help me build"})
+	require.NoError(t, err)
+	assert.Contains(t, capturedURL, "prompt=Help+me+build")
+	assert.False(t, taskCreated)
 }
 
 func TestAIWebCommand_RequiresCloudBackend(t *testing.T) {
@@ -66,6 +135,7 @@ func TestAIWebCommand_CreatesNeoTask(t *testing.T) {
 	var stdout bytes.Buffer
 	expectedURL := "https://app.pulumi.com/test-org/neo/tasks/task-123"
 	var capturedPrompt string
+	var taskCreated bool
 
 	var capturedURL string
 	cmd := &aiWebCmd{
@@ -82,6 +152,7 @@ func TestAIWebCommand_CreatesNeoTask(t *testing.T) {
 				},
 				FCreateNeoTask: func(ctx context.Context, stackRef backend.StackReference, prompt string) (string, error) {
 					capturedPrompt = prompt
+					taskCreated = true
 					return expectedURL, nil
 				},
 			}, nil
@@ -99,12 +170,14 @@ func TestAIWebCommand_CreatesNeoTask(t *testing.T) {
 	assert.Contains(t, stdout.String(), "Pulumi Neo task created successfully!")
 	assert.Contains(t, stdout.String(), expectedURL)
 	assert.Equal(t, expectedURL, capturedURL)
+	assert.True(t, taskCreated)
 }
 
 func TestAIWebCommand_AppendsLanguageToPrompt(t *testing.T) {
 	t.Parallel()
 	var stdout bytes.Buffer
 	var capturedPrompt string
+	var taskCreated bool
 	cmd := &aiWebCmd{
 		Stdout:   &stdout,
 		ws:       pkgWorkspace.Instance,
@@ -120,6 +193,7 @@ func TestAIWebCommand_AppendsLanguageToPrompt(t *testing.T) {
 				},
 				FCreateNeoTask: func(ctx context.Context, stackRef backend.StackReference, prompt string) (string, error) {
 					capturedPrompt = prompt
+					taskCreated = true
 					return "https://app.pulumi.com/test-org/neo/tasks/task-123", nil
 				},
 			}, nil
@@ -133,6 +207,7 @@ func TestAIWebCommand_AppendsLanguageToPrompt(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, capturedPrompt, "Create an S3 bucket\n\nPlease use Python.")
+	assert.True(t, taskCreated)
 }
 
 // Mock types for testing
