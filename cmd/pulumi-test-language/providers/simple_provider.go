@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,12 +29,21 @@ import (
 
 type SimpleProvider struct {
 	plugin.UnimplementedProvider
+
+	Version *semver.Version
 }
 
 var _ plugin.Provider = (*SimpleProvider)(nil)
 
 func (p *SimpleProvider) Close() error {
 	return nil
+}
+
+func (p *SimpleProvider) version() semver.Version {
+	if p.Version == nil {
+		return semver.Version{Major: 2}
+	}
+	return *p.Version
 }
 
 func (p *SimpleProvider) Configure(
@@ -61,7 +70,7 @@ func (p *SimpleProvider) GetSchema(
 
 	pkg := schema.PackageSpec{
 		Name:    "simple",
-		Version: "2.0.0",
+		Version: p.version().String(),
 		Resources: map[string]schema.ResourceSpec{
 			"simple:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -101,9 +110,9 @@ func (p *SimpleProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "2.0.0" {
+	if version.StringValue() != p.version().String() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 2.0.0"),
+			Failures: makeCheckFailure("version", fmt.Sprintf("version is not %s", p.version())),
 		}, nil
 	}
 
@@ -186,9 +195,8 @@ func (p *SimpleProvider) Update(
 }
 
 func (p *SimpleProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.MustParse("2.0.0")
 	return plugin.PluginInfo{
-		Version: &ver,
+		Version: ref(p.version()),
 	}, nil
 }
 
@@ -246,3 +254,5 @@ func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 		Status: resource.StatusOK,
 	}, nil
 }
+
+func ref[T any](v T) *T { return &v }

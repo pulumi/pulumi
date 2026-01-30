@@ -184,7 +184,7 @@ func (p *ResourceProperty) Type() model.Type {
 	return ResourcePropertyType
 }
 
-// NeedsVersionResourceOption returns true if the version resource matches the version in the schema.
+// NeedsVersionResourceOption returns false if the version resource matches the version in the schema.
 //
 // Languages that bake versions into their generated schemas can use NeedsVersionResourceOption to omit redundant
 // version information.

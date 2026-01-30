@@ -17,6 +17,7 @@ package tests
 import (
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -27,8 +28,8 @@ import (
 func init() {
 	LanguageTests["l2-resource-option-version"] = LanguageTest{
 		Providers: []func() plugin.Provider{
-			func() plugin.Provider { return &providers.SimpleProvider{} },
-			func() plugin.Provider { return &providers.SimpleProviderV2{} },
+			func() plugin.Provider { return &providers.SimpleProvider{Version: &semver.Version{Major: 2}} },
+			func() plugin.Provider { return &providers.SimpleProvider{Version: &semver.Version{Major: 26}} },
 		},
 		SkipEnsurePluginsValidation: true,
 		Runs: []TestRun{
@@ -42,14 +43,14 @@ func init() {
 					var providerV1URN, providerV2URN resource.URN
 					for _, prov := range providers {
 						urnStr := string(prov.URN)
-						if strings.Contains(urnStr, "2_0_0") || strings.Contains(urnStr, "2.0.0") {
+						if strings.Contains(urnStr, "2_0_0") {
 							providerV1URN = prov.URN
-						} else if strings.Contains(urnStr, "26_0_0") || strings.Contains(urnStr, "26.0.0") {
+						} else if strings.Contains(urnStr, "26_0_0") {
 							providerV2URN = prov.URN
 						}
 					}
-					require.NotEmpty(l, providerV1URN, "expected to find provider with version 2.0.0 or 2_0_0")
-					require.NotEmpty(l, providerV2URN, "expected to find provider with version 26.0.0 or 26_0_0")
+					require.NotEmpty(l, providerV1URN, "expected to find provider with version 2_0_0")
+					require.NotEmpty(l, providerV2URN, "expected to find provider with version 26_0_0")
 
 					withV1 := RequireSingleNamedResource(l, res.Snap.Resources, "withV1")
 					withV2 := RequireSingleNamedResource(l, res.Snap.Resources, "withV2")
