@@ -513,6 +513,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "version":
 				t = model.StringType
 				resourceOptions.Version = item.Value
+			case "customTimeouts":
+				t = CustomTimeoutsType
+				resourceOptions.CustomTimeouts = item.Value
 			case "pluginDownloadURL":
 				t = model.StringType
 				resourceOptions.PluginDownloadURL = item.Value
