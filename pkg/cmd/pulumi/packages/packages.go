@@ -250,14 +250,6 @@ type LinkPackagesContext struct {
 // LinkPackages links a locally generated SDK to an existing project.
 // Currently Java is not supported and will print instructions for manual linking.
 func LinkPackages(ctx *LinkPackagesContext) error {
-	if ctx.Language == "yaml" {
-		return nil // Nothing to do for YAML
-	}
-	return linkPackage(ctx)
-}
-
-// linkPackage links a locally generated SDK into a project using `Language.Link`.
-func linkPackage(ctx *LinkPackagesContext) error {
 	root, err := filepath.Abs(ctx.Root)
 	if err != nil {
 		return err
