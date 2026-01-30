@@ -30,6 +30,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -116,7 +117,7 @@ type (
 	PackageResolution struct {
 		Spec                 workspace.PackageSpec
 		Pkg                  workspace.PackageDescriptor
-		InstalledInWorkspace bool
+		InstalledInWorkspace bool // If package is already installed in the global workplace.
 	}
 	// A fully resolved plugin with not yet resolved parameterization.
 	//
@@ -128,7 +129,7 @@ type (
 	//	}
 	//
 	// We wouldn't know the name or version of the package (example@<latest>), but we
-	// would know the name and version of the the resolved plugin
+	// would know the name and version of the resolved plugin
 	// (terraform-provider@<latest>).
 	PluginResolution struct {
 		Spec                 workspace.PackageSpec
@@ -262,7 +263,7 @@ func registryResolution(
 func Resolve(
 	ctx context.Context,
 	reg registry.Registry,
-	ws PluginWorkspace,
+	ws pluginstorage.Context,
 	spec workspace.PackageSpec,
 	options Options,
 ) (Resolution, error) {
@@ -281,12 +282,12 @@ func Resolve(
 	}
 
 	if options.AllowNonInvertableLocalWorkspaceResolution {
-		if ws.HasPlugin(naivePackageDescriptor.PluginDescriptor) {
+		if ws.HasPlugin(ctx, naivePackageDescriptor.PluginDescriptor) {
 			return naiveResolution(spec, naivePackageDescriptor, true), nil
 		}
 
 		if naivePackageDescriptor.Version == nil {
-			has, version, err := ws.HasPluginGTE(naivePackageDescriptor.PluginDescriptor)
+			has, version, err := ws.HasPluginGTE(ctx, naivePackageDescriptor.PluginDescriptor)
 			if err != nil {
 				return nil, err
 			}
@@ -304,12 +305,12 @@ func Resolve(
 		logging.V(3).Infof("Resolved package %#v to an external source %#v\n",
 			spec, naivePackageDescriptor)
 		// If we have the exact version installed, then use that
-		if ws.HasPlugin(naivePackageDescriptor.PluginDescriptor) {
+		if ws.HasPlugin(ctx, naivePackageDescriptor.PluginDescriptor) {
 			return naiveResolution(spec, naivePackageDescriptor, true), nil
 		}
 		// If we don't have a version specified and we are referencing the local workspace
 		if naivePackageDescriptor.Version == nil && options.ResolveVersionWithLocalWorkspace {
-			has, version, err := ws.HasPluginGTE(naivePackageDescriptor.PluginDescriptor)
+			has, version, err := ws.HasPluginGTE(ctx, naivePackageDescriptor.PluginDescriptor)
 			if err != nil {
 				return nil, err
 			}
@@ -339,7 +340,7 @@ func Resolve(
 		return naiveResolution(spec, naivePackageDescriptor, false), nil
 	}
 
-	if ws.IsExternalURL(spec.Source) || naivePackageDescriptor.IsGitPlugin() {
+	if workspace.IsExternalURL(spec.Source) || naivePackageDescriptor.IsGitPlugin() {
 		return remoteResolution()
 	}
 
@@ -362,12 +363,12 @@ func Resolve(
 
 			// If the version was specified in the request, then the only good-enough version is the correct version
 			if naivePackageDescriptor.Version != nil {
-				return registryResolution(spec, metadata, ws.HasPlugin(pluginDescriptor))
+				return registryResolution(spec, metadata, ws.HasPlugin(ctx, pluginDescriptor))
 			}
 
 			// If the version wasn't specified in the request, then good enough is any plugin with the same
 			// *major version* as what the registry gave us.
-			has, version, err := ws.HasPluginGTE(func(s workspace.PluginDescriptor) workspace.PluginDescriptor {
+			has, version, err := ws.HasPluginGTE(ctx, func(s workspace.PluginDescriptor) workspace.PluginDescriptor {
 				s.Version = &semver.Version{Major: s.Version.Major}
 				return s
 			}(pluginDescriptor))
@@ -399,7 +400,7 @@ func Resolve(
 		if errors.Is(err, registry.ErrNotFound) {
 			registryNotFoundErr = err
 		} else {
-			registryQueryErr = fmt.Errorf("%w: %v", ErrRegistryQuery, err)
+			registryQueryErr = fmt.Errorf("%w: %w", ErrRegistryQuery, err)
 		}
 	}
 
@@ -421,36 +422,4 @@ func Resolve(
 		Version:     spec.Version,
 		OriginalErr: registryNotFoundErr,
 	}
-}
-
-// PluginWorkspace dictates how resolution interacts with globally installed plugins.
-type PluginWorkspace interface {
-	HasPlugin(spec workspace.PluginDescriptor) bool
-	HasPluginGTE(spec workspace.PluginDescriptor) (bool, *semver.Version, error)
-	IsExternalURL(source string) bool
-	GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
-}
-
-type defaultWorkspace struct{}
-
-func (defaultWorkspace) HasPlugin(spec workspace.PluginDescriptor) bool {
-	return workspace.HasPlugin(spec)
-}
-
-func (defaultWorkspace) HasPluginGTE(spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
-	return workspace.HasPluginGTE(spec)
-}
-
-func (defaultWorkspace) IsExternalURL(source string) bool {
-	return workspace.IsExternalURL(source)
-}
-
-func (defaultWorkspace) GetLatestVersion(
-	ctx context.Context, spec workspace.PluginDescriptor,
-) (*semver.Version, error) {
-	return spec.GetLatestVersion(ctx)
-}
-
-func DefaultWorkspace() PluginWorkspace {
-	return defaultWorkspace{}
 }

@@ -27,6 +27,8 @@ type ResourceOptions struct {
 	// The definition of the resource options.
 	Definition *model.Block
 
+	// An experession that evaluates to a list of aliases for the resource.
+	Aliases model.Expression
 	// An expression to range over when instantiating the resource.
 	Range model.Expression
 	// The resource's parent, if any.
@@ -46,8 +48,16 @@ type ResourceOptions struct {
 	IgnoreChanges model.Expression
 	// A list of properties where the diff is not displayed.
 	HideDiffs model.Expression
+	// A list of properties that should trigger resource replacement when changed.
+	ReplaceOnChanges model.Expression
+	// Whether the old resource should be deleted before creating the new one during replacement.
+	DeleteBeforeReplace model.Expression
+	// A list of output properties that should be treated as secret, in addition to ones detected from schema.
+	AdditionalSecretOutputs model.Expression
 	// The version of the provider for this resource.
 	Version model.Expression
+	// CustomTimeouts overrides default timeouts for resource CRUD operations.
+	CustomTimeouts model.Expression
 	// The plugin download URL for this resource.
 	PluginDownloadURL model.Expression
 	// If set, the provider's Delete method will not be called for this resource if the specified resource is being

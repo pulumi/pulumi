@@ -157,4 +157,21 @@ func TestCapabilities(t *testing.T) {
 			DeploymentSchemaVersion: 4,
 		}, actual)
 	})
+
+	t.Run("parse stack policy packs", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability: StackPolicyPacks,
+					Version:    1,
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			StackPolicyPacks: true,
+		}, actual)
+	})
 }

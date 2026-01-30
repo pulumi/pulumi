@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2026, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import grpc
 
 from .._utils import contextproperty
 from ..errors import RunError
-from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
+from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc, engine_pb2
 from ._callbacks import _CallbackServicer
 from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from .rpc_manager import RPCManager
@@ -286,6 +286,32 @@ def set_root_resource(root: Resource):
 
 
 ROOT: ContextVar[Optional[Resource]] = ContextVar("root_resource", default=None)
+
+
+def require_pulumi_version(rg: str) -> None:
+    """
+    Checks if the engine we are connected to is compatible with the passed in version range. If the version is not
+    compatible with the specified range, an exception is raised.
+
+    :param str rg: The range to check. The supported syntax for the range is that of
+           https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be
+           AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not
+           exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or
+           greater-than 3.8.0.
+    """
+    engine = get_engine()
+    if engine:
+        try:
+            engine.RequirePulumiVersion(
+                engine_pb2.RequirePulumiVersionRequest(pulumi_version_range=rg)
+            )
+        except grpc.RpcError as exn:
+            if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
+                raise Exception(
+                    "The installed version of the CLI does not support the `RequirePulumiVersion` RPC. "
+                    + "Please upgrade the Pulumi CLI."
+                )
+            raise grpc_error_to_exception(exn) from None
 
 
 async def monitor_supports_feature(feature: str) -> bool:

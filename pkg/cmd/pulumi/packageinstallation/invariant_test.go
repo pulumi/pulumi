@@ -1,0 +1,336 @@
+// Copyright 2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package packageinstallation_test
+
+import (
+	"context"
+	"maps"
+	"path/filepath"
+	"runtime"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/blang/semver"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+)
+
+var _ packageinstallation.Context = invariantWorkspace{}
+
+func newInvariantWorkspace(
+	t *testing.T, workDirs, plainBinaryPaths []string, plugins []invariantPlugin,
+) *invariantWorkspace {
+	pluginMap := make(map[string]*invariantPlugin, len(plugins))
+	for _, v := range plugins {
+		p := filepath.ToSlash(filepath.Join("$HOME", ".pulumi", "plugins", v.d.Dir(), v.d.SubDir()))
+		pluginMap[p] = &v
+	}
+	downloadedWorkspace := make(map[string]*invariantWorkDir, len(workDirs))
+	for _, dir := range workDirs {
+		downloadedWorkspace[filepath.ToSlash(dir)] = &invariantWorkDir{}
+	}
+
+	plainBinaryPathsM := make(map[string]struct{}, len(plainBinaryPaths))
+	for _, v := range plainBinaryPaths {
+		plainBinaryPathsM[v] = struct{}{}
+	}
+
+	return &invariantWorkspace{
+		t:                   t,
+		plugins:             pluginMap,
+		plainBinaryPaths:    plainBinaryPathsM,
+		binaryPaths:         map[string]string{},
+		downloadedWorkspace: downloadedWorkspace,
+		rw:                  new(sync.RWMutex),
+	}
+}
+
+func assertInvariantWorkspaceEqual(t *testing.T, a, b invariantWorkspace) {
+	a.t = nil
+	b.t = nil
+	assert.Equal(t, a, b)
+}
+
+type invariantWorkspace struct {
+	t *testing.T
+	// All plugins visible to the test
+	plugins map[string]*invariantPlugin
+
+	// A map of binary paths to the plugin directories they contain.
+	binaryPaths map[string]string
+
+	// A list of paths where Link is allowed, but which are not plugins.
+	downloadedWorkspace map[string]*invariantWorkDir
+
+	// A map of binary paths that exist outside of plugin directories.
+	plainBinaryPaths map[string]struct{}
+
+	// A mutex guarding the shape of plugins discover-able via HasPlugin or HasPluginGTE.
+	//
+	// It must be held for write when the results of HasPlugin change.
+	rw *sync.RWMutex
+}
+
+type invariantWorkDir struct{ linked []string }
+
+type invariantPlugin struct {
+	d               workspace.PluginDescriptor
+	downloaded      bool
+	installed       bool
+	pathVisible     bool
+	hasBinary       bool
+	projectDetected bool
+	project         *workspace.PluginProject
+
+	linked []string
+}
+
+func (w invariantWorkspace) HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool {
+	w.rw.RLock()
+	defer w.rw.RUnlock()
+	for _, candidate := range w.plugins {
+		if candidate.installed &&
+			candidate.d.Name == spec.Name &&
+			candidate.d.Kind == spec.Kind &&
+			(candidate.d.Version == nil && spec.Version == nil ||
+				(candidate.d.Version != nil && spec.Version != nil && candidate.d.Version.EQ(*spec.Version))) {
+			return true
+		}
+	}
+	return false
+}
+
+func (w invariantWorkspace) HasPluginGTE(
+	ctx context.Context, spec workspace.PluginDescriptor,
+) (bool, *semver.Version, error) {
+	w.rw.RLock()
+
+	var gte *workspace.PluginDescriptor
+	for _, candidate := range w.plugins {
+		if candidate.installed &&
+			candidate.d.Name == spec.Name &&
+			candidate.d.Kind == spec.Kind && candidate.d.Version != nil {
+			if gte == nil {
+				gte = &candidate.d
+				continue
+			}
+
+			if gte.Version.LT(*candidate.d.Version) {
+				gte = &candidate.d
+			}
+		}
+	}
+	w.rw.RUnlock()
+	if gte == nil {
+		// We have found a version with no version
+		spec.Version = nil
+		if w.HasPlugin(ctx, spec) {
+			return true, nil, nil
+		}
+		return false, nil, nil
+	}
+	if spec.Version != nil && gte.Version.LT(*spec.Version) {
+		return false, nil, nil
+	}
+	return true, gte.Version, nil
+}
+
+func (w invariantWorkspace) GetLatestVersion(
+	ctx context.Context, spec workspace.PluginDescriptor,
+) (*semver.Version, error) {
+	var version *semver.Version
+	for _, p := range w.plugins {
+		if p.d.Name != spec.Name || p.d.Version == nil {
+			continue
+		}
+		if version == nil || p.d.Version.GT(*version) {
+			cp := *p.d.Version
+			version = &cp
+		}
+	}
+	return version, nil
+}
+
+func (w invariantWorkspace) GetPluginPath(ctx context.Context, plugin workspace.PluginDescriptor) (string, error) {
+	p := filepath.ToSlash(filepath.Join("$HOME", ".pulumi", "plugins", plugin.Dir(), plugin.SubDir()))
+	pl, ok := w.plugins[p]
+	if !ok || !pl.downloaded {
+		assert.Fail(w.t, "GetPluginPath() called on non-present plugin")
+		return "", assert.AnError
+	}
+	pl.pathVisible = true
+	return p, nil
+}
+
+func (w invariantWorkspace) InstallPluginAt(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) error {
+	w.rw.Lock()
+	defer w.rw.Unlock()
+	dirPath = filepath.ToSlash(dirPath)
+	p, ok := w.plugins[dirPath]
+	if !ok || !p.downloaded {
+		assert.Failf(w.t, "", "InstallPluginAt(%q) called on non-revealed plugin dir", dirPath)
+		return assert.AnError
+	}
+	assert.False(w.t, p.installed, "InstallPluginAt(%q) called in already installed dir", dirPath)
+	p.installed = true
+	return nil
+}
+
+func (w invariantWorkspace) IsExecutable(ctx context.Context, binaryPath string) (bool, error) {
+	normalizedPath := filepath.ToSlash(binaryPath)
+	if runtime.GOOS == "windows" {
+		normalizedPath = strings.TrimSuffix(normalizedPath, ".exe")
+	}
+
+	if _, ok := w.plainBinaryPaths[normalizedPath]; ok {
+		return true, nil
+	}
+	p := filepath.ToSlash(filepath.Dir(binaryPath))
+	pl, ok := w.plugins[p]
+	if !ok || !pl.pathVisible {
+		return false, nil
+	}
+	if pl.hasBinary {
+		w.binaryPaths[filepath.ToSlash(binaryPath)] = p
+		return true, nil
+	}
+	return false, nil
+}
+
+func (w invariantWorkspace) LoadPluginProjectAt(
+	ctx context.Context, path string,
+) (*workspace.PluginProject, string, error) {
+	path = filepath.ToSlash(path)
+	pl, ok := w.plugins[path]
+	if !ok {
+		assert.Failf(w.t, "", "LoadPluginProjectAt(%q) called on non-existent plugin", path)
+		return nil, "", assert.AnError
+	}
+	if !pl.pathVisible {
+		assert.Failf(w.t, "", "LoadPluginProjectAt(%q) called on non-visible plugin", path)
+		return nil, "", assert.AnError
+	}
+	if pl.project == nil {
+		return nil, "", workspace.ErrBaseProjectNotFound
+	}
+	pl.projectDetected = true
+	return pl.project, filepath.ToSlash(filepath.Join(path, "PulumiPlugin.yaml")), nil
+}
+
+func (w invariantWorkspace) LoadBaseProjectFrom(
+	ctx context.Context, path string,
+) (workspace.BaseProject, string, error) {
+	return w.LoadPluginProjectAt(ctx, path)
+}
+
+func (w invariantWorkspace) DownloadPlugin(
+	ctx context.Context, plugin workspace.PluginDescriptor,
+) (string, packageinstallation.MarkInstallationDone, error) {
+	p := filepath.ToSlash(filepath.Join("$HOME", ".pulumi", "plugins", plugin.Dir(), plugin.SubDir()))
+	pl, ok := w.plugins[p]
+	if !ok {
+		assert.Failf(w.t, "DownloadPlugin: Unknown plugin",
+			"could not find %q in %#v", p, slices.Collect(maps.Keys(w.plugins)))
+		return "", nil, assert.AnError
+	}
+	pl.downloaded = true
+	pl.pathVisible = true
+	return p, func(success bool) {}, nil
+}
+
+func (w invariantWorkspace) New() (pkgWorkspace.W, error) {
+	return nil, assert.AnError
+}
+
+func (w invariantWorkspace) ReadProject() (*workspace.Project, string, error) {
+	return nil, "", assert.AnError
+}
+
+func (w invariantWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
+	return workspace.Credentials{}, nil
+}
+
+func (w invariantWorkspace) LinkPackage(
+	ctx context.Context,
+	project *workspace.ProjectRuntimeInfo, projectDir string, provider plugin.Provider,
+) error {
+	projectDir = filepath.ToSlash(projectDir)
+
+	var links *[]string
+	if dst, ok := w.plugins[projectDir]; ok {
+		if !dst.downloaded {
+			assert.Failf(w.t, "", "LinkPackage(%q) called on non-downloaded dst", projectDir)
+			return assert.AnError
+		}
+		links = &dst.linked
+	} else if workDir, ok := w.downloadedWorkspace[projectDir]; ok {
+		links = &workDir.linked
+	}
+
+	ip := provider.(invariantProvider)
+
+	w.rw.Lock()
+	defer w.rw.Unlock()
+	if slices.Contains(*links, ip.path) {
+		assert.Failf(w.t, "", "LinkPackage(%q) linked %q >1 time", projectDir, ip.path)
+		return assert.AnError
+	}
+	// Insert in sorted order to ensure deterministic comparison
+	pos, _ := slices.BinarySearch(*links, ip.path)
+	*links = slices.Insert(*links, pos, ip.path)
+	return nil
+}
+
+func (w invariantWorkspace) RunPackage(
+	ctx context.Context,
+	rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	originalSpec workspace.PackageSpec,
+) (plugin.Provider, error) {
+	pluginPath = filepath.ToSlash(pluginPath)
+	if _, ok := w.plainBinaryPaths[pluginPath]; ok {
+		return invariantProvider{path: pluginPath}, nil
+	}
+
+	if p, ok := w.binaryPaths[pluginPath]; ok {
+		pluginPath = p
+	}
+	pl, ok := w.plugins[pluginPath]
+	if !ok {
+		assert.Failf(w.t, "RunPackage: Unknown plugin", "could not find %q in %#v",
+			pluginPath, slices.Collect(maps.Keys(w.plugins)))
+		return nil, assert.AnError
+	}
+	if !pl.installed && pl.project != nil {
+		assert.Failf(w.t, "", "Missing setup for %q (installed=%t) (project=%t)",
+			pluginPath, pl.installed, pl.project != nil)
+		return nil, assert.AnError
+	}
+	return invariantProvider{path: pluginPath}, nil
+}
+
+type invariantProvider struct {
+	plugin.Provider
+
+	path string
+}

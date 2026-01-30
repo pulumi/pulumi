@@ -445,7 +445,7 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 }
 
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
-	if attr.Name == "ignoreChanges" || attr.Name == "hideDiffs" {
+	if attr.Name == "ignoreChanges" || attr.Name == "hideDiffs" || attr.Name == "replaceOnChanges" {
 		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
 		if !ok {
 			return nil, nil
@@ -470,6 +470,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 		case *model.Attribute:
 			var t model.Type
 			switch item.Name {
+			case "aliases":
+				t = model.NewListType(AliasType)
+				resourceOptions.Aliases = item.Value
 			case "range":
 				t = model.NewUnionType(model.BoolType, model.NumberType, model.NewListType(model.DynamicType),
 					model.NewMapType(model.DynamicType))
@@ -498,9 +501,21 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "hideDiffs":
 				t = model.NewListType(ResourcePropertyType) // Property paths
 				resourceOptions.HideDiffs = item.Value
+			case "replaceOnChanges":
+				t = model.NewListType(ResourcePropertyType) // Property paths
+				resourceOptions.ReplaceOnChanges = item.Value
+			case "deleteBeforeReplace":
+				t = model.BoolType
+				resourceOptions.DeleteBeforeReplace = item.Value
+			case "additionalSecretOutputs":
+				t = model.NewListType(model.StringType)
+				resourceOptions.AdditionalSecretOutputs = item.Value
 			case "version":
 				t = model.StringType
 				resourceOptions.Version = item.Value
+			case "customTimeouts":
+				t = CustomTimeoutsType
+				resourceOptions.CustomTimeouts = item.Value
 			case "pluginDownloadURL":
 				t = model.StringType
 				resourceOptions.PluginDownloadURL = item.Value

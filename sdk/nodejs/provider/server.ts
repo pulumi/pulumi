@@ -16,26 +16,26 @@ import * as grpc from "@grpc/grpc-js";
 
 import { Provider } from "./provider";
 
+import { InputPropertiesError, InputPropertyError, InputPropertyErrorDetails } from "../errors";
 import * as log from "../log";
 import { Inputs, Output, output } from "../output";
 import * as resource from "../resource";
 import * as config from "../runtime/config";
+import { hookBindingFromProto } from "../runtime/resource";
 import * as rpc from "../runtime/rpc";
 import * as settings from "../runtime/settings";
 import * as localState from "../runtime/state";
-import { hookBindingFromProto } from "../runtime/resource";
 import { parseArgs } from "./internals";
-import { InputPropertyError, InputPropertiesError, InputPropertyErrorDetails } from "../errors";
 
-import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as structproto from "google-protobuf/google/protobuf/struct_pb";
+import * as errorproto from "../proto/errors_pb";
 import * as plugproto from "../proto/plugin_pb";
 import * as provrpc from "../proto/provider_grpc_pb";
 import * as provproto from "../proto/provider_pb";
 import * as statusproto from "../proto/status_pb";
-import * as errorproto from "../proto/errors_pb";
 
 class Server implements grpc.UntypedServiceImplementation {
     engineAddr: string | undefined;
@@ -395,8 +395,33 @@ class Server implements grpc.UntypedServiceImplementation {
                     }
                 }
 
+                const aliases = [];
+                for (const aliasProto of req.getAliasesList()) {
+                    if (aliasProto.hasUrn()) {
+                        aliases.push(aliasProto.getUrn());
+                    } else if (aliasProto.hasSpec()) {
+                        const spec = aliasProto.getSpec()!;
+                        const alias: resource.Alias = {};
+                        if (spec.getName() !== "") {
+                            alias.name = spec.getName();
+                        }
+                        if (spec.getProject() !== "") {
+                            alias.project = spec.getProject();
+                        }
+                        if (spec.getStack() !== "") {
+                            alias.stack = spec.getStack();
+                        }
+                        if (spec.hasParenturn()) {
+                            alias.parent = spec.getParenturn();
+                        } else if (spec.hasNoparent() && spec.getNoparent()) {
+                            alias.parent = resource.rootStackResource;
+                        }
+                        aliases.push(alias);
+                    }
+                }
+
                 const opts: resource.ComponentResourceOptions = {
-                    aliases: req.getAliasesList(),
+                    aliases: aliases,
                     dependsOn: dependsOn,
                     protect: req.getProtect(),
                     providers: providers,

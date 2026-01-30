@@ -318,10 +318,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages.Except(TestNodeJS).Except(TestPython),
 	},
 	{
-		Directory:   "retain-on-delete",
-		Description: "Generate RetainOnDelete option",
-	},
-	{
 		Directory:   "depends-on-array",
 		Description: "Using DependsOn resource option with an array of resources",
 	},

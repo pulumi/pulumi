@@ -377,7 +377,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				defaultOrg: defaultOrg,
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-					registry registry.Registry, _ env.Env,
+					registry registry.Registry, _ env.Env, _ int,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
 						return nil, nil, errors.New("mock schema extraction failed")
@@ -474,7 +474,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 				},
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-					registry registry.Registry, _ env.Env,
+					registry registry.Registry, _ env.Env, _ int,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					return tt.mockSchema, nil, nil
 				},
@@ -533,7 +533,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				},
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-					registry registry.Registry, _ env.Env,
+					registry registry.Registry, _ env.Env, _ int,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					return validSchema, nil, nil
 				},
@@ -551,22 +551,13 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 	}
 }
 
-type mockWorkspace struct {
-	readProjectErr error
-}
-
-var _ pkgWorkspace.Context = &mockWorkspace{}
-
-func (m *mockWorkspace) New() (pkgWorkspace.W, error) {
-	return nil, m.readProjectErr
-}
-
-func (m *mockWorkspace) ReadProject() (*workspace.Project, string, error) {
-	return nil, "", m.readProjectErr
-}
-
-func (m *mockWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
-	return workspace.Credentials{}, nil
+func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
+	return &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) { return nil, readProjectErr },
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return nil, "", readProjectErr
+		},
+	}
 }
 
 //nolint:paralleltest // This test uses the global pkgWorkspace.Instance variable
@@ -580,7 +571,7 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 			packageSource string,
 			parameters plugin.ParameterizeParameters,
 			registry registry.Registry,
-			_ env.Env,
+			_ env.Env, _ int,
 		) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 			pkg := &schema.PackageSpec{
 				Name:    "test-package",
@@ -593,9 +584,9 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	customErr := errors.New("custom project read error")
 	originalWorkspace := pkgWorkspace.Instance
 	t.Cleanup(func() { pkgWorkspace.Instance = originalWorkspace })
-	pkgWorkspace.Instance = &mockWorkspace{readProjectErr: customErr}
+	pkgWorkspace.Instance = newMockTemplateWorkspace(customErr)
 
-	err := cmd.Run(context.Background(), publishPackageArgs{readmePath: "README.md"},
+	err := cmd.Run(t.Context(), publishPackageArgs{readmePath: "README.md"},
 		"test-source", nil /* packageParams */)
 
 	assert.Error(t, err)

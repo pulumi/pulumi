@@ -1069,6 +1069,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = true
 	case "resourceHooks":
 		hasSupport = true
+	case "errorHooks":
+		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -1736,6 +1738,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 				return fmt.Errorf("marshaling old outputs for resource hook %q: %w", name, err)
 			}
 		}
+
 		reqBytes, err := proto.Marshal(&pulumirpc.ResourceHookRequest{
 			Urn:        string(urn),
 			Id:         string(id),
@@ -1784,6 +1787,96 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 		OnDryRun: req.OnDryRun,
 	}
 	err = rm.resourceHooks.RegisterResourceHook(hook)
+	return nil, err
+}
+
+func (rm *resmon) wrapErrorHookCallback(
+	name string, cb *pulumirpc.Callback,
+) (ErrorHookFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context, urn resource.URN, id resource.ID,
+		name string, typ tokens.Type, newInputs, oldInputs, oldOutputs resource.PropertyMap,
+		failedOperation string, errorMessages []string,
+	) (bool, error) {
+		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
+		var mNewInputs, mOldInputs, mOldOutputs *structpb.Struct
+		mOpts := plugin.MarshalOptions{
+			Label:            fmt.Sprintf("ResourceMonitor.ErrorHook(%s, %s)", name, urn),
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if newInputs != nil {
+			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling new inputs for resource error hook %q: %w", name, err)
+			}
+		}
+		if oldInputs != nil {
+			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling old inputs for resource error hook %q: %w", name, err)
+			}
+		}
+		if oldOutputs != nil {
+			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
+			if err != nil {
+				return false, fmt.Errorf("marshaling old outputs for resource error hook %q: %w", name, err)
+			}
+		}
+		reqBytes, err := proto.Marshal(&pulumirpc.ErrorHookRequest{
+			Urn:             string(urn),
+			Id:              string(id),
+			Name:            name,
+			Type:            string(typ),
+			NewInputs:       mNewInputs,
+			OldInputs:       mOldInputs,
+			OldOutputs:      mOldOutputs,
+			FailedOperation: failedOperation,
+			Errors:          errorMessages,
+		})
+		if err != nil {
+			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)
+		}
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   cb.Token,
+			Request: reqBytes,
+		})
+		if err != nil {
+			logging.V(6).Infof("ErrorHook %q call error: %v", name, err)
+			return false, err
+		}
+		var response pulumirpc.ErrorHookResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return false, fmt.Errorf("unmarshaling error hook response for %q: %w", name, err)
+		}
+		logging.V(6).Infof("ErrorHook %s returned %q, retry=%v", name, response.Error, response.Retry)
+		if response.Error != "" {
+			return false, errors.New(response.Error)
+		}
+		return response.Retry, nil
+	}, nil
+}
+
+func (rm *resmon) RegisterErrorHook(
+	ctx context.Context, req *pulumirpc.RegisterErrorHookRequest,
+) (*emptypb.Empty, error) {
+	logging.V(6).Infof("RegisterErrorHook %q", req.Name)
+	wrapped, err := rm.wrapErrorHookCallback(req.Name, req.Callback)
+	if err != nil {
+		return nil, err
+	}
+	hook := ErrorHook{
+		Name:     req.Name,
+		Callback: wrapped,
+	}
+	err = rm.resourceHooks.RegisterErrorHook(hook)
 	return nil, err
 }
 
@@ -2516,6 +2609,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		resource.AfterUpdate,
 		resource.BeforeDelete,
 		resource.AfterDelete,
+		resource.OnError,
 	} {
 		names := getHookNames(hookType)
 		if len(names) > 0 {
@@ -2561,9 +2655,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Invoke the provider's Construct RPC method.
 		options := plugin.ConstructOptions{
-			// We don't actually need to send a list of aliases to construct anymore because the engine does
-			// all alias construction.
-			Aliases:                 []resource.Alias{},
+			Aliases:                 parsedAliases,
 			Dependencies:            rawDependencies,
 			Protect:                 protect,
 			PropertyDependencies:    rawPropertyDependencies,

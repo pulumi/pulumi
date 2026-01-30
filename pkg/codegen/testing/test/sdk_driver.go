@@ -182,10 +182,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		SkipCompileCheck: codegen.NewStringSet(TestDotnet, TestGo),
 	},
 	{
-		Directory:   "replace-on-change",
-		Description: "Simple use of replaceOnChange in schema",
-	},
-	{
 		Directory:   "simple-resource-with-aliases",
 		Description: "Simple schema with a resource that has aliases",
 	},
@@ -528,8 +524,18 @@ type SDKCodegenOptions struct {
 	Checks map[string]CodegenCheck
 
 	// The tests to run. A testcase `tt` are assumed to be located at
-	// ../testing/test/testdata/${tt.Directory}
+	// "${InputDir}${tt.Directory}"
 	TestCases []*SDKTest
+
+	// The directory to find input test cases.
+	//
+	// Defaults to "../testing/test/testdata".
+	InputDir string
+
+	// The directory to store golden files in.
+	//
+	// Defaults to "../testing/test/testdata/${tt.Directory}/${Language}".
+	ResultDir string
 }
 
 // TestSDKCodegen runs the complete set of SDK code generation tests
@@ -590,7 +596,13 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 		t.Skip("TestSDKCodegen is skipped on Windows")
 	}
 
-	testDir := filepath.Join("..", "testing", "test", "testdata")
+	defaultDir := filepath.Join("..", "testing", "test", "testdata")
+	var testInputDir string
+	if opts.InputDir != "" {
+		testInputDir = opts.InputDir
+	} else {
+		testInputDir = defaultDir
+	}
 
 	require.NotNil(t, opts.TestCases, "No test cases were provided. This was probably a mistake")
 	for _, tt := range opts.TestCases {
@@ -602,11 +614,11 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 
 			t.Log(tt.Description)
 
-			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
+			inputDirPath := filepath.Join(testInputDir, filepath.FromSlash(tt.Directory))
 
-			schemaPath := filepath.Join(dirPath, "schema.json")
+			schemaPath := filepath.Join(inputDirPath, "schema.json")
 			if _, err := os.Stat(schemaPath); err != nil && os.IsNotExist(err) {
-				schemaPath = filepath.Join(dirPath, "schema.yaml")
+				schemaPath = filepath.Join(inputDirPath, "schema.yaml")
 			}
 
 			if tt.ShouldSkipCodegen(opts.Language) {
@@ -617,8 +629,15 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			files, err := GeneratePackageFilesFromSchema(schemaPath, opts.GenPackage)
 			require.NoError(t, err)
 
-			if !RewriteFilesWhenPulumiAccept(t, dirPath, opts.Language, files) {
-				expectedFiles, err := LoadBaseline(dirPath, opts.Language)
+			var resultDirPath string
+			if opts.ResultDir != "" {
+				resultDirPath = filepath.Join(opts.ResultDir, filepath.FromSlash(tt.Directory))
+			} else {
+				resultDirPath = filepath.Join(defaultDir, filepath.FromSlash(tt.Directory), opts.Language)
+			}
+
+			if !rewriteFilesWhenPulumiAccept(t, resultDirPath, files) {
+				expectedFiles, err := loadBaseline(resultDirPath)
 				require.NoError(t, err)
 
 				if !ValidateFileEquality(t, files, expectedFiles) {
@@ -630,7 +649,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				return
 			}
 
-			CopyExtraFiles(t, dirPath, opts.Language)
+			copyExtraFiles(t, resultDirPath)
 
 			// Merge language-specific global and
 			// test-specific checks, with test-specific
@@ -650,8 +669,6 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			}
 			sort.Strings(checkOrder)
 
-			codeDir := filepath.Join(dirPath, opts.Language)
-
 			// Perform the checks.
 			//nolint:paralleltest // test functions are ordered
 			for _, check := range checkOrder {
@@ -660,7 +677,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 						t.Skip()
 					}
 					checkFun := allChecks[check]
-					checkFun(t, codeDir)
+					checkFun(t, resultDirPath)
 				})
 			}
 		})

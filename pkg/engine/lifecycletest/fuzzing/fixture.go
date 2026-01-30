@@ -1,4 +1,4 @@
-// Copyright 2024-2025, Pulumi Corporation.
+// Copyright 2024-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,14 +70,19 @@ func generateAndWriteRepro(
 	planSpec *PlanSpec,
 ) string {
 	reproTest := GenerateReproTest(t, stackSpec, snapSpec, programSpec, providerSpec, planSpec)
-	reproFile, reproErr := writeReproTest(reproTest)
 
 	var reproMessage string
-	if reproErr != nil {
-		reproMessage = fmt.Sprintf("Error writing reproduction test case:\n\n%v", reproErr)
+	if os.Getenv("CI") != "" {
+		reproMessage = "Full test case:\n\n" + reproTest + "\n\n"
 	} else {
-		reproMessage = "Reproduction test case was written to " + reproFile
+		reproFile, reproErr := writeReproTest(reproTest)
+		if reproErr != nil {
+			reproMessage = fmt.Sprintf("Error writing reproduction test case:\n\n%v", reproErr)
+		} else {
+			reproMessage = "Reproduction test case was written to " + reproFile
+		}
 	}
+
 	return reproMessage
 }
 

@@ -27,6 +27,7 @@ import (
 
 	"github.com/blang/semver"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -46,8 +47,7 @@ import (
 func newPluginInstallCmd() *cobra.Command {
 	var picmd pluginInstallCmd
 	cmd := &cobra.Command{
-		Use:   "install [KIND NAME [VERSION]]",
-		Args:  cmdutil.MaximumNArgs(3),
+		Use:   "install",
 		Short: "Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
 			"\n" +
@@ -65,6 +65,19 @@ func newPluginInstallCmd() *cobra.Command {
 			return picmd.Run(ctx, args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "kind"},
+			{Name: "name"},
+			{Name: "version"},
+		},
+	})
+
+	// Constrictor can't express the complexity here. There's error handling to
+	// deal with this, but we override here to make the usage string more
+	// user-friendly.
+	cmd.Use = "install [kind name [version]]"
 
 	cmd.PersistentFlags().StringVar(&picmd.serverURL,
 		"server", "", "A URL to download plugins from")
@@ -255,12 +268,12 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
 		if !cmd.reinstall {
 			if cmd.exact {
-				if workspace.HasPlugin(install) {
+				if pluginstorage.Instance.HasPlugin(ctx, install) {
 					logging.V(1).Infof("%s skipping install (existing == match)", label)
 					continue
 				}
 			} else {
-				if has, _, _ := workspace.HasPluginGTE(install); has {
+				if has, _, _ := pluginstorage.Instance.HasPluginGTE(ctx, install); has {
 					logging.V(1).Infof("%s skipping install (existing >= match)", label)
 					continue
 				}
@@ -356,7 +369,7 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 	ctx context.Context, pluginSpec workspace.PackageSpec,
 ) (workspace.PluginDescriptor, error) {
 	result, err := packageresolution.Resolve(
-		ctx, cmd.registry, packageresolution.DefaultWorkspace(), pluginSpec, packageresolution.Options{
+		ctx, cmd.registry, pluginstorage.Instance, pluginSpec, packageresolution.Options{
 			ResolveWithRegistry: cmd.env.GetBool(env.Experimental) &&
 				!cmd.env.GetBool(env.DisableRegistryResolve),
 			ResolveVersionWithLocalWorkspace:           cmd.reinstall,

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -35,8 +36,9 @@ func newPolicyGroupCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "group",
 		Short: "Manage policy groups",
-		Args:  cmdutil.NoArgs,
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newPolicyGroupLsCmd())
 	return cmd
@@ -45,8 +47,7 @@ func newPolicyGroupCmd() *cobra.Command {
 func newPolicyGroupLsCmd() *cobra.Command {
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:   "ls [org-name]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "ls",
 		Short: "List all Policy Groups for a Pulumi organization",
 		Long:  "List all Policy Groups for a Pulumi organization",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
@@ -103,6 +104,14 @@ func newPolicyGroupLsCmd() *cobra.Command {
 			return formatPolicyGroupsConsole(allPolicyGroups)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "org-name"},
+		},
+		Required: 0,
+	})
+
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
 	return cmd

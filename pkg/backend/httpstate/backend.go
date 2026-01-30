@@ -602,7 +602,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	setCurrent bool,
 ) (*workspace.Account, error) {
 	accessToken, expiresAt, err := exchangeOidcToken(
-		sink, cloudURL, insecure, oidcTokenSource, organization, scope, expiration)
+		ctx, sink, cloudURL, insecure, oidcTokenSource, organization, scope, expiration)
 	if err != nil {
 		return nil, err
 	}
@@ -2260,6 +2260,7 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 }
 
 func exchangeOidcToken(
+	ctx context.Context,
 	sink diag.Sink,
 	cloudURL string,
 	insecure bool,
@@ -2277,7 +2278,7 @@ func exchangeOidcToken(
 	}
 	now := time.Now()
 	resp, err := client.NewClient(cloudURL, "", insecure, sink).
-		ExchangeOidcToken(tokenValue, organization, scope, expiration)
+		ExchangeOidcToken(ctx, tokenValue, organization, scope, expiration)
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("OIDC token exchange failed: %w", err)
 	}

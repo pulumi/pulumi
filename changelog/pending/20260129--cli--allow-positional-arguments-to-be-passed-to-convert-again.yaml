@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Allow positional arguments to be passed to `convert` again

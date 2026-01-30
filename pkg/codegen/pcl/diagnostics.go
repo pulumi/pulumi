@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -106,4 +106,8 @@ func stringAttributeError(attr *model.Attribute) *hcl.Diagnostic {
 
 func boolAttributeError(attr *model.Attribute) *hcl.Diagnostic {
 	return errorf(attr.Syntax.Expr.Range(), "attribute %v must be a boolean literal", attr.Name)
+}
+
+func cannotTraversePulumiBlock(rng hcl.Range) *hcl.Diagnostic {
+	return errorf(rng, "pulumi blocks cannot be traversed")
 }

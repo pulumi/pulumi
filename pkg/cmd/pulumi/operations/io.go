@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -64,7 +66,24 @@ func parseAndSaveConfigArray(
 func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*workspace.Project, string, error) {
 	proj, root, err := ws.ReadProject()
 	if err != nil {
-		return nil, "", err
+		oerr := err
+		if errors.Is(err, workspace.ErrProjectNotFound) {
+			// If we couldn't find a project file, first check if there's a ".tf" file in the directory.
+			// If so, suggest using `pulumi convert`.
+			dir, err := os.ReadDir(".")
+			// if we encounter _any_ error reading the directory, just return the original error
+			if err != nil {
+				return nil, "", oerr
+			}
+			for _, fi := range dir {
+				if !fi.IsDir() && filepath.Ext(fi.Name()) == ".tf" {
+					return nil, "", fmt.Errorf("%w however, a Terraform configuration file was detected. "+
+						"To convert this configuration to a Pulumi project, please see the documentation "+
+						"at https://www.pulumi.com/docs/iac/guides/migration/migrating-to-pulumi/from-terraform/", oerr)
+				}
+			}
+		}
+		return nil, "", oerr
 	}
 	if clientAddress != "" {
 		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]any{

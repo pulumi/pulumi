@@ -17,6 +17,7 @@ package plugin
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -43,8 +44,9 @@ func NewPluginCmd() *cobra.Command {
 			"The plugin family of commands provides a way of explicitly managing plugins.\n" +
 			"\n" +
 			"For a list of available resource plugins, please see https://www.pulumi.com/registry/.",
-		Args: cmdutil.NoArgs,
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newPluginInstallCmd())
 	cmd.AddCommand(newPluginLsCmd())

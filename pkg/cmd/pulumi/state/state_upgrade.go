@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -41,7 +42,6 @@ func newStateUpgradeCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager)
 
 This only has an effect on DIY backends.
 `,
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			stdout := cmd.OutOrStdout()
@@ -99,6 +99,9 @@ This only has an effect on DIY backends.
 			return lb.Upgrade(ctx, &opts)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Automatically approve and perform the upgrade")
 	return cmd
 }

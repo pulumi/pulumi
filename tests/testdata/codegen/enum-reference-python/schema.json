@@ -35,7 +35,7 @@
             "type": "object",
             "properties": {
                 "locationPolicy": {
-                    "$ref": "/google-native/v0.27.0/schema.json#types/google-native:container/v1:NodePoolAutoscalingLocationPolicy",
+                    "$ref": "/google-native/v0.18.2/schema.json#types/google-native:accesscontextmanager/v1:DevicePolicyAllowedDeviceManagementLevelsItem",
                     "description": "Location policy used when scaling up a nodepool."
                 }
             }
@@ -45,7 +45,7 @@
         "python": {
             "requires": {
                 "pulumi": ">=3.0.0,<4.0.0",
-                "pulumi-aws": ">=4.37.1,<5.0.0"
+                "pulumi-aws": ">=5.0.0,<6.0.0"
             }
         },
         "csharp": {

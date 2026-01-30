@@ -20,17 +20,15 @@ import (
 	"io"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // NewGenCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.
 func NewGenCompletionCmd(root *cobra.Command) *cobra.Command {
-	return &cobra.Command{
-		Use:     "gen-completion <SHELL>",
+	cmd := &cobra.Command{
+		Use:     "gen-completion",
 		Aliases: []string{"completion"},
-		Args:    cmdutil.ExactArgs(1),
 		Short:   "Generate completion scripts for the Pulumi CLI",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch args[0] {
@@ -45,6 +43,19 @@ func NewGenCompletionCmd(root *cobra.Command) *cobra.Command {
 			}
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{
+				Name:  "shell",
+				Usage: "<shell>",
+				Type:  "string",
+			},
+		},
+		Required: 1,
+	})
+
+	return cmd
 }
 
 const (

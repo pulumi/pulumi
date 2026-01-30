@@ -5,16 +5,16 @@
     "example::Component": {
       "inputProperties": {
         "resourceNoAlias": {
-          "$ref": "/aws/v4.36.0/schema.json#/resources/aws:s3/bucket:Bucket"
+          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:s3/bucket:Bucket"
         },
         "typeNoAlias": {
-          "$ref": "/aws/v4.36.0/schema.json#/types/aws:s3/BucketWebsite:BucketWebsite"
+          "$ref": "/aws/v5.4.0/schema.json#/types/aws:s3/BucketWebsite:BucketWebsite"
         },
         "resourceLocalAlias": {
-          "$ref": "/aws/v4.36.0/schema.json#/resources/aws:ec2/instance:Instance"
+          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:ec2/instance:Instance"
         },
         "typeLocalAlias": {
-          "$ref": "/aws/v4.36.0/schema.json#/types/aws:ec2/InstanceLaunchTemplate:InstanceLaunchTemplate"
+          "$ref": "/aws/v5.4.0/schema.json#/types/aws:ec2/InstanceLaunchTemplate:InstanceLaunchTemplate"
         },
         "resourceLocalInsteadOfRemoteAlias": {
           "$ref": "/google-native/v0.18.2/schema.json#/resources/google-native:iam/v1:Key"
@@ -44,16 +44,16 @@
       ],
       "properties": {
         "resourceNoAlias": {
-          "$ref": "/aws/v4.36.0/schema.json#/resources/aws:s3/bucket:Bucket"
+          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:s3/bucket:Bucket"
         },
         "typeNoAlias": {
-          "$ref": "/aws/v4.36.0/schema.json#/types/aws:s3/BucketWebsite:BucketWebsite"
+          "$ref": "/aws/v5.4.0/schema.json#/types/aws:s3/BucketWebsite:BucketWebsite"
         },
         "resourceLocalAlias": {
-          "$ref": "/aws/v4.36.0/schema.json#/resources/aws:ec2/instance:Instance"
+          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:ec2/instance:Instance"
         },
         "typeLocalAlias": {
-          "$ref": "/aws/v4.36.0/schema.json#/types/aws:ec2/InstanceLaunchTemplate:InstanceLaunchTemplate"
+          "$ref": "/aws/v5.4.0/schema.json#/types/aws:ec2/InstanceLaunchTemplate:InstanceLaunchTemplate"
         },
         "resourceLocalInsteadOfRemoteAlias": {
           "$ref": "/google-native/v0.18.2/schema.json#/resources/google-native:iam/v1:Key"
@@ -85,7 +85,7 @@
       "generateResourceContainerTypes": true,
       "generateExtraInputTypes": true,
       "packageImportAliases": {
-        "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2": "awsec2",
+        "github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ec2": "awsec2",
         "github.com/pulumi/pulumi-google-native/sdk/go/google/iam/v1": "gcpiamv1"
       },
       "importBasePath": "external-go-import-aliases/example"

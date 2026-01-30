@@ -1,0 +1,3 @@
+name: error_hooks_go
+description: A program with error hooks
+runtime: go

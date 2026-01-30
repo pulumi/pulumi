@@ -40,7 +40,7 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					// Check we have the the asset, archive, and folder resources in the snapshot, the provider and the stack.
+					// Check we have the asset, archive, and folder resources in the snapshot, the provider and the stack.
 					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:asset-archive")

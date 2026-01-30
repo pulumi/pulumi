@@ -95,7 +95,6 @@ type Client struct {
 	diag       diag.Sink
 	insecure   bool
 	restClient restClient
-	httpClient *http.Client
 
 	// If true, do not probe the backend with GET /api/capabilities and assume no capabilities.
 	DisableCapabilityProbing bool
@@ -116,10 +115,9 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 	}
 
 	return &Client{
-		apiURL:     apiURL,
-		apiToken:   apiAccessToken(apiToken),
-		diag:       d,
-		httpClient: httpClient,
+		apiURL:   apiURL,
+		apiToken: apiAccessToken(apiToken),
+		diag:     d,
 		restClient: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: httpClient,
@@ -141,7 +139,6 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 // WithHTTPClient sets the HTTP client for the API client.
 // Useful for testing.
 func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
-	pc.httpClient = httpClient
 	pc.restClient = &defaultRESTClient{
 		client: &defaultHTTPClient{
 			client: httpClient,
@@ -153,11 +150,6 @@ func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *Client) URL() string {
 	return pc.apiURL
-}
-
-// do proxies the http client's Do method. This is a low-level construct and should be used sparingly
-func (pc *Client) do(ctx context.Context, req *http.Request) (*http.Response, error) {
-	return pc.httpClient.Do(req.WithContext(ctx))
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -317,7 +309,11 @@ const (
 )
 
 func (pc *Client) ExchangeOidcToken(
-	oidcToken string, org string, scope string, expiration time.Duration,
+	ctx context.Context,
+	oidcToken string,
+	org string,
+	scope string,
+	expiration time.Duration,
 ) (*apitype.TokenExchangeGrantResponse, error) {
 	requestedTokenType := pulumiAccessTokenTypeOrganization
 	if strings.HasPrefix(scope, "team:") {
@@ -326,7 +322,7 @@ func (pc *Client) ExchangeOidcToken(
 	if strings.HasPrefix(scope, "user:") {
 		requestedTokenType = pulumiAccessTokenTypePersonal
 	}
-	tokenUrl := pc.apiURL + "/api/oauth/token"
+	tokenURL := pc.apiURL + "/api/oauth/token"
 	data := url.Values{
 		"audience":             {"urn:pulumi:org:" + org},
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
@@ -336,7 +332,15 @@ func (pc *Client) ExchangeOidcToken(
 		"subject_token":        {oidcToken},
 		"expiration":           {strconv.Itoa(int(expiration.Seconds()))},
 	}
-	resp, err := pc.httpClient.PostForm(tokenUrl, data)
+	bodyReader := strings.NewReader(data.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("creating HTTP request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := pc.restClient.HTTPClient().Do(req, retryAllMethods)
 	if err != nil {
 		return nil, err
 	}
@@ -1011,7 +1015,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		putReq.Header.Add(k, v)
 	}
 
-	_, err = pc.httpClient.Do(putReq)
+	_, err = pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
 	if err != nil {
 		return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
 	}
@@ -1178,7 +1182,7 @@ func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCl
 		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
 	}
 
-	resp, err := pc.httpClient.Do(getS3Req)
+	resp, err := pc.restClient.HTTPClient().Do(getS3Req, retryAllMethods)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
 	}
@@ -1546,7 +1550,7 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody any) (*http.Re
 		return nil, err
 	}
 	request.Header.Add("Authorization", fmt.Sprintf("token %s", pc.apiToken))
-	res, err := pc.do(ctx, request)
+	res, err := pc.restClient.HTTPClient().Do(request, retryAllMethods)
 	return res, err
 }
 
@@ -1593,7 +1597,7 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, err
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "token "+apiToken)
 
-	resp, err := pc.do(ctx, req)
+	resp, err := pc.restClient.HTTPClient().Do(req, retryAllMethods)
 	if err != nil {
 		return "", fmt.Errorf("making request: %w", err)
 	}
@@ -1644,7 +1648,7 @@ func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePubli
 	}
 
 	uploadFile := func(url string, reader io.Reader, fileType string) error {
-		putReq, err := http.NewRequest(http.MethodPut, url, reader)
+		putReq, err := http.NewRequestWithContext(ctx, http.MethodPut, url, reader)
 		if err != nil {
 			return fmt.Errorf("failed to upload %s: %w", fileType, err)
 		}
@@ -1652,7 +1656,7 @@ func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePubli
 			putReq.Header.Add(k, v)
 		}
 
-		uploadResp, err := pc.do(ctx, putReq)
+		uploadResp, err := pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
 		if err != nil {
 			return fmt.Errorf("failed to upload %s: %w", fileType, err)
 		} else if uploadResp.StatusCode >= 400 {
@@ -1741,13 +1745,13 @@ func (pc *Client) PublishTemplate(ctx context.Context, input apitype.TemplatePub
 		return fmt.Errorf("failed to start template publish: %w", err)
 	}
 
-	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURLs.Archive, input.Archive)
+	putReq, err := http.NewRequestWithContext(ctx, http.MethodPut, resp.UploadURLs.Archive, input.Archive)
 	if err != nil {
 		return fmt.Errorf("failed to create upload request: %w", err)
 	}
 	putReq.Header.Set("Content-Type", "application/gzip")
 
-	uploadResp, err := pc.do(ctx, putReq)
+	uploadResp, err := pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
 	if err != nil {
 		return fmt.Errorf("failed to upload archive: %w", err)
 	} else if uploadResp.StatusCode != http.StatusOK {
@@ -1841,7 +1845,7 @@ func (pc *Client) downloadWithRawClient(ctx context.Context, downloadURL string)
 		return nil, err
 	}
 
-	resp, err := pc.httpClient.Do(req)
+	resp, err := pc.restClient.HTTPClient().Do(req, retryAllMethods)
 	if err != nil {
 		return nil, err
 	}

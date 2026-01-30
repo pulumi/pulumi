@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
@@ -202,6 +203,17 @@ func DetectPluginPathFrom(dir string) (string, error) {
 	return path, nil
 }
 
+// DetectPluginPathAt locates the PulumiPlugin file in the given directory. If no project
+// is found, [ErrPluginNotFound]. Unlike [DetectPluginPathFrom], this function does not
+// search upwards in the directory hierarchy.
+func DetectPluginPathAt(dir string) (string, error) {
+	path, ok := findPluginInDir(dir)
+	if ok {
+		return path, nil
+	}
+	return "", ErrPluginNotFound
+}
+
 // DetectPolicyPackPathAt locates the PulumiPolicy file at the given path. If no project is found, an empty path is
 // returned. Unlike DetectPolicyPackPathFrom, this function does not search upwards in the directory hierarchy.
 func DetectPolicyPackPathAt(path string) (string, error) {
@@ -252,10 +264,8 @@ func DetectProjectAndPath() (*Project, string, error) {
 	path, err := DetectProjectPath()
 	if err != nil {
 		return nil, "", err
-	} else if path == "" {
-		return nil, "", errors.New("no Pulumi project found in the current working directory. " +
-			"Move to a directory with a Pulumi project or try creating a project first with `pulumi new`.")
 	}
+	contract.Assertf(path != "", "path was unexpectedly empty")
 
 	proj, err := LoadProject(path)
 	return proj, path, err

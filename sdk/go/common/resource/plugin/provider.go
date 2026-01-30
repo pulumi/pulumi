@@ -84,14 +84,6 @@ type ProviderHandshakeResponse struct {
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user.
 	SupportsAutonamingConfiguration bool
-
-	// The CLI version range required for this provider to work correctly. Empty if the provider does not have a version
-	// requirement.
-	// The supported syntax for ranges is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example
-	// ">=3.0.0", or "!3.1.2". Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning
-	// greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
-	// meaning less-than 3.4.0 or greater-than 3.8.0.
-	PulumiVersionRange string
 }
 
 // ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing
@@ -161,6 +153,8 @@ type GetSchemaResponse struct {
 	// The bytes of the JSON serialized Pulumi schema for generating the provider's SDK.
 	Schema []byte
 }
+
+var ErrDoubleParameterized = errors.New("cannot specify parameterization for a parameterized provider")
 
 type CheckConfigRequest struct {
 	URN           resource.URN
@@ -726,11 +720,14 @@ func (r DiffResult) Replace() bool {
 // Invert computes the inverse diff of the receiver -- the diff that would be
 // required to "undo" this one.
 func (r DiffResult) Invert() DiffResult {
-	detailedDiff := make(map[string]PropertyDiff)
-	for k, v := range r.DetailedDiff {
-		detailedDiff[k] = PropertyDiff{
-			Kind:      v.Kind.Invert(),
-			InputDiff: v.InputDiff,
+	var detailedDiff map[string]PropertyDiff
+	if r.DetailedDiff != nil {
+		detailedDiff = make(map[string]PropertyDiff)
+		for k, v := range r.DetailedDiff {
+			detailedDiff[k] = PropertyDiff{
+				Kind:      v.Kind.Invert(),
+				InputDiff: v.InputDiff,
+			}
 		}
 	}
 

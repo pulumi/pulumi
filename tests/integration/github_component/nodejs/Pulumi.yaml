@@ -1,0 +1,4 @@
+name: test-nodejs-component-inject-namespace
+runtime: nodejs
+packages:
+  test-component: https://github.com/moolumi/test-component
