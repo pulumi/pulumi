@@ -20,6 +20,7 @@ import (
 	b64 "encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"io"
 	"os"
 	"path/filepath"
@@ -311,7 +312,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		PluginDownloadURL: descriptor.DownloadURL,
 	}
 
-	provider, err := l.host.Provider(workspaceDescriptor, nil)
+	provider, err := l.host.Provider(workspaceDescriptor, env.Global())
 	if err != nil {
 		return nil, fmt.Errorf("could not load schema for %s: %w", descriptor.Name, err)
 	}

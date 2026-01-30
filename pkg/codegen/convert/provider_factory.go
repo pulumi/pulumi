@@ -17,6 +17,7 @@ package convert
 import (
 	"context"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -36,7 +37,7 @@ func ProviderFactoryFromHost(ctx context.Context, host plugin.Host) ProviderFact
 			return nil, fmt.Errorf("provider factory must be a resource plugin package, was %v", descriptor.Kind)
 		}
 
-		provider, err := host.Provider(descriptor.PluginDescriptor, nil)
+		provider, err := host.Provider(descriptor.PluginDescriptor, env.Global())
 		if err != nil {
 			desc := descriptor.PackageName()
 			v := descriptor.PackageVersion()
