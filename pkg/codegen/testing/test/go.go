@@ -27,51 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-func GenerateGoProgramTest(
-	t *testing.T,
-	rootDir string,
-	genProgram GenProgram,
-	genProject GenProject,
-) {
-	expectedVersion := map[string]PkgVersionInfo{
-		"modpath": {
-			Pkg:          "git.example.org/thirdparty/sdk",
-			OpAndVersion: "v0.1.0",
-		},
-	}
-
-	sdkDir, err := filepath.Abs(filepath.Join(rootDir, "sdk"))
-	require.NoError(t, err)
-
-	TestProgramCodegen(t,
-		ProgramCodegenOptions{
-			Language:   "go",
-			Extension:  "go",
-			OutputFile: "main.go",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				checkGo(t, path, dependencies, sdkDir)
-			},
-			GenProgram: genProgram,
-			TestCases: []ProgramTest{
-				{
-					Directory:   "modpath",
-					Description: "Check that modpath is respected",
-					MockPluginVersions: map[string]string{
-						"other": "0.1.0",
-					},
-					// We don't compile because the test relies on the `other` package,
-					// which does not exist.
-					SkipCompile: codegen.NewStringSet("go"),
-				},
-			},
-
-			IsGenProject:    true,
-			GenProject:      genProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "go.mod",
-		})
-}
-
 func GenerateGoBatchTest(
 	t *testing.T,
 	rootDir string,
