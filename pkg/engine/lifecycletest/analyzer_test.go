@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -1008,4 +1009,165 @@ func TestSimpleAnalyzeResourceFailureSeverityOverride(t *testing.T) {
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.Error(t, err)
+}
+
+// TestAnalyzeRunsInParallel verifies that per-resource Analyze calls across multiple
+// analyzers execute concurrently. It registers 3 analyzers whose AnalyzeF blocks on a
+// barrier: each signals arrival, then waits for a gate to open. The test waits for all 3
+// to arrive (proving they are running simultaneously) before opening the gate. If
+// analyzers ran sequentially, the first would block forever and the test would time out.
+func TestAnalyzeRunsInParallel(t *testing.T) {
+	t.Parallel()
+
+	const analyzerCount = 3
+
+	// Barrier: each analyzer signals arrival, then waits for all others. If analyzers
+	// run sequentially, the first will block forever waiting for the others to arrive,
+	// and the test will time out.
+	arrived := make(chan struct{}, analyzerCount)
+	gate := make(chan struct{})
+
+	// Create multiple analyzer loaders, each blocking until all have arrived.
+	loaders := make([]*deploytest.PluginLoader, 0, 1+analyzerCount)
+	requiredPolicies := make([]RequiredPolicy, 0, analyzerCount)
+	loaders = append(loaders,
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	)
+	for i := range analyzerCount {
+		name := fmt.Sprintf("analyzer%d", i)
+		loaders = append(loaders,
+			deploytest.NewAnalyzerLoader(name, func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+				return &deploytest.Analyzer{
+					Info: plugin.AnalyzerInfo{Name: name},
+					AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+						arrived <- struct{}{}
+						<-gate
+						return plugin.AnalyzeResponse{}, nil
+					},
+				}, nil
+			}, deploytest.WithGrpc),
+		)
+		requiredPolicies = append(requiredPolicies, NewRequiredPolicy(name, "", nil))
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			SkipDisplayTests: true,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: requiredPolicies,
+			},
+			HostF: hostF,
+		},
+	}
+
+	// Run the update in the background so we can observe the barrier.
+	done := make(chan error, 1)
+	go func() {
+		project := p.GetProject()
+		_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+		done <- err
+	}()
+
+	// Wait for all analyzers to arrive at the barrier, proving they are running concurrently.
+	// Each resource (provider + resA) triggers all 3 analyzers. We wait for the first batch.
+	for range analyzerCount {
+		select {
+		case <-arrived:
+		case err := <-done:
+			t.Fatalf("update completed before all analyzers arrived at the barrier: %v", err)
+		}
+	}
+	// All arrived — release the barrier.
+	close(gate)
+
+	require.NoError(t, <-done)
+}
+
+// TestAnalyzeStackRunsInParallel verifies that AnalyzeStack calls across multiple
+// analyzers execute concurrently. It registers 3 analyzers whose AnalyzeStackF blocks
+// on a barrier: each signals arrival, then waits for a gate to open. The test waits for
+// all 3 to arrive (proving they are running simultaneously) before opening the gate. If
+// analyzers ran sequentially, the first would block forever and the test would time out.
+func TestAnalyzeStackRunsInParallel(t *testing.T) {
+	t.Parallel()
+
+	const analyzerCount = 3
+
+	// Barrier: each analyzer signals arrival, then waits for all others.
+	arrived := make(chan struct{}, analyzerCount)
+	gate := make(chan struct{})
+
+	// Create multiple analyzer loaders, each blocking until all have arrived.
+	loaders := make([]*deploytest.PluginLoader, 0, 1+analyzerCount)
+	requiredPolicies := make([]RequiredPolicy, 0, analyzerCount)
+	loaders = append(loaders,
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	)
+	for i := range analyzerCount {
+		name := fmt.Sprintf("analyzer%d", i)
+		loaders = append(loaders,
+			deploytest.NewAnalyzerLoader(name, func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+				return &deploytest.Analyzer{
+					Info: plugin.AnalyzerInfo{Name: name},
+					AnalyzeStackF: func(rs []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+						arrived <- struct{}{}
+						<-gate
+						return plugin.AnalyzeResponse{}, nil
+					},
+				}, nil
+			}, deploytest.WithGrpc),
+		)
+		requiredPolicies = append(requiredPolicies, NewRequiredPolicy(name, "", nil))
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			SkipDisplayTests: true,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: requiredPolicies,
+			},
+			HostF: hostF,
+		},
+	}
+
+	// Run the update in the background so we can observe the barrier.
+	done := make(chan error, 1)
+	go func() {
+		project := p.GetProject()
+		_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+		done <- err
+	}()
+
+	// Wait for all analyzers to arrive at the barrier, proving they are running concurrently.
+	for range analyzerCount {
+		select {
+		case <-arrived:
+		case err := <-done:
+			t.Fatalf("update completed before all analyzers arrived at the barrier: %v", err)
+		}
+	}
+	// All arrived — release the barrier.
+	close(gate)
+
+	require.NoError(t, <-done)
 }
