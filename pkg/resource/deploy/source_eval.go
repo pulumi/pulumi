@@ -2501,9 +2501,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if opts.GetPluginDownloadUrl() != "" {
 			providers.SetProviderURL(props, opts.GetPluginDownloadUrl())
 		}
-		if len(req.GetEnvVarMappings()) > 0 {
-			providers.SetEnvironmentVariableMappings(props, req.GetEnvVarMappings())
-		}
+		// Set env var mappings if any - this will also reflect removals by user
+		providers.SetEnvironmentVariableMappings(props, req.GetEnvVarMappings())
 
 		if req.GetPackageRef() != "" {
 			// If the provider resource has a package ref then we need to set all it's input fields as in
