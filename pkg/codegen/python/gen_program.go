@@ -758,7 +758,9 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf(`f"%s-{%s}"`, baseName, count)
 }
 
-func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []*quoteTemp) {
+func (g *generator) lowerResourceOptions(
+	opts *pcl.ResourceOptions, schema *schema.Resource,
+) (*model.Block, []*quoteTemp) {
 	if opts == nil {
 		return nil, nil
 	}
@@ -835,7 +837,7 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.CustomTimeouts != nil {
 		appendOption("custom_timeouts", opts.CustomTimeouts)
 	}
-	if opts.Version != nil {
+	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
 		appendOption("version", opts.Version)
 	}
 
@@ -919,7 +921,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
 	qualifiedMemberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
-	optionsBag, temps := g.lowerResourceOptions(r.Options)
+	optionsBag, temps := g.lowerResourceOptions(r.Options, r.Schema)
 	name := r.LogicalName()
 	nameVar := PyName(r.Name())
 
@@ -1114,7 +1116,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	componentName := r.DeclarationName()
-	optionsBag, temps := g.lowerResourceOptions(r.Options)
+	optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
 	name := r.LogicalName()
 	nameVar := PyName(r.Name())
 
