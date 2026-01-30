@@ -39,6 +39,16 @@ type Context interface {
 	// LoadPluginProjectAt does not search upwards from path.
 	LoadPluginProjectAt(ctx context.Context, path string) (*workspace.PluginProject, string, error)
 
+	// Detect the nearest enclosing Pulumi Project or Pulumi Plugin root directory.
+	//
+	// The returned [BaseProject] will be one of:
+	// - *[PluginProject]
+	// - *[Project]
+	//
+	// The returned string is the path to the returned file. If no plugin or project is found
+	// upwards of path, then [ErrBaseProjectNotFound] will be returned.
+	LoadBaseProjectFrom(ctx context.Context, path string) (workspace.BaseProject, string, error)
+
 	// GetStoredCredentials returns any credentials stored on the local machine.
 	GetStoredCredentials() (workspace.Credentials, error)
 }
@@ -74,4 +84,8 @@ func (*workspaceContext) LoadPluginProjectAt(_ context.Context, path string) (*w
 		return nil, "", err
 	}
 	return proj, path, err
+}
+
+func (*workspaceContext) LoadBaseProjectFrom(ctx context.Context, path string) (workspace.BaseProject, string, error) {
+	return workspace.LoadBaseProjectFrom(path)
 }

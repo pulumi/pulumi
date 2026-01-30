@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
@@ -68,16 +69,12 @@ type Context interface {
 	//
 	// project and projectDir describe the where the SDK is being generated and linked into.
 	//
-	// parameters describes any parameters necessary to convert the plugin into a
-	// package.
-	//
-	// The plugin used to generate the SDK will always be installed already, and
-	// should be run from pluginDir.
+	// providers is a running instance of the package being linked into the project. If parameterization is
+	// necessary, then it is already parameterized.
 	LinkPackage(
 		ctx context.Context,
-		project *workspace.ProjectRuntimeInfo, projectDir string, packageName tokens.Package,
-		pluginPath string, params plugin.ParameterizeParameters,
-		originalSpec workspace.PackageSpec,
+		project *workspace.ProjectRuntimeInfo, projectDir string,
+		provider plugin.Provider,
 	) error
 
 	// Run a package from a directory, parameterized by params.
@@ -88,6 +85,7 @@ type Context interface {
 	RunPackage(
 		ctx context.Context,
 		rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+		originalSpec workspace.PackageSpec,
 	) (plugin.Provider, error)
 }
 
@@ -132,22 +130,24 @@ func InstallPlugin(
 	baseProject workspace.BaseProject, projectDir string,
 	options Options,
 	registry registry.Registry, ws Context,
-) (RunPlugin, error) {
+) (RunPlugin, workspace.PackageSpec, error) {
 	var runBundle runBundle
+	var resolvedSpec workspace.PackageSpec
 
 	err := runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
 		return enqueueUnresolvedPackage(ctx, state, root, spec, project[workspace.BaseProject]{
 			proj:       baseProject,
 			projectDir: projectDir,
-		}, &runBundle)
+		}, &runBundle, &resolvedSpec)
 	})
 	if err != nil {
-		return nil, err
+		return nil, resolvedSpec, err
 	}
 
 	return func(ctx context.Context, wd string) (plugin.Provider, error) {
-		return ws.RunPackage(ctx, wd, runBundle.pluginPath, tokens.Package(runBundle.name), runBundle.params)
-	}, nil
+		return ws.RunPackage(ctx, wd, runBundle.pluginPath, tokens.Package(runBundle.name),
+			runBundle.params, resolvedSpec)
+	}, resolvedSpec, nil
 }
 
 // InstallProjectPlugins installs all plugins in a project, linking them in as necessary.
@@ -352,7 +352,8 @@ func enqueueUnresolvedPackage(
 	_ context.Context,
 	state state, parent pdag.Node,
 	spec workspace.PackageSpec, parentProj project[workspace.BaseProject],
-	runBundleOut *runBundle, // An async out param of where the plugin was installed
+	runBundleOut *runBundle, // An async out param of where the plugin was installed.
+	resolvedSpec *workspace.PackageSpec, // An async out param of the resolved spec.
 ) error {
 	specReady, ready := state.dag.NewNode(noOpStep{})
 	contract.AssertNoErrorf(state.dag.NewEdge(specReady, parent), "linking in a new node is safe")
@@ -366,6 +367,7 @@ func enqueueUnresolvedPackage(
 		parent:       specReady,
 		done:         ready,
 		runBundleOut: runBundleOut,
+		resolvedSpec: resolvedSpec,
 	})
 	// At minimum, we need to resolve spec before spec is done.
 	contract.AssertNoErrorf(state.dag.NewEdge(resolve, specReady), "linking in a new node is safe")
@@ -410,7 +412,7 @@ func enqueueProjectDependencies(
 		defer linkReady()
 		contract.AssertNoErrorf(state.dag.NewEdge(link, parent), "new nodes cannot be cyclic")
 
-		err := enqueueUnresolvedPackage(ctx, state, link, source, proj, runBundle)
+		err := enqueueUnresolvedPackage(ctx, state, link, source, proj, runBundle, new(workspace.PackageSpec))
 		if err != nil {
 			return err
 		}
@@ -518,12 +520,14 @@ type linkPackageStep struct {
 func (step linkPackageStep) run(ctx context.Context, p state) error {
 	contract.Assertf(step.runBundle != nil, "must set run bundle before running this step")
 
-	return p.ws.LinkPackage(
-		ctx,
-		step.project.proj.RuntimeInfo(), step.project.projectDir,
-		tokens.Package(step.packageName), step.runBundle.pluginPath, step.runBundle.params,
-		step.specSource,
-	)
+	provider, err := p.ws.RunPackage(ctx,
+		step.project.projectDir, step.runBundle.pluginPath,
+		tokens.Package(step.packageName), step.runBundle.params, step.specSource)
+	if err != nil {
+		return err
+	}
+
+	return p.ws.LinkPackage(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, provider)
 }
 
 // newSpecNode adds a new spec to the DAG, or de-duplicates the spec.
@@ -588,6 +592,7 @@ type resolveStep struct {
 	parent       pdag.Node
 	done         pdag.Done
 	runBundleOut *runBundle
+	resolvedSpec *workspace.PackageSpec
 }
 
 // Resolve a package into something that we can get.
@@ -614,6 +619,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	// Just check that the project is there, and install any dependencies if there is
 	// a PulumiPlugin file found.
 	case packageresolution.PathResolution:
+		*step.resolvedSpec = result.Spec
 		projectDir := result.Path
 		if !filepath.IsAbs(projectDir) {
 			projectDir = filepath.Join(step.parentProj.projectDir, result.Path)
@@ -640,6 +646,19 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 
 		defer ready()
 
+		if isExec, err := p.ws.IsExecutable(ctx, projectDir); err != nil {
+			return err
+		} else if isExec {
+			step.runBundleOut.pluginPath = projectDir
+			if name, found := strings.CutPrefix(filepath.Base(projectDir), "pulumi-resource-"); found {
+				if runtime.GOOS == "windows" {
+					name = strings.TrimSuffix(name, ".exe")
+				}
+				step.runBundleOut.name = name
+			}
+			return nil
+		}
+
 		// We don't need to download what's at a local path result, but we might
 		// need to download its dependencies.
 		return enqueueDownloadedPluginDirHasDependenciesAndIsInstalled(ctx,
@@ -656,6 +675,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	//
 	// 3. Install the downloaded project.
 	case packageresolution.PackageResolution:
+		*step.resolvedSpec = result.Spec
 		descriptor := result.Pkg.PluginDescriptor
 		specFinished, specReady, isDuplicate, err := newSpecNode(
 			hashPluginSpec(descriptor), descriptor, step.runBundleOut, p, step.parent)
@@ -701,6 +721,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		return nil
 
 	case packageresolution.PluginResolution:
+		*step.resolvedSpec = result.Spec
 		descriptor := result.Pkg.PluginDescriptor
 
 		specFinished, specReady, isDuplicate, err := newSpecNode(

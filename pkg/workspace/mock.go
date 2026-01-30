@@ -25,6 +25,7 @@ type MockContext struct {
 	ReadProjectF          func() (*workspace.Project, string, error)
 	GetStoredCredentialsF func() (workspace.Credentials, error)
 	LoadPluginProjectAtF  func(ctx context.Context, path string) (*workspace.PluginProject, string, error)
+	LoadBaseProjectFromF  func(ctx context.Context, path string) (workspace.BaseProject, string, error)
 }
 
 func (c *MockContext) New() (W, error) {
@@ -53,6 +54,13 @@ func (c *MockContext) LoadPluginProjectAt(ctx context.Context, path string) (*wo
 		return c.LoadPluginProjectAtF(ctx, path)
 	}
 	return nil, "", workspace.ErrPluginNotFound
+}
+
+func (c *MockContext) LoadBaseProjectFrom(ctx context.Context, path string) (workspace.BaseProject, string, error) {
+	if c.LoadBaseProjectFromF != nil {
+		return c.LoadBaseProjectFromF(ctx, path)
+	}
+	return nil, "", workspace.ErrBaseProjectNotFound
 }
 
 type MockW struct {

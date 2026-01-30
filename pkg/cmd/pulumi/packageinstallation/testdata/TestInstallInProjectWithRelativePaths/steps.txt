@@ -1,10 +1,17 @@
+IsExecutable{ctx, "/work"} -> {false, nil}
 LoadPluginProjectAt{ctx, "/work"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"./pkg-c"}}}, "/work/PulumiPlugin.yaml", nil}
+IsExecutable{ctx, "/work/project/pkg-b"} -> {false, nil}
 LoadPluginProjectAt{ctx, "/work/project/pkg-b"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"nodejs"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"../../pkg-c"}}}, "/work/project/pkg-b/PulumiPlugin.yaml", nil}
+IsExecutable{ctx, "/work/pkg-c"} -> {false, nil}
 LoadPluginProjectAt{ctx, "/work/pkg-c"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}, "/work/pkg-c/PulumiPlugin.yaml", nil}
 InstallPluginAt{ctx, "/work/pkg-c", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}} -> {nil}
-LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work", "pkg-c", "/work/pkg-c", nil, PackageSpec{Source:"./pkg-c"}} -> {nil}
+RunPackage{ctx, "/work", "/work/pkg-c", "pkg-c", nil} -> {invariantProvider{path:"/work/pkg-c"}, nil}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work", invariantProvider{path:"/work/pkg-c"}} -> {nil}
 InstallPluginAt{ctx, "/work", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"./pkg-c"}}}} -> {nil}
-LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work/project", "a", "/work", nil, PackageSpec{Source:".."}} -> {nil}
-LinkPackage{ctx, ProjectRuntimeInfo{name:"nodejs"}, "/work/project/pkg-b", "pkg-c", "/work/pkg-c", nil, PackageSpec{Source:"../../pkg-c"}} -> {nil}
+RunPackage{ctx, "/work/project", "/work", "a", nil} -> {invariantProvider{path:"/work"}, nil}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work/project", invariantProvider{path:"/work"}} -> {nil}
+RunPackage{ctx, "/work/project/pkg-b", "/work/pkg-c", "pkg-c", nil} -> {invariantProvider{path:"/work/pkg-c"}, nil}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"nodejs"}, "/work/project/pkg-b", invariantProvider{path:"/work/pkg-c"}} -> {nil}
 InstallPluginAt{ctx, "/work/project/pkg-b", PluginProject{Runtime:ProjectRuntimeInfo{name:"nodejs"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"../../pkg-c"}}}} -> {nil}
-LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work/project", "b", "/work/project/pkg-b", nil, PackageSpec{Source:"./pkg-b"}} -> {nil}
+RunPackage{ctx, "/work/project", "/work/project/pkg-b", "b", nil} -> {invariantProvider{path:"/work/project/pkg-b"}, nil}
+LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work/project", invariantProvider{path:"/work/project/pkg-b"}} -> {nil}

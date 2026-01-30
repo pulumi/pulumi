@@ -154,6 +154,8 @@ type GetSchemaResponse struct {
 	Schema []byte
 }
 
+var ErrDoubleParameterized = errors.New("cannot specify parameterization for a parameterized provider")
+
 type CheckConfigRequest struct {
 	URN           resource.URN
 	Name          string
