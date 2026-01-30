@@ -232,6 +232,11 @@ type LanguageTest struct {
 
 	// RunsShareSource indicates whether all runs share the same source code.
 	RunsShareSource bool
+
+	// SkipEnsurePluginsValidation skips validation that GetRequiredPlugins returns all expected providers.
+	// This is needed for tests that use the version resource option, where runtime provider versions
+	// may differ from compile-time SDK versions.
+	SkipEnsurePluginsValidation bool
 }
 
 type AssertPreviewArgs struct {

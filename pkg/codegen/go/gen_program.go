@@ -1197,6 +1197,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.CustomTimeouts != nil {
 		appendOption("Timeouts", opts.CustomTimeouts, pcl.CustomTimeoutsType)
 	}
+	if opts.Version != nil {
+		appendOption("Version", opts.Version, model.StringType)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}

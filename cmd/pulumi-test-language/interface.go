@@ -684,13 +684,14 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// And now replace the context host with our own test host
 	host := &testHost{
-		engine:      eng,
-		ctx:         pctx,
-		host:        pctx.Host,
-		runtime:     languageClient,
-		runtimeName: token.LanguagePluginName,
-		providers:   make(map[string]func() (plugin.Provider, error)),
-		connections: make(map[plugin.Provider]io.Closer),
+		engine:                      eng,
+		ctx:                         pctx,
+		host:                        pctx.Host,
+		runtime:                     languageClient,
+		runtimeName:                 token.LanguagePluginName,
+		providers:                   make(map[string]func() (plugin.Provider, error)),
+		connections:                 make(map[plugin.Provider]io.Closer),
+		skipEnsurePluginsValidation: test.SkipEnsurePluginsValidation,
 	}
 
 	pctx.Host = host

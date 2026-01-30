@@ -835,6 +835,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.CustomTimeouts != nil {
 		appendOption("custom_timeouts", opts.CustomTimeouts)
 	}
+	if opts.Version != nil {
+		appendOption("version", opts.Version)
+	}
 
 	return block, temps
 }

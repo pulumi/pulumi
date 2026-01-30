@@ -940,6 +940,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.CustomTimeouts != nil {
 		appendOption("customTimeouts", opts.CustomTimeouts)
 	}
+	if opts.Version != nil {
+		appendOption("version", opts.Version)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
 	}

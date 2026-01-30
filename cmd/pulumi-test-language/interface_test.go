@@ -325,7 +325,7 @@ func (l *inMemoryProviderLoader) LoadPackageReferenceV2(
 	for _, p := range l.providers {
 		p := p()
 		if string(p.Pkg()) == descriptor.Name {
-			info, err := p.GetPluginInfo(context.TODO())
+			info, err := p.GetPluginInfo(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("get plugin info for %s: %w", descriptor.Name, err)
 			}
@@ -360,7 +360,7 @@ func (l *inMemoryProviderLoader) LoadPackageReferenceV2(
 		getSchemaRequest.SubpackageVersion = &descriptor.Parameterization.Version
 	}
 
-	jsonSchema, err := provider.GetSchema(context.TODO(), getSchemaRequest)
+	jsonSchema, err := provider.GetSchema(ctx, getSchemaRequest)
 	if err != nil {
 		return nil, fmt.Errorf("get schema for %s: %w", descriptor.Name, err)
 	}
