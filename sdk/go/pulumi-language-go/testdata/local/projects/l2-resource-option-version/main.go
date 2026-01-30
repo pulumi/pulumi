@@ -7,13 +7,13 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		_, err := simple.NewResource(ctx, "withV1", &simple.ResourceArgs{
+		_, err := simple.NewResource(ctx, "withV2", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		}, pulumi.Version("2.0.0"))
 		if err != nil {
 			return err
 		}
-		_, err = simple.NewResource(ctx, "withV2", &simple.ResourceArgs{
+		_, err = simple.NewResource(ctx, "withV26", &simple.ResourceArgs{
 			Value: pulumi.Bool(false),
 		})
 		if err != nil {
