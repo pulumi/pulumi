@@ -247,11 +247,8 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			optionsStore["PULUMI_CONFIG"] = jsonConfig
 		}
 
-		// If no env was provided, use the global environment
-		baseStore := env.Global().GetStore()
-		if e != nil {
-			baseStore = e.GetStore()
-		}
+		// Get existing environment and add options
+		baseStore := e.GetStore()
 		e = envutil.NewEnv(envutil.JoinStore(optionsStore, baseStore))
 
 		handshake := func(
@@ -381,7 +378,6 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 }
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
-// TODO: must pass env for local plugins to work
 func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path string) (Provider, error) {
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
