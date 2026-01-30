@@ -30,7 +30,7 @@ import (
 func NewViewTraceCmd() *cobra.Command {
 	var port int
 	cmd := &cobra.Command{
-		Use:   "view-trace [trace-file]",
+		Use:   "view-trace",
 		Short: "Display a trace from the Pulumi CLI",
 		Long: "Display a trace from the Pulumi CLI.\n" +
 			"\n" +
