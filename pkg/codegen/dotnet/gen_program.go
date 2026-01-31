@@ -1411,6 +1411,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 	if opts.ReplacementTrigger != nil {
 		appendOption("ReplacementTrigger", opts.ReplacementTrigger)
 	}
+	if opts.EnvVarMappings != nil {
+		appendOption("EnvVarMappings", opts.EnvVarMappings)
+	}
 
 	if result.Len() != 0 {
 		g.Indent = g.Indent[:len(g.Indent)-4]

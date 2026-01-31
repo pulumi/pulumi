@@ -1201,6 +1201,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.ImportID != nil {
 		appendOption("Import", opts.ImportID, model.StringType)
 	}
+	if opts.EnvVarMappings != nil {
+		appendOption("EnvVarMappings", opts.EnvVarMappings, model.NewMapType(model.StringType))
+	}
 
 	return block, temps
 }

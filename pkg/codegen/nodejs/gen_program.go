@@ -943,6 +943,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.ImportID != nil {
 		appendOption("import", opts.ImportID)
 	}
+	if opts.EnvVarMappings != nil {
+		appendOption("envVarMappings", opts.EnvVarMappings)
+	}
 
 	if object == nil {
 		return ""

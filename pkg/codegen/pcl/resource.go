@@ -63,6 +63,8 @@ type ResourceOptions struct {
 	ImportID model.Expression
 	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
 	ReplacementTrigger model.Expression
+	// Environment variable mappings for provider resources.
+	EnvVarMappings model.Expression
 }
 
 // Resource represents a resource instantiation inside of a program or component.

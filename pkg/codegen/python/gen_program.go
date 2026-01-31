@@ -826,6 +826,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.ReplaceOnChanges != nil {
 		appendOption("replace_on_changes", opts.ReplaceOnChanges)
 	}
+	if opts.EnvVarMappings != nil {
+		appendOption("env_var_mappings", opts.EnvVarMappings)
+	}
 
 	return block, temps
 }
