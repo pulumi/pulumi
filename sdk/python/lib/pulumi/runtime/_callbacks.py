@@ -54,7 +54,7 @@ if TYPE_CHECKING:
         ResourceOptions,
         ResourceTransform,
     )
-    from ..resource_hooks import ResourceHook
+    from ..resource_hooks import ErrorHook, ResourceHook
 
 
 # Workaround for https://github.com/grpc/grpc/issues/38679,
@@ -381,12 +381,105 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             on_dry_run=hook.opts.on_dry_run if hook.opts else False,
         )
 
+    def do_register_error_hook(
+        self, hook: ErrorHook
+    ) -> resource_pb2.RegisterErrorHookRequest:
+        log.debug(f"do_register_error_hook {hook.name}")
+
+        async def cb(s: bytes) -> Message:
+            request: resource_pb2.ErrorHookRequest = (
+                resource_pb2.ErrorHookRequest.FromString(s)
+            )
+
+            try:
+                from ..resource_hooks import ErrorHookArgs
+
+                new_inputs = (
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.new_inputs,
+                                keep_unknowns=True,
+                            ),
+                        )
+                    )
+                    if request.HasField("new_inputs") and request.new_inputs
+                    else None
+                )
+                old_inputs = (
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.old_inputs,
+                                keep_unknowns=True,
+                            ),
+                        )
+                    )
+                    if request.HasField("old_inputs") and request.old_inputs
+                    else None
+                )
+                old_outputs = (
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.old_outputs,
+                                keep_unknowns=True,
+                            ),
+                        )
+                    )
+                    if request.HasField("old_outputs") and request.old_outputs
+                    else None
+                )
+
+                args = ErrorHookArgs(
+                    urn=request.urn,
+                    id=request.id,
+                    name=request.name,
+                    type=request.type,
+                    new_inputs=new_inputs,
+                    old_inputs=old_inputs,
+                    old_outputs=old_outputs,
+                    failed_operation=request.failed_operation,
+                    errors=list(request.errors),
+                )
+                maybe_retry = hook(args)
+                if isinstance(maybe_retry, Awaitable):
+                    retry = await maybe_retry
+                else:
+                    retry = maybe_retry
+                return resource_pb2.ErrorHookResponse(retry=retry)
+            except Exception as e:  # noqa: BLE001 catch blind exception
+                log.debug(f"Exception while executing error hook: {str(e)}")
+                return resource_pb2.ErrorHookResponse(error=str(e))
+
+        token = str(uuid.uuid4())
+        self._callbacks[token] = cb
+        callback = callback_pb2.Callback(
+            token=token,
+            target=self._target,
+        )
+        return resource_pb2.RegisterErrorHookRequest(
+            name=hook.name,
+            callback=callback,
+        )
+
     def register_resource_hook(self, hook: ResourceHook) -> None:
         req = self.do_register_resource_hook(hook)
         try:
             self._monitor.RegisterResourceHook(req)
         except:
             # Remove the hook since we didn't manage to actually register it.
+            self._callbacks.pop(req.callback.token)
+            raise
+
+    def register_error_hook(self, hook: ErrorHook) -> None:
+        req = self.do_register_error_hook(hook)
+        try:
+            self._monitor.RegisterErrorHook(req)
+        except Exception:
             self._callbacks.pop(req.callback.token)
             raise
 

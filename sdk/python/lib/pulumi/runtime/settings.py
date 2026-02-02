@@ -386,6 +386,10 @@ async def monitor_supports_resource_hooks() -> bool:
     return await monitor_supports_feature("resourceHooks")
 
 
+async def monitor_supports_error_hooks() -> bool:
+    return await monitor_supports_feature("errorHooks")
+
+
 def reset_options(
     project: Optional[str] = None,
     stack: Optional[str] = None,
@@ -444,4 +448,5 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("invokeTransforms"),
         monitor_supports_feature("parameterization"),
         monitor_supports_feature("resourceHooks"),
+        monitor_supports_feature("errorHooks"),
     )
