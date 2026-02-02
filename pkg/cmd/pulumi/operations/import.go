@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
@@ -58,6 +59,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -675,6 +677,17 @@ func NewImportCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			ws := pkgWorkspace.Instance
+
+			proj, root, err := ws.ReadProject()
+			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			cwd, err := os.Getwd()
@@ -811,13 +824,6 @@ func NewImportCmd() *cobra.Command {
 				}
 				defer contract.IgnoreClose(f)
 				output = f
-			}
-
-			// Fetch the project.
-			ws := pkgWorkspace.Instance
-			proj, root, err := ws.ReadProject()
-			if err != nil {
-				return err
 			}
 
 			yes = yes || skipPreview || env.SkipConfirmations.Value()
@@ -1035,6 +1041,8 @@ func NewImportCmd() *cobra.Command {
 			return err
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.UnrestrictedArgs)
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll

@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -41,7 +42,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -87,13 +90,8 @@ func NewRefreshCmd() *cobra.Command {
 	// Flags for Neo.
 	var neoEnabled bool
 
-	use, cmdArgs := "refresh", cmdutil.NoArgs
-	if deployment.RemoteSupported() {
-		use, cmdArgs = "refresh [url]", cmdutil.MaximumNArgs(1)
-	}
-
 	cmd := &cobra.Command{
-		Use:   use,
+		Use:   "refresh",
 		Short: "Refresh the resources in a stack",
 		Long: "Refresh the resources in a stack.\n" +
 			"\n" +
@@ -104,11 +102,19 @@ func NewRefreshCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
+
+			proj, root, err := readProjectForUpdate(ws, client)
+			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.Remote {
@@ -202,11 +208,6 @@ func NewRefreshCmd() *cobra.Command {
 			}
 
 			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path); err != nil {
-				return err
-			}
-
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
 				return err
 			}
 
@@ -331,6 +332,15 @@ func NewRefreshCmd() *cobra.Command {
 				return nil
 			}
 		},
+	}
+
+	if deployment.RemoteSupported() {
+		constrictor.AttachArguments(cmd, &constrictor.Arguments{
+			Arguments: []constrictor.Argument{{Name: "url"}},
+			Required:  0,
+		})
+	} else {
+		constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	}
 
 	cmd.PersistentFlags().BoolVar(

@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
@@ -47,10 +48,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -520,7 +523,7 @@ func NewUpCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        "up [template|url]",
+		Use:        "up",
 		Aliases:    []string{"update"},
 		SuggestFor: []string{"apply", "deploy", "push"},
 		Short:      "Create or update the resources in a stack",
@@ -538,13 +541,16 @@ func NewUpCmd() *cobra.Command {
 			"\n" +
 			"Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary\n" +
 			" project is created, deployed, and then deleted, leaving only the stack state.",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
 			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
 				return err
 			}
 
@@ -679,6 +685,11 @@ func NewUpCmd() *cobra.Command {
 			)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "template-or-url", Usage: "[template|url]"}},
+		Required:  0,
+	})
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,

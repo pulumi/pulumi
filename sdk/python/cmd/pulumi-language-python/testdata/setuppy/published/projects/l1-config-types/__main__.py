@@ -4,7 +4,7 @@ config = pulumi.Config()
 a_number = config.require_float("aNumber")
 pulumi.export("theNumber", a_number + 1.25)
 a_string = config.require("aString")
-pulumi.export("theString", a_string + " World")
+pulumi.export("theString", f"{a_string} World")
 a_map = config.require_object("aMap")
 pulumi.export("theMap", {
     "a": a_map["a"] + 1,
