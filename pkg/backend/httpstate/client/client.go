@@ -1922,3 +1922,113 @@ func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[api
 		}
 	}
 }
+
+// Insights Discovery Functions
+
+// insightsAccountPath returns the API path for an Insights account.
+func insightsAccountPath(orgName, accountName string) string {
+	return fmt.Sprintf("/api/preview/insights/%s/accounts/%s", url.PathEscape(orgName), url.PathEscape(accountName))
+}
+
+// insightsAccountsPath returns the API path for listing Insights accounts.
+func insightsAccountsPath(orgName string) string {
+	return fmt.Sprintf("/api/preview/insights/%s/accounts", url.PathEscape(orgName))
+}
+
+// CreateInsightsAccount creates a new Insights discovery account.
+func (pc *Client) CreateInsightsAccount(
+	ctx context.Context, orgName, accountName string, req apitype.CreateInsightsAccountRequest,
+) error {
+	// API returns 204 No Content on success
+	return pc.restCall(ctx, http.MethodPost, insightsAccountPath(orgName, accountName), nil, req, nil)
+}
+
+// GetInsightsAccount retrieves details for a specific Insights account.
+func (pc *Client) GetInsightsAccount(
+	ctx context.Context, orgName, accountName string,
+) (*apitype.InsightsAccount, error) {
+	var resp apitype.InsightsAccount
+	err := pc.restCall(ctx, http.MethodGet, insightsAccountPath(orgName, accountName), nil, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("getting Insights account: %w", err)
+	}
+	return &resp, nil
+}
+
+// UpdateInsightsAccount updates an existing Insights account.
+func (pc *Client) UpdateInsightsAccount(
+	ctx context.Context, orgName, accountName string, req apitype.UpdateInsightsAccountRequest,
+) error {
+	// API returns 204 No Content on success
+	return pc.restCall(ctx, http.MethodPatch, insightsAccountPath(orgName, accountName), nil, req, nil)
+}
+
+// DeleteInsightsAccount deletes an Insights account.
+func (pc *Client) DeleteInsightsAccount(ctx context.Context, orgName, accountName string) error {
+	return pc.restCall(ctx, http.MethodDelete, insightsAccountPath(orgName, accountName), nil, nil, nil)
+}
+
+// ListInsightsAccounts lists all Insights accounts for the organization.
+func (pc *Client) ListInsightsAccounts(
+	ctx context.Context, orgName string, continuationToken string, count int,
+) (*apitype.ListInsightsAccountsResponse, error) {
+	var resp apitype.ListInsightsAccountsResponse
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+		Count             int    `url:"count,omitempty"`
+	}{
+		ContinuationToken: continuationToken,
+		Count:             count,
+	}
+
+	err := pc.restCall(ctx, http.MethodGet, insightsAccountsPath(orgName), queryObj, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("listing Insights accounts: %w", err)
+	}
+	return &resp, nil
+}
+
+// CreateScan triggers a new discovery scan for an account.
+func (pc *Client) CreateScan(
+	ctx context.Context, orgName, accountName string, req apitype.CreateScanRequest,
+) (*apitype.Scan, error) {
+	var resp apitype.Scan
+	path := insightsAccountPath(orgName, accountName) + "/scans"
+	err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("creating scan: %w", err)
+	}
+	return &resp, nil
+}
+
+// ListScans lists scans for an account.
+func (pc *Client) ListScans(
+	ctx context.Context, orgName, accountName string, continuationToken string, count int,
+) (*apitype.ListScansResponse, error) {
+	var resp apitype.ListScansResponse
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+		Count             int    `url:"count,omitempty"`
+	}{
+		ContinuationToken: continuationToken,
+		Count:             count,
+	}
+
+	path := insightsAccountPath(orgName, accountName) + "/scans"
+	err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("listing scans: %w", err)
+	}
+	return &resp, nil
+}
+
+// GetScan retrieves details for a specific scan.
+func (pc *Client) GetScan(ctx context.Context, orgName, accountName, scanID string) (*apitype.Scan, error) {
+	var resp apitype.Scan
+	path := fmt.Sprintf("%s/scans/%s", insightsAccountPath(orgName, accountName), url.PathEscape(scanID))
+	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("getting scan: %w", err)
+	}
+	return &resp, nil
+}

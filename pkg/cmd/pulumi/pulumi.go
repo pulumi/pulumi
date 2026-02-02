@@ -58,6 +58,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/insights"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
@@ -412,6 +413,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
+				insights.NewInsightsCmd(),
 			},
 		},
 		{

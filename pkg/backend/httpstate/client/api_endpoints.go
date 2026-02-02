@@ -132,4 +132,14 @@ func init() {
 	// APIs for interacting with the Template Registry
 	addEndpoint("POST", "/api/registry/templates/{source}/{publisher}/{name}/versions", "publishTemplate")
 	addEndpoint("POST", "/api/registry/templates/{source}/{publisher}/{name}/versions/{version}/complete", "completeTemplatePublish")
+
+	// APIs for Insights Discovery
+	addEndpoint("POST", "/api/preview/insights/pulumi/accounts/{accountName}", "createInsightsAccount")
+	addEndpoint("GET", "/api/preview/insights/pulumi/accounts/{accountName}", "getInsightsAccount")
+	addEndpoint("PATCH", "/api/preview/insights/pulumi/accounts/{accountName}", "updateInsightsAccount")
+	addEndpoint("DELETE", "/api/preview/insights/pulumi/accounts/{accountName}", "deleteInsightsAccount")
+	addEndpoint("GET", "/api/preview/insights/pulumi/accounts", "listInsightsAccounts")
+	addEndpoint("POST", "/api/preview/insights/pulumi/accounts/{accountName}/scans", "createScan")
+	addEndpoint("GET", "/api/preview/insights/pulumi/accounts/{accountName}/scans", "listScans")
+	addEndpoint("GET", "/api/preview/insights/pulumi/accounts/{accountName}/scans/{scanID}", "getScan")
 }
