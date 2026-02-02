@@ -24,6 +24,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -46,7 +47,6 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install",
-		Args:  cmdutil.NoArgs,
 		Short: "Install packages and plugins for the current program or policy pack.",
 		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
@@ -187,6 +187,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			return nil
 		},
 	}
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.Flags().IntVar(&parallel,
 		"parallel", 4, "The max number of concurrent installs to perform. "+
