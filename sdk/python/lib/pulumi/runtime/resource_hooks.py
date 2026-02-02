@@ -14,12 +14,40 @@
 
 import asyncio
 from typing import Optional, Union
-from ..resource_hooks import ResourceHookArgs, ResourceHook, ResourceHookBinding
+from ..resource_hooks import (
+    ErrorHookArgs,
+    ErrorHook,
+    ResourceHookArgs,
+    ResourceHook,
+    ResourceHookBinding,
+)
 from .proto import RegisterResourceRequest, ConstructRequest
 
 
 def noop(args: ResourceHookArgs) -> None:
     pass
+
+
+def noop_error(args: ErrorHookArgs) -> bool:
+    return False
+
+
+class StubErrorHook(ErrorHook):
+    """
+    StubErrorHook is an error hook that does nothing and returns False (no retry).
+
+    We need to reconstruct ErrorHook instances to set on ResourceOptions when
+    we only have the name available (e.g. from Construct request). These
+    stubs will later be serialized back into a list of hook names.
+    """
+
+    def __init__(self, name: str):
+        # Note: we intentionally do not call super here, because we do not
+        # want to kick off a registration for this hook.
+        self.name = name
+        self.callback = noop_error
+        self._registered = asyncio.Future()
+        self._registered.set_result(None)
 
 
 class StubResourceHook(ResourceHook):
@@ -64,4 +92,5 @@ def _binding_from_proto(
         after_update=list(map(StubResourceHook, protoBinding.after_update)),
         before_delete=list(map(StubResourceHook, protoBinding.before_delete)),
         after_delete=list(map(StubResourceHook, protoBinding.after_delete)),
+        on_error=list(map(StubErrorHook, protoBinding.on_error)),
     )
