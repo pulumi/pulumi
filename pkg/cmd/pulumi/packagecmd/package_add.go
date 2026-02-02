@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -106,9 +105,9 @@ from the parameters, as in:
 			}()
 
 			pluginSource := args[0]
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+			parameters := args[1:]
 
-			pkg, packageSpec, diags, err := packages.InstallPackage(
+			pkg, packageSpec, err := packages.InstallPackage(
 				pluginOrProject.proj,
 				pctx,
 				pluginOrProject.proj.RuntimeInfo().Name(),
@@ -119,7 +118,6 @@ from the parameters, as in:
 				env.Global(),
 				0, /* unbounded concurrency */
 			)
-			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				return err
 			}
@@ -147,20 +145,17 @@ from the parameters, as in:
 				if !f.IsDir() {
 					if pkg.Parameterization == nil {
 						packageSpec.Source = pkg.Name
-						if pkg.Version != nil {
-							packageSpec.Version = pkg.Version.String()
+						if pkg.Version != "" {
+							packageSpec.Version = pkg.Version
 						}
 					} else {
 						packageSpec.Source = pkg.Parameterization.BaseProvider.Name
-						packageSpec.Version = pkg.Parameterization.BaseProvider.Version.String()
+						packageSpec.Version = pkg.Parameterization.BaseProvider.Version
 					}
 				}
 			}
 
-			contract.Assertf(packageSpec != nil, "packageSpec should be nil if & only if source is file based")
-			packageSpec.Parameters = parameters.Args
-
-			pluginOrProject.proj.AddPackage(pkg.Name, *packageSpec)
+			pluginOrProject.proj.AddPackage(pkg.Name, packageSpec)
 
 			fileName := filepath.Base(pluginOrProject.projectFilePath)
 			// Save the updated project
@@ -195,7 +190,7 @@ type pluginOrProject struct {
 	proj                         workspace.BaseProject
 }
 
-func schemaDisplayName(schema *schema.Package) string {
+func schemaDisplayName(schema schema.PartialPackageSpec) string {
 	name := schema.DisplayName
 	if name == "" {
 		name = schema.Name

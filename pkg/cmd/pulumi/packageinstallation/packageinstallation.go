@@ -29,6 +29,7 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -174,6 +175,15 @@ func InstallProjectPlugins(
 			projectDir: projectDir,
 		})
 	})
+}
+
+func LinkIntoProject(
+	ctx context.Context,
+	spec workspace.PackageSpec,
+	project_ workspace.BaseProject, projectDir string,
+	options Options, registry registry.Registry, ws Context,
+) (schema.PartialPackageSpec, workspace.PackageSpec, error) {
+	panic("TODO")
 }
 
 // runInstall an install governed by [pdag].
