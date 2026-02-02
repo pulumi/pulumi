@@ -1090,6 +1090,14 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genLocalVariable(w, n)
 	case *pcl.Component:
 		g.genComponent(w, n)
+	case *pcl.PulumiBlock:
+		g.genPulumi(w, n)
+	}
+}
+
+func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
+	if v.RequiredVersion != nil {
+		g.Fgenf(w, "%sDeployment.RequirePulumiVersionAsync(%.v).Wait();\n", g.Indent, v.RequiredVersion)
 	}
 }
 
