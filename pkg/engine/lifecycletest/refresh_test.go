@@ -3346,3 +3346,68 @@ func TestRefreshV2ParentChildOrdering(t *testing.T) {
 		RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+func TestRefreshV2DependencyNotInOriginalSnapshot(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21645]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, repro for snapshot integrity issue")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov0 := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
+			Custom: true,
+			ID:     "id1",
+		}
+		s.Resources = append(s.Resources, prov0)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	reproLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		provA, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRefB, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRefB.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", false, deploytest.ResourceOptions{
+			DeletedWith: resA.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:             t,
+		HostF:         reproHostF,
+		UpdateOptions: engine.UpdateOptions{},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
