@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ func (p *DocsProvider) GetSchema(
 ) (plugin.GetSchemaResponse, error) {
 	pkg := schema.PackageSpec{
 		Name:    "docs",
-		Version: "25.0.0",
+		Version: "28.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"docs:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -171,9 +171,9 @@ func (p *DocsProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "25.0.0" {
+	if version.StringValue() != "28.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 25.0.0"),
+			Failures: makeCheckFailure("version", "version is not 28.0.0"),
 		}, nil
 	}
 
@@ -284,7 +284,7 @@ func (p *DocsProvider) Invoke(
 }
 
 func (p *DocsProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.MustParse("25.0.0")
+	ver := semver.MustParse("28.0.0")
 	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil

@@ -45,9 +45,9 @@ func init() {
 
 					// Check the docs sdk doesn't show the "<pulumi ref=", string anywhere it should
 					// have been replaced by the appropriate link.
-					sdkPath, ok := sdks["docs-25.0.0"]
+					sdkPath, ok := sdks["docs-28.0.0"]
 					if !ok {
-						sdkPath = filepath.Join(projectDirectory, "sdks", "docs-25.0.0")
+						sdkPath = filepath.Join(projectDirectory, "sdks", "docs-28.0.0")
 					}
 
 					err = filepath.WalkDir(sdkPath, func(path string, d fs.DirEntry, err error) error {
