@@ -27,3 +27,4 @@ InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-a", PluginProject{Ru
 DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-a", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-a.tar.gz"}, true} -> {}
 RunPackage{ctx, "/project", "$HOME/.pulumi/plugins/resource-plugin-a", "plugin-a", nil} -> {invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-a"}, nil}
 LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/project", invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-a"}} -> {nil}
+GetRequiredPackages{ctx, "$HOME/.pulumi/plugins/resource-plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":PackageSpec{Source:"plugin-b", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}}}} -> {nil, nil}

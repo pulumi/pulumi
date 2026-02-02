@@ -210,6 +210,15 @@ func (w *recordingWorkspace) LinkPackage(
 	return err
 }
 
+func (w *recordingWorkspace) GetRequiredPackages(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) ([]workspace.PackageDescriptor, error) {
+	w.start("GetRequiredPackages", ctx, dirPath, project)
+	packages, err := w.w.GetRequiredPackages(ctx, dirPath, project)
+	w.finish(packages, err)
+	return packages, err
+}
+
 func (w *recordingWorkspace) RunPackage(
 	ctx context.Context,
 	rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
