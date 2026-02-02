@@ -1388,7 +1388,6 @@ async def _prepare_resource_hooks(
             await hook._registered
             getattr(proto, hook_type).append(hook.name)
 
-    # Error hooks: only named ErrorHook instances
     on_error_hooks_list: list[ErrorHook] = getattr(hooks, "on_error", []) or []
     if on_error_hooks_list:
         if not await monitor_supports_error_hooks():
