@@ -80,7 +80,8 @@ func ExcludeDestroyAndRefreshProgramSet(
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
-	if plan.Operation == PlanOperationDestroyV2 && plan.RefreshProgram {
+	if (plan.Operation == PlanOperationDestroyV2 || plan.Operation == PlanOperationDestroy) &&
+		plan.RefreshProgram {
 		return true
 	}
 	return false
