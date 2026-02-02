@@ -4,7 +4,7 @@ const config = new pulumi.Config();
 const aNumber = config.requireNumber("aNumber");
 export const theNumber = aNumber + 1.25;
 const aString = config.require("aString");
-export const theString = aString + " World";
+export const theString = `${aString} World`;
 const aMap = config.requireObject<Record<string, number>>("aMap");
 export const theMap = {
     a: aMap.a + 1,
