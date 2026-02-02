@@ -544,6 +544,18 @@ func ExcludeResourceDeletedWithMarkedForDeletionResourceUpdate(
 	}
 
 	for _, res := range snap.Resources {
+		for _, dep := range res.Dependencies {
+			if deletedResources[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if deletedResources[dep] {
+					return true
+				}
+			}
+		}
 		if res.DeletedWith != "" && deletedResources[res.DeletedWith] {
 			return true
 		}
