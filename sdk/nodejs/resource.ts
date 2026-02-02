@@ -873,6 +873,14 @@ export interface ResourceOptions {
      */
     hideDiffs?: string[];
 
+    /**
+     * Environment variable mappings for provider resources. Maps source environment variable
+     * names to target names. If the source variable exists, the provider will see the target
+     * variable set to its value. For example, `{ "MY_VAR": "PROVIDER_VAR" }` means if MY_VAR
+     * is set, the provider sees PROVIDER_VAR with MY_VAR's value.
+     */
+    envVarMappings?: Record<string, string>;
+
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
 }

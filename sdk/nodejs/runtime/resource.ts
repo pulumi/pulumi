@@ -674,6 +674,13 @@ export function registerResource(
                 req.setSupportsresultreporting(true);
                 req.setHooks(hooks);
 
+                if (opts.envVarMappings !== undefined) {
+                    const envVarMappingsMap = req.getEnvvarmappingsMap();
+                    for (const [key, value] of Object.entries(opts.envVarMappings)) {
+                        envVarMappingsMap.set(key, value);
+                    }
+                }
+
                 if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                     throw new Error(
                         "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.",
