@@ -39,10 +39,10 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // each root is sampled at a particular granularity. the nested traces are converted into a callstack at each
@@ -705,7 +705,7 @@ func NewConvertTraceCmd() *cobra.Command {
 	var ignoreLogSpans bool
 	var quantum time.Duration
 	cmd := &cobra.Command{
-		Use:   "convert-trace <trace-file>",
+		Use:   "convert-trace",
 		Short: "Convert a trace from the Pulumi CLI to Google's pprof format",
 		Long: "Convert a trace from the Pulumi CLI to Google's pprof format.\n" +
 			"\n" +
@@ -713,7 +713,6 @@ func NewConvertTraceCmd() *cobra.Command {
 			"invocation of the Pulumi CLI from their native format to Google's\n" +
 			"pprof format. The converted trace is written to stdout, and can be\n" +
 			"inspected using `go tool pprof`.",
-		Args:   cmdutil.ExactArgs(1),
 		Hidden: !env.DebugCommands.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store := appdash.NewMemoryStore()
@@ -726,6 +725,11 @@ func NewConvertTraceCmd() *cobra.Command {
 			return convertTraceToPprof(quantum, store)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "trace-file"}},
+		Required:  1,
+	})
 
 	cmd.Flags().DurationVarP(&quantum, "granularity", "g", 500*time.Millisecond, "the sample granularity")
 	cmd.Flags().BoolVar(&otel, "otel", false, "true to export to OpenTelemetry")
