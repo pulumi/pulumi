@@ -31,6 +31,9 @@ type SimpleProvider struct {
 	plugin.UnimplementedProvider
 
 	Version *semver.Version
+
+	// PluginDownloadURL is an optional URL to include in the schema
+	PluginDownloadURL string
 }
 
 var _ plugin.Provider = (*SimpleProvider)(nil)
@@ -82,6 +85,9 @@ func (p *SimpleProvider) GetSchema(
 				RequiredInputs:  resourceRequired,
 			},
 		},
+	}
+	if p.PluginDownloadURL != "" {
+		pkg.PluginDownloadURL = p.PluginDownloadURL
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
