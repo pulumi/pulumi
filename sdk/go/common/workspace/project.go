@@ -344,6 +344,13 @@ type Project struct {
 	// Handle additional keys, albeit in a way that will remove comments and trivia.
 	AdditionalKeys map[string]any `yaml:",inline"`
 
+	// Optional, validates that the CLI version satisfies the passed version range. The supported syntax for ranges is
+	// that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be
+	// AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly
+	// 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than
+	// 3.8.0.
+	RequiredPulumiVersion string `json:"requiredPulumiVersion,omitempty" yaml:"requiredPulumiVersion,omitempty"`
+
 	// The original byte representation of the file, used to attempt trivia-preserving edits
 	raw []byte
 }

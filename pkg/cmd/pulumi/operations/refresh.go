@@ -41,7 +41,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -109,6 +111,15 @@ func NewRefreshCmd() *cobra.Command {
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
+
+			proj, root, err := readProjectForUpdate(ws, client)
+			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.Remote {
@@ -202,11 +213,6 @@ func NewRefreshCmd() *cobra.Command {
 			}
 
 			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path); err != nil {
-				return err
-			}
-
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
 				return err
 			}
 

@@ -58,6 +58,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -675,6 +676,17 @@ func NewImportCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			ws := pkgWorkspace.Instance
+
+			proj, root, err := ws.ReadProject()
+			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			cwd, err := os.Getwd()
@@ -811,13 +823,6 @@ func NewImportCmd() *cobra.Command {
 				}
 				defer contract.IgnoreClose(f)
 				output = f
-			}
-
-			// Fetch the project.
-			ws := pkgWorkspace.Instance
-			proj, root, err := ws.ReadProject()
-			if err != nil {
-				return err
 			}
 
 			yes = yes || skipPreview || env.SkipConfirmations.Value()

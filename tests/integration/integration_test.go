@@ -1797,3 +1797,15 @@ func TestConfigFlag(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(configContent), "config-flag:example: an-example")
 }
+
+func TestValidatePulumiVersionRange(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("required_pulumi_version")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
+
+	_, stderr := e.RunCommandExpectError("pulumi", "preview")
+	require.Regexp(t, "Pulumi CLI version .* does not satisfy the version range \"<1.0.0\"", stderr)
+}
