@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
@@ -1040,6 +1041,8 @@ func NewImportCmd() *cobra.Command {
 			return err
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.UnrestrictedArgs)
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
