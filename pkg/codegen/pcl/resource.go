@@ -20,6 +20,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // ResourceOptions represents a resource instantiation's options.
@@ -180,4 +182,37 @@ func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable,
 
 func (p *ResourceProperty) Type() model.Type {
 	return ResourcePropertyType
+}
+
+// NeedsVersionResourceOption returns false if the version resource matches the version in the schema.
+//
+// Languages that bake versions into their generated schemas can use NeedsVersionResourceOption to omit redundant
+// version information.
+func NeedsVersionResourceOption(version model.Expression, schema *schema.Resource) bool {
+	if version == nil {
+		return false
+	}
+
+	if schema == nil {
+		return true
+	}
+
+	v := schema.PackageReference.Version()
+	if v == nil {
+		return true
+	}
+
+	e, ok := version.(*model.TemplateExpression)
+	contract.Assertf(ok, "Expected a model.TemplateExpression, found %T", version)
+	if len(e.Parts) != 1 {
+		return true
+	}
+
+	optV, ok := e.Parts[0].(*model.LiteralValueExpression)
+	contract.Assertf(ok, "Expected a version literal, found %T", optV)
+	if !optV.Value.Type().Equals(cty.String) || !optV.Value.IsKnown() || optV.Value.IsNull() {
+		return true
+	}
+
+	return v.String() != optV.Value.AsString()
 }

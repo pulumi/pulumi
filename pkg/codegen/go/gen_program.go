@@ -1100,7 +1100,7 @@ var resourceType = model.NewOpaqueType("pulumi.Resource")
 
 var providerResourceType = model.NewOpaqueType("pulumi.ProviderResource")
 
-func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []any) {
+func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions, schema *schema.Resource) (*model.Block, []any) {
 	if opts == nil {
 		return nil, nil
 	}
@@ -1196,6 +1196,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	}
 	if opts.CustomTimeouts != nil {
 		appendOption("Timeouts", opts.CustomTimeouts, pcl.CustomTimeoutsType)
+	}
+	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
+		appendOption("Version", opts.Version, model.StringType)
 	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
@@ -1311,7 +1314,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	}
 
 	// Compute resource options
-	options, temps := g.lowerResourceOptions(r.Options)
+	options, temps := g.lowerResourceOptions(r.Options, r.Schema)
 	g.genTemps(w, temps)
 
 	if r.Schema != nil {
@@ -1572,7 +1575,7 @@ func isDeferredOutputCast(expr model.Expression) bool {
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
 	// Compute resource options
-	options, temps := g.lowerResourceOptions(r.Options)
+	options, temps := g.lowerResourceOptions(r.Options, nil)
 	g.genTemps(w, temps)
 
 	AnnotateComponentInputs(r)
