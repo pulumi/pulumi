@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -41,8 +42,7 @@ func newPackageInfoCmd() *cobra.Command {
 	var resource string
 	var function string
 	cmd := &cobra.Command{
-		Use:   "info <provider|schema|path> [provider-parameter...]",
-		Args:  cmdutil.MinimumNArgs(1),
+		Use:   "info",
 		Short: "Show information about a package",
 		Long: `Show information about a package
 
@@ -71,7 +71,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 			spec, _, err := packages.SchemaFromSchemaSource(pctx, args[0], parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-				env.Global())
+				env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}
@@ -88,6 +88,19 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			return showProviderInfo(spec, args, stdout)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "provider", Usage: "<provider|schema|path>"},
+			{Name: "provider-parameter"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "info <provider|schema|path> [flags] [--] [provider-parameter]..."
 
 	cmd.Flags().StringVarP(&module, "module", "m", "", "Module name")
 	cmd.Flags().StringVarP(&resource, "resource", "r", "", "Resource name")

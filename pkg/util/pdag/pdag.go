@@ -19,7 +19,9 @@ package pdag
 import (
 	"context"
 	"errors"
+	"fmt"
 	"iter"
+	"runtime/debug"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -288,7 +290,11 @@ func (g *DAG[T]) Walk(ctx context.Context, process func(context.Context, T) erro
 	}
 
 	var cancelError error
-	var panicError any //  Used to record any panic in a processing node
+	var panicMu sync.Mutex
+	var panicError struct {
+		value any
+		stack []byte
+	}
 	for node, done := range g.Drain(ctx) {
 		if err := ctx.Err(); err != nil {
 			cancelError = err
@@ -301,16 +307,22 @@ func (g *DAG[T]) Walk(ctx context.Context, process func(context.Context, T) erro
 				if p == nil {
 					return
 				}
-				panicError = p
-				err = errors.Join(err, errProcessPanicked) // To stop execution
+				panicMu.Lock()
+				if panicError.value == nil {
+					panicError.value = p
+					panicError.stack = debug.Stack()
+				}
+				panicMu.Unlock()
+				err = errors.Join(err, errProcessPanicked)
 			}()
 			return process(ctx, node)
 		})
 	}
 
 	err := errors.Join(wg.Wait(), cancelError)
-	if panicError != nil {
-		panic(panicError) // propagate the panic
+	if panicError.value != nil {
+		panic(fmt.Sprintf("panic in DAG processing: %v\n\nOriginal stack trace:\n%s",
+			panicError.value, string(panicError.stack)))
 	}
 	return err
 }

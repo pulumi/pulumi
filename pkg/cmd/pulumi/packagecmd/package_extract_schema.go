@@ -20,6 +20,7 @@ import (
 	"os"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -31,8 +32,7 @@ import (
 
 func newExtractSchemaCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get-schema <schema_source> [provider parameters]",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "get-schema",
 		Short: "Get the schema.json from a package",
 		Long: `Get the schema.json from a package.
 
@@ -58,7 +58,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-				env.Global())
+				env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}
@@ -84,5 +84,19 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "schema-source"},
+			{Name: "provider-parameter"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "get-schema <schema-source> [flags] [--] [provider-parameter]..."
+
 	return cmd
 }

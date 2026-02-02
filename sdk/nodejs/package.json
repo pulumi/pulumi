@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/pulumi",
-    "version": "3.216.0",
+    "version": "3.219.0",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
     "repository": {
@@ -11,7 +11,7 @@
     "dependencies": {
         "@grpc/grpc-js": "^1.10.1",
         "@logdna/tail-file": "^2.0.6",
-        "@npmcli/arborist": "^7.3.1",
+        "@npmcli/arborist": "^9.0.0",
         "@opentelemetry/api": "^1.9",
         "@opentelemetry/exporter-zipkin": "^1.28",
         "@opentelemetry/instrumentation": "^0.55",
@@ -23,7 +23,7 @@
         "@types/semver": "^7.5.6",
         "@types/tmp": "^0.2.6",
         "execa": "^5.1.0",
-        "fdir": "^6.1.1",
+        "fdir": "^6.5.0",
         "google-protobuf": "^3.21.4",
         "got": "^11.8.6",
         "ini": "^2.0.0",

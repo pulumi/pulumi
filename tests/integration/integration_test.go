@@ -38,13 +38,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
@@ -235,7 +232,7 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 	}
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
@@ -397,7 +394,7 @@ func TestExcludeProtected(t *testing.T) {
 
 	e.RunCommand("pulumi", "stack", "init", "dev")
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
@@ -978,7 +975,7 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 	}
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
@@ -1150,7 +1147,7 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "advisory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults(
@@ -1177,7 +1174,7 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults(
@@ -1207,7 +1204,7 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes",
@@ -1232,7 +1229,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	stackName, err := resource.NewUniqueHex("policy-plugin-extra-args", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	require.NoError(t, err)
 	// Create a venv for the policy package and install the current python SDK into it
@@ -1667,7 +1664,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "dev")
 	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
 	e.RunCommand("pulumi", "install")
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.CWD = e.RootPath
 
@@ -1799,32 +1796,4 @@ func TestConfigFlag(t *testing.T) {
 	configContent, err = os.ReadFile(configPath)
 	require.NoError(t, err)
 	require.Contains(t, string(configContent), "config-flag:example: an-example")
-}
-
-// Test a provider that returns an incompatible version range from `Handshake`.
-//
-//nolint:paralleltest // Modifying the global version.Version
-func TestPulumiVersionRangeHandshake(t *testing.T) {
-	dir := t.TempDir()
-	providerBin := filepath.Join(dir, "provider")
-	if runtime.GOOS == "windows" {
-		providerBin += ".exe"
-	}
-	cmd := exec.Command("go", "build", "-o", providerBin,
-		filepath.Join("pulumi-version-range-handshake", "main.go"))
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "%s: err=%s, out=%s", cmd.String(), err, out)
-
-	d := diagtest.LogSink(t)
-	ctx, err := plugin.NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { ctx.Close() })
-
-	oldVersion := version.Version
-	version.Version = "3.1.2"
-	t.Cleanup(func() { version.Version = oldVersion })
-
-	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, "the-provider", providerBin)
-	require.ErrorContains(t, err,
-		"Pulumi CLI version 3.1.2 does not satisfy the version range \">=100.0.0\" requested by the provider the-provider.")
 }

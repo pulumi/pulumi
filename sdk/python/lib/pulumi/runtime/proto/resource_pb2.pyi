@@ -340,6 +340,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         AFTER_UPDATE_FIELD_NUMBER: builtins.int
         BEFORE_DELETE_FIELD_NUMBER: builtins.int
         AFTER_DELETE_FIELD_NUMBER: builtins.int
+        ON_ERROR_FIELD_NUMBER: builtins.int
         @property
         def before_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
@@ -352,6 +353,8 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         def before_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
         def after_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        @property
+        def on_error(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         def __init__(
             self,
             *,
@@ -361,8 +364,9 @@ class RegisterResourceRequest(google.protobuf.message.Message):
             after_update: collections.abc.Iterable[builtins.str] | None = ...,
             before_delete: collections.abc.Iterable[builtins.str] | None = ...,
             after_delete: collections.abc.Iterable[builtins.str] | None = ...,
+            on_error: collections.abc.Iterable[builtins.str] | None = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update", "on_error", b"on_error"]) -> None: ...
 
     TYPE_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
@@ -1252,6 +1256,87 @@ class ResourceHookResponse(google.protobuf.message.Message):
 global___ResourceHookResponse = ResourceHookResponse
 
 @typing.final
+class ErrorHookRequest(google.protobuf.message.Message):
+    """ErrorHookRequest is the request object for error hook callbacks in CallbackInvokeRequest."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URN_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    NEW_INPUTS_FIELD_NUMBER: builtins.int
+    OLD_INPUTS_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
+    FAILED_OPERATION_FIELD_NUMBER: builtins.int
+    ERRORS_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """the urn of the resource for which the hook is called."""
+    id: builtins.str
+    """the optional urn of the resource for which the hook is called."""
+    name: builtins.str
+    """the name of the resource for which the hook is called."""
+    type: builtins.str
+    """the type of the resource for which the hook is called."""
+    failed_operation: builtins.str
+    """the operation that failed (create, read, update, or delete)."""
+    @property
+    def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional checked new inputs of the resource."""
+
+    @property
+    def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional checked old inputs of the resource."""
+
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the optional old outputs of the resource."""
+
+    @property
+    def errors(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """the errors that have been seen so far (newest-first)."""
+
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        id: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        failed_operation: builtins.str = ...,
+        errors: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["errors", b"errors", "failed_operation", b"failed_operation", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
+
+global___ErrorHookRequest = ErrorHookRequest
+
+@typing.final
+class ErrorHookResponse(google.protobuf.message.Message):
+    """ErrorHookResponse is the response object for error hook callbacks in CallbackInvokeResponse."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ERROR_FIELD_NUMBER: builtins.int
+    RETRY_FIELD_NUMBER: builtins.int
+    error: builtins.str
+    """an optional error message to return from the hook."""
+    retry: builtins.bool
+    """whether we should retry the operation."""
+    def __init__(
+        self,
+        *,
+        error: builtins.str = ...,
+        retry: builtins.bool = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["error", b"error", "retry", b"retry"]) -> None: ...
+
+global___ErrorHookResponse = ErrorHookResponse
+
+@typing.final
 class RegisterPackageRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -1375,3 +1460,28 @@ class RegisterResourceHookRequest(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["callback", b"callback", "name", b"name", "on_dry_run", b"on_dry_run"]) -> None: ...
 
 global___RegisterResourceHookRequest = RegisterResourceHookRequest
+
+@typing.final
+class RegisterErrorHookRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    CALLBACK_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """The name of the hook. Must be unique within a program, registering the
+    same name twice is an error.
+    """
+    @property
+    def callback(self) -> pulumi.callback_pb2.Callback:
+        """the callback that the engine can call to run the hook."""
+
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        callback: pulumi.callback_pb2.Callback | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["callback", b"callback"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["callback", b"callback", "name", b"name"]) -> None: ...
+
+global___RegisterErrorHookRequest = RegisterErrorHookRequest

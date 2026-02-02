@@ -23,6 +23,7 @@ import google.protobuf.internal.containers
 import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import google.protobuf.struct_pb2
+import pulumi.alias_pb2
 import sys
 import typing
 
@@ -101,7 +102,6 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     ACCEPT_RESOURCES_FIELD_NUMBER: builtins.int
     ACCEPT_OUTPUTS_FIELD_NUMBER: builtins.int
     SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
-    PULUMI_VERSION_RANGE_FIELD_NUMBER: builtins.int
     accept_secrets: builtins.bool
     """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
     values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
@@ -120,14 +120,6 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     """True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
     user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
     """
-    pulumi_version_range: builtins.str
-    """The CLI version range required for this provider to work correctly. If no version range is specified, the
-    provider will be considered compatible with any CLI version.
-    The supported syntax for ranges is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example
-    ">=3.0.0", or "!3.1.2". Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning
-    greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
-    meaning less-than 3.4.0 or greater-than 3.8.0.
-    """
     def __init__(
         self,
         *,
@@ -135,11 +127,8 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
         accept_resources: builtins.bool = ...,
         accept_outputs: builtins.bool = ...,
         supports_autonaming_configuration: builtins.bool = ...,
-        pulumi_version_range: builtins.str | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_pulumi_version_range", b"_pulumi_version_range", "pulumi_version_range", b"pulumi_version_range"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_pulumi_version_range", b"_pulumi_version_range", "accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "pulumi_version_range", b"pulumi_version_range", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["_pulumi_version_range", b"_pulumi_version_range"]) -> typing.Literal["pulumi_version_range"] | None: ...
+    def ClearField(self, field_name: typing.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
 
 global___ProviderHandshakeResponse = ProviderHandshakeResponse
 
@@ -1712,6 +1701,7 @@ class ConstructRequest(google.protobuf.message.Message):
         AFTER_UPDATE_FIELD_NUMBER: builtins.int
         BEFORE_DELETE_FIELD_NUMBER: builtins.int
         AFTER_DELETE_FIELD_NUMBER: builtins.int
+        ON_ERROR_FIELD_NUMBER: builtins.int
         @property
         def before_create(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
@@ -1724,6 +1714,8 @@ class ConstructRequest(google.protobuf.message.Message):
         def before_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         @property
         def after_delete(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        @property
+        def on_error(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
         def __init__(
             self,
             *,
@@ -1733,8 +1725,9 @@ class ConstructRequest(google.protobuf.message.Message):
             after_update: collections.abc.Iterable[builtins.str] | None = ...,
             before_delete: collections.abc.Iterable[builtins.str] | None = ...,
             after_delete: collections.abc.Iterable[builtins.str] | None = ...,
+            on_error: collections.abc.Iterable[builtins.str] | None = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update", "on_error", b"on_error"]) -> None: ...
 
     PROJECT_FIELD_NUMBER: builtins.int
     STACK_FIELD_NUMBER: builtins.int
@@ -1752,7 +1745,6 @@ class ConstructRequest(google.protobuf.message.Message):
     CONFIGSECRETKEYS_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
     PROTECT_FIELD_NUMBER: builtins.int
-    ALIASES_FIELD_NUMBER: builtins.int
     ADDITIONALSECRETOUTPUTS_FIELD_NUMBER: builtins.int
     CUSTOMTIMEOUTS_FIELD_NUMBER: builtins.int
     DELETEDWITH_FIELD_NUMBER: builtins.int
@@ -1764,6 +1756,7 @@ class ConstructRequest(google.protobuf.message.Message):
     RESOURCE_HOOKS_FIELD_NUMBER: builtins.int
     STACK_TRACE_HANDLE_FIELD_NUMBER: builtins.int
     REPLACE_WITH_FIELD_NUMBER: builtins.int
+    ALIASES_FIELD_NUMBER: builtins.int
     project: builtins.str
     """The project to which this resource and its nested resources will belong."""
     stack: builtins.str
@@ -1852,13 +1845,6 @@ class ConstructRequest(google.protobuf.message.Message):
         """A set of configuration keys whose values are [secret](output-secrets)."""
 
     @property
-    def aliases(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """A list of additional URNs that should be considered the same as this component's URN (and which will therefore be
-        used to build aliases for its nested resource URNs). These may be URNs that previously referred to this component
-        e.g. if it had its parent (and consequently URN) changed.
-        """
-
-    @property
     def additionalSecretOutputs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """A list of input properties whose values should be treated as [secret](output-secrets)."""
 
@@ -1882,6 +1868,10 @@ class ConstructRequest(google.protobuf.message.Message):
     def replace_with(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """The URNs of resources whose replaces will trigger a replace on this resource."""
 
+    @property
+    def aliases(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.alias_pb2.Alias]:
+        """a list of additional aliases that should be considered the same."""
+
     def __init__(
         self,
         *,
@@ -1901,7 +1891,6 @@ class ConstructRequest(google.protobuf.message.Message):
         configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
         organization: builtins.str = ...,
         protect: builtins.bool | None = ...,
-        aliases: collections.abc.Iterable[builtins.str] | None = ...,
         additionalSecretOutputs: collections.abc.Iterable[builtins.str] | None = ...,
         customTimeouts: global___ConstructRequest.CustomTimeouts | None = ...,
         deletedWith: builtins.str = ...,
@@ -1913,6 +1902,7 @@ class ConstructRequest(google.protobuf.message.Message):
         resource_hooks: global___ConstructRequest.ResourceHooksBinding | None = ...,
         stack_trace_handle: builtins.str = ...,
         replace_with: collections.abc.Iterable[builtins.str] | None = ...,
+        aliases: collections.abc.Iterable[pulumi.alias_pb2.Alias] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "inputs", b"inputs", "protect", b"protect", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing.Literal["_deleteBeforeReplace", b"_deleteBeforeReplace", "_protect", b"_protect", "_resource_hooks", b"_resource_hooks", "_retainOnDelete", b"_retainOnDelete", "accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "resource_hooks", b"resource_hooks", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "stack_trace_handle", b"stack_trace_handle", "type", b"type"]) -> None: ...

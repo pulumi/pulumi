@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -28,8 +29,7 @@ import (
 
 func newPackagePackSdkCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "pack-sdk <language> <path>",
-		Args:   cobra.ExactArgs(2),
+		Use:    "pack-sdk",
 		Short:  "Pack a package SDK to a language specific artifact.",
 		Hidden: !env.Dev.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,5 +62,14 @@ func newPackagePackSdkCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "language"},
+			{Name: "path"},
+		},
+		Required: 2,
+	})
+
 	return cmd
 }

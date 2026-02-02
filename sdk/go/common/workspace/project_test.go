@@ -2066,6 +2066,17 @@ packages:
 	})
 }
 
+func TestWorkspaceSpecString(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "fizz", PackageSpec{Source: "fizz"}.String())
+	assert.Equal(t, "fizz@1.2.3", PackageSpec{Source: "fizz", Version: "1.2.3"}.String())
+	assert.Equal(t, "{ Source: fizz, Version: 1.2.3, PluginDownloadURL: example.com }",
+		PackageSpec{Source: "fizz", Version: "1.2.3", PluginDownloadURL: "example.com"}.String())
+	assert.Equal(t, "{ Source: fizz, Parameters: p1 p2 }",
+		PackageSpec{Source: "fizz", Parameters: []string{"p1", "p2"}}.String())
+}
+
 func TestGetPackageSpecs(t *testing.T) {
 	t.Parallel()
 

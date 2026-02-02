@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -65,8 +66,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
-		Use:    "run PATH|NAME[@VERSION] [ARGS]",
-		Args:   cmdutil.MinimumNArgs(1),
+		Use:    "run",
 		Hidden: !env.Dev.Value(),
 		Short:  "Run a command on a plugin binary",
 		Long: "[EXPERIMENTAL] Run a command on a plugin binary.\n" +
@@ -190,6 +190,15 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "name-or-path", Usage: "path|name[@version]"},
+			{Name: "args"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
 
 	cmd.PersistentFlags().StringVar(&kind,
 		"kind", "tool", "The plugin kind")

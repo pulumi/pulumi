@@ -426,7 +426,7 @@ func (opts *ProgramTestOptions) getEnvName(name string) string {
 	contract.IgnoreError(err)
 
 	suffix := hex.EncodeToString(h.Sum(nil))
-	return fmt.Sprintf("%v-%v", name, suffix)
+	return fmt.Sprintf("default/%v-%v", name, suffix)
 }
 
 func (opts *ProgramTestOptions) getEnvNameWithOwner(name string) string {
@@ -1604,7 +1604,7 @@ func (pt *ProgramTester) exportImport(dir string) error {
 	}()
 
 	if err := pt.runPulumiCommand("pulumi-stack-export", exportCmd, dir, false); err != nil {
-		return err
+		return fmt.Errorf("export: %w", err)
 	}
 
 	if f := pt.opts.ExportStateValidator; f != nil {
@@ -1621,7 +1621,12 @@ func (pt *ProgramTester) exportImport(dir string) error {
 		}
 	}
 
-	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
+	err := pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
+	if err != nil {
+		return fmt.Errorf("import: %w", err)
+	}
+
+	return nil
 }
 
 // PreviewAndUpdate runs pulumi preview followed by pulumi up
@@ -1788,13 +1793,13 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 
 		// Finally, replace our current temp directory with the new one.
 		dirOld := dir + ".old"
-		if err := os.Rename(dir, dirOld); err != nil {
+		if err := os.Rename(dir, dirOld); err != nil { //nolint:forbidigo // test usage is OK
 			return fmt.Errorf("Couldn't rename %v to %v: %w", dir, dirOld, err)
 		}
 
 		// There's a brief window here where the old temp dir name could be taken from us.
 
-		if err := os.Rename(newDir, dir); err != nil {
+		if err := os.Rename(newDir, dir); err != nil { //nolint:forbidigo // test usage is OK
 			return fmt.Errorf("Couldn't rename %v to %v: %w", newDir, dir, err)
 		}
 

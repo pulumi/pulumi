@@ -5,6 +5,7 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
+import * as pulumi_alias_pb from "./alias_pb";
 import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
@@ -63,11 +64,6 @@ export class ProviderHandshakeResponse extends jspb.Message {
     getSupportsAutonamingConfiguration(): boolean;
     setSupportsAutonamingConfiguration(value: boolean): ProviderHandshakeResponse;
 
-    hasPulumiVersionRange(): boolean;
-    clearPulumiVersionRange(): void;
-    getPulumiVersionRange(): string | undefined;
-    setPulumiVersionRange(value: string): ProviderHandshakeResponse;
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
     static toObject(includeInstance: boolean, msg: ProviderHandshakeResponse): ProviderHandshakeResponse.AsObject;
@@ -84,7 +80,6 @@ export namespace ProviderHandshakeResponse {
         acceptResources: boolean,
         acceptOutputs: boolean,
         supportsAutonamingConfiguration: boolean,
-        pulumiVersionRange?: string,
     }
 }
 
@@ -1219,10 +1214,6 @@ export class ConstructRequest extends jspb.Message {
     clearProtect(): void;
     getProtect(): boolean | undefined;
     setProtect(value: boolean): ConstructRequest;
-    clearAliasesList(): void;
-    getAliasesList(): Array<string>;
-    setAliasesList(value: Array<string>): ConstructRequest;
-    addAliases(value: string, index?: number): string;
     clearAdditionalsecretoutputsList(): void;
     getAdditionalsecretoutputsList(): Array<string>;
     setAdditionalsecretoutputsList(value: Array<string>): ConstructRequest;
@@ -1265,6 +1256,10 @@ export class ConstructRequest extends jspb.Message {
     getReplaceWithList(): Array<string>;
     setReplaceWithList(value: Array<string>): ConstructRequest;
     addReplaceWith(value: string, index?: number): string;
+    clearAliasesList(): void;
+    getAliasesList(): Array<pulumi_alias_pb.Alias>;
+    setAliasesList(value: Array<pulumi_alias_pb.Alias>): ConstructRequest;
+    addAliases(value?: pulumi_alias_pb.Alias, index?: number): pulumi_alias_pb.Alias;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConstructRequest.AsObject;
@@ -1297,7 +1292,6 @@ export namespace ConstructRequest {
         configsecretkeysList: Array<string>,
         organization: string,
         protect?: boolean,
-        aliasesList: Array<string>,
         additionalsecretoutputsList: Array<string>,
         customtimeouts?: ConstructRequest.CustomTimeouts.AsObject,
         deletedwith: string,
@@ -1309,6 +1303,7 @@ export namespace ConstructRequest {
         resourceHooks?: ConstructRequest.ResourceHooksBinding.AsObject,
         stackTraceHandle: string,
         replaceWithList: Array<string>,
+        aliasesList: Array<pulumi_alias_pb.Alias.AsObject>,
     }
 
 
@@ -1385,6 +1380,10 @@ export namespace ConstructRequest {
         getAfterDeleteList(): Array<string>;
         setAfterDeleteList(value: Array<string>): ResourceHooksBinding;
         addAfterDelete(value: string, index?: number): string;
+        clearOnErrorList(): void;
+        getOnErrorList(): Array<string>;
+        setOnErrorList(value: Array<string>): ResourceHooksBinding;
+        addOnError(value: string, index?: number): string;
 
         serializeBinary(): Uint8Array;
         toObject(includeInstance?: boolean): ResourceHooksBinding.AsObject;
@@ -1404,6 +1403,7 @@ export namespace ConstructRequest {
             afterUpdateList: Array<string>,
             beforeDeleteList: Array<string>,
             afterDeleteList: Array<string>,
+            onErrorList: Array<string>,
         }
     }
 

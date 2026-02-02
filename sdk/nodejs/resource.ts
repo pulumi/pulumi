@@ -20,6 +20,7 @@ import {
     getResource,
     readResource,
     registerResource,
+    registerErrorHook,
     registerResourceHook,
     registerResourceOutputs,
     SourcePosition,
@@ -1158,6 +1159,101 @@ export interface ResourceHookArgs {
 export type ResourceHookFunction = (args: ResourceHookArgs) => void | Promise<void>;
 
 /**
+ * ErrorHookArgs represents the arguments passed to an error hook.
+ *
+ * Depending on the failed operation, only some of the new/old inputs/outputs are set.
+ *
+ * | Failed Operation | old_inputs | new_inputs | old_outputs |
+ * | ---------------- | ---------- | ---------- | ----------- |
+ * | create           |            | ✓          |             |
+ * | update           | ✓          | ✓          | ✓           |
+ * | delete           | ✓          |            | ✓           |
+ */
+export interface ErrorHookArgs {
+    /**
+     * The URN of the resource that triggered the hook.
+     */
+    urn: URN;
+    /**
+     * The ID of the resource that triggered the hook.
+     */
+    id: ID;
+    /**
+     * The name of the resource that triggered the hook.
+     */
+    name: string;
+    /**
+     * The type of the resource that triggered the hook.
+     */
+    type: string;
+    /**
+     * The new inputs of the resource that triggered the hook.
+     */
+    newInputs?: Record<string, any>;
+    /**
+     * The old inputs of the resource that triggered the hook.
+     */
+    oldInputs?: Record<string, any>;
+    /**
+     * The old outputs of the resource that triggered the hook.
+     */
+    oldOutputs?: Record<string, any>;
+    /**
+     * The operation that failed (create, update, or delete).
+     */
+    failedOperation: string;
+    /**
+     * The errors that have been seen so far (newest first).
+     */
+    errors: string[];
+}
+
+/**
+ * ErrorHookFunction is a function that can be registered as an error hook.
+ * Returns true to retry the operation, false to not retry.
+ */
+export type ErrorHookFunction = (args: ErrorHookArgs) => boolean | Promise<boolean>;
+
+/**
+ * ErrorHook is a named hook that can be registered as an error hook.
+ */
+export class ErrorHook {
+    /**
+     * The unique name of the error hook.
+     */
+    public name: string;
+    /**
+     * The function that will be called when the error hook is triggered.
+     */
+    public callback: ErrorHookFunction;
+
+    /**
+     * Tracks the registration of the error hook. The promise will resolve
+     * once the hook has been registered, or reject if any error occurs.
+     *
+     * @internal
+     */
+    public __registered: Promise<void>;
+
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     *
+     * @internal
+     */
+    public readonly __pulumiErrorHook: boolean = true;
+
+    constructor(name: string, callback: ErrorHookFunction) {
+        this.name = name;
+        this.callback = callback;
+        this.__registered = registerErrorHook(this);
+    }
+
+    public static isInstance(obj: any): obj is ErrorHook {
+        return utils.isInstance<ErrorHook>(obj, "__pulumiErrorHook");
+    }
+}
+
+/**
  * Binds {@link ResourceHook} instances to a resource. The resource hooks will
  * be invoked during certain step of the lifecycle of the resource.
  *
@@ -1204,6 +1300,13 @@ export interface ResourceHookBinding {
      * deleted.
      */
     afterDelete?: Array<ResourceHook>;
+    /**
+     * Hooks to be invoked when an operation fails and is retryable.
+     *
+     * Note that error hooks require named {@link ErrorHook} instances, and do not accept anonymous functions.
+     * The callback can return true to retry the operation, or false to not retry.
+     */
+    onError?: Array<ErrorHook>;
 }
 
 /**

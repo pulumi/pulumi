@@ -48,7 +48,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -290,11 +289,6 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	}
 
 	if handshakeRes != nil {
-		if err := validatePulumiVersionRange(handshakeRes.PulumiVersionRange, version.Version, string(pkg)); err != nil {
-			contract.IgnoreClose(p)
-			return nil, err
-		}
-
 		p.protocol = &pluginProtocol{
 			acceptSecrets:                   handshakeRes.AcceptSecrets,
 			acceptResources:                 handshakeRes.AcceptResources,
@@ -348,7 +342,6 @@ func handshake(
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
-		PulumiVersionRange:              res.GetPulumiVersionRange(),
 	}, nil
 }
 
@@ -417,11 +410,6 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 	}
 
 	if handshakeRes != nil {
-		if err := validatePulumiVersionRange(handshakeRes.PulumiVersionRange, version.Version, string(pkg)); err != nil {
-			contract.IgnoreClose(p)
-			return nil, err
-		}
-
 		p.protocol = &pluginProtocol{
 			acceptSecrets:                   handshakeRes.AcceptSecrets,
 			acceptResources:                 handshakeRes.AcceptResources,
@@ -524,7 +512,6 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
-		PulumiVersionRange:              res.GetPulumiVersionRange(),
 	}, nil
 }
 
@@ -1918,6 +1905,31 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		resourceHook.AfterDelete = req.Options.ResourceHooks[resource.AfterDelete]
 	}
 
+	aliases := make([]*pulumirpc.Alias, len(req.Options.Aliases))
+	for i, alias := range req.Options.Aliases {
+		var result *pulumirpc.Alias
+		if alias.URN != "" {
+			result = &pulumirpc.Alias{Alias: &pulumirpc.Alias_Urn{Urn: string(alias.URN)}}
+		} else {
+			spec := &pulumirpc.Alias_Spec{
+				Type:    alias.Type,
+				Name:    alias.Name,
+				Stack:   alias.Stack,
+				Project: alias.Project,
+			}
+			if alias.NoParent {
+				spec.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: true}
+			} else if alias.Parent != "" {
+				spec.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(alias.Parent)}
+			}
+
+			result = &pulumirpc.Alias{Alias: &pulumirpc.Alias_Spec_{
+				Spec: spec,
+			}}
+		}
+		aliases[i] = result
+	}
+
 	rpcReq := &pulumirpc.ConstructRequest{
 		Project:                 req.Info.Project,
 		Stack:                   req.Info.Stack,
@@ -1933,7 +1945,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		Protect:                 req.Options.Protect,
 		Providers:               req.Options.Providers,
 		InputDependencies:       inputDependencies,
-		Aliases:                 aliasURNs,
+		Aliases:                 aliases,
 		Dependencies:            dependencies,
 		AdditionalSecretOutputs: req.Options.AdditionalSecretOutputs,
 		DeletedWith:             string(req.Options.DeletedWith),

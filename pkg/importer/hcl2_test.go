@@ -426,7 +426,7 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	// Arrange.
 	pkg := tokens.Package("aws")
 	requestVersion := "4.26.0"
-	loadVersion := "5.16.2"
+	loadVersion := "5.4.0"
 
 	pluginLoader := deploytest.NewProviderLoader(pkg, semver.MustParse(requestVersion), func() (plugin.Provider, error) {
 		return &deploytest.Provider{

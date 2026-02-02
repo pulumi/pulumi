@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -763,6 +765,8 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 					}
 					g.genResource(w, node)
 					g.Fgen(w, "\n")
+				case *pcl.PulumiBlock:
+					g.genPulumi(w, node)
 				}
 			}
 
@@ -822,6 +826,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genOutputVariable(w, n)
 	case *pcl.Component:
 		g.genComponent(w, n)
+	case *pcl.PulumiBlock:
+		g.genPulumi(w, n)
 	}
 }
 
@@ -880,27 +886,24 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf("`%s-${%s}`", baseName, count)
 }
 
-func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
+func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema.Resource) string {
 	if opts == nil {
 		return ""
 	}
 
 	// Turn the resource options into an ObjectConsExpression and generate it.
-	var object *model.ObjectConsExpression
+	var object map[string]model.Expression
 	appendOption := func(name string, value model.Expression) {
 		if object == nil {
-			object = &model.ObjectConsExpression{}
+			object = make(map[string]model.Expression)
 		}
-		object.Items = append(object.Items, model.ObjectConsItem{
-			Key: &model.LiteralValueExpression{
-				Tokens: syntax.NewLiteralValueTokens(cty.StringVal(name)),
-				Value:  cty.StringVal(name),
-			},
-			Value: value,
-		})
+		object[name] = value
 	}
 
 	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
+	if opts.Aliases != nil {
+		appendOption("aliases", opts.Aliases)
+	}
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}
@@ -925,6 +928,21 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.HideDiffs != nil {
 		appendOption("hideDiffs", opts.HideDiffs)
 	}
+	if opts.ReplaceOnChanges != nil {
+		appendOption("replaceOnChanges", opts.ReplaceOnChanges)
+	}
+	if opts.DeleteBeforeReplace != nil {
+		appendOption("deleteBeforeReplace", opts.DeleteBeforeReplace)
+	}
+	if opts.AdditionalSecretOutputs != nil {
+		appendOption("additionalSecretOutputs", opts.AdditionalSecretOutputs)
+	}
+	if opts.CustomTimeouts != nil {
+		appendOption("customTimeouts", opts.CustomTimeouts)
+	}
+	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
+		appendOption("version", opts.Version)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
 	}
@@ -943,7 +961,54 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 
 	var buffer bytes.Buffer
-	g.Fgenf(&buffer, ", %v", g.lowerExpression(object, nil))
+	g.Indented(func() {
+		g.Fprint(&buffer, ", {\n")
+		for _, key := range slices.Sorted(maps.Keys(object)) {
+			value := object[key]
+			g.Fprintf(&buffer, "%s", g.Indent)
+			if key == "aliases" {
+				// aliases might be a list of strings or Alias objects
+				g.Fprint(&buffer, "aliases:[")
+				for i, expr := range value.(*model.TupleConsExpression).Expressions {
+					if i > 0 {
+						g.Fprint(&buffer, ", ")
+					}
+					// If the expression is a string literal, we can inline it directly.
+					if expr.Type().Equals(model.StringType) {
+						g.Fgenf(&buffer, "%v", expr)
+					} else {
+						// Otherwise pull off the fields dynamically.
+						obj := expr.(*model.ObjectConsExpression)
+						g.Fprint(&buffer, "{")
+						for j, item := range obj.Items {
+							if j > 0 {
+								g.Fprint(&buffer, ", ")
+							}
+							// We need a literal key here.
+							key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+							contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+							switch key.AsString() {
+							case "name":
+								g.Fgenf(&buffer, "name: %v", item.Value)
+							case "noParent":
+								g.Fgenf(&buffer, "parent: (%v ? pulumi.rootStackResource : undefined)", item.Value)
+							case "parent":
+								g.Fgenf(&buffer, "parent: %v", item.Value)
+							}
+						}
+						g.Fprint(&buffer, "}")
+					}
+				}
+				g.Fprint(&buffer, "]")
+			} else {
+				g.Fgenf(&buffer, "%s: %v", key, g.lowerExpression(value, nil))
+			}
+			g.Fprint(&buffer, ",\n")
+		}
+	})
+	g.Fprintf(&buffer, "%s}", g.Indent)
+
 	return buffer.String()
 }
 
@@ -958,7 +1023,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
 
-	optionsBag := g.genResourceOptions(r.Options)
+	optionsBag := g.genResourceOptions(r.Options, r.Schema)
 
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
@@ -1165,7 +1230,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	componentName := component.DeclarationName()
 
-	optionsBag := g.genResourceOptions(component.Options)
+	optionsBag := g.genResourceOptions(component.Options, nil)
 
 	name := component.LogicalName()
 	variableName := makeValidIdentifier(component.Name())
@@ -1404,6 +1469,13 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	// TODO(pdg): trivia
 	g.Fgenf(w, "%sexport const %s = %.3v;\n", g.Indent,
 		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
+}
+
+func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
+	if v.RequiredVersion != nil {
+		value := g.lowerExpression(v.RequiredVersion, v.Type())
+		g.Fgenf(w, "%spulumi.requirePulumiVersion(%v);\n", g.Indent, value)
+	}
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {

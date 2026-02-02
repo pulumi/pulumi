@@ -1,0 +1,5 @@
+HasPlugin{PluginDescriptor{Name:"plugin", Kind:"resource", Version:Version{Major:1}}} -> {true}
+GetPluginPath{ctx, PluginDescriptor{Name:"plugin", Kind:"resource", Version:Version{Major:1}}} -> {"$HOME/.pulumi/plugins/resource-plugin-v1.0.0", nil}
+LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-v1.0.0"} -> {nil, "", wrapErrors{msg:"no project file found and no plugin file found", errs:[2]{errorString{s:"no project file found"}, errorString{s:"no plugin file found"}}}}
+IsExecutable{ctx, "$HOME/.pulumi/plugins/resource-plugin-v1.0.0/pulumi-resource-plugin"} -> {true, nil}
+RunPackage{ctx, "/tmp", "$HOME/.pulumi/plugins/resource-plugin-v1.0.0/pulumi-resource-plugin", "plugin", ParameterizeArgs{Args:[1]{"parameterization"}}} -> {invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-v1.0.0"}, nil}

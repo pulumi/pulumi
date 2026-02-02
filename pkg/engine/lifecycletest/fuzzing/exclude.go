@@ -31,14 +31,20 @@ type ExclusionRules []ExclusionRule
 func DefaultExclusionRules() ExclusionRules {
 	return []ExclusionRule{
 		ExcludeDestroyAndRefreshProgramSet,
+		// TODO[pulumi/pulumi#21433]
+		ExcludeResourceDeletedWithMarkedForDeletionResourceUpdate,
 		// TODO[pulumi/pulumi#21404]
 		ExcludeResourcePendingReplacementChangingParentRefreshProgram,
+		// TODO[pulumi/pulumi#21426]
+		ExcludeUpdateWithDependencyOnAliasedResource,
 		// TODO[pulumi/pulumi#21386]
 		ExcludeChildProviderOfDuplicateResourceRefresh,
+		// TODO[pulumi/pulumi#21431]
+		ExcludeTargetsRefreshV2,
 		// TODO[pulumi/pulumi#21277]
 		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
 		// TODO[pulumi/pulumi#21347]
-		ExcludeResourceWithTargetedDependencyDestroyV2,
+		ExcludeResourceWithTargetedDependency,
 		// TODO[pulumi/pulumi#21282]
 		ExcludeTargetedAliasDestroyV2,
 		// TODO[pulumi/pulumi#21364]
@@ -86,11 +92,14 @@ func ExcludeDestroyAndRefreshProgramSet(
 // can appear after it in the resulting snapshot.
 func ExcludeChildProviderOfDuplicateResourceRefresh(
 	snap *SnapshotSpec,
-	_ *ProgramSpec,
+	prog *ProgramSpec,
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
-	if plan.Operation != PlanOperationRefresh && !plan.Refresh && !plan.RefreshProgram {
+	if plan.Operation != PlanOperationRefresh &&
+		plan.Operation != PlanOperationRefreshV2 &&
+		!plan.Refresh &&
+		!plan.RefreshProgram {
 		return false
 	}
 
@@ -111,6 +120,12 @@ func ExcludeChildProviderOfDuplicateResourceRefresh(
 		}
 
 		if urnCounts[res.Parent] > 1 && deletedURNs[res.Parent] {
+			return true
+		}
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent != "" && deletedURNs[res.Parent] {
 			return true
 		}
 	}
@@ -159,6 +174,50 @@ func ExcludeResourcePendingReplacementChangingParentRefreshProgram(
 	return false
 }
 
+func ExcludeUpdateWithDependencyOnAliasedResource(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate {
+		return false
+	}
+
+	aliasMap := make(map[resource.URN]bool)
+	for _, res := range prog.ResourceRegistrations {
+		for _, alias := range res.Aliases {
+			aliasMap[alias] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent != "" && aliasMap[res.Parent] {
+			return true
+		}
+
+		if res.DeletedWith != "" && aliasMap[res.DeletedWith] {
+			return true
+		}
+
+		for _, dep := range res.Dependencies {
+			if aliasMap[dep] {
+				return true
+			}
+		}
+
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if aliasMap[dep] {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 // ExcludeTargetedAlias excludes programs where a resource is renamed with an old
 // alias, and the new name of the resource is targeted for deletion.
 func ExcludeTargetedAliasDestroyV2(
@@ -184,16 +243,16 @@ func ExcludeTargetedAliasDestroyV2(
 	return false
 }
 
-// ExcludeResourceWithTargetedDependencyDestroyV2 excludes snapshots where a resource has a
+// ExcludeResourceWithTargetedDependency excludes snapshots where a resource has a
 // dependency (Parent, DeletedWith, Dependencies, or PropertyDependencies) pointing to a targeted
 // resource during a destroy v2 operation.
-func ExcludeResourceWithTargetedDependencyDestroyV2(
+func ExcludeResourceWithTargetedDependency(
 	spec *SnapshotSpec,
 	prog *ProgramSpec,
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
-	if plan.Operation != PlanOperationDestroyV2 {
+	if plan.Operation != PlanOperationDestroyV2 && plan.Operation != PlanOperationRefreshV2 {
 		return false
 	}
 
@@ -466,6 +525,45 @@ func ExcludeRefreshWithTargetedProviderParentChangeDestroyV2(
 		if targetURNs[res.URN()] {
 			return true
 		}
+	}
+
+	return false
+}
+
+func ExcludeResourceDeletedWithMarkedForDeletionResourceUpdate(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	_ *PlanSpec,
+) bool {
+	deletedResources := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if res.Delete {
+			deletedResources[res.URN()] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.DeletedWith != "" && deletedResources[res.DeletedWith] {
+			return true
+		}
+	}
+
+	return false
+}
+
+func ExcludeTargetsRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 {
+		return false
+	}
+
+	if len(plan.TargetURNs) > 0 {
+		return true
 	}
 
 	return false

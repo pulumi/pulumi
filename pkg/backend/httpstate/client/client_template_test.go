@@ -400,9 +400,8 @@ func TestPublishTemplate_Integration(t *testing.T) {
 
 			// Create a mock cloud registry that uses the HTTP client methods
 			client := &Client{
-				apiURL:     server.URL,
-				apiToken:   "fake-token",
-				httpClient: httpClient,
+				apiURL:   server.URL,
+				apiToken: "fake-token",
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: httpClient,

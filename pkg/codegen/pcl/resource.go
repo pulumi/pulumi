@@ -20,6 +20,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // ResourceOptions represents a resource instantiation's options.
@@ -27,6 +29,8 @@ type ResourceOptions struct {
 	// The definition of the resource options.
 	Definition *model.Block
 
+	// An experession that evaluates to a list of aliases for the resource.
+	Aliases model.Expression
 	// An expression to range over when instantiating the resource.
 	Range model.Expression
 	// The resource's parent, if any.
@@ -46,8 +50,16 @@ type ResourceOptions struct {
 	IgnoreChanges model.Expression
 	// A list of properties where the diff is not displayed.
 	HideDiffs model.Expression
+	// A list of properties that should trigger resource replacement when changed.
+	ReplaceOnChanges model.Expression
+	// Whether the old resource should be deleted before creating the new one during replacement.
+	DeleteBeforeReplace model.Expression
+	// A list of output properties that should be treated as secret, in addition to ones detected from schema.
+	AdditionalSecretOutputs model.Expression
 	// The version of the provider for this resource.
 	Version model.Expression
+	// CustomTimeouts overrides default timeouts for resource CRUD operations.
+	CustomTimeouts model.Expression
 	// The plugin download URL for this resource.
 	PluginDownloadURL model.Expression
 	// If set, the provider's Delete method will not be called for this resource if the specified resource is being
@@ -170,4 +182,37 @@ func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable,
 
 func (p *ResourceProperty) Type() model.Type {
 	return ResourcePropertyType
+}
+
+// NeedsVersionResourceOption returns false if the version resource matches the version in the schema.
+//
+// Languages that bake versions into their generated schemas can use NeedsVersionResourceOption to omit redundant
+// version information.
+func NeedsVersionResourceOption(version model.Expression, schema *schema.Resource) bool {
+	if version == nil {
+		return false
+	}
+
+	if schema == nil {
+		return true
+	}
+
+	v := schema.PackageReference.Version()
+	if v == nil {
+		return true
+	}
+
+	e, ok := version.(*model.TemplateExpression)
+	contract.Assertf(ok, "Expected a model.TemplateExpression, found %T", version)
+	if len(e.Parts) != 1 {
+		return true
+	}
+
+	optV, ok := e.Parts[0].(*model.LiteralValueExpression)
+	contract.Assertf(ok, "Expected a version literal, found %T", optV)
+	if !optV.Value.Type().Equals(cty.String) || !optV.Value.IsKnown() || optV.Value.IsNull() {
+		return true
+	}
+
+	return v.String() != optV.Value.AsString()
 }

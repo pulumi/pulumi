@@ -1168,7 +1168,7 @@ func TestExchangeOidcToken(t *testing.T) {
 			}
 
 			accessToken, expiresAt, err := exchangeOidcToken(
-				diagtest.LogSink(t), cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expiration,
+				t.Context(), diagtest.LogSink(t), cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expiration,
 			)
 
 			if tt.wantErr {

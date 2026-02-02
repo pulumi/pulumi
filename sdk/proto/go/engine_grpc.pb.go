@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,10 +34,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Engine_Log_FullMethodName             = "/pulumirpc.Engine/Log"
-	Engine_GetRootResource_FullMethodName = "/pulumirpc.Engine/GetRootResource"
-	Engine_SetRootResource_FullMethodName = "/pulumirpc.Engine/SetRootResource"
-	Engine_StartDebugging_FullMethodName  = "/pulumirpc.Engine/StartDebugging"
+	Engine_Log_FullMethodName                  = "/pulumirpc.Engine/Log"
+	Engine_GetRootResource_FullMethodName      = "/pulumirpc.Engine/GetRootResource"
+	Engine_SetRootResource_FullMethodName      = "/pulumirpc.Engine/SetRootResource"
+	Engine_StartDebugging_FullMethodName       = "/pulumirpc.Engine/StartDebugging"
+	Engine_RequirePulumiVersion_FullMethodName = "/pulumirpc.Engine/RequirePulumiVersion"
 )
 
 // EngineClient is the client API for Engine service.
@@ -58,6 +59,8 @@ type EngineClient interface {
 	// StartDebugging indicates to the engine that the program has started under a debugger, and the engine
 	// should notify the user of how to connect to the debugger.
 	StartDebugging(ctx context.Context, in *StartDebuggingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// RequirePulumiVersion checks that the version of the engine satisfies the passed in range.
+	RequirePulumiVersion(ctx context.Context, in *RequirePulumiVersionRequest, opts ...grpc.CallOption) (*RequirePulumiVersionResponse, error)
 }
 
 type engineClient struct {
@@ -108,6 +111,16 @@ func (c *engineClient) StartDebugging(ctx context.Context, in *StartDebuggingReq
 	return out, nil
 }
 
+func (c *engineClient) RequirePulumiVersion(ctx context.Context, in *RequirePulumiVersionRequest, opts ...grpc.CallOption) (*RequirePulumiVersionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequirePulumiVersionResponse)
+	err := c.cc.Invoke(ctx, Engine_RequirePulumiVersion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EngineServer is the server API for Engine service.
 // All implementations must embed UnimplementedEngineServer
 // for forward compatibility.
@@ -126,6 +139,8 @@ type EngineServer interface {
 	// StartDebugging indicates to the engine that the program has started under a debugger, and the engine
 	// should notify the user of how to connect to the debugger.
 	StartDebugging(context.Context, *StartDebuggingRequest) (*emptypb.Empty, error)
+	// RequirePulumiVersion checks that the version of the engine satisfies the passed in range.
+	RequirePulumiVersion(context.Context, *RequirePulumiVersionRequest) (*RequirePulumiVersionResponse, error)
 	mustEmbedUnimplementedEngineServer()
 }
 
@@ -147,6 +162,9 @@ func (UnimplementedEngineServer) SetRootResource(context.Context, *SetRootResour
 }
 func (UnimplementedEngineServer) StartDebugging(context.Context, *StartDebuggingRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartDebugging not implemented")
+}
+func (UnimplementedEngineServer) RequirePulumiVersion(context.Context, *RequirePulumiVersionRequest) (*RequirePulumiVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequirePulumiVersion not implemented")
 }
 func (UnimplementedEngineServer) mustEmbedUnimplementedEngineServer() {}
 func (UnimplementedEngineServer) testEmbeddedByValue()                {}
@@ -241,6 +259,24 @@ func _Engine_StartDebugging_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Engine_RequirePulumiVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequirePulumiVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).RequirePulumiVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_RequirePulumiVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).RequirePulumiVersion(ctx, req.(*RequirePulumiVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Engine_ServiceDesc is the grpc.ServiceDesc for Engine service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -263,6 +299,10 @@ var Engine_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StartDebugging",
 			Handler:    _Engine_StartDebugging_Handler,
+		},
+		{
+			MethodName: "RequirePulumiVersion",
+			Handler:    _Engine_RequirePulumiVersion_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

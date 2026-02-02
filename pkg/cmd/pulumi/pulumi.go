@@ -303,7 +303,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			} else {
 				logging.V(3).Info("Pulumi " + ver.String())
 			}
-			metadata := getCLIMetadata(cmd, os.Environ())
+			metadata := getCLIMetadata(cmd, os.Environ(), args)
 			logging.V(9).Infof("CLI Metadata: %v", metadata)
 
 			if profiling != "" {
@@ -589,7 +589,7 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 }
 
 // getCLIMetadata returns a map of metadata about the given CLI command.
-func getCLIMetadata(cmd *cobra.Command, environ []string) map[string]string {
+func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[string]string {
 	if cmd == nil {
 		return nil
 	}
@@ -607,6 +607,12 @@ func getCLIMetadata(cmd *cobra.Command, environ []string) map[string]string {
 			i++
 		}
 	})
+
+	if command == "pulumi plugin run" {
+		if len(args) > 0 {
+			command += " " + args[0]
+		}
+	}
 
 	env := []string{}
 	for _, e := range environ {

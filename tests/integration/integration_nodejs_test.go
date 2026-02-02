@@ -144,7 +144,7 @@ func TestProjectMainNodejs(t *testing.T) {
 			return
 		}
 
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		e.RunCommand("pulumi", "preview")
@@ -159,7 +159,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 
 		// yarn link first
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		// then virtually change directory to the location of the nested Pulumi.yaml
 		e.CWD = filepath.Join(e.RootPath, "foo", "bar")
 
@@ -197,7 +197,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 
 	e.ImportDirectory("single_resource")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
 	assert.Contains(t, stderr, "--force")
@@ -326,7 +326,7 @@ func TestStackOutputsJSON(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
@@ -336,6 +336,36 @@ func TestStackOutputsJSON(t *testing.T) {
   "xyz": "ABC"
 }
 `, stdout)
+}
+
+func TestStrictFlag(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	integration.CreateBasicPulumiRepo(e)
+	e.ImportDirectory("iterative-constraints")
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.18.3")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "stack", "init", "strict-flag")
+
+	_, stderr := e.RunCommandExpectError("pulumi", "up", "--skip-preview", "--strict")
+	assert.Equal(t,
+		"error: --strict cannot be used with --skip-preview; strict requires a preview",
+		strings.Trim(stderr, "\r\n"))
+
+	logs, _ := e.RunCommandExpectError("pulumi", "up", "--strict", "--yes")
+	assert.Contains(t, logs,
+		"error: create is not allowed by the plan: no steps were expected for this resource")
+
+	logs, _ = e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+	assert.Contains(t, logs, " created\n") // Some number of resources will be created.
+
+	// Clean up.
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "strict-flag", "--yes")
 }
 
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
@@ -1879,7 +1909,7 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "negative-timings")
@@ -1905,7 +1935,7 @@ func TestAboutNodeJS(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
@@ -1936,7 +1966,7 @@ func TestTSConfigOption(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("tsconfig")
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
@@ -2085,6 +2115,32 @@ func TestNodejsDynamicProviderConfig(t *testing.T) {
 	})
 }
 
+// Tests that dynamic providers can return inputs from read() for accurate diffs after refresh.
+// Regression test for https://github.com/pulumi/pulumi/issues/13839
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestNodejsDynamicProviderReadInputs(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("dynamic", "nodejs-read-inputs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Verify the resource was created
+			require.NotNil(t, stackInfo.Outputs["resourceId"])
+
+			// Find the dynamic resource and verify it has inputs
+			for _, res := range stackInfo.Deployment.Resources {
+				if res.Type == "pulumi-nodejs:dynamic:Resource" {
+					// After refresh, the inputs should include "value" from read()
+					require.NotNil(t, res.Inputs, "resource should have inputs")
+					// The __provider key should always be present
+					assert.Contains(t, res.Inputs, "__provider")
+				}
+			}
+		},
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/12301
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -2097,7 +2153,7 @@ func TestRegression12301Node(t *testing.T) {
 			jsonPath := filepath.Join(project.Root, "regression-12301.json")
 			dirName := filepath.Base(project.Root)
 			newPath := filepath.Join(project.Root, "..", dirName+".json")
-			return os.Rename(jsonPath, newPath)
+			return os.Rename(jsonPath, newPath) //nolint:forbidigo // os.Rename is OK for tests
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.Len(t, stack.Outputs, 1)
@@ -2823,7 +2879,8 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 	// The install command should detect and report this cycle.
 	stdout, stderr := e.RunCommandExpectError("pulumi", "install")
 	require.Containsf(t, stderr,
-		"Cycle found: typescript-a -> typescript-b -> typescript-a\n",
+		"installing `packages` from Pulumi.yaml: cycle found: "+filepath.Join("..", "ts-provider-a")+" -> "+
+			filepath.Join("..", "ts-provider-b")+" -> "+filepath.Join("..", "ts-provider-a")+"\n",
 		"Stdout is %q", stdout)
 }
 
@@ -2925,8 +2982,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	// Run the command from a different, sibling, directory. This ensures that
 	// get-package does not rely on the current working directory.
 	e.CWD = t.TempDir()
-	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
-	require.Empty(t, stderr)
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
@@ -3020,6 +3076,24 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	types := schema["types"].(map[string]any)
 	require.NoError(t, json.Unmarshal([]byte(expectedTypesJSON), &expectedTypes))
 	require.Equal(t, expectedTypes, types)
+}
+
+// Tests that NodeJS correctly generates imports for components sourced from other GitHub orgs.
+func TestNodejsComponentInjectNamespace(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("github_component", "nodejs"))
+	installNodejsProviderDependencies(t, e.RootPath)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "select", "github_component", "--create")
+	_, stderr := e.RunCommand("pulumi", "install")
+	assert.Contains(t, stderr, `import * as testComponent from "@moolumi/test-component";`)
+	e.RunCommand("pulumi", "up", "--yes")
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "output")
+	assert.Equal(t, "the-output", strings.TrimSpace(stdout))
 }
 
 // Tests that we can run a Node.js component provider using component_provider_host

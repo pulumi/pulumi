@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -192,7 +193,6 @@ func newSearchCmd() *cobra.Command {
 		Use:   "search",
 		Short: "Search for resources in Pulumi Cloud",
 		Long:  "Search for resources in Pulumi Cloud.",
-		Args:  cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			if len(scmd.queryParams) == 0 {
@@ -201,6 +201,8 @@ func newSearchCmd() *cobra.Command {
 			return scmd.Run(ctx, args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newSearchAICmd())
 

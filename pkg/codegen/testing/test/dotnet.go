@@ -28,50 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-func GenerateDotnetProgramTest(
-	t *testing.T,
-	genProgram GenProgram,
-	genProject GenProject,
-) {
-	expectedVersion := map[string]PkgVersionInfo{
-		"aws-resource-options-4.26": {
-			Pkg:          "<PackageReference Include=\"Pulumi.Aws\"",
-			OpAndVersion: "Version=\"4.26.0\"",
-		},
-		"aws-resource-options-5.16.2": {
-			Pkg:          "<PackageReference Include=\"Pulumi.Aws\"",
-			OpAndVersion: "Version=\"5.16.2\"",
-		},
-	}
-
-	TestProgramCodegen(t,
-		ProgramCodegenOptions{
-			Language:   "dotnet",
-			Extension:  "cs",
-			OutputFile: "Program.cs",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				checkDotnet(t, path, dependencies, "")
-			},
-			GenProgram: genProgram,
-			TestCases: []ProgramTest{
-				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
-				},
-			},
-
-			IsGenProject:    true,
-			GenProject:      genProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "test.csproj",
-		},
-	)
-}
-
 func GenerateDotnetBatchTest(t *testing.T, rootDir string, genProgram GenProgram, testCases []ProgramTest) {
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{

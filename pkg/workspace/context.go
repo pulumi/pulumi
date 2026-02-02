@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"context"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -32,6 +33,22 @@ type Context interface {
 	// directory, which will be used as the root of the project's Pulumi program.
 	ReadProject() (*workspace.Project, string, error)
 
+	// LoadPluginProjectAt reads a plugin project definition in the given directory. If no project is found,
+	// [workspace.ErrPluginNotFound] is returned.
+	//
+	// LoadPluginProjectAt does not search upwards from path.
+	LoadPluginProjectAt(ctx context.Context, path string) (*workspace.PluginProject, string, error)
+
+	// Detect the nearest enclosing Pulumi Project or Pulumi Plugin root directory.
+	//
+	// The returned [BaseProject] will be one of:
+	// - *[PluginProject]
+	// - *[Project]
+	//
+	// The returned string is the path to the returned file. If no plugin or project is found
+	// upwards of path, then [ErrBaseProjectNotFound] will be returned.
+	LoadBaseProjectFrom(ctx context.Context, path string) (workspace.BaseProject, string, error)
+
 	// GetStoredCredentials returns any credentials stored on the local machine.
 	GetStoredCredentials() (workspace.Credentials, error)
 }
@@ -40,11 +57,11 @@ var Instance Context = &workspaceContext{}
 
 type workspaceContext struct{}
 
-func (c *workspaceContext) New() (W, error) {
+func (*workspaceContext) New() (W, error) {
 	return newW()
 }
 
-func (c *workspaceContext) ReadProject() (*workspace.Project, string, error) {
+func (*workspaceContext) ReadProject() (*workspace.Project, string, error) {
 	proj, path, err := workspace.DetectProjectAndPath()
 	if err != nil {
 		return nil, "", err
@@ -53,6 +70,22 @@ func (c *workspaceContext) ReadProject() (*workspace.Project, string, error) {
 	return proj, filepath.Dir(path), nil
 }
 
-func (c *workspaceContext) GetStoredCredentials() (workspace.Credentials, error) {
+func (*workspaceContext) GetStoredCredentials() (workspace.Credentials, error) {
 	return workspace.GetStoredCredentials()
+}
+
+func (*workspaceContext) LoadPluginProjectAt(_ context.Context, path string) (*workspace.PluginProject, string, error) {
+	path, err := workspace.DetectPluginPathAt(path)
+	if err != nil {
+		return nil, "", err
+	}
+	proj, err := workspace.LoadPluginProject(path)
+	if err != nil {
+		return nil, "", err
+	}
+	return proj, path, err
+}
+
+func (*workspaceContext) LoadBaseProjectFrom(ctx context.Context, path string) (workspace.BaseProject, string, error) {
+	return workspace.LoadBaseProjectFrom(path)
 }

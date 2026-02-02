@@ -144,6 +144,42 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	return pctx, nil
 }
 
+// NewContextWithHost creates a new [Context] without interacting with global state.
+//
+// Unilke [NewDefaultContext] or [NewContextWithRoot], NewContextWithHost does not accept
+// a nil host.
+//
+// d, statusD and parentSpan may all be nil.
+func NewContextWithHost(
+	ctx context.Context,
+	d, statusD diag.Sink,
+	host Host,
+	pwd, root string,
+	parentSpan opentracing.Span,
+) *Context {
+	contract.Assertf(host != nil, "NewContextWithHost requires a non-nil host")
+	if d == nil {
+		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	}
+	if statusD == nil {
+		statusD = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	return &Context{
+		Diag:            d,
+		StatusDiag:      statusD,
+		Host:            host,
+		Pwd:             pwd,
+		Root:            root,
+		tracingSpan:     parentSpan,
+		DebugTraceMutex: &sync.Mutex{},
+		cancel:          cancel,
+		baseContext:     ctx,
+	}
+}
+
 // Base returns this plugin context's base context; this is useful for things like cancellation.
 func (ctx *Context) Base() context.Context {
 	return ctx.baseContext

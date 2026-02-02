@@ -1,0 +1,11 @@
+{
+	"name": "l2-resource-option-replace-on-changes",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/replaceonchanges": "ROOT/artifacts/pulumi-replaceonchanges-25.0.0.tgz"
+	}
+}

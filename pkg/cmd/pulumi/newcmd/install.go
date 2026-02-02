@@ -15,11 +15,24 @@
 package newcmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	utilCmdutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -43,4 +56,39 @@ func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 	}
 
 	return nil
+}
+
+// InstallPackagesFromProject processes packages specified in the Pulumi.yaml file
+// and installs them using similar logic to the 'pulumi package add' command
+func InstallPackagesFromProject(
+	ctx context.Context, proj workspace.BaseProject, root string, registry registry.Registry,
+	parallelism int, useLanguageVersionTools bool,
+	stdout, stderr io.Writer, e env.Env,
+) error {
+	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
+		Color: utilCmdutil.GetGlobalColorization(),
+	})
+	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil)
+	if err != nil {
+		return err
+	}
+	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, stdout, stderr, nil,
+		packageworkspace.Options{
+			UseLanguageVersionTools: useLanguageVersionTools,
+		})
+	opts := packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveWithRegistry: env.Experimental.Value() &&
+				!env.DisableRegistryResolve.Value(),
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: parallelism,
+	}
+	err = packageinstallation.InstallProjectPlugins(ctx, proj, root, opts, registry, ws)
+	if e := (packageinstallation.ErrorCyclicDependencies{}); errors.As(err, &e) {
+		err = cmdDiag.FormatCyclicInstallError(ctx, e, root)
+	}
+
+	return errors.Join(err, pctx.Close())
 }

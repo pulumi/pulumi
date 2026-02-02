@@ -15,10 +15,13 @@
 package client
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRetryPolicy_String(t *testing.T) {
@@ -110,4 +113,34 @@ func TestRetryPolicy_shouldRetry(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestHTTPClientUserAgent(t *testing.T) {
+	t.Parallel()
+
+	var inReq *http.Request
+	client := &defaultHTTPClient{
+		&http.Client{
+			Transport: &errorTransport{
+				roundTripFunc: func(req *http.Request) (*http.Response, error) {
+					inReq = req
+
+					// Return a response with a failing body reader
+					return &http.Response{
+						StatusCode: 200,
+						Status:     "200 OK",
+						Body:       io.NopCloser(bytes.NewReader(nil)),
+					}, nil
+				},
+			},
+		},
+	}
+
+	req, err := http.NewRequest("GET", "/some/url", nil)
+	require.NoError(t, err)
+
+	_, err = client.Do(req, retryAllMethods)
+	require.NoError(t, err)
+
+	assert.Equal(t, UserAgent(), inReq.Header.Get("User-Agent"))
 }

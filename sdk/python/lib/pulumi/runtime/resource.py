@@ -295,8 +295,11 @@ async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
     parent_urn: str = ""
     no_parent: bool = False
 
-    if resolved_alias.name is not ... and resolved_alias.name is not None:
-        name = resolved_alias.name
+    try:
+        if resolved_alias.name is not ... and resolved_alias.name is not None:
+            name = resolved_alias.name
+    except Exception as exn:
+        raise Exception(f"Bad alias object {resolved_alias}: {exn}") from exn
 
     if resolved_alias.type_ is not ... and resolved_alias.type_ is not None:
         resource_type = resolved_alias.type_

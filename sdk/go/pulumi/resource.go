@@ -357,8 +357,32 @@ type ResourceHookArgs struct {
 	OldOutputs resource.PropertyMap // The old outputs of the resource that triggered the hook.
 }
 
+// ErrorHookArgs represents the arguments passed to an error hook.
+//
+// Depending on the failed operation, only some of the new/old inputs/outputs are set.
+//
+// | Failed Operation | old_inputs | new_inputs | old_outputs |
+// | ---------------- | ---------- | ---------- | ----------- |
+// | create           |            | ✓          |             |
+// | update           | ✓          | ✓          | ✓           |
+// | delete           | ✓          |            | ✓           |
+type ErrorHookArgs struct {
+	URN             URN                  // The URN of the resource that triggered the hook.
+	ID              ID                   // The ID of the resource that triggered the hook.
+	Name            string               // The name of the resource that triggered the hook.
+	Type            tokens.Type          // The type of the resource that triggered the hook.
+	NewInputs       resource.PropertyMap // The new inputs of the resource that triggered the hook.
+	OldInputs       resource.PropertyMap // The old inputs of the resource that triggered the hook.
+	OldOutputs      resource.PropertyMap // The old outputs of the resource that triggered the hook.
+	FailedOperation string               // The operation that failed (create, update, or delete).
+	Errors          []string             // The errors that have been seen so far (newest first).
+}
+
 // ResourceHookFunction is a function that can be registered as a resource hook
 type ResourceHookFunction func(args *ResourceHookArgs) error
+
+// ErrorHookFunction is a function that can be registered as an error hook
+type ErrorHookFunction func(args *ErrorHookArgs) (bool, error)
 
 // ResourceHook is a named hook that can be registered as a resource hook.
 type ResourceHook struct {
@@ -367,6 +391,15 @@ type ResourceHook struct {
 	Opts     ResourceOptions      // The options for the resource hook.
 	// Tracks the registration of the resource hook. The future will resolve
 	// once the hook has been registered, or reject if any error
+	registered *promise.Promise[struct{}]
+}
+
+// ErrorHook is a named hook that can be registered as an error hook.
+type ErrorHook struct {
+	Name     string            // The unqiue name of the error hook.
+	Callback ErrorHookFunction // The function that will be called when the error hook is triggered.
+	// Tracks the registration of the error hook. The future will resolve
+	// once the hook has been registered, or reject if any error occurs.
 	registered *promise.Promise[struct{}]
 }
 
@@ -396,6 +429,8 @@ type ResourceHookBinding struct {
 	// Note that delete hooks require that destroy operations are run with
 	// `--run-program`.
 	AfterDelete []*ResourceHook
+	// Hooks to be invoked when an operation fails and is retryable.
+	OnError []*ErrorHook
 }
 
 // ResourceOptions is a snapshot of one or more [ResourceOption]s.
@@ -944,6 +979,7 @@ func ResourceHooks(hooks *ResourceHookBinding) ResourceOption {
 		ro.Hooks.AfterUpdate = append(ro.Hooks.AfterUpdate, hooks.AfterUpdate...)
 		ro.Hooks.BeforeDelete = append(ro.Hooks.BeforeDelete, hooks.BeforeDelete...)
 		ro.Hooks.AfterDelete = append(ro.Hooks.AfterDelete, hooks.AfterDelete...)
+		ro.Hooks.OnError = append(ro.Hooks.OnError, hooks.OnError...)
 	})
 }
 

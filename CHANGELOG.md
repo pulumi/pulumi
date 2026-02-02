@@ -1,5 +1,129 @@
 # Changelog
 
+## 3.218.0 (2026-01-29)
+
+
+### Features
+
+- [sdk/nodejs] Add support for the `OnError` resource hook
+
+
+### Bug Fixes
+
+- [cli] Allow positional arguments to be passed to `convert` again
+
+- [cli/install] Correctly include git forge organizations as schema namespaces when generating SDKs
+  [#21579](https://github.com/pulumi/pulumi/pull/21579)
+
+- [cli/{install,package}] Correctly grab package names for Python & NodeJS
+  [#21577](https://github.com/pulumi/pulumi/pull/21577)
+
+## 3.217.1 (2026-01-27)
+
+
+### Features
+
+- [sdk/go] Add support for the `OnError` resource hook
+  [#21515](https://github.com/pulumi/pulumi/pull/21515)
+
+
+### Bug Fixes
+
+- [cli/install] Copy files when linking to be robust to copying across file partitions
+  [#21549](https://github.com/pulumi/pulumi/pull/21549)
+
+- [cli/install] Do not double install plugins with explicit parameterizations
+  [#21548](https://github.com/pulumi/pulumi/pull/21548)
+
+- [cli/install] Copy files when linking instead of renaming
+   [#21549](https://github.com/pulumi/pulumi/pull/21549)
+
+
+**Full Changelog**: https://github.com/pulumi/pulumi/compare/v3.217.0...v3.217.1
+
+## 3.217.0 (2026-01-23)
+
+
+### Features
+
+- [cli] Extract organization, team, and user from OIDC JWT claims during login
+  [#21462](https://github.com/pulumi/pulumi/pull/21462)
+
+- [engine] Add the `OnError` resource hook to allow for custom retry policies
+  [#21291](https://github.com/pulumi/pulumi/pull/21291)
+
+- [cli/engine] Add --plan up flag
+  [#21368](https://github.com/pulumi/pulumi/pull/21368)
+
+- [sdk/nodejs] Add requirePulumiVersion to the Node.js SDK
+  [#21528](https://github.com/pulumi/pulumi/pull/21528)
+  [#21478](https://github.com/pulumi/pulumi/pull/21478)
+
+- [sdk/python] Add require_pulumi_version to the Python SDK
+  [#21528](https://github.com/pulumi/pulumi/pull/21528)
+  [#21430](https://github.com/pulumi/pulumi/pull/21430)
+
+- [sdk/go] Add CheckPulumiVersion to the Go SDK
+  [#21528](https://github.com/pulumi/pulumi/pull/21528)
+  [#21514](https://github.com/pulumi/pulumi/pull/21514)
+
+### Bug Fixes
+
+- [auto/python] Implement `About` in Python automation API server
+  [#21479](https://github.com/pulumi/pulumi/pull/21479)
+
+- [engine] When importing a state file that refers to the service backed secret manager, make `stack import` reconfigure it for the target stack if required
+  [#20966](https://github.com/pulumi/pulumi/pull/20966)
+
+- [protobuf] Fix alias options being passed to Construct for remote components
+  [#21050](https://github.com/pulumi/pulumi/pull/21050)
+
+- [sdk/nodejs] Fix issue with serialized async generators
+  [#21484](https://github.com/pulumi/pulumi/pull/21484)
+
+## 3.216.0 (2026-01-16)
+
+
+### Features
+
+- [build] Don't set PULUMI_ROOT with mise
+  [#21457](https://github.com/pulumi/pulumi/pull/21457)
+
+- [cli] Default to Pulumi Cloud when using an OIDC token for login
+  [#21322](https://github.com/pulumi/pulumi/pull/21322)
+
+- [engine] Add CheckPulumiVersion RPC to the engine
+  [#21429](https://github.com/pulumi/pulumi/pull/21429)
+
+- [protobuf] Remove ProviderHandshakeResponse.pulumi_version_range
+  [#21438](https://github.com/pulumi/pulumi/pull/21438)
+
+- [sdk/nodejs] Allow dynamic providers to return inputs from read() for accurate diffs after refresh
+  [#21315](https://github.com/pulumi/pulumi/pull/21315)
+
+- [sdk/nodejs] Add support for serializing async generators
+  [#21410](https://github.com/pulumi/pulumi/pull/21410)
+
+- [sdk/python] Allow dynamic providers to return inputs from read() for accurate diffs after refresh
+  [#21315](https://github.com/pulumi/pulumi/pull/21315)
+
+
+### Bug Fixes
+
+- [engine] Optimize StackReference performance
+  [#21446](https://github.com/pulumi/pulumi/pull/21446)
+
+- [cli/display] Fix message renderer on windows
+  [#21401](https://github.com/pulumi/pulumi/pull/21401)
+
+- [sdk/nodejs] Fix RangeError in defaultErrorMessage when error objects are large
+  [#21409](https://github.com/pulumi/pulumi/pull/21409)
+
+
+### Miscellaneous
+
+- [sdk/dotnet] Update dotnet to v3.97.0
+
 ## 3.215.0 (2026-01-07)
 
 

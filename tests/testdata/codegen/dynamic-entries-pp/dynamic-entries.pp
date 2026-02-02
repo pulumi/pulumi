@@ -6,15 +6,12 @@ config "validationMethod" "string" {
   default     = "DNS"
   description = "Which method to use for validation. DNS or EMAIL are valid, NONE can be used for certificates that were imported into ACM and then into Terraform."
 }
-config "validationOption" "any" {
+config "alternativeNames" "any" {
   default = {}
 }
 
 resource "certificate" "aws:acm/certificate:Certificate" {
-  validationOptions = [for entry in entries(validationOption) : {
-    domainName       = entry.value["domain_name"]
-    validationDomain = entry.value["validation_domain"]
-  }]
+  subjectAlternativeNames = [for entry in entries(alternativeNames) : entry.value]
   domainName              = domainName
   validationMethod        = validationMethod
 }

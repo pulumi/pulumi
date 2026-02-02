@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -267,6 +267,7 @@ export async function awaitFeatureSupport(): Promise<void> {
             invokeTransforms,
             parameterization,
             resourceHooks,
+            errorHooks,
         ] = await Promise.all(
             [
                 "secrets",
@@ -279,6 +280,7 @@ export async function awaitFeatureSupport(): Promise<void> {
                 "invokeTransforms",
                 "parameterization",
                 "resourceHooks",
+                "errorHooks",
             ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
         );
 
@@ -292,6 +294,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsInvokeTransforms = invokeTransforms;
         store.supportsParameterization = parameterization;
         store.supportsResourceHooks = resourceHooks;
+        store.supportsErrorHooks = errorHooks;
     }
 }
 
@@ -385,6 +388,44 @@ export function _setStack(val: string | undefined) {
     const { settings } = getStore();
     settings.options.stack = val;
     return settings.options.stack;
+}
+
+/**
+ * Checks if the engine we are connected to is compatible with the passed in version range. If the version is not
+ * compatible with the specified range, an exception is raised.
+ *
+ * @param range
+ *  The range to check. The supported syntax for the range is that of
+ *  https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
+ *  together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
+ *  Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
+ */
+export function requirePulumiVersion(range: string): Promise<void> {
+    const engineRef = getEngine();
+    if (!engineRef) {
+        return Promise.resolve(undefined);
+    }
+    const req = new engproto.RequirePulumiVersionRequest();
+    req.setPulumiVersionRange(range);
+    return new Promise<void>((resolve, reject) => {
+        engineRef.requirePulumiVersion(
+            req,
+            (err: grpc.ServiceError | null, resp: engproto.RequirePulumiVersionResponse | undefined) => {
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return reject(
+                        new Error(
+                            "The installed version of the CLI does not support the `RequirePulumiVersion` RPC. " +
+                                "Please upgrade the Pulumi CLI.",
+                        ),
+                    );
+                }
+                if (err) {
+                    return reject(err);
+                }
+                return resolve();
+            },
+        );
+    });
 }
 
 /**

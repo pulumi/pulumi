@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -31,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
@@ -99,11 +99,11 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-// `LoadBaseline` loads the contents of the given baseline directory,
+// `loadBaseline` loads the contents of the given baseline directory,
 // by inspecting its `codegen-manifest.json`.
-func LoadBaseline(dir, lang string) (map[string][]byte, error) {
+func loadBaseline(dir string) (map[string][]byte, error) {
 	cm := &codegenManifest{}
-	err := cm.load(filepath.Join(dir, lang))
+	err := cm.load(dir)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load codegen-manifest.json: %w", err)
 	}
@@ -111,7 +111,7 @@ func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 
 	for _, f := range cm.EmittedFiles {
-		bytes, err := os.ReadFile(filepath.Join(dir, lang, f))
+		bytes, err := os.ReadFile(filepath.Join(dir, f))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to load file %s referenced in codegen-manifest.json: %w", f, err)
 		}
@@ -174,14 +174,14 @@ func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool
 // If PULUMI_ACCEPT is set, writes out actual output to the expected
 // file set, so we can continue enjoying golden tests without manually
 // modifying the expected output.
-func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[string][]byte) bool {
+func rewriteFilesWhenPulumiAccept(t *testing.T, path string, actual map[string][]byte) bool {
 	if os.Getenv("PULUMI_ACCEPT") == "" {
 		return false
 	}
 
 	cm := &codegenManifest{}
 
-	baseline := filepath.Join(dir, lang)
+	baseline := path
 
 	// Remove the baseline directory's current contents.
 	_, err := os.ReadDir(baseline)
@@ -197,13 +197,13 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 
 	for file, bytes := range actual {
 		relPath := filepath.FromSlash(file)
-		path := filepath.Join(dir, lang, relPath)
+		path := filepath.Join(path, relPath)
 		cm.EmittedFiles = append(cm.EmittedFiles, relPath)
 		err := writeFileEnsuringDir(path, bytes)
 		require.NoError(t, err)
 	}
 
-	err = cm.save(filepath.Join(dir, lang))
+	err = cm.save(path)
 	require.NoError(t, err)
 
 	return true
@@ -213,12 +213,11 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 // `codeDir=$dir/$lang` with extra manually written files such as the
 // unit test files. These files are copied from `$dir/$lang-extras`
 // folder if present.
-func CopyExtraFiles(t *testing.T, dir, lang string) {
-	codeDir := filepath.Join(dir, lang)
-	extrasDir := filepath.Join(dir, lang+"-extras")
-	gotExtras, err := PathExists(extrasDir)
+func copyExtraFiles(t *testing.T, codeDir string) {
+	extrasDir := codeDir + "-extras"
+	extraFiles, err := PathExists(extrasDir)
 
-	if !gotExtras {
+	if !extraFiles {
 		return
 	}
 
@@ -248,6 +247,7 @@ func CopyExtraFiles(t *testing.T, dir, lang string) {
 		if err != nil {
 			return err
 		}
+		t.Cleanup(func() { contract.IgnoreError(os.Remove(destPath)) })
 		t.Logf("Copied %s to %s", path, destPath)
 		return nil
 	})
@@ -261,69 +261,6 @@ func writeFileEnsuringDir(path string, bytes []byte) error {
 	}
 
 	return os.WriteFile(path, bytes, 0o600)
-}
-
-// CheckAllFilesGenerated ensures that the set of expected and actual files generated
-// are exactly equivalent.
-func CheckAllFilesGenerated(t *testing.T, actual, expected map[string][]byte) {
-	seen := map[string]bool{}
-	for x := range expected {
-		seen[x] = true
-	}
-	for a := range actual {
-		assert.Contains(t, seen, a, "Unexpected file generated: %s", a)
-		if seen[a] {
-			delete(seen, a)
-		}
-	}
-
-	for s := range seen {
-		assert.Fail(t, "No content generated for expected file %s", s)
-	}
-}
-
-// Validates a transformer on a single file.
-func ValidateFileTransformer(
-	t *testing.T,
-	inputFile string,
-	expectedOutputFile string,
-	transformer func(reader io.Reader, writer io.Writer) error,
-) {
-	reader, err := os.Open(inputFile)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	var buf bytes.Buffer
-
-	err = transformer(reader, &buf)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	actualBytes := buf.Bytes()
-
-	if os.Getenv("PULUMI_ACCEPT") != "" {
-		err := os.WriteFile(expectedOutputFile, actualBytes, 0o600)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-	}
-
-	actual := map[string][]byte{expectedOutputFile: actualBytes}
-
-	expectedBytes, err := os.ReadFile(expectedOutputFile)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	expected := map[string][]byte{expectedOutputFile: expectedBytes}
-
-	ValidateFileEquality(t, actual, expected)
 }
 
 func RunCommand(t *testing.T, name string, cwd string, exec string, args ...string) {
@@ -381,4 +318,4 @@ const (
 )
 
 // PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests
-const PulumiDotnetSDKVersion = "3.96.1"
+const PulumiDotnetSDKVersion = "3.97.0"

@@ -18,8 +18,8 @@ import (
 	"github.com/spf13/cobra"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func NewStateCmd() *cobra.Command {
@@ -30,8 +30,9 @@ func NewStateCmd() *cobra.Command {
 
 Subcommands of this command can be used to surgically edit parts of a stack's state. These can be useful when
 troubleshooting a stack or when performing specific edits that otherwise would require editing the state file by hand.`,
-		Args: cmdutil.NoArgs,
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newStateDeleteCommand(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newStateEditCommand())

@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -165,10 +165,8 @@ var operationSpecs = []OperationSpec{
 	PlanOperationRefresh,
 	// TODO[pulumi/pulumi#21274]: uncomment when refreshV2 operations are stable
 	// PlanOperationRefreshV2,
-	// TODO[pulumi/pulumi#21271]: uncomment when destroy operations are stable
-	// PlanOperationDestroy,
-	// TODO[pulumi/pulumi#21244]: uncomment when destroyV2 operations are stable
-	// PlanOperationDestroyV2,
+	PlanOperationDestroy,
+	PlanOperationDestroyV2,
 }
 
 // Given a SnapshotSpec and a set of options, returns a rapid.Generator that will produce PlanSpecs that can be executed

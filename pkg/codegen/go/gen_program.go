@@ -382,6 +382,8 @@ func (g *generator) genComponentDefinition(w io.Writer, componentName string, co
 				})
 
 				g.genComponent(w, node)
+			case *pcl.PulumiBlock:
+				g.genPulumi(w, node)
 			}
 		}
 
@@ -1089,6 +1091,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genConfigVariable(w, n)
 	case *pcl.LocalVariable:
 		g.genLocalVariable(w, n)
+	case *pcl.PulumiBlock:
+		g.genPulumi(w, n)
 	}
 }
 
@@ -1096,7 +1100,7 @@ var resourceType = model.NewOpaqueType("pulumi.Resource")
 
 var providerResourceType = model.NewOpaqueType("pulumi.ProviderResource")
 
-func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []any) {
+func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions, schema *schema.Resource) (*model.Block, []any) {
 	if opts == nil {
 		return nil, nil
 	}
@@ -1122,6 +1126,10 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	}
 
 	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
+
+	if opts.Aliases != nil {
+		appendOption("Aliases", opts.Aliases, model.NewListType(pcl.AliasType))
+	}
 	if opts.Parent != nil {
 		appendOption("Parent", opts.Parent, model.DynamicType)
 	}
@@ -1177,6 +1185,21 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.HideDiffs != nil {
 		appendOption("HideDiffs", opts.HideDiffs, model.NewListType(model.StringType))
 	}
+	if opts.ReplaceOnChanges != nil {
+		appendOption("ReplaceOnChanges", opts.ReplaceOnChanges, model.NewListType(model.StringType))
+	}
+	if opts.DeleteBeforeReplace != nil {
+		appendOption("DeleteBeforeReplace", opts.DeleteBeforeReplace, model.BoolType)
+	}
+	if opts.AdditionalSecretOutputs != nil {
+		appendOption("AdditionalSecretOutputs", opts.AdditionalSecretOutputs, model.NewListType(model.StringType))
+	}
+	if opts.CustomTimeouts != nil {
+		appendOption("Timeouts", opts.CustomTimeouts, pcl.CustomTimeoutsType)
+	}
+	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
+		appendOption("Version", opts.Version, model.StringType)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}
@@ -1205,6 +1228,55 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 		// Some resource options have syntactic/type transformations.
 		valBuffer := &bytes.Buffer{}
 		switch attr.Name {
+		case "Aliases":
+			// Aliases is a []string, but we need to lift it to pulumi.Alias[]
+			g.Fgenf(valBuffer, "[]pulumi.Alias{")
+			for i, expr := range attr.Value.(*model.TupleConsExpression).Expressions {
+				if i > 0 {
+					g.Fgenf(valBuffer, ", ")
+				}
+				// If the expression is a string literal, we can inline it directly.
+				if expr.Type().Equals(model.StringType) {
+					g.Fgenf(valBuffer, "pulumi.Alias{ URN: pulumi.URN(%v) }", expr)
+					continue
+				}
+				// Otherwise pull off the fields dynamically.
+				obj := expr.(*model.ObjectConsExpression)
+				g.Fgenf(valBuffer, "pulumi.Alias{")
+				for _, item := range obj.Items {
+					// We need a literal key here.
+					key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+					contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+					switch key.AsString() {
+					case "name":
+						g.Fgenf(valBuffer, "Name: pulumi.String(%v), ", item.Value)
+					case "noParent":
+						g.Fgenf(valBuffer, "NoParent: pulumi.Bool(%v), ", item.Value)
+					case "parent":
+						g.Fgenf(valBuffer, "Parent: %v, ", item.Value)
+					}
+				}
+				g.Fgenf(valBuffer, "}")
+			}
+			g.Fgenf(valBuffer, "}")
+		case "Timeouts":
+			obj := attr.Value.(*model.ObjectConsExpression)
+			g.Fgenf(valBuffer, "&pulumi.CustomTimeouts{")
+			for _, item := range obj.Items {
+				key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+				contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+				switch key.AsString() {
+				case "create":
+					g.Fgenf(valBuffer, "Create: %v, ", item.Value)
+				case "update":
+					g.Fgenf(valBuffer, "Update: %v, ", item.Value)
+				case "delete":
+					g.Fgenf(valBuffer, "Delete: %v, ", item.Value)
+				}
+			}
+			g.Fgenf(valBuffer, "}")
 		case "Import":
 			g.Fgenf(valBuffer, "pulumi.ID(%v)", attr.Value)
 		case "ReplacementTrigger":
@@ -1242,7 +1314,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	}
 
 	// Compute resource options
-	options, temps := g.lowerResourceOptions(r.Options)
+	options, temps := g.lowerResourceOptions(r.Options, r.Schema)
 	g.genTemps(w, temps)
 
 	if r.Schema != nil {
@@ -1503,7 +1575,7 @@ func isDeferredOutputCast(expr model.Expression) bool {
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
 	// Compute resource options
-	options, temps := g.lowerResourceOptions(r.Options)
+	options, temps := g.lowerResourceOptions(r.Options, nil)
 	g.genTemps(w, temps)
 
 	AnnotateComponentInputs(r)
@@ -1953,6 +2025,18 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		}
 		g.Fgenf(w, "%s = param\n", name)
 		g.Fgen(w, "}\n")
+	}
+}
+
+func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
+	if v.RequiredVersion != nil {
+		value, temps := g.lowerExpression(v.RequiredVersion, v.Type())
+		g.genTemps(w, temps)
+		g.Fgenf(w, "%sif err := ctx.RequirePulumiVersion(%v); err != nil {\n", g.Indent, value)
+		g.Indented(func() {
+			g.Fgenf(w, "%sreturn err\n", g.Indent)
+		})
+		g.Fgenf(w, "%s}\n", g.Indent)
 	}
 }
 

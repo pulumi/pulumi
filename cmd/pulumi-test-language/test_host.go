@@ -53,6 +53,8 @@ type testHost struct {
 	policies []plugin.Analyzer
 
 	closeMutex sync.Mutex
+
+	skipEnsurePluginsValidation bool
 }
 
 var _ plugin.Host = (*testHost)(nil)
@@ -188,6 +190,11 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plu
 		filtered = append(filtered, plugin)
 	}
 	plugins = filtered
+
+	// Skip validation if requested (e.g., for tests using version resource option)
+	if h.skipEnsurePluginsValidation {
+		return nil
+	}
 
 	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
 	// that that returned the expected plugins (with expected versions).

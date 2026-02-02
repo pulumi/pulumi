@@ -17,7 +17,7 @@ package project
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
 // NewProjectCmd creates a new command that manages Pulumi projects.
@@ -29,8 +29,9 @@ func NewProjectCmd() *cobra.Command {
 			"\n" +
 			"This command can be used to manage Pulumi projects. Projects are the " +
 			"unit of organization in Pulumi, and contain multiple stacks.",
-		Args: cmdutil.NoArgs,
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	// Add subcommands
 	cmd.AddCommand(newProjectLsCmd())

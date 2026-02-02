@@ -343,21 +343,21 @@ func TestCheckVersionRange(t *testing.T) {
 			cliVersion:         "2.9.0",
 			pulumiVersionRange: ">=3.0.0",
 			//nolint:lll
-			expectedError: "CLI version 2.9.0 does not satisfy the version range \">=3.0.0\" requested by the provider test.",
+			expectedError: "CLI version 2.9.0 does not satisfy the version range \">=3.0.0\"",
 		},
 		{
 			name:               "too new",
 			cliVersion:         "4.0.0",
 			pulumiVersionRange: "<4.0.0",
 			//nolint:lll
-			expectedError: "CLI version 4.0.0 does not satisfy the version range \"<4.0.0\" requested by the provider test.",
+			expectedError: "CLI version 4.0.0 does not satisfy the version range \"<4.0.0\"",
 		},
 		{
 			name:               "exclude",
 			cliVersion:         "3.1.0",
 			pulumiVersionRange: ">=3.0.0 !3.1.0",
 			//nolint:lll
-			expectedError: "CLI version 3.1.0 does not satisfy the version range \">=3.0.0 !3.1.0\" requested by the provider test.",
+			expectedError: "CLI version 3.1.0 does not satisfy the version range \">=3.0.0 !3.1.0\"",
 		},
 		{
 			name:               "exclude 2",
@@ -389,7 +389,7 @@ func TestCheckVersionRange(t *testing.T) {
 			cliVersion:         "3.215.0-alpha.x75fc436",
 			pulumiVersionRange: ">=3.215.0",
 			//nolint:lll
-			expectedError: "CLI version 3.215.0-alpha.x75fc436 does not satisfy the version range \">=3.215.0\" requested by the provider test.",
+			expectedError: "CLI version 3.215.0-alpha.x75fc436 does not satisfy the version range \">=3.215.0\"",
 		},
 	}
 
@@ -397,7 +397,7 @@ func TestCheckVersionRange(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validatePulumiVersionRange(tt.pulumiVersionRange, tt.cliVersion, "test")
+			err := ValidatePulumiVersionRange(tt.pulumiVersionRange, tt.cliVersion)
 
 			if tt.expectedError != "" {
 				require.ErrorContains(t, err, tt.expectedError)
@@ -422,6 +422,6 @@ func TestPulumiVersionRangeYaml(t *testing.T) {
 	t.Cleanup(func() { version.Version = oldVersion })
 
 	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-cli-version"))
-	require.ErrorContains(t, err, "failed to load plugin testdata/test-plugin-cli-version: Pulumi CLI version 3.1.2 "+
-		"does not satisfy the version range \">=100.0.0\" requested by the provider testdata/test-plugin-cli-version.")
+	require.ErrorContains(t, err,
+		"test-plugin-cli-version: Pulumi CLI version 3.1.2 does not satisfy the version range \">=100.0.0\"")
 }
