@@ -1389,16 +1389,18 @@ async def _prepare_resource_hooks(
             getattr(proto, hook_type).append(hook.name)
 
     # Error hooks: only named ErrorHook instances
-    on_error_hooks: list["ErrorHook"] = getattr(hooks, "on_error", []) or []
-    for hook in on_error_hooks:
-        if not await monitor_supports_error_hooks():
-            raise Exception(
-                "The Pulumi CLI does not support error hooks. Please update the Pulumi CLI."
-            )
-        if not isinstance(hook, ErrorHook):
-            raise ValueError("Error hooks must be ErrorHook instances")
-        await hook._registered
-        proto.on_error.append(hook.name)
+    on_error_hooks_list: list[ErrorHook] = getattr(hooks, "on_error", []) or []
+    if on_error_hooks_list:
+      if not await monitor_supports_error_hooks():
+          raise Exception(
+              "The Pulumi CLI does not support error hooks. Please update the Pulumi CLI."
+          )
+
+      for error_hook in on_error_hooks_list:
+          if not isinstance(error_hook, ErrorHook):
+              raise ValueError("Error hooks must be ErrorHook instances")
+          await error_hook._registered
+          proto.on_error.append(error_hook.name)
 
     return proto
 

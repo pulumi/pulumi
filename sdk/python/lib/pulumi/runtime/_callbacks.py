@@ -382,7 +382,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         )
 
     def do_register_error_hook(
-        self, hook: "ErrorHook"
+        self, hook: ErrorHook
     ) -> resource_pb2.RegisterErrorHookRequest:
         log.debug(f"do_register_error_hook {hook.name}")
 
@@ -475,7 +475,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             self._callbacks.pop(req.callback.token)
             raise
 
-    def register_error_hook(self, hook: "ErrorHook") -> None:
+    def register_error_hook(self, hook: ErrorHook) -> None:
         req = self.do_register_error_hook(hook)
         try:
             self._monitor.RegisterErrorHook(req)
