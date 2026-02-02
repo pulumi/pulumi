@@ -15,7 +15,10 @@
 package packageinstallation_test
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"maps"
 	"path/filepath"
 	"runtime"
@@ -83,6 +86,8 @@ type invariantWorkspace struct {
 
 	// A map of binary paths that exist outside of plugin directories.
 	plainBinaryPaths map[string]struct{}
+
+	plainSchemaPaths map[string][]byte
 
 	// A mutex guarding the shape of plugins discover-able via HasPlugin or HasPluginGTE.
 	//
@@ -218,6 +223,14 @@ func (w invariantWorkspace) IsExecutable(ctx context.Context, binaryPath string)
 	return false, nil
 }
 
+func (w invariantWorkspace) ReadFile(ctx context.Context, path string) (io.ReadCloser, error) {
+	normalizedPath := filepath.ToSlash(path)
+	if b, ok := w.plainSchemaPaths[normalizedPath]; ok {
+		return io.NopCloser(bytes.NewBuffer(b)), nil
+	}
+	return nil, assert.AnError
+}
+
 func (w invariantWorkspace) LoadPluginProjectAt(
 	ctx context.Context, path string,
 ) (*workspace.PluginProject, string, error) {
@@ -288,17 +301,22 @@ func (w invariantWorkspace) LinkPackage(
 		links = &workDir.linked
 	}
 
-	ip := provider.(invariantProvider)
+	var providerPath string
+	if ip, ok := provider.(invariantProvider); ok {
+		providerPath = ip.path
+	} else {
+		providerPath = fmt.Sprintf("schema:%s", provider.Pkg())
+	}
 
 	w.rw.Lock()
 	defer w.rw.Unlock()
-	if slices.Contains(*links, ip.path) {
-		assert.Failf(w.t, "", "LinkPackage(%q) linked %q >1 time", projectDir, ip.path)
+	if slices.Contains(*links, providerPath) {
+		assert.Failf(w.t, "", "LinkPackage(%q) linked %q >1 time", projectDir, providerPath)
 		return assert.AnError
 	}
 	// Insert in sorted order to ensure deterministic comparison
-	pos, _ := slices.BinarySearch(*links, ip.path)
-	*links = slices.Insert(*links, pos, ip.path)
+	pos, _ := slices.BinarySearch(*links, providerPath)
+	*links = slices.Insert(*links, pos, providerPath)
 	return nil
 }
 

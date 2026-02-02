@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/maphash"
+	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -61,6 +62,9 @@ type Context interface {
 	// If no file is found at binaryPath, then (false, os.ErrNotExist) should be
 	// returned.
 	IsExecutable(ctx context.Context, binaryPath string) (bool, error)
+
+	// Read a file from disk.
+	ReadFile(ctx context.Context, path string) (io.ReadCloser, error)
 
 	// Download a plugin onto disk, returning the path the plugin was downloaded to.
 	DownloadPlugin(ctx context.Context, plugin workspace.PluginDescriptor) (string, MarkInstallationDone, error)
@@ -145,6 +149,9 @@ func InstallPlugin(
 	}
 
 	return func(ctx context.Context, wd string) (plugin.Provider, error) {
+		if runBundle.runningProvider != nil {
+			return runBundle.runningProvider, nil
+		}
 		return ws.RunPackage(ctx, wd, runBundle.pluginPath, tokens.Package(runBundle.name),
 			runBundle.params, resolvedSpec)
 	}, resolvedSpec, nil
@@ -300,6 +307,9 @@ type runBundle struct {
 	pluginPath string
 	// The parameterization of the plugin. May be nil.
 	params plugin.ParameterizeParameters
+
+	// A running provider if non-nil.
+	runningProvider plugin.Provider
 }
 
 // A step in the install/build graph.
@@ -520,11 +530,15 @@ type linkPackageStep struct {
 func (step linkPackageStep) run(ctx context.Context, p state) error {
 	contract.Assertf(step.runBundle != nil, "must set run bundle before running this step")
 
-	provider, err := p.ws.RunPackage(ctx,
-		step.project.projectDir, step.runBundle.pluginPath,
-		tokens.Package(step.packageName), step.runBundle.params, step.specSource)
-	if err != nil {
-		return err
+	provider := step.runBundle.runningProvider
+	if step.runBundle.runningProvider == nil {
+		var err error
+		provider, err = p.ws.RunPackage(ctx,
+			step.project.projectDir, step.runBundle.pluginPath,
+			tokens.Package(step.packageName), step.runBundle.params, step.specSource)
+		if err != nil {
+			return err
+		}
 	}
 
 	return p.ws.LinkPackage(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, provider)
@@ -657,6 +671,17 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 				step.runBundleOut.name = name
 			}
 			return nil
+		} else if isSchemaPath(projectDir) {
+			file, err := p.ws.ReadFile(ctx, projectDir)
+			if err != nil {
+				return err
+			}
+			provider, err := newProviderFromSchemaPath(step.resolvedSpec.Source, file)
+			if err != nil {
+				return errors.Join(err, file.Close())
+			}
+			step.runBundleOut.runningProvider = provider
+			return file.Close()
 		}
 
 		// We don't need to download what's at a local path result, but we might
