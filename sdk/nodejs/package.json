@@ -52,7 +52,7 @@
         "@typescript-eslint/eslint-plugin": "4.33.0",
         "@typescript-eslint/parser": "4.33.0",
         "corepack": "0.34.5",
-        "eslint": "7.32.0",
+        "eslint": "9.26.0",
         "eslint-plugin-header": "3.1.1",
         "eslint-plugin-import": "2.30.0",
         "mocha": "11.7.5",
