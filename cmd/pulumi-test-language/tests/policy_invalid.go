@@ -31,8 +31,9 @@ func init() {
 					"invalid": nil,
 				},
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
-					// We expect the policy pack to fail to load due to the invalid policy name, but languages vary on if they write that error to stderr or
-					// via the grpc response to be picked up in the error message, so here we just check that it _did_ error.
+					// We expect the policy pack to fail to load due to the invalid policy name, but languages vary on
+					// if they write that error to stderr or via the grpc response to be picked up in the error message,
+					// so here we just check that it _did_ error.
 					require.Error(l, res.Err)
 				},
 				Assert: func(l *L, res AssertArgs) {
