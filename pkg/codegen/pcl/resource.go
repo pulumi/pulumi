@@ -126,6 +126,13 @@ func (r *Resource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagn
 	return model.VisitExpressions(r.Definition, pre, post)
 }
 
+func (r *Resource) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := context.Variables[r.Name()]; hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
+}
+
 func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	if r == nil || r.VariableType == nil {
 		return model.DynamicType.Traverse(traverser)

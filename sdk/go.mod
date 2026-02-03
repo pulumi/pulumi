@@ -1,10 +1,12 @@
 module github.com/pulumi/pulumi/sdk/v3
 
-go 1.24.0
+go 1.24.7
 
 replace golang.org/x/text => golang.org/x/text v0.3.8
 
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
+
+replace github.com/pulumi/pulumi/pkg/v3 => ../pkg
 
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
@@ -18,22 +20,23 @@ require (
 	github.com/nxadm/tail v1.4.11
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
+	github.com/pulumi/pulumi/pkg/v3 v3.156.0
 	github.com/rivo/uniseg v0.4.4
-	github.com/rogpeppe/go-internal v1.12.0
+	github.com/rogpeppe/go-internal v1.13.1
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/spf13/cast v1.4.1
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.10.0
 	github.com/texttheater/golang-levenshtein v1.0.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	golang.org/x/crypto v0.47.0
-	golang.org/x/mod v0.22.0 // indirect
+	golang.org/x/mod v0.31.0 // indirect
 	golang.org/x/net v0.49.0
 	golang.org/x/sys v0.40.0
-	google.golang.org/grpc v1.71.1
+	google.golang.org/grpc v1.72.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-	pgregory.net/rapid v0.5.5
+	pgregory.net/rapid v0.6.1
 )
 
 require (
@@ -51,7 +54,8 @@ require (
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/esc v0.17.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
-	golang.org/x/sync v0.12.0
+	github.com/zclconf/go-cty v1.13.2
+	golang.org/x/sync v0.19.0
 	golang.org/x/term v0.39.0
 	lukechampine.com/frand v1.4.2
 )
@@ -69,6 +73,7 @@ require (
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/cyphar/filepath-securejoin v0.3.6 // indirect
+	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -81,12 +86,17 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
+	github.com/natefinch/atomic v1.0.1 // indirect
+	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
+	github.com/pulumi/inflector v0.1.1 // indirect
+	github.com/segmentio/asm v1.1.3 // indirect
+	github.com/segmentio/encoding v0.3.5 // indirect
 	github.com/skeema/knownhosts v1.3.0 // indirect
-	github.com/zclconf/go-cty v1.13.2 // indirect
+	github.com/spf13/afero v1.9.5 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/tools v0.23.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
+	golang.org/x/tools v0.40.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect
 )
 
 require (
@@ -101,7 +111,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
+	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect

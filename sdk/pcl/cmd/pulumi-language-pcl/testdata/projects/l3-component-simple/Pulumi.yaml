@@ -1,0 +1,6 @@
+name: l3-component-simple
+runtime:
+  name: pcl
+  options:
+    localDependencies:
+      simple: /tmp/TestLanguage3606367516/002/artifacts/example.com_pulumi-simple_sdk_go_v2
