@@ -55,6 +55,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeResourceReferencingAliasedProviderDestroyV2,
 		// TODO[pulumi/pulumi#21402]
 		ExcludeRefreshWithTargetedProviderParentChangeDestroyV2,
+		// TODO[pulumi/pulumi#21645]
+		ExcludeDependenciesInProgramButNotInSnapshotRefreshV2,
 	}
 }
 
@@ -579,5 +581,42 @@ func ExcludeTargetsRefreshV2(
 		return true
 	}
 
+	return false
+}
+
+func ExcludeDependenciesInProgramButNotInSnapshotRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 && !plan.RefreshProgram {
+		return false
+	}
+	snapResources := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		snapResources[res.URN()] = true
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent != "" && !snapResources[res.Parent] {
+			return true
+		}
+		for _, dep := range res.Dependencies {
+			if !snapResources[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if !snapResources[dep] {
+					return true
+				}
+			}
+		}
+		if res.DeletedWith != "" && !snapResources[res.DeletedWith] {
+			return true
+		}
+	}
 	return false
 }
