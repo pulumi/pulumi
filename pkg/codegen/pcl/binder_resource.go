@@ -531,6 +531,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "replacementTrigger":
 				t = model.DynamicType
 				resourceOptions.ReplacementTrigger = NewConvertCall(item.Value, t)
+			case "envVarMappings":
+				t = model.NewMapType(model.StringType)
+				resourceOptions.EnvVarMappings = item.Value
 			default:
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 				continue

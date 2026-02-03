@@ -1216,6 +1216,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions, schema *sche
 	if opts.ImportID != nil {
 		appendOption("Import", opts.ImportID, model.StringType)
 	}
+	if opts.EnvVarMappings != nil {
+		appendOption("EnvVarMappings", opts.EnvVarMappings, model.NewMapType(model.StringType))
+	}
 
 	return block, temps
 }
@@ -1294,6 +1297,17 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 					g.Fgenf(valBuffer, "pulumi.Any(%v)", attr.Value)
 				}
 			}
+		case "EnvVarMappings":
+			// EnvVarMappings is map[string]string
+			g.Fgenf(valBuffer, "map[string]string{")
+			obj := attr.Value.(*model.ObjectConsExpression)
+			for i, item := range obj.Items {
+				if i > 0 {
+					g.Fgenf(valBuffer, ", ")
+				}
+				g.Fgenf(valBuffer, "%v: %v", item.Key, item.Value)
+			}
+			g.Fgenf(valBuffer, "}")
 		default:
 			g.Fgenf(valBuffer, "%v", attr.Value)
 		}
