@@ -30,6 +30,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var ErrInvalidCiphertext = errors.New("invalid ciphertext")
+
 // An Encrypter encrypts plaintext into ciphertext.
 type Encrypter interface {
 	// Encrypt encrypts a single plaintext value.
@@ -188,7 +190,7 @@ func EncryptSecret(ctx context.Context, encrypter Encrypter, plaintext []byte) (
 func DecryptSecret(ctx context.Context, decrypter Decrypter, encodedCiphertext string) ([]byte, error) {
 	ciphertext, err := decodeCiphertext(encodedCiphertext)
 	if err != nil {
-		return nil, fmt.Errorf("invalid ciphertext: %w", err)
+		return nil, errors.Join(ErrInvalidCiphertext, err)
 	}
 
 	return decrypter.Decrypt(ctx, ciphertext)
