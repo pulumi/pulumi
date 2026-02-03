@@ -383,8 +383,11 @@ func GeneratedProgramSpec(
 
 		for i := 0; i < len(ss.Resources); {
 			if ss.Resources[i].Delete {
+				dropped[ss.Resources[i].URN()] = true
 				i++
 				continue
+			} else {
+				delete(dropped, ss.Resources[i].URN())
 			}
 
 			action := pso.Action.Draw(t, fmt.Sprintf("ProgramSpec.Action[%d]", i))
