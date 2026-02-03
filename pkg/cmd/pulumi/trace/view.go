@@ -23,14 +23,14 @@ import (
 	"github.com/pulumi/appdash/traceapp"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func NewViewTraceCmd() *cobra.Command {
 	var port int
 	cmd := &cobra.Command{
-		Use:   "view-trace [trace-file]",
+		Use:   "view-trace",
 		Short: "Display a trace from the Pulumi CLI",
 		Long: "Display a trace from the Pulumi CLI.\n" +
 			"\n" +
@@ -40,7 +40,6 @@ func NewViewTraceCmd() *cobra.Command {
 			"This command loads trace data from the indicated file and starts a\n" +
 			"webserver to display the trace. By default, this server will listen\n" +
 			"port 8008; the --port flag can be used to change this if necessary.",
-		Args:   cmdutil.ExactArgs(1),
 		Hidden: !env.DebugCommands.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			url, err := url.Parse(fmt.Sprintf("http://localhost:%d", port))
@@ -63,6 +62,11 @@ func NewViewTraceCmd() *cobra.Command {
 			return http.ListenAndServe(fmt.Sprintf(":%d", port), app) //nolint:gosec
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "trace-file"}},
+		Required:  1,
+	})
 
 	cmd.PersistentFlags().IntVar(&port, "port", 8008,
 		"the port the trace viewer will listen on")

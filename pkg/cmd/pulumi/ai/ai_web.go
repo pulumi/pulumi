@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -210,12 +211,17 @@ Example:
   pulumi ai web "Create an S3 bucket in Python"
   pulumi ai web --no-auto-submit "Help me with my infrastructure"
 `,
-		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return aiwebcmd.Run(ctx, args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "prompt"}},
+		Required:  0,
+	})
+
 	cmd.PersistentFlags().BoolVar(
 		&aiwebcmd.disableAutoSubmit, "no-auto-submit", false,
 		"Open Pulumi Neo with the prompt pre-filled without automatically creating a task",

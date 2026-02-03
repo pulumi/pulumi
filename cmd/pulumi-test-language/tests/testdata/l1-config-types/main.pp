@@ -7,7 +7,7 @@ output "theNumber" {
 config "aString" "string" {}
 
 output "theString" {
-  value = aString + " World"
+  value = "${aString} World"
 }
 
 config "aMap" "map(int)" {}
@@ -25,8 +25,8 @@ output "theObject" {
   value = anObject.prop[0]
 }
 
-config "anyObject" {} 
+config "anyObject" {}
 
-output "theThing" { 
+output "theThing" {
   value = anyObject.a + anyObject.b
 }

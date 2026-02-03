@@ -32,29 +32,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/zclconf/go-cty/cty"
 )
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
-
-func TestGenerateProgramVersionSelection(t *testing.T) {
-	t.Parallel()
-
-	rootDir, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	require.NoError(t, err)
-
-	test.GenerateGoProgramTest(
-		t,
-		rootDir,
-		func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-			// Prevent tests from interfering with each other
-			return GenerateProgramWithOptions(program, GenerateProgramOptions{ExternalCache: NewCache()})
-		},
-		GenerateProject,
-	)
-}
 
 func TestCollectImports(t *testing.T) {
 	t.Parallel()

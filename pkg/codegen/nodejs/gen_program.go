@@ -886,7 +886,7 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf("`%s-${%s}`", baseName, count)
 }
 
-func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
+func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema.Resource) string {
 	if opts == nil {
 		return ""
 	}
@@ -939,6 +939,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 	if opts.CustomTimeouts != nil {
 		appendOption("customTimeouts", opts.CustomTimeouts)
+	}
+	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
+		appendOption("version", opts.Version)
 	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
@@ -1020,7 +1023,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
 
-	optionsBag := g.genResourceOptions(r.Options)
+	optionsBag := g.genResourceOptions(r.Options, r.Schema)
 
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
@@ -1227,7 +1230,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	componentName := component.DeclarationName()
 
-	optionsBag := g.genResourceOptions(component.Options)
+	optionsBag := g.genResourceOptions(component.Options, nil)
 
 	name := component.LogicalName()
 	variableName := makeValidIdentifier(component.Name())

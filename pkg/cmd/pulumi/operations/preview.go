@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	pkgPlan "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
@@ -47,10 +48,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -292,13 +295,8 @@ func NewPreviewCmd() *cobra.Command {
 	// Flags for Neo.
 	var neoEnabled bool
 
-	use, cmdArgs := "preview", cmdutil.NoArgs
-	if deployment.RemoteSupported() {
-		use, cmdArgs = "preview [url]", cmdutil.MaximumNArgs(1)
-	}
-
 	cmd := &cobra.Command{
-		Use:        use,
+		Use:        "preview",
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
 		Short:      "Show a preview of updates to a stack's resources",
@@ -313,13 +311,16 @@ func NewPreviewCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
 			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
 				return err
 			}
 
@@ -573,6 +574,15 @@ func NewPreviewCmd() *cobra.Command {
 				return nil
 			}
 		},
+	}
+
+	if deployment.RemoteSupported() {
+		constrictor.AttachArguments(cmd, &constrictor.Arguments{
+			Arguments: []constrictor.Argument{{Name: "url"}},
+			Required:  0,
+		})
+	} else {
+		constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	}
 
 	cmd.PersistentFlags().BoolVarP(

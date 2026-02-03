@@ -1175,23 +1175,24 @@ func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
 	return nil
 }
 
-// DownloadPolicyPack applies a `PolicyPack` to the Pulumi organization.
-func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCloser, error) {
+// DownloadPolicyPack downloads a `PolicyPack` from the given URL. It returns a ReadCloser to read
+// the PolicyPack and the content length. A content length of -1 indicates that the length is unknown.
+func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCloser, int64, error) {
 	getS3Req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
+		return nil, -1, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
 	}
 
 	resp, err := pc.restClient.HTTPClient().Do(getS3Req, retryAllMethods)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
+		return nil, -1, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %s", resp.Status)
+		return nil, -1, fmt.Errorf("Failed to download compressed PolicyPack: %s", resp.Status)
 	}
 
-	return resp.Body, nil
+	return resp.Body, resp.ContentLength, nil
 }
 
 // GetUpdateEvents returns all events, taking an optional continuation token from a previous call.

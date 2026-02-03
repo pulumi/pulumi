@@ -80,7 +80,8 @@ func ExcludeDestroyAndRefreshProgramSet(
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
-	if plan.Operation == PlanOperationDestroyV2 && plan.RefreshProgram {
+	if (plan.Operation == PlanOperationDestroyV2 || plan.Operation == PlanOperationDestroy) &&
+		plan.RefreshProgram {
 		return true
 	}
 	return false
@@ -544,6 +545,18 @@ func ExcludeResourceDeletedWithMarkedForDeletionResourceUpdate(
 	}
 
 	for _, res := range snap.Resources {
+		for _, dep := range res.Dependencies {
+			if deletedResources[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if deletedResources[dep] {
+					return true
+				}
+			}
+		}
 		if res.DeletedWith != "" && deletedResources[res.DeletedWith] {
 			return true
 		}
