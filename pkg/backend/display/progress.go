@@ -1144,9 +1144,21 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 }
 
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
+	policyLoadingMessage := "Loading policy packs..."
+
 	//nolint:exhaustive // we are only interested in a subset of events
 	switch event.Type {
 	case engine.PreludeEvent:
+		// Dismiss the "Loading policy packs..." message now that loading is complete.
+		if display.shownPolicyLoadEvent {
+			display.handleProgressEvent(engine.ProgressEventPayload{
+				Type:    engine.PolicyPacksLoading,
+				ID:      "policy-loading",
+				Message: policyLoadingMessage,
+				Done:    true,
+			})
+		}
+
 		// A prelude event can just be printed out directly to the console.
 		// Note: we should probably make sure we don't get any prelude events
 		// once we start hearing about actual resource events.
@@ -1165,9 +1177,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		return
 	case engine.PolicyLoadEvent:
 		if !display.shownPolicyLoadEvent {
-			policyLoadEventString := colors.SpecInfo + "Loading policy packs..." + colors.Reset + "\n"
-			display.println(policyLoadEventString)
 			display.shownPolicyLoadEvent = true
+			display.handleProgressEvent(engine.ProgressEventPayload{
+				Type:    engine.PolicyPacksLoading,
+				ID:      "policy-loading",
+				Message: policyLoadingMessage,
+			})
 		}
 		return
 	case engine.SummaryEvent:

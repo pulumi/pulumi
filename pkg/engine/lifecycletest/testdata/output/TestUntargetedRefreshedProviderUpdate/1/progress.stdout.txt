@@ -1,7 +1,7 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
-<{%fg 5%}>Loading policy packs...<{%reset%}>
-
+Loading policy packs...: starting
+Loading policy packs...: done
 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%fg 3%}>refresh<{%reset%}> 

@@ -62,36 +62,57 @@ func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name 
 func (rp *cloudRequiredPolicy) Version() string { return rp.VersionTag }
 func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
 
-func (rp *cloudRequiredPolicy) Install(ctx *plugin.Context) (string, error) {
+func (rp *cloudRequiredPolicy) policyVersion() string {
 	policy := rp.RequiredPolicy
-
-	// If version tag is empty, we use the version tag. This is to support older version of
+	// If version tag is empty, we use the version. This is to support older versions of
 	// pulumi/policy that do not have a version tag.
 	version := policy.VersionTag
 	if version == "" {
 		version = strconv.Itoa(policy.Version)
 	}
-	policyPackPath, installed, err := workspace.GetPolicyPath(rp.OrgName(),
-		strings.ReplaceAll(policy.Name, tokens.QNameDelimiter, "_"), version)
+	return version
+}
+
+func (rp *cloudRequiredPolicy) policyPath() (string, bool, error) {
+	version := rp.policyVersion()
+	return workspace.GetPolicyPath(
+		rp.OrgName(),
+		strings.ReplaceAll(rp.RequiredPolicy.Name, tokens.QNameDelimiter, "_"),
+		version)
+}
+
+// Installed returns true if the PolicyPack is already installed locally.
+func (rp *cloudRequiredPolicy) Installed() bool {
+	_, installed, err := rp.policyPath()
+	contract.IgnoreError(err)
+	return installed
+}
+
+// LocalPath returns the local path of the PolicyPack.
+func (rp *cloudRequiredPolicy) LocalPath() (string, error) {
+	policyPath, _, err := rp.policyPath()
+	return policyPath, err
+}
+
+// Download the PolicyPack.
+func (rp *cloudRequiredPolicy) Download(
+	ctx context.Context,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+) (io.ReadCloser, int64, error) {
+	tarball, size, err := rp.client.DownloadPolicyPack(ctx, rp.PackLocation)
 	if err != nil {
-		// Failed to get a sensible PolicyPack path.
-		return "", err
-	} else if installed {
-		// We've already downloaded and installed the PolicyPack. Return.
-		return policyPackPath, nil
+		return nil, 0, err
 	}
+	return wrapper(tarball, size), size, nil
+}
 
-	fmt.Fprintf(os.Stderr, "Installing policy pack %s %s...\r\n", policy.Name, version)
-
-	// PolicyPack has not been downloaded and installed. Do this now.
-
-	logging.V(7).Infof("Downloading policy pack %s %s from %s", policy.Name, version, policy.PackLocation)
-	policyPackTarball, err := rp.client.DownloadPolicyPack(ctx.Request(), policy.PackLocation)
+// Install the PolicyPack. content is the tarball of the PolicyPack.
+func (rp *cloudRequiredPolicy) Install(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error {
+	policyPackPath, _, err := rp.policyPath()
 	if err != nil {
-		return "", err
+		return err
 	}
-
-	return policyPackPath, installRequiredPolicy(ctx, policyPackPath, policyPackTarball)
+	return installRequiredPolicy(ctx, policyPackPath, content, stdout, stderr)
 }
 
 func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
@@ -262,7 +283,7 @@ func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOp
 
 const packageDir = "package"
 
-func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadCloser) error {
+func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadCloser, stdout, stderr io.Writer) error {
 	// If part of the directory tree is missing, os.MkdirTemp will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0o700); err != nil {
@@ -290,6 +311,10 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	if err != nil {
 		return fmt.Errorf("failed to extract tarball: %w", err)
 	}
+
+	// Close the tarball stream to emit its Done progress event, dismissing the
+	// "Installing policy pack" progress bar before dependency installation begins.
+	contract.IgnoreClose(tgz)
 
 	logging.V(7).Infof("Unpacking policy pack %q %q\n", tempDir, finalDir)
 
@@ -330,13 +355,10 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		Info:                    info,
 		UseLanguageVersionTools: false,
 		IsPlugin:                true,
-	}, os.Stdout, os.Stderr)
+	}, stdout, stderr)
 	if err != nil {
 		return fmt.Errorf("installing dependencies: %w", err)
 	}
-
-	fmt.Fprintln(os.Stderr, "Finished installing policy pack\r")
-	fmt.Fprintln(os.Stderr)
 
 	return nil
 }
