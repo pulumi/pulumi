@@ -36,6 +36,7 @@ package constrictor
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -108,12 +109,12 @@ func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
 // Decode the constrictor argument specification.
 func ExtractArgs(cmd *cobra.Command) (*Arguments, error) {
 	if cmd == nil || cmd.Annotations == nil {
-		return nil, fmt.Errorf("command has no annotations")
+		return nil, errors.New("command has no annotations")
 	}
 
 	raw, ok := cmd.Annotations[cobraAnnotationKey]
 	if !ok || strings.TrimSpace(raw) == "" {
-		return nil, fmt.Errorf("command has no arguments")
+		return nil, errors.New("command has no arguments")
 	}
 
 	var spec Arguments
