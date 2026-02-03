@@ -109,6 +109,8 @@ type MockBackend struct {
 	DownloadTemplateF         func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
 	GetCloudRegistryF         func() (CloudRegistry, error)
 	GetReadOnlyCloudRegistryF func() registry.Registry
+
+	GetStackPolicyPacksF func(ctx context.Context, stackRef StackReference) ([]engine.RequiredPolicy, error)
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -152,6 +154,15 @@ func (be *MockBackend) GetPolicyPack(
 ) (PolicyPack, error) {
 	if be.GetPolicyPackF != nil {
 		return be.GetPolicyPackF(ctx, policyPack, d)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) GetStackPolicyPacks(
+	ctx context.Context, stackRef StackReference,
+) ([]engine.RequiredPolicy, error) {
+	if be.GetStackPolicyPacksF != nil {
+		return be.GetStackPolicyPacksF(ctx, stackRef)
 	}
 	panic("not implemented")
 }

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/policy
+  description: Add `pulumi policy install` command

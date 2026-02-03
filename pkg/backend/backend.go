@@ -148,6 +148,9 @@ type Backend interface {
 	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
 		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 
+	// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
+	GetStackPolicyPacks(ctx context.Context, stackRef StackReference) ([]engine.RequiredPolicy, error)
+
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
 

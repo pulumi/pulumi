@@ -1175,6 +1175,17 @@ func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
 	return nil
 }
 
+// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
+func (pc *Client) GetStackPolicyPacks(ctx context.Context,
+	stackID StackIdentifier,
+) (apitype.GetStackPolicyPacksResponse, error) {
+	var resp apitype.GetStackPolicyPacksResponse
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "policypacks"), nil, nil, &resp); err != nil {
+		return apitype.GetStackPolicyPacksResponse{}, err
+	}
+	return resp, nil
+}
+
 // DownloadPolicyPack downloads a `PolicyPack` from the given URL. It returns a ReadCloser to read
 // the PolicyPack and the content length. A content length of -1 indicates that the length is unknown.
 func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCloser, int64, error) {
