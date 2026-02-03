@@ -158,7 +158,6 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfManyResourcesWithJournaling(t *testing.T) {
-	t.Skip("https://github.com/pulumi/pulumi/issues/21632")
 	initialBenchmark := &integration.AssertPerfBenchmark{
 		T:                      t,
 		MaxUpdateDuration:      90 * time.Second,
