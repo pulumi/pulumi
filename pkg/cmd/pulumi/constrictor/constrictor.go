@@ -36,6 +36,7 @@ package constrictor
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -103,6 +104,25 @@ func AttachArguments(cmd *cobra.Command, arguments *Arguments) {
 	}
 
 	cmd.Annotations[cobraAnnotationKey] = string(serialised)
+}
+
+// Decode the constrictor argument specification.
+func ExtractArgs(cmd *cobra.Command) (*Arguments, error) {
+	if cmd == nil || cmd.Annotations == nil {
+		return nil, errors.New("command has no annotations")
+	}
+
+	raw, ok := cmd.Annotations[cobraAnnotationKey]
+	if !ok || strings.TrimSpace(raw) == "" {
+		return nil, errors.New("command has no arguments")
+	}
+
+	var spec Arguments
+	if err := json.Unmarshal([]byte(raw), &spec); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal arguments: %w", err)
+	}
+
+	return &spec, nil
 }
 
 // Create a Cobra argument predicate from an arguments specification.

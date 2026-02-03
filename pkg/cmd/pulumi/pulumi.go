@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/clispec"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
@@ -464,6 +465,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				trace.NewViewTraceCmd(),
 				trace.NewConvertTraceCmd(),
 				events.NewReplayEventsCmd(),
+				clispec.NewGenCLISpecCmd(cmd),
 			},
 		},
 		// AI Commands relating to specifically the Pulumi AI service
