@@ -48,7 +48,7 @@ type Node interface {
 	isBinding() bool
 	isBound() bool
 
-	getDependencies() []Node
+	GetDependencies() []Node
 	setDependencies(nodes []Node)
 
 	isNode()
@@ -76,7 +76,7 @@ func (r *node) isBound() bool {
 	return r.bound
 }
 
-func (r *node) getDependencies() []Node {
+func (r *node) GetDependencies() []Node {
 	return r.deps
 }
 

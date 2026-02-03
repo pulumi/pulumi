@@ -1,5 +1,5 @@
 PROJECT_NAME := Pulumi SDK
-SDKS         ?= nodejs python go
+SDKS         ?= nodejs python go pcl
 SUB_PROJECTS := $(SDKS:%=sdk/%)
 
 include build/common.mk
@@ -21,7 +21,7 @@ TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/
 VERSION         = $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
-LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python
+LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python sdk/pcl/cmd/pulumi-language-pcl
 
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
@@ -289,4 +289,5 @@ work:
 		sdk/go/pulumi-language-go \
 		sdk/nodejs/cmd/pulumi-language-nodejs \
 		sdk/python/cmd/pulumi-language-python \
+		sdk/pcl/cmd/pulumi-language-pcl \
 		tests

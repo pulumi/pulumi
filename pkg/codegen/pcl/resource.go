@@ -15,6 +15,9 @@
 package pcl
 
 import (
+	"bytes"
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -128,6 +131,13 @@ func (r *Resource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagn
 	return model.VisitExpressions(r.Definition, pre, post)
 }
 
+func (r *Resource) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := context.Variables[r.Name()]; hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
+}
+
 func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	if r == nil || r.VariableType == nil {
 		return model.DynamicType.Traverse(traverser)
@@ -172,6 +182,31 @@ type ResourceProperty struct {
 
 func (*ResourceProperty) SyntaxNode() hclsyntax.Node {
 	return syntax.None
+}
+
+func (p *ResourceProperty) Value(*hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	var buffer bytes.Buffer
+	for _, t := range p.Path {
+		var err error
+		switch t := t.(type) {
+		case hcl.TraverseRoot:
+			_, err = fmt.Fprint(&buffer, t.Name)
+		case hcl.TraverseAttr:
+			_, err = fmt.Fprintf(&buffer, ".%s", t.Name)
+		case hcl.TraverseIndex:
+			switch t.Key.Type() {
+			case cty.String:
+				_, err = fmt.Fprintf(&buffer, ".%s", t.Key.AsString())
+			case cty.Number:
+				idx, _ := t.Key.AsBigFloat().Int64()
+				_, err = fmt.Fprintf(&buffer, "[%d]", idx)
+			default:
+				contract.Failf("unexpected traversal index of type %v", t.Key.Type())
+			}
+		}
+		contract.IgnoreError(err)
+	}
+	return cty.StringVal(buffer.String()), nil
 }
 
 func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {

@@ -27,7 +27,7 @@ import (
 // hasReferenceTo returns true if the source node has a reference to the target node.
 // In other words, if the target node is a dependency of the source node.
 func hasReferenceTo(source Node, target Node) bool {
-	for _, dep := range source.getDependencies() {
+	for _, dep := range source.GetDependencies() {
 		if dep.Name() == target.Name() {
 			return true
 		}

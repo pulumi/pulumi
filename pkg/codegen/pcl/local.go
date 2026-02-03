@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // LocalVariable represents a program- or component-scoped local variable.
@@ -33,6 +34,13 @@ type LocalVariable struct {
 // SyntaxNode returns the syntax node associated with the local variable.
 func (lv *LocalVariable) SyntaxNode() hclsyntax.Node {
 	return lv.syntax
+}
+
+func (lv *LocalVariable) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := context.Variables[lv.Name()]; hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
 }
 
 func (lv *LocalVariable) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
