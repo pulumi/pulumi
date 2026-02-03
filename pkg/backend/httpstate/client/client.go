@@ -1175,7 +1175,7 @@ func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
 	return nil
 }
 
-// DownloadPolicyPack downloads a `PolicyPack` fro the given URL. It returns a ReadCloser to read
+// DownloadPolicyPack downloads a `PolicyPack` from the given URL. It returns a ReadCloser to read
 // the PolicyPack and the content length. A content length of -1 indicates that the length is unknown.
 func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCloser, int64, error) {
 	getS3Req, err := http.NewRequest(http.MethodGet, url, nil)
