@@ -156,8 +156,7 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			// We're importing this URN so track that we've seen it.
 			importSet[urn] = struct{}{}
 
-			// We can't actually import providers yet, just skip them. We'll only error if anything
-			// actually tries to use it.
+			// We can't actually import providers yet, just skip them.
 			if sdkproviders.IsProviderType(urn.Type()) {
 				continue
 			}
@@ -186,13 +185,9 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
-				// If we're trying to create this provider in the same deployment and it's not a default provider then
-				// we need to error, the import system can't yet "import" providers.
+				// We can't import providers yet (we skip them above), but resources that use a new explicit
+				// provider can still be in the import file.
 				if !sdkproviders.IsDefaultProvider(ref.URN()) {
-					if _, has := importSet[ref.URN()]; has {
-						return importFile{}, fmt.Errorf("cannot import resource %q with a new explicit provider %q", new.URN, ref.URN())
-					}
-
 					var has bool
 					provider, has = fullNameTable[ref.URN()]
 					contract.Assertf(has, "expected provider %q to be in full name table", new.Provider)
