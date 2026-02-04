@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
@@ -227,8 +226,8 @@ func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrPro
 			projectFilePath: filePath,
 			proj:            baseProject,
 			// Cloud registry is linked to a backend, but we don't have one
-			// available in a plugin. Use the unauthenticated registry.
-			reg: unauthenticatedregistry.New(cmdutil.Diag(), env.Global()),
+			// available in a plugin. Use the default backend.
+			reg: cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
 		}, nil
 	default:
 		panic(fmt.Sprintf("workspace.LoadBaseProjectFrom promises that it will return "+
