@@ -349,7 +349,7 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 }
 
 // TestBuildImportFile_NewProvider tests that we can generate an import file for a resource that uses
-// an explicit provider that is also being created in the same deployment (issue #15453).
+// an explicit provider that is also being created in the same deployment (#15453).
 func TestBuildImportFile_NewProvider(t *testing.T) {
 	t.Parallel()
 
@@ -563,7 +563,7 @@ func TestBuildImportFile_regress_15002(t *testing.T) {
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/15068
-// Creates an explicit provider and resources that use it (and one that uses default provider).
+// Creates an explicit provider and a resource that uses it.
 func TestBuildImportFile_regress_15068(t *testing.T) {
 	t.Parallel()
 
