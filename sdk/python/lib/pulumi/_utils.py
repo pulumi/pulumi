@@ -280,9 +280,9 @@ class _LazyModule(types.ModuleType):
 
     def __getattribute__(self, attr):
         """Trigger the load of the module and return the attribute."""
-        # Don't trigger full load for standard module introspection attributes.
-        # These are typically accessed by tools like debuggers, file watchers,
-        # IDEs, etc. and shouldn't cause a full module load.
+        # Don't trigger full load for standard module introspection attributes
+        # used by tools like debuggers, file watchers, and IDEs. These attributes
+        # are already set on the instance by importlib.util.module_from_spec().
         if attr in _INTROSPECTION_ATTRS:
             return types.ModuleType.__getattribute__(self, attr)
 
