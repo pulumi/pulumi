@@ -15,7 +15,6 @@
 package resource
 
 import (
-	"maps"
 	"slices"
 	"sync"
 	"time"
@@ -71,7 +70,6 @@ type State struct {
 	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
 	ViewOf                  URN                   // If set, the URN of the resource this resource is a view of.
 	ResourceHooks           map[HookType][]string // The resource hooks attached to the resource, by type.
-	EnvVarMappings          map[string]string     // Mappings for environment variables
 }
 
 func cloneMapOfSlices[M ~map[K]V, K comparable, V ~[]E, E any](m M) M {
@@ -122,7 +120,6 @@ func (s *State) Copy() *State {
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           cloneMapOfSlices(s.ResourceHooks),
-		EnvVarMappings:          maps.Clone(s.EnvVarMappings),
 	}
 }
 
@@ -244,9 +241,6 @@ type NewState struct {
 
 	// The resource hooks attached to the resource, by type.
 	ResourceHooks map[HookType][]string // required
-
-	// If set, environment variable mappings for provider resources.
-	EnvVarMappings map[string]string
 }
 
 // Make consumes the NewState to create a *State.
@@ -294,7 +288,6 @@ func (s NewState) Make() *State {
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           s.ResourceHooks,
-		EnvVarMappings:          s.EnvVarMappings,
 	}
 }
 
