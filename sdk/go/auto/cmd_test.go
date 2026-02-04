@@ -146,13 +146,16 @@ func TestNoGlobalPulumi(t *testing.T) {
 func TestVersionWithVerboseEnv(t *testing.T) {
 	dir := t.TempDir()
 	version := semver.Version{Major: 3, Minor: 98, Patch: 0}
-	_, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
+	_, err := InstallPulumiCommand(t.Context(), &PulumiCommandOptions{Root: dir, Version: version})
 	require.NoError(t, err)
 
 	t.Setenv("PULUMI_OPTION_VERBOSE", "11")
 
-	_, err = NewPulumiCommand(&PulumiCommandOptions{Root: dir, Version: version})
+	cmd, err := NewPulumiCommand(&PulumiCommandOptions{Root: dir, Version: version})
 	require.NoError(t, err)
+
+	version = cmd.Version()
+	require.Equal(t, version, semver.Version{Major: 3, Minor: 98, Patch: 0})
 }
 
 func TestFixupPath(t *testing.T) {
