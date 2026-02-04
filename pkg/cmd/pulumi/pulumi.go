@@ -201,7 +201,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				logging.Warningf("could not find the log file: %s", err)
 				logging.Flush()
 			} else {
-				fmt.Printf("The log file for this run is at %s\n", logFile)
+				fmt.Fprintf(os.Stderr, "The log file for this run is at %s\n", logFile)
 			}
 		}
 
