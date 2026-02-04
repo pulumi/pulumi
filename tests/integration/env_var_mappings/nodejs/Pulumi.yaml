@@ -1,3 +1,0 @@
-name: env_var_mappings
-runtime: nodejs
-description: Test envVarMappings resource option
