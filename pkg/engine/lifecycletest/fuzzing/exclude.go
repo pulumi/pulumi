@@ -57,6 +57,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeRefreshWithTargetedProviderParentChangeDestroyV2,
 		// TODO[pulumi/pulumi#21645]
 		ExcludeDependenciesInProgramButNotInSnapshotRefreshV2,
+		// TODO[pulumi/pulumi#21672]
+		ExcludeParentedResourcesRefreshV2,
 	}
 }
 
@@ -618,5 +620,30 @@ func ExcludeDependenciesInProgramButNotInSnapshotRefreshV2(
 			return true
 		}
 	}
+	return false
+}
+
+func ExcludeParentedResourcesRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 && !plan.RefreshProgram {
+		return false
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent != "" {
+			return true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent != "" {
+			return true
+		}
+	}
+
 	return false
 }
