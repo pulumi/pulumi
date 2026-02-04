@@ -349,7 +349,6 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			if err != nil {
 				return nil, fmt.Errorf("failed to fetch provider config for %q: %w", pkg, err)
 			}
-
 			if imp.Version != nil {
 				providers.SetProviderVersion(inputs, imp.Version)
 			}
@@ -369,40 +368,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 				return nil, fmt.Errorf("failed to validate provider %q config: %w", providerURN, err)
 			}
 			state := resource.NewState{
-				Type:                    typ,
-				URN:                     providerURN,
-				Custom:                  true,
-				Delete:                  false,
-				ID:                      "",
-				Inputs:                  inputs,
-				Outputs:                 nil,
-				Parent:                  "",
-				Protect:                 false,
-				Taint:                   false,
-				External:                false,
-				Dependencies:            nil,
-				InitErrors:              nil,
-				Provider:                "",
-				PropertyDependencies:    nil,
-				PendingReplacement:      false,
-				AdditionalSecretOutputs: nil,
-				Aliases:                 nil,
-				CustomTimeouts:          nil,
-				ImportID:                "",
-				RetainOnDelete:          false,
-				DeletedWith:             "",
-				ReplaceWith:             nil,
-				Created:                 nil,
-				Modified:                nil,
-				SourcePosition:          "",
-				StackTrace:              nil,
-				IgnoreChanges:           nil,
-				HideDiff:                nil,
-				ReplaceOnChanges:        nil,
-				ReplacementTrigger:      resource.NewNullProperty(),
-				RefreshBeforeUpdate:     false,
-				ViewOf:                  "",
-				ResourceHooks:           nil,
+				Type:   typ,
+				URN:    providerURN,
+				Custom: true,
+				Inputs: inputs,
 			}.Make()
 			if issueCheckErrors(i.deployment, state, providerURN, resp.Failures) {
 				return nil, errors.New("provider check failed")
