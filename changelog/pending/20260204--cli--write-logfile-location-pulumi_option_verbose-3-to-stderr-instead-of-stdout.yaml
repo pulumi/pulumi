@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Write logfile location (PULUMI_OPTION_VERBOSE >= 3) to stderr instead of stdout
