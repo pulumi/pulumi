@@ -561,23 +561,13 @@ func TestDependingOnElidedEntries(t *testing.T) {
 
 	c := startTestServer(t, func(w http.ResponseWriter, body apitype.JournalEntries) {
 		for _, entry := range body.Entries {
-			if entry.OperationID == 2 {
+			if entry.OperationID <= 2 {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 		}
 		w.WriteHeader(http.StatusOK)
 	})
-
-	updateIdentifier := client.UpdateIdentifier{
-		StackIdentifier: client.StackIdentifier{
-			Owner:   "org",
-			Project: "project2",
-			Stack:   tokens.MustParseStackName("stack"),
-		},
-		UpdateKind: apitype.UpdateUpdate,
-		UpdateID:   "update-id2",
-	}
 
 	journaler := newJournaler(
 		t.Context(),

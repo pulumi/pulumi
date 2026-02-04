@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -40,12 +41,6 @@ type saveJournalEntry struct {
 	result chan<- error
 }
 
-// elidedEntry tracks the result of an elided journal entry.
-type elidedEntry struct {
-	done chan struct{} // Closed when the entry has been sent successfully.
-	err  error         // The error encountered when sending the entry, if any.
-}
-
 type cloudJournaler struct {
 	context context.Context         // The context to use for client requests.
 	sm      secrets.Manager         // Secrets manager for encrypting values when serializing the journal entries.
@@ -53,9 +48,9 @@ type cloudJournaler struct {
 	entries chan<- saveJournalEntry // Channel for sending journal entries to the batch worker.
 	done    <-chan struct{}         // Channel for tracking whether or not the batch worker has finished.
 
-	m             sync.Mutex             // Controls access to the closed field and pendingElided map.
-	closed        bool                   // True if the journaler is closed.
-	pendingElided map[int64]*elidedEntry // Map of operation IDs to elided entries that may have dependents.
+	m             sync.Mutex                           // Controls access to the closed field and pendingElided map.
+	closed        bool                                 // True if the journaler is closed.
+	pendingElided map[int64]*promise.Promise[struct{}] // Map of operation IDs to elided entries that may have dependents.
 }
 
 func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
@@ -77,9 +72,9 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 		j.m.Unlock()
 
 		if hasDep {
-			<-elidedDep.done
-			if elidedDep.err != nil {
-				return fmt.Errorf("dependent elided entry (operation %d) failed: %w", depID, elidedDep.err)
+			_, err := elidedDep.Result(j.context)
+			if err != nil {
+				return fmt.Errorf("dependent elided entry (operation %d) failed: %w", depID, err)
 			}
 		}
 	}
@@ -119,19 +114,12 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 		result: result,
 	}
 	if entry.ElideWrite {
-		elidedTracker := &elidedEntry{
-			done: make(chan struct{}),
-		}
-
+		promise := promise.Run(func() (struct{}, error) {
+			return struct{}{}, <-result
+		})
 		j.m.Lock()
-		j.pendingElided[entry.OperationID] = elidedTracker
+		j.pendingElided[entry.OperationID] = promise
 		j.m.Unlock()
-
-		go func() {
-			err := <-result
-			elidedTracker.err = err
-			close(elidedTracker.done)
-		}()
 
 		return nil
 	}
@@ -304,7 +292,7 @@ func newJournaler(
 		sm:            sm,
 		entries:       entries,
 		done:          done,
-		pendingElided: make(map[int64]*elidedEntry),
+		pendingElided: make(map[int64]*promise.Promise[struct{}]),
 	}
 }
 
