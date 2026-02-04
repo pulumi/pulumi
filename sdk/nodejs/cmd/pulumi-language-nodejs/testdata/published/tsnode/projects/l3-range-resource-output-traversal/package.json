@@ -6,6 +6,6 @@
 	"dependencies": {
 		"typescript": "^4.0.0",
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
-		"@pulumi/dns": "ROOT/artifacts/pulumi-dns-1.42.0.tgz"
+		"@pulumi/nestedobject": "ROOT/artifacts/pulumi-nestedobject-1.42.0.tgz"
 	}
 }

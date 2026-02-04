@@ -1,13 +1,13 @@
 import pulumi
-import pulumi_dns as dns
+import pulumi_nestedobject as nestedobject
 
-subscription = dns.Subscription("subscription", domains=[
-    "example.com",
-    "test.com",
+container = nestedobject.Container("container", inputs=[
+    "alpha",
+    "bravo",
 ])
-record = []
-def create_record(range_body):
+target = []
+def create_target(range_body):
     for range in [{"key": k, "value": v} for [k, v] in enumerate(range_body)]:
-        record.append(dns.Record(f"record-{range['key']}", name=range["value"].record_name))
+        target.append(nestedobject.Target(f"target-{range['key']}", name=range["value"].value))
 
-subscription.challenges.apply(create_record)
+container.details.apply(create_target)

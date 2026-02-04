@@ -24,30 +24,29 @@ import (
 func init() {
 	LanguageTests["l3-range-resource-output-traversal"] = LanguageTest{
 		Providers: []func() plugin.Provider{
-			func() plugin.Provider { return &providers.DNSProvider{} },
+			func() plugin.Provider { return &providers.NestedObjectProvider{} },
 		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 
-					// Expect: stack, dns provider, subscription, 2 records (one per domain), and 1 record provider.
-					// Actually the range creates one record per challenge entry.
-					// We have 2 domains -> 2 challenges -> 2 records.
-					// Resources: stack + dns provider + subscription + 2 records = 5
+					// Expect: stack, nestedobject provider, container, 2 targets (one per input).
+					// We have 2 inputs -> 2 details -> 2 targets.
+					// Resources: stack + nestedobject provider + container + 2 targets = 5
 					require.Len(l, res.Snap.Resources, 5, "expected 5 resources in snapshot")
 
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:dns")
-					RequireSingleResource(l, res.Snap.Resources, "dns:index:Subscription")
+					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:nestedobject")
+					RequireSingleResource(l, res.Snap.Resources, "nestedobject:index:Container")
 
-					records := RequireNResources(l, res.Snap.Resources, "dns:index:Record", 2)
-					for _, record := range records {
-						name, ok := record.Inputs["name"]
-						assert.True(l, ok, "expected record to have 'name' input")
+					targets := RequireNResources(l, res.Snap.Resources, "nestedobject:index:Target", 2)
+					for _, target := range targets {
+						name, ok := target.Inputs["name"]
+						assert.True(l, ok, "expected target to have 'name' input")
 						assert.True(l, name.IsString(), "expected 'name' to be a string")
-						assert.Contains(l, name.StringValue(), "_acme-challenge.",
-							"expected name to contain '_acme-challenge.'")
+						assert.Contains(l, name.StringValue(), "computed-",
+							"expected name to contain 'computed-'")
 					}
 				},
 			},

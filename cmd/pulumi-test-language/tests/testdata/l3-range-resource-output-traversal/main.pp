@@ -1,10 +1,10 @@
-resource "subscription" "dns:index:Subscription" {
-  domains = ["example.com", "test.com"]
+resource "container" "nestedobject:index:Container" {
+  inputs = ["alpha", "bravo"]
 }
 
-resource "record" "dns:index:Record" {
+resource "target" "nestedobject:index:Target" {
   options {
-    range = subscription.challenges
+    range = container.details
   }
-  name = range.value.recordName
+  name = range.value.value
 }
