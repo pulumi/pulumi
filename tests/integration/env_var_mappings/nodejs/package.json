@@ -1,0 +1,10 @@
+{
+    "name": "env_var_mappings",
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "typescript": "^4.0.0"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}
