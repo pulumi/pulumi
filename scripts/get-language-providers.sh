@@ -28,9 +28,9 @@ download_release() {
 # * When updating .Net, you should also update PulumiDotnetSDKVersion in pkg/codegen/testing/test/helpers.go
 #
 LANGUAGES=(
-  "dotnet v3.98.0"
+  "dotnet v3.99.0"
   "java v1.21.0"
-  "yaml v1.26.2"
+  "yaml v1.27.0"
 )
 
 for i in "${LANGUAGES[@]}"; do
