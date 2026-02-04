@@ -1,0 +1,11 @@
+{
+	"name": "l3-range-resource-output-traversal",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/dns": "ROOT/artifacts/pulumi-dns-1.42.0.tgz"
+	}
+}
