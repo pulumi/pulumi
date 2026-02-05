@@ -38,11 +38,15 @@ func init() {
 					provider := RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:simple")
 					assert.Equal(l, "prov", provider.URN.Name(), "expected provider named 'prov'")
 
-					// Check that EnvVarMappings is set on the provider state
-					assert.Equal(l, map[string]string{
-						"MY_VAR":    "PROVIDER_VAR",
-						"OTHER_VAR": "TARGET_VAR",
-					}, provider.EnvVarMappings, "expected env var mappings to be set")
+					// Check that envVarMappings is set in the provider Inputs under __internal
+					internal := provider.Inputs["__internal"]
+					require.NotNil(l, internal, "expected __internal in provider inputs")
+					internalObj := internal.ObjectValue()
+					envVarMappings := internalObj["envVarMappings"]
+					require.NotNil(l, envVarMappings, "expected envVarMappings in __internal")
+					mappingsObj := envVarMappings.ObjectValue()
+					assert.Equal(l, "PROVIDER_VAR", mappingsObj["MY_VAR"].StringValue(), "expected MY_VAR mapping")
+					assert.Equal(l, "TARGET_VAR", mappingsObj["OTHER_VAR"].StringValue(), "expected OTHER_VAR mapping")
 				},
 			},
 		},

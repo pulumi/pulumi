@@ -558,7 +558,6 @@ func SerializeResource(
 		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 		ViewOf:                  res.ViewOf,
 		ResourceHooks:           res.ResourceHooks,
-		EnvVarMappings:          res.EnvVarMappings,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -775,7 +774,6 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
-			EnvVarMappings:          res.EnvVarMappings,
 		}.Make(),
 		nil
 }

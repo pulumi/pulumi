@@ -709,16 +709,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		refreshBeforeUpdate = old.RefreshBeforeUpdate
 	}
 
-	// Extract envVarMappings from provider properties if this is a provider resource.
-	var envVarMappings map[string]string
-	if sdkproviders.IsProviderType(goal.Type) {
-		var err error
-		envVarMappings, err = providers.GetEnvironmentVariableMappings(goal.Properties)
-		if err != nil {
-			return nil, false, fmt.Errorf("failed to get environment variable mappings: %w", err)
-		}
-	}
-
 	new := resource.NewState{
 		Type:                    goal.Type,
 		URN:                     urn,
@@ -754,7 +744,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
-		EnvVarMappings:          envVarMappings,
 	}.Make()
 	if sdkproviders.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
