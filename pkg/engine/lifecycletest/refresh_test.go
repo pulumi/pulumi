@@ -2837,7 +2837,7 @@ func TestRefreshV2FailedRead(t *testing.T) {
 	snap, err := lt.TestOp(RefreshV2).
 		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err,
-		"BAIL: read failure for urn:pulumi:test-stack::test-project::pkgA:m:typA::resA")
+		"read failure for urn:pulumi:test-stack::test-project::pkgA:m:typA::resA")
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
 	require.Equal(t, resource.ID("id-resA"), snap.Resources[1].ID)
