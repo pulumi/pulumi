@@ -16,31 +16,34 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func init() {
-	LanguageTests["provider-depends-on-component"] = LanguageTest{
+	LanguageTests["l2-resource-option-parent"] = LanguageTest{
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.SimpleProvider{} },
-			func() plugin.Provider { return &providers.ConformanceComponentProvider{} },
 		},
-		LanguageProviders: []string{"conformance-component"},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 
-					require.Len(l, res.Snap.Resources, 6, "expected 6 resources in snapshot")
+					// Stack, provider, parent resource, and 2 child resources
+					require.Len(l, res.Snap.Resources, 5, "expected 5 resources in snapshot")
 
-					noDeps := RequireSingleNamedResource(l, res.Snap.Resources, "noDependsOn")
-					assert.Empty(l, noDeps.Dependencies)
+					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					component := RequireSingleResource(l, res.Snap.Resources, "conformance-component:index:Simple")
-					assert.Equal(l, []resource.URN{noDeps.URN}, component.Dependencies)
+					parent := RequireSingleNamedResource(l, res.Snap.Resources, "parent")
+					assert.Equal(l, stack.URN, parent.Parent, "expected stack to be parent of parent resource")
+
+					withParent := RequireSingleNamedResource(l, res.Snap.Resources, "withParent")
+					assert.Equal(l, parent.URN, withParent.Parent, "expected parent to be parent of withParent resource")
+
+					noParent := RequireSingleNamedResource(l, res.Snap.Resources, "noParent")
+					assert.Equal(l, stack.URN, noParent.Parent, "expected stack to be parent of noParent resource")
 				},
 			},
 		},
