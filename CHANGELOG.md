@@ -1,5 +1,56 @@
 # Changelog
 
+## 3.219.0 (2026-02-05)
+
+
+### Features
+
+- [cli] Allow setting `requiredPulumiVersion` in Pulumi.yaml
+  [#21627](https://github.com/pulumi/pulumi/pull/21627)
+
+- [cli/{install,package}] Allow using private packages as local dependencies in components
+  [#21664](https://github.com/pulumi/pulumi/pull/21664)
+
+- [cli/policy] Add `pulumi policy install` command
+  [#21652](https://github.com/pulumi/pulumi/pull/21652)
+
+- [engine] Run analyzer calls in parallel
+  [#21631](https://github.com/pulumi/pulumi/pull/21631)
+
+- [programgen/dotnet] Codegen RequirePulumiVersion for Dotnet
+  [#21621](https://github.com/pulumi/pulumi/pull/21621)
+
+- [sdk/python] Add support for the `OnError` resource hook
+  [#21644](https://github.com/pulumi/pulumi/pull/21644)
+
+- [sdk/python] Add support for protobuf 6
+  [#21647](https://github.com/pulumi/pulumi/pull/21647)
+
+
+### Bug Fixes
+
+- [cli] Allow positional arguments to be passed to `convert` again
+  [#21604](https://github.com/pulumi/pulumi/pull/21604)
+  [#21614](https://github.com/pulumi/pulumi/pull/21614)
+
+- [engine] Download/install required policy packs in parallel with plugins
+  [#21651](https://github.com/pulumi/pulumi/pull/21651)
+
+- [cli/package] Correctly install packages that depend on other packages for `pulumi package add` and `pulumi package get-schema`.
+  [#21321](https://github.com/pulumi/pulumi/pull/21321)
+
+- [programgen/python] Fix panic when ranging over a resource output that is an array of objects
+  [#21679](https://github.com/pulumi/pulumi/pull/21679)
+
+- [sdk/python] Fix issue with generic subclasses of `dynamic.Resource`
+  [#21670](https://github.com/pulumi/pulumi/pull/21670)
+
+
+### Miscellaneous
+
+- [sdk/python] Relax pip version constraint
+  [#21639](https://github.com/pulumi/pulumi/pull/21639)
+
 ## 3.218.0 (2026-01-29)
 
 

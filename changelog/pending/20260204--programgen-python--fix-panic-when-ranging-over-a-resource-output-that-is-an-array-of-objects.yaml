@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/python
-  description: Fix panic when ranging over a resource output that is an array of objects
