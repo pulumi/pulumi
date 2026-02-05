@@ -304,6 +304,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 					pkgVersion = literal
 				}
 			}
+			break
 		}
 	}
 
