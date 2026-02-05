@@ -923,7 +923,7 @@ func (pkg *Package) TokenToModule(tok string) string {
 		}
 
 		matches := format.FindStringSubmatch(components[1])
-		if len(matches) < 2 || strings.HasPrefix(matches[1], "index") {
+		if len(matches) < 2 {
 			return ""
 		}
 		return matches[1]
