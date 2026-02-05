@@ -1098,7 +1098,7 @@ func (eng *languageTestServer) RunLanguageTest(
 					if diags.HasErrors() {
 						return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, diags)), nil
 					}
-					localDependencies[pkg.Name] = sdkTargetDir
+					//localDependencies[pkg.Name] = sdkTargetDir
 				}
 			}
 
@@ -1125,6 +1125,14 @@ func (eng *languageTestServer) RunLanguageTest(
 				if err != nil {
 					return nil, fmt.Errorf("copy testdata: %w", err)
 				}
+
+				// If we're running in local mode we need to link in all the generated SDKs before we can do the snapshot validation, as the generated code will reference the SDKs directly instead of using packed versions of them.
+				if token.Local {
+					for _, pkg := range packages {
+						sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
+						sdkTargetDir := sdks[sdkName]
+
+						languageClient.Link(info, )
 
 				snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
 				if len(test.Runs) > 1 && !test.RunsShareSource {
