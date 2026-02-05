@@ -216,3 +216,37 @@ func NeedsVersionResourceOption(version model.Expression, schema *schema.Resourc
 
 	return v.String() != optV.Value.AsString()
 }
+
+func NeedsPluginDownloadURLResourceOption(pluginDownloadURL model.Expression, schema *schema.Resource) bool {
+	if pluginDownloadURL == nil {
+		return false
+	}
+
+	if schema == nil {
+		return true
+	}
+
+	pkg, err := schema.PackageReference.Definition()
+	if err != nil || pkg == nil {
+		return true
+	}
+
+	schemaURL := pkg.PluginDownloadURL
+	if schemaURL == "" {
+		return true
+	}
+
+	e, ok := pluginDownloadURL.(*model.TemplateExpression)
+	contract.Assertf(ok, "Expected a model.TemplateExpression, found %T", pluginDownloadURL)
+	if len(e.Parts) != 1 {
+		return true
+	}
+
+	optURL, ok := e.Parts[0].(*model.LiteralValueExpression)
+	contract.Assertf(ok, "Expected a pluginDownloadURL literal, found %T", optURL)
+	if !optURL.Value.Type().Equals(cty.String) || !optURL.Value.IsKnown() || optURL.Value.IsNull() {
+		return true
+	}
+
+	return schemaURL != optURL.Value.AsString()
+}

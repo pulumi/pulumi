@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
@@ -98,11 +97,9 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return err
 					}
 
-					// Cloud registry is linked to a backend, but we don't have
-					// one available in a plugin. Use the unauthenticated
-					// registry.
-					reg := unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
-
+					// Cloud registry is linked to a backend, but we don't have one available in a
+					// plugin. Use the global default registry.
+					reg := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 					if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
 						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)

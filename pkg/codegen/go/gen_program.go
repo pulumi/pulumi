@@ -1200,6 +1200,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions, schema *sche
 	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
 		appendOption("Version", opts.Version, model.StringType)
 	}
+	if opts.PluginDownloadURL != nil && pcl.NeedsPluginDownloadURLResourceOption(opts.PluginDownloadURL, schema) {
+		appendOption("PluginDownloadURL", opts.PluginDownloadURL, model.StringType)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}
