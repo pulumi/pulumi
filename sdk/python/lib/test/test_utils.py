@@ -17,7 +17,12 @@ import os.path
 
 import unittest
 
-from pulumi._utils import is_empty_function, lazy_import, _LazyModule, _INTROSPECTION_ATTRS
+from pulumi._utils import (
+    is_empty_function,
+    lazy_import,
+    _LazyModule,
+    _INTROSPECTION_ATTRS,
+)
 
 
 # Function with return value based on input, called in the non_empty function

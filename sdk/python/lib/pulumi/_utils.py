@@ -269,10 +269,20 @@ class ContextProperty:
 # Standard module introspection attributes that shouldn't trigger a full load.
 # These are typically accessed by tools like debuggers, file watchers, IDEs, etc.
 # See https://github.com/streamlit/streamlit/issues/13530
-_INTROSPECTION_ATTRS = frozenset({
-    "__file__", "__spec__", "__path__", "__name__", "__loader__",
-    "__package__", "__cached__", "__doc__", "__dict__", "__class__",
-})
+_INTROSPECTION_ATTRS = frozenset(
+    {
+        "__file__",
+        "__spec__",
+        "__path__",
+        "__name__",
+        "__loader__",
+        "__package__",
+        "__cached__",
+        "__doc__",
+        "__dict__",
+        "__class__",
+    }
+)
 
 
 class _LazyModule(types.ModuleType):
