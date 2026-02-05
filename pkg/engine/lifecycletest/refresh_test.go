@@ -1,4 +1,4 @@
-// Copyright 2020-2025, Pulumi Corporation.
+// Copyright 2020-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -2837,7 +2837,7 @@ func TestRefreshV2FailedRead(t *testing.T) {
 	snap, err := lt.TestOp(RefreshV2).
 		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err,
-		"BAIL: read failure for urn:pulumi:test-stack::test-project::pkgA:m:typA::resA")
+		"read failure for urn:pulumi:test-stack::test-project::pkgA:m:typA::resA")
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
 	require.Equal(t, resource.ID("id-resA"), snap.Resources[1].ID)
