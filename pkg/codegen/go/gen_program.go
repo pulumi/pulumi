@@ -1393,6 +1393,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
 		var buf bytes.Buffer
+		g.importer.Import("fmt", "fmt")
 		resourceName := fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName)
 		if g.isComponent {
 			resourceName = fmt.Sprintf(`fmt.Sprintf("%%s-%s-%%v", name, key0)`, resName)
