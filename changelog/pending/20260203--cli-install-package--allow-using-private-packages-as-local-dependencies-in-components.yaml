@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/install,package
-  description: Allow using private packages as local dependencies in components
