@@ -430,6 +430,7 @@ type ResourceOptions struct {
 
 	SupportsResultReporting bool
 	PackageRef              string
+	EnvVarMappings          map[string]string
 }
 
 func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
@@ -585,6 +586,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SupportsResultReporting:    opts.SupportsResultReporting,
 		PackageRef:                 opts.PackageRef,
 		Hooks:                      resourceHooks,
+		EnvVarMappings:             opts.EnvVarMappings,
 	}
 
 	ctx := context.Background()
