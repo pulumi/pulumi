@@ -316,7 +316,9 @@ class MergeResourceOptions(unittest.TestCase):
         assert opts1.env_var_mappings == {"MY_VAR": "PROVIDER_VAR"}
         opts2 = ResourceOptions.merge(opts1, ResourceOptions())
         assert opts2.env_var_mappings == {"MY_VAR": "PROVIDER_VAR"}
-        opts3 = ResourceOptions.merge(opts2, ResourceOptions(env_var_mappings={"OTHER_VAR": "TARGET_VAR"}))
+        opts3 = ResourceOptions.merge(
+            opts2, ResourceOptions(env_var_mappings={"OTHER_VAR": "TARGET_VAR"})
+        )
         assert opts3.env_var_mappings == {"OTHER_VAR": "TARGET_VAR"}
 
 
