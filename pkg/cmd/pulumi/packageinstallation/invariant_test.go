@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:gosec // Test code can use weak random number generators
 package packageinstallation_test
 
 import (
 	"context"
 	"maps"
+	"math/rand/v2"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
@@ -67,6 +70,8 @@ func newInvariantWorkspace(
 func assertInvariantWorkspaceEqual(t *testing.T, a, b invariantWorkspace) {
 	a.t = nil
 	b.t = nil
+	a.jitter = 0
+	b.jitter = 0
 	assert.Equal(t, a, b)
 }
 
@@ -88,6 +93,12 @@ type invariantWorkspace struct {
 	//
 	// It must be held for write when the results of HasPlugin change.
 	rw *sync.RWMutex
+
+	// The max amount of jitter introduced to simulate long running operations. Defaults to none.
+	//
+	// jitter should be set on tests that run operations in parallel, and does not need to be
+	// set on tests that run operations in sequence.
+	jitter time.Duration
 }
 
 type invariantWorkDir struct{ linked []string }
@@ -184,6 +195,10 @@ func (w invariantWorkspace) GetPluginPath(ctx context.Context, plugin workspace.
 func (w invariantWorkspace) InstallPluginAt(
 	ctx context.Context, dirPath string, project *workspace.PluginProject,
 ) error {
+	if w.jitter > 0 {
+		time.Sleep(time.Duration(rand.IntN(int(w.jitter))))
+	}
+
 	w.rw.Lock()
 	defer w.rw.Unlock()
 	dirPath = filepath.ToSlash(dirPath)
@@ -207,12 +222,18 @@ func (w invariantWorkspace) IsExecutable(ctx context.Context, binaryPath string)
 		return true, nil
 	}
 	p := filepath.ToSlash(filepath.Dir(binaryPath))
+
+	w.rw.RLock()
 	pl, ok := w.plugins[p]
+	w.rw.RUnlock()
+
 	if !ok || !pl.pathVisible {
 		return false, nil
 	}
 	if pl.hasBinary {
+		w.rw.Lock()
 		w.binaryPaths[filepath.ToSlash(binaryPath)] = p
+		w.rw.Unlock()
 		return true, nil
 	}
 	return false, nil
@@ -247,6 +268,10 @@ func (w invariantWorkspace) LoadBaseProjectFrom(
 func (w invariantWorkspace) DownloadPlugin(
 	ctx context.Context, plugin workspace.PluginDescriptor,
 ) (string, packageinstallation.MarkInstallationDone, error) {
+	if w.jitter > 0 {
+		time.Sleep(time.Duration(rand.IntN(int(w.jitter))))
+	}
+
 	p := filepath.ToSlash(filepath.Join("$HOME", ".pulumi", "plugins", plugin.Dir(), plugin.SubDir()))
 	pl, ok := w.plugins[p]
 	if !ok {
@@ -275,6 +300,10 @@ func (w invariantWorkspace) LinkPackage(
 	ctx context.Context,
 	project *workspace.ProjectRuntimeInfo, projectDir string, provider plugin.Provider,
 ) error {
+	if w.jitter > 0 {
+		time.Sleep(time.Duration(rand.IntN(int(w.jitter))))
+	}
+
 	projectDir = filepath.ToSlash(projectDir)
 
 	var links *[]string
@@ -312,10 +341,13 @@ func (w invariantWorkspace) RunPackage(
 		return invariantProvider{path: pluginPath}, nil
 	}
 
+	w.rw.RLock()
 	if p, ok := w.binaryPaths[pluginPath]; ok {
 		pluginPath = p
 	}
 	pl, ok := w.plugins[pluginPath]
+	w.rw.RUnlock()
+
 	if !ok {
 		assert.Failf(w.t, "RunPackage: Unknown plugin", "could not find %q in %#v",
 			pluginPath, slices.Collect(maps.Keys(w.plugins)))
