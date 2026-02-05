@@ -292,6 +292,21 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	if pkg == "pulumi" && module == "providers" {
 		pkg, isProvider = name, true
 	}
+
+	// If the version option is a literal string, we can grab it and load the schema for that requested version.
+	// This is best effort, the version option can be an expression, which we can not always evaluate here.
+	var pkgVersion string
+	for _, block := range node.syntax.Body.Blocks {
+		if block.Type == "options" {
+			if version, hasVersion := block.Body.Attributes["version"]; hasVersion {
+				literal, err := evaluateLiteralExpr(version.Expr)
+				if err == nil {
+					pkgVersion = literal
+				}
+			}
+		}
+	}
+
 	var pkgSchema *packageSchema
 	var err error
 	// It is important that we call `loadPackageSchema`/`loadPackageSchemaFromDescriptor`
@@ -302,7 +317,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
 		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
 	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, pkgVersion, "")
 	}
 
 	if err != nil {
