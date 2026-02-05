@@ -1356,4 +1356,148 @@ func TestCreateNeoTask(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to create Neo task")
 		assert.Empty(t, neoURL)
 	})
+
+	t.Run("NilStackRefWithDefaultOrg", func(t *testing.T) {
+		t.Parallel()
+
+		expectedTaskID := "task-from-default-org"
+		neoResponse, err := json.Marshal(apitype.CreateNeoTaskResponse{
+			TaskID: expectedTaskID,
+		})
+		require.NoError(t, err)
+
+		var requestPath string
+		mockTransport := &mockTransport{
+			roundTrip: func(req *http.Request) (*http.Response, error) {
+				requestPath = req.URL.Path
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader(neoResponse)),
+					Header:     make(http.Header),
+				}, nil
+			},
+		}
+
+		apiClient := client.NewClient("https://api.pulumi.com", "test-token", false, diagtest.LogSink(t))
+		apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
+
+		// Set up defaultOrg promise to return a valid org
+		defaultOrgSource := &promise.CompletionSource[string]{}
+		defaultOrgSource.MustFulfill("default-org")
+
+		b := &cloudBackend{
+			client:     apiClient,
+			url:        "https://api.pulumi.com",
+			d:          diagtest.LogSink(t),
+			defaultOrg: defaultOrgSource.Promise(),
+		}
+
+		// Pass nil stackRef to trigger the fallback path
+		neoURL, err := b.CreateNeoTask(context.Background(), nil, "Deploy an S3 bucket")
+
+		require.NoError(t, err)
+		assert.Equal(t, "/api/preview/agents/default-org/tasks", requestPath)
+		assert.Contains(t, neoURL, "default-org/neo/tasks/"+expectedTaskID)
+	})
+
+	t.Run("NilStackRefWithDefaultOrgError", func(t *testing.T) {
+		t.Parallel()
+
+		apiClient := client.NewClient("https://api.pulumi.com", "test-token", false, diagtest.LogSink(t))
+
+		// Set up defaultOrg promise to return an error
+		defaultOrgSource := &promise.CompletionSource[string]{}
+		defaultOrgSource.MustReject(errors.New("failed to fetch default org"))
+
+		b := &cloudBackend{
+			client:     apiClient,
+			url:        "https://api.pulumi.com",
+			d:          diagtest.LogSink(t),
+			defaultOrg: defaultOrgSource.Promise(),
+		}
+
+		neoURL, err := b.CreateNeoTask(context.Background(), nil, "Deploy an S3 bucket")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get organization")
+		assert.Empty(t, neoURL)
+	})
+
+	t.Run("NilStackRefEmptyDefaultOrgFallbackToUsername", func(t *testing.T) {
+		t.Parallel()
+
+		expectedTaskID := "task-from-username"
+		neoResponse, err := json.Marshal(apitype.CreateNeoTaskResponse{
+			TaskID: expectedTaskID,
+		})
+		require.NoError(t, err)
+
+		var requestPath string
+		mockTransport := &mockTransport{
+			roundTrip: func(req *http.Request) (*http.Response, error) {
+				requestPath = req.URL.Path
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader(neoResponse)),
+					Header:     make(http.Header),
+				}, nil
+			},
+		}
+
+		apiClient := client.NewClient("https://api.pulumi.com", "test-token", false, diagtest.LogSink(t))
+		apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
+
+		// Set up defaultOrg promise to return empty string
+		defaultOrgSource := &promise.CompletionSource[string]{}
+		defaultOrgSource.MustFulfill("")
+
+		// Set up userInfo promise to return a username
+		userInfoSource := &promise.CompletionSource[userInfo]{}
+		userInfoSource.MustFulfill(userInfo{
+			username:      "test-user",
+			organizations: []string{},
+		})
+
+		b := &cloudBackend{
+			client:     apiClient,
+			url:        "https://api.pulumi.com",
+			d:          diagtest.LogSink(t),
+			defaultOrg: defaultOrgSource.Promise(),
+			userInfo:   userInfoSource.Promise(),
+		}
+
+		neoURL, err := b.CreateNeoTask(context.Background(), nil, "Deploy an S3 bucket")
+
+		require.NoError(t, err)
+		assert.Equal(t, "/api/preview/agents/test-user/tasks", requestPath)
+		assert.Contains(t, neoURL, "test-user/neo/tasks/"+expectedTaskID)
+	})
+
+	t.Run("NilStackRefCurrentUserError", func(t *testing.T) {
+		t.Parallel()
+
+		apiClient := client.NewClient("https://api.pulumi.com", "test-token", false, diagtest.LogSink(t))
+
+		// Set up defaultOrg promise to return empty string
+		defaultOrgSource := &promise.CompletionSource[string]{}
+		defaultOrgSource.MustFulfill("")
+
+		// Set up userInfo promise to return an error
+		userInfoSource := &promise.CompletionSource[userInfo]{}
+		userInfoSource.MustReject(errors.New("failed to get user info"))
+
+		b := &cloudBackend{
+			client:     apiClient,
+			url:        "https://api.pulumi.com",
+			d:          diagtest.LogSink(t),
+			defaultOrg: defaultOrgSource.Promise(),
+			userInfo:   userInfoSource.Promise(),
+		}
+
+		neoURL, err := b.CreateNeoTask(context.Background(), nil, "Deploy an S3 bucket")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get current user")
+		assert.Empty(t, neoURL)
+	})
 }
