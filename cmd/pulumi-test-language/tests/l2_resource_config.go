@@ -52,6 +52,7 @@ func init() {
 					// inputs should also have the __internal key
 					expectedInputs[resource.PropertyKey("__internal")] = resource.NewProperty(
 						resource.NewPropertyMapFromMap(map[string]any{
+							"envVarMappings":    map[string]any{},
 							"pluginDownloadURL": "http://example.com",
 						}))
 					require.Equal(l, expectedInputs, explicitProvider.Inputs)
