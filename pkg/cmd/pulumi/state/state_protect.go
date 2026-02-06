@@ -18,11 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -33,6 +35,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// stateProtectResult is the shape of the --json output for the state protect command.
+type stateProtectResult struct {
+	Operation string   `json:"operation"`
+	Resources []string `json:"resources"`
+	Count     int      `json:"count"`
+	Warnings  []string `json:"warnings,omitempty"`
+}
+
 const protectMessage = "This will protect by modifying the stack state directly.\n" +
 	"If your program does not also set the 'protect' resource option, Pulumi will unprotect the \n" +
 	"resource the next time your program runs (e.g. as part of a `pulumi up`)\n" +
@@ -42,6 +52,7 @@ func newStateProtectCommand() *cobra.Command {
 	var protectAll bool
 	var stack string
 	var yes bool
+	var jsonOut bool
 
 	cmd := &cobra.Command{
 		Use:   "protect",
@@ -70,12 +81,12 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			showPrompt := !yes
 
 			if protectAll {
-				return protectAllResources(ctx, sink, ws, stack, showPrompt)
+				return protectAllResources(ctx, sink, ws, stack, showPrompt, jsonOut)
 			}
 
 			// If URN arguments were provided, use those
 			if len(args) > 0 {
-				return protectMultipleResources(ctx, sink, ws, stack, args, showPrompt)
+				return protectMultipleResources(ctx, sink, ws, stack, args, showPrompt, jsonOut)
 			}
 
 			// Otherwise, use interactive selection
@@ -88,7 +99,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return protectMultipleResources(ctx, sink, ws, stack, []string{string(urn)}, showPrompt)
+			return protectMultipleResources(ctx, sink, ws, stack, []string{string(urn)}, showPrompt, jsonOut)
 		},
 	}
 
@@ -105,13 +116,15 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVar(&protectAll, "all", false, "Protect all resources in the checkpoint")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "Emit output as JSON")
 
 	return cmd
 }
 
 func protectAllResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool, jsonOut bool,
 ) error {
+	var protectedURNs []string
 	err := runTotalStateEditWithPrompt(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
 		func(_ display.Options, snap *deploy.Snapshot) error {
@@ -124,6 +137,7 @@ func protectAllResources(
 				// Skip resources that are pending deletion
 				if !res.Delete {
 					res.Protect = true
+					protectedURNs = append(protectedURNs, string(res.URN))
 				}
 			}
 
@@ -132,18 +146,28 @@ func protectAllResources(
 	if err != nil {
 		return err
 	}
+
+	if jsonOut {
+		return ui.FprintJSON(os.Stdout, stateProtectResult{
+			Operation: "protect",
+			Resources: protectedURNs,
+			Count:     len(protectedURNs),
+		})
+	}
+
 	fmt.Println("All resources protected")
 	return nil
 }
 
 // protectResourcesInSnapshot handles the logic for protecting resources in a snapshot.
-func protectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []error) {
+// Returns the list of protected URNs, the count, and any errors encountered.
+func protectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) ([]string, int, []error) {
 	if snap == nil {
-		return 0, []error{errors.New("no resources found to protect")}
+		return nil, 0, []error{errors.New("no resources found to protect")}
 	}
 
 	var errs []error
-	resourceCount := 0
+	var protectedURNs []string
 
 	// Build a map of URNs to resources, excluding those pending deletion.
 	urnToResource := make(map[resource.URN]*resource.State)
@@ -159,36 +183,58 @@ func protectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []er
 
 		if found {
 			res.Protect = true
-			resourceCount++
+			protectedURNs = append(protectedURNs, urnStr)
 		} else {
 			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
 		}
 	}
 
-	return resourceCount, errs
+	return protectedURNs, len(protectedURNs), errs
 }
 
 // protectMultipleResources protects multiple resources specified by their URNs.
 func protectMultipleResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string,
+	showPrompt bool, jsonOut bool,
 ) error {
-	return runTotalStateEditWithPrompt(
+	var protectedURNs []string
+	var warnings []string
+
+	err := runTotalStateEditWithPrompt(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot,
 		) error {
-			resourceCount, errs := protectResourcesInSnapshot(snap, urns)
-
-			if resourceCount > 0 && len(errs) == 0 {
-				fmt.Printf("%d resources protected\n", resourceCount)
-			}
+			var errs []error
+			protectedURNs, _, errs = protectResourcesInSnapshot(snap, urns)
 
 			if len(errs) > 0 {
-				var errMsgs []string
 				for _, err := range errs {
-					errMsgs = append(errMsgs, err.Error())
+					warnings = append(warnings, err.Error())
 				}
-				return errors.New(strings.Join(errMsgs, "\n"))
+				// If no resources were protected, return an error
+				if len(protectedURNs) == 0 {
+					var errMsgs []string
+					for _, err := range errs {
+						errMsgs = append(errMsgs, err.Error())
+					}
+					return errors.New(strings.Join(errMsgs, "\n"))
+				}
 			}
 
 			return nil
 		}, protectMessage)
+	if err != nil {
+		return err
+	}
+
+	if jsonOut {
+		return ui.FprintJSON(os.Stdout, stateProtectResult{
+			Operation: "protect",
+			Resources: protectedURNs,
+			Count:     len(protectedURNs),
+			Warnings:  warnings,
+		})
+	}
+
+	fmt.Printf("%d resources protected\n", len(protectedURNs))
+	return nil
 }

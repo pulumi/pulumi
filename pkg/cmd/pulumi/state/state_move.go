@@ -46,12 +46,23 @@ import (
 
 const providerPrefix = "pulumi:providers:"
 
+// stateMoveResult is the shape of the --json output for the state move command.
+type stateMoveResult struct {
+	Operation   string   `json:"operation"`
+	SourceStack string   `json:"sourceStack"`
+	DestStack   string   `json:"destStack"`
+	Resources   []string `json:"resources"`
+	Count       int      `json:"count"`
+	Warnings    []string `json:"warnings,omitempty"`
+}
+
 type stateMoveCmd struct {
 	Stdin          io.Reader
 	Stdout         io.Writer
 	Colorizer      colors.Colorization
 	Yes            bool
 	IncludeParents bool
+	JsonOut        bool
 
 	ws pkgWorkspace.Context
 }
@@ -61,6 +72,7 @@ func newStateMoveCommand() *cobra.Command {
 	var destStackName string
 	var yes bool
 	var includeParents bool
+	var jsonOut bool
 	stateMove := &stateMoveCmd{
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
@@ -113,6 +125,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 
 			stateMove.Yes = yes
 			stateMove.IncludeParents = includeParents
+			stateMove.JsonOut = jsonOut
 
 			sourceSecretsProvider := backend_secrets.NamedStackProvider{
 				StackName: sourceStack.Ref().FullyQualifiedName().String(),
@@ -138,6 +151,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Automatically approve and perform the move")
 	cmd.Flags().BoolVarP(&includeParents, "include-parents", "", false,
 		"Include all the parents of the moved resources as well")
+	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "Emit output as JSON")
 
 	return cmd
 }
@@ -240,9 +254,15 @@ func (cmd *stateMoveCmd) Run(
 		}
 	}
 
+	// Collect warnings for JSON output
+	var warnings []string
 	for _, arg := range unmatchedArgs.ToSlice() {
-		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(colors.SpecWarning+"warning:"+
-			colors.Reset+" Resource %s not found in source stack\n"), arg)
+		warning := fmt.Sprintf("Resource %s not found in source stack", arg)
+		warnings = append(warnings, warning)
+		if !cmd.JsonOut {
+			fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(colors.SpecWarning+"warning:"+
+				colors.Reset+" %s\n"), warning)
+		}
 	}
 
 	if len(resourcesToMove) == 0 {
@@ -376,15 +396,17 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
-	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
-		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
-		source.Ref().FullyQualifiedName(), dest.Ref().FullyQualifiedName())
+	if !cmd.JsonOut {
+		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+			colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
+			source.Ref().FullyQualifiedName(), dest.Ref().FullyQualifiedName())
 
-	fmt.Fprintf(cmd.Stdout, "\n")
-	for _, res := range resourcesToMoveOrdered {
-		fmt.Fprintf(cmd.Stdout, "  - %s\n", res.URN)
+		fmt.Fprintf(cmd.Stdout, "\n")
+		for _, res := range resourcesToMoveOrdered {
+			fmt.Fprintf(cmd.Stdout, "  - %s\n", res.URN)
+		}
+		fmt.Fprintf(cmd.Stdout, "\n")
 	}
-	fmt.Fprintf(cmd.Stdout, "\n")
 
 	var brokenDestDependencies []brokenDependency
 	for _, res := range resourcesToMoveOrdered {
@@ -411,33 +433,35 @@ func (cmd *stateMoveCmd) Run(
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
-	if len(brokenSourceDependencies) > 0 {
-		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
-			colors.SpecWarning+"The following resources remaining in %s have dependencies on resources moved to %s:\n\n"+
-				colors.Reset), source.Ref().FullyQualifiedName(), dest.Ref().FullyQualifiedName())
-	}
-
-	cmd.printBrokenDependencyRelationships(brokenSourceDependencies)
-
-	if len(brokenDestDependencies) > 0 {
+	if !cmd.JsonOut {
 		if len(brokenSourceDependencies) > 0 {
-			fmt.Fprintln(cmd.Stdout)
+			fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+				colors.SpecWarning+"The following resources remaining in %s have dependencies on resources moved to %s:\n\n"+
+					colors.Reset), source.Ref().FullyQualifiedName(), dest.Ref().FullyQualifiedName())
 		}
-		fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
-			colors.SpecWarning+"The following resources being moved to %s have dependencies on resources in %s:\n\n"+
-				colors.Reset), dest.Ref().FullyQualifiedName(), source.Ref().FullyQualifiedName())
+
+		cmd.printBrokenDependencyRelationships(brokenSourceDependencies)
+
+		if len(brokenDestDependencies) > 0 {
+			if len(brokenSourceDependencies) > 0 {
+				fmt.Fprintln(cmd.Stdout)
+			}
+			fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
+				colors.SpecWarning+"The following resources being moved to %s have dependencies on resources in %s:\n\n"+
+					colors.Reset), dest.Ref().FullyQualifiedName(), source.Ref().FullyQualifiedName())
+		}
+
+		cmd.printBrokenDependencyRelationships(brokenDestDependencies)
+
+		if len(brokenSourceDependencies) > 0 || len(brokenDestDependencies) > 0 {
+			fmt.Fprint(cmd.Stdout, cmd.Colorizer.Colorize(
+				colors.SpecInfo+"\nIf you go ahead with moving these dependencies, it will be necessary to create the "+
+					"appropriate inputs and outputs in the program for the stack the resources are moved to.\n\n"+
+					colors.Reset))
+		}
 	}
 
-	cmd.printBrokenDependencyRelationships(brokenDestDependencies)
-
-	if len(brokenSourceDependencies) > 0 || len(brokenDestDependencies) > 0 {
-		fmt.Fprint(cmd.Stdout, cmd.Colorizer.Colorize(
-			colors.SpecInfo+"\nIf you go ahead with moving these dependencies, it will be necessary to create the "+
-				"appropriate inputs and outputs in the program for the stack the resources are moved to.\n\n"+
-				colors.Reset))
-	}
-
-	if !cmd.Yes {
+	if !cmd.Yes && !cmd.JsonOut {
 		yes := "yes"
 		no := "no"
 		msg := "Do you want to perform this move?"
@@ -502,6 +526,22 @@ source stack.  Please remove the resources from the source stack manually using 
 		return fmt.Errorf(`failed to save source snapshot: %w
 
 None of the resources have been moved.  Please fix the error and try again`, err)
+	}
+
+	if cmd.JsonOut {
+		// Collect moved URNs for JSON output
+		movedURNs := make([]string, len(resourcesToMoveOrdered))
+		for i, res := range resourcesToMoveOrdered {
+			movedURNs[i] = string(res.URN)
+		}
+		return ui.FprintJSON(os.Stdout, stateMoveResult{
+			Operation:   "move",
+			SourceStack: source.Ref().FullyQualifiedName().String(),
+			DestStack:   dest.Ref().FullyQualifiedName().String(),
+			Resources:   movedURNs,
+			Count:       len(movedURNs),
+			Warnings:    warnings,
+		})
 	}
 
 	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(

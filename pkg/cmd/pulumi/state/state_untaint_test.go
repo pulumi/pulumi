@@ -71,7 +71,7 @@ func TestUntaintSingleResource(t *testing.T) {
 
 	// Untaint the resource
 	urns := []string{string(resources[1].URN)}
-	resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
@@ -133,7 +133,7 @@ func TestUntaintMultipleResources(t *testing.T) {
 		string(resources[1].URN),
 		string(resources[3].URN),
 	}
-	resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 2, resourceCount)
 	assert.Empty(t, errs)
@@ -184,7 +184,7 @@ func TestUntaintNonExistentResource(t *testing.T) {
 	urns := []string{
 		"urn:pulumi:test-stack::test::d:e:f$a:b:c::nonexistent",
 	}
-	resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 0, resourceCount)
 	require.Len(t, errs, 1)
@@ -245,7 +245,7 @@ func TestUntaintMixedExistingAndNonExistent(t *testing.T) {
 		"urn:pulumi:test-stack::test::d:e:f$a:b:c::nonexistent",
 		string(resources[2].URN),
 	}
-	resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 2, resourceCount)
 	require.Len(t, errs, 1)
@@ -299,7 +299,7 @@ func TestUntaintAlreadyUntaintedResource(t *testing.T) {
 
 	// Untaint the already untainted resource
 	urns := []string{string(resources[1].URN)}
-	resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
@@ -312,7 +312,7 @@ func TestUntaintEmptySnapshot(t *testing.T) {
 
 	// Test with nil snapshot
 	urns := []string{"urn:pulumi:test-stack::test::d:e:f$a:b:c::name"}
-	resourceCount, errs := untaintResourcesInSnapshot(nil, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(nil, urns)
 
 	assert.Equal(t, 0, resourceCount)
 	require.Len(t, errs, 1)
@@ -368,7 +368,7 @@ func TestUntaintWithParentChildRelationship(t *testing.T) {
 
 	// Untaint the parent resource only
 	urns := []string{string(parentURN)}
-	resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
@@ -406,7 +406,7 @@ func TestUntaintMultipleResourcesWithErrors(t *testing.T) {
 		"urn:pulumi:test-stack::test::d:e:f$a:b:c::nonexistent2",
 	}
 
-	resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
 
 	assert.Equal(t, 1, resourceCount)
 	require.Len(t, errs, 2)
@@ -468,7 +468,7 @@ func TestUntaintWithDependencies(t *testing.T) {
 
 	// Untaint the resource that has a dependency
 	urns := []string{string(resource2URN)}
-	resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
@@ -522,14 +522,14 @@ func TestUntaintRoundTrip(t *testing.T) {
 
 	// Taint the resource
 	urns := []string{string(resourceURN)}
-	resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
 	require.Len(t, initialSnap.Resources, 2)
 	assert.True(t, initialSnap.Resources[1].Taint)
 
 	// Untaint the resource
-	resourceCount, errs = untaintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs = untaintResourcesInSnapshot(initialSnap, urns)
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
 	require.Len(t, initialSnap.Resources, 2)
@@ -570,7 +570,7 @@ func TestUntaintResourceWithDeleteTrue(t *testing.T) {
 
 	// Try to untaint the resource
 	urns := []string{string(resourceURN)}
-	resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
 
 	// Should only untaint the non-deleted resource
 	assert.Equal(t, 1, resourceCount)
@@ -622,7 +622,7 @@ func TestUntaintAllResourcesWithDeleteTrue(t *testing.T) {
 		string(snap.Resources[2].URN),
 		string(snap.Resources[3].URN),
 	}
-	resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
 
 	// Should only untaint the non-deleted resources
 	assert.Equal(t, 2, resourceCount)
@@ -660,7 +660,7 @@ func TestUntaintOnlyDeletedResource(t *testing.T) {
 
 	// Try to untaint the deleted resource
 	urns := []string{string(deletedURN)}
-	resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
 
 	// Should not untaint the deleted resource and report it as not found
 	assert.Equal(t, 0, resourceCount)

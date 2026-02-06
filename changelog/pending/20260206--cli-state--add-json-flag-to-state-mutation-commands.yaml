@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/state
+  description: Add --json flag to state mutation commands for programmatic output

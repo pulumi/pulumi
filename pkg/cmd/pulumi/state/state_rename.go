@@ -17,6 +17,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -33,6 +34,14 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
+// stateRenameResult is the shape of the --json output for the state rename command.
+type stateRenameResult struct {
+	Operation string   `json:"operation"`
+	OldURN    string   `json:"oldUrn"`
+	NewURN    string   `json:"newUrn"`
+	Warnings  []string `json:"warnings,omitempty"`
+}
 
 // stateReurnOperation changes the URN for a resource and mutates/rewrites references to it in the snapshot.
 func stateReurnOperation(
@@ -165,6 +174,7 @@ func stateRenameOperation(
 func newStateRenameCommand() *cobra.Command {
 	var stack string
 	var yes bool
+	var jsonOut bool
 
 	cmd := &cobra.Command{
 		Use:   "rename",
@@ -231,6 +241,10 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
+			// Calculate the new URN before the operation
+			oldURN := string(urn)
+			newURN := string(urn.Rename(newResourceName))
+
 			err := runTotalStateEdit(ctx, sink, ws, backend.DefaultLoginManager, stack, showPrompt,
 				func(opts display.Options, snap *deploy.Snapshot) error {
 					return stateRenameOperation(urn, newResourceName, opts, snap)
@@ -239,6 +253,14 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				// an error occurred
 				// return it
 				return err
+			}
+
+			if jsonOut {
+				return ui.FprintJSON(os.Stdout, stateRenameResult{
+					Operation: "rename",
+					OldURN:    oldURN,
+					NewURN:    newURN,
+				})
 			}
 
 			fmt.Println("Resource renamed")
@@ -259,5 +281,6 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		"The name of the stack to operate on. Defaults to the current stack")
 
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "Emit output as JSON")
 	return cmd
 }

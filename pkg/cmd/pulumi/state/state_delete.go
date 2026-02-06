@@ -17,11 +17,13 @@ package state
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -33,12 +35,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// stateDeleteResult is the shape of the --json output for the state delete command.
+type stateDeleteResult struct {
+	Operation string   `json:"operation"`
+	Resources []string `json:"resources"`
+	Count     int      `json:"count"`
+	Warnings  []string `json:"warnings,omitempty"`
+}
+
 func newStateDeleteCommand(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Command {
 	var force bool // Force deletion of protected resources
 	var stack string
 	var yes bool
 	var targetDependents bool
 	var all bool
+	var jsonOut bool
 
 	cmd := &cobra.Command{
 		Use:   "delete",
@@ -94,6 +105,9 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				}
 			}
 
+			// Track deleted URNs for JSON output
+			var deletedURNs []string
+
 			// If we're deleting everything then run a total state edit, else run on just the resource given.
 			var err error
 			if all {
@@ -102,6 +116,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 						// Iterate the resources backwards (so we delete dependents first) and delete them.
 						for i := len(snap.Resources) - 1; i >= 0; i-- {
 							res := snap.Resources[i]
+							deletedURNs = append(deletedURNs, string(res.URN))
 							if err := edit.DeleteResource(snap, res, handleProtected, targetDependents); err != nil {
 								return err
 							}
@@ -111,6 +126,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			} else {
 				err = runStateEdit(
 					ctx, sink, ws, lm, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+						deletedURNs = append(deletedURNs, string(res.URN))
 						return edit.DeleteResource(snap, res, handleProtected, targetDependents)
 					})
 			}
@@ -134,6 +150,15 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					return err
 				}
 			}
+
+			if jsonOut {
+				return ui.FprintJSON(os.Stdout, stateDeleteResult{
+					Operation: "delete",
+					Resources: deletedURNs,
+					Count:     len(deletedURNs),
+				})
+			}
+
 			if all {
 				fmt.Println("Resources deleted")
 			} else {
@@ -157,5 +182,6 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
 	cmd.Flags().BoolVar(&all, "all", false, "Delete all resources in the stack")
 	cmd.Flags().BoolVar(&targetDependents, "target-dependents", false, "Delete the URN and all its dependents")
+	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "Emit output as JSON")
 	return cmd
 }

@@ -58,7 +58,7 @@ func TestUnprotectResourceWithDeleteTrue(t *testing.T) {
 
 	// Try to unprotect the resource
 	urns := []string{string(resourceURN)}
-	resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
 
 	// Should only unprotect the non-deleted resource
 	assert.Equal(t, 1, resourceCount)
@@ -110,7 +110,7 @@ func TestUnprotectAllResourcesWithDeleteTrue(t *testing.T) {
 		string(snap.Resources[2].URN),
 		string(snap.Resources[3].URN),
 	}
-	resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
 
 	// Should only unprotect the non-deleted resources
 	assert.Equal(t, 2, resourceCount)
@@ -148,7 +148,7 @@ func TestUnprotectOnlyDeletedResource(t *testing.T) {
 
 	// Try to unprotect the deleted resource
 	urns := []string{string(deletedURN)}
-	resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
 
 	// Should not unprotect the deleted resource and report it as not found
 	assert.Equal(t, 0, resourceCount)
@@ -199,7 +199,7 @@ func TestUnprotectMultipleResourcesWithSameURNAndDelete(t *testing.T) {
 
 	// Try to unprotect the resource
 	urns := []string{string(sharedURN)}
-	resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
 
 	// Should only unprotect the active (non-deleted) resource
 	assert.Equal(t, 1, resourceCount)

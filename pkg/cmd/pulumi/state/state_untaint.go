@@ -18,11 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -33,10 +35,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// stateUntaintResult is the shape of the --json output for the state untaint command.
+type stateUntaintResult struct {
+	Operation string   `json:"operation"`
+	Resources []string `json:"resources"`
+	Count     int      `json:"count"`
+	Warnings  []string `json:"warnings,omitempty"`
+}
+
 func newStateUntaintCommand() *cobra.Command {
 	var untaintAll bool
 	var stack string
 	var yes bool
+	var jsonOut bool
 
 	cmd := &cobra.Command{
 		Use:   "untaint",
@@ -56,12 +67,12 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			showPrompt := !yes
 
 			if untaintAll {
-				return untaintAllResources(ctx, sink, ws, stack, showPrompt)
+				return untaintAllResources(ctx, sink, ws, stack, showPrompt, jsonOut)
 			}
 
 			// If URN arguments were provided, use those:
 			if len(args) > 0 {
-				return untaintMultipleResources(ctx, sink, ws, stack, args, showPrompt)
+				return untaintMultipleResources(ctx, sink, ws, stack, args, showPrompt, jsonOut)
 			}
 
 			// Otherwise, use interactive selection:
@@ -82,7 +93,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return untaintResource(ctx, sink, ws, stack, urn, showPrompt)
+			return untaintResource(ctx, sink, ws, stack, urn, showPrompt, jsonOut)
 		},
 	}
 
@@ -99,13 +110,15 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVar(&untaintAll, "all", false, "Untaint all resources in the checkpoint")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "Emit output as JSON")
 
 	return cmd
 }
 
 func untaintAllResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool, jsonOut bool,
 ) error {
+	var untaintedURNs []string
 	err := runTotalStateEdit(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
 		func(_ display.Options, snap *deploy.Snapshot) error {
@@ -118,6 +131,7 @@ func untaintAllResources(
 				// Skip resources that are pending deletion
 				if !res.Delete {
 					res.Taint = false
+					untaintedURNs = append(untaintedURNs, string(res.URN))
 				}
 			}
 
@@ -126,18 +140,28 @@ func untaintAllResources(
 	if err != nil {
 		return err
 	}
+
+	if jsonOut {
+		return ui.FprintJSON(os.Stdout, stateUntaintResult{
+			Operation: "untaint",
+			Resources: untaintedURNs,
+			Count:     len(untaintedURNs),
+		})
+	}
+
 	fmt.Println("All resources untainted")
 	return nil
 }
 
 // untaintResourcesInSnapshot handles the logic for untainting resources in a snapshot.
-func untaintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []error) {
+// Returns the list of untainted URNs, the count, and any errors encountered.
+func untaintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) ([]string, int, []error) {
 	if snap == nil {
-		return 0, []error{errors.New("no resources found to untaint")}
+		return nil, 0, []error{errors.New("no resources found to untaint")}
 	}
 
 	var errs []error
-	resourceCount := 0
+	var untaintedURNs []string
 
 	// Build a map of URNs to resources, excluding those pending deletion.
 	urnToResource := make(map[resource.URN]*resource.State)
@@ -153,42 +177,65 @@ func untaintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []er
 
 		if found {
 			res.Taint = false
-			resourceCount++
+			untaintedURNs = append(untaintedURNs, urnStr)
 		} else {
 			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
 		}
 	}
 
-	return resourceCount, errs
+	return untaintedURNs, len(untaintedURNs), errs
 }
 
 // untaintMultipleResources untaints multiple resources specified by their URNs.
 func untaintMultipleResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string,
+	showPrompt bool, jsonOut bool,
 ) error {
-	return runTotalStateEdit(
+	var untaintedURNs []string
+	var warnings []string
+
+	err := runTotalStateEdit(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
 		func(_ display.Options, snap *deploy.Snapshot) error {
-			resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
-
-			if resourceCount > 0 && len(errs) == 0 {
-				fmt.Printf("%d resources untainted\n", resourceCount)
-			}
+			var errs []error
+			untaintedURNs, _, errs = untaintResourcesInSnapshot(snap, urns)
 
 			if len(errs) > 0 {
-				var errMsgs []string
 				for _, err := range errs {
-					errMsgs = append(errMsgs, err.Error())
+					warnings = append(warnings, err.Error())
 				}
-				return errors.New(strings.Join(errMsgs, "\n"))
+				// If no resources were untainted, return an error
+				if len(untaintedURNs) == 0 {
+					var errMsgs []string
+					for _, err := range errs {
+						errMsgs = append(errMsgs, err.Error())
+					}
+					return errors.New(strings.Join(errMsgs, "\n"))
+				}
 			}
 
 			return nil
 		})
+	if err != nil {
+		return err
+	}
+
+	if jsonOut {
+		return ui.FprintJSON(os.Stdout, stateUntaintResult{
+			Operation: "untaint",
+			Resources: untaintedURNs,
+			Count:     len(untaintedURNs),
+			Warnings:  warnings,
+		})
+	}
+
+	fmt.Printf("%d resources untainted\n", len(untaintedURNs))
+	return nil
 }
 
 func untaintResource(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN,
+	showPrompt bool, jsonOut bool,
 ) error {
-	return untaintMultipleResources(ctx, sink, ws, stackName, []string{string(urn)}, showPrompt)
+	return untaintMultipleResources(ctx, sink, ws, stackName, []string{string(urn)}, showPrompt, jsonOut)
 }

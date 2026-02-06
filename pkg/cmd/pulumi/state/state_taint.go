@@ -18,11 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -33,9 +35,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// stateTaintResult is the shape of the --json output for the state taint command.
+type stateTaintResult struct {
+	Operation string   `json:"operation"`
+	Resources []string `json:"resources"`
+	Count     int      `json:"count"`
+	Warnings  []string `json:"warnings,omitempty"`
+}
+
 func newStateTaintCommand() *cobra.Command {
 	var stack string
 	var yes bool
+	var jsonOut bool
 
 	cmd := &cobra.Command{
 		Use:   "taint",
@@ -56,7 +67,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 
 			// If URN arguments were provided, use those:
 			if len(args) > 0 {
-				return taintMultipleResources(ctx, sink, ws, stack, args, showPrompt)
+				return taintMultipleResources(ctx, sink, ws, stack, args, showPrompt, jsonOut)
 			}
 
 			// Otherwise, use interactive selection:
@@ -77,7 +88,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return taintResource(ctx, sink, ws, stack, urn, showPrompt)
+			return taintResource(ctx, sink, ws, stack, urn, showPrompt, jsonOut)
 		},
 	}
 
@@ -93,18 +104,20 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "Emit output as JSON")
 
 	return cmd
 }
 
 // taintResourcesInSnapshot handles the logic for tainting resources in a snapshot.
-func taintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []error) {
+// Returns the list of tainted URNs, the count, and any errors encountered.
+func taintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) ([]string, int, []error) {
 	if snap == nil {
-		return 0, []error{errors.New("no resources found to taint")}
+		return nil, 0, []error{errors.New("no resources found to taint")}
 	}
 
 	var errs []error
-	resourceCount := 0
+	var taintedURNs []string
 
 	// Build a map of URNs to resources, excluding those pending deletion.
 	urnToResource := make(map[resource.URN]*resource.State)
@@ -120,42 +133,65 @@ func taintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []erro
 
 		if found {
 			res.Taint = true
-			resourceCount++
+			taintedURNs = append(taintedURNs, urnStr)
 		} else {
 			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
 		}
 	}
 
-	return resourceCount, errs
+	return taintedURNs, len(taintedURNs), errs
 }
 
 // taintMultipleResources taints multiple resources specified by their URNs.
 func taintMultipleResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string,
+	showPrompt bool, jsonOut bool,
 ) error {
-	return runTotalStateEdit(
+	var taintedURNs []string
+	var warnings []string
+
+	err := runTotalStateEdit(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
 		func(_ display.Options, snap *deploy.Snapshot) error {
-			resourceCount, errs := taintResourcesInSnapshot(snap, urns)
-
-			if resourceCount > 0 && len(errs) == 0 {
-				fmt.Printf("%d resources tainted\n", resourceCount)
-			}
+			var errs []error
+			taintedURNs, _, errs = taintResourcesInSnapshot(snap, urns)
 
 			if len(errs) > 0 {
-				var errMsgs []string
 				for _, err := range errs {
-					errMsgs = append(errMsgs, err.Error())
+					warnings = append(warnings, err.Error())
 				}
-				return errors.New(strings.Join(errMsgs, "\n"))
+				// If no resources were tainted, return an error
+				if len(taintedURNs) == 0 {
+					var errMsgs []string
+					for _, err := range errs {
+						errMsgs = append(errMsgs, err.Error())
+					}
+					return errors.New(strings.Join(errMsgs, "\n"))
+				}
 			}
 
 			return nil
 		})
+	if err != nil {
+		return err
+	}
+
+	if jsonOut {
+		return ui.FprintJSON(os.Stdout, stateTaintResult{
+			Operation: "taint",
+			Resources: taintedURNs,
+			Count:     len(taintedURNs),
+			Warnings:  warnings,
+		})
+	}
+
+	fmt.Printf("%d resources tainted\n", len(taintedURNs))
+	return nil
 }
 
 func taintResource(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN,
+	showPrompt bool, jsonOut bool,
 ) error {
-	return taintMultipleResources(ctx, sink, ws, stackName, []string{string(urn)}, showPrompt)
+	return taintMultipleResources(ctx, sink, ws, stackName, []string{string(urn)}, showPrompt, jsonOut)
 }

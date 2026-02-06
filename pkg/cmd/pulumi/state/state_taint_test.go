@@ -71,7 +71,7 @@ func TestTaintSingleResource(t *testing.T) {
 
 	// Taint the resource
 	urns := []string{string(resources[1].URN)}
-	resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
@@ -133,7 +133,7 @@ func TestTaintMultipleResources(t *testing.T) {
 		string(resources[1].URN),
 		string(resources[3].URN),
 	}
-	resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 2, resourceCount)
 	assert.Empty(t, errs)
@@ -184,7 +184,7 @@ func TestTaintNonExistentResource(t *testing.T) {
 	urns := []string{
 		"urn:pulumi:test-stack::test::d:e:f$a:b:c::nonexistent",
 	}
-	resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 0, resourceCount)
 	require.Len(t, errs, 1)
@@ -244,7 +244,7 @@ func TestTaintMixedExistingAndNonExistent(t *testing.T) {
 		"urn:pulumi:test-stack::test::d:e:f$a:b:c::nonexistent",
 		string(resources[2].URN),
 	}
-	resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 2, resourceCount)
 	require.Len(t, errs, 1)
@@ -297,7 +297,7 @@ func TestTaintAlreadyTaintedResource(t *testing.T) {
 
 	// Taint the already tainted resource
 	urns := []string{string(resources[1].URN)}
-	resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
@@ -310,7 +310,7 @@ func TestTaintEmptySnapshot(t *testing.T) {
 
 	// Test with nil snapshot
 	urns := []string{"urn:pulumi:test-stack::test::d:e:f$a:b:c::name"}
-	resourceCount, errs := taintResourcesInSnapshot(nil, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(nil, urns)
 
 	assert.Equal(t, 0, resourceCount)
 	require.Len(t, errs, 1)
@@ -366,7 +366,7 @@ func TestTaintWithParentChildRelationship(t *testing.T) {
 
 	// Taint the parent resource only
 	urns := []string{string(parentURN)}
-	resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
@@ -403,7 +403,7 @@ func TestTaintMultipleResourcesWithErrors(t *testing.T) {
 		"urn:pulumi:test-stack::test::d:e:f$a:b:c::nonexistent2",
 	}
 
-	resourceCount, errs := taintResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(snap, urns)
 
 	assert.Equal(t, 1, resourceCount)
 	require.Len(t, errs, 2)
@@ -464,7 +464,7 @@ func TestTaintWithDependencies(t *testing.T) {
 
 	// Taint the resource that has a dependency
 	urns := []string{string(resource2URN)}
-	resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(initialSnap, urns)
 
 	assert.Equal(t, 1, resourceCount)
 	assert.Empty(t, errs)
@@ -509,7 +509,7 @@ func TestTaintResourceWithDeleteTrue(t *testing.T) {
 
 	// Try to taint the resource
 	urns := []string{string(resourceURN)}
-	resourceCount, errs := taintResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(snap, urns)
 
 	// Should only taint the non-deleted resource
 	assert.Equal(t, 1, resourceCount)
@@ -561,7 +561,7 @@ func TestTaintAllResourcesWithDeleteTrue(t *testing.T) {
 		string(snap.Resources[2].URN),
 		string(snap.Resources[3].URN),
 	}
-	resourceCount, errs := taintResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(snap, urns)
 
 	// Should only taint the non-deleted resources
 	assert.Equal(t, 2, resourceCount)
@@ -599,7 +599,7 @@ func TestTaintOnlyDeletedResource(t *testing.T) {
 
 	// Try to taint the deleted resource
 	urns := []string{string(deletedURN)}
-	resourceCount, errs := taintResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := taintResourcesInSnapshot(snap, urns)
 
 	// Should not taint the deleted resource and report it as not found
 	assert.Equal(t, 0, resourceCount)

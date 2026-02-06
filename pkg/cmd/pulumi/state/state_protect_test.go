@@ -58,7 +58,7 @@ func TestProtectResourceWithDeleteTrue(t *testing.T) {
 
 	// Try to protect the resource
 	urns := []string{string(resourceURN)}
-	resourceCount, errs := protectResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := protectResourcesInSnapshot(snap, urns)
 
 	// Should only protect the non-deleted resource
 	assert.Equal(t, 1, resourceCount)
@@ -110,7 +110,7 @@ func TestProtectAllResourcesWithDeleteTrue(t *testing.T) {
 		string(snap.Resources[2].URN),
 		string(snap.Resources[3].URN),
 	}
-	resourceCount, errs := protectResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := protectResourcesInSnapshot(snap, urns)
 
 	// Should only protect the non-deleted resources
 	assert.Equal(t, 2, resourceCount)
@@ -148,7 +148,7 @@ func TestProtectOnlyDeletedResource(t *testing.T) {
 
 	// Try to protect the deleted resource
 	urns := []string{string(deletedURN)}
-	resourceCount, errs := protectResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := protectResourcesInSnapshot(snap, urns)
 
 	// Should not protect the deleted resource and report it as not found
 	assert.Equal(t, 0, resourceCount)
@@ -199,7 +199,7 @@ func TestProtectMultipleResourcesWithSameURNAndDelete(t *testing.T) {
 
 	// Try to protect the resource
 	urns := []string{string(sharedURN)}
-	resourceCount, errs := protectResourcesInSnapshot(snap, urns)
+	_, resourceCount, errs := protectResourcesInSnapshot(snap, urns)
 
 	// Should only protect the active (non-deleted) resource
 	assert.Equal(t, 1, resourceCount)
