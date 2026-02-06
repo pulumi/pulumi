@@ -14,156 +14,82 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import pascalise from "pascalcase"
+import camelCase from "to-camel-case";
 
-import { Project, SourceFile } from "ts-morph";
+import { Project, SourceFile, StructureKind } from "ts-morph";
 
-import type { Flag, Structure } from "./types";
+import type { Command, Flag, Structure } from "./types";
 
-function main(): void {
-  const specPath = process.argv[2];
-  if (!specPath) {
-    console.error("Usage: npm start <path-to-specification.json>");
-    process.exit(1);
+(function main(): void {
+  if (!process.argv[2]) {
+    throw new Error("Usage: npm start <path-to-specification.json>");
   }
 
-  const resolved = path.resolve(process.cwd(), specPath);
-  let raw: string;
-  try {
-    raw = fs.readFileSync(resolved, "utf-8");
-  } catch (err) {
-    console.error(`Failed to read specification at ${resolved}:`, err);
-    process.exit(1);
-  }
+  const specification: string = path.resolve(process.cwd(), process.argv[2]);
+  const output: string = path.join(process.cwd(), "output");
 
-  let spec: Structure;
-  try {
-    spec = JSON.parse(raw) as Structure;
-  } catch (err) {
-    console.error(`Failed to parse specification JSON:`, err);
-    process.exit(1);
-  }
+  const spec: Structure = JSON.parse(fs.readFileSync(specification, "utf-8")) as Structure;
+  fs.mkdirSync(output, { recursive: true });
 
-  const outputDir = path.join(process.cwd(), "output");
-  try {
-    fs.mkdirSync(outputDir, { recursive: true });
-  } catch (err) {
-    console.error(`Failed to create output directory ${outputDir}:`, err);
-    process.exit(1);
-  }
+  const index: string = path.join(output, "index.ts");
+  const project: Project = new Project({});
 
-  const indexPath = path.join(outputDir, "index.ts");
-  try {
-    const project = new Project({});
-    const indexFile = project.createSourceFile(indexPath, "", { overwrite: true });
+  const source: SourceFile = project.createSourceFile(index, "", { overwrite: true });
+  generateOptionsTypes(spec, source);
 
-    generateOptionsTypes(spec, indexFile);
+  project.saveSync();
+})();
 
-    project.saveSync();
-  } catch (err) {
-    console.error(`Failed to write ${indexPath}:`, err);
-    process.exit(1);
-  }
-}
+function generateOptionsTypes(
+  structure: Structure,
+  source: SourceFile,
+  breadcrumbs: string[] = [],
+  inherited: Record<string, Flag> = {}
+): void {
+  const command: string = 'pulumi ' + breadcrumbs.join(" ");
+  const options: string = pascalise(command) + "Options";
 
-main();
+  const flags: Record<string, Flag> = { ...inherited, ...structure.flags ?? {} };
 
-// --- Code generation -------------------------------------------------------
+  source.addInterface({
+    kind: StructureKind.Interface,
+    name: pascalise(command) + "Options",
+    docs: ["Options for the `" + command + "` command."],
+    isExported: true,
+    properties: Object.entries(flags).map(([name, flag]) => ({
+      name: camelCase(flag.name),
+      type: convertType(flag.type, flag.repeatable ?? false),
+      docs: flag.description ? [flag.description] : undefined,
+    })),
+  });
 
-function generateOptionsTypes(spec: Structure, file: SourceFile): void {
-  const visited = new Set<string>();
-
-  emitNode(spec, [], undefined);
-
-  function emitNode(node: Structure, pathParts: string[], parentType: string | undefined): void {
-    const typeName = optionsTypeNameFor(pathParts);
-    if (visited.has(typeName)) {
-      return;
-    }
-    visited.add(typeName);
-
-    const flags = node.flags ?? {};
-    const commandPath = commandPathFor(pathParts);
-
-    const extendsClause = parentType ? ` extends ${parentType}` : "";
-    const lines: string[] = [];
-    lines.push(`/** Flags for the \`${commandPath}\` command */`);
-    lines.push(`export interface ${typeName}${extendsClause} {`);
-
-    const flagLines = flagProperties(flags);
-    if (flagLines.length > 0) {
-      for (const line of flagLines) {
-        lines.push(line);
-      }
-    }
-
-    lines.push("}");
-    file.addStatements(lines.join("\n"));
-
-    if (node.type === "menu" && node.commands) {
-      for (const [name, child] of Object.entries(node.commands)) {
-        emitNode(child, [...pathParts, name], typeName);
-      }
+  if (structure.type === "menu" && structure.commands) {
+    for (const [name, child] of Object.entries(structure.commands)) {
+      generateOptionsTypes(child, source, [...breadcrumbs, name]);
     }
   }
 }
 
-function commandPathFor(pathParts: string[]): string {
-  if (pathParts.length === 0) {
-    return "pulumi";
-  }
-  return "pulumi " + pathParts.join(" ");
-}
+function convertType(type: string, repeatable: boolean): string {
+  let base: string = ""
 
-function optionsTypeNameFor(pathParts: string[]): string {
-  const pascal = pathParts.map(toPascalCase).join("");
-  return `Pulumi${pascal}Options`;
-}
+  switch (type) {
+    case "string":
+      base = "string"
+      break;
 
-function toPascalCase(name: string): string {
-  return name
-    .split(/[^a-zA-Z0-9]+/)
-    .filter((part) => part.length > 0)
-    .map((part) => part[0]!.toUpperCase() + part.slice(1))
-    .join("");
-}
+    case "boolean":
+      base = "boolean"
+      break;
 
-function flagProperties(flags: Record<string, Flag>): string[] {
-  const lines: string[] = [];
+    case "int":
+      base = "number"
+      break;
 
-  for (const [name, flag] of Object.entries(flags)) {
-    if (flag.description && flag.description.trim() !== "") {
-      lines.push(`  /** ${escapeJsDoc(flag.description.trim())} */`);
-    }
-    const tsType = flagTsType(flag);
-    // Use a quoted property name so we don't have to worry about characters
-    // that are invalid in identifiers (for example, hyphens).
-    lines.push(`  "${name}"?: ${tsType};`);
+    default:
+      throw new Error("Unknown type: " + type);
   }
 
-  return lines;
+  return repeatable ? base + "[]" : base;
 }
-
-/** Escape text for use inside a JSDoc comment (avoid closing the comment). */
-function escapeJsDoc(text: string): string {
-  return text.replace(/\*\//g, "* /").replace(/\n/g, " ");
-}
-
-function flagTsType(flag: Flag): string {
-  const baseType = (() => {
-    switch (flag.type) {
-      case "boolean":
-        return "boolean";
-      case "int":
-        return "number";
-      default:
-        return "string";
-    }
-  })();
-
-  if (flag.repeatable) {
-    return `${baseType}[]`;
-  }
-
-  return baseType;
-}
-
