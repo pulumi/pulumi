@@ -59,7 +59,6 @@ func TestIsBail(t *testing.T) {
 	assert.True(t, IsBail(wrapped))
 }
 
-// exitCoderErr is a test helper implementing an ExitCode() method.
 type exitCoderErr struct {
 	code int
 	msg  string
@@ -74,7 +73,6 @@ func TestBailErrorExitCode_WithExitCoder(t *testing.T) {
 	inner := exitCoderErr{code: 6, msg: "stack not found"}
 	bail := BailError(inner)
 
-	// bailError should forward the exit code from its wrapped error.
 	b := bail.(*bailError)
 	assert.Equal(t, 6, b.ExitCode())
 }
@@ -86,7 +84,6 @@ func TestBailErrorExitCode_WithWrappedExitCoder(t *testing.T) {
 	wrapped := fmt.Errorf("login check: %w", inner)
 	bail := BailError(wrapped)
 
-	// errors.As should find the ExitCoder through fmt.Errorf wrapping.
 	b := bail.(*bailError)
 	assert.Equal(t, 3, b.ExitCode())
 }
@@ -96,7 +93,6 @@ func TestBailErrorExitCode_WithPlainError(t *testing.T) {
 
 	bail := BailError(errors.New("plain error"))
 
-	// No ExitCoder in chain, should default to 1.
 	b := bail.(*bailError)
 	assert.Equal(t, 1, b.ExitCode())
 }

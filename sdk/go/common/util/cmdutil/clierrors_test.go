@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,9 +49,6 @@ func TestExitCodeFor(t *testing.T) {
 		assert.Equal(t, ExitCancelled, ExitCodeFor(err))
 	})
 
-	// ExitCoder takes priority over context.Canceled check — this ensures
-	// that if an error implements ExitCoder AND wraps context.Canceled,
-	// we get the explicit exit code, not the implicit cancelled code.
 	t.Run("ExitCoder wins over context.Canceled", func(t *testing.T) {
 		t.Parallel()
 		inner := fmt.Errorf("timed out waiting: %w", context.Canceled)
@@ -59,8 +56,6 @@ func TestExitCodeFor(t *testing.T) {
 		assert.Equal(t, ExitTimeout, ExitCodeFor(err))
 	})
 
-	// Test that exit codes survive multiple layers of fmt.Errorf wrapping,
-	// which is how errors propagate up through the real call chain.
 	t.Run("exit code survives deep wrapping", func(t *testing.T) {
 		t.Parallel()
 		base := WrapWithExitCode(ExitAuthenticationError, errors.New("bad token"))
@@ -70,10 +65,6 @@ func TestExitCodeFor(t *testing.T) {
 		assert.Equal(t, ExitAuthenticationError, ExitCodeFor(layer3))
 	})
 
-	// In the real CLI, BailError wraps errors that have already been printed.
-	// The exit code must propagate through BailError even though it doesn't
-	// implement Unwrap (by design). This works because bailError.ExitCode()
-	// inspects its inner error directly.
 	t.Run("BailError preserves inner exit code", func(t *testing.T) {
 		t.Parallel()
 		inner := WrapWithExitCode(ExitStackNotFound, errors.New("no stack named 'dev' found"))
@@ -87,9 +78,6 @@ func TestExitCodeFor(t *testing.T) {
 		assert.Equal(t, ExitCodeError, ExitCodeFor(bail))
 	})
 
-	// BailError wrapping a fmt.Errorf-wrapped ExitCoder — the realistic
-	// pattern where a function returns fmt.Errorf("context: %w", exitCodedErr)
-	// and the caller wraps that in BailError.
 	t.Run("BailError with wrapped ExitCoder", func(t *testing.T) {
 		t.Parallel()
 		base := WrapWithExitCode(ExitConfigurationError, errors.New("invalid flag"))
@@ -107,14 +95,9 @@ func TestCancellationError(t *testing.T) {
 		t.Run(op, func(t *testing.T) {
 			t.Parallel()
 			err := CancellationError{Operation: op}
-
-			// Verify it produces the right message format.
 			assert.Equal(t, op+" cancelled", err.Error())
-
-			// Verify it carries the right exit code.
 			assert.Equal(t, ExitCancelled, ExitCodeFor(err))
 
-			// Verify it satisfies the ExitCoder interface.
 			var ec ExitCoder
 			assert.ErrorAs(t, err, &ec)
 			assert.Equal(t, ExitCancelled, ec.ExitCode())
@@ -153,9 +136,6 @@ func TestCLIError(t *testing.T) {
 		assert.Equal(t, ExitPolicyViolation, cliErr.ExitCode())
 	})
 
-	// If two CLIErrors are nested, the outermost one wins (errors.As finds
-	// the first match). This is the correct behavior — the caller closer to
-	// the exit point gets to choose the code.
 	t.Run("outermost exit code wins when nested", func(t *testing.T) {
 		t.Parallel()
 		inner := WrapWithExitCode(ExitResourceError, errors.New("cloud API failed"))
@@ -164,8 +144,6 @@ func TestCLIError(t *testing.T) {
 	})
 }
 
-// exitCoderImpl is a test helper that implements ExitCoder directly,
-// simulating how backend error types work (e.g. LoginRequiredError).
 type exitCoderImpl struct {
 	code int
 	msg  string
@@ -177,8 +155,6 @@ func (e exitCoderImpl) ExitCode() int { return e.code }
 func TestExitCoderInterface(t *testing.T) {
 	t.Parallel()
 
-	// This simulates the pattern used by backend error types: a struct
-	// that directly implements ExitCoder with a hardcoded exit code.
 	t.Run("direct ExitCoder implementation", func(t *testing.T) {
 		t.Parallel()
 		err := exitCoderImpl{code: ExitAuthenticationError, msg: "login required"}

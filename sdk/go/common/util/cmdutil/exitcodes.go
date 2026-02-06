@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,16 +19,16 @@ package cmdutil
 // error messages.
 const (
 	ExitSuccess             = 0
-	ExitCodeError           = 1   // General error (named to avoid conflict with ExitError func)
-	ExitConfigurationError  = 2   // Invalid configuration or flags
-	ExitAuthenticationError = 3   // Authentication/authorization failure
-	ExitResourceError       = 4   // Cloud resource operation failed
-	ExitPolicyViolation     = 5   // Policy blocked the operation
-	ExitStackNotFound       = 6   // Specified stack does not exist
-	ExitNoChanges           = 7   // No changes found (--expect-no-changes)
-	ExitCancelled           = 8   // User cancelled the operation
-	ExitTimeout             = 9   // Operation timed out
-	ExitInternalError       = 255 // Internal/unexpected error (bug)
+	ExitCodeError           = 1 // Named to avoid conflict with ExitError func.
+	ExitConfigurationError  = 2
+	ExitAuthenticationError = 3
+	ExitResourceError       = 4
+	ExitPolicyViolation     = 5
+	ExitStackNotFound       = 6
+	ExitNoChanges           = 7
+	ExitCancelled           = 8
+	ExitTimeout             = 9
+	ExitInternalError       = 255
 )
 
 // ExitCodeInfo provides metadata about a semantic exit code.
