@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,10 +24,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // yarnClassic is an implementation of PackageManager that uses Yarn Classic,
@@ -72,10 +74,35 @@ func (yarn *yarnClassic) Version() (semver.Version, error) {
 }
 
 func (yarn *yarnClassic) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
-	command := yarn.installCmd(ctx, production)
-	command.Dir = dir
-	command.Stdout = stdout
-	return yarn.runCmd(command, stderr)
+	const maxRetries = 3
+
+	var err error
+	for attempt := range maxRetries {
+		command := yarn.installCmd(ctx, production)
+		command.Dir = dir
+		command.Stdout = stdout
+		err = yarn.runCmd(command, stderr)
+
+		if err == nil {
+			logging.V(5).Infof("yarn install succeeded on attempt %d", attempt)
+			return nil
+		}
+
+		// Don't sleep after the last attempt
+		if attempt < maxRetries-1 {
+			delay := time.Second * time.Duration(2^(attempt)) // Exponential backoff: 1s, 2s, 4s
+			logging.V(5).Infof("yarn install failed (attempt %d/%d), retrying in %v: %v",
+				attempt+1, maxRetries, delay, err)
+
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return err
+			}
+		}
+	}
+
+	return fmt.Errorf("yarn install failed after %d attempts: %w", maxRetries, err)
 }
 
 // Generates the installation command for a given installation of YarnClassic.
