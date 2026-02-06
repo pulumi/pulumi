@@ -233,10 +233,12 @@ func testLanguage(t *testing.T, forceTsc bool) {
 	}
 }
 
+//nolint:paralleltest // testLanguage uses t.Setenv
 func TestLanguageTSC(t *testing.T) {
 	testLanguage(t, true)
 }
 
+//nolint:paralleltest // testLanguage uses t.Setenv
 func TestLanguageTSNode(t *testing.T) {
 	testLanguage(t, false)
 }
