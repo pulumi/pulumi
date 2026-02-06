@@ -19,6 +19,7 @@ module.exports = {
         "tests/runtime/testdata/closure-tests/**/*.ts",
         "tests/runtime/testdata/closure-tests/**/*.js",
         "tests/provider/experimental/testdata/**/*.ts",
+        "tools/automation/output/**/*.ts",
         "vendor/",
     ],
     rules: {
