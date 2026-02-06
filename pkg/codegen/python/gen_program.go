@@ -843,6 +843,9 @@ func (g *generator) lowerResourceOptions(
 	if opts.PluginDownloadURL != nil && pcl.NeedsPluginDownloadURLResourceOption(opts.PluginDownloadURL, schema) {
 		appendOption("plugin_download_url", opts.PluginDownloadURL)
 	}
+	if opts.EnvVarMappings != nil {
+		appendOption("env_var_mappings", opts.EnvVarMappings)
+	}
 
 	return block, temps
 }

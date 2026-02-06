@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -311,7 +312,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		PluginDownloadURL: descriptor.DownloadURL,
 	}
 
-	provider, err := l.host.Provider(workspaceDescriptor)
+	provider, err := l.host.Provider(workspaceDescriptor, env.Global())
 	if err != nil {
 		return nil, fmt.Errorf("could not load schema for %s: %w", descriptor.Name, err)
 	}

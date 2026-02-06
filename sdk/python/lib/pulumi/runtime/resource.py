@@ -1147,6 +1147,7 @@ def register_resource(
                 packageRef=package_ref_str or "",
                 hooks=hooks,
                 hideDiffs=opts.hide_diffs,
+                envVarMappings=opts.env_var_mappings or {},
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()

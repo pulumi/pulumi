@@ -1,0 +1,5 @@
+name: l2-resource-option-env-var-mappings
+runtime:
+  name: nodejs
+  options:
+    typescript: false

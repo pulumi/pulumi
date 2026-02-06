@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -85,7 +86,7 @@ resource "app" "scaleway:iam/application:Application" {}
 		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{Name: spec.Name}, nil
 		},
-		ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+		ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 			return &plugin.MockProvider{
 				GetSchemaF: func(
 					ctx context.Context,

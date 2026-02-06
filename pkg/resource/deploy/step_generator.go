@@ -28,7 +28,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	mapset "github.com/deckarep/golang-set/v2"
-
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -661,7 +660,6 @@ func (sg *stepGenerator) getOldResource(
 
 func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
 	var invalid bool // will be set to true if this object fails validation.
-
 	goal := event.Goal()
 
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
@@ -710,6 +708,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	if old != nil {
 		refreshBeforeUpdate = old.RefreshBeforeUpdate
 	}
+
 	new := resource.NewState{
 		Type:                    goal.Type,
 		URN:                     urn,
