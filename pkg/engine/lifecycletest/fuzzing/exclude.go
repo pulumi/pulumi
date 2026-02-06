@@ -61,6 +61,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeParentedResourcesRefreshV2,
 		// TODO[pulumi/pulumi#21675]
 		ExcludeDependenciesOnPendingReplacementRefreshV2,
+		// TODO[pulumi/pulumi#21700]
+		ExcludePendingReplacementRegisteredInUpdate,
 	}
 }
 
@@ -699,6 +701,33 @@ func ExcludeDependenciesOnPendingReplacementRefreshV2(
 			}
 		}
 		if res.DeletedWith != "" && pendingReplacementURNs[res.DeletedWith] {
+			return true
+		}
+	}
+
+	return false
+}
+
+func ExcludePendingReplacementRegisteredInUpdate(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate || !plan.RefreshProgram {
+		return false
+	}
+
+	resourcesPendingReplacement := make(map[resource.URN]bool)
+
+	for _, res := range snap.Resources {
+		if res.PendingReplacement {
+			resourcesPendingReplacement[res.URN()] = true
+		}
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if resourcesPendingReplacement[res.URN()] {
 			return true
 		}
 	}
