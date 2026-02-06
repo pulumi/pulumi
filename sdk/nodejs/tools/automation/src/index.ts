@@ -41,6 +41,9 @@ import type { Command, Flag, Structure } from "./types";
   project.saveSync();
 })();
 
+// Every command and menu may add some flags to the pool of available flags. This means that, as we
+// descend the command tree, we need to collect all the flags that have been defined and add them to
+// an options object.
 function generateOptionsTypes(
   structure: Structure,
   source: SourceFile,
@@ -71,6 +74,8 @@ function generateOptionsTypes(
   }
 }
 
+// The type system of flags is effectively just the type system of Go, so we need to find appropriate
+// approximations of the types for TypeScript.
 function convertType(type: string, repeatable: boolean): string {
   let base: string = "";
 
