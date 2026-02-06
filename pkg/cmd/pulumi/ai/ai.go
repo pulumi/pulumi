@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,12 +50,12 @@ func (cmd *aiCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func NewAICommand() *cobra.Command {
+func NewAICommand(ws pkgWorkspace.Context) *cobra.Command {
 	var aiCommand aiCmd
 	cmd := &cobra.Command{
 		Use:    "ai",
-		Short:  "Basic Pulumi AI CLI commands.",
-		Long:   "Contains the current set of supported CLI functionality for the Pulumi AI service.",
+		Short:  "Pulumi Neo commands.",
+		Long:   "Contains CLI functionality for Pulumi Neo, Pulumi's AI assistant.",
 		Hidden: !env.Experimental.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -68,6 +68,6 @@ func NewAICommand() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.AddCommand(newAIWebCommand())
+	cmd.AddCommand(newAIWebCommand(ws))
 	return cmd
 }

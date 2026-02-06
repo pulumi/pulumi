@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1933,4 +1933,24 @@ func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[api
 			}
 		}
 	}
+}
+
+// CreateNeoTask creates a new Neo task with the given prompt.
+func (pc *Client) CreateNeoTask(ctx context.Context, orgName string, prompt string) (string, error) {
+	request := apitype.CreateNeoTaskRequest{
+		Message: apitype.NeoTaskMessage{
+			Type:      "user_message",
+			Timestamp: time.Now(),
+			Content:   prompt,
+			Commands:  make(map[string]any), // Empty commands map
+		},
+	}
+
+	var response apitype.CreateNeoTaskResponse
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks", orgName)
+	if err := pc.restCall(ctx, "POST", path, nil, request, &response); err != nil {
+		return "", fmt.Errorf("creating Neo task: %w", err)
+	}
+
+	return response.TaskID, nil
 }
