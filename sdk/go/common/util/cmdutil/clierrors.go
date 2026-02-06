@@ -17,7 +17,6 @@ package cmdutil
 import (
 	"context"
 	"errors"
-	"fmt"
 )
 
 // ExitCoder is an interface for errors that carry a semantic exit code.
@@ -71,7 +70,7 @@ type CancellationError struct {
 }
 
 func (e CancellationError) Error() string {
-	return fmt.Sprintf("%s cancelled", e.Operation)
+	return e.Operation + " cancelled"
 }
 
 func (e CancellationError) ExitCode() int {
