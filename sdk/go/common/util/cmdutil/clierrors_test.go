@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 func TestExitCodeForNil(t *testing.T) {
@@ -74,6 +76,19 @@ func TestCLIErrorUnwrap(t *testing.T) {
 	inner := errors.New("root cause")
 	err := WrapWithExitCode(ExitConfigurationError, inner)
 	assert.ErrorIs(t, err, inner)
+}
+
+func TestExitCodeForBailErrorWithExitCoder(t *testing.T) {
+	t.Parallel()
+	inner := WrapWithExitCode(ExitStackNotFound, errors.New("no stack"))
+	bail := result.BailError(inner)
+	assert.Equal(t, ExitStackNotFound, ExitCodeFor(bail))
+}
+
+func TestExitCodeForBailErrorWithPlainError(t *testing.T) {
+	t.Parallel()
+	bail := result.BailError(errors.New("something failed"))
+	assert.Equal(t, ExitCodeError, ExitCodeFor(bail))
 }
 
 // exitCoderImpl is a test helper that implements ExitCoder directly.
