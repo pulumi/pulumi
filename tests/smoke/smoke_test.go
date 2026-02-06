@@ -1176,10 +1176,10 @@ func TestPrintLogfilePath(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	stdout, _ := e.RunCommand("pulumi", "about", "-v", "10")
+	_, stderr := e.RunCommand("pulumi", "about", "-v", "10")
 	var logFilePath string
 	message := "The log file for this run is at "
-	scanner := bufio.NewScanner(strings.NewReader(stdout))
+	scanner := bufio.NewScanner(strings.NewReader(stderr))
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, message) {

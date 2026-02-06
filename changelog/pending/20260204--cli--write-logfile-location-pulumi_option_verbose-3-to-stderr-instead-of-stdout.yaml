@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Write logfile location if verbosity is >= 1 to stderr instead of stdout
