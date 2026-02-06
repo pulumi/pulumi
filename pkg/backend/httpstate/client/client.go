@@ -52,6 +52,43 @@ const (
 	NeoRequestTimeout = 20 * time.Second
 )
 
+// NeoTaskRequest represents a request to create a Neo task.
+type NeoTaskRequest struct {
+	Message NeoTaskMessage `json:"message"`
+}
+
+// NeoTaskMessage represents the message content for a Neo task.
+type NeoTaskMessage struct {
+	Type       string             `json:"type"`                  // "user_message"
+	Content    string             `json:"content"`               // Error description/instruction
+	Timestamp  string             `json:"timestamp"`             // ISO 8601 timestamp
+	EntityDiff *NeoTaskEntityDiff `json:"entity_diff,omitempty"` // Entities to add/remove
+}
+
+// NeoTaskEntityDiff represents entities to add or remove from the agent context.
+type NeoTaskEntityDiff struct {
+	Add    []NeoTaskEntity `json:"add,omitempty"`
+	Remove []NeoTaskEntity `json:"remove,omitempty"`
+}
+
+// NeoTaskEntity represents an entity (like a stack) that the agent can work with.
+type NeoTaskEntity struct {
+	Type    string `json:"type"`    // "stack"
+	Name    string `json:"name"`    // stack name
+	Project string `json:"project"` // project name
+}
+
+// NeoTaskResponse represents the response from creating a Neo task.
+type NeoTaskResponse struct {
+	TaskID string `json:"taskId"`
+}
+
+// GetTaskID returns the task ID from the response.
+// This implements the display.NeoTaskResult interface.
+func (r *NeoTaskResponse) GetTaskID() string {
+	return r.TaskID
+}
+
 // TemplatePublishOperationID uniquely identifies a template publish operation.
 type TemplatePublishOperationID string
 
@@ -1586,6 +1623,44 @@ func (pc *Client) ExplainPreviewWithNeo(
 ) (string, error) {
 	request := createExplainPreviewRequest(content, orgID, kind, maxCopilotExplainPreviewContentLength)
 	return pc.callCopilot(ctx, request)
+}
+
+// CreateNeoTask creates a new Neo agent task via the Neo Tasks API.
+// This is used to start an AI-assisted debugging session when errors occur.
+func (pc *Client) CreateNeoTask(
+	ctx context.Context,
+	orgName string,
+	content string,
+	stackName string,
+	projectName string,
+) (*NeoTaskResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	request := NeoTaskRequest{
+		Message: NeoTaskMessage{
+			Type:      "user_message",
+			Content:   content,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			EntityDiff: &NeoTaskEntityDiff{
+				Add: []NeoTaskEntity{
+					{
+						Type:    "stack",
+						Name:    stackName,
+						Project: projectName,
+					},
+				},
+			},
+		},
+	}
+
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks", orgName)
+	var resp NeoTaskResponse
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, request, &resp); err != nil {
+		return nil, fmt.Errorf("creating Neo task: %w", err)
+	}
+
+	return &resp, nil
 }
 
 func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, error) {

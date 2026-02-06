@@ -110,6 +110,9 @@ var NeoEnabled = env.Bool("NEO",
 	"Enable Pulumi Neo's assistance for improved CLI experience and insights.",
 	env.Alternative("COPILOT"))
 
+var NeoTaskEnabled = env.Bool("NEO_TASK",
+	"Start a Neo task to help debug errors that occur during preview or update operations.")
+
 // TODO: This is a soft-release feature and will be removed after the feature flag is launched
 // https://github.com/pulumi/pulumi/issues/19065
 var NeoSummaryModel = env.String("NEO_SUMMARY_MODEL",

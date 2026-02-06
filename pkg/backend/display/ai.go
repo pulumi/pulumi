@@ -107,3 +107,45 @@ func renderBoldMarkdown(summary string, opts Options) string {
 	summary = regexp.MustCompile(`\*\*(.*?)\*\*`).ReplaceAllString(summary, colors.BrightBlue+"$1"+colors.Reset)
 	return summary
 }
+
+// NeoTaskResult is an interface for the Neo task creation response.
+type NeoTaskResult interface {
+	GetTaskID() string
+}
+
+// RenderNeoTaskCreated renders a message after a Neo task has been created.
+func RenderNeoTaskCreated(taskResult NeoTaskResult, err error, cloudConsoleURL, orgName string, opts Options) {
+	out := opts.Stdout
+	if out == nil {
+		out = os.Stdout
+	}
+
+	if err != nil {
+		fmt.Fprintf(out, "\n")
+		header := opts.Color.Colorize(
+			colors.SpecHeadline + "Neo Task" + neoDelimiterEmoji() + colors.Reset)
+		fmt.Fprintln(out, header)
+		fmt.Fprintf(out, "  error creating Neo task: %s\n", err)
+		fmt.Fprintln(out)
+		return
+	}
+
+	if taskResult == nil {
+		return
+	}
+
+	taskID := taskResult.GetTaskID()
+	if taskID == "" {
+		return
+	}
+
+	fmt.Fprintf(out, "\n")
+	header := opts.Color.Colorize(
+		colors.SpecHeadline + "Neo Task Created" + neoDelimiterEmoji() + colors.Reset)
+	fmt.Fprintln(out, header)
+	fmt.Fprintln(out, "  A Neo task has been started to help debug this error.")
+
+	taskURL := fmt.Sprintf("%s/%s/neo/tasks/%s", cloudConsoleURL, orgName, taskID)
+	fmt.Fprintln(out, "  "+opts.Color.Colorize(colors.Underline+colors.BrightBlue+taskURL+colors.Reset))
+	fmt.Fprintln(out)
+}
