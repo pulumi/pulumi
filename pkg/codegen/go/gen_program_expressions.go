@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -794,6 +794,7 @@ func (g *generator) genTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	if isPulumiStr {
 		g.Fgenf(w, "pulumi.Sprintf(")
 	} else {
+		g.importer.Import("fmt", "fmt")
 		g.Fgenf(w, "fmt.Sprintf(")
 	}
 	g.genStringLiteral(w, fmtStr.String(), canBeRaw)

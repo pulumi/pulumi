@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -905,11 +905,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 					g.importer.Import(fnPkg, path.Base(fnPkg) /* name */)
 				}
 			}
-			if t, ok := n.(*model.TemplateExpression); ok {
-				if len(t.Parts) > 1 {
-					g.importer.Import("fmt", "fmt")
-				}
-			}
 			return n, nil
 		})
 		contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
@@ -1398,6 +1393,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
 		var buf bytes.Buffer
+		g.importer.Import("fmt", "fmt")
 		resourceName := fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName)
 		if g.isComponent {
 			resourceName = fmt.Sprintf(`fmt.Sprintf("%%s-%s-%%v", name, key0)`, resName)
