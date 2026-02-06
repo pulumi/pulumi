@@ -275,6 +275,11 @@ func GetEnvironmentVariableMappings(
 // The mappings map should be NEW_KEY -> OLD_KEY (if NEW_KEY exists, provider sees OLD_KEY=value(NEW_KEY)).
 func SetEnvironmentVariableMappings(inputs resource.PropertyMap, mappings map[string]string) {
 	internalInputs := addOrGetInternal(inputs)
+	if len(mappings) == 0 {
+		// Don't store empty mappings
+		delete(internalInputs, envVarMappingsKey)
+		return
+	}
 	propMap := make(resource.PropertyMap)
 	for newKey, oldKey := range mappings {
 		propMap[resource.PropertyKey(newKey)] = resource.NewProperty(oldKey)
