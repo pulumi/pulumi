@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2025-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,8 +29,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -48,11 +48,49 @@ type cloudJournaler struct {
 	entries chan<- saveJournalEntry // Channel for sending journal entries to the batch worker.
 	done    <-chan struct{}         // Channel for tracking whether or not the batch worker has finished.
 
-	m      sync.Mutex // Controls access to the closed field.
+	m      sync.Mutex // Controls access to the closed field and pendingElided map.
 	closed bool       // True if the journaler is closed.
+
+	// Map of operation IDs to elided entries that may have dependents. We use this to track elided entries
+	// that need to be flushed to the service, and make sure any entries depending on the elided entries wait
+	// for the elided entry to be flushed, or to return an error.
+	//
+	// Currently it can happen that an elided entry is in a batch that failed to be persisted, but the corresponding
+	// step never gets an error. This can cause us to have subsequent entries that depend on such a failed entry. In
+	// such a case the subsequent entry is not valid without the earlier entry being sent, and thus we need to return
+	// an error.
+	//
+	// If we start sending entries concurrently in the future, this also makes sure that we wait for elided entries to be
+	// persisted before sending any dependent entries, to avoid out-of-order sends.
+	pendingElided map[int64]*promise.Promise[struct{}]
 }
 
 func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
+	// Check if this entry depends on any pending elided entries and wait for them first.
+	dependsOn := []int64{}
+	if entry.RemoveNew != nil && *entry.RemoveNew > 0 {
+		dependsOn = append(dependsOn, *entry.RemoveNew)
+	}
+	if entry.DeleteNew != nil && *entry.DeleteNew > 0 {
+		dependsOn = append(dependsOn, *entry.DeleteNew)
+	}
+	if entry.PendingReplacementNew != nil && *entry.PendingReplacementNew > 0 {
+		dependsOn = append(dependsOn, *entry.PendingReplacementNew)
+	}
+
+	for _, depID := range dependsOn {
+		j.m.Lock()
+		elidedDep, hasDep := j.pendingElided[depID]
+		j.m.Unlock()
+
+		if hasDep {
+			_, err := elidedDep.Result(j.context)
+			if err != nil {
+				return fmt.Errorf("dependent elided entry (operation %d) failed: %w", depID, err)
+			}
+		}
+	}
+
 	// Return an error if the journal is closed.
 	//
 	// Note that we also add this call to the j.wg under the lock to avoid races between this method and Close.
@@ -72,10 +110,7 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	}
 	defer j.wg.Done()
 
-	var result chan error
-	if !entry.ElideWrite {
-		result = make(chan error, 1)
-	}
+	result := make(chan error, 1)
 
 	serialized, err := stack.BatchEncrypt(
 		j.context, j.sm, func(ctx context.Context, enc config.Encrypter,
@@ -91,7 +126,13 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 		result: result,
 	}
 	if entry.ElideWrite {
-		contract.Assertf(result == nil, "expected elided write to have nil result channel")
+		promise := promise.Run(func() (struct{}, error) {
+			return struct{}{}, <-result
+		})
+		j.m.Lock()
+		j.pendingElided[entry.OperationID] = promise
+		j.m.Unlock()
+
 		return nil
 	}
 	return <-result
@@ -259,10 +300,11 @@ func newJournaler(
 	}()
 
 	return &cloudJournaler{
-		context: ctx,
-		sm:      sm,
-		entries: entries,
-		done:    done,
+		context:       ctx,
+		sm:            sm,
+		entries:       entries,
+		done:          done,
+		pendingElided: make(map[int64]*promise.Promise[struct{}]),
 	}
 }
 
