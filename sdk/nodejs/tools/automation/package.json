@@ -1,0 +1,30 @@
+{
+    "name": "@pulumi/automation-tools",
+    "version": "0.0.1",
+    "description": "Automation API code generation",
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/pulumi/pulumi.git",
+        "directory": "sdk/nodejs/tools/automation"
+    },
+    "main": "src/index.ts",
+    "scripts": {
+        "start": "tsx src/index.ts"
+    },
+    "devDependencies": {
+        "@types/node": "14.18.63",
+        "@types/pascalcase": "^1.0.3",
+        "@types/to-camel-case": "^1.0.2",
+        "ts-morph": "^24.0.0",
+        "tsx": "4.19.3",
+        "typescript": "3.8.3"
+    },
+    "engines": {
+        "node": ">=20"
+    },
+    "dependencies": {
+        "pascalcase": "^2.0.0",
+        "to-camel-case": "^1.0.0"
+    }
+}
