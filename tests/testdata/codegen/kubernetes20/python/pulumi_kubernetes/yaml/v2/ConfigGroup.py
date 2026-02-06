@@ -25,6 +25,7 @@ class ConfigGroupArgs:
                  yaml: Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None):
         """
         The set of arguments for constructing a ConfigGroup resource.
+
         :param pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]] files: Set of paths or a URLs that uniquely identify files.
         :param pulumi.Input[Union[Any, Sequence[Any]]] objs: Objects representing Kubernetes resources.
         :param pulumi.Input[_builtins.str] resource_prefix: An optional prefix for the auto-generated resource names. Example: A resource created with resourcePrefix="foo" would produce a resource named "foo-resourceName".

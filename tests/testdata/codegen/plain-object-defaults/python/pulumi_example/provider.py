@@ -23,6 +23,7 @@ class ProviderArgs:
                  helm_release_settings: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None):
         """
         The set of arguments for constructing a Provider resource.
+
         :param pulumi.Input['HelmReleaseSettingsArgs'] helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
         """
         if helm_release_settings is not None:

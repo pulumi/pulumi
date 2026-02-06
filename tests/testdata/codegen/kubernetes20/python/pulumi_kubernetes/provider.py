@@ -25,6 +25,7 @@ class ProviderArgs:
                  namespace: Optional[pulumi.Input[_builtins.str]] = None):
         """
         The set of arguments for constructing a Provider resource.
+
         :param pulumi.Input['KubeClientSettingsArgs'] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input[_builtins.str] kubeconfig: The contents of a kubeconfig file or the path to a kubeconfig file.
         :param pulumi.Input[_builtins.str] namespace: If present, the default namespace to use. This flag is ignored for cluster-scoped resources.

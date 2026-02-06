@@ -46,6 +46,7 @@ class AvailabilityInformationResponse(dict):
                  disabled_reason_message: _builtins.str):
         """
         Availability information of a product system.
+
         :param _builtins.str availability_stage: Current availability stage of the product. Availability stage
         :param _builtins.str disabled_reason: Reason why the product is disabled.
         :param _builtins.str disabled_reason_message: Message for why the product is disabled.
@@ -91,6 +92,7 @@ class BillingMeterDetailsResponse(dict):
                  name: _builtins.str):
         """
         Holds billing meter details for each type of billing
+
         :param _builtins.str frequency: Frequency of recurrence
         :param Union['Pav2MeterDetailsResponse', 'PurchaseMeterDetailsResponse'] meter_details: Represents MeterDetails
         :param _builtins.str metering_type: Represents Metering type (eg one-time or recurrent)
@@ -151,6 +153,7 @@ class ConfigurationResponse(dict):
                  specifications: Sequence['outputs.SpecificationResponse']):
         """
         Configuration object.
+
         :param 'AvailabilityInformationResponse' availability_information: Availability information of the product system.
         :param 'CostInformationResponse' cost_information: Cost information for the product system.
         :param 'DescriptionResponse' description: Description related to the product system.
@@ -254,6 +257,7 @@ class CostInformationResponse(dict):
                  billing_meter_details: Sequence['outputs.BillingMeterDetailsResponse']):
         """
         Cost information for the product system
+
         :param _builtins.str billing_info_url: Default url to display billing information
         :param Sequence['BillingMeterDetailsResponse'] billing_meter_details: Details on the various billing aspects for the product system.
         """
@@ -291,6 +295,7 @@ class DescriptionResponse(dict):
                  short_description: _builtins.str):
         """
         Description related properties of a product system.
+
         :param Sequence[_builtins.str] attributes: Attributes for the product system.
         :param _builtins.str description_type: Type of description.
         :param Sequence[_builtins.str] keywords: Keywords for the product system.
@@ -369,6 +374,7 @@ class DimensionsResponse(dict):
                  width: _builtins.float):
         """
         Dimensions of a configuration.
+
         :param _builtins.float depth: Depth of the device.
         :param _builtins.float height: Height of the device.
         :param _builtins.float length: Length of the device.
@@ -452,6 +458,7 @@ class FilterablePropertyResponse(dict):
                  type: _builtins.str):
         """
         Different types of filters supported and its values.
+
         :param Sequence[_builtins.str] supported_values: Values to be filtered.
         :param _builtins.str type: Type of product filter.
         """
@@ -487,6 +494,7 @@ class HierarchyInformationResponse(dict):
                  product_name: Optional[_builtins.str] = None):
         """
         Holds details about product hierarchy information
+
         :param _builtins.str configuration_name: Represents configuration name that uniquely identifies configuration
         :param _builtins.str product_family_name: Represents product family name that uniquely identifies product family
         :param _builtins.str product_line_name: Represents product line name that uniquely identifies product line
@@ -544,6 +552,7 @@ class ImageInformationResponse(dict):
                  image_url: _builtins.str):
         """
         Image for the product
+
         :param _builtins.str image_type: Type of the image
         :param _builtins.str image_url: Url of the image
         """
@@ -577,6 +586,7 @@ class LinkResponse(dict):
                  link_url: _builtins.str):
         """
         Returns link related to the product
+
         :param _builtins.str link_type: Type of link
         :param _builtins.str link_url: Url of the link
         """
@@ -612,6 +622,7 @@ class Pav2MeterDetailsResponse(dict):
                  multiplier: _builtins.float):
         """
         Billing type PAV2 meter details
+
         :param _builtins.str billing_type: Represents billing type.
                Expected value is 'Pav2'.
         :param _builtins.str charging_type: Charging type.
@@ -673,6 +684,7 @@ class ProductFamilyResponse(dict):
                  product_lines: Sequence['outputs.ProductLineResponse']):
         """
         Product Family
+
         :param 'AvailabilityInformationResponse' availability_information: Availability information of the product system.
         :param 'CostInformationResponse' cost_information: Cost information for the product system.
         :param 'DescriptionResponse' description: Description related to the product system.
@@ -772,6 +784,7 @@ class ProductLineResponse(dict):
                  products: Sequence['outputs.ProductResponse']):
         """
         Product line
+
         :param 'AvailabilityInformationResponse' availability_information: Availability information of the product system.
         :param 'CostInformationResponse' cost_information: Cost information for the product system.
         :param 'DescriptionResponse' description: Description related to the product system.
@@ -871,6 +884,7 @@ class ProductResponse(dict):
                  image_information: Sequence['outputs.ImageInformationResponse']):
         """
         List of Products
+
         :param 'AvailabilityInformationResponse' availability_information: Availability information of the product system.
         :param Sequence['ConfigurationResponse'] configurations: List of configurations for the product
         :param 'CostInformationResponse' cost_information: Cost information for the product system.
@@ -968,6 +982,7 @@ class PurchaseMeterDetailsResponse(dict):
                  term_id: _builtins.str):
         """
         Billing type Purchase meter details
+
         :param _builtins.str billing_type: Represents billing type.
                Expected value is 'Purchase'.
         :param _builtins.str charging_type: Charging type.
@@ -1043,6 +1058,7 @@ class SpecificationResponse(dict):
                  value: _builtins.str):
         """
         Specifications of the configurations
+
         :param _builtins.str name: Name of the specification
         :param _builtins.str value: Value of the specification
         """

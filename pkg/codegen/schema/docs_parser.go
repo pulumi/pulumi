@@ -34,6 +34,9 @@ const (
 	// ExampleShortcode is the name for the `{{% example %}}` shortcode, which demarcates the content for a single
 	// example.
 	ExampleShortcode = "example"
+
+	// RefShortcode is the name for the `{{% ref %}}` shortcode, which references a schema entity.
+	RefShortcode = "ref"
 )
 
 // Shortcode represents a shortcode element and its contents, e.g. `{{% examples %}}`.
@@ -62,6 +65,34 @@ func (*Shortcode) Kind() ast.NodeKind {
 // NewShortcode creates a new shortcode with the given name.
 func NewShortcode(name []byte) *Shortcode {
 	return &Shortcode{Name: name}
+}
+
+// Ref represents an inline reference to a schema entity, e.g. `{{% ref #/resources/pkg:index:res %}}`.
+type Ref struct {
+	ast.BaseInline
+
+	// Destination is the reference destination (e.g. "#/resources/pkg:index:res").
+	Destination string
+}
+
+func (r *Ref) Dump(w io.Writer, source []byte, level int) {
+	m := map[string]string{
+		"Destination": r.Destination,
+	}
+	ast.DumpHelper(w, r, source, level, m, nil)
+}
+
+// KindRef is an ast.NodeKind for the Ref node.
+var KindRef = ast.NewNodeKind("Ref")
+
+// Kind implements ast.Node.Kind.
+func (*Ref) Kind() ast.NodeKind {
+	return KindRef
+}
+
+// NewRef creates a new Ref with the given destination.
+func NewRef(destination string) *Ref {
+	return &Ref{Destination: destination}
 }
 
 type shortcodeParser int
@@ -143,6 +174,11 @@ func (p shortcodeParser) Open(parent ast.Node, reader text.Reader, pc parser.Con
 	}
 	name := line[nameStart:nameEnd]
 
+	// Skip "ref" shortcodes - they are handled as inline elements.
+	if bytes.Equal(name, []byte(RefShortcode)) {
+		return nil, parser.NoChildren
+	}
+
 	reader.Advance(shortcodeEnd)
 
 	return NewShortcode(name), parser.HasChildren
@@ -184,9 +220,58 @@ func (shortcodeParser) CanAcceptIndentedLine() bool {
 	return false
 }
 
+type refParser int
+
+// NewRefParser returns an InlineParser that parses ref shortcodes (e.g. `{{% ref #/resources/pkg:index:res %}}`).
+func NewRefParser() parser.InlineParser {
+	return refParser(0)
+}
+
+func (refParser) Trigger() []byte {
+	return []byte{'{'}
+}
+
+func (refParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) ast.Node {
+	line, _ := block.PeekLine()
+	if len(line) < 3 || line[0] != '{' || line[1] != '{' || line[2] != '%' {
+		return nil
+	}
+
+	// Look for the closing `%}}`.
+	end := bytes.Index(line, []byte("%}}"))
+	if end == -1 {
+		return nil
+	}
+
+	// Extract content between `{{%` and `%}}`.
+	content := line[3:end]
+
+	// Trim leading and trailing whitespace.
+	content = bytes.TrimSpace(content)
+
+	// Check if this is a `ref` shortcode.
+	if !bytes.HasPrefix(content, []byte("ref")) {
+		return nil
+	}
+
+	// Extract the destination (everything after "ref").
+	destination := bytes.TrimSpace(content[3:])
+	if len(destination) == 0 {
+		return nil
+	}
+
+	// Advance past the entire shortcode.
+	block.Advance(end + 3) // advance past `%}}`
+
+	return NewRef(string(destination))
+}
+
 // ParseDocs parses the given documentation text as Markdown with shortcodes and returns the AST.
 func ParseDocs(docs []byte) ast.Node {
 	p := goldmark.DefaultParser()
-	p.AddOptions(parser.WithBlockParsers(util.Prioritized(shortcodeParser(0), 50)))
+	p.AddOptions(
+		parser.WithBlockParsers(util.Prioritized(shortcodeParser(0), 50)),
+		parser.WithInlineParsers(util.Prioritized(NewRefParser(), 50)),
+	)
 	return p.Parse(text.NewReader(docs))
 }
