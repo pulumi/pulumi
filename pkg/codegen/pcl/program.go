@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/ryboe/q"
 	"github.com/spf13/afero"
 )
 
@@ -163,6 +164,9 @@ func (p *Program) PackageReferences() []schema.PackageReference {
 // returned value is the full package definition.
 func (p *Program) PackageSnapshots() ([]*schema.Package, error) {
 	keys := slice.Prealloc[string](len(p.binder.referencedPackages))
+	for _, p := range p.binder.referencedPackages {
+		q.Q("PackageSnapshots", p.Name(), p.Version())
+	}
 	for k := range p.binder.referencedPackages {
 		keys = append(keys, k)
 	}
@@ -267,7 +271,7 @@ func (p *Program) collectPackageSnapshots(seenPackages map[string]*schema.Packag
 
 	for _, pkg := range packages {
 		if _, seen := seenPackages[pkg.Name]; !seen {
-			seenPackages[pkg.Name] = pkg
+			seenPackages[pkg.Identity()] = pkg
 		}
 	}
 

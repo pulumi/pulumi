@@ -25,6 +25,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ryboe/q"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
@@ -61,6 +62,10 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	g, err := newGenerator(program)
 	if err != nil {
 		return nil, nil, err
+	}
+	p, _ := program.PackageSnapshots()
+	for _, x := range p {
+		q.Q("GenerateProgram", x.Name, x.Version)
 	}
 
 	// Linearize the nodes into an order appropriate for procedural code generation.
@@ -355,6 +360,8 @@ func GenerateProject(
 		return err
 	}
 
+	q.Q(localDependencies)
+
 	// Build a requirements.txt based on the packages used by program
 	requirementsTxtLines := []string{}
 	if path, ok := localDependencies["pulumi"]; ok {
@@ -370,11 +377,26 @@ func GenerateProject(
 		return err
 	}
 
-	for _, p := range packages {
+	unique_packages := map[string]*schema.Package{}
+	for k, p := range packages {
+		previous, hasPackage := unique_packages[p.Name]
+		q.Q("checking", k, p.Identity(), hasPackage)
+		if !hasPackage {
+			unique_packages[p.Name] = p
+		} else {
+			if previous.Version.LT(*p.Version) {
+				q.Q(previous.Version, *p.Version)
+				unique_packages[p.Name] = p
+			}
+		}
+	}
+
+	for _, p := range unique_packages {
+		q.Q("brrrp", p.Identity(), p.Version)
 		if p.Name == "pulumi" {
 			continue
 		}
-		if path, ok := localDependencies[p.Name]; ok {
+		if path, ok := localDependencies[p.Identity()]; ok {
 			requirementsTxtLines = append(requirementsTxtLines, path)
 		} else {
 			if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
@@ -387,6 +409,7 @@ func GenerateProject(
 					packageName = pyInfo.PackageName
 				}
 			}
+			q.Q(packageName)
 			if p.Version != nil {
 				requirementsTxtLines = append(requirementsTxtLines, fmt.Sprintf("%s==%s", packageName, p.Version.String()))
 			} else {
@@ -394,6 +417,7 @@ func GenerateProject(
 			}
 		}
 	}
+	q.Q(requirementsTxtLines)
 
 	// If a typechecker is given we need to list that in the requirements.txt as well
 	if typechecker != "" {
@@ -759,6 +783,7 @@ func (g *generator) makeResourceName(baseName, count string) string {
 }
 
 func (g *generator) lowerResourceOptions(
+	r *pcl.Resource,
 	opts *pcl.ResourceOptions, schema *schema.Resource,
 ) (*model.Block, []*quoteTemp) {
 	if opts == nil {
@@ -837,7 +862,7 @@ func (g *generator) lowerResourceOptions(
 	if opts.CustomTimeouts != nil {
 		appendOption("custom_timeouts", opts.CustomTimeouts)
 	}
-	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
+	if opts.Version != nil && pcl.NeedsVersionResourceOption(r, opts.Version, schema) {
 		appendOption("version", opts.Version)
 	}
 	if opts.PluginDownloadURL != nil && pcl.NeedsPluginDownloadURLResourceOption(opts.PluginDownloadURL, schema) {
@@ -924,7 +949,34 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
 	qualifiedMemberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
-	optionsBag, temps := g.lowerResourceOptions(r.Options, r.Schema)
+
+	m, _ := g.program.CollectNestedPackageSnapshots()
+	// q.Q("ZZZ", m)
+
+	var schema *schema.Resource
+	pkg, mod, typ, _ := r.DecomposeToken()
+	if mod == "" {
+		mod = "index"
+	}
+	for _, p := range m {
+		q.Q(pkg, typ, p.Name, r.Token)
+		tokenLol := fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
+		if p.Name == pkg {
+			if schema == nil {
+				if s, ok := p.GetResource(tokenLol); ok {
+					q.Q("XXX1A", s)
+					schema = s
+				}
+			} else if schema.PackageReference.Version().LT(*p.Version) {
+				if s, ok := p.GetResource(tokenLol); ok {
+					q.Q("XXX1B", s)
+					schema = s
+				}
+			}
+		}
+	}
+
+	optionsBag, temps := g.lowerResourceOptions(r, r.Options, schema)
 	name := r.LogicalName()
 	nameVar := PyName(r.Name())
 
@@ -1119,7 +1171,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	componentName := r.DeclarationName()
-	optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
+	optionsBag, temps := g.lowerResourceOptions(nil, r.Options, nil)
 	name := r.LogicalName()
 	nameVar := PyName(r.Name())
 

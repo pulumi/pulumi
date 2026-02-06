@@ -15,12 +15,15 @@
 package pcl
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/ryboe/q"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -188,33 +191,42 @@ func (p *ResourceProperty) Type() model.Type {
 //
 // Languages that bake versions into their generated schemas can use NeedsVersionResourceOption to omit redundant
 // version information.
-func NeedsVersionResourceOption(version model.Expression, schema *schema.Resource) bool {
+func NeedsVersionResourceOption(r *Resource, version model.Expression, schema *schema.Resource) bool {
+	q.Q("NeedsVersionResourceOption", r.LogicalName(), version.SyntaxNode(), schema.PackageReference.Version())
 	if version == nil {
+		q.Q("  version == nil")
 		return false
 	}
 
 	if schema == nil {
+		q.Q("  schema == nil")
 		return true
 	}
 
 	v := schema.PackageReference.Version()
 	if v == nil {
+		q.Q("  v == nil")
 		return true
 	}
 
 	e, ok := version.(*model.TemplateExpression)
 	contract.Assertf(ok, "Expected a model.TemplateExpression, found %T", version)
 	if len(e.Parts) != 1 {
+		q.Q("  len(e.Parts) != 1")
 		return true
 	}
 
 	optV, ok := e.Parts[0].(*model.LiteralValueExpression)
 	contract.Assertf(ok, "Expected a version literal, found %T", optV)
 	if !optV.Value.Type().Equals(cty.String) || !optV.Value.IsKnown() || optV.Value.IsNull() {
+		q.Q("  !optV.Value.Type().Equals(cty.String) || !optV.Value.IsKnown() || optV.Value.IsNull()")
 		return true
 	}
 
-	return v.String() != optV.Value.AsString()
+	z := v.String() != optV.Value.AsString()
+	x := fmt.Sprintf("<%s> <%s>", v.String(), optV.Value.AsString())
+	q.Q(z, v.String(), optV.Value.AsString(), x)
+	return z
 }
 
 func NeedsPluginDownloadURLResourceOption(pluginDownloadURL model.Expression, schema *schema.Resource) bool {

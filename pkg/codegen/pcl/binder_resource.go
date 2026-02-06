@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/ryboe/q"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -43,6 +44,8 @@ func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnosti
 
 	bodyDiags := b.bindResourceBody(node)
 	diagnostics = append(diagnostics, bodyDiags...)
+
+	q.Q("bindResource", node.LogicalName(), node.Token, node.Schema.PackageReference.Version())
 
 	return diagnostics
 }
@@ -276,6 +279,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	if diagnostics.HasErrors() {
 		return diagnostics
 	}
+	q.Q("bindResourceTypes", token)
 
 	makeResourceDynamic := func() {
 		// make the inputs and outputs of the resource dynamic
@@ -307,6 +311,8 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 			break
 		}
 	}
+
+	q.Q(pkgVersion)
 
 	var pkgSchema *packageSchema
 	var err error
@@ -392,8 +398,9 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	findTransitivePackageReferences := func(schemaType schema.Type) {
 		if objectType, ok := schemaType.(*schema.ObjectType); ok && objectType.PackageReference != nil {
 			ref := objectType.PackageReference
-			if _, found := b.referencedPackages[ref.Name()]; !found {
-				b.referencedPackages[ref.Name()] = ref
+			q.Q("Adding ref to referencedPackages", ref.Name(), ref.Version())
+			if _, found := b.referencedPackages[ref.Identity()]; !found {
+				b.referencedPackages[ref.Identity()] = ref
 			}
 		}
 	}

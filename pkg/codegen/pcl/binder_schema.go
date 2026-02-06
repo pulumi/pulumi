@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/ryboe/q"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -226,6 +227,7 @@ func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 
 // getPkgOpts gets the package options from an unbound resource node.
 func (b *binder) getPkgOpts(node *Resource) packageOpts {
+	// Oh this is a neat function
 	node.VariableType = model.NewObjectType(map[string]model.Type{
 		"id":  model.NewOutputType(model.StringType),
 		"urn": model.NewOutputType(model.StringType),
@@ -311,10 +313,11 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	})
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
+	q.Q(packageNames.SortedValues())
 	for _, name := range packageNames.SortedValues() {
-		if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" || name == "" {
-			continue
-		}
+		// if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" || name == "" {
+		// 	continue
+		// }
 
 		var pkg *packageSchema
 		var err error
@@ -332,7 +335,8 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 			}
 			return err
 		}
-		b.referencedPackages[name] = pkg.schema
+		q.Q("Adding to referencedPackages XXX", pkg.schema.Name(), pkg.schema.Version(), name)
+		b.referencedPackages[pkg.schema.Identity()] = pkg.schema
 	}
 	return nil
 }

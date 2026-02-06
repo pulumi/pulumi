@@ -2,7 +2,7 @@
 github-cli = "latest"
 "go:github.com/go-delve/delve/cmd/dlv" = "latest"
 "go:golang.org/x/tools/gopls" = "latest"
-go = "1.24"
+go = "1.25.7"
 gofumpt = "latest"
 golangci-lint = "2.6.2"
 jq = "latest"

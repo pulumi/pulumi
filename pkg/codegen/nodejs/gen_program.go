@@ -940,7 +940,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema
 	if opts.CustomTimeouts != nil {
 		appendOption("customTimeouts", opts.CustomTimeouts)
 	}
-	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
+	if opts.Version != nil && pcl.NeedsVersionResourceOption(nil, opts.Version, schema) {
 		appendOption("version", opts.Version)
 	}
 	if opts.PluginDownloadURL != nil && pcl.NeedsPluginDownloadURLResourceOption(opts.PluginDownloadURL, schema) {
