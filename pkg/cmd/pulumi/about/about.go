@@ -43,7 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -221,7 +221,7 @@ func (summary *summaryAbout) Print() {
 	if summary.Backend != nil {
 		fmt.Println(summary.Backend)
 	}
-	formatEnvironmentVariables(declared.Variables())
+	formatEnvironmentVariables(env.ConfiguredVariables())
 	if summary.Dependencies != nil {
 		fmt.Println(formatProgramDependenciesAbout(summary.Dependencies))
 	}
@@ -484,18 +484,16 @@ type programDependencyAbout struct {
 	Version string `json:"version"`
 }
 
-func formatEnvironmentVariables(vars []declared.Var) {
+func formatEnvironmentVariables(vars map[string]string) {
 	table := cmdutil.Table{
 		Headers: []string{"Name", "Value"},
 		Rows:    []cmdutil.TableRow{},
 	}
 
-	for _, v := range vars {
-		if _, present := v.Value.Underlying(); present {
-			table.Rows = append(table.Rows, cmdutil.TableRow{
-				Columns: []string{v.Name(), v.Value.String()},
-			})
-		}
+	for k, v := range vars {
+		table.Rows = append(table.Rows, cmdutil.TableRow{
+			Columns: []string{k, v},
+		})
 	}
 
 	if len(table.Rows) > 0 {

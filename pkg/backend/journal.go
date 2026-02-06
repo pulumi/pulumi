@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
+	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -486,6 +487,7 @@ func (sj *SnapshotJournaler) saveSnapshot() error {
 			Version: strconv.FormatInt(int64(deployment.Version), 10),
 			Command: strings.Join(os.Args, " "),
 			Error:   integrityError.Error(),
+			EnvVars: utilenv.ConfiguredVariables(),
 		}
 	}
 	persister := sj.persister

@@ -486,3 +486,18 @@ func (js joinStore) Values() iter.Seq2[string, string] {
 		}
 	}
 }
+
+// ConfiguredVariables returns a map of all declared Pulumi environment variables that are set,
+// with their names as keys and their string representations as values.
+//
+// Secret variables will be redacted.
+func ConfiguredVariables() map[string]string {
+	result := make(map[string]string)
+	for _, v := range Variables() {
+		_, present := v.Value.Underlying()
+		if present {
+			result[v.Name()] = v.Value.String()
+		}
+	}
+	return result
+}
