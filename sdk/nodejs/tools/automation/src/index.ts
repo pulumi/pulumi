@@ -1,4 +1,4 @@
-// Copyright 2026, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import pascalise from "pascalcase"
+import pascalise from "pascalcase";
 import camelCase from "to-camel-case";
 
 import { Project, SourceFile, StructureKind } from "ts-morph";
@@ -47,7 +47,7 @@ function generateOptionsTypes(
   breadcrumbs: string[] = [],
   inherited: Record<string, Flag> = {}
 ): void {
-  const command: string = 'pulumi ' + breadcrumbs.join(" ");
+  const command: string = "pulumi " + breadcrumbs.join(" ");
   const options: string = pascalise(command) + "Options";
 
   const flags: Record<string, Flag> = { ...inherited, ...structure.flags ?? {} };
@@ -72,19 +72,19 @@ function generateOptionsTypes(
 }
 
 function convertType(type: string, repeatable: boolean): string {
-  let base: string = ""
+  let base: string = "";
 
   switch (type) {
     case "string":
-      base = "string"
+      base = "string";
       break;
 
     case "boolean":
-      base = "boolean"
+      base = "boolean";
       break;
 
     case "int":
-      base = "number"
+      base = "number";
       break;
 
     default:
