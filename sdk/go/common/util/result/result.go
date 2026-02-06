@@ -43,6 +43,17 @@ func (b *bailError) Error() string {
 	return fmt.Sprintf("BAIL: %v", b.err)
 }
 
+// ExitCode returns the semantic exit code from the wrapped error, if any.
+// Since bailError does not implement Unwrap (by design), this method
+// directly inspects the inner error for an ExitCode() method.
+func (b *bailError) ExitCode() int {
+	var exitCoder interface{ ExitCode() int }
+	if errors.As(b.err, &exitCoder) {
+		return exitCoder.ExitCode()
+	}
+	return 1
+}
+
 // BailErrorf is a helper for BailError(fmt.Errorf(...)).
 func BailErrorf(format string, args ...any) error {
 	return BailError(fmt.Errorf(format, args...))

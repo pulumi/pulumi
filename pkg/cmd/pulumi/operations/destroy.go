@@ -358,7 +358,7 @@ func NewDestroyCmd() *cobra.Command {
 					}
 				}
 			} else if destroyErr == context.Canceled {
-				return errors.New("destroy cancelled")
+				return cmdutil.CancellationError{Operation: "destroy"}
 			}
 			return destroyErr
 		},

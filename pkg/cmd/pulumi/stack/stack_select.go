@@ -16,10 +16,10 @@ package stack
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -98,7 +98,7 @@ func newStackSelectCmd() *cobra.Command {
 					return state.SetCurrentStack(ws, s.Ref().FullyQualifiedName().String())
 				}
 
-				return fmt.Errorf("no stack named '%s' found", stackRef)
+				return backenderr.StackNotFoundError{Name: stackRef.String()}
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.

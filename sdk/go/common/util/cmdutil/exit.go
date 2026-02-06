@@ -74,13 +74,13 @@ func DetailedError(err error) string {
 // If run returns a BailError, we will not print an error message.
 //
 // Deprecated: Instead of using [RunFunc], you should call [DisplayErrorMessage] and then
-// manually exit with `os.Exit(-1)`
+// manually exit with the appropriate exit code from [ExitCodeFor].
 func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		err := run(cmd, args)
 		if err != nil {
 			DisplayErrorMessage(err)
-			os.Exit(-1)
+			os.Exit(ExitCodeFor(err))
 		}
 	}
 }
@@ -107,9 +107,10 @@ func DisplayErrorMessage(err error) {
 	Diag().Errorf(diag.Message("", "%s"), msg)
 }
 
-// Exit exits with a given error.
+// Exit exits with a given error, using its semantic exit code.
 func Exit(err error) {
-	ExitError(errorMessage(err))
+	Diag().Errorf(diag.Message("", "%s"), errorMessage(err))
+	os.Exit(ExitCodeFor(err))
 }
 
 // ExitError issues an error and exits with a standard error exit code.

@@ -16,7 +16,6 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -171,7 +170,7 @@ func NewWatchCmd() *cobra.Command {
 
 			switch {
 			case err == context.Canceled:
-				return errors.New("update cancelled")
+				return cmdutil.CancellationError{Operation: "update"}
 			case err != nil:
 				return err
 			default:

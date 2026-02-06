@@ -267,7 +267,7 @@ func NewUpCmd() *cobra.Command {
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
-			return errors.New("update cancelled")
+			return cmdutil.CancellationError{Operation: "update"}
 		case err != nil:
 			return err
 		case expectNop && changes != nil && engine.HasChanges(changes):
@@ -512,7 +512,7 @@ func NewUpCmd() *cobra.Command {
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
-			return errors.New("update cancelled")
+			return cmdutil.CancellationError{Operation: "update"}
 		case err != nil:
 			return err
 		case expectNop && changes != nil && engine.HasChanges(changes):

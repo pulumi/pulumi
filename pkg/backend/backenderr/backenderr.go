@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
@@ -40,6 +41,8 @@ type StackAlreadyExistsError struct {
 func (e StackAlreadyExistsError) Error() string {
 	return fmt.Sprintf("stack '%v' already exists", e.StackName)
 }
+
+func (StackAlreadyExistsError) ExitCode() int { return cmdutil.ExitConfigurationError }
 
 // OverStackLimitError is returned from CreateStack when the organization is billed per-stack and
 // is over its stack limit.
@@ -63,6 +66,8 @@ func (c ConflictingUpdateError) Error() string {
 	return fmt.Sprintf("%s\nTo learn more about possible reasons and resolution, visit "+
 		"https://www.pulumi.com/docs/support/troubleshooting/common-issues/update-conflicts/", c.Err)
 }
+
+func (ConflictingUpdateError) ExitCode() int { return cmdutil.ExitResourceError }
 
 // MissingEnvVarForNonInteractiveError represents a situation where the CLI is run in
 // non-interactive mode and that requires certain env vars to be set.
@@ -103,6 +108,8 @@ func (err NotFoundError) Is(other error) bool {
 	}
 }
 
+func (NotFoundError) ExitCode() int { return cmdutil.ExitStackNotFound }
+
 type ForbiddenError struct{ Err error }
 
 func (err ForbiddenError) Unwrap() error {
@@ -126,6 +133,8 @@ func (ForbiddenError) Is(other error) bool {
 	}
 }
 
+func (ForbiddenError) ExitCode() int { return cmdutil.ExitAuthenticationError }
+
 type LoginRequiredError struct{}
 
 func (LoginRequiredError) Error() string {
@@ -141,3 +150,16 @@ func (LoginRequiredError) Is(other error) bool {
 		return false
 	}
 }
+
+func (LoginRequiredError) ExitCode() int { return cmdutil.ExitAuthenticationError }
+
+// StackNotFoundError is returned when a specified stack does not exist.
+type StackNotFoundError struct {
+	Name string
+}
+
+func (e StackNotFoundError) Error() string {
+	return fmt.Sprintf("no stack named '%s' found", e.Name)
+}
+
+func (StackNotFoundError) ExitCode() int { return cmdutil.ExitStackNotFound }

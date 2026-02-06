@@ -160,7 +160,7 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false)
 	}
 
-	return nil, fmt.Errorf("no stack named '%s' found", stackName)
+	return nil, backenderr.StackNotFoundError{Name: stackName.String()}
 }
 
 func requireCurrentStack(
@@ -314,7 +314,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		return nil, fmt.Errorf("getting selected stack: %w", err)
 	}
 	if stack == nil {
-		return nil, fmt.Errorf("no stack named '%s' found", stackRef)
+		return nil, backenderr.StackNotFoundError{Name: stackRef.String()}
 	}
 
 	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.

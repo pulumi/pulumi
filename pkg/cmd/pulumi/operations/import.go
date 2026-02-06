@@ -1013,7 +1013,7 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			if err == context.Canceled {
-				return errors.New("import cancelled")
+				return cmdutil.CancellationError{Operation: "import"}
 			}
 
 			// If we did a conversion import (i.e. from!="") then we'll write the file we've built out to the local

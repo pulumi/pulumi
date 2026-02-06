@@ -323,7 +323,7 @@ func NewRefreshCmd() *cobra.Command {
 
 			switch {
 			case err == context.Canceled:
-				return errors.New("refresh cancelled")
+				return cmdutil.CancellationError{Operation: "refresh"}
 			case err != nil:
 				return err
 			case expectNop && changes != nil && engine.HasChanges(changes):
