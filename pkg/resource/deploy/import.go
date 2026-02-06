@@ -268,6 +268,9 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]string, error) {
 	urnToReference := map[resource.URN]string{}
 
+	// Explicit providers that are not yet in state.
+	missingExplicitProviders := map[resource.URN]*Import{}
+
 	// Determine which default providers are not present in the state. If all default providers are accounted for,
 	// we're done.
 	//
@@ -282,16 +285,19 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		if imp.Provider != "" {
-			// If the provider for this import exists, map its URN to its provider reference. If it does not exist,
-			// the import step will issue an appropriate error or errors.
-			ref := string(imp.Provider)
+			// If the provider exists in state, map its URN to its provider reference.
 			if state, ok := i.deployment.olds[imp.Provider]; ok {
 				r, err := sdkproviders.NewReference(imp.Provider, state.ID)
 				contract.AssertNoErrorf(err,
 					"could not create provider reference with URN %q and ID %q", imp.Provider, state.ID)
-				ref = r.String()
+				urnToReference[imp.Provider] = r.String()
+			} else {
+				// Provider is not in state; we'll create it below.
+				if _, ok := missingExplicitProviders[imp.Provider]; !ok {
+					impCopy := imp
+					missingExplicitProviders[imp.Provider] = &impCopy
+				}
 			}
-			urnToReference[imp.Provider] = ref
 			continue
 		}
 
@@ -321,6 +327,101 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		defaultProviderRequests = append(defaultProviderRequests, req)
 		defaultProviders[urn] = struct{}{}
 	}
+
+	if len(missingExplicitProviders) > 0 {
+		missingURNs := make([]resource.URN, 0, len(missingExplicitProviders))
+		for urn := range missingExplicitProviders {
+			missingURNs = append(missingURNs, urn)
+		}
+
+		sort.Slice(missingURNs, func(a, b int) bool { return missingURNs[a] < missingURNs[b] })
+
+		steps := make([]Step, 0, len(missingURNs))
+		for _, providerURN := range missingURNs {
+			imp := missingExplicitProviders[providerURN]
+			if !sdkproviders.IsProviderType(providerURN.Type()) {
+				return nil, fmt.Errorf("Imported provider URN %q is not a provider", providerURN)
+			}
+			pkg := sdkproviders.GetProviderPackage(providerURN.Type())
+			typ := providerURN.Type()
+
+			inputs, err := i.deployment.target.GetPackageConfig(pkg)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch provider config for %q: %w", pkg, err)
+			}
+			if imp.Version != nil {
+				providers.SetProviderVersion(inputs, imp.Version)
+			}
+			if imp.PluginDownloadURL != "" {
+				providers.SetProviderURL(inputs, imp.PluginDownloadURL)
+			}
+			if len(imp.PluginChecksums) > 0 {
+				providers.SetProviderChecksums(inputs, imp.PluginChecksums)
+			}
+			providers.SetProviderName(inputs, tokens.Package(providerURN.Name()))
+
+			resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
+				URN:  providerURN,
+				News: inputs,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to validate provider %q config: %w", providerURN, err)
+			}
+			state := resource.NewState{
+				Type:                    typ,
+				URN:                     providerURN,
+				Custom:                  true,
+				Delete:                  false,
+				ID:                      "",
+				Inputs:                  inputs,
+				Outputs:                 nil,
+				Parent:                  "",
+				Protect:                 false,
+				Taint:                   false,
+				External:                false,
+				Dependencies:            nil,
+				InitErrors:              nil,
+				Provider:                "",
+				PropertyDependencies:    nil,
+				PendingReplacement:      false,
+				AdditionalSecretOutputs: nil,
+				Aliases:                 nil,
+				CustomTimeouts:          nil,
+				ImportID:                "",
+				RetainOnDelete:          false,
+				DeletedWith:             "",
+				ReplaceWith:             nil,
+				Created:                 nil,
+				Modified:                nil,
+				SourcePosition:          "",
+				StackTrace:              nil,
+				IgnoreChanges:           nil,
+				HideDiff:                nil,
+				ReplaceOnChanges:        nil,
+				ReplacementTrigger:      resource.NewNullProperty(),
+				RefreshBeforeUpdate:     false,
+				ViewOf:                  "",
+				ResourceHooks:           nil,
+			}.Make()
+			if issueCheckErrors(i.deployment, state, providerURN, resp.Failures) {
+				return nil, errors.New("provider check failed")
+			}
+
+			i.deployment.goals.Store(providerURN, &resource.Goal{})
+			steps = append(steps, NewCreateStep(i.deployment, noopEvent(0), state))
+		}
+
+		if !i.executeParallel(ctx, steps...) {
+			return nil, i.executor.Errored()
+		}
+		for _, s := range steps {
+			res := s.Res()
+			ref, err := sdkproviders.NewReference(res.URN, res.ID)
+			contract.AssertNoErrorf(err, "could not create provider reference with URN %q and ID %q", res.URN, res.ID)
+			urnToReference[res.URN] = ref.String()
+		}
+	}
+
 	if len(defaultProviderRequests) == 0 {
 		return urnToReference, nil
 	}
