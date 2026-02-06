@@ -183,7 +183,8 @@ jobs:
             --partition-module pkg 1 \
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
-            --partition-module sdk/nodejs/cmd/pulumi-language-nodejs 1 \
+            --partition-package github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3 \
+                sdk/nodejs/cmd/pulumi-language-nodejs 2 \
             --partition-package github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 \
                 sdk/python/cmd/pulumi-language-python 4 \
             --partition-module tests 2 \
