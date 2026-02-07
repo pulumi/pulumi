@@ -124,6 +124,11 @@ func (Workspace) IsExecutable(ctx context.Context, binaryPath string) (bool, err
 	return info.Mode()&0o111 != 0 && !info.IsDir(), nil
 }
 
+func (Workspace) ReadFile(_ context.Context, path string) (io.ReadCloser, error) {
+	f, err := os.Open(path)
+	return f, err
+}
+
 // Download a plugin onto disk, returning the path the plugin was downloaded to.
 func (w Workspace) DownloadPlugin(
 	ctx context.Context, pluginSpec workspace.PluginDescriptor,

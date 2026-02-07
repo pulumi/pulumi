@@ -378,11 +378,11 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 					registry registry.Registry, _ env.Env, _ int,
-				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+				) (*schema.PackageSpec, workspace.PackageSpec, error) {
 					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
-						return nil, nil, errors.New("mock schema extraction failed")
+						return nil, workspace.PackageSpec{}, errors.New("mock schema extraction failed")
 					}
-					return tt.mockSchema, nil, tt.schemaExtractionErr
+					return tt.mockSchema, workspace.PackageSpec{}, tt.schemaExtractionErr
 				},
 			}
 
@@ -475,8 +475,8 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 					registry registry.Registry, _ env.Env, _ int,
-				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
-					return tt.mockSchema, nil, nil
+				) (*schema.PackageSpec, workspace.PackageSpec, error) {
+					return tt.mockSchema, workspace.PackageSpec{}, nil
 				},
 			}
 
@@ -534,8 +534,8 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				extractSchema: func(
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 					registry registry.Registry, _ env.Env, _ int,
-				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
-					return validSchema, nil, nil
+				) (*schema.PackageSpec, workspace.PackageSpec, error) {
+					return validSchema, workspace.PackageSpec{}, nil
 				},
 			}
 
@@ -572,12 +572,12 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 			parameters plugin.ParameterizeParameters,
 			registry registry.Registry,
 			_ env.Env, _ int,
-		) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+		) (*schema.PackageSpec, workspace.PackageSpec, error) {
 			pkg := &schema.PackageSpec{
 				Name:    "test-package",
 				Version: "1.0.0",
 			}
-			return pkg, nil, nil
+			return pkg, workspace.PackageSpec{}, nil
 		},
 	}
 

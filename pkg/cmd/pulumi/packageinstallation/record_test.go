@@ -147,6 +147,13 @@ func (w *recordingWorkspace) IsExecutable(ctx context.Context, binaryPath string
 	return result, err
 }
 
+func (w *recordingWorkspace) ReadFile(ctx context.Context, path string) (io.ReadCloser, error) {
+	w.start("ReadFile", ctx, path)
+	result, err := w.w.ReadFile(ctx, path)
+	w.finish(result, err)
+	return result, err
+}
+
 func (w *recordingWorkspace) DownloadPlugin(
 	ctx context.Context, plugin workspace.PluginDescriptor,
 ) (string, packageinstallation.MarkInstallationDone, error) {

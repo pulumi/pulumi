@@ -64,7 +64,7 @@ type packagePublishCmd struct {
 	extractSchema func(
 		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 		registry registry.Registry, e env.Env, concurrency int,
-	) (*schema.PackageSpec, *workspace.PackageSpec, error)
+	) (*schema.PackageSpec, workspace.PackageSpec, error)
 }
 
 func newPackagePublishCmd() *cobra.Command {

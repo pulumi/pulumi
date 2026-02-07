@@ -42,9 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"gopkg.in/yaml.v2"
 )
 
 // BindSpec binds a PackageSpec into a Package, returning any error or error diagnostics encountered.
@@ -64,87 +62,31 @@ func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
 // InstallPackage installs a package to the project by generating an SDK and linking it.
 // It returns the path to the installed package.
 func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, root,
-	schemaSource string, parameters plugin.ParameterizeParameters,
+	schemaSource string, parameters []string,
 	registry registry.Registry, e env.Env, concurrency int,
-) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkgSpec, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry, e, concurrency)
-	if err != nil {
-		var diagErr hcl.Diagnostics
-		if errors.As(err, &diagErr) {
-			return nil, nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
-		}
-		return nil, nil, nil, fmt.Errorf("failed to get schema: %w", err)
+) (schema.PartialPackageSpec, workspace.PackageSpec, error) {
+	var version string
+	if parts := strings.SplitN(schemaSource, "@", 2); len(parts) > 1 {
+		schemaSource = parts[0]
+		version = parts[1]
+	}
+	packageSpec := workspace.PackageSpec{
+		Source:     schemaSource,
+		Version:    version,
+		Parameters: parameters,
 	}
 
-	pkg, err := BindSpec(*pkgSpec)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to bind schema: %w", err)
-	}
-
-	tempOut, err := os.MkdirTemp("", "pulumi-package-")
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to create temporary directory: %w", err)
-	}
-	defer os.RemoveAll(tempOut)
-
-	local := true
-
-	// We _always_ want SupportPack turned on for `package add`, this is an option on schemas because it can change
-	// things like module paths for Go and we don't want every user using gen-sdk to be affected by that. But for
-	// `package add` we know that this is just a local package and it's ok for module paths and similar to be different.
-	pkg.SupportPack = true
-
-	diags, err := GenSDK(
-		language,
-		tempOut,
-		pkg,
-		"",    /*overlays*/
-		local, /*local*/
-	)
-	if err != nil {
-		return nil, nil, diags, fmt.Errorf("failed to generate SDK: %w", err)
-	}
-
-	out := filepath.Join(root, "sdks")
-	fmt.Printf("Successfully generated an SDK for the %s package at %s\n", pkg.Name, out)
-
-	err = os.MkdirAll(out, 0o755)
-	if err != nil {
-		return nil, nil, diags, fmt.Errorf("failed to create directory for SDK: %w", err)
-	}
-
-	outName := pkg.Name
-	if pkg.Namespace != "" {
-		outName = pkg.Namespace + "-" + outName
-	}
-	out = filepath.Join(out, outName)
-
-	// If directory already exists, remove it completely before copying new files
-	if _, err := os.Stat(out); err == nil {
-		if err := os.RemoveAll(out); err != nil {
-			return nil, nil, diags, fmt.Errorf("failed to clean existing SDK directory: %w", err)
-		}
-	}
-
-	err = fsutil.CopyFile(out, filepath.Join(tempOut, language), nil)
-	if err != nil {
-		return nil, nil, diags, fmt.Errorf("failed to move SDK to project: %w", err)
-	}
-
-	// Link the package to the project
-	if err := LinkPackages(&LinkPackagesContext{
-		Writer:        os.Stdout,
-		Project:       proj,
-		Language:      language,
-		Root:          root,
-		Packages:      []PackageToLink{{Pkg: pkg, Out: out}},
-		PluginContext: pctx,
-		Install:       true,
-	}); err != nil {
-		return nil, nil, diags, err
-	}
-
-	return pkg, specOverride, diags, nil
+	return packageinstallation.LinkIntoProject(
+		pctx.Base(), packageSpec, proj, root, packageinstallation.Options{
+			Options: packageresolution.Options{
+				ResolveWithRegistry: e.GetBool(env.Experimental) &&
+					!e.GetBool(env.DisableRegistryResolve),
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			Concurrency: concurrency,
+		}, registry, packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, os.Stderr, os.Stderr,
+			nil, packageworkspace.Options{}))
 }
 
 func GenSDK(language, out string, pkg *schema.Package, overlays string, local bool) (hcl.Diagnostics, error) {
@@ -343,40 +285,10 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescr
 func SchemaFromSchemaSource(
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 	env env.Env, concurrency int,
-) (*schema.PackageSpec, *workspace.PackageSpec, error) {
-	var spec schema.PackageSpec
-	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
-		if !parameters.Empty() {
-			return nil, nil, errors.New("parameterization arguments are not supported for yaml files")
-		}
-		f, err := os.ReadFile(packageSource)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = yaml.Unmarshal(f, &spec)
-		if err != nil {
-			return nil, nil, err
-		}
-		return &spec, nil, nil
-	} else if ext == ".json" {
-		if !parameters.Empty() {
-			return nil, nil, errors.New("parameterization arguments are not supported for json files")
-		}
-
-		f, err := os.ReadFile(packageSource)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = json.Unmarshal(f, &spec)
-		if err != nil {
-			return nil, nil, err
-		}
-		return &spec, nil, nil
-	}
-
+) (*schema.PackageSpec, workspace.PackageSpec, error) {
 	p, packageSpec, err := ProviderFromSource(pctx, packageSource, registry, env, concurrency)
 	if err != nil {
-		return nil, nil, err
+		return nil, workspace.PackageSpec{}, err
 	}
 	defer func() { contract.IgnoreClose(p) }()
 
@@ -386,7 +298,7 @@ func SchemaFromSchemaSource(
 			Parameters: parameters,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("parameterize: %w", err)
+			return nil, workspace.PackageSpec{}, fmt.Errorf("parameterize: %w", err)
 		}
 
 		request = plugin.GetSchemaRequest{
@@ -395,23 +307,25 @@ func SchemaFromSchemaSource(
 		}
 	}
 
-	schema, err := p.GetSchema(pctx.Request(), request)
+	schemaResponse, err := p.GetSchema(pctx.Request(), request)
 	if err != nil {
-		return nil, nil, err
+		return nil, workspace.PackageSpec{}, err
 	}
-	err = json.Unmarshal(schema.Schema, &spec)
+
+	var spec schema.PackageSpec
+	err = json.Unmarshal(schemaResponse.Schema, &spec)
 	if err != nil {
-		return nil, nil, err
+		return nil, workspace.PackageSpec{}, err
 	}
 	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, workspace.PackageSpec{}, err
 	}
 	if pluginSpec.PluginDownloadURL != "" {
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
 	setSpecNamespace(&spec, pluginSpec)
-	return &spec, &packageSpec, nil
+	return &spec, packageSpec, nil
 }
 
 // ProviderFromSource takes a plugin name or path.
