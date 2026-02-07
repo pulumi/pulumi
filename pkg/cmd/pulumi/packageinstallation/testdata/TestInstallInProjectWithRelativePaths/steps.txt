@@ -10,8 +10,11 @@ LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work", invariantProvider{path:
 InstallPluginAt{ctx, "/work", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"./pkg-c"}}}} -> {nil}
 RunPackage{ctx, "/work/project", "/work", "a", nil} -> {invariantProvider{path:"/work"}, nil}
 LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work/project", invariantProvider{path:"/work"}} -> {nil}
+GetRequiredPackages{ctx, "/work", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"./pkg-c"}}}} -> {nil, nil}
+GetRequiredPackages{ctx, "/work/pkg-c", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}} -> {nil, nil}
 RunPackage{ctx, "/work/project/pkg-b", "/work/pkg-c", "pkg-c", nil} -> {invariantProvider{path:"/work/pkg-c"}, nil}
 LinkPackage{ctx, ProjectRuntimeInfo{name:"nodejs"}, "/work/project/pkg-b", invariantProvider{path:"/work/pkg-c"}} -> {nil}
 InstallPluginAt{ctx, "/work/project/pkg-b", PluginProject{Runtime:ProjectRuntimeInfo{name:"nodejs"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"../../pkg-c"}}}} -> {nil}
 RunPackage{ctx, "/work/project", "/work/project/pkg-b", "b", nil} -> {invariantProvider{path:"/work/project/pkg-b"}, nil}
 LinkPackage{ctx, ProjectRuntimeInfo{name:"go"}, "/work/project", invariantProvider{path:"/work/project/pkg-b"}} -> {nil}
+GetRequiredPackages{ctx, "/work/project/pkg-b", PluginProject{Runtime:ProjectRuntimeInfo{name:"nodejs"}, Packages:map[1]{"pkg-c":PackageSpec{Source:"../../pkg-c"}}}} -> {nil, nil}

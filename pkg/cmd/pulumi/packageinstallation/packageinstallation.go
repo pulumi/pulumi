@@ -56,6 +56,10 @@ type Context interface {
 	// installed.
 	InstallPluginAt(ctx context.Context, dirPath string, project *workspace.PluginProject) error
 
+	GetRequiredPackages(
+		ctx context.Context, dirPath string, project *workspace.PluginProject,
+	) ([]workspace.PackageDescriptor, error)
+
 	// IsExecutable returns if the file at binaryPath can be executed.
 	//
 	// If no file is found at binaryPath, then (false, os.ErrNotExist) should be
@@ -439,15 +443,23 @@ func enqueueDownloadedPluginDirHasDependenciesAndIsInstalled(
 	// gather dependencies and install them before we can run the install
 	// here.
 	if pluginProject != nil {
+		proj := project[*workspace.PluginProject]{
+			proj:       pluginProject,
+			projectDir: projectDir,
+		}
+
 		install, installReady := state.dag.NewNode(installStep{
 			downloadCleanup: downloadCleanup,
-			project: project[*workspace.PluginProject]{
-				proj:       pluginProject,
-				projectDir: projectDir,
-			},
+			project:         proj,
 		})
 		contract.AssertNoErrorf(state.dag.NewEdge(install, parent), "new nodes cannot be cyclic")
 		defer installReady()
+
+		installDependencies, installDependenciesReady := state.dag.NewNode(gatherPackageDependenciesStep{
+			project: proj,
+		})
+		contract.AssertNoErrorf(state.dag.NewEdge(install, installDependencies), "new nodes cannot be cyclic")
+		installDependenciesReady()
 
 		return enqueueProjectDependencies(ctx, state, install, project[workspace.BaseProject]{
 			proj:       pluginProject,
@@ -821,5 +833,44 @@ func (step installStep) run(ctx context.Context, p state) error {
 		step.downloadCleanup.called = true
 		step.downloadCleanup.f(err == nil)
 	}
+	return err
+}
+
+type gatherPackageDependenciesStep struct {
+	project project[*workspace.PluginProject]
+}
+
+func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) error {
+	pkgs, err := p.ws.GetRequiredPackages(ctx, step.project.projectDir, step.project.proj)
+	gatheredDependenciesDone, ready := p.dag.NewNode(noOpStep{})
+	defer ready()
+
+	for _, pkg := range pkgs {
+		var rb runBundle
+		hash := hashPluginSpec(pkg.PluginDescriptor)
+		spec, ready, isDuplicate, err := newSpecNode(hash, pkg.PluginDescriptor, &rb, p, gatheredDependenciesDone)
+		if err != nil {
+			return err
+		}
+		if isDuplicate {
+			return nil
+		}
+		defer ready()
+
+		if p.ws.HasPlugin(ctx, pkg.PluginDescriptor) {
+			continue
+		}
+
+		download, downloadReady := p.dag.NewNode(downloadStep{
+			spec:            pkg.PluginDescriptor,
+			parent:          spec,
+			done:            ready,
+			runBundleOut:    &rb,
+			downloadCleanup: new(downloadCleanup),
+		})
+		contract.AssertNoErrorf(p.dag.NewEdge(download, spec), "new nodes cannot be cyclic")
+		downloadReady()
+	}
+
 	return err
 }
