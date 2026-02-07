@@ -626,7 +626,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				return
 			}
 
-			files, err := GeneratePackageFilesFromSchema(schemaPath, opts.GenPackage)
+			files, err := generatePackageFilesFromSchema(schemaPath, testInputDir, opts.GenPackage)
 			require.NoError(t, err)
 
 			var resultDirPath string
