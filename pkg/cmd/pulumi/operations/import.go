@@ -42,6 +42,7 @@ import (
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -230,6 +231,40 @@ func writeImportFileTo(v importFile, path string) (string, error) {
 		return "", errors.Join(err, f.Close(), os.Remove(path))
 	}
 	return path, f.Close()
+}
+
+// buildImportedResources creates the JSON output list from imports.
+func buildImportedResources(
+	imports []deploy.Import,
+	stackName tokens.StackName,
+	projectName tokens.PackageName,
+	protectResources bool,
+) []importedResource {
+	resources := make([]importedResource, 0, len(imports))
+	for _, imp := range imports {
+		var parentType tokens.Type
+		if imp.Parent != "" {
+			parentType = imp.Parent.QualifiedType()
+		}
+		urn := resource.NewURN(stackName.Q(), projectName, parentType, imp.Type, imp.Name)
+
+		res := importedResource{
+			URN:       string(urn),
+			Type:      string(imp.Type),
+			Name:      imp.Name,
+			ID:        string(imp.ID),
+			Operation: "import",
+			Protected: protectResources,
+		}
+		if imp.Parent != "" {
+			res.Parent = string(imp.Parent)
+		}
+		if imp.Provider != "" {
+			res.Provider = string(imp.Provider)
+		}
+		resources = append(resources, res)
+	}
+	return resources
 }
 
 func parseImportFile(
@@ -688,6 +723,12 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
+			// Initialize JSON result collector if JSON output is requested.
+			var result *importResult
+			if jsonDisplay {
+				result = &importResult{Version: 1}
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			cwd, err := os.Getwd()
@@ -811,7 +852,7 @@ func NewImportCmd() *cobra.Command {
 				importFile = f
 			}
 
-			if !generateCode && outputFilePath != "" {
+			if !generateCode && outputFilePath != "" && !jsonDisplay {
 				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
 			}
 
@@ -965,7 +1006,7 @@ func NewImportCmd() *cobra.Command {
 				Experimental:         env.Experimental.Value(),
 			}
 
-			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
+			changes, err := backend.ImportStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -976,38 +1017,77 @@ func NewImportCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			}, imports)
 
+			// Capture import results for JSON output.
+			if result != nil {
+				result.Summary = changes
+				result.Resources = buildImportedResources(
+					imports, s.Ref().Name(), proj.Name, protectResources)
+				result.PreviewOnly = previewOnly
+			}
+
 			if generateCode {
-				deployment, err := getCurrentDeploymentForStack(ctx, s)
-				if err != nil {
-					return err
-				}
-
-				validImports, err := generateImportedDefinitions(
-					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
-					protectResources)
-				if err != nil {
-					if _, ok := err.(*importer.DiagnosticsError); ok {
-						err = fmt.Errorf("internal error: %w", err)
+				deployment, deployErr := getCurrentDeploymentForStack(ctx, s)
+				if deployErr != nil {
+					if result != nil {
+						result.Diagnostics = append(result.Diagnostics, importDiagnostic{
+							Severity: "error",
+							Message:  fmt.Sprintf("failed to get deployment: %v", deployErr),
+						})
+					} else {
+						return deployErr
 					}
-					return err
 				}
 
-				if validImports {
-					// we only want to output the helper string if there is a set of valid imports to convert into code
-					// this protects against invalid package types or import errors that will not actually result
-					// in a codegen call
-					// It's a little bit more memory but is a better experience that writing to stdout and then an error
-					// occurring
-					if outputFilePath == "" && !jsonDisplay {
-						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
-							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
-						if protectResources {
-							fmt.Print(("Please note that the imported resources are marked as protected. " +
-								"To destroy them\n" +
-								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
-								"the destroy will take effect.\n\n"))
+				if deployment != nil {
+					validImports, codegenErr := generateImportedDefinitions(
+						pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+						protectResources)
+					if codegenErr != nil {
+						if _, ok := codegenErr.(*importer.DiagnosticsError); ok {
+							codegenErr = fmt.Errorf("internal error: %w", codegenErr)
 						}
-						fmt.Print(outputResult.String())
+						if result != nil {
+							result.Diagnostics = append(result.Diagnostics, importDiagnostic{
+								Severity: "error",
+								Message:  fmt.Sprintf("code generation failed: %v", codegenErr),
+							})
+							// Set a warning in generated code to indicate the failure
+							result.GeneratedCode = &generatedCodeResult{
+								Language: proj.Runtime.Name(),
+								Warning:  codegenErr.Error(),
+							}
+						} else {
+							return codegenErr
+						}
+					} else if validImports {
+						// Capture generated code for JSON output.
+						if result != nil {
+							result.GeneratedCode = &generatedCodeResult{
+								Language: proj.Runtime.Name(),
+							}
+							if outputFilePath != "" {
+								result.GeneratedCode.FilePath = outputFilePath
+							} else {
+								result.GeneratedCode.Code = outputResult.String()
+							}
+						}
+
+						// we only want to output the helper string if there is a set of valid imports to convert into code
+						// this protects against invalid package types or import errors that will not actually result
+						// in a codegen call
+						// It's a little bit more memory but is a better experience that writing to stdout and then an error
+						// occurring
+						if outputFilePath == "" && !jsonDisplay {
+							fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
+								"will cause Pulumi to report that an update will happen on the next update command.\n\n")
+							if protectResources {
+								fmt.Print(("Please note that the imported resources are marked as protected. " +
+									"To destroy them\n" +
+									"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
+									"the destroy will take effect.\n\n"))
+							}
+							fmt.Print(outputResult.String())
+						}
 					}
 				}
 			}
@@ -1024,17 +1104,48 @@ func NewImportCmd() *cobra.Command {
 			if from != "" && (err != nil || generateResources != "") {
 				path, werr := writeImportFileTo(importFile, generateResources)
 				if werr != nil {
-					return werr
-				}
-
-				if err != nil {
-					pCtx.Diag.Infof(diag.Message("",
-						"Generated import file written out, edit and rerun import with --file %s"),
-						path)
+					if result != nil {
+						result.Diagnostics = append(result.Diagnostics, importDiagnostic{
+							Severity: "error",
+							Message:  fmt.Sprintf("failed to write import file: %v", werr),
+						})
+					} else {
+						return werr
+					}
 				} else {
-					pCtx.Diag.Infof(diag.Message("",
-						"Generated import file written out to %s"),
-						path)
+					// Capture import file path for JSON output.
+					if result != nil {
+						result.ImportFile = &importFileResult{
+							Path:    path,
+							Content: &importFile,
+						}
+					}
+
+					if !jsonDisplay {
+						if err != nil {
+							pCtx.Diag.Infof(diag.Message("",
+								"Generated import file written out, edit and rerun import with --file %s"),
+								path)
+						} else {
+							pCtx.Diag.Infof(diag.Message("",
+								"Generated import file written out to %s"),
+								path)
+						}
+					}
+				}
+			}
+
+			// Output JSON result if requested.
+			if result != nil {
+				// Capture the main import error in diagnostics if present.
+				if err != nil && err != context.Canceled {
+					result.Diagnostics = append(result.Diagnostics, importDiagnostic{
+						Severity: "error",
+						Message:  err.Error(),
+					})
+				}
+				if outputErr := ui.FprintJSON(os.Stdout, result); outputErr != nil {
+					return fmt.Errorf("failed to write JSON output: %w", outputErr)
 				}
 			}
 

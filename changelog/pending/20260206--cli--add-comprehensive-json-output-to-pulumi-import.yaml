@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add comprehensive JSON output to `pulumi import` command

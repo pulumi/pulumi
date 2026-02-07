@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -502,4 +503,214 @@ func TestImportFileMarshal(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotContains(t, buffer.String(), "resources")
 	})
+}
+
+func TestImportResultJSON(t *testing.T) {
+	t.Parallel()
+
+	t.Run("basic result", func(t *testing.T) {
+		t.Parallel()
+
+		result := importResult{
+			Version: 1,
+			Summary: display.ResourceChanges{"import": 2, "same": 1},
+			Resources: []importedResource{
+				{
+					URN:       "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::test",
+					Type:      "aws:s3/bucket:Bucket",
+					Name:      "test",
+					ID:        "bucket-id",
+					Operation: "import",
+					Protected: true,
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+		enc.SetIndent("", "  ")
+		err := enc.Encode(result)
+		require.NoError(t, err)
+
+		var decoded importResult
+		err = json.Unmarshal(buf.Bytes(), &decoded)
+		require.NoError(t, err)
+		assert.Equal(t, 1, decoded.Version)
+		assert.Equal(t, 2, decoded.Summary[display.StepOp("import")])
+		assert.Equal(t, 1, decoded.Summary[display.StepOp("same")])
+		assert.Len(t, decoded.Resources, 1)
+		assert.Equal(t, "test", decoded.Resources[0].Name)
+		assert.Equal(t, "bucket-id", decoded.Resources[0].ID)
+		assert.True(t, decoded.Resources[0].Protected)
+	})
+
+	t.Run("with generated code", func(t *testing.T) {
+		t.Parallel()
+
+		result := importResult{
+			Version: 1,
+			GeneratedCode: &generatedCodeResult{
+				Language: "typescript",
+				Code:     "import * as aws from \"@pulumi/aws\";\n",
+			},
+		}
+
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+		err := enc.Encode(result)
+		require.NoError(t, err)
+
+		var decoded importResult
+		err = json.Unmarshal(buf.Bytes(), &decoded)
+		require.NoError(t, err)
+		assert.NotNil(t, decoded.GeneratedCode)
+		assert.Equal(t, "typescript", decoded.GeneratedCode.Language)
+		assert.Contains(t, decoded.GeneratedCode.Code, "@pulumi/aws")
+	})
+
+	t.Run("with import file", func(t *testing.T) {
+		t.Parallel()
+
+		result := importResult{
+			Version: 1,
+			ImportFile: &importFileResult{
+				Path: "/tmp/import.json",
+				Content: &importFile{
+					Resources: []importSpec{
+						{
+							Type: "aws:s3/bucket:Bucket",
+							Name: "test",
+							ID:   "bucket-id",
+						},
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+		err := enc.Encode(result)
+		require.NoError(t, err)
+
+		var decoded importResult
+		err = json.Unmarshal(buf.Bytes(), &decoded)
+		require.NoError(t, err)
+		assert.NotNil(t, decoded.ImportFile)
+		assert.Equal(t, "/tmp/import.json", decoded.ImportFile.Path)
+		assert.NotNil(t, decoded.ImportFile.Content)
+		assert.Len(t, decoded.ImportFile.Content.Resources, 1)
+	})
+
+	t.Run("preview only", func(t *testing.T) {
+		t.Parallel()
+
+		result := importResult{
+			Version:     1,
+			PreviewOnly: true,
+		}
+
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+		err := enc.Encode(result)
+		require.NoError(t, err)
+
+		var decoded importResult
+		err = json.Unmarshal(buf.Bytes(), &decoded)
+		require.NoError(t, err)
+		assert.True(t, decoded.PreviewOnly)
+	})
+
+	t.Run("omit empty fields", func(t *testing.T) {
+		t.Parallel()
+
+		result := importResult{
+			Version: 1,
+		}
+
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+		err := enc.Encode(result)
+		require.NoError(t, err)
+
+		// Check that empty fields are omitted
+		output := buf.String()
+		assert.NotContains(t, output, "summary")
+		assert.NotContains(t, output, "resources")
+		assert.NotContains(t, output, "generatedCode")
+		assert.NotContains(t, output, "importFile")
+		assert.NotContains(t, output, "diagnostics")
+		assert.NotContains(t, output, "previewOnly")
+		assert.NotContains(t, output, "permalink")
+	})
+}
+
+func TestBuildImportedResources(t *testing.T) {
+	t.Parallel()
+
+	imports := []deploy.Import{
+		{
+			Type: "aws:s3/bucket:Bucket",
+			Name: "mybucket",
+			ID:   "bucket-123",
+		},
+		{
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Name:   "myobject",
+			ID:     "object-456",
+			Parent: "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::mybucket",
+		},
+	}
+
+	stackName := tokens.MustParseStackName("dev")
+	projectName := tokens.PackageName("proj")
+
+	resources := buildImportedResources(imports, stackName, projectName, true)
+
+	require.Len(t, resources, 2)
+
+	// First resource (no parent)
+	assert.Equal(t, "aws:s3/bucket:Bucket", resources[0].Type)
+	assert.Equal(t, "mybucket", resources[0].Name)
+	assert.Equal(t, "bucket-123", resources[0].ID)
+	assert.Equal(t, "import", resources[0].Operation)
+	assert.True(t, resources[0].Protected)
+	assert.Empty(t, resources[0].Parent)
+
+	// Second resource (with parent)
+	assert.Equal(t, "aws:s3/bucketObject:BucketObject", resources[1].Type)
+	assert.Equal(t, "myobject", resources[1].Name)
+	assert.Equal(t, "object-456", resources[1].ID)
+	assert.Equal(t, "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::mybucket", resources[1].Parent)
+}
+
+func TestImportDiagnosticsJSON(t *testing.T) {
+	t.Parallel()
+
+	result := importResult{
+		Version: 1,
+		Diagnostics: []importDiagnostic{
+			{
+				Severity: "error",
+				Message:  "import failed: resource not found",
+				URN:      "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::test",
+			},
+			{
+				Severity: "warning",
+				Message:  "resource may need manual configuration",
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	err := enc.Encode(result)
+	require.NoError(t, err)
+
+	var decoded importResult
+	err = json.Unmarshal(buf.Bytes(), &decoded)
+	require.NoError(t, err)
+	require.Len(t, decoded.Diagnostics, 2)
+	assert.Equal(t, "error", decoded.Diagnostics[0].Severity)
+	assert.Contains(t, decoded.Diagnostics[0].Message, "resource not found")
+	assert.Equal(t, "warning", decoded.Diagnostics[1].Severity)
 }
