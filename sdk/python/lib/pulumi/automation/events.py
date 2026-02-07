@@ -194,7 +194,7 @@ class PolicyEvent(BaseEvent):
             policy_pack_version=data.get("policyPackVersion", ""),
             policy_pack_version_tag=data.get("policyPackVersionTag", ""),
             enforcement_level=data.get("enforcementLevel", ""),
-            resource_urn=data.get("resource_urn"),
+            resource_urn=data.get("resourceUrn"),
         )
 
 
@@ -458,7 +458,9 @@ class StepEventMetadata(BaseEvent):
             new=StepEventStateMetadata.from_json(new) if new else None,
             keys=data.get("keys"),
             diffs=data.get("diffs"),
-            detailed_diff=data.get("detailed_diff"),
+            detailed_diff={k: PropertyDiff.from_json(v) for k, v in raw_dd.items()}
+            if (raw_dd := data.get("detailedDiff"))
+            else None,
             logical=data.get("logical"),
         )
 
