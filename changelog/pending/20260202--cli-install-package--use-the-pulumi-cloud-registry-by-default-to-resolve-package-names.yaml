@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/install,package
+  description: Use the Pulumi Cloud Registry by default to resolve package names

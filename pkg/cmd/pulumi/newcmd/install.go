@@ -78,8 +78,7 @@ func InstallPackagesFromProject(
 		})
 	opts := packageinstallation.Options{
 		Options: packageresolution.Options{
-			ResolveWithRegistry: env.Experimental.Value() &&
-				!env.DisableRegistryResolve.Value(),
+			ResolveWithRegistry:                        !env.DisableRegistryResolve.Value(),
 			ResolveVersionWithLocalWorkspace:           true,
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
