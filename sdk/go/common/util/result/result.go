@@ -43,6 +43,17 @@ func (b *bailError) Error() string {
 	return fmt.Sprintf("BAIL: %v", b.err)
 }
 
+func (b *bailError) ExitCode() int {
+	type exitCoder interface {
+		ExitCode() int
+	}
+	var ec exitCoder
+	if errors.As(b.err, &ec) {
+		return ec.ExitCode()
+	}
+	return 1
+}
+
 // BailErrorf is a helper for BailError(fmt.Errorf(...)).
 func BailErrorf(format string, args ...any) error {
 	return BailError(fmt.Errorf(format, args...))

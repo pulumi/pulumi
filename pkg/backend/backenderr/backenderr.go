@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
@@ -141,3 +142,29 @@ func (LoginRequiredError) Is(other error) bool {
 		return false
 	}
 }
+
+func (LoginRequiredError) ExitCode() int {
+	return cmdutil.ExitAuthenticationError
+}
+
+func (NotFoundError) ExitCode() int {
+	return cmdutil.ExitStackNotFound
+}
+
+func (ForbiddenError) ExitCode() int {
+	return cmdutil.ExitAuthenticationError
+}
+
+type StackNotFoundError struct {
+	StackName string
+}
+
+func (e StackNotFoundError) Error() string {
+	return fmt.Sprintf("no stack named '%s' found", e.StackName)
+}
+
+func (StackNotFoundError) ExitCode() int {
+	return cmdutil.ExitStackNotFound
+}
+
+var ErrStackNotFound StackNotFoundError
