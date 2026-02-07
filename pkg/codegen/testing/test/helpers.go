@@ -38,7 +38,9 @@ import (
 type GenPkgSignature func(string, *schema.Package, map[string][]byte, schema.ReferenceLoader) (map[string][]byte, error)
 
 // generatePackageFilesFromSchema loads a schema and generates files using the provided GeneratePackage function.
-func generatePackageFilesFromSchema(schemaPath, loaderDir string, genPackageFunc GenPkgSignature) (map[string][]byte, error) {
+func generatePackageFilesFromSchema(
+	schemaPath, loaderDir string, genPackageFunc GenPkgSignature,
+) (map[string][]byte, error) {
 	// Read in, decode, and import the schema.
 	schemaBytes, err := os.ReadFile(schemaPath)
 	if err != nil {
