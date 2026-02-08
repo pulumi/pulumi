@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -269,4 +270,6 @@ type TestRun struct {
 	UpdateOptions engine.UpdateOptions
 	// PolicyPacks is a map of policy packs to use for this test and their config.
 	PolicyPacks map[string]map[string]any
+	// StackTags is a map of stack tags to apply to the stack for this test.
+	StackTags map[apitype.StackTagName]string
 }
