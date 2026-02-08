@@ -37,8 +37,10 @@ import (
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
 type GenPkgSignature func(string, *schema.Package, map[string][]byte, schema.ReferenceLoader) (map[string][]byte, error)
 
-// GeneratePackageFilesFromSchema loads a schema and generates files using the provided GeneratePackage function.
-func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSignature) (map[string][]byte, error) {
+// generatePackageFilesFromSchema loads a schema and generates files using the provided GeneratePackage function.
+func generatePackageFilesFromSchema(
+	schemaPath, loaderDir string, genPackageFunc GenPkgSignature,
+) (map[string][]byte, error) {
 	// Read in, decode, and import the schema.
 	schemaBytes, err := os.ReadFile(schemaPath)
 	if err != nil {
@@ -57,7 +59,7 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 		return nil, err
 	}
 
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(loaderDir))
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})

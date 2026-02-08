@@ -673,14 +673,13 @@ func TestProgramCodegen(
 			if tt.PluginHost != nil {
 				pluginHost = tt.PluginHost
 			} else {
-				pluginHost = utils.NewHost(testdataPath)
+				pluginHost = utils.NewHost(testcase.inputDirectory())
 			}
 
 			opts := append(tt.BindOptions, pcl.PluginHost(pluginHost))
-			rootProgramPath := filepath.Join(testdataPath, tt.Directory+"-pp")
-			absoluteProgramPath, err := filepath.Abs(rootProgramPath)
+			absoluteProgramPath, err := filepath.Abs(testInputDir)
 			if err != nil {
-				t.Fatalf("failed to bind program: unable to find the absolute path of %v", rootProgramPath)
+				t.Fatalf("failed to bind program: unable to find the absolute path of %v", testInputDir)
 			}
 			opts = append(opts, pcl.DirPath(absoluteProgramPath))
 			opts = append(opts, pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))

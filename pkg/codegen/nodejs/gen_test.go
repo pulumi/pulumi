@@ -191,7 +191,7 @@ func TestGenerateTypeNames(t *testing.T) {
 			defer mutex.Unlock()
 			return root.typeString(t, false, nil)
 		}
-	})
+	}, filepath.FromSlash("../testing/test/testdata/"))
 }
 
 func TestPascalCases(t *testing.T) {
