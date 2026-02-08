@@ -49,8 +49,10 @@ export const outputTrySuccess = tryOutput_(
     () => aSecretMap.a,
     () => "fallback"
 );
+const aMap2 = config.requireObject<Record<string, Record<string, string>>>("aMap2");
+const aSecretMap2 = pulumi.secret(aMap2);
 export const outputTryFailure = tryOutput_(
-    () => aSecretMap.b,
+    () => aSecretMap2.b.c,
     () => "fallback"
 );
 const anObject = config.requireObject<any>("anObject");
