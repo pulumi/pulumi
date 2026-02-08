@@ -209,7 +209,14 @@ func (sm *JournalSnapshotManager) RegisterResourceOutputs(step deploy.Step) erro
 	// We always need to mark the *new* resource for removal here, because registering outputs
 	// is not a really a separate step, but the step we're getting here has already been executed.
 	// We need to replace the resource that step already added, hence step.New() below.
-	journalEntry.RemoveOld, journalEntry.RemoveNew = sm.findResourceInNewOrOld(step.New())
+	removeOld, removeNew, ok := sm.findResourceInNewOrOld(step.New())
+	if !ok {
+		// Resource was filtered out by --target; ignore outputs
+		return nil
+	}
+	journalEntry.RemoveOld = removeOld
+	journalEntry.RemoveNew = removeNew
+
 	return sm.addJournalEntry(journalEntry)
 }
 
@@ -233,19 +240,31 @@ func (sm *JournalSnapshotManager) RegisterSecretsManager(secretsManager secrets.
 //
 // The first return value if set is the index in the base snapshot, the second one is the operation ID.  Only
 // one of them will be set.
-func (sm *JournalSnapshotManager) findResourceInNewOrOld(toFind *resource.State) (*int64, *int64) {
+func (sm *JournalSnapshotManager) findResourceInNewOrOld(toFind *resource.State) (*int64, *int64, bool) {
 	if sm.baseSnapshot != nil {
 		for i, res := range sm.baseSnapshot.Resources {
 			if res == toFind {
 				index := int64(i)
-				return &index, nil
+				return &index, nil, true
 			}
 		}
 	}
 
 	rm, ok := sm.newResources.Load(toFind)
-	contract.Assertf(ok, "could not find resource in snapshot or new resources %v", toFind)
-	return nil, &rm
+	if ok {
+		return nil, &rm, true
+	}
+
+	// Resource was filtered out by --target
+	return nil, nil, false
+}
+
+func (sm *JournalSnapshotManager) mustFindResourceInNewOrOld(toFind *resource.State,) (*int64, *int64) {
+	old, new, ok := sm.findResourceInNewOrOld(toFind)
+	contract.Assertf(ok,
+		"could not find resource in snapshot or new resources %v", toFind)
+
+	return old, new
 }
 
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
@@ -523,7 +542,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		journalEntry.State = step.New().Copy()
 		ssm.manager.newResources.Store(step.New(), ssm.operationID)
 		if old := step.Old(); old != nil {
-			journalEntry.RemoveOld, journalEntry.RemoveNew = ssm.manager.findResourceInNewOrOld(step.Old())
+			journalEntry.RemoveOld, journalEntry.RemoveNew = ssm.manager.mustFindResourceInNewOrOld(step.Old())
 		}
 	}
 
@@ -564,14 +583,14 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 	journalEntry.State = step.New().Copy()
 	csm.manager.newResources.Store(step.New(), csm.operationID)
 	if old := step.Old(); old != nil && old.PendingReplacement {
-		journalEntry.RemoveOld, journalEntry.RemoveNew = csm.manager.findResourceInNewOrOld(old)
+		journalEntry.RemoveOld, journalEntry.RemoveNew = csm.manager.mustFindResourceInNewOrOld(old)
 	}
 
 	// If this step is a create replacement, we need to mark the old resource for deletion.
 	// The engine marks this in its in-memory representation, but since the snapshot manager
 	// is operating on a copy of the snapshot, we need to explicitly mark the resource.
 	if step.Old() != nil && !step.Old().PendingReplacement && csm.manager.baseSnapshot != nil {
-		journalEntry.DeleteOld, journalEntry.DeleteNew = csm.manager.findResourceInNewOrOld(step.Old())
+		journalEntry.DeleteOld, journalEntry.DeleteNew = csm.manager.mustFindResourceInNewOrOld(step.Old())
 	}
 
 	return csm.manager.addJournalEntry(journalEntry)
@@ -604,7 +623,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 	}
 	journalEntry := usm.manager.newJournalEntry(kind, usm.operationID)
 	if old := step.Old(); old != nil {
-		journalEntry.RemoveOld, journalEntry.RemoveNew = usm.manager.findResourceInNewOrOld(step.Old())
+		journalEntry.RemoveOld, journalEntry.RemoveNew = usm.manager.mustFindResourceInNewOrOld(step.Old())
 	}
 	journalEntry.State = step.New().Copy()
 	usm.manager.newResources.Store(step.New(), usm.operationID)
@@ -647,9 +666,9 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 
 		if step.Old().PendingReplacement {
 			journalEntry.PendingReplacementOld,
-				journalEntry.PendingReplacementNew = dsm.manager.findResourceInNewOrOld(step.Old())
+				journalEntry.PendingReplacementNew = dsm.manager.mustFindResourceInNewOrOld(step.Old())
 		} else {
-			journalEntry.RemoveOld, journalEntry.RemoveNew = dsm.manager.findResourceInNewOrOld(step.Old())
+			journalEntry.RemoveOld, journalEntry.RemoveNew = dsm.manager.mustFindResourceInNewOrOld(step.Old())
 		}
 	}
 	return dsm.manager.addJournalEntry(journalEntry)
@@ -698,7 +717,7 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	journalEntry.State = step.New().Copy()
 	rsm.manager.newResources.Store(step.New(), rsm.operationID)
 	if old := step.Old(); old != nil && rsm.manager.baseSnapshot != nil {
-		journalEntry.RemoveOld, journalEntry.RemoveNew = rsm.manager.findResourceInNewOrOld(step.Old())
+		journalEntry.RemoveOld, journalEntry.RemoveNew = rsm.manager.mustFindResourceInNewOrOld(step.Old())
 	}
 	return rsm.manager.addJournalEntry(journalEntry)
 }
@@ -748,7 +767,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 	journalEntry.IsRefresh = true
 
 	if old := step.Old(); old != nil {
-		journalEntry.RemoveOld, journalEntry.RemoveNew = rsm.manager.findResourceInNewOrOld(old)
+		journalEntry.RemoveOld, journalEntry.RemoveNew = rsm.manager.mustFindResourceInNewOrOld(old)
 	}
 
 	return rsm.manager.addJournalEntry(journalEntry)
@@ -777,7 +796,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 		"must be %q, got %q", deploy.OpRemovePendingReplace, step.Op())
 	journalEntry := rsm.manager.newJournalEntry(JournalEntrySuccess, rsm.operationID)
 	if step.Old() != nil {
-		journalEntry.RemoveOld, journalEntry.RemoveNew = rsm.manager.findResourceInNewOrOld(step.Old())
+		journalEntry.RemoveOld, journalEntry.RemoveNew = rsm.manager.mustFindResourceInNewOrOld(step.Old())
 	}
 	return rsm.manager.addJournalEntry(journalEntry)
 }
@@ -814,7 +833,7 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 	contract.Assertf(isImportStep, "step must be an ImportStep, got %T", step)
 	if importStep.Original() != nil && ism.manager.baseSnapshot != nil {
 		// This is a import replacement, so we need to mark the old resource for deletion.
-		journalEntry.DeleteOld, journalEntry.DeleteNew = ism.manager.findResourceInNewOrOld(importStep.Original())
+		journalEntry.DeleteOld, journalEntry.DeleteNew = ism.manager.mustFindResourceInNewOrOld(importStep.Original())
 	}
 	ism.manager.newResources.Store(step.New(), ism.operationID)
 	return ism.manager.addJournalEntry(journalEntry)
