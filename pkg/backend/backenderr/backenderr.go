@@ -168,3 +168,27 @@ func (StackNotFoundError) ExitCode() int {
 }
 
 var ErrStackNotFound StackNotFoundError
+
+// CancelledError is returned when a user cancels an operation (e.g., declines a confirmation prompt).
+type CancelledError struct {
+	Operation string
+}
+
+func (e CancelledError) Error() string {
+	return e.Operation + " cancelled"
+}
+
+func (CancelledError) ExitCode() int {
+	return cmdutil.ExitCancelled
+}
+
+// NoChangesExpectedError is returned when --expect-no-changes is set but changes were detected.
+type NoChangesExpectedError struct{}
+
+func (NoChangesExpectedError) Error() string {
+	return "no changes were expected but changes occurred"
+}
+
+func (NoChangesExpectedError) ExitCode() int {
+	return cmdutil.ExitNoChanges
+}

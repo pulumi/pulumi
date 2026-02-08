@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add semantic exit codes for stack not found (6), user cancelled (8), and drift detected (7)

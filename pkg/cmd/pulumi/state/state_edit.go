@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/shlex"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -219,7 +220,7 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 			}
 			continue
 		default:
-			return errors.New("confirmation cancelled, not proceeding with the state edit")
+			return backenderr.CancelledError{Operation: "state edit"}
 		}
 	}
 }
