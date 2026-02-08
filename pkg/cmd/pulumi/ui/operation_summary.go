@@ -15,6 +15,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 )
@@ -46,4 +48,26 @@ func NewChangeSummaryJSON(changes display.ResourceChanges) ChangeSummaryJSON {
 		Same:    changes[deploy.OpSame],
 		Replace: changes[deploy.OpReplace],
 	}
+}
+
+// PrintOperationSummary emits the operation summary as JSON to stdout.
+func PrintOperationSummary(
+	result string, changes display.ResourceChanges, duration time.Duration, outputs map[string]any,
+) error {
+	summary := OperationSummaryJSON{
+		Result:        result,
+		Changes:       NewChangeSummaryJSON(changes),
+		Duration:      duration.String(),
+		ResourceCount: resourceCount(changes),
+		Outputs:       outputs,
+	}
+	return PrintJSON(summary)
+}
+
+func resourceCount(changes display.ResourceChanges) int {
+	total := 0
+	for _, count := range changes {
+		total += count
+	}
+	return total
 }
