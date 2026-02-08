@@ -48,7 +48,7 @@ func labelsErrorf(block *hclsyntax.Block, f string, args ...any) *hcl.Diagnostic
 }
 
 func malformedToken(token string, sourceRange hcl.Range) *hcl.Diagnostic {
-	return errorf(sourceRange, "malformed token '%v': expected 'pkg:module:member'", token)
+	return errorf(sourceRange, "malformed token '%v': expected 'pkg:module:member' or 'pkg:member'", token)
 }
 
 func unknownPackage(pkg string, tokenRange hcl.Range) *hcl.Diagnostic {

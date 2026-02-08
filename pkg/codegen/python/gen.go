@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -329,7 +329,9 @@ func (mod *modContext) tokenToResource(tok string) string {
 	// module := path/to/module
 
 	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "malformed token %v", tok)
+	if len(components) == 2 {
+		components = []string{components[0], "index", components[1]}
+	}
 
 	// Is it a provider resource?
 	if components[0] == "pulumi" && components[1] == "providers" {
@@ -353,8 +355,10 @@ func tokenToName(tok string) string {
 	// module := path/to/module
 
 	components := strings.Split(tok, ":")
+	if len(components) == 2 {
+		return title(components[1])
+	}
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-
 	return title(components[2])
 }
 
