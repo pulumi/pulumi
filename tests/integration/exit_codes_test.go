@@ -56,6 +56,7 @@ func TestExitCodeStackSelectSuccess(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.WriteTestFile("Pulumi.yaml", "name: test-project\nruntime: yaml\n")
 	e.RunCommand("pulumi", "stack", "init", "test-stack-for-select")
 
 	// Selecting an existing stack should succeed with exit code 0
