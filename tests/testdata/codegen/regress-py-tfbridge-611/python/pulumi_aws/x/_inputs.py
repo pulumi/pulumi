@@ -19,13 +19,8 @@ __all__ = [
     'GetPolicyDocumentStatementArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class GetPolicyDocumentStatementArgsDict(TypedDict):
-        actions: NotRequired[Sequence[_builtins.str]]
-elif False:
-    GetPolicyDocumentStatementArgsDict: TypeAlias = Mapping[str, Any]
+class GetPolicyDocumentStatementArgsDict(TypedDict):
+    actions: NotRequired[Sequence[_builtins.str]]
 
 @pulumi.input_type
 class GetPolicyDocumentStatementArgs:

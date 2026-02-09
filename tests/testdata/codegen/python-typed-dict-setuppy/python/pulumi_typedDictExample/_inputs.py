@@ -22,15 +22,10 @@ __all__ = [
     'MyTypeArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class MyTypeDict(TypedDict):
-        my_prop: _builtins.str
-        external_prop: NotRequired['pulumi_kubernetes.core.v1.PodArgs']
-        my_other_prop: NotRequired[_builtins.float]
-elif False:
-    MyTypeDict: TypeAlias = Mapping[str, Any]
+class MyTypeDict(TypedDict):
+    my_prop: _builtins.str
+    external_prop: NotRequired['pulumi_kubernetes.core.v1.PodArgs']
+    my_other_prop: NotRequired[_builtins.float]
 
 @pulumi.input_type
 class MyType:
@@ -72,13 +67,10 @@ class MyType:
         pulumi.set(self, "my_other_prop", value)
 
 
-if not MYPY:
-    class MyTypeArgsDict(TypedDict):
-        my_prop: pulumi.Input[_builtins.str]
-        external_prop: NotRequired[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]
-        my_other_prop: NotRequired[pulumi.Input[_builtins.float]]
-elif False:
-    MyTypeArgsDict: TypeAlias = Mapping[str, Any]
+class MyTypeArgsDict(TypedDict):
+    my_prop: pulumi.Input[_builtins.str]
+    external_prop: NotRequired[pulumi.Input['pulumi_kubernetes.core.v1.PodArgs']]
+    my_other_prop: NotRequired[pulumi.Input[_builtins.float]]
 
 @pulumi.input_type
 class MyTypeArgs:

@@ -19,14 +19,9 @@ __all__ = [
     'RequestArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class RequestArgsDict(TypedDict):
-        url: NotRequired[pulumi.Input[_builtins.str]]
-        content_body: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    RequestArgsDict: TypeAlias = Mapping[str, Any]
+class RequestArgsDict(TypedDict):
+    url: NotRequired[pulumi.Input[_builtins.str]]
+    content_body: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class RequestArgs:

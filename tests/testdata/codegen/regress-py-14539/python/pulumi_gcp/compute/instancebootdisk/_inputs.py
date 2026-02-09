@@ -20,18 +20,13 @@ __all__ = [
     'InstanceBootDiskArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class InstanceBootDiskArgsDict(TypedDict):
-        initialize_params: pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgsDict']
-        """
-        Parameters for a new disk that will be created
-        alongside the new instance. Either `initialize_params` or `source` must be set.
-        Structure is documented below.
-        """
-elif False:
-    InstanceBootDiskArgsDict: TypeAlias = Mapping[str, Any]
+class InstanceBootDiskArgsDict(TypedDict):
+    initialize_params: pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgsDict']
+    """
+    Parameters for a new disk that will be created
+    alongside the new instance. Either `initialize_params` or `source` must be set.
+    Structure is documented below.
+    """
 
 @pulumi.input_type
 class InstanceBootDiskArgs:
