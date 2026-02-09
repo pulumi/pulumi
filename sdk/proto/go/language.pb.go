@@ -1432,8 +1432,10 @@ type RunPluginRequest struct {
 	Name string `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
 	// True if a plugin should be started under a debugger.
 	AttachDebugger bool `protobuf:"varint,8,opt,name=attach_debugger,json=attachDebugger,proto3" json:"attach_debugger,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The target of a codegen.LoaderServer to use for loading schemas.
+	LoaderTarget  string `protobuf:"bytes,9,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RunPluginRequest) Reset() {
@@ -1521,6 +1523,13 @@ func (x *RunPluginRequest) GetAttachDebugger() bool {
 		return x.AttachDebugger
 	}
 	return false
+}
+
+func (x *RunPluginRequest) GetLoaderTarget() string {
+	if x != nil {
+		return x.LoaderTarget
+	}
+	return ""
 }
 
 // `RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call.
@@ -2585,7 +2594,7 @@ const file_pulumi_language_proto_rawDesc = "" +
 	"\x0fTemplateRequest\x12*\n" +
 	"\x04info\x18\x01 \x01(\v2\x16.pulumirpc.ProgramInfoR\x04info\x12!\n" +
 	"\fproject_name\x18\x02 \x01(\tR\vprojectName\"\x12\n" +
-	"\x10TemplateResponse\"\xe5\x01\n" +
+	"\x10TemplateResponse\"\x8a\x02\n" +
 	"\x10RunPluginRequest\x12\x10\n" +
 	"\x03pwd\x18\x01 \x01(\tR\x03pwd\x12\x1c\n" +
 	"\aprogram\x18\x02 \x01(\tB\x02\x18\x01R\aprogram\x12\x12\n" +
@@ -2594,7 +2603,8 @@ const file_pulumi_language_proto_rawDesc = "" +
 	"\x04info\x18\x05 \x01(\v2\x16.pulumirpc.ProgramInfoR\x04info\x12\x12\n" +
 	"\x04kind\x18\x06 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04name\x18\a \x01(\tR\x04name\x12'\n" +
-	"\x0fattach_debugger\x18\b \x01(\bR\x0eattachDebugger\"o\n" +
+	"\x0fattach_debugger\x18\b \x01(\bR\x0eattachDebugger\x12#\n" +
+	"\rloader_target\x18\t \x01(\tR\floaderTarget\"o\n" +
 	"\x11RunPluginResponse\x12\x18\n" +
 	"\x06stdout\x18\x01 \x01(\fH\x00R\x06stdout\x12\x18\n" +
 	"\x06stderr\x18\x02 \x01(\fH\x00R\x06stderr\x12\x1c\n" +

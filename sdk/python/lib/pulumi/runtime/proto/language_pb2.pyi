@@ -777,6 +777,7 @@ class RunPluginRequest(google.protobuf.message.Message):
     KIND_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     ATTACH_DEBUGGER_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
     pwd: builtins.str
     """The plugin program's working directory."""
     program: builtins.str
@@ -793,6 +794,8 @@ class RunPluginRequest(google.protobuf.message.Message):
     """The name of the plugin (for display purposes)"""
     attach_debugger: builtins.bool
     """True if a plugin should be started under a debugger."""
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """Any arguments to pass to the plugin program."""
@@ -816,9 +819,10 @@ class RunPluginRequest(google.protobuf.message.Message):
         kind: builtins.str = ...,
         name: builtins.str = ...,
         attach_debugger: builtins.bool = ...,
+        loader_target: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "env", b"env", "info", b"info", "kind", b"kind", "name", b"name", "program", b"program", "pwd", b"pwd"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "env", b"env", "info", b"info", "kind", b"kind", "loader_target", b"loader_target", "name", b"name", "program", b"program", "pwd", b"pwd"]) -> None: ...
 
 global___RunPluginRequest = RunPluginRequest
 
