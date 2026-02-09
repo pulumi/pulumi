@@ -20,19 +20,14 @@ __all__ = [
     'PetArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class PetArgsDict(TypedDict):
-        required_name: pulumi.Input['pulumi_random.RandomPet']
-        required_name_array: pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]
-        required_name_map: pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]
-        age: NotRequired[pulumi.Input[_builtins.int]]
-        name: NotRequired[pulumi.Input['pulumi_random.RandomPet']]
-        name_array: NotRequired[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]]
-        name_map: NotRequired[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]]
-elif False:
-    PetArgsDict: TypeAlias = Mapping[str, Any]
+class PetArgsDict(TypedDict):
+    required_name: pulumi.Input['pulumi_random.RandomPet']
+    required_name_array: pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]
+    required_name_map: pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]
+    age: NotRequired[pulumi.Input[_builtins.int]]
+    name: NotRequired[pulumi.Input['pulumi_random.RandomPet']]
+    name_array: NotRequired[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]]
+    name_map: NotRequired[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]]
 
 @pulumi.input_type
 class PetArgs:

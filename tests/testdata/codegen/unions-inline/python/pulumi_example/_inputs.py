@@ -21,14 +21,9 @@ __all__ = [
     'ServerPropertiesForRestoreArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class ServerPropertiesForReplicaArgsDict(TypedDict):
-        create_mode: pulumi.Input[_builtins.str]
-        version: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    ServerPropertiesForReplicaArgsDict: TypeAlias = Mapping[str, Any]
+class ServerPropertiesForReplicaArgsDict(TypedDict):
+    create_mode: pulumi.Input[_builtins.str]
+    version: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class ServerPropertiesForReplicaArgs:
@@ -58,12 +53,9 @@ class ServerPropertiesForReplicaArgs:
         pulumi.set(self, "version", value)
 
 
-if not MYPY:
-    class ServerPropertiesForRestoreArgsDict(TypedDict):
-        create_mode: pulumi.Input[_builtins.str]
-        restore_point_in_time: pulumi.Input[_builtins.str]
-elif False:
-    ServerPropertiesForRestoreArgsDict: TypeAlias = Mapping[str, Any]
+class ServerPropertiesForRestoreArgsDict(TypedDict):
+    create_mode: pulumi.Input[_builtins.str]
+    restore_point_in_time: pulumi.Input[_builtins.str]
 
 @pulumi.input_type
 class ServerPropertiesForRestoreArgs:

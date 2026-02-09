@@ -2908,7 +2908,8 @@ func TestInstallMultiComponentGitRepo(t *testing.T) {
 	// TODO[https://github.com/pulumi/pulumi/issues/20963]: Remove the need for this
 	// install.
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"}
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v5.3.0")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "4.11.1")
 
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 

@@ -27,13 +27,8 @@ __all__ = [
     'SomeOtherObjectArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class ConfigMapArgsDict(TypedDict):
-        config: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    ConfigMapArgsDict: TypeAlias = Mapping[str, Any]
+class ConfigMapArgsDict(TypedDict):
+    config: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class ConfigMapArgs:
@@ -52,12 +47,9 @@ class ConfigMapArgs:
         pulumi.set(self, "config", value)
 
 
-if not MYPY:
-    class ObjectWithNodeOptionalInputsArgsDict(TypedDict):
-        foo: pulumi.Input[_builtins.str]
-        bar: NotRequired[pulumi.Input[_builtins.int]]
-elif False:
-    ObjectWithNodeOptionalInputsArgsDict: TypeAlias = Mapping[str, Any]
+class ObjectWithNodeOptionalInputsArgsDict(TypedDict):
+    foo: pulumi.Input[_builtins.str]
+    bar: NotRequired[pulumi.Input[_builtins.int]]
 
 @pulumi.input_type
 class ObjectWithNodeOptionalInputsArgs:
@@ -87,21 +79,18 @@ class ObjectWithNodeOptionalInputsArgs:
         pulumi.set(self, "bar", value)
 
 
-if not MYPY:
-    class ObjectArgsDict(TypedDict):
-        bar: NotRequired[pulumi.Input[_builtins.str]]
-        configs: NotRequired[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgsDict']]]]
-        foo: NotRequired[pulumi.Input['Resource']]
-        others: NotRequired[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]
-        """
-        List of lists of other objects
-        """
-        still_others: NotRequired[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]
-        """
-        Mapping from string to list of some other object
-        """
-elif False:
-    ObjectArgsDict: TypeAlias = Mapping[str, Any]
+class ObjectArgsDict(TypedDict):
+    bar: NotRequired[pulumi.Input[_builtins.str]]
+    configs: NotRequired[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgsDict']]]]
+    foo: NotRequired[pulumi.Input['Resource']]
+    others: NotRequired[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]
+    """
+    List of lists of other objects
+    """
+    still_others: NotRequired[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]
+    """
+    Mapping from string to list of some other object
+    """
 
 @pulumi.input_type
 class ObjectArgs:
@@ -178,11 +167,8 @@ class ObjectArgs:
         pulumi.set(self, "still_others", value)
 
 
-if not MYPY:
-    class SomeOtherObjectArgsDict(TypedDict):
-        baz: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    SomeOtherObjectArgsDict: TypeAlias = Mapping[str, Any]
+class SomeOtherObjectArgsDict(TypedDict):
+    baz: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class SomeOtherObjectArgs:

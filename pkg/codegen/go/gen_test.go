@@ -196,7 +196,7 @@ func TestGenerateTypeNames(t *testing.T) {
 		return func(t schema.Type) string {
 			return root.typeString(t)
 		}
-	})
+	}, filepath.FromSlash("../testing/test/testdata/"))
 }
 
 func readSchemaFile(file string) *schema.Package {
