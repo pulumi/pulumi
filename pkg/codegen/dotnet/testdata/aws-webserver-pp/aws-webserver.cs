@@ -69,4 +69,3 @@ nohup python -m SimpleHTTPServer 80 &
         ["publicHostName"] = server.PublicDns,
     };
 });
-

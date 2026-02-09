@@ -28,5 +28,3 @@ class MyOutputType(dict):
     @pulumi.getter(name="someResult")
     def some_result(self) -> _builtins.str:
         return pulumi.get(self, "some_result")
-
-

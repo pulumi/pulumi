@@ -112,4 +112,3 @@ class Provider(pulumi.CustomResource):
     @pulumi.getter
     def a(self) -> pulumi.Output[Optional[_builtins.bool]]:
         return pulumi.get(self, "a")
-

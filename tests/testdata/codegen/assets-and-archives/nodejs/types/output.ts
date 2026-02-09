@@ -11,4 +11,3 @@ export interface TypeWithAssets {
     plainArchive: pulumi.asset.Archive;
     plainAsset?: pulumi.asset.Asset | pulumi.asset.Archive;
 }
-

@@ -20,4 +20,3 @@
     <{%fg 1%}>- 4 deleted<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
-

@@ -99,4 +99,3 @@ class Rec(pulumi.CustomResource):
     @pulumi.getter
     def rec(self) -> pulumi.Output[Optional['Rec']]:
         return pulumi.get(self, "rec")
-

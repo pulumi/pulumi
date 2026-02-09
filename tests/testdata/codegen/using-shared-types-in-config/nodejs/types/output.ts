@@ -9,4 +9,3 @@ import * as enums from "../types/enums";
 export interface Shared {
     foo?: string;
 }
-

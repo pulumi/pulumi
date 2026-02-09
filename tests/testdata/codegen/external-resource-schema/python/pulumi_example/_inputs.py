@@ -118,5 +118,3 @@ class PetArgs:
     @name_map.setter
     def name_map(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]]):
         pulumi.set(self, "name_map", value)
-
-

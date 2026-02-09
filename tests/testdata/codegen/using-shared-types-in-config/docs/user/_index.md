@@ -705,4 +705,3 @@ Shared<pulumi-choosable type="language" values="python,go" class="inline">, Shar
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

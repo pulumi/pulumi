@@ -17,4 +17,3 @@ import { Resource } from "./resource";
 // Now go back the other way and make sure that "A" is external again.
 const a = new Resource("a", { state: 42 }, { id: "existing-id"} );
 const b = new Resource("b", { state: a.state.apply((b: any) => b + 1)});
-

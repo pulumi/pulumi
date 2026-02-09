@@ -181,4 +181,3 @@ class Foo(pulumi.CustomResource):
         A test for plain types
         """
         return pulumi.get(self, "default_kube_client_settings")
-

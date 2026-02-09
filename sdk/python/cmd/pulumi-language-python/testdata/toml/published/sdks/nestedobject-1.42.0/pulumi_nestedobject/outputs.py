@@ -35,5 +35,3 @@ class Detail(dict):
     @pulumi.getter
     def value(self) -> _builtins.str:
         return pulumi.get(self, "value")
-
-

@@ -12,4 +12,3 @@ from .. import _utilities
 name: Optional[str]
 
 pluginDownloadURL: Optional[str]
-

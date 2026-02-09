@@ -15,4 +15,3 @@ if typing.TYPE_CHECKING:
 else:
     childa = _utilities.lazy_import('pulumi_myPkg.mymod.childa')
     childb = _utilities.lazy_import('pulumi_myPkg.mymod.childb')
-

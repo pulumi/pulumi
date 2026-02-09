@@ -23,4 +23,3 @@ class SimpleResource extends dynamic.Resource {
 
 let r = new SimpleResource("foo");
 export const out = r.authenticated;
-

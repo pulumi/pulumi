@@ -21,4 +21,3 @@ return await Deployment.RunAsync(() =>
     });
 
 });
-

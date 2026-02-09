@@ -158,4 +158,3 @@ class ResourceWithAssets(pulumi.CustomResource):
     @pulumi.getter
     def nested(self) -> pulumi.Output[Optional['outputs.TypeWithAssets']]:
         return pulumi.get(self, "nested")
-

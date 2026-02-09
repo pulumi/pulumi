@@ -268,4 +268,3 @@ class ConfigMap(pulumi.CustomResource):
         Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
         """
         return pulumi.get(self, "metadata")
-

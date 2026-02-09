@@ -112,4 +112,3 @@ class OtherResource(pulumi.ComponentResource):
     @pulumi.getter
     def foo(self) -> pulumi.Output[Optional['Resource']]:
         return pulumi.get(self, "foo")
-

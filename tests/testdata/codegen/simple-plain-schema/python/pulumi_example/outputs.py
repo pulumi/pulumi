@@ -66,5 +66,3 @@ class Foo(dict):
     @pulumi.getter
     def f(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "f")
-
-

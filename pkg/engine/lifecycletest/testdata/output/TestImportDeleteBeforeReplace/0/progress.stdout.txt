@@ -22,4 +22,3 @@
     <{%fg 13%}>+-1 to replace<{%reset%}>
     <{%fg 2%}>= 1 to import<{%reset%}>
     <{%bold%}>2 changes<{%reset%}>
-

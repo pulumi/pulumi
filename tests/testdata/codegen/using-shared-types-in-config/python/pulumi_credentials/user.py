@@ -122,4 +122,3 @@ class User(pulumi.CustomResource):
     @pulumi.getter
     def password(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "password")
-

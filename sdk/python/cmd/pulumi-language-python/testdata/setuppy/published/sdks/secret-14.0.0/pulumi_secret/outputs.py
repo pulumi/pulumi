@@ -35,5 +35,3 @@ class Data(dict):
     @pulumi.getter
     def public(self) -> _builtins.str:
         return pulumi.get(self, "public")
-
-

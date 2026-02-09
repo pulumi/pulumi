@@ -257,4 +257,3 @@ class RubberTree(pulumi.CustomResource):
     @pulumi.getter
     def type(self) -> pulumi.Output['RubberTreeVariety']:
         return pulumi.get(self, "type")
-

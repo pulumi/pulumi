@@ -46,4 +46,3 @@ public class Egress
     public int FromPort { get; set; }
     public int ToPort { get; set; }
 }
-

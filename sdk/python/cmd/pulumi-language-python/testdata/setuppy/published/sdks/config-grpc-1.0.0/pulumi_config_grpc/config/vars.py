@@ -404,4 +404,3 @@ class _ExportableConfig(types.ModuleType):
     @_builtins.property
     def string3(self) -> Optional[str]:
         return __config__.get('string3')
-

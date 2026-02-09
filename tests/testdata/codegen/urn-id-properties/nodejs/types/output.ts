@@ -12,4 +12,3 @@ export interface InnerType {
     id?: string;
     urn?: string;
 }
-

@@ -135,4 +135,3 @@ class SomeResource(pulumi.CustomResource):
     @pulumi.getter
     def property(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "property")
-

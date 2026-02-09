@@ -55,5 +55,3 @@ class RequestArgs:
     @content_body.setter
     def content_body(self, value: Optional[pulumi.Input[_builtins.str]]):
         pulumi.set(self, "content_body", value)
-
-

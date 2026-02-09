@@ -1,0 +1,18 @@
+# Linelint configuration for POSIX-compliant files
+# See: https://github.com/fernandrone/linelint
+
+# Ignore patterns (uses gitignore syntax)
+ignore:
+  - .git/
+  - bin/
+  - node_modules/
+  - vendor/
+  - .make/
+  - coverage/
+  - pkg/codegen/testing/test/testdata # This is a symlink and linelint chokes on it.
+
+# Rules configuration
+rules:
+  end-of-file:
+    enable: true
+    single-new-line: true  # Enforce exactly one newline at EOF

@@ -138,4 +138,3 @@ class Provider(pulumi.ProviderResource):
         __args__['__self__'] = __self__
         __args__['prefix'] = prefix
         return pulumi.runtime.call('pulumi:providers:call/prefixed', __args__, res=__self__, typ=Provider.PrefixedResult)
-

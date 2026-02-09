@@ -167,4 +167,3 @@ class ConfigGroup(pulumi.ComponentResource):
         Resources created by the ConfigGroup.
         """
         return pulumi.get(self, "resources")
-

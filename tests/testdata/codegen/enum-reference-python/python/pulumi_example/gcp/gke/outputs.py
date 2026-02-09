@@ -53,5 +53,3 @@ class NodePoolAutoscaling(dict):
         Location policy used when scaling up a nodepool.
         """
         return pulumi.get(self, "location_policy")
-
-

@@ -43,5 +43,3 @@ class InnerType(dict):
     @pulumi.getter
     def urn(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "urn")
-
-

@@ -132,4 +132,3 @@ class StaticPage(pulumi.ComponentResource):
         The website URL.
         """
         return pulumi.get(self, "website_url")
-

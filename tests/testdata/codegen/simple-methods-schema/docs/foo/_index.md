@@ -1567,4 +1567,3 @@ Baz<pulumi-choosable type="language" values="python,go" class="inline">, Baz<wbr
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

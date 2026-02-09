@@ -135,4 +135,3 @@ class Component(pulumi.CustomResource):
     @pulumi.getter(name="remoteEnum")
     def remote_enum(self) -> pulumi.Output[Optional['pulumi_google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem']]:
         return pulumi.get(self, "remote_enum")
-

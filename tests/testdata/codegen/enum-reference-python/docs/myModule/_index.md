@@ -23,4 +23,3 @@ Explore the resources and functions of the example.myModule module.
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

@@ -230,4 +230,3 @@ class SqlResourceSqlContainer(pulumi.CustomResource):
     @pulumi.getter
     def resource(self) -> pulumi.Output[Optional['outputs.SqlContainerGetPropertiesResponseResource']]:
         return pulumi.get(self, "resource")
-

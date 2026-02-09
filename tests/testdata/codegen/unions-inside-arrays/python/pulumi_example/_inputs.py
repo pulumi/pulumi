@@ -90,5 +90,3 @@ class ServerPropertiesForRestoreArgs:
     @restore_point_in_time.setter
     def restore_point_in_time(self, value: pulumi.Input[_builtins.str]):
         pulumi.set(self, "restore_point_in_time", value)
-
-

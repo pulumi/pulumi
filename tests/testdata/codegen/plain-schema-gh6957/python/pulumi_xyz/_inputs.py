@@ -42,5 +42,3 @@ class FooArgs:
     @a.setter
     def a(self, value: Optional[pulumi.Input[_builtins.bool]]):
         pulumi.set(self, "a", value)
-
-

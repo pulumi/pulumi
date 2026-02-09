@@ -144,4 +144,3 @@ class Resource(pulumi.CustomResource):
         A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
         """
         return pulumi.get(self, "non_plain_data")
-

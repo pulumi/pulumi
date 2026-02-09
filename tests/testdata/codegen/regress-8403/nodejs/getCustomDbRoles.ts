@@ -24,4 +24,3 @@ export function getCustomDbRolesOutput(opts?: pulumi.InvokeOutputOptions): pulum
     return pulumi.runtime.invokeOutput("mongodbatlas::getCustomDbRoles", {
     }, opts);
 }
-

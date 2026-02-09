@@ -54,5 +54,3 @@ class BastionShareableLink:
     @vm.setter
     def vm(self, value: _builtins.str):
         pulumi.set(self, "vm", value)
-
-

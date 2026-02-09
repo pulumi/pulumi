@@ -40,4 +40,3 @@
     <{%fg 1%}>4 errored<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
-

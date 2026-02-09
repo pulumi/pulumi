@@ -81,5 +81,3 @@ class KubeClientSettings(dict):
     @pulumi.getter(name="recTest")
     def rec_test(self) -> Optional['outputs.KubeClientSettings']:
         return pulumi.get(self, "rec_test")
-
-

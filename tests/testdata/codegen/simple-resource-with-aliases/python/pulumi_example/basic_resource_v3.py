@@ -115,4 +115,3 @@ class BasicResourceV3(pulumi.CustomResource):
     @pulumi.getter
     def bar(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "bar")
-

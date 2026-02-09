@@ -99,4 +99,3 @@ class ConfigFetcher(pulumi.CustomResource):
     @pulumi.getter
     def config(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "config")
-

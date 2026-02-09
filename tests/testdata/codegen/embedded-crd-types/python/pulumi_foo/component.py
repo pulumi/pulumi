@@ -118,4 +118,3 @@ class Component(pulumi.ComponentResource):
     @pulumi.getter
     def pod(self) -> pulumi.Output[Optional['pulumi_kubernetes.core.v1.outputs.Pod']]:
         return pulumi.get(self, "pod")
-

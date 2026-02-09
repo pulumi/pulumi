@@ -7,4 +7,3 @@
  <{%fg 14%}>> <{%reset%}> pkgA:m:typA resA <{%fg 14%}>read<{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-

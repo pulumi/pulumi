@@ -8,4 +8,3 @@ import * as outputs from "../types/output";
 export interface Pet {
     name?: string;
 }
-

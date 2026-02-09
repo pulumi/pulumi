@@ -156,5 +156,3 @@ class ConfigMapArgs:
     @metadata.setter
     def metadata(self, value: Optional[pulumi.Input['_meta.v1.ObjectMetaArgs']]):
         pulumi.set(self, "metadata", value)
-
-

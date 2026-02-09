@@ -787,5 +787,3 @@ class OwnerReferenceArgs:
     @controller.setter
     def controller(self, value: Optional[pulumi.Input[_builtins.bool]]):
         pulumi.set(self, "controller", value)
-
-

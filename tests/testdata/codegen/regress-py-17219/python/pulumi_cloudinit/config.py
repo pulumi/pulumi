@@ -184,4 +184,3 @@ class Config(pulumi.CustomResource):
     @pulumi.getter
     def rendered(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "rendered")
-

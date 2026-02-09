@@ -108,4 +108,3 @@ class ReplicatedBucket(pulumi.ComponentResource):
         test stuff
         """
         return pulumi.get(self, "location_policy")
-

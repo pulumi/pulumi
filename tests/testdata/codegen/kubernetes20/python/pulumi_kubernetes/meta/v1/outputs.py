@@ -580,5 +580,3 @@ class OwnerReference(dict):
         If true, this reference points to the managing controller.
         """
         return pulumi.get(self, "controller")
-
-

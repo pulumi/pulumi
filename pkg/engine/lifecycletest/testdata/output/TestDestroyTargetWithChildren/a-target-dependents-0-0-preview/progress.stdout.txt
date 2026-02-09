@@ -25,4 +25,3 @@
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 7 to delete<{%reset%}>
     7 unchanged
-

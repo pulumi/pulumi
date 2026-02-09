@@ -12,4 +12,3 @@ if typing.TYPE_CHECKING:
     module = __module
 else:
     module = _utilities.lazy_import('pulumi_foo.nested.module')
-

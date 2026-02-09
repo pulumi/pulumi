@@ -46,5 +46,3 @@ class Bar(dict):
     @pulumi.getter(name="has-a-hyphen")
     def has_a_hyphen(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "has_a_hyphen")
-
-

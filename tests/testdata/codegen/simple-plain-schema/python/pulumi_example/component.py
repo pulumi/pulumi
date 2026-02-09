@@ -276,4 +276,3 @@ class Component(pulumi.ComponentResource):
     @pulumi.getter
     def foo(self) -> pulumi.Output[Optional['outputs.Foo']]:
         return pulumi.get(self, "foo")
-

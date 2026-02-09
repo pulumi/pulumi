@@ -106,4 +106,3 @@ class ComponentCustomRefInputOutput(pulumi.ComponentResource):
     @pulumi.getter(name="outputRef")
     def output_ref(self) -> pulumi.Output['Custom']:
         return pulumi.get(self, "output_ref")
-

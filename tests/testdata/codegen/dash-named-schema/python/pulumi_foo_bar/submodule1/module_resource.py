@@ -114,4 +114,3 @@ class ModuleResource(pulumi.CustomResource):
     @pulumi.getter
     def thing(self) -> pulumi.Output[Optional['_root_outputs.TopLevel']]:
         return pulumi.get(self, "thing")
-

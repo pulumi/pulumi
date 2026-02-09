@@ -68,5 +68,3 @@ class InstanceBootDiskInitializeParams(dict):
         These images can be referred by family name here.
         """
         return pulumi.get(self, "image_name")
-
-

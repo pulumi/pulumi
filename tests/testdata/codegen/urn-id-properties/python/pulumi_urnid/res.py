@@ -131,4 +131,3 @@ class Res(pulumi.CustomResource):
     @pulumi.getter
     def output(self) -> pulumi.Output[Optional['outputs.InnerType']]:
         return pulumi.get(self, "output")
-

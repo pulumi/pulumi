@@ -108,4 +108,3 @@ class ArchiveResource(pulumi.CustomResource):
     @pulumi.getter
     def value(self) -> pulumi.Output[pulumi.Archive]:
         return pulumi.get(self, "value")
-

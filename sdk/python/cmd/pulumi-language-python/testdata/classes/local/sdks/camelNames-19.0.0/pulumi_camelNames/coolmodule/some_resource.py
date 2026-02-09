@@ -109,4 +109,3 @@ class SomeResource(pulumi.CustomResource):
     @pulumi.getter(name="theOutput")
     def the_output(self) -> pulumi.Output[_builtins.bool]:
         return pulumi.get(self, "the_output")
-

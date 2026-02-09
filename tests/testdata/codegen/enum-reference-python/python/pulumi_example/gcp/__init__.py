@@ -12,4 +12,3 @@ if typing.TYPE_CHECKING:
     gke = __gke
 else:
     gke = _utilities.lazy_import('pulumi_example.gcp.gke')
-

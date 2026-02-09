@@ -143,4 +143,3 @@ class Example_resource(pulumi.CustomResource):
     @pulumi.getter
     def map_enum(self) -> pulumi.Output[Optional[Sequence[Mapping[str, 'Enum_XYZ']]]]:
         return pulumi.get(self, "map_enum")
-

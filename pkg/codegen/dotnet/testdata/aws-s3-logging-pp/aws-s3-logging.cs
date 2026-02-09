@@ -23,4 +23,3 @@ return await Deployment.RunAsync(() =>
         ["targetBucket"] = bucket.Loggings.Apply(loggings => loggings[0]?.TargetBucket),
     };
 });
-

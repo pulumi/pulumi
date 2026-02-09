@@ -157,4 +157,3 @@ class TypeUses(pulumi.CustomResource):
     @pulumi.getter
     def foo(self) -> pulumi.Output[Optional['outputs.Object']]:
         return pulumi.get(self, "foo")
-

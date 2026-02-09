@@ -12,4 +12,3 @@ if typing.TYPE_CHECKING:
     v1 = __v1
 else:
     v1 = _utilities.lazy_import('pulumi_kubernetes.meta.v1')
-

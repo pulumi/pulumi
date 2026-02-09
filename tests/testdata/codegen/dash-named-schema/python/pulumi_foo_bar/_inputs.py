@@ -42,5 +42,3 @@ class TopLevelArgs:
     @buzz.setter
     def buzz(self, value: Optional[pulumi.Input[_builtins.str]]):
         pulumi.set(self, "buzz", value)
-
-

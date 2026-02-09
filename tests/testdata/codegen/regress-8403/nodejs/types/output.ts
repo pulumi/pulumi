@@ -7,4 +7,3 @@ import * as outputs from "../types/output";
 
 export interface GetCustomDbRolesResult {
 }
-

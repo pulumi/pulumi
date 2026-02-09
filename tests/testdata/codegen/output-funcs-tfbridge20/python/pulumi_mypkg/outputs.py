@@ -91,5 +91,3 @@ class GetAmiIdsFilterResult(dict):
     @pulumi.getter
     def values(self) -> Sequence[_builtins.str]:
         return pulumi.get(self, "values")
-
-

@@ -12,4 +12,3 @@ if typing.TYPE_CHECKING:
     nested = __nested
 else:
     nested = _utilities.lazy_import('foo_bar.deeply.nested')
-

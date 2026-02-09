@@ -1064,5 +1064,3 @@ class SpecificationResponse(dict):
         Value of the specification
         """
         return pulumi.get(self, "value")
-
-

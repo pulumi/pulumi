@@ -75,5 +75,3 @@ class InstanceBootDiskInitializeParamsArgs:
     @image_name.setter
     def image_name(self, value: Optional[pulumi.Input[_builtins.str]]):
         pulumi.set(self, "image_name", value)
-
-

@@ -66,4 +66,3 @@ return await Deployment.RunAsync(() =>
         ["websiteUrl"] = siteBucket.WebsiteEndpoint,
     };
 });
-

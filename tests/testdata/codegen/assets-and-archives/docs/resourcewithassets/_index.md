@@ -938,4 +938,3 @@ Type<wbr>With<wbr>Assets<pulumi-choosable type="language" values="python,go" cla
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

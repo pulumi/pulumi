@@ -29,5 +29,3 @@ class GetPolicyDocumentStatementResult(dict):
     @pulumi.getter
     def actions(self) -> Optional[Sequence[_builtins.str]]:
         return pulumi.get(self, "actions")
-
-

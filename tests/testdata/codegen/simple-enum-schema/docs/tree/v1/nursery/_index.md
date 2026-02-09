@@ -699,4 +699,3 @@ Tree<wbr>Size<pulumi-choosable type="language" values="python,go" class="inline"
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

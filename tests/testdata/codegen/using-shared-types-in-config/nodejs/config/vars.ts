@@ -50,4 +50,3 @@ Object.defineProperty(exports, "user", {
     },
     enumerable: true,
 });
-

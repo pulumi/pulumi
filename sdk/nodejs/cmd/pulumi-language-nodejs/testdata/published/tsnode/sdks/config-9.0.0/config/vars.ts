@@ -22,4 +22,3 @@ Object.defineProperty(exports, "pluginDownloadURL", {
     },
     enumerable: true,
 });
-

@@ -54,5 +54,3 @@ class ENIConfigSpec(dict):
     @pulumi.getter
     def subnet(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "subnet")
-
-

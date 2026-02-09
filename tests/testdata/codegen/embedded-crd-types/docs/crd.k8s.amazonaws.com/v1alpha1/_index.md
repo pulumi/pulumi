@@ -18,4 +18,3 @@ Explore the resources and functions of the foo.crd.k8s.amazonaws.com/v1alpha1 mo
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

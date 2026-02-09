@@ -8,4 +8,3 @@ Loading policy packs...: done
     ❌ <{%fg 5%}>analyzerA@v<{%reset%}>
         - <{%fg 1%}>[mandatory]  always-fails<{%reset%}>  (pulumi:providers:pkgA: default)
           <{%reset%}>a policy failed<{%reset%}>
-

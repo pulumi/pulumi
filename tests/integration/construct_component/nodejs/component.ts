@@ -19,4 +19,3 @@ export class Component extends pulumi.ComponentResource {
         super("testcomponent:index:Component", name, inputs, opts, true);
     }
 }
-

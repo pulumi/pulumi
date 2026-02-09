@@ -145,5 +145,3 @@ class GetConfigPartArgs:
     @merge_type.setter
     def merge_type(self, value: Optional[_builtins.str]):
         pulumi.set(self, "merge_type", value)
-
-

@@ -28,4 +28,3 @@ no_edit_this_page: true
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

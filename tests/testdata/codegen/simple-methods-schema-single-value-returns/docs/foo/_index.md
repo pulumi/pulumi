@@ -671,4 +671,3 @@ The following arguments are supported:
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

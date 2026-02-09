@@ -32,4 +32,3 @@ user: Optional[str]
 """
 The username. Its important but not secret.
 """
-

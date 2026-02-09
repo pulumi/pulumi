@@ -6,4 +6,3 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
 import {Resource} from "..";
-

@@ -34,5 +34,3 @@ const b = new Resource("b", { fail: 1 }, { dependsOn: a });
 // This plan is interesting because it shows that it is legal to delete the same URN multiple
 // times in the same plan. This previously triggered an assert in the engine that asserted
 // that this is impossible (https://github.com/pulumi/pulumi/issues/1503)
-
-

@@ -181,4 +181,3 @@ class Release(pulumi.CustomResource):
         Custom values set for the release.
         """
         return pulumi.get(self, "values")
-

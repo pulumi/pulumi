@@ -100,4 +100,3 @@ class Foo(pulumi.CustomResource):
     @pulumi.getter(name="conditionSets")
     def condition_sets(self) -> pulumi.Output[Optional[Sequence[Sequence[Sequence['outputs.Bar']]]]]:
         return pulumi.get(self, "condition_sets")
-

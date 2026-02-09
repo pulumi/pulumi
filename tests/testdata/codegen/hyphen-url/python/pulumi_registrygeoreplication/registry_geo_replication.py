@@ -125,4 +125,3 @@ class RegistryGeoReplication(pulumi.ComponentResource):
         The replication policy
         """
         return pulumi.get(self, "replication")
-

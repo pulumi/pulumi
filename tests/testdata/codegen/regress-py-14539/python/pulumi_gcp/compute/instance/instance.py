@@ -157,4 +157,3 @@ class Instance(pulumi.CustomResource):
         Structure is documented below.
         """
         return pulumi.get(self, "boot_disk")
-

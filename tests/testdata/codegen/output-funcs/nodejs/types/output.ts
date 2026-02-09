@@ -268,4 +268,3 @@ export interface StorageAccountKeyResponse {
      */
     value: string;
 }
-

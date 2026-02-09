@@ -55,4 +55,3 @@ class _ExportableConfig(types.ModuleType):
         This is a huge secret
         """
         return __config__.get('secretCode') or _utilities.get_env('SECRET_CODE', 'MY_SUPER_SECRET_CODE')
-

@@ -16,4 +16,3 @@
     <{%fg 2%}>+ 1 to create<{%reset%}>
     <{%fg 3%}>~ 1 to update<{%reset%}>
     <{%bold%}>2 changes<{%reset%}>
-

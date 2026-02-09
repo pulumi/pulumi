@@ -113,4 +113,3 @@ class StringResource(pulumi.CustomResource):
     @pulumi.getter
     def text(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "text")
-

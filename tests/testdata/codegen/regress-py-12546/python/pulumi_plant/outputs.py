@@ -57,5 +57,3 @@ class Container(dict):
     @pulumi.getter
     def material(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "material")
-
-

@@ -154,4 +154,3 @@ class Component(pulumi.ComponentResource):
         __args__['resourceList'] = resource_list
         __args__['resourceMap'] = resource_map
         return pulumi.runtime.call('component-property-deps:index:Component/refs', __args__, res=__self__, typ=Component.RefsResult)
-

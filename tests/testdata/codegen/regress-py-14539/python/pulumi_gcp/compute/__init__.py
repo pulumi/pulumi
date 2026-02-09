@@ -18,4 +18,3 @@ else:
     instance = _utilities.lazy_import('pulumi_gcp.compute.instance')
     instancebootdisk = _utilities.lazy_import('pulumi_gcp.compute.instancebootdisk')
     instancebootdiskinitializeparams = _utilities.lazy_import('pulumi_gcp.compute.instancebootdiskinitializeparams')
-

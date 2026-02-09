@@ -24,4 +24,3 @@ export interface BastionShareableLinkArgs {
      */
     vm: pulumi.Input<string>;
 }
-

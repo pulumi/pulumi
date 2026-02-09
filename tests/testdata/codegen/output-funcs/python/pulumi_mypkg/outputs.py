@@ -748,5 +748,3 @@ class StorageAccountKeyResponse(dict):
         Base 64-encoded value of the key.
         """
         return pulumi.get(self, "value")
-
-

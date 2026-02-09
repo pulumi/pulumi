@@ -113,4 +113,3 @@ class AssetResource(pulumi.CustomResource):
     @pulumi.getter
     def value(self) -> pulumi.Output[Union[pulumi.Asset, pulumi.Archive]]:
         return pulumi.get(self, "value")
-

@@ -104,5 +104,3 @@ class FooArgs:
     @f.setter
     def f(self, value: Optional[_builtins.str]):
         pulumi.set(self, "f", value)
-
-

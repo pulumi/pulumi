@@ -26,4 +26,3 @@ output "secondSecret" {
         secretResponse = false
     }).response
 }
-

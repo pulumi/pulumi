@@ -22,4 +22,3 @@ return await Deployment.RunAsync(() =>
         ["second"] = numbers[1].Id,
     };
 });
-

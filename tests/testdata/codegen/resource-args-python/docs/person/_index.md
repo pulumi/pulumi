@@ -672,4 +672,3 @@ Pet<pulumi-choosable type="language" values="python,go" class="inline">, Pet<wbr
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

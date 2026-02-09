@@ -151,4 +151,3 @@ class Configurer(pulumi.ComponentResource):
         __args__ = dict()
         __args__['__self__'] = __self__
         return _utilities.call_plain('metaprovider:index:Configurer/tlsProvider', __args__, res=__self__, typ=Configurer.TlsProviderResult).res
-

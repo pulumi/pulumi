@@ -4,4 +4,3 @@ runtime:
   name: nodejs
   options:
     typescript: false
-

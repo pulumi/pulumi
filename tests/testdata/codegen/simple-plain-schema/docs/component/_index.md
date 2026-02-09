@@ -1470,4 +1470,3 @@ Foo<pulumi-choosable type="language" values="python,go" class="inline">, Foo<wbr
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

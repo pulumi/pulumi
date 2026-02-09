@@ -5,4 +5,3 @@ plugins:
   providers:
     - name: testprovider
       path: ../../../testprovider
-

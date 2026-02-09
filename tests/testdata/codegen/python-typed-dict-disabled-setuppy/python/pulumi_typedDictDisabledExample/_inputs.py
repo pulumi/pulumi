@@ -93,5 +93,3 @@ class MyTypeArgs:
     @my_other_prop.setter
     def my_other_prop(self, value: Optional[pulumi.Input[_builtins.float]]):
         pulumi.set(self, "my_other_prop", value)
-
-

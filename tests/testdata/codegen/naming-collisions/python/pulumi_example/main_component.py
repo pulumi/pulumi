@@ -92,4 +92,3 @@ class MainComponent(pulumi.CustomResource):
         __props__ = MainComponentArgs.__new__(MainComponentArgs)
 
         return MainComponent(resource_name, opts=opts, __props__=__props__)
-

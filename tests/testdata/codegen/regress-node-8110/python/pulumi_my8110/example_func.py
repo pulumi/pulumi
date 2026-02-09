@@ -28,4 +28,3 @@ def example_func(enums: Optional[Sequence[Union[_builtins.str, 'MyEnum']]] = Non
     __args__['enums'] = enums
     opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke('my8110::exampleFunc', __args__, opts=opts).value
-

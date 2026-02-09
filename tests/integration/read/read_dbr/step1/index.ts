@@ -19,4 +19,3 @@ import { Resource } from "./resource";
 const a = new Resource("a", { state: 42 }, { id: "existing-id"} );
 const b = new Resource("b", { state: a.state.apply((b: any) => b + 1)});
 const c = new Resource("c", { state: b.state }, { id: "another-existing-id" })
-

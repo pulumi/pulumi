@@ -49,4 +49,3 @@ return await Deployment.RunAsync(() =>
         ["policyName"] = policy.Name,
     };
 });
-

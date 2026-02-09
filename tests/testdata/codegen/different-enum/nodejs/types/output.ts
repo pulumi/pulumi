@@ -23,4 +23,3 @@ export function containerProvideDefaults(val: Container): Container {
         brightness: (val.brightness) ?? 1,
     };
 }
-

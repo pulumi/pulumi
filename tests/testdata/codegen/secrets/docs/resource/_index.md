@@ -940,4 +940,3 @@ Config<pulumi-choosable type="language" values="python,go" class="inline">, Conf
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

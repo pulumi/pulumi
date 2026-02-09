@@ -135,4 +135,3 @@ class Person(pulumi.CustomResource):
     @pulumi.getter
     def pets(self) -> pulumi.Output[Optional[Sequence['outputs.Pet']]]:
         return pulumi.get(self, "pets")
-

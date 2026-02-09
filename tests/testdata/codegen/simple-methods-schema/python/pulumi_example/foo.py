@@ -150,4 +150,3 @@ class Foo(pulumi.ComponentResource):
         __args__['__self__'] = __self__
         __args__['boolValue'] = bool_value
         return pulumi.runtime.call('example::Foo/generateKubeconfig', __args__, res=__self__, typ=Foo.GenerateKubeconfigResult)
-

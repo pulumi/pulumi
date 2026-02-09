@@ -175,4 +175,3 @@ class Provider(pulumi.ProviderResource):
         The username. Its important but not secret.
         """
         return pulumi.get(self, "user")
-

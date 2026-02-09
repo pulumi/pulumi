@@ -26,4 +26,3 @@ return await Deployment.RunAsync(() =>
         ["bucketEndpoint"] = mybucket.WebsiteEndpoint.Apply(websiteEndpoint => $"http://{websiteEndpoint}"),
     };
 });
-

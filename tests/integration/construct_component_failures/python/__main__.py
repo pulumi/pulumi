@@ -4,4 +4,3 @@ from component import Component
 
 
 component = Component("component", foo="bar")
-

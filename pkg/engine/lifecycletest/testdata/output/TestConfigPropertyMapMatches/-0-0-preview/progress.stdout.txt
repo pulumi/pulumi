@@ -2,4 +2,3 @@
 
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-

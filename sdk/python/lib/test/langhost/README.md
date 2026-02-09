@@ -68,4 +68,3 @@ One additional thing to note is that this test harness explicitly ignores the re
 of the top-level Stack resource, `pulumi:pulumi:Stack`, because it is annoying to write tests around.
 All expected resource counts do not count this resource as a registration and overridden resource monitor
 methods will never see a registration for `pulumi:pulumi:Stack.`
-

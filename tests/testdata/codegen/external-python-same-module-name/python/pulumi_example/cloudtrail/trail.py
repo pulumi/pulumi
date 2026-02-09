@@ -107,4 +107,3 @@ class Trail(pulumi.ComponentResource):
             __props__,
             opts,
             remote=True)
-

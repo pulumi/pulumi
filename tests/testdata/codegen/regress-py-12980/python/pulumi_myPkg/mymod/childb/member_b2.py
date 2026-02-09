@@ -118,4 +118,3 @@ class MemberB2(pulumi.ComponentResource):
     @pulumi.getter(name="resourceFromSameModule")
     def resource_from_same_module(self) -> pulumi.Output[Optional['MemberB1']]:
         return pulumi.get(self, "resource_from_same_module")
-

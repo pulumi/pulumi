@@ -46,4 +46,3 @@ class _ExportableConfig(types.ModuleType):
         The username. Its important but not secret.
         """
         return __config__.get('user')
-

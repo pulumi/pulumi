@@ -53,5 +53,3 @@ class ProviderCertmanagerArgs:
     @mtls_key_pem.setter
     def mtls_key_pem(self, value: pulumi.Input[_builtins.str]):
         pulumi.set(self, "mtls_key_pem", value)
-
-

@@ -22,5 +22,3 @@ __all__ = [
 class GetCustomDbRolesResult(dict):
     def __init__(__self__):
         pass
-
-

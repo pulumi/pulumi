@@ -213,4 +213,3 @@ class ConfigMapList(pulumi.CustomResource):
         More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
         """
         return pulumi.get(self, "metadata")
-

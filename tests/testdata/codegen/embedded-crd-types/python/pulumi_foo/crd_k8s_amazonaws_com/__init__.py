@@ -12,4 +12,3 @@ if typing.TYPE_CHECKING:
     v1alpha1 = __v1alpha1
 else:
     v1alpha1 = _utilities.lazy_import('pulumi_foo.crd_k8s_amazonaws_com.v1alpha1')
-

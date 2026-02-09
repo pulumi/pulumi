@@ -16,4 +16,3 @@ import { Resource } from "./resource";
 
 // Setup for the next test.
 const a = new Resource("a", { state: 4 });
-
