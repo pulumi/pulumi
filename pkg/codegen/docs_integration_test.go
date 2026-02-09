@@ -15,7 +15,7 @@
 // Integration level tests for docs across all languages with docs generation in this
 // repository.
 //
-// To avoid circular dependencies, we will not attempt to test Java or Pulumi YAML here.
+// To avoid circular dependencies, we will not attempt to test .NET, Java or Pulumi YAML here.
 package codegen_test
 
 import (
@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	dotnet_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	golang_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	nodejs_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	python_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
@@ -39,7 +38,6 @@ const (
 	nodejs language = iota
 	python language = iota
 	golang language = iota
-	dotnet language = iota
 )
 
 func TestGetResourceName(t *testing.T) {
@@ -57,13 +55,7 @@ func TestGetResourceName(t *testing.T) {
 				},
 
 				"example:override:Resource": {
-					ObjectTypeSpec: schema.ObjectTypeSpec{
-						Language: map[string]schema.RawMessage{
-							"csharp": marshalIntoRaw(t, dotnet_codegen.CSharpResourceInfo{
-								Name: "Overridden",
-							}),
-						},
-					},
+					ObjectTypeSpec: schema.ObjectTypeSpec{},
 				},
 			},
 		}
@@ -84,7 +76,6 @@ func TestGetResourceName(t *testing.T) {
 				golang: "ComponentResource",
 				nodejs: "ComponentResource",
 				python: "ComponentResource",
-				dotnet: "ComponentResource",
 			},
 		},
 		{
@@ -94,15 +85,6 @@ func TestGetResourceName(t *testing.T) {
 				golang: "Resource",
 				nodejs: "Resource",
 				python: "Resource",
-				dotnet: "Resource",
-			},
-		},
-		{
-			name:     "language override",
-			resource: resource(t, "example:override:Resource"),
-			expected: map[language]string{
-				// Only C# allows resource name overrides
-				dotnet: "Overridden",
 			},
 		},
 		{
@@ -112,7 +94,6 @@ func TestGetResourceName(t *testing.T) {
 				golang: "Provider",
 				nodejs: "Provider",
 				python: "Provider",
-				dotnet: "Provider",
 			},
 		},
 		{
@@ -130,7 +111,6 @@ func TestGetResourceName(t *testing.T) {
 				golang: "ComponentResource",
 				nodejs: "ComponentResource",
 				python: "ComponentResource",
-				dotnet: "ComponentResource",
 			},
 		},
 	}
@@ -196,11 +176,6 @@ func TestGetTypeName(t *testing.T) {
 					"shouldoverride": "overridden",
 				},
 			}),
-			"csharp": marshalIntoRaw(t, dotnet_codegen.CSharpPackageInfo{
-				Namespaces: map[string]string{
-					"shouldoverride": "Overridden",
-				},
-			}),
 			"nodejs": marshalIntoRaw(t, nodejs_codegen.NodePackageInfo{
 				ModuleToPackage: map[string]string{
 					"shouldoverride": "overridden",
@@ -235,7 +210,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "string",
 				nodejs: "string",
 				python: "str",
-				dotnet: "string",
 			},
 		},
 		{
@@ -247,7 +221,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "map[string]float64",
 				nodejs: "{[key: string]: number}",
 				python: "Mapping[str, float]",
-				dotnet: "Dictionary<string, double>",
 			},
 		},
 		{
@@ -259,7 +232,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "[]bool",
 				nodejs: "boolean[]",
 				python: "Sequence[bool]",
-				dotnet: "List<bool>",
 			},
 		},
 		{
@@ -272,7 +244,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "SimpleType",
 				nodejs: "SimpleType",
 				python: "SimpleType",
-				dotnet: "Pulumi.Pkg.Inputs.SimpleType",
 			},
 		},
 		{
@@ -285,7 +256,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "SimpleType",
 				nodejs: "SimpleType",
 				python: "SimpleType",
-				dotnet: "Pulumi.Pkg.Outputs.SimpleType",
 			},
 		},
 		{
@@ -298,7 +268,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "map[string]SimpleType",
 				nodejs: "{[key: string]: SimpleType}",
 				python: "Mapping[str, SimpleType]",
-				dotnet: "Dictionary<string, Pulumi.Pkg.Outputs.SimpleType>",
 			},
 		},
 		{
@@ -311,7 +280,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "module.AnotherType",
 				nodejs: "module.AnotherType",
 				python: "_module.AnotherType",
-				dotnet: "Pulumi.Pkg.Module.Inputs.AnotherType",
 			},
 		},
 		{
@@ -325,7 +293,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "AnotherType",
 				nodejs: "module.AnotherType",
 				python: "AnotherType",
-				dotnet: "Pulumi.Pkg.Module.Inputs.AnotherType",
 			},
 		},
 		{
@@ -337,7 +304,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "AnEnum",
 				nodejs: "module.AnEnum",
 				python: "AnEnum",
-				dotnet: "Pulumi.Pkg.Module.AnEnum",
 			},
 		},
 		{
@@ -350,7 +316,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "SimpleType",
 				nodejs: "overridden.SimpleType",
 				python: "SimpleType",
-				dotnet: "Pulumi.Pkg.Overridden.Inputs.SimpleType",
 			},
 		},
 		{
@@ -362,7 +327,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "overridden.SimpleType",
 				nodejs: "overridden.SimpleType",
 				python: "_overridden.SimpleType",
-				dotnet: "Pulumi.Pkg.Overridden.Outputs.SimpleType",
 			},
 		},
 		{
@@ -373,7 +337,6 @@ func TestGetTypeName(t *testing.T) {
 				golang: "*string",
 				nodejs: "string",
 				python: "Optional[str]",
-				dotnet: "string?",
 			},
 		},
 	}
@@ -535,7 +498,6 @@ func TestGetMethodResultName(t *testing.T) {
 				golang: "pulumi.StringOutput",
 				nodejs: "string",
 				python: "str",
-				dotnet: "string",
 			},
 		},
 		{
@@ -547,7 +509,6 @@ func TestGetMethodResultName(t *testing.T) {
 				golang: "FooGetKubeconfigResultOutput",
 				nodejs: "Foo.GetKubeconfigResult",
 				python: "Foo.Get_kubeconfigResult",
-				dotnet: "Foo.GetKubeconfigResult",
 			},
 		},
 	}
@@ -624,7 +585,6 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 		golang: "FooGetKubeconfigResultOutput",
 		nodejs: "Foo.GetKubeconfigResult",
 		python: "Foo.Get_kubeconfigResult",
-		dotnet: "Foo.GetKubeconfigResult",
 	}
 
 	for lang, expected := range expected {
@@ -696,7 +656,6 @@ func TestGetModuleName(t *testing.T) {
 				golang: "",
 				nodejs: "",
 				python: "",
-				dotnet: "",
 			},
 		},
 		{
@@ -707,7 +666,6 @@ func TestGetModuleName(t *testing.T) {
 				golang: "mymodule",
 				nodejs: "mymodule",
 				python: "mymodule",
-				dotnet: "Mymodule",
 			},
 		},
 		{
@@ -718,7 +676,6 @@ func TestGetModuleName(t *testing.T) {
 				golang: "my/module",
 				nodejs: "my.module",
 				python: "my/module",
-				dotnet: "My.Module",
 			},
 		},
 		{
@@ -727,11 +684,6 @@ func TestGetModuleName(t *testing.T) {
 				"go": marshalIntoRaw(t, golang_codegen.GoPackageInfo{
 					ModuleToPackage: map[string]string{
 						"shouldoverride": "gopkg",
-					},
-				}),
-				"csharp": marshalIntoRaw(t, dotnet_codegen.CSharpPackageInfo{
-					Namespaces: map[string]string{
-						"shouldoverride": "DotNetPkg",
 					},
 				}),
 				"nodejs": marshalIntoRaw(t, nodejs_codegen.NodePackageInfo{
@@ -750,7 +702,6 @@ func TestGetModuleName(t *testing.T) {
 				golang: "gopkg",
 				nodejs: "nodepkg",
 				python: "pythonpkg",
-				dotnet: "DotNetPkg",
 			},
 		},
 	}
@@ -793,9 +744,6 @@ func testDocsGenHelper(
 			return h
 		}
 		name = "go"
-	case dotnet:
-		helper = mkHelper[dotnet_codegen.DocLanguageHelper]
-		name = "dotnet"
 	default:
 		assert.Fail(t, "Unknown language %T", language)
 	}
@@ -854,7 +802,6 @@ func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {
 		"go":     golang_codegen.Importer,
 		"nodejs": nodejs_codegen.Importer,
 		"python": python_codegen.Importer,
-		"csharp": dotnet_codegen.Importer,
 	}, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
