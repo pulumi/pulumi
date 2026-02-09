@@ -136,4 +136,3 @@ class ComponentCallable(pulumi.ComponentResource):
         __args__['__self__'] = __self__
         __args__['prefix'] = prefix
         return pulumi.runtime.call('component:index:ComponentCallable/prefixed', __args__, res=__self__, typ=ComponentCallable.PrefixedResult)
-

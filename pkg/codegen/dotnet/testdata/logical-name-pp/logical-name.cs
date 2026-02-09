@@ -18,4 +18,3 @@ return await Deployment.RunAsync(() =>
         ["dD-Delta_delta.🔥⁉"] = resourceLexicalName.Id,
     };
 });
-

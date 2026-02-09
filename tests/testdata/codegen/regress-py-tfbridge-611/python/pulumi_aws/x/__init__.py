@@ -14,4 +14,3 @@ if typing.TYPE_CHECKING:
     iam = __iam
 else:
     iam = _utilities.lazy_import('pulumi_aws.x.iam')
-

@@ -12,4 +12,3 @@
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>1 errored<{%reset%}>
-

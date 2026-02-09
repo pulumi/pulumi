@@ -64,4 +64,3 @@ return await Deployment.RunAsync(() =>
         ["result"] = exampleComponent.Result,
     };
 });
-

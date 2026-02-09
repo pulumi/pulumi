@@ -655,4 +655,3 @@ Kube<wbr>Client<wbr>Settings<pulumi-choosable type="language" values="python,go"
 	<dt>License</dt>
 	<dd>Apache-2.0</dd>
 </dl>
-

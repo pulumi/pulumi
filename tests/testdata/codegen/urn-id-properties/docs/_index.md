@@ -31,4 +31,3 @@ Test urn and id in valid locations
 	<dt>Version</dt>
 	<dd>1.0.0</dd>
 </dl>
-

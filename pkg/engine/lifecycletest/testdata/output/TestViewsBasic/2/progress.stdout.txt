@@ -10,4 +10,3 @@
     <{%fg 3%}>~ 2 updated<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
-

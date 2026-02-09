@@ -183,4 +183,3 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter(name="publicData")
     def public_data(self) -> pulumi.Output['outputs.Data']:
         return pulumi.get(self, "public_data")
-

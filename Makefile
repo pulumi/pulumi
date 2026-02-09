@@ -115,26 +115,35 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json
+lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json lint_newline_eof
 
 lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
 	# JSON schema says regexps should conform to ECMA 262.
 	go run github.com/santhosh-tekuri/jsonschema/cmd/jv@v0.7.0 pkg/codegen/schema/pulumi.json
 	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
-        # on the `ensure` target here because that installs extra dependencies, that we don't
+	# on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
 	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
 
 lint_pulumi_json_fix::
 	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
-        # on the `ensure` target here because that installs extra dependencies, that we don't
+	# on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
 	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
 
-lint_fix:: lint_golang_fix lint_pulumi_json_fix
+lint_fix:: lint_golang_fix lint_pulumi_json_fix lint_newline_eof_fix
+
+
+lint_newline_eof::
+	@echo "[linelint] Checking for newlines at EOF..."
+	@go run github.com/fernandrone/linelint@latest .
+
+lint_newline_eof_fix::
+	@echo "[linelint] Fixing files with missing newlines..."
+	@go run github.com/fernandrone/linelint@latest -a .
 
 define lint_golang_pkg
 	@echo "[golangci-lint] Linting $(1)..."

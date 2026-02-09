@@ -42,5 +42,3 @@ class GetPolicyDocumentStatementArgs:
     @actions.setter
     def actions(self, value: Optional[Sequence[_builtins.str]]):
         pulumi.set(self, "actions", value)
-
-

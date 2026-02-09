@@ -17,4 +17,3 @@ Loading policy packs...: done
     <{%fg 2%}>+ 2 created<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
-

@@ -364,5 +364,3 @@ class HierarchyInformation:
     @product_name.setter
     def product_name(self, value: Optional[_builtins.str]):
         pulumi.set(self, "product_name", value)
-
-

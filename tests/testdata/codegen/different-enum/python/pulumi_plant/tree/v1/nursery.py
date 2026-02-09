@@ -133,4 +133,3 @@ class Nursery(pulumi.CustomResource):
         __props__ = NurseryArgs.__new__(NurseryArgs)
 
         return Nursery(resource_name, opts=opts, __props__=__props__)
-

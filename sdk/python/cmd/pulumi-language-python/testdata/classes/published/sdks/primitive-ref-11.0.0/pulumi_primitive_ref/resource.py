@@ -110,4 +110,3 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter
     def data(self) -> pulumi.Output['outputs.Data']:
         return pulumi.get(self, "data")
-

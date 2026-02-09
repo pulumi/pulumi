@@ -207,4 +207,3 @@ class Component(pulumi.CustomResource):
     @pulumi.getter(name="storageClasses")
     def storage_classes(self) -> pulumi.Output[Optional[Mapping[str, 'pulumi_kubernetes.storage.v1.StorageClass']]]:
         return pulumi.get(self, "storage_classes")
-

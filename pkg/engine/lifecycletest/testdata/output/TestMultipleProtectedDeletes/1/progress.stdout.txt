@@ -27,4 +27,3 @@
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     1 unchanged
     <{%fg 1%}>3 errored<{%reset%}>
-

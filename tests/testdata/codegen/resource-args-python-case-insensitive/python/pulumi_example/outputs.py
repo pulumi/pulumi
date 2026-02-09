@@ -29,5 +29,3 @@ class Pet(dict):
     @pulumi.getter
     def name(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "name")
-
-

@@ -38,5 +38,3 @@ class DataArgs:
     @public.setter
     def public(self, value: pulumi.Input[_builtins.str]):
         pulumi.set(self, "public", value)
-
-

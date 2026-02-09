@@ -35,4 +35,3 @@ secretCode: Optional[str]
 """
 This is a huge secret
 """
-

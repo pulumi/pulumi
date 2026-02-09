@@ -17,4 +17,3 @@ return await Deployment.RunAsync(() =>
         ["password"] = randomPassword.Result,
     };
 });
-

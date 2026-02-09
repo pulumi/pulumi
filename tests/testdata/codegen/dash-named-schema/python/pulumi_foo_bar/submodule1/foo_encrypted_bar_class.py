@@ -92,4 +92,3 @@ class FOOEncryptedBarClass(pulumi.CustomResource):
         __props__ = FOOEncryptedBarClassArgs.__new__(FOOEncryptedBarClassArgs)
 
         return FOOEncryptedBarClass(resource_name, opts=opts, __props__=__props__)
-

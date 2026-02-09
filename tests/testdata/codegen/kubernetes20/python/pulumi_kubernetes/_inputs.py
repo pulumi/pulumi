@@ -57,5 +57,3 @@ class KubeClientSettingsArgs:
     @timeout.setter
     def timeout(self, value: Optional[pulumi.Input[_builtins.int]]):
         pulumi.set(self, "timeout", value)
-
-

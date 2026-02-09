@@ -169,4 +169,3 @@ export interface HierarchyInformationArgs {
      */
     productName?: pulumi.Input<string>;
 }
-

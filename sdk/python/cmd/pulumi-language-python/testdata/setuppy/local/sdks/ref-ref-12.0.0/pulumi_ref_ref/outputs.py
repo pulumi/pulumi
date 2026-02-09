@@ -159,5 +159,3 @@ class InnerData(dict):
     @pulumi.getter(name="stringMap")
     def string_map(self) -> Mapping[str, _builtins.str]:
         return pulumi.get(self, "string_map")
-
-

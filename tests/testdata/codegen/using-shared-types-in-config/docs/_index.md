@@ -26,4 +26,3 @@ no_edit_this_page: true
 	<dt>Version</dt>
 	<dd>0.1.0</dd>
 </dl>
-

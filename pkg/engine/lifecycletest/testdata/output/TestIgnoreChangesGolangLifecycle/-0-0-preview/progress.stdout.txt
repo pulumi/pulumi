@@ -9,4 +9,3 @@
  <{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test-test <{%fg 2%}>created<{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 2 to create<{%reset%}>
-

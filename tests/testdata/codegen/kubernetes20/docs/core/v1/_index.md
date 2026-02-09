@@ -24,4 +24,3 @@ Explore the resources and functions of the kubernetes.core/v1 module.
 	<dt>License</dt>
 	<dd>Apache-2.0</dd>
 </dl>
-

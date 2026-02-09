@@ -89,4 +89,3 @@ class Provider(pulumi.ProviderResource):
             resource_name,
             __props__,
             opts)
-

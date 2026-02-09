@@ -207,4 +207,3 @@ class TypeUses(pulumi.CustomResource):
     @pulumi.getter
     def zed(self) -> pulumi.Output[Optional['outputs.OutputOnlyObjectType']]:
         return pulumi.get(self, "zed")
-

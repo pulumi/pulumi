@@ -26,4 +26,3 @@ const b = new Resource("b", { fail: 1 }, { dependsOn: a });
 //  A: Created
 //  A: Pending Delete
 //  B: Created
-

@@ -84,4 +84,3 @@ class HelloWorldComponent(pulumi.ComponentResource):
     @pulumi.getter(name="parameterValue")
     def parameter_value(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "parameter_value")
-

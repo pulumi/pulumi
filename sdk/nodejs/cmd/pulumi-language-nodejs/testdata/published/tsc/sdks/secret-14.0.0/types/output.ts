@@ -9,4 +9,3 @@ export interface Data {
     private: string;
     public: string;
 }
-

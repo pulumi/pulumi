@@ -79,5 +79,3 @@ class TypeWithAssetsArgs:
     @plain_asset.setter
     def plain_asset(self, value: Optional[Union[pulumi.Asset, pulumi.Archive]]):
         pulumi.set(self, "plain_asset", value)
-
-

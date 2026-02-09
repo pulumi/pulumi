@@ -18,4 +18,3 @@
     <{%fg 2%}>+ 5 created<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
-

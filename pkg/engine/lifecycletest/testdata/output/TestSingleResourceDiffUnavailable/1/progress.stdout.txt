@@ -14,4 +14,3 @@
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 2 to update<{%reset%}>
-

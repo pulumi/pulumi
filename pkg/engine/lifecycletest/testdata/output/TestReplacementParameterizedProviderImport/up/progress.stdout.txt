@@ -20,4 +20,3 @@
     <{%bold%}>4 changes<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
-

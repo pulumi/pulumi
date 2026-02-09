@@ -33,4 +33,3 @@ export interface ObjectWithNodeOptionalInputs {
 export interface SomeOtherObject {
     baz?: string;
 }
-

@@ -14,4 +14,3 @@ export interface GetAmiIdsFilterArgs {
     name: pulumi.Input<string>;
     values: pulumi.Input<pulumi.Input<string>[]>;
 }
-

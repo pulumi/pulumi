@@ -13,4 +13,3 @@ export interface Foo {
     e: string;
     f?: string;
 }
-

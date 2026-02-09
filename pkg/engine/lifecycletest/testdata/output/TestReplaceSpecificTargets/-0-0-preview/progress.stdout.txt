@@ -37,4 +37,3 @@
     <{%fg 3%}>~ 3 to update<{%reset%}>
     <{%fg 13%}>+-3 to replace<{%reset%}>
     <{%bold%}>6 changes<{%reset%}>. 6 unchanged
-

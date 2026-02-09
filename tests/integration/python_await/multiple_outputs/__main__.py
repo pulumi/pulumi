@@ -10,5 +10,3 @@ exported.apply(print)
 
 another = pulumi.Output.from_input(asyncio.sleep(5, "bar"))
 another.apply(print)
-
-

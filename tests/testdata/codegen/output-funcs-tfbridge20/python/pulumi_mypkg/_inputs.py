@@ -53,5 +53,3 @@ class GetAmiIdsFilterArgs:
     @values.setter
     def values(self, value: Sequence[_builtins.str]):
         pulumi.set(self, "values", value)
-
-

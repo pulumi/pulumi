@@ -12,4 +12,3 @@ if typing.TYPE_CHECKING:
     v2 = __v2
 else:
     v2 = _utilities.lazy_import('pulumi_kubernetes.yaml.v2')
-

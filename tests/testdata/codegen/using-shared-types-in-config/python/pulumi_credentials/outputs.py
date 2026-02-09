@@ -30,5 +30,3 @@ class Shared(dict):
     @pulumi.getter
     def foo(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "foo")
-
-

@@ -198,5 +198,3 @@ class SomeOtherObjectArgs:
     @baz.setter
     def baz(self, value: Optional[pulumi.Input[_builtins.str]]):
         pulumi.set(self, "baz", value)
-
-

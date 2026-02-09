@@ -77,4 +77,3 @@ class MemberB1(pulumi.ComponentResource):
             __props__,
             opts,
             remote=True)
-

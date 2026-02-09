@@ -28,4 +28,3 @@ output "o" {
 output "a" {
   value = a.property
 }
-

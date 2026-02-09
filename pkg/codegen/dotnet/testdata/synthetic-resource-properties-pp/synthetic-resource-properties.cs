@@ -15,4 +15,3 @@ return await Deployment.RunAsync(() =>
         ["complex"] = rt.Res1.Apply(res1 => res1.Obj1?.Res2?.Obj2?.Answer),
     };
 });
-

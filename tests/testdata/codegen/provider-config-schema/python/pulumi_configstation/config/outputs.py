@@ -37,5 +37,3 @@ class Sandwich(dict):
     @pulumi.getter
     def veggies(self) -> Optional[Sequence[_builtins.str]]:
         return pulumi.get(self, "veggies")
-
-

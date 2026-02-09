@@ -47,5 +47,3 @@ class ObjectB(dict):
     @pulumi.getter(name="propB")
     def prop_b(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "prop_b")
-
-

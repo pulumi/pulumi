@@ -165,5 +165,3 @@ class InnerDataArgs:
     @string_map.setter
     def string_map(self, value: Mapping[str, _builtins.str]):
         pulumi.set(self, "string_map", value)
-
-

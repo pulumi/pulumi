@@ -23,4 +23,3 @@ Explore the resources and functions of the kubernetes.yaml/v2 module.
 	<dt>License</dt>
 	<dd>Apache-2.0</dd>
 </dl>
-

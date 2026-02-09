@@ -71,4 +71,3 @@ return await Deployment.RunAsync(() =>
     var kind = bar.Kind;
 
 });
-

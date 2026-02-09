@@ -120,4 +120,3 @@ class Provider(pulumi.ProviderResource):
     @pulumi.getter
     def version(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "version")
-

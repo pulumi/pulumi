@@ -64,5 +64,3 @@ class TypArgs:
     @val.setter
     def val(self, value: Optional[pulumi.Input[_builtins.str]]):
         pulumi.set(self, "val", value)
-
-

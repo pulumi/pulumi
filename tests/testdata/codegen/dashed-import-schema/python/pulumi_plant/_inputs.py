@@ -83,5 +83,3 @@ class ContainerArgs:
     @material.setter
     def material(self, value: Optional[pulumi.Input[_builtins.str]]):
         pulumi.set(self, "material", value)
-
-

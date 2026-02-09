@@ -19,4 +19,3 @@ return await Deployment.RunAsync(() =>
     }).ToList();
 
 });
-

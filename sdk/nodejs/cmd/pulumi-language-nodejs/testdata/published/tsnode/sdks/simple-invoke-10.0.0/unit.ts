@@ -22,4 +22,3 @@ export function unitOutput(opts?: pulumi.InvokeOutputOptions): pulumi.Output<Uni
     return pulumi.runtime.invokeOutput("simple-invoke:index:unit", {
     }, opts);
 }
-

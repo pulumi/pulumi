@@ -112,4 +112,3 @@ class Pet(pulumi.CustomResource):
     @pulumi.getter
     def name(self) -> pulumi.Output[Optional[_builtins.str]]:
         return pulumi.get(self, "name")
-

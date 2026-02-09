@@ -12,4 +12,3 @@ if typing.TYPE_CHECKING:
     v3 = __v3
 else:
     v3 = _utilities.lazy_import('pulumi_kubernetes.helm.v3')
-

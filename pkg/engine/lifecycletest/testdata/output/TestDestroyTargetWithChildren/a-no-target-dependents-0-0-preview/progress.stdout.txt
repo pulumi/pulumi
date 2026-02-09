@@ -61,4 +61,3 @@
     <{%fg 1%}>- 7 to delete<{%reset%}>
     7 unchanged
     <{%fg 1%}>7 errored<{%reset%}>
-

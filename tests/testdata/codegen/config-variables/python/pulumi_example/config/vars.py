@@ -23,4 +23,3 @@ class _ExportableConfig(types.ModuleType):
     @_builtins.property
     def http_retry_wait_max(self) -> Optional[float]:
         return __config__.get_float('httpRetryWaitMax')
-

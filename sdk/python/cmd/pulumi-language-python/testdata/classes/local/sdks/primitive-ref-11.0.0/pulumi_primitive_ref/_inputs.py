@@ -82,5 +82,3 @@ class DataArgs:
     @string_map.setter
     def string_map(self, value: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]):
         pulumi.set(self, "string_map", value)
-
-

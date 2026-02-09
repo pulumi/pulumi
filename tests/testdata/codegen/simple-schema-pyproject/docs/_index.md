@@ -25,4 +25,3 @@ This is a test package for pyproject.toml
 	<dt>Version</dt>
 	<dd>0.0.1</dd>
 </dl>
-

@@ -1217,5 +1217,3 @@ class Tstring3Args:
     @x.setter
     def x(self, value: Optional[pulumi.Input[_builtins.str]]):
         pulumi.set(self, "x", value)
-
-

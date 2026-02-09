@@ -57,5 +57,3 @@ class InstanceBootDiskArgs:
     @initialize_params.setter
     def initialize_params(self, value: pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs']):
         pulumi.set(self, "initialize_params", value)
-
-

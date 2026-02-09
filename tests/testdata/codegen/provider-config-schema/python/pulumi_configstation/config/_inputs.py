@@ -55,5 +55,3 @@ class SandwichArgs:
     @veggies.setter
     def veggies(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]]):
         pulumi.set(self, "veggies", value)
-
-

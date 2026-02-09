@@ -15,4 +15,3 @@ else:
 from .. import _utilities
 
 httpRetryWaitMax: Optional[float]
-

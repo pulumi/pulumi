@@ -339,4 +339,3 @@ The following output properties are available:
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

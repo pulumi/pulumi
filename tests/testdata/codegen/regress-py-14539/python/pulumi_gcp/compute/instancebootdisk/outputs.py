@@ -56,5 +56,3 @@ class InstanceBootDisk(dict):
         Structure is documented below.
         """
         return pulumi.get(self, "initialize_params")
-
-

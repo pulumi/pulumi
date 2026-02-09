@@ -12,4 +12,3 @@ export interface AnotherCustomResult {
 export interface CustomResult {
     value?: string;
 }
-

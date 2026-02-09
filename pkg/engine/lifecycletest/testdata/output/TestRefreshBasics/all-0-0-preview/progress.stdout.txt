@@ -20,4 +20,3 @@
     <{%fg 3%}>~ 1 to update<{%reset%}>
     <{%fg 1%}>- 2 to delete<{%reset%}>
     <{%bold%}>3 changes<{%reset%}>. 3 unchanged
-

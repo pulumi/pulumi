@@ -55,5 +55,3 @@ class Baz:
     @world.setter
     def world(self, value: Optional[_builtins.str]):
         pulumi.set(self, "world", value)
-
-

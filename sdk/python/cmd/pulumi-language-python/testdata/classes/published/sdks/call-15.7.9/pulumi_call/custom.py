@@ -130,4 +130,3 @@ class Custom(pulumi.CustomResource):
         __args__ = dict()
         __args__['__self__'] = __self__
         return pulumi.runtime.call('call:index:Custom/providerValue', __args__, res=__self__, typ=Custom.ProviderValueResult)
-

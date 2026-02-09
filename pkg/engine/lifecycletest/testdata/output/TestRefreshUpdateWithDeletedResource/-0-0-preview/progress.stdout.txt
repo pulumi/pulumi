@@ -9,4 +9,3 @@
  <{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA default <{%fg 1%}>deleted<{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-

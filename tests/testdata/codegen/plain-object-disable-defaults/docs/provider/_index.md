@@ -611,4 +611,3 @@ Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

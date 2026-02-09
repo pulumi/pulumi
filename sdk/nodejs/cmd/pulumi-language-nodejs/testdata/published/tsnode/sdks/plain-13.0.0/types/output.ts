@@ -23,4 +23,3 @@ export interface InnerData {
     string: string;
     stringMap: {[key: string]: string};
 }
-

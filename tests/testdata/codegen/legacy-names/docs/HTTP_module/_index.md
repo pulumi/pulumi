@@ -20,4 +20,3 @@ Explore the resources and functions of the legacy_names.HTTP_module module.
 	<dt>Version</dt>
 	<dd>1.0.0</dd>
 </dl>
-

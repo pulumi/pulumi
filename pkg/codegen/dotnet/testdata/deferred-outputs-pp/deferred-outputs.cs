@@ -36,4 +36,3 @@ return await Deployment.RunAsync(() =>
         return v.PasswordLength;
     }).ToList()));
 });
-

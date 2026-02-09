@@ -28,4 +28,3 @@ Loading policy packs...: done
           <{%reset%}>a policy failed<{%reset%}>
         - <{%fg 3%}>[advisory]  always-fails-advisory-unspecified<{%reset%}>  (pkgA:m:typA: resA)
           <{%reset%}>a policy failed<{%reset%}>
-

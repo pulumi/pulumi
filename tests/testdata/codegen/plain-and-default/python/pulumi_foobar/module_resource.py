@@ -429,4 +429,3 @@ class ModuleResource(pulumi.CustomResource):
     @pulumi.getter(name="optionalBool")
     def optional_bool(self) -> pulumi.Output[Optional[_builtins.bool]]:
         return pulumi.get(self, "optional_bool")
-

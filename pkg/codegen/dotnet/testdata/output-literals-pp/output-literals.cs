@@ -12,4 +12,3 @@ return await Deployment.RunAsync(() =>
         ["output_string"] = "hello",
     };
 });
-

@@ -55,5 +55,3 @@ class ENIConfigSpecArgs:
     @subnet.setter
     def subnet(self, value: Optional[pulumi.Input[_builtins.str]]):
         pulumi.set(self, "subnet", value)
-
-

@@ -139,5 +139,3 @@ class SomeOtherObject(dict):
     @pulumi.getter
     def baz(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "baz")
-
-

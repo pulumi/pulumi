@@ -70,5 +70,3 @@ class TypeWithAssets(dict):
     @pulumi.getter(name="plainAsset")
     def plain_asset(self) -> Optional[Union[pulumi.Asset, pulumi.Archive]]:
         return pulumi.get(self, "plain_asset")
-
-

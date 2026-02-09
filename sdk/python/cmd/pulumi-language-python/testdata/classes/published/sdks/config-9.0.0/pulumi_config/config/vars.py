@@ -22,4 +22,3 @@ class _ExportableConfig(types.ModuleType):
     @_builtins.property
     def plugin_download_url(self) -> Optional[str]:
         return __config__.get('pluginDownloadURL')
-

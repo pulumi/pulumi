@@ -92,4 +92,3 @@ class Block(pulumi.CustomResource):
         __props__ = BlockArgs.__new__(BlockArgs)
 
         return Block(resource_name, opts=opts, __props__=__props__)
-

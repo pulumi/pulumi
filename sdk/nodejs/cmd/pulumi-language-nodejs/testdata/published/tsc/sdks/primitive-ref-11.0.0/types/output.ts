@@ -13,4 +13,3 @@ export interface Data {
     string: string;
     stringMap: {[key: string]: string};
 }
-

@@ -99,4 +99,3 @@ class Foo(pulumi.ComponentResource):
         __args__['roleArn'] = role_arn
         __result__ = pulumi.runtime.call('example::Foo/getKubeconfig', __args__, res=__self__, typ=Foo.GetKubeconfigResult)
         return __result__.kubeconfig
-

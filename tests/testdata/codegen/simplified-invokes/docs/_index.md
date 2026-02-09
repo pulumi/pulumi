@@ -39,4 +39,3 @@ Standard library functions
 	<dt>Version</dt>
 	<dd>1.0.0</dd>
 </dl>
-

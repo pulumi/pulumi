@@ -33,4 +33,3 @@ return await Deployment.RunAsync(() =>
         ["storageAccountNameOut"] = storageAccountResource.Name,
     };
 });
-

@@ -110,5 +110,3 @@ class GetConfigPartResult(dict):
     @pulumi.getter(name="mergeType")
     def merge_type(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "merge_type")
-
-

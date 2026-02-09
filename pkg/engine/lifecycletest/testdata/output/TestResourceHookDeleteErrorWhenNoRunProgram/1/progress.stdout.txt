@@ -6,4 +6,3 @@
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pkgA:m:typA (resA):<{%reset%}>
     <{%fg 1%}>error: <{%reset%}><{%reset%}>Resource has delete hooks registered, but the program is not running. Hooks: myHook<{%reset%}>
-

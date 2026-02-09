@@ -346,5 +346,3 @@ class Tstring3(dict):
     @pulumi.getter
     def x(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "x")
-
-

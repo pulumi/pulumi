@@ -1789,4 +1789,3 @@ Some<wbr>Other<wbr>Object<pulumi-choosable type="language" values="python,go" cl
 	<dt>License</dt>
 	<dd></dd>
 </dl>
-

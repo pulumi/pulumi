@@ -116,4 +116,3 @@ class Container(pulumi.CustomResource):
     @pulumi.getter
     def inputs(self) -> pulumi.Output[Sequence[_builtins.str]]:
         return pulumi.get(self, "inputs")
-

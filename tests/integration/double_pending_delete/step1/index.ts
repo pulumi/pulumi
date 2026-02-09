@@ -20,4 +20,3 @@ const b = new Resource("b", { fail: 0 }, { dependsOn: a });
 // The snapshot now contains:
 //  A: Created
 //  B: Created
-

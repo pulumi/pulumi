@@ -29,5 +29,3 @@ class TopLevel(dict):
     @pulumi.getter
     def buzz(self) -> Optional[_builtins.str]:
         return pulumi.get(self, "buzz")
-
-

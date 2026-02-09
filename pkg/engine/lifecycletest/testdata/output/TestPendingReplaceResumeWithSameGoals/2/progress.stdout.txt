@@ -11,4 +11,3 @@
     <{%fg 13%}>+-1 replaced<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
-

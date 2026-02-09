@@ -124,4 +124,3 @@ class ModuleTest(pulumi.CustomResource):
         __props__ = ModuleTestArgs.__new__(ModuleTestArgs)
 
         return ModuleTest(resource_name, opts=opts, __props__=__props__)
-

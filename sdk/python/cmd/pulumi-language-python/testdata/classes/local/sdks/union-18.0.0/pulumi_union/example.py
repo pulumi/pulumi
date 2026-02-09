@@ -128,4 +128,3 @@ class Example(pulumi.CustomResource):
     @pulumi.getter(name="stringOrIntegerProperty")
     def string_or_integer_property(self) -> pulumi.Output[Optional[Any]]:
         return pulumi.get(self, "string_or_integer_property")
-

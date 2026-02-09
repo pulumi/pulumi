@@ -227,4 +227,3 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter(name="fooMap")
     def foo_map(self) -> pulumi.Output[Mapping[str, _builtins.str]]:
         return pulumi.get(self, "foo_map")
-

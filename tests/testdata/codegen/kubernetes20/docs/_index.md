@@ -31,4 +31,3 @@ A Pulumi package for creating and managing Kubernetes resources.
 	<dt>License</dt>
 	<dd>Apache-2.0</dd>
 </dl>
-

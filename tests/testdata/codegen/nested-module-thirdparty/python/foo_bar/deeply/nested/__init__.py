@@ -12,4 +12,3 @@ if typing.TYPE_CHECKING:
     module = __module
 else:
     module = _utilities.lazy_import('foo_bar.deeply.nested.module')
-

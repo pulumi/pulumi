@@ -12,4 +12,3 @@
     <{%bold%}>2 changes<{%reset%}>. 1 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
-

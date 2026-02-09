@@ -201,4 +201,3 @@ string1: Optional[str]
 string2: Optional[str]
 
 string3: Optional[str]
-

@@ -38,4 +38,3 @@ export interface OutputOnlyObjectType {
 export interface SomeOtherObject {
     baz?: string;
 }
-
