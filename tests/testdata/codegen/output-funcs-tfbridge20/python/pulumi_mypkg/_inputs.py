@@ -19,14 +19,9 @@ __all__ = [
     'GetAmiIdsFilterArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class GetAmiIdsFilterArgsDict(TypedDict):
-        name: _builtins.str
-        values: Sequence[_builtins.str]
-elif False:
-    GetAmiIdsFilterArgsDict: TypeAlias = Mapping[str, Any]
+class GetAmiIdsFilterArgsDict(TypedDict):
+    name: _builtins.str
+    values: Sequence[_builtins.str]
 
 @pulumi.input_type
 class GetAmiIdsFilterArgs:

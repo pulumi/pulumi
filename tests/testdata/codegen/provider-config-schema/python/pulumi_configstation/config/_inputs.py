@@ -19,14 +19,9 @@ __all__ = [
     'SandwichArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class SandwichArgsDict(TypedDict):
-        bread: NotRequired[pulumi.Input[_builtins.str]]
-        veggies: NotRequired[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]]
-elif False:
-    SandwichArgsDict: TypeAlias = Mapping[str, Any]
+class SandwichArgsDict(TypedDict):
+    bread: NotRequired[pulumi.Input[_builtins.str]]
+    veggies: NotRequired[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]]
 
 @pulumi.input_type
 class SandwichArgs:
