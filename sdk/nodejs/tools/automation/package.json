@@ -10,15 +10,19 @@
     },
     "main": "src/index.ts",
     "scripts": {
-        "start": "tsx src/index.ts"
+        "start": "tsx src/index.ts",
+        "test": "jest"
     },
     "devDependencies": {
+        "@types/jest": "^29.5.12",
         "@types/node": "14.18.63",
         "@types/pascalcase": "^1.0.3",
         "@types/to-camel-case": "^1.0.2",
+        "jest": "^29.7.0",
+        "ts-jest": "^29.2.5",
         "ts-morph": "^24.0.0",
         "tsx": "4.19.3",
-        "typescript": "3.8.3"
+        "typescript": "^5.4.0"
     },
     "engines": {
         "node": ">=20"
