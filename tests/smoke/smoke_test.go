@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -129,7 +129,7 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/random_pp")
 
 			// Make sure random is installed
-			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.1")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(

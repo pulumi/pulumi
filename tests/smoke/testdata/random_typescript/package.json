@@ -6,7 +6,7 @@
         "typescript": "5.9.3"
     },
     "dependencies": {
-        "@pulumi/random": "^4.13.0",
+        "@pulumi/random": "^4.19.1",
         "@pulumi/pulumi": "^3.113.0"
     }
 }
