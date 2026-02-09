@@ -41,12 +41,13 @@ import (
 )
 
 type testHost struct {
-	engine      *languageTestServer
-	ctx         *plugin.Context
-	host        plugin.Host
-	runtime     plugin.LanguageRuntime
-	runtimeName string
-	providers   map[string]func() (plugin.Provider, error)
+	engine        *languageTestServer
+	ctx           *plugin.Context
+	host          plugin.Host
+	runtime       plugin.LanguageRuntime
+	runtimeName   string
+	providersLock map[string]*sync.Mutex
+	providers     map[string]func() (plugin.Provider, error)
 
 	connections map[plugin.Provider]io.Closer
 

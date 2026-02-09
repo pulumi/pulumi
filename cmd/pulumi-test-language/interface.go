@@ -689,6 +689,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		host:                        pctx.Host,
 		runtime:                     languageClient,
 		runtimeName:                 token.LanguagePluginName,
+		providersLock:               make(map[string]*sync.Mutex),
 		providers:                   make(map[string]func() (plugin.Provider, error)),
 		connections:                 make(map[plugin.Provider]io.Closer),
 		skipEnsurePluginsValidation: test.SkipEnsurePluginsValidation,
@@ -721,47 +722,54 @@ func (eng *languageTestServer) RunLanguageTest(
 		// If this is a provider that should be overridden using the languages plugin directory try and do that now.
 		pkg := p.Pkg().String()
 		if slices.Contains(test.LanguageProviders, pkg) {
-			if token.ProvidersDirectory == "" {
-				return nil, fmt.Errorf("provider %s should be loaded from language providers directory, "+
-					"but no providers directory was specified", pkg)
+			if host.providersLock[key] == nil {
+				host.providersLock[key] = &sync.Mutex{}
 			}
-
-			sourceDirectory := filepath.Join(token.ProvidersDirectory, pkg)
-
-			// Copy to a new targetDirectory so we don't mutate the original test data
-			targetDirectory := filepath.Join(token.TemporaryDirectory, "providers", pkg)
-			err = copyDirectory(os.DirFS(sourceDirectory), ".", targetDirectory, nil, nil)
-			if err != nil {
-				return nil, fmt.Errorf("copy provider test data: %w", err)
-			}
-
-			// Link the provider program to the core SDK and install its dependencies
-			providerInfo := plugin.NewProgramInfo(targetDirectory, targetDirectory, ".", nil)
-
-			linkDeps := []workspace.LinkablePackageDescriptor{{
-				Path: token.CoreArtifact,
-				Descriptor: workspace.PackageDescriptor{
-					PluginDescriptor: workspace.PluginDescriptor{
-						Name: "pulumi",
-					},
-				},
-			}}
-			_, err = languageClient.Link(providerInfo, linkDeps, grpcServer.Addr())
-			if err != nil {
-				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
-			}
-
-			resp := installDependencies(languageClient, providerInfo, true /* isPlugin */)
-			if resp != nil {
-				return resp, nil
-			}
-
-			host.providers[key] = func() (plugin.Provider, error) {
-				pluginProvider, err := plugin.NewProviderFromPath(host, pctx, p.Pkg(), targetDirectory)
-				if err != nil {
-					return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
+			host.providersLock[key].Lock()
+			defer host.providersLock[key].Unlock()
+			if host.providers[key] == nil {
+				if token.ProvidersDirectory == "" {
+					return nil, fmt.Errorf("provider %s should be loaded from language providers directory, "+
+						"but no providers directory was specified", pkg)
 				}
-				return pluginProvider, nil
+
+				sourceDirectory := filepath.Join(token.ProvidersDirectory, pkg)
+
+				// Copy to a new targetDirectory so we don't mutate the original test data
+				targetDirectory := filepath.Join(token.TemporaryDirectory, "providers", pkg)
+				err = copyDirectory(os.DirFS(sourceDirectory), ".", targetDirectory, nil, nil)
+				if err != nil {
+					return nil, fmt.Errorf("copy provider test data: %w", err)
+				}
+
+				// Link the provider program to the core SDK and install its dependencies
+				providerInfo := plugin.NewProgramInfo(targetDirectory, targetDirectory, ".", nil)
+
+				linkDeps := []workspace.LinkablePackageDescriptor{{
+					Path: token.CoreArtifact,
+					Descriptor: workspace.PackageDescriptor{
+						PluginDescriptor: workspace.PluginDescriptor{
+							Name: "pulumi",
+						},
+					},
+				}}
+				_, err = languageClient.Link(providerInfo, linkDeps, grpcServer.Addr())
+				if err != nil {
+					return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
+				}
+
+				resp := installDependencies(languageClient, providerInfo, true /* isPlugin */)
+				if resp != nil {
+					return resp, nil
+				}
+
+				host.providers[key] = func() (plugin.Provider, error) {
+					pluginProvider, err := plugin.NewProviderFromPath(host, pctx, p.Pkg(), targetDirectory)
+					if err != nil {
+						return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
+					}
+					return pluginProvider, nil
+				}
 			}
 		} else {
 			host.providers[key] = func() (plugin.Provider, error) {
