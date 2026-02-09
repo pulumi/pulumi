@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/pulumi/pulumi-unknown/sdk/go/unknown"
 	"github.com/pulumi/pulumi-unknown/sdk/go/unknown/eks"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
