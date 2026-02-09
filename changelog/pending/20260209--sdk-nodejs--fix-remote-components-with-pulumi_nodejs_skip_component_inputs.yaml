@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Fix remote components with PULUMI_NODEJS_SKIP_COMPONENT_INPUTS
