@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -188,9 +188,6 @@ func tokenToName(tok string) string {
 	// module := path/to/module
 
 	components := strings.Split(tok, ":")
-	if len(components) == 2 {
-		return Title(components[1])
-	}
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 	return Title(components[2])
 }
@@ -223,6 +220,7 @@ func (mod *modContext) isTFCompatMode() bool {
 
 func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	components := strings.Split(tok, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
 	pkg, nsName := mod.RootNamespace()+"."+namespaceName(mod.namespaces, components[0]), mod.pkg.TokenToModule(tok)
 
