@@ -2180,6 +2180,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 
+	// Validate that envVarMappings is only used on provider resources.
+	if len(req.GetEnvVarMappings()) > 0 && !sdkproviders.IsProviderType(t) {
+		return nil, rpcerror.New(codes.InvalidArgument,
+			"envVarMappings can only be used with provider resources")
+	}
+
 	// We need to build the full alias spec list here, so we can pass it to transforms.
 	aliases := []*pulumirpc.Alias{}
 	for _, aliasURN := range req.GetAliasURNs() {
@@ -2501,7 +2507,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if opts.GetPluginDownloadUrl() != "" {
 			providers.SetProviderURL(props, opts.GetPluginDownloadUrl())
 		}
-
+		if len(req.GetEnvVarMappings()) > 0 {
+			providers.SetEnvironmentVariableMappings(props, req.GetEnvVarMappings())
+		}
 		if req.GetPackageRef() != "" {
 			// If the provider resource has a package ref then we need to set all it's input fields as in
 			// newRegisterDefaultProviderEvent.

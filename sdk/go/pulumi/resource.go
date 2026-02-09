@@ -545,6 +545,10 @@ type ResourceOptions struct {
 	// Hooks are the optional resource hooks to bind to this resource. The hooks
 	// will be invoked during the lifecycle of the resource.
 	Hooks *ResourceHookBinding
+
+	// EnvVarMappings specifies environment variable mappings for provider resources.
+	// Keys are the source environment variable names, values are the target names.
+	EnvVarMappings map[string]string
 }
 
 // NewResourceOptions builds a preview of the effect of the provided options.
@@ -585,6 +589,7 @@ type resourceOptions struct {
 	ReplaceWith             []Resource
 	Parameterization        []byte
 	Hooks                   *ResourceHookBinding
+	EnvVarMappings          map[string]string
 }
 
 func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
@@ -652,6 +657,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		DeletedWith:             ro.DeletedWith,
 		ReplaceWith:             ro.ReplaceWith,
 		Hooks:                   ro.Hooks,
+		EnvVarMappings:          ro.EnvVarMappings,
 	}
 }
 
@@ -1171,6 +1177,25 @@ func Parameterization(parameter []byte) ResourceOrInvokeOption {
 			ro.Parameterization = parameter
 		case io != nil:
 			io.Parameterization = parameter
+		}
+	})
+}
+
+// EnvVarMappings sets environment variable remappings for provider resources.
+// The map should contain NEW_KEY -> OLD_KEY pairs. If NEW_KEY exists in the environment,
+// the provider will see OLD_KEY with that value.
+// For example, {"MY_SPECIAL_AZ_LOGIN": "AZ_LOGIN"} means if MY_SPECIAL_AZ_LOGIN exists,
+// the provider will see AZ_LOGIN=value(MY_SPECIAL_AZ_LOGIN).
+// This option only applies to provider resources (pulumi:providers:*).
+func EnvVarMappings(mappings map[string]string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		if mappings != nil {
+			if ro.EnvVarMappings == nil {
+				ro.EnvVarMappings = make(map[string]string)
+			}
+			for k, v := range mappings {
+				ro.EnvVarMappings[k] = v
+			}
 		}
 	})
 }

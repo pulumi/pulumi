@@ -68,7 +68,7 @@ type Host interface {
 
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
-	Provider(descriptor workspace.PluginDescriptor) (Provider, error)
+	Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
 	LanguageRuntime(runtime string) (LanguageRuntime, error)
@@ -484,7 +484,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 	return analyzers
 }
 
-func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor) (Provider, error) {
+func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {
 	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		pkg := descriptor.Name
 		version := descriptor.Version
@@ -502,10 +502,9 @@ func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor) (Provid
 		if err != nil {
 			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
 		}
-
 		plug, err := NewProvider(
 			host, host.ctx, descriptor,
-			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
+			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName, e)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
 			if infoerr != nil {
@@ -624,7 +623,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kin
 			}
 		case apitype.ResourcePlugin:
 			if kinds&ResourcePlugins != 0 {
-				if _, err := host.Provider(plugin); err != nil {
+				if _, err := host.Provider(plugin, env.Global()); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load resource plugin %s: %w", plugin.Name, err))
 				}
