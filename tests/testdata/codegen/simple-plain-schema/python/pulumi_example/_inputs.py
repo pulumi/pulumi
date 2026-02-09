@@ -21,18 +21,13 @@ __all__ = [
     'FooArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class FooDict(TypedDict):
-        a: _builtins.bool
-        c: _builtins.int
-        e: _builtins.str
-        b: NotRequired[_builtins.bool]
-        d: NotRequired[_builtins.int]
-        f: NotRequired[_builtins.str]
-elif False:
-    FooDict: TypeAlias = Mapping[str, Any]
+class FooDict(TypedDict):
+    a: _builtins.bool
+    c: _builtins.int
+    e: _builtins.str
+    b: NotRequired[_builtins.bool]
+    d: NotRequired[_builtins.int]
+    f: NotRequired[_builtins.str]
 
 @pulumi.input_type
 class Foo:
@@ -108,16 +103,13 @@ class Foo:
         pulumi.set(self, "f", value)
 
 
-if not MYPY:
-    class FooArgsDict(TypedDict):
-        a: _builtins.bool
-        c: _builtins.int
-        e: _builtins.str
-        b: NotRequired[_builtins.bool]
-        d: NotRequired[_builtins.int]
-        f: NotRequired[_builtins.str]
-elif False:
-    FooArgsDict: TypeAlias = Mapping[str, Any]
+class FooArgsDict(TypedDict):
+    a: _builtins.bool
+    c: _builtins.int
+    e: _builtins.str
+    b: NotRequired[_builtins.bool]
+    d: NotRequired[_builtins.int]
+    f: NotRequired[_builtins.str]
 
 @pulumi.input_type
 class FooArgs:

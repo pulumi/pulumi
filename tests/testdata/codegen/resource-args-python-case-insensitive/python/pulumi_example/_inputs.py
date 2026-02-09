@@ -19,13 +19,8 @@ __all__ = [
     'PetArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class PetArgsDict(TypedDict):
-        name: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    PetArgsDict: TypeAlias = Mapping[str, Any]
+class PetArgsDict(TypedDict):
+    name: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class PetArgs:
