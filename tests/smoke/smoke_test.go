@@ -129,7 +129,7 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/random_pp")
 
 			// Make sure random is installed
-			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.1")
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(
@@ -164,7 +164,7 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/bad_random_pp")
 
 			// Make sure random is installed
-			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand(
@@ -196,7 +196,7 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 			e.ImportDirectory("testdata/component_pp")
 
 			// Make sure random is installed
-			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "convert", "--language", Languages[runtime], "--from", "pcl", "--out", "out")
@@ -801,16 +801,16 @@ func TestImportVersionSmoke(t *testing.T) {
 	e.RunCommand("pulumi", "new", template, "--yes")
 
 	// Install the version of the random provider used by the template and another
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
-	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 
 	// Now try and import a random resource, this should use the projects currently known packages to help
-	// choose the right Provider. i.e. it should use 4.13.0 rather than 4.16.7.
+	// choose the right Provider. i.e. it should use 4.19.0 rather than 4.16.7.
 	e.RunCommand("pulumi", "import", "--yes", "random:index/randomId:RandomId", "identifier", "p-9hUg")
 
 	// Check this used the right provider
 	stack, _ := e.RunCommand("pulumi", "stack", "export")
-	assert.Contains(t, stack, "\"4.13.0\"")
+	assert.Contains(t, stack, "\"4.19.0\"")
 }
 
 // Test that the warning for upgrading and then running a refresh is shown.
@@ -836,22 +836,20 @@ func TestRefreshUpgradeWarning(t *testing.T) {
 	template := filepath.Join(cwd, "testdata", "random_go")
 	e.RunCommand("pulumi", "new", template, "--yes")
 
-	// Assert that the current go.mod is on the 4.13.0 version
 	goMod, err := os.ReadFile(filepath.Join(projectDir, "go.mod"))
 	require.NoError(t, err)
-	assert.Contains(t, string(goMod), "github.com/pulumi/pulumi-random/sdk/v4 v4.13.0")
-	// and install the 4.13 provider we need
-	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+	assert.Contains(t, string(goMod), "github.com/pulumi/pulumi-random/sdk/v4 v4.19.0")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
 
 	e.RunCommand("pulumi", "up", "--yes")
 
 	// Update the provider to a new version
-	e.RunCommand("go", "get", "github.com/pulumi/pulumi-random/sdk/v4@v4.16.7")
+	e.RunCommand("go", "get", "github.com/pulumi/pulumi-random/sdk/v4@v4.19.1")
 
 	// Run a refresh and check that the warning is shown
 	stdout, _ := e.RunCommand("pulumi", "refresh", "--yes")
 	assert.Contains(t, stdout, "refresh operation is using an older version of package 'random' "+
-		"than the specified program version: 4.13.0 < 4.16.7")
+		"than the specified program version: 4.19.0 < 4.19.1")
 }
 
 // Test that the warning for upgrading and then running a destroy is shown.
@@ -886,7 +884,7 @@ func TestDestroyUpgradeWarning(t *testing.T) {
 		require.NoError(t, err)
 	}
 	replaceStringInFile(filepath.Join(projectDir, "package.json"),
-		"\"@pulumi/random\": \"^4.13.0\",",
+		"\"@pulumi/random\": \"^4.19.0\",",
 		"\"@pulumi/random\": \"4.12.0\",")
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.12.0")
 	e.RunCommand("pulumi", "install")
@@ -895,14 +893,14 @@ func TestDestroyUpgradeWarning(t *testing.T) {
 	// Update the provider to a new version
 	replaceStringInFile(filepath.Join(projectDir, "package.json"),
 		"\"@pulumi/random\": \"4.12.0\",",
-		"\"@pulumi/random\": \"4.13.0\",")
-	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+		"\"@pulumi/random\": \"4.19.0\",")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
 	e.RunCommand("pulumi", "install")
 
 	// Run a destroy and check that the warning is shown
 	stdout, _ := e.RunCommand("pulumi", "destroy", "--yes")
 	assert.Contains(t, stdout, "destroy operation is using an older version of package 'random' "+
-		"than the specified program version: 4.12.0 < 4.13.0")
+		"than the specified program version: 4.12.0 < 4.19.0")
 }
 
 // Test that the warning for upgrading and then running a destroy is shown, also taking into account changes to
