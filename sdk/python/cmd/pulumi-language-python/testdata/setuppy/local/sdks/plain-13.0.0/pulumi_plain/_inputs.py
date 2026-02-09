@@ -21,19 +21,14 @@ __all__ = [
     'InnerDataArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class DataArgsDict(TypedDict):
-        bool_array: Sequence[_builtins.bool]
-        boolean: _builtins.bool
-        float: _builtins.float
-        inner_data: 'InnerDataArgsDict'
-        integer: _builtins.int
-        string: _builtins.str
-        string_map: Mapping[str, _builtins.str]
-elif False:
-    DataArgsDict: TypeAlias = Mapping[str, Any]
+class DataArgsDict(TypedDict):
+    bool_array: Sequence[_builtins.bool]
+    boolean: _builtins.bool
+    float: _builtins.float
+    inner_data: 'InnerDataArgsDict'
+    integer: _builtins.int
+    string: _builtins.str
+    string_map: Mapping[str, _builtins.str]
 
 @pulumi.input_type
 class DataArgs:
@@ -117,16 +112,13 @@ class DataArgs:
         pulumi.set(self, "string_map", value)
 
 
-if not MYPY:
-    class InnerDataArgsDict(TypedDict):
-        bool_array: Sequence[_builtins.bool]
-        boolean: _builtins.bool
-        float: _builtins.float
-        integer: _builtins.int
-        string: _builtins.str
-        string_map: Mapping[str, _builtins.str]
-elif False:
-    InnerDataArgsDict: TypeAlias = Mapping[str, Any]
+class InnerDataArgsDict(TypedDict):
+    bool_array: Sequence[_builtins.bool]
+    boolean: _builtins.bool
+    float: _builtins.float
+    integer: _builtins.int
+    string: _builtins.str
+    string_map: Mapping[str, _builtins.str]
 
 @pulumi.input_type
 class InnerDataArgs:

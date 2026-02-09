@@ -113,13 +113,8 @@ __all__ = [
     'Tstring3ArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class Tbool1Dict(TypedDict):
-        x: NotRequired[_builtins.bool]
-elif False:
-    Tbool1Dict: TypeAlias = Mapping[str, Any]
+class Tbool1Dict(TypedDict):
+    x: NotRequired[_builtins.bool]
 
 @pulumi.input_type
 class Tbool1:
@@ -138,11 +133,8 @@ class Tbool1:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tbool1ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.bool]]
-elif False:
-    Tbool1ArgsDict: TypeAlias = Mapping[str, Any]
+class Tbool1ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.bool]]
 
 @pulumi.input_type
 class Tbool1Args:
@@ -161,11 +153,8 @@ class Tbool1Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tbool2Dict(TypedDict):
-        x: NotRequired[_builtins.bool]
-elif False:
-    Tbool2Dict: TypeAlias = Mapping[str, Any]
+class Tbool2Dict(TypedDict):
+    x: NotRequired[_builtins.bool]
 
 @pulumi.input_type
 class Tbool2:
@@ -184,11 +173,8 @@ class Tbool2:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tbool2ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.bool]]
-elif False:
-    Tbool2ArgsDict: TypeAlias = Mapping[str, Any]
+class Tbool2ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.bool]]
 
 @pulumi.input_type
 class Tbool2Args:
@@ -207,11 +193,8 @@ class Tbool2Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tbool3Dict(TypedDict):
-        x: NotRequired[_builtins.bool]
-elif False:
-    Tbool3Dict: TypeAlias = Mapping[str, Any]
+class Tbool3Dict(TypedDict):
+    x: NotRequired[_builtins.bool]
 
 @pulumi.input_type
 class Tbool3:
@@ -230,11 +213,8 @@ class Tbool3:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tbool3ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.bool]]
-elif False:
-    Tbool3ArgsDict: TypeAlias = Mapping[str, Any]
+class Tbool3ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.bool]]
 
 @pulumi.input_type
 class Tbool3Args:
@@ -253,11 +233,8 @@ class Tbool3Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tint1Dict(TypedDict):
-        x: NotRequired[_builtins.int]
-elif False:
-    Tint1Dict: TypeAlias = Mapping[str, Any]
+class Tint1Dict(TypedDict):
+    x: NotRequired[_builtins.int]
 
 @pulumi.input_type
 class Tint1:
@@ -276,11 +253,8 @@ class Tint1:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tint1ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.int]]
-elif False:
-    Tint1ArgsDict: TypeAlias = Mapping[str, Any]
+class Tint1ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.int]]
 
 @pulumi.input_type
 class Tint1Args:
@@ -299,11 +273,8 @@ class Tint1Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tint2Dict(TypedDict):
-        x: NotRequired[_builtins.int]
-elif False:
-    Tint2Dict: TypeAlias = Mapping[str, Any]
+class Tint2Dict(TypedDict):
+    x: NotRequired[_builtins.int]
 
 @pulumi.input_type
 class Tint2:
@@ -322,11 +293,8 @@ class Tint2:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tint2ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.int]]
-elif False:
-    Tint2ArgsDict: TypeAlias = Mapping[str, Any]
+class Tint2ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.int]]
 
 @pulumi.input_type
 class Tint2Args:
@@ -345,11 +313,8 @@ class Tint2Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tint3Dict(TypedDict):
-        x: NotRequired[_builtins.int]
-elif False:
-    Tint3Dict: TypeAlias = Mapping[str, Any]
+class Tint3Dict(TypedDict):
+    x: NotRequired[_builtins.int]
 
 @pulumi.input_type
 class Tint3:
@@ -368,11 +333,8 @@ class Tint3:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tint3ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.int]]
-elif False:
-    Tint3ArgsDict: TypeAlias = Mapping[str, Any]
+class Tint3ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.int]]
 
 @pulumi.input_type
 class Tint3Args:
@@ -391,11 +353,8 @@ class Tint3Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tnum1Dict(TypedDict):
-        x: NotRequired[_builtins.float]
-elif False:
-    Tnum1Dict: TypeAlias = Mapping[str, Any]
+class Tnum1Dict(TypedDict):
+    x: NotRequired[_builtins.float]
 
 @pulumi.input_type
 class Tnum1:
@@ -414,11 +373,8 @@ class Tnum1:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tnum1ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.float]]
-elif False:
-    Tnum1ArgsDict: TypeAlias = Mapping[str, Any]
+class Tnum1ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.float]]
 
 @pulumi.input_type
 class Tnum1Args:
@@ -437,11 +393,8 @@ class Tnum1Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tnum2Dict(TypedDict):
-        x: NotRequired[_builtins.float]
-elif False:
-    Tnum2Dict: TypeAlias = Mapping[str, Any]
+class Tnum2Dict(TypedDict):
+    x: NotRequired[_builtins.float]
 
 @pulumi.input_type
 class Tnum2:
@@ -460,11 +413,8 @@ class Tnum2:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tnum2ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.float]]
-elif False:
-    Tnum2ArgsDict: TypeAlias = Mapping[str, Any]
+class Tnum2ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.float]]
 
 @pulumi.input_type
 class Tnum2Args:
@@ -483,11 +433,8 @@ class Tnum2Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tnum3Dict(TypedDict):
-        x: NotRequired[_builtins.float]
-elif False:
-    Tnum3Dict: TypeAlias = Mapping[str, Any]
+class Tnum3Dict(TypedDict):
+    x: NotRequired[_builtins.float]
 
 @pulumi.input_type
 class Tnum3:
@@ -506,11 +453,8 @@ class Tnum3:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tnum3ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.float]]
-elif False:
-    Tnum3ArgsDict: TypeAlias = Mapping[str, Any]
+class Tnum3ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.float]]
 
 @pulumi.input_type
 class Tnum3Args:
@@ -529,11 +473,8 @@ class Tnum3Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class TsecretBool1Dict(TypedDict):
-        secret_x: NotRequired[_builtins.bool]
-elif False:
-    TsecretBool1Dict: TypeAlias = Mapping[str, Any]
+class TsecretBool1Dict(TypedDict):
+    secret_x: NotRequired[_builtins.bool]
 
 @pulumi.input_type
 class TsecretBool1:
@@ -552,11 +493,8 @@ class TsecretBool1:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretBool1ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.bool]]
-elif False:
-    TsecretBool1ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretBool1ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.bool]]
 
 @pulumi.input_type
 class TsecretBool1Args:
@@ -575,11 +513,8 @@ class TsecretBool1Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretBool2Dict(TypedDict):
-        secret_x: NotRequired[_builtins.bool]
-elif False:
-    TsecretBool2Dict: TypeAlias = Mapping[str, Any]
+class TsecretBool2Dict(TypedDict):
+    secret_x: NotRequired[_builtins.bool]
 
 @pulumi.input_type
 class TsecretBool2:
@@ -598,11 +533,8 @@ class TsecretBool2:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretBool2ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.bool]]
-elif False:
-    TsecretBool2ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretBool2ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.bool]]
 
 @pulumi.input_type
 class TsecretBool2Args:
@@ -621,11 +553,8 @@ class TsecretBool2Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretBool3Dict(TypedDict):
-        secret_x: NotRequired[_builtins.bool]
-elif False:
-    TsecretBool3Dict: TypeAlias = Mapping[str, Any]
+class TsecretBool3Dict(TypedDict):
+    secret_x: NotRequired[_builtins.bool]
 
 @pulumi.input_type
 class TsecretBool3:
@@ -644,11 +573,8 @@ class TsecretBool3:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretBool3ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.bool]]
-elif False:
-    TsecretBool3ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretBool3ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.bool]]
 
 @pulumi.input_type
 class TsecretBool3Args:
@@ -667,11 +593,8 @@ class TsecretBool3Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretInt1Dict(TypedDict):
-        secret_x: NotRequired[_builtins.int]
-elif False:
-    TsecretInt1Dict: TypeAlias = Mapping[str, Any]
+class TsecretInt1Dict(TypedDict):
+    secret_x: NotRequired[_builtins.int]
 
 @pulumi.input_type
 class TsecretInt1:
@@ -690,11 +613,8 @@ class TsecretInt1:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretInt1ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.int]]
-elif False:
-    TsecretInt1ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretInt1ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.int]]
 
 @pulumi.input_type
 class TsecretInt1Args:
@@ -713,11 +633,8 @@ class TsecretInt1Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretInt2Dict(TypedDict):
-        secret_x: NotRequired[_builtins.int]
-elif False:
-    TsecretInt2Dict: TypeAlias = Mapping[str, Any]
+class TsecretInt2Dict(TypedDict):
+    secret_x: NotRequired[_builtins.int]
 
 @pulumi.input_type
 class TsecretInt2:
@@ -736,11 +653,8 @@ class TsecretInt2:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretInt2ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.int]]
-elif False:
-    TsecretInt2ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretInt2ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.int]]
 
 @pulumi.input_type
 class TsecretInt2Args:
@@ -759,11 +673,8 @@ class TsecretInt2Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretInt3Dict(TypedDict):
-        secret_x: NotRequired[_builtins.int]
-elif False:
-    TsecretInt3Dict: TypeAlias = Mapping[str, Any]
+class TsecretInt3Dict(TypedDict):
+    secret_x: NotRequired[_builtins.int]
 
 @pulumi.input_type
 class TsecretInt3:
@@ -782,11 +693,8 @@ class TsecretInt3:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretInt3ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.int]]
-elif False:
-    TsecretInt3ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretInt3ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.int]]
 
 @pulumi.input_type
 class TsecretInt3Args:
@@ -805,11 +713,8 @@ class TsecretInt3Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretNum1Dict(TypedDict):
-        secret_x: NotRequired[_builtins.float]
-elif False:
-    TsecretNum1Dict: TypeAlias = Mapping[str, Any]
+class TsecretNum1Dict(TypedDict):
+    secret_x: NotRequired[_builtins.float]
 
 @pulumi.input_type
 class TsecretNum1:
@@ -828,11 +733,8 @@ class TsecretNum1:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretNum1ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.float]]
-elif False:
-    TsecretNum1ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretNum1ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.float]]
 
 @pulumi.input_type
 class TsecretNum1Args:
@@ -851,11 +753,8 @@ class TsecretNum1Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretNum2Dict(TypedDict):
-        secret_x: NotRequired[_builtins.float]
-elif False:
-    TsecretNum2Dict: TypeAlias = Mapping[str, Any]
+class TsecretNum2Dict(TypedDict):
+    secret_x: NotRequired[_builtins.float]
 
 @pulumi.input_type
 class TsecretNum2:
@@ -874,11 +773,8 @@ class TsecretNum2:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretNum2ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.float]]
-elif False:
-    TsecretNum2ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretNum2ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.float]]
 
 @pulumi.input_type
 class TsecretNum2Args:
@@ -897,11 +793,8 @@ class TsecretNum2Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretNum3Dict(TypedDict):
-        secret_x: NotRequired[_builtins.float]
-elif False:
-    TsecretNum3Dict: TypeAlias = Mapping[str, Any]
+class TsecretNum3Dict(TypedDict):
+    secret_x: NotRequired[_builtins.float]
 
 @pulumi.input_type
 class TsecretNum3:
@@ -920,11 +813,8 @@ class TsecretNum3:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretNum3ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.float]]
-elif False:
-    TsecretNum3ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretNum3ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.float]]
 
 @pulumi.input_type
 class TsecretNum3Args:
@@ -943,11 +833,8 @@ class TsecretNum3Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretString1Dict(TypedDict):
-        secret_x: NotRequired[_builtins.str]
-elif False:
-    TsecretString1Dict: TypeAlias = Mapping[str, Any]
+class TsecretString1Dict(TypedDict):
+    secret_x: NotRequired[_builtins.str]
 
 @pulumi.input_type
 class TsecretString1:
@@ -966,11 +853,8 @@ class TsecretString1:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretString1ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    TsecretString1ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretString1ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class TsecretString1Args:
@@ -989,11 +873,8 @@ class TsecretString1Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretString2Dict(TypedDict):
-        secret_x: NotRequired[_builtins.str]
-elif False:
-    TsecretString2Dict: TypeAlias = Mapping[str, Any]
+class TsecretString2Dict(TypedDict):
+    secret_x: NotRequired[_builtins.str]
 
 @pulumi.input_type
 class TsecretString2:
@@ -1012,11 +893,8 @@ class TsecretString2:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretString2ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    TsecretString2ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretString2ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class TsecretString2Args:
@@ -1035,11 +913,8 @@ class TsecretString2Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretString3Dict(TypedDict):
-        secret_x: NotRequired[_builtins.str]
-elif False:
-    TsecretString3Dict: TypeAlias = Mapping[str, Any]
+class TsecretString3Dict(TypedDict):
+    secret_x: NotRequired[_builtins.str]
 
 @pulumi.input_type
 class TsecretString3:
@@ -1058,11 +933,8 @@ class TsecretString3:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class TsecretString3ArgsDict(TypedDict):
-        secret_x: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    TsecretString3ArgsDict: TypeAlias = Mapping[str, Any]
+class TsecretString3ArgsDict(TypedDict):
+    secret_x: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class TsecretString3Args:
@@ -1081,11 +953,8 @@ class TsecretString3Args:
         pulumi.set(self, "secret_x", value)
 
 
-if not MYPY:
-    class Tstring1Dict(TypedDict):
-        x: NotRequired[_builtins.str]
-elif False:
-    Tstring1Dict: TypeAlias = Mapping[str, Any]
+class Tstring1Dict(TypedDict):
+    x: NotRequired[_builtins.str]
 
 @pulumi.input_type
 class Tstring1:
@@ -1104,11 +973,8 @@ class Tstring1:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tstring1ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    Tstring1ArgsDict: TypeAlias = Mapping[str, Any]
+class Tstring1ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class Tstring1Args:
@@ -1127,11 +993,8 @@ class Tstring1Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tstring2Dict(TypedDict):
-        x: NotRequired[_builtins.str]
-elif False:
-    Tstring2Dict: TypeAlias = Mapping[str, Any]
+class Tstring2Dict(TypedDict):
+    x: NotRequired[_builtins.str]
 
 @pulumi.input_type
 class Tstring2:
@@ -1150,11 +1013,8 @@ class Tstring2:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tstring2ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    Tstring2ArgsDict: TypeAlias = Mapping[str, Any]
+class Tstring2ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class Tstring2Args:
@@ -1173,11 +1033,8 @@ class Tstring2Args:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tstring3Dict(TypedDict):
-        x: NotRequired[_builtins.str]
-elif False:
-    Tstring3Dict: TypeAlias = Mapping[str, Any]
+class Tstring3Dict(TypedDict):
+    x: NotRequired[_builtins.str]
 
 @pulumi.input_type
 class Tstring3:
@@ -1196,11 +1053,8 @@ class Tstring3:
         pulumi.set(self, "x", value)
 
 
-if not MYPY:
-    class Tstring3ArgsDict(TypedDict):
-        x: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    Tstring3ArgsDict: TypeAlias = Mapping[str, Any]
+class Tstring3ArgsDict(TypedDict):
+    x: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class Tstring3Args:
