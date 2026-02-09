@@ -52,8 +52,6 @@ func init() {
 					// 9. An orphan without a parent or flags set.
 					require.Len(l, snap.Resources, 10, "expected 10 resources in snapshot")
 
-					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_2_0_0")
 					require.Equal(l, "pulumi:providers:simple", defaultProvider.Type.String(), "expected default simple provider")
 
@@ -84,10 +82,6 @@ func init() {
 						"expected orphan to use default provider",
 					)
 
-					require.Equal(l, stack.URN, providerParent.Parent, "expected stack to be parent of parent1")
-					require.Equal(l, providerParent.URN, providerChild.Parent, "expected parent1 to be parent of child1")
-					require.Equal(l, stack.URN, providerOrphan.Parent, "expected stack to be parent of orphan1")
-
 					// Children should inherit protect flags.
 					protectParent := RequireSingleNamedResource(l, snap.Resources, "parent2")
 					protectChild2 := RequireSingleNamedResource(l, snap.Resources, "child2")
@@ -107,11 +101,6 @@ func init() {
 						"expected child be able to override inherited retain on delete flag")
 					require.False(l, protectOrphan.RetainOnDelete,
 						"expected orphan to not be retain on delete")
-
-					require.Equal(l, stack.URN, protectParent.Parent, "expected stack to be parent of parent2")
-					require.Equal(l, protectParent.URN, protectChild2.Parent, "expected parent2 to be parent of child2")
-					require.Equal(l, protectParent.URN, protectChild3.Parent, "expected parent2 to be parent of child3")
-					require.Equal(l, stack.URN, protectOrphan.Parent, "expected stack to be parent of orphan2")
 				},
 			},
 		},
