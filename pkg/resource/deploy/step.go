@@ -164,7 +164,8 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// old inputs, not the new ones.
 			st := s.new.Copy()
 			st.Inputs = s.old.Inputs
-			err := s.Deployment().SameProvider(st)
+			// fromCheck=true because we're coming from the Check→Diff→Same flow where Diff determined no changes.
+			err := s.Deployment().SameProvider(st, true)
 			if err != nil {
 				return resource.StatusOK, nil,
 					fmt.Errorf("bad provider state for resource %v: %w", s.URN(), err)

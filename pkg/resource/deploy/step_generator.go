@@ -3026,8 +3026,10 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 				return false, nil, fmt.Errorf("could not load provider for resource %v: %w", r.URN, err)
 			}
 		} else {
-			// This is a provider itself so load it so that Diff below is possible
-			err := sg.deployment.SameProvider(r)
+			// This is a provider itself so load it so that Diff below is possible.
+			// fromCheck=false because we're loading from state for dependency diffing,
+			// not from a Check/Diff flow.
+			err := sg.deployment.SameProvider(r, false)
 			if err != nil {
 				return false, nil, fmt.Errorf("create provider %v: %w", r.URN, err)
 			}
