@@ -37,9 +37,6 @@ func init() {
 					changes := args.Changes
 
 					RequireStackResource(l, err, changes)
-
-					// Stack, 2 providers, noDependsOn, noDependsOn-child, withDependsOn,
-					// withDependsOn-child, simpleResource
 					require.Len(l, snap.Resources, 9, "expected 9 resources in snapshot")
 
 					noDependsOn := RequireSingleNamedResource(l, snap.Resources, "noDependsOn")
