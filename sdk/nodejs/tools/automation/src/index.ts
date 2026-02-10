@@ -165,33 +165,26 @@ function generateBody(structure: Structure, writer: CodeBlockWriter, breadcrumbs
         const optional: boolean = index >= required;
         const name: string = convertName(argument.name);
 
-        if (optional) {
-            writer.writeLine(`if (${name} != null) {`);
-            writer.indent(() => {
-                if (variadic) {
-                    writer.writeLine(`__arguments.push(...${name});`);
-                } else {
-                    writer.writeLine(`__arguments.push(${name});`);
-                }
-            });
-            writer.writeLine("}");
-        }
-
-        const push = (): void => {
-            if (variadic) {
-                writer.writeLine(`__arguments.push(...${name});`);
-            } else {
-                writer.writeLine(`__arguments.push(${name});`);
-            }
+        const push = (reference: string): void => {
+            writer.writeLine(`__arguments.push('' + ${reference});`);
         };
 
         if (optional) {
             writer.writeLine(`if (${name} != null) {`);
-            writer.indent(push);
+            writer.indent(() => {
+                if (variadic) {
+                    writer.writeLine(`for (const __item of ${name}) {`);
+                    writer.indent(() => push("__item"));
+                    writer.writeLine("}");
+                } else {
+                    push(name);
+                }
+            });
             writer.writeLine("}");
         } else {
-            push();
+            push(name);
         }
+
         writer.blankLine();
     }
 
@@ -200,14 +193,14 @@ function generateBody(structure: Structure, writer: CodeBlockWriter, breadcrumbs
 
         const push = (reference: string): void => {
             // Boolean flags are pushed without value when true, and ignored when false.
-            if (type !== "boolean") {
+            if (type === "boolean") {
                 writer.writeLine(`if (${reference}) {`);
                 writer.indent(() => {
                     writer.writeLine(`__arguments.push('--${name}');`);
                 });
                 writer.writeLine("}");
             } else {
-                writer.writeLine(`__arguments.push('--${name}', ${reference});`);
+                writer.writeLine(`__arguments.push('--${name}', '' + ${reference});`);
             }
         };
 
