@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Retry `yarn install` when it fails (e.g. during `pulumi install`)

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Deal with errors in elided journal entries correctly

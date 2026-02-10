@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Add EnvVarMappings resource option for provider resources, allowing environment variables to be remapped before being passed to the provider        

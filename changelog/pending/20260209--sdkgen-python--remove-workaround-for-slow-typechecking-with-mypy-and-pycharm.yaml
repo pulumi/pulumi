@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/python
-  description: Remove workaround for slow typechecking with MyPy and PyCharm
