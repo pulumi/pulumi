@@ -593,6 +593,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t,
 				"https://github.com/pulumi/pulumi-mockdl/releases/download/v4.30.0/pulumi-resource-mockdl-v4.30.0-darwin-amd64.tar.gz",
 				req.URL.String())
+			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
 

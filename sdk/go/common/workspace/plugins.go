@@ -654,6 +654,7 @@ func (source *githubSource) Download(
 		if err != nil {
 			return nil, -1, err
 		}
+		req.Header.Set("Accept", "application/octet-stream")
 		resp, length, err := getHTTPResponse(req)
 		if err == nil {
 			return resp, length, nil
