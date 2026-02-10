@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -636,6 +636,40 @@ func (source *githubSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
+	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
+
+	// For Pulumi's official plugins on github.com, try direct download URL first to reduce
+	// API usage.  We know where the plugin is supposed to live, so we can construct the URL
+	// directly without going through the API.  If the naming doesn't match, we fall back to
+	// the API. This costs us one additional request, but it doesn't count at the rate limit,
+	// and compared to the time it takes to download the plugin the additional time for the
+	// API request should be negligible.
+	if source.organization == "pulumi" && source.host == "api.github.com" {
+		directURL := fmt.Sprintf(
+			"https://github.com/%s/%s/releases/download/v%s/%s",
+			source.organization, source.repository, version, assetName)
+		logging.V(1).Infof("%s trying direct download from %s", source.name, directURL)
+
+		req, err := buildHTTPRequest(ctx, directURL, "")
+		if err != nil {
+			return nil, -1, err
+		}
+		resp, length, err := getHTTPResponse(req)
+		if err == nil {
+			return resp, length, nil
+		}
+		logging.V(1).Infof("%s direct download failed, falling back to API: %v", source.name, err)
+	}
+
+	return source.downloadViaAPI(ctx, version, opSy, arch, getHTTPResponse, assetName)
+}
+
+func (source *githubSource) downloadViaAPI(
+	ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+	assetName string,
+) (io.ReadCloser, int64, error) {
 	releaseURL := fmt.Sprintf(
 		"https://%s/repos/%s/%s/releases/tags/v%s",
 		source.host, source.organization, source.repository, version)
@@ -656,7 +690,6 @@ func (source *githubSource) Download(
 		return nil, -1, fmt.Errorf("cannot decode github response len(%d): %w", length, err)
 	}
 
-	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
 	assetURL := ""
 	for _, asset := range release.Assets {
 		if asset.Name == assetName {
