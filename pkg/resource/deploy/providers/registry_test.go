@@ -58,6 +58,11 @@ func (host *testPluginHost) ServerAddr() string {
 	return ""
 }
 
+func (host *testPluginHost) LoaderAddr() string {
+	host.t.Fatalf("Loader RPC address not available")
+	return ""
+}
+
 func (host *testPluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	host.t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
 }

@@ -484,6 +484,9 @@ message RunPluginRequest{
 
     // True if a plugin should be started under a debugger.
     bool attach_debugger = 8;
+
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 9;
 }
 
 // `RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call.

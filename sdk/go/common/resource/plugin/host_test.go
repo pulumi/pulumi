@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +34,7 @@ func TestClosePanic(t *testing.T) {
 	t.Parallel()
 
 	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(context.Background(), sink, sink, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), sink, sink, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
@@ -183,7 +184,7 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	}
 
 	// Create the host with our packages
-	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "")
+	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -248,7 +249,7 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 		"azure":        {Source: "azure"}, // This should be skipped as it's not a local path
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "")
+	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil)
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -266,4 +267,31 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 	assert.True(t, pluginNames["aws"])
 	assert.True(t, pluginNames["local-plugin"])
 	assert.False(t, pluginNames["azure"])
+}
+
+func TestNewDefaultHost_LoaderAddress(t *testing.T) {
+	t.Parallel()
+
+	ctx := &Context{
+		Root: t.TempDir(),
+		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+			Color: colors.Never,
+		}),
+	}
+
+	var captureHost Host
+	mockLoader := func(h Host) codegenrpc.LoaderServer {
+		captureHost = h
+		return codegenrpc.UnimplementedLoaderServer{}
+	}
+
+	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader)
+	require.NoError(t, err)
+	defer host.Close()
+
+	assert.Equal(t, host, captureHost, "loader function should be called during host creation")
+
+	loaderAddr := host.LoaderAddr()
+	assert.NotEmpty(t, loaderAddr)
+	assert.Equal(t, host.ServerAddr(), loaderAddr)
 }

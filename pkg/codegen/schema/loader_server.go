@@ -21,10 +21,15 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/segmentio/encoding/json"
 )
+
+func NewLoaderServerFromHost(host plugin.Host) codegenrpc.LoaderServer {
+	return NewLoaderServer(NewPluginLoader(host))
+}
 
 type loaderServer struct {
 	codegenrpc.UnsafeLoaderServer // opt out of forward compat

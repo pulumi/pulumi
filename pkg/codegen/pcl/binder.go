@@ -176,7 +176,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, cwd, nil, false, nil)
+		ctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, cwd, nil, false, nil, schema.NewLoaderServerFromHost)
 		if err != nil {
 			return nil, nil, err
 		}

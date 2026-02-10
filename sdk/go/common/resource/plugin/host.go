@@ -36,12 +36,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // A Host hosts provider plugins and makes them easily accessible by package name.
 type Host interface {
 	// ServerAddr returns the address at which the host's RPC interface may be found.
 	ServerAddr() string
+
+	// LoaderAddr returns the address at which a plugin loader service may be found.
+	LoaderAddr() string
 
 	// Log logs a message, including errors and warnings.  Messages can have a resource URN
 	// associated with them.  If no urn is provided, the message is global.
@@ -177,10 +181,13 @@ func collectPluginsFromPackages(
 	return result, nil
 }
 
+type NewLoaderFunc = func(h Host) codegenrpc.LoaderServer
+
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
 	config map[config.Key]string, debugging DebugContext, projectName tokens.PackageName,
+	newLoader NewLoaderFunc,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -229,11 +236,12 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 		projectPlugins:          projectPlugins,
 		debugContext:            debugging,
 		projectName:             projectName,
+		hasLoaderServer:         newLoader != nil,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
 	// to "phone home" in case there are things the host must do on behalf of the plugins (like log, etc).
-	svr, err := newHostServer(host, ctx)
+	svr, err := newHostServer(host, ctx, newLoader)
 	if err != nil {
 		return nil, err
 	}
@@ -350,6 +358,8 @@ type defaultHost struct {
 
 	closer         *sync.Once
 	projectPlugins []workspace.ProjectPlugin
+
+	hasLoaderServer bool
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -374,6 +384,13 @@ type resourcePlugin struct {
 
 func (host *defaultHost) ServerAddr() string {
 	return host.server.Address()
+}
+
+func (host *defaultHost) LoaderAddr() string {
+	if host.hasLoaderServer {
+		return host.ServerAddr()
+	}
+	return ""
 }
 
 func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {

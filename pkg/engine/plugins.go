@@ -23,6 +23,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -117,7 +118,7 @@ func (defaultPluginManager) InstallPlugin(
 	content pluginstorage.Content,
 	reinstall bool,
 ) error {
-	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall)
+	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromHost)
 }
 
 // PluginSet represents a set of plugins.

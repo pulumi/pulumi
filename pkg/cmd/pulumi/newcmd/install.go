@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -68,7 +69,7 @@ func InstallPackagesFromProject(
 	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
 		Color: utilCmdutil.GetGlobalColorization(),
 	})
-	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, d, d, nil, nil, root, nil, false, nil, schema.NewLoaderServerFromHost)
 	if err != nil {
 		return err
 	}

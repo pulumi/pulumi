@@ -680,6 +680,7 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 		Info:           minfo,
 		Kind:           info.Kind,
 		AttachDebugger: info.AttachDebugger,
+		LoaderTarget:   info.LoaderAddress,
 	})
 	if err != nil {
 		// If there was an error starting the plugin kill the context for this request to ensure any lingering

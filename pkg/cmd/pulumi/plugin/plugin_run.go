@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -116,7 +117,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 						d.Logf(sev, diag.RawMessage("", msg))
 					}
 
-					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
+					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromHost)
 					if err != nil {
 						return err
 					}
@@ -130,7 +131,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			pluginArgs := args[1:]
 
-			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil)
+			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil, schema.NewLoaderServerFromHost)
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}

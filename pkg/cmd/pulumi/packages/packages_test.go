@@ -113,6 +113,7 @@ func TestProviderFromSource(t *testing.T) {
 			nil,
 			false,
 			nil,
+			schema.NewLoaderServerFromHost,
 		)
 		require.NoError(t, err)
 		defer pctx.Close()

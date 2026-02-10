@@ -516,6 +516,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			Env:              environment,
 			Kind:             string(kind),
 			AttachDebugger:   attachDebugger,
+			LoaderAddress:    ctx.Host.LoaderAddr(),
 		})
 		if err != nil {
 			return nil, err //nolint:govet // lostcancel

@@ -490,6 +490,10 @@ func (host *pluginHost) ServerAddr() string {
 	return host.engine.address
 }
 
+func (host *pluginHost) LoaderAddr() string {
+	return host.engine.address
+}
+
 func (host *pluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	if !host.isClosed() {
 		host.sink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
