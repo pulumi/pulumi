@@ -17,9 +17,9 @@ import * as path from "path";
 import pascalise from "pascalcase";
 import camelCase from "to-camel-case";
 
-import { CodeBlockWriter, ParameterDeclarationStructure, Project, ReturnStatement, SourceFile, StructureKind } from "ts-morph";
+import { CodeBlockWriter, ParameterDeclarationStructure, Project, PropertySignatureStructure, ReturnStatement, SourceFile, StructureKind } from "ts-morph";
 
-import type { Command, Flag, Structure } from "./types";
+import type { Argument, Arguments, Flag, Structure } from "./types";
 
 (function main(): void {
     if (!process.argv[2]) {
@@ -44,6 +44,7 @@ import type { Command, Flag, Structure } from "./types";
     project.saveSync();
 })();
 
+// Create imports, type declarations, and helper functions for the generated code.
 function generateStaticDeclarations(source: SourceFile): void {
   source.addInterface({
     kind: StructureKind.Interface,
@@ -77,21 +78,14 @@ function generateOptionsTypes(
     inherited: Record<string, Flag> = {},
 ): void {
     const command: string = "pulumi " + breadcrumbs.join(" ");
-    const options: string = pascalise(command) + "Options";
-
-    const flags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
+    const options: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
 
     source.addInterface({
         kind: StructureKind.Interface,
         name: createOptionsTypeName(breadcrumbs),
         docs: ["Options for the `" + command + "` command."],
         isExported: true,
-        properties: Object.entries(flags).map(([name, flag]) => ({
-            name: convertName(flag.name),
-            type: convertType(flag.type, flag.repeatable ?? false),
-            hasQuestionToken: true,
-            docs: flag.description ? [flag.description] : undefined,
-        })),
+        properties: Object.values(options).map(flagToPropertySignature),
     });
 
     if (structure.type === "menu" && structure.commands) {
@@ -101,6 +95,7 @@ function generateOptionsTypes(
     }
 }
 
+// Generate the command functions for the command tree.
 function generateCommands(
   structure: Structure,
   source: SourceFile,
@@ -108,8 +103,8 @@ function generateCommands(
 ): void {
   if (structure.type === "menu") {
     if (structure.commands) {
-      for (const [name, child] of Object.entries(structure.commands)) {
-        generateCommands(child, source, [...breadcrumbs, name]);
+      for (const [name, subcommand] of Object.entries(structure.commands)) {
+        generateCommands(subcommand, source, [...breadcrumbs, name]);
       }
     }
 
@@ -129,16 +124,16 @@ function generateCommands(
     const specification = structure.arguments;
 
     for (let i = 0; i < specification.arguments.length; i++) {
-      const argument = specification.arguments[i];
-      const hasQuestionToken = i >= (specification.requiredArguments ?? 0);
-      const isRestParameter = i === specification.arguments.length - 1 && (specification.variadic ?? false);
+      const argument: Argument = specification.arguments[i];
+      const optional: boolean = i >= (specification.requiredArguments ?? 0);
+      const variadic: boolean = i === specification.arguments.length - 1 && (specification.variadic ?? false);
 
       parameters.push({
         kind: StructureKind.Parameter,
         name: convertName(argument.name),
-        type: convertType(argument.type ?? "string", isRestParameter),
-        hasQuestionToken: hasQuestionToken && !isRestParameter, // TS doesn't allow optional rest parameters
-        isRestParameter,
+        type: convertType(argument.type ?? "string", variadic),
+        hasQuestionToken: optional && !variadic, // TS doesn't allow optional rest parameters
+        isRestParameter: variadic,
       });
     }
   }
@@ -146,7 +141,6 @@ function generateCommands(
   source.addFunction({
     name: convertName(breadcrumbs.join(" ")),
     isExported: true,
-    // isAsync: true,
     parameters,
     statements: writer => generateBody(structure, writer, breadcrumbs),
     returnType: "string",
@@ -157,74 +151,104 @@ function generateBody(structure: Structure, writer: CodeBlockWriter, breadcrumbs
   writer.writeLine("const __arguments: string[] = [];");
   writer.blankLine();
 
-  function pushArgument(name: string, isRestParameter: boolean): void {
-    if (isRestParameter) {
-      writer.writeLine(`__arguments.push(...${name});`);
-    } else {
-      writer.writeLine(`__arguments.push(${name});`);
+  function pushArgument(argument: Argument, index: number, spec: Arguments): void {
+    const variadic: boolean = index === spec.arguments.length - 1 && (spec.variadic ?? false);
+    const required: number = spec.requiredArguments ?? 0;
+    const optional: boolean = index >= required;
+    const name: string = convertName(argument.name);
+
+    if (optional) {
+      writer.writeLine(`if (${name} != null) {`);
+      writer.indent(() => {
+        if (variadic) {
+          writer.writeLine(`__arguments.push(...${name});`);
+        } else {
+          writer.writeLine(`__arguments.push(${name});`);
+        }
+      });
+      writer.writeLine("}");
     }
+
+    const pushArgument = (): void => {
+      if (variadic) {
+        writer.writeLine(`__arguments.push(...${name});`);
+      } else {
+        writer.writeLine(`__arguments.push(${name});`);
+      }
+    };
+
+    if (optional) {
+      writer.writeLine(`if (${name} != null) {`);
+      writer.indent(pushArgument);
+      writer.writeLine("}");
+    } else {
+      pushArgument();
+    }
+    writer.blankLine();
+  }
+
+  function pushOption(name: string, flag: Flag): void {
+    const { type, repeatable = false } = flag;
+
+    const push = (reference: string): void => {
+      // Boolean flags are pushed without value when true, and ignored when false.
+      if (type !== "boolean") {
+        writer.writeLine(`if (${reference}) {`);
+        writer.indent(() => {
+          writer.writeLine(`__arguments.push('--${name}');`);
+        });
+        writer.writeLine("}");
+      } else {
+        writer.writeLine(`__arguments.push('--${name}', ${reference});`);
+      }
+    };
+
+    const converted: string = convertName(name);
+    writer.writeLine(`if (__options.${converted} != null) {`);
+    writer.indent(() => {
+      if (repeatable) {
+        writer.writeLine(`for (const __item of __options.${converted}) {`);
+        writer.indent(() => push("__item"));
+        writer.writeLine("}");
+      } else {
+        push(`__options.${converted}`);
+      }
+    });
+
+    writer.writeLine("}");
+    writer.blankLine();
   }
 
   if (structure.type === "command" && structure.arguments) {
     const specification = structure.arguments;
-
     for (let i = 0; i < specification.arguments.length; i++) {
-      const argument = specification.arguments[i];
-      const hasQuestionToken = i >= (specification.requiredArguments ?? 0);
-      const isRestParameter = i === specification.arguments.length - 1 && (specification.variadic ?? false);
-      const name = convertName(argument.name);
-
-      if (hasQuestionToken) {
-        writer.writeLine(`if (${name} != null) {`);
-        writer.indent(() => pushArgument(name, isRestParameter));
-        writer.writeLine("}");
-      } else {
-        pushArgument(name, isRestParameter);
-      }
-
-      writer.blankLine();
-    }
-  }
-
-  function pushOption(name: string, type: string, repeatable: boolean): void {
-    const cleanName: string = convertName(name);
-
-    if (repeatable) {
-      writer.writeLine(`for (const __item of __options.${cleanName}) {`);
-
-      writer.indent(() => {
-        writer.writeLine(`__arguments.push('--${name}')`);
-
-        if (type !== "boolean") {
-          writer.writeLine(`__arguments.push('' + __item)`);
-        }
-      });
-
-      writer.writeLine("}");
-      return;
-    }
-
-    writer.writeLine(`__arguments.push('--${name}')`);
-
-    if (type !== "boolean") {
-      writer.writeLine(`__arguments.push('' + __options.${cleanName})`);
+      pushArgument(specification.arguments[i], i, specification);
     }
   }
 
   for (const [name, flag] of Object.entries(structure.flags ?? {})) {
-    writer.writeLine(`if (__options.${convertName(name)} != null) {`);
-    writer.indent(() => pushOption(name, flag.type, flag.repeatable ?? false));
-    writer.writeLine("}");
-
-    writer.blankLine();
+    pushOption(name, flag);
   }
 
-  const command: string = "pulumi " + breadcrumbs.join(" ");
+  const command: string = ["pulumi", ...breadcrumbs].join(" ");
   writer.writeLine(`return '${command} ' + __arguments.join(' ');`);
 }
 
+// Options types are pascal-cased versions of the command breadcrumbs, prefixed
+// with "Pulumi" and suffixed with "Options", like "PulumiAboutEnvOptions".
 function createOptionsTypeName(breadcrumbs: string[]): string {
-  return "Pulumi" + pascalise(breadcrumbs.join(" ")) + "Options";
+  return pascalise(["pulumi", ...breadcrumbs, "options"].join(" "));
+}
+
+// Create property signatures for the options object.
+function flagToPropertySignature(flag: Flag): PropertySignatureStructure {
+  return {
+    name: convertName(flag.name),
+    kind: StructureKind.PropertySignature,
+    type: convertType(flag.type, flag.repeatable ?? false),
+    hasQuestionToken: true,
+    docs: flag.description ? [flag.description] : undefined,
+  };
 }
 
 // The type system of flags is effectively just the type system of Go, so we need to find appropriate
@@ -252,12 +276,11 @@ function convertType(type: string, repeatable: boolean): string {
     return repeatable ? base + "[]" : base;
 }
 
-function convertName(name: string): string {
-  const prefix = isReservedWord(name) ? "__" : "";
-  return prefix + camelCase(name);
-}
+// The words we consider reserved in TypeScript.
+const reservedWords: string[] = [ "console", "import", "new", "package", "type" ];
 
-function isReservedWord(name: string): boolean {
-  const reservedWords: string[] = [ "console", "import", "new", "package", "type" ];
-  return reservedWords.includes(name);
+// Names are camel-cased, with a double underscore prefix if they're reserved words.
+function convertName(name: string): string {
+  const prefix: string = reservedWords.includes(name) ? "__" : "";
+  return prefix + camelCase(name);
 }
