@@ -15,21 +15,19 @@
 import { __import, up, PulumiImportOptions, PulumiUpOptions } from "../output";
 
 describe("Command examples", () => {
-  it("import", () => {
-    const options: PulumiImportOptions = {
-    };
+    it("import", () => {
+        const options: PulumiImportOptions = {};
 
-    const command = __import(options, "'aws:iam/user:User'", "name", "id");
-    expect(command).toBe("pulumi import 'aws:iam/user:User' name id");
-  });
+        const command = __import(options, "'aws:iam/user:User'", "name", "id");
+        expect(command).toBe("pulumi import 'aws:iam/user:User' name id");
+    });
 
-  it("up", () => {
-    const options: PulumiUpOptions = {
-      target: ["urnA", "urnB"],
-    };
+    it("up", () => {
+        const options: PulumiUpOptions = {
+            target: ["urnA", "urnB"],
+        };
 
-    const command = up(options, "https://pulumi.com");
-    expect(command).toBe("pulumi up https://pulumi.com --target urnA --target urnB");
-  });
+        const command = up(options, "https://pulumi.com");
+        expect(command).toBe("pulumi up https://pulumi.com --target urnA --target urnB");
+    });
 });
-
