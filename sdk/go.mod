@@ -7,7 +7,7 @@ replace golang.org/x/text => golang.org/x/text v0.3.8
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 
 require (
-	github.com/Microsoft/go-winio v0.6.1 // indirect
+	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cheggaaa/pb v1.0.29
 	github.com/djherbis/times v1.5.0
@@ -19,7 +19,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/uniseg v0.4.4
-	github.com/rogpeppe/go-internal v1.13.1
+	github.com/rogpeppe/go-internal v1.14.1
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/spf13/cast v1.4.1
 	github.com/spf13/cobra v1.8.1
@@ -41,7 +41,7 @@ require (
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/lipgloss v0.7.1
-	github.com/go-git/go-git/v5 v5.13.1
+	github.com/go-git/go-git/v5 v5.16.5
 	github.com/go-test/deep v1.1.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.22.0
@@ -59,7 +59,7 @@ require (
 require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
-	github.com/ProtonMail/go-crypto v1.1.3 // indirect
+	github.com/ProtonMail/go-crypto v1.1.6 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
@@ -68,10 +68,10 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
-	github.com/cyphar/filepath-securejoin v0.3.6 // indirect
+	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
-	github.com/go-git/go-billy/v5 v5.6.1 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/go-git/go-billy/v5 v5.6.2 // indirect
+	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/iwahbe/helpmakego v0.4.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -81,11 +81,11 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
-	github.com/pjbgf/sha1cd v0.3.0 // indirect
-	github.com/skeema/knownhosts v1.3.0 // indirect
+	github.com/pjbgf/sha1cd v0.3.2 // indirect
+	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/zclconf/go-cty v1.13.2 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/tools v0.23.0 // indirect
+	golang.org/x/tools v0.26.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 )
 
