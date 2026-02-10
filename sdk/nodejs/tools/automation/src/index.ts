@@ -29,6 +29,9 @@ import {
 
 import type { Argument, Arguments, Flag, Structure } from "./types";
 
+// The words we consider reserved in TypeScript.
+const reservedWords: string[] = ["console", "import", "new", "package", "type"];
+
 (function main(): void {
     if (!process.argv[2]) {
         throw new Error("Usage: npm start <path-to-specification.json>");
@@ -280,9 +283,6 @@ function convertType(type: string, repeatable: boolean): string {
 
     return repeatable ? base + "[]" : base;
 }
-
-// The words we consider reserved in TypeScript.
-const reservedWords: string[] = ["console", "import", "new", "package", "type"];
 
 // Names are camel-cased, with a double underscore prefix if they're reserved words.
 function convertName(name: string): string {
