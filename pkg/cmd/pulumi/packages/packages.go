@@ -441,8 +441,7 @@ func ProviderFromSource(
 
 	f, spec, err := packageinstallation.InstallPlugin(pctx.Request(), packageSpec, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
-			ResolveWithRegistry: e.GetBool(env.Experimental) &&
-				!e.GetBool(env.DisableRegistryResolve),
+			ResolveWithRegistry:                        !e.GetBool(env.DisableRegistryResolve),
 			ResolveVersionWithLocalWorkspace:           true,
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
