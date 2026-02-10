@@ -62,7 +62,7 @@ interface Options {
             alias: "r",
             type: "string",
             describe: "The type of the command results.",
-            default: "Promise<Output>",
+            default: "Promise<CommandResult>",
         })
         .demand(1, "Path to specification JSON is required.")
         .strict()
@@ -110,6 +110,7 @@ function generateOptionsTypes(
         name: createOptionsTypeName(breadcrumbs),
         docs: ["Options for the `" + command + "` command."],
         isExported: true,
+        extends: ["PulumiOptionsBase"],
         properties: Object.values(options).map(flagToPropertySignature),
     });
 
@@ -250,8 +251,8 @@ function generateBody(structure: Structure, writer: CodeBlockWriter, breadcrumbs
         pushOption(name, flag);
     }
 
-    const command: string = ["pulumi", ...breadcrumbs].join(" ");
-    writer.writeLine(`return __run('${command} ' + __arguments.join(' '));`);
+    const command: string = breadcrumbs.map(x => `'${x}'`).join(", ");
+    writer.writeLine(`return __run(__options, [${command}, ...__arguments]);`);
 }
 
 // Options types are pascal-cased versions of the command breadcrumbs, prefixed
