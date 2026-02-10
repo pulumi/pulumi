@@ -18,6 +18,7 @@
         "@types/node": "14.18.63",
         "@types/pascalcase": "^1.0.3",
         "@types/to-camel-case": "^1.0.2",
+        "@types/yargs": "^17.0.32",
         "jest": "^29.7.0",
         "ts-jest": "^29.2.5",
         "ts-morph": "^24.0.0",
@@ -29,6 +30,7 @@
     },
     "dependencies": {
         "pascalcase": "^2.0.0",
-        "to-camel-case": "^1.0.0"
+        "to-camel-case": "^1.0.0",
+        "yargs": "^17.7.2"
     }
 }
