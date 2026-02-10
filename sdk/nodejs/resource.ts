@@ -19,8 +19,8 @@ import { Input, Inputs, interpolate, Output, output } from "./output";
 import {
     getResource,
     readResource,
-    registerResource,
     registerErrorHook,
+    registerResource,
     registerResourceHook,
     registerResourceOutputs,
     SourcePosition,
@@ -1546,13 +1546,14 @@ export class ComponentResource<TData = any> extends Resource {
         remote: boolean = false,
         packageRef?: Promise<string | undefined>,
     ) {
-        // If the PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable is set,
-        // we skip sending the inputs to the engine.
         super(
             type,
             name,
             /*custom:*/ false,
-            process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS ? {} : args,
+            // If the PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable is set, we skip sending the
+            // inputs to the engine. Unless this is a remote component, in which case we always send the
+            // inputs.
+            process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS && !remote ? {} : args,
             opts,
             remote,
             false,
