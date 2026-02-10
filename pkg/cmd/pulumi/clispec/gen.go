@@ -45,6 +45,10 @@ type Menu struct {
 	// Always "menu".
 	Type string `json:"type"`
 
+	// Executable is true when this command has a Run or RunE implementation.
+	// When false, the command is a pure menu of subcommands and does nothing when invoked by itself.
+	Executable bool `json:"executable"`
+
 	// Flags specific to this menu (not including inherited flags).
 	Flags map[string]Flag `json:"flags,omitempty"`
 
@@ -93,8 +97,9 @@ func buildStructure(cmd *cobra.Command) any {
 	subcommands := cmd.Commands()
 	if len(subcommands) > 0 {
 		menu := Menu{
-			Type:  "menu",
-			Flags: collectFlags(cmd),
+			Type:        "menu",
+			Executable:  cmd.Runnable(),
+			Flags:       collectFlags(cmd),
 		}
 
 		if len(subcommands) > 0 {
