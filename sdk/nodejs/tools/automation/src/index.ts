@@ -16,6 +16,8 @@ import * as fs from "fs";
 import * as path from "path";
 import pascalise from "pascalcase";
 import camelCase from "to-camel-case";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
 import {
     CodeBlockWriter,
@@ -25,6 +27,7 @@ import {
     ReturnStatement,
     SourceFile,
     StructureKind,
+    VariableDeclarationKind,
 } from "ts-morph";
 
 import type { Argument, Arguments, Flag, Structure } from "./types";
@@ -32,13 +35,48 @@ import type { Argument, Arguments, Flag, Structure } from "./types";
 // The words we consider reserved in TypeScript.
 const reservedWords: string[] = ["console", "import", "new", "package", "type"];
 
+// CLI interface options.
+interface Options {
+    _: string[];
+    boilerplate: string;
+    output: string;
+    result: string;
+}
+
 (function main(): void {
-    if (!process.argv[2]) {
-        throw new Error("Usage: npm start <path-to-specification.json>");
+    const argv: Options = yargs(hideBin(process.argv))
+        .usage("Usage: $0 <path-to-specification.json> [options]")
+        .option("boilerplate", {
+            alias: "b",
+            type: "string",
+            describe: "Path to the boilerplate TypeScript file.",
+            default: path.join(process.cwd(), "src", "boilerplate.ts"),
+        })
+        .option("output", {
+            alias: "o",
+            type: "string",
+            describe: "Output directory for generated files.",
+            default: path.join(process.cwd(), "output"),
+        })
+        .option("result", {
+            alias: "r",
+            type: "string",
+            describe: "The type of the command results.",
+            default: "Promise<Output>",
+        })
+        .demand(1, "Path to specification JSON is required.")
+        .strict()
+        .help()
+        .parseSync() as Options;
+
+    const [pathToSpecification] = argv._;
+    if (typeof pathToSpecification !== "string") {
+        throw new Error("Specification path must be a string.");
     }
 
-    const specification: string = path.resolve(process.cwd(), process.argv[2]);
-    const output: string = path.join(process.cwd(), "output");
+    const specification: string = path.resolve(process.cwd(), pathToSpecification);
+    const boilerplate: string = path.resolve(process.cwd(), argv.boilerplate);
+    const output: string = path.resolve(process.cwd(), argv.output);
 
     const spec: Structure = JSON.parse(fs.readFileSync(specification, "utf-8")) as Structure;
     fs.mkdirSync(output, { recursive: true });
@@ -46,38 +84,14 @@ const reservedWords: string[] = ["console", "import", "new", "package", "type"];
     const index: string = path.join(output, "index.ts");
     const project: Project = new Project({});
 
-    const source: SourceFile = project.createSourceFile(index, "", { overwrite: true });
+    const content: string = fs.readFileSync(boilerplate, "utf-8");
+    const source: SourceFile = project.createSourceFile(index, content, { overwrite: true });
 
-    generateStaticDeclarations(source);
     generateOptionsTypes(spec, source);
-    generateCommands(spec, source);
+    generateCommands(spec, source, argv.result);
 
     project.saveSync();
 })();
-
-// Create imports, type declarations, and helper functions for the generated code.
-function generateStaticDeclarations(source: SourceFile): void {
-    source.addInterface({
-        kind: StructureKind.Interface,
-        name: "Output",
-        docs: ["The output of a command."],
-        properties: [
-            {
-                name: "stdout",
-                type: "string",
-            },
-            {
-                name: "stderr",
-                type: "string",
-            },
-            {
-                name: "exitCode",
-                type: "number",
-            },
-        ],
-        isExported: true,
-    });
-}
 
 // Every command and menu may add some flags to the pool of available flags. This means that, as we
 // descend the command tree, we need to collect all the flags that have been defined and add them to
@@ -107,11 +121,16 @@ function generateOptionsTypes(
 }
 
 // Generate the command functions for the command tree.
-function generateCommands(structure: Structure, source: SourceFile, breadcrumbs: string[] = []): void {
+function generateCommands(
+    structure: Structure,
+    source: SourceFile,
+    returnType: string,
+    breadcrumbs: string[] = [],
+): void {
     if (structure.type === "menu") {
         if (structure.commands) {
             for (const [name, subcommand] of Object.entries(structure.commands)) {
-                generateCommands(subcommand, source, [...breadcrumbs, name]);
+                generateCommands(subcommand, source, returnType, [...breadcrumbs, name]);
             }
         }
 
@@ -150,7 +169,7 @@ function generateCommands(structure: Structure, source: SourceFile, breadcrumbs:
         isExported: true,
         parameters,
         statements: (writer) => generateBody(structure, writer, breadcrumbs),
-        returnType: "string",
+        returnType,
     });
 }
 
@@ -232,7 +251,7 @@ function generateBody(structure: Structure, writer: CodeBlockWriter, breadcrumbs
     }
 
     const command: string = ["pulumi", ...breadcrumbs].join(" ");
-    writer.writeLine(`return '${command} ' + __arguments.join(' ');`);
+    writer.writeLine(`return __run('${command} ' + __arguments.join(' '));`);
 }
 
 // Options types are pascal-cased versions of the command breadcrumbs, prefixed
