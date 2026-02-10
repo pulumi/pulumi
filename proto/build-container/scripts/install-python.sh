@@ -23,8 +23,10 @@ update-alternatives --install /usr/bin/python3 python3 "/usr/bin/python${PYTHON_
 python3 --version
 
 # update pip and setuptools
+# Pin setuptools to 67.8.0 - the last version before pkg_resources deprecation in 68.0.0.
+# This ensures compatibility with grpcio-tools 1.50.0 which depends on pkg_resources.
 python3 -m pip install --upgrade pip
-python3 -m pip install --upgrade setuptools
+python3 -m pip install 'setuptools==67.8.0'
 
 python3 -m pip install "pipenv==${PIPENV_VERSION}"
 python3 -m pip install "wheel==${WHEEL_VERSION}" "twine==${TWINE_VERSION}"

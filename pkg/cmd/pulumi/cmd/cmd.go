@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
@@ -142,16 +143,20 @@ Operating System:  %s`,
 
 Write Version:     %s
 Write Command:     %s
+Write Env Vars:    %s
 Write Error:       %s
 
 Read Version:      %s
 Read Command:      %s
+Read Env Vars:     %s
 Read Error:        %s`,
 			sie.Metadata.Version,
 			sie.Metadata.Command,
+			formatEnvVars(sie.Metadata.EnvVars),
 			sie.Metadata.Error,
 			version.Version,
 			strings.Join(os.Args, " "),
+			formatEnvVars(env.ConfiguredVariables()),
 			err,
 		))
 	} else {
@@ -159,9 +164,11 @@ Read Error:        %s`,
 
 Pulumi Version:    %s
 Command:           %s
+Env Vars:          %s
 Error:             %s`,
 			version.Version,
 			strings.Join(os.Args, " "),
+			formatEnvVars(env.ConfiguredVariables()),
 			err,
 		))
 	}
@@ -176,4 +183,15 @@ Stack Trace:
 	))
 
 	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, message.String()))
+}
+
+func formatEnvVars(envVars map[string]string) string {
+	if len(envVars) == 0 {
+		return "(none)"
+	}
+	parts := make([]string, 0, len(envVars))
+	for k, v := range envVars {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(parts, ", ")
 }

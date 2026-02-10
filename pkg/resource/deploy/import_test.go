@@ -22,6 +22,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -103,7 +104,7 @@ func TestImporter(t *testing.T) {
 					},
 					source: &nullSource{},
 					providers: providers.NewRegistry(&plugin.MockHost{
-						ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 							assert.Equal(t, "foo", descriptor.Name)
 							assert.Equal(t, "1.0.0", descriptor.Version.String())
 							return nil, expectedErr
@@ -251,7 +252,7 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			},
 			source: &nullSource{},
 			providers: providers.NewRegistry(&plugin.MockHost{
-				ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+				ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 					assert.Equal(t, "foo", descriptor.Name)
 					assert.Equal(t, "1.0.0", descriptor.Version.String())
 					return &mockProvider, nil

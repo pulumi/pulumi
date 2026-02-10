@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: pkg
+  description: "BREAKING: Deprecate github.com/pulumi/pulumi/pkg/v3/codegen/dotnet in favor of github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3/codegen. This package will be removed from pulumi/pulumi soon!"
