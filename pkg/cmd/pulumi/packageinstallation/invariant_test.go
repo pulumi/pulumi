@@ -104,13 +104,14 @@ type invariantWorkspace struct {
 type invariantWorkDir struct{ linked []string }
 
 type invariantPlugin struct {
-	d               workspace.PluginDescriptor
-	downloaded      bool
-	installed       bool
-	pathVisible     bool
-	hasBinary       bool
-	projectDetected bool
-	project         *workspace.PluginProject
+	d                workspace.PluginDescriptor
+	downloaded       bool
+	installed        bool
+	pathVisible      bool
+	hasBinary        bool
+	projectDetected  bool
+	project          *workspace.PluginProject
+	requiredPackages []workspace.PackageDescriptor
 
 	linked []string
 }
@@ -329,6 +330,21 @@ func (w invariantWorkspace) LinkPackage(
 	pos, _ := slices.BinarySearch(*links, ip.path)
 	*links = slices.Insert(*links, pos, ip.path)
 	return nil
+}
+
+func (w invariantWorkspace) GetRequiredPackages(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) ([]workspace.PackageDescriptor, error) {
+	dirPath = filepath.ToSlash(dirPath)
+	pl, ok := w.plugins[dirPath]
+	if !ok || !pl.pathVisible {
+		assert.Failf(w.t, "", "GetRequiredPackages(%q) called on non-visible plugin", dirPath)
+		return nil, assert.AnError
+	}
+	if pl.requiredPackages == nil {
+		return nil, nil
+	}
+	return pl.requiredPackages, nil
 }
 
 func (w invariantWorkspace) RunPackage(

@@ -108,6 +108,27 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 	}, w.stdout, w.stderr)
 }
 
+// Install an already downloaded plugin at a specific path.
+//
+// InstallPlugin should assume that all dependencies of the plugin are already
+// installed.
+func (w Workspace) GetRequiredPackages(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) ([]workspace.PackageDescriptor, error) {
+	lang, err := w.host.LanguageRuntime(project.Runtime.Name())
+	if err != nil {
+		return nil, err
+	}
+
+	if !filepath.IsAbs(dirPath) {
+		dirPath, err = filepath.Abs(dirPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return lang.GetRequiredPackages(plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options()))
+}
+
 // IsExecutable returns if the file at binaryPath can be executed.
 //
 // If no file is found at binaryPath, then (false, os.ErrNotExist) should be

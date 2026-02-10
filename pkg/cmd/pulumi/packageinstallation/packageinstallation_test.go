@@ -1169,6 +1169,79 @@ func TestInstallParameterizedProviderFromRegistry(t *testing.T) {
 	}, spec)
 }
 
+// TestInstallPluginWithRequiredPackages tests that GetRequiredPackages is called and its
+// results are used to install dependencies.
+//
+// Here, plugin-a has a PulumiPlugin.yaml and the language runtime reports that it requires
+// plugin-b.
+func TestInstallPluginWithRequiredPackages(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name:    "plugin-a",
+				Version: &semver.Version{Major: 1},
+				Kind:    apitype.ResourcePlugin,
+			},
+			project: &workspace.PluginProject{
+				Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+			},
+			requiredPackages: []workspace.PackageDescriptor{
+				{
+					PluginDescriptor: workspace.PluginDescriptor{
+						Name:              "plugin-b",
+						Version:           &semver.Version{Major: 2},
+						Kind:              apitype.ResourcePlugin,
+						PluginDownloadURL: "https://example.com/plugin-b.tar.gz",
+					},
+				},
+			},
+		},
+		{
+			d: workspace.PluginDescriptor{
+				Name:    "plugin-b",
+				Version: &semver.Version{Major: 2},
+				Kind:    apitype.ResourcePlugin,
+			},
+			project: &workspace.PluginProject{
+				Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+			},
+		},
+	})
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+		Source:            "plugin-a",
+		Version:           "1.0.0",
+		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+	}, nil, "", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: 1,
+	}, nil, rws)
+	require.NoError(t, err)
+	_, err = run(t.Context(), "/tmp")
+	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source:            "plugin-a",
+		Version:           "1.0.0",
+		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+	}, spec)
+
+	pluginAPath := "$HOME/.pulumi/plugins/resource-plugin-a-v1.0.0"
+	pluginBPath := "$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0"
+
+	require.True(t, ws.plugins[pluginAPath].downloaded, "plugin-a should be downloaded")
+	require.True(t, ws.plugins[pluginAPath].installed, "plugin-a should be installed")
+	require.True(t, ws.plugins[pluginBPath].downloaded, "plugin-b should be downloaded (as a required package)")
+	require.True(t, ws.plugins[pluginBPath].installed, "plugin-b should be installed (as a required package)")
+}
+
 func TestConcurrency(t *testing.T) {
 	t.Parallel()
 
