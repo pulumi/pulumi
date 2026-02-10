@@ -1935,7 +1935,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 								"as it is currently marked for protection. To unprotect the resource, "+
 								"remove the `protect` flag from the resource in your Pulumi "+
 								"program and run `pulumi up`, or use the command:\n"+
-								"`pulumi state unprotect %q`",
+								"`pulumi state unprotect '%q'`",
 								dependentResource.URN, urn, dependentResource.URN)
 							sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
 							sg.sawError = true
