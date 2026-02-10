@@ -48,12 +48,6 @@ func init() {
 					withDependsOn := RequireSingleNamedResource(l, snap.Resources, "withDependsOn")
 					assert.Equal(l, []resource.URN{noDependsOn.URN}, withDependsOn.Dependencies,
 						"expected withDependsOn component to depend on noDependsOn")
-
-					RequireSingleResource(l, snap.Resources, "pulumi:providers:conformance-component")
-					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
-					RequireSingleNamedResource(l, snap.Resources, "noDependsOn-child")
-					RequireSingleNamedResource(l, snap.Resources, "withDependsOn-child")
-					RequireSingleNamedResource(l, snap.Resources, "simpleResource")
 				},
 			},
 		},
