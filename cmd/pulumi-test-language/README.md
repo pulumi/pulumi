@@ -192,7 +192,7 @@ as follows:
   such as custom resources, function invocations, and so on.
 * *L3 tests* exercise features that require more advanced language support such
   as first-class functions -- `apply` is a good example of this.
-  * *Provider tests* exercise language code that acts as a provider, iow calls `Construct`.
+* *Provider tests* exercise language code that acts as a provider, that is `Construct` and `Call` implementations.
 
 Each language defines a test function (the *language test host*) responsible for
 running its conformance test suite, if it implements one. For core languages
