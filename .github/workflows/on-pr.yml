@@ -32,35 +32,10 @@ jobs:
       is-snapshot: true
     secrets: inherit
 
-  # Determines which files have changed so we can avoid running expensive tests
-  # if they're not necessary.
-  inspect:
-    name: Inspect changed files
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
-        id: changes
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          filters: |
-            # If files matching any of these patterns change,
-            # we will run codegen tests for pull requests.
-            test-codegen:
-              - 'pkg/codegen/docs/**'
-              - 'pkg/codegen/dotnet/**'
-              - 'pkg/codegen/go/**'
-              - 'pkg/codegen/nodejs/**'
-              - 'pkg/codegen/python/**'
-    outputs:
-      # Add an entry here for every named pattern
-      # defined in filters.
-      test-codegen: ${{ steps.changes.outputs.test-codegen }}
-
   ci:
     name: CI
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    needs: [info, inspect]
+    needs: [info]
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
@@ -72,7 +47,6 @@ jobs:
       lint: true
       # codegen tests are not the fastest, but we want to run them
       # on PR to get correct coverage numbers.
-      test-codegen: true
       test-version-sets: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
@@ -92,7 +66,7 @@ jobs:
   performance-gate:
     name: Performance Gate
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    needs: [info, inspect]
+    needs: [info]
     uses: ./.github/workflows/ci-performance-gate.yml
     permissions:
       contents: read
