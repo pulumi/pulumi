@@ -27,7 +27,6 @@ COPY /scripts/install-node.sh /build-scripts/
 RUN --mount=target=/var/lib/apt/lists,type=cache \
     --mount=target=/var/cache/apt,type=cache \
     NODE_VERSION=18.x \
-    NODE_DISTRO=focal \
     YARN_VERSION=3.8.7 \
     /build-scripts/install-node.sh
 

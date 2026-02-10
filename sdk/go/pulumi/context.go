@@ -1883,6 +1883,7 @@ func (ctx *Context) registerResource(
 				SupportsResultReporting:    true,
 				PackageRef:                 packageRef,
 				Hooks:                      hooks,
+				EnvVarMappings:             inputs.envVarMappings,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -2352,6 +2353,7 @@ type resourceInputs struct {
 	hideDiffs               []string
 	replaceWith             []string
 	replacementTrigger      *structpb.Value
+	envVarMappings          map[string]string
 }
 
 func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) error {
@@ -2676,6 +2678,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		deletedWith:             string(deletedWithURN),
 		replaceWith:             replaceWithURNs,
 		replacementTrigger:      replacementTriggerValue,
+		envVarMappings:          opts.EnvVarMappings,
 	}, nil
 }
 
