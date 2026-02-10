@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -34,7 +35,7 @@ func testSetup(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServ
 	t.Helper()
 
 	ctx := context.Background()
-	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil, schema.NewLoaderServerFromHost)
 	require.NoError(t, err)
 	t.Cleanup(func() { pctx.Close() })
 
@@ -240,8 +241,7 @@ func TestNewInstallPluginFunc_DisabledAcquisition(t *testing.T) {
 	// Set environment to disable automatic plugin acquisition
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
-	ctx := context.Background()
-	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil)
+	pctx, err := plugin.NewContext(t.Context(), nil, nil, nil, nil, ".", nil, false, nil, schema.NewLoaderServerFromHost)
 	require.NoError(t, err)
 	defer pctx.Close()
 
@@ -257,8 +257,7 @@ func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 	// Clear the environment variable to enable automatic acquisition
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
-	ctx := context.Background()
-	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil)
+	pctx, err := plugin.NewContext(t.Context(), nil, nil, nil, nil, ".", nil, false, nil, schema.NewLoaderServerFromHost)
 	require.NoError(t, err)
 	defer pctx.Close()
 

@@ -169,7 +169,7 @@ func TestInstallNoDeps(t *testing.T) {
 
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
 
-	err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
+	err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
 	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
@@ -189,7 +189,7 @@ func TestReinstall(t *testing.T) {
 
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
 
-	err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
+	err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
 	require.NoError(t, err)
 
 	assertPluginInstalled(t, dir, plugin)
@@ -201,7 +201,7 @@ func TestReinstall(t *testing.T) {
 	content = []byte("world\n")
 	tarball = prepareTestPluginTGZ(t, map[string][]byte{name: content})
 
-	err = InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), true)
+	err = InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), true, nil)
 	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
@@ -239,7 +239,7 @@ func TestConcurrentInstalls(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
+			err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
 			require.NoError(t, err)
 
 			assertSuccess()
@@ -273,7 +273,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	err = os.WriteFile(partialPath, nil, 0o600)
 	require.NoError(t, err)
 
-	err = InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
+	err = InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
 	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
@@ -292,7 +292,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
-	err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false)
+	err := InstallPluginContent(context.Background(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
 	require.NoError(t, err)
 
 	err = os.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0o600)

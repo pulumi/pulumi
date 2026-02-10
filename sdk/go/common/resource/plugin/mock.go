@@ -56,7 +56,7 @@ func (m *MockHost) ServerAddr() string {
 
 func (m *MockHost) LoaderAddr() string {
 	if m.LoaderAddrF != nil {
-		return m.ServerAddrF()
+		return m.LoaderAddrF()
 	}
 	return ""
 }

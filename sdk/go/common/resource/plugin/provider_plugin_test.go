@@ -799,7 +799,7 @@ func newTestContext(t testing.TB) *Context {
 	ctx, err := NewContext(
 		context.Background(),
 		sink, sink,
-		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */)
+		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */, nil)
 	require.NoError(t, err, "build context")
 
 	return ctx

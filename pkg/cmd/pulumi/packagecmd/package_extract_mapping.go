@@ -56,7 +56,9 @@ empty string.`,
 				return err
 			}
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false, nil, schema.NewLoaderServerFromHost)
+			pctx, err := plugin.NewContext(
+				cmd.Context(), sink, sink, nil, nil, wd, nil, false,
+				nil, schema.NewLoaderServerFromHost)
 			if err != nil {
 				return err
 			}

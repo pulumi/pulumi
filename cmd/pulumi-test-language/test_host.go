@@ -56,12 +56,18 @@ type testHost struct {
 	closeMutex sync.Mutex
 
 	skipEnsurePluginsValidation bool
+
+	loaderAddress string
 }
 
 var _ plugin.Host = (*testHost)(nil)
 
 func (h *testHost) ServerAddr() string {
 	return h.engine.addr
+}
+
+func (h *testHost) LoaderAddr() string {
+	return h.loaderAddress
 }
 
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
