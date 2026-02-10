@@ -12,21 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import { CommandResult, PulumiCommand } from "../../../automation/cmd";
 
-export type Output = {
-    stdout: string;
-    stderr: string;
-    exitCode: number;
-};
+export interface PulumiOptionsBase {
+  command: PulumiCommand,
+  cwd?: string,
+  additionalEnv: { [key: string]: string },
+  onOutput?: (output: string) => void,
+  onError?: (error: string) => void,
+  signal?: AbortSignal,
+}
 
 // Execute the given command and return the process output.
-async function __run(command: string): Promise<Output> {
-    try {
-        const result = await promisify(exec)(command);
-        return { exitCode: 0, ...result };
-    } catch ({ stdout, stderr, exitCode }: any) {
-        return { stdout, stderr, exitCode };
-    }
+async function __run(options: PulumiOptionsBase, args: string[]): Promise<CommandResult> {
+  return options.command.run(
+    args,
+    options.cwd ?? process.cwd(),
+    options.additionalEnv,
+    options.onOutput,
+    options.onError,
+    options.signal
+  );
 }

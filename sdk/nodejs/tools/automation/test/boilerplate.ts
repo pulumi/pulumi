@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-function __run(command: string): string {
-    return command;
+export interface PulumiOptionsBase {}
+
+function __run(options: {}, args: string[]): string {
+    return args.join(" ");
 }
