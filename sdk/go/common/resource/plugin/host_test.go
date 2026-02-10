@@ -138,6 +138,16 @@ func TestIsLocalPluginPath(t *testing.T) {
 			path:     "example.com/no-repo-exists/here",
 			expected: false,
 		},
+		{
+			name:     "git URL with a path",
+			path:     "github.com/example/component.git/path-here",
+			expected: false,
+		},
+		{
+			name:     "git URL with a path with underscores",
+			path:     "github.com/example/component.git/path_here",
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
