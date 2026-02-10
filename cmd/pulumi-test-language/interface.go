@@ -689,7 +689,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		host:                        pctx.Host,
 		runtime:                     languageClient,
 		runtimeName:                 token.LanguagePluginName,
-		providersLock:               make(map[string]*sync.Mutex),
+		providersLock:               gsync.Map[string, *sync.Mutex]{},
 		providers:                   make(map[string]func() (plugin.Provider, error)),
 		connections:                 make(map[plugin.Provider]io.Closer),
 		skipEnsurePluginsValidation: test.SkipEnsurePluginsValidation,
@@ -722,11 +722,12 @@ func (eng *languageTestServer) RunLanguageTest(
 		// If this is a provider that should be overridden using the languages plugin directory try and do that now.
 		pkg := p.Pkg().String()
 		if slices.Contains(test.LanguageProviders, pkg) {
-			if host.providersLock[key] == nil {
-				host.providersLock[key] = &sync.Mutex{}
-			}
-			host.providersLock[key].Lock()
-			defer host.providersLock[key].Unlock()
+			// The second return value indicates whether the result was loaded or stored
+			// in the map. We don't care here, the end result is always that there's a
+			// mutex that we can lock safely in the map.
+			lock, _ := host.providersLock.LoadOrStore(key, &sync.Mutex{})
+			lock.Lock()
+			defer lock.Unlock()
 			if host.providers[key] == nil {
 				if token.ProvidersDirectory == "" {
 					return nil, fmt.Errorf("provider %s should be loaded from language providers directory, "+

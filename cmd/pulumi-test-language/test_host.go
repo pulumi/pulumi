@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -46,7 +47,7 @@ type testHost struct {
 	host          plugin.Host
 	runtime       plugin.LanguageRuntime
 	runtimeName   string
-	providersLock map[string]*sync.Mutex
+	providersLock gsync.Map[string, *sync.Mutex]
 	providers     map[string]func() (plugin.Provider, error)
 
 	connections map[plugin.Provider]io.Closer
