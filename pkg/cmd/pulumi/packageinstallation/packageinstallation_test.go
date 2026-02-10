@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1167,6 +1168,117 @@ func TestInstallParameterizedProviderFromRegistry(t *testing.T) {
 		Source:  "opentofu/airbytehq/airbyte",
 		Version: "0.13.0",
 	}, spec)
+}
+
+func TestInstallSchemaFilePackage(t *testing.T) {
+	t.Parallel()
+
+	schemaContent := `{
+		"name": "test-schema-package",
+		"version": "1.0.0",
+		"description": "A test package from schema file"
+	}`
+
+	ws := &invariantWorkspace{
+		t:           t,
+		rw:          new(sync.RWMutex),
+		plugins:     map[string]*invariantPlugin{},
+		binaryPaths: map[string]string{},
+		plainSchemaPaths: map[string][]byte{
+			"/path/to/schema.json": []byte(schemaContent),
+		},
+		downloadedWorkspace: map[string]*invariantWorkDir{
+			"/project": {},
+		},
+	}
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+		Source: "/path/to/schema.json",
+	}, nil, "", packageinstallation.Options{
+		Concurrency: 1,
+	}, nil, rws)
+	require.NoError(t, err)
+	provider, err := run(t.Context(), "/project")
+	require.NoError(t, err)
+	require.NotNil(t, provider)
+
+	schemaResult, err := provider.GetSchema(t.Context(), plugin.GetSchemaRequest{})
+	require.NoError(t, err)
+	assert.EqualValues(t, schemaContent, schemaResult.Schema)
+
+	assert.Equal(t, workspace.PackageSpec{
+		Source: "/path/to/schema.json",
+	}, spec)
+}
+
+func TestInstallPluginWithSchemaFileDependency(t *testing.T) {
+	t.Parallel()
+
+	schemaContent := `name: "schema-dependency"
+version: "2.0.0"
+description: "A schema file dependency"
+`
+
+	ws := &invariantWorkspace{
+		t:  t,
+		rw: new(sync.RWMutex),
+		plugins: map[string]*invariantPlugin{
+			"$HOME/.pulumi/plugins/resource-plugin-a": {
+				d: workspace.PluginDescriptor{
+					Name: "plugin-a",
+					Kind: apitype.ResourcePlugin,
+				},
+				project: &workspace.PluginProject{
+					Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+					Packages: map[string]workspace.PackageSpec{
+						"schema-dependency": {
+							Source: "/path/to/schema-dependency.yaml",
+						},
+					},
+				},
+			},
+		},
+		binaryPaths: map[string]string{},
+		plainSchemaPaths: map[string][]byte{
+			"/path/to/schema-dependency.yaml": []byte(schemaContent),
+		},
+		downloadedWorkspace: map[string]*invariantWorkDir{
+			"/project": {},
+		},
+	}
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+		Source:            "plugin-a",
+		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+	}, nil, "", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: 1,
+	}, nil, rws)
+	require.NoError(t, err)
+	provider, err := run(t.Context(), "/project")
+	require.NoError(t, err)
+	require.NotNil(t, provider)
+
+	assert.Equal(t, workspace.PackageSpec{
+		Source:            "plugin-a",
+		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+	}, spec)
+
+	pluginAPath := "$HOME/.pulumi/plugins/resource-plugin-a"
+	require.True(t, ws.plugins[pluginAPath].downloaded, "plugin-a should be downloaded")
+	require.True(t, ws.plugins[pluginAPath].installed, "plugin-a should be installed")
+
+	require.Contains(t, ws.plugins[pluginAPath].linked, "schema:schema-dependency",
+		"plugin-a should be linked to schema-dependency")
 }
 
 func TestConcurrency(t *testing.T) {

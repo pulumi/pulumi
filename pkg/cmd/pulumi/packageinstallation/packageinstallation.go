@@ -16,9 +16,11 @@ package packageinstallation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/maphash"
+	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -28,6 +30,7 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -61,6 +64,9 @@ type Context interface {
 	// If no file is found at binaryPath, then (false, os.ErrNotExist) should be
 	// returned.
 	IsExecutable(ctx context.Context, binaryPath string) (bool, error)
+
+	// Read a file from disk.
+	ReadFile(ctx context.Context, path string) (io.ReadCloser, error)
 
 	// Download a plugin onto disk, returning the path the plugin was downloaded to.
 	DownloadPlugin(ctx context.Context, plugin workspace.PluginDescriptor) (string, MarkInstallationDone, error)
@@ -135,18 +141,18 @@ func InstallPlugin(
 	var resolvedSpec workspace.PackageSpec
 
 	err := runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
-		return enqueueUnresolvedPackage(ctx, state, root, spec, project[workspace.BaseProject]{
+		enqueueUnresolvedPackage(ctx, state, root, spec, project[workspace.BaseProject]{
 			proj:       baseProject,
 			projectDir: projectDir,
 		}, &runBundle, &resolvedSpec)
+		return nil
 	})
 	if err != nil {
 		return nil, resolvedSpec, err
 	}
 
 	return func(ctx context.Context, wd string) (plugin.Provider, error) {
-		return ws.RunPackage(ctx, wd, runBundle.pluginPath, tokens.Package(runBundle.name),
-			runBundle.params, resolvedSpec)
+		return runBundle.run(ctx, ws, wd, spec)
 	}, resolvedSpec, nil
 }
 
@@ -167,6 +173,63 @@ func InstallProjectPlugins(
 			projectDir: projectDir,
 		})
 	})
+}
+
+func LinkIntoProject(
+	ctx context.Context,
+	spec workspace.PackageSpec,
+	project_ workspace.BaseProject, projectDir string,
+	options Options, registry registry.Registry, ws Context,
+) (schema.PartialPackageSpec, workspace.PackageSpec, error) {
+	var runBundleOut runBundle
+	var resolvedSpec workspace.PackageSpec
+	err := runInstall(ctx, options, registry, ws, func(ctx context.Context, _state state, root pdag.Node) error {
+		proj := project[workspace.BaseProject]{
+			proj:       project_,
+			projectDir: projectDir,
+		}
+
+		linkDone, linkDoneReady := _state.dag.NewNode(noOpStep{})
+		contract.AssertNoErrorf(_state.dag.NewEdge(linkDone, root), "New nodes cannot be cyclic")
+
+		setLink, setLinkReady := _state.dag.NewNode(delayedRunStep(func(ctx context.Context, _state state) error {
+			link, ready := _state.dag.NewNode(linkPackageStep{
+				packageName: runBundleOut.name,
+				runBundle:   &runBundleOut,
+				project:     proj,
+				specSource:  spec,
+			})
+			defer ready()
+			defer linkDoneReady()
+			contract.AssertNoErrorf(_state.dag.NewEdge(link, linkDone), "New nodes cannot be cyclic")
+			return nil
+		}))
+		defer setLinkReady()
+		contract.AssertNoErrorf(_state.dag.NewEdge(setLink, linkDone), "New nodes cannot be cyclic")
+		enqueueUnresolvedPackage(ctx, _state, setLink, spec, proj, &runBundleOut, &resolvedSpec)
+
+		return nil
+	})
+	if err != nil {
+		return schema.PartialPackageSpec{}, resolvedSpec, err
+	}
+
+	provider, err := runBundleOut.run(ctx, ws, projectDir, spec)
+	if err != nil {
+		return schema.PartialPackageSpec{}, resolvedSpec, err
+	}
+
+	schemaResponse, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{})
+	if err != nil {
+		return schema.PartialPackageSpec{}, resolvedSpec, err
+	}
+
+	var schemaSpec schema.PartialPackageSpec
+	if err := json.Unmarshal(schemaResponse.Schema, &schemaSpec); err != nil {
+		return schema.PartialPackageSpec{}, resolvedSpec, err
+	}
+
+	return schemaSpec, resolvedSpec, nil
 }
 
 // runInstall an install governed by [pdag].
@@ -243,6 +306,10 @@ func wrapCycleError(err error) error {
 	return ErrorCyclicDependencies{Cycle: chain, underlying: err}
 }
 
+type delayedRunStep func(context.Context, state) error
+
+func (step delayedRunStep) run(ctx context.Context, state state) error { return step(ctx, state) }
+
 // pluginMarkerStep is a labeling step that tells the [wrapCycleError] that we are requiring
 // a [workspace.PluginDescriptor].
 //
@@ -300,6 +367,18 @@ type runBundle struct {
 	pluginPath string
 	// The parameterization of the plugin. May be nil.
 	params plugin.ParameterizeParameters
+
+	// A running provider if non-nil.
+	runningProvider plugin.Provider
+}
+
+func (rb runBundle) run(
+	ctx context.Context, ws Context, wd string, originalSpec workspace.PackageSpec,
+) (plugin.Provider, error) {
+	if rb.runningProvider != nil {
+		return rb.runningProvider, nil
+	}
+	return ws.RunPackage(ctx, wd, rb.pluginPath, tokens.Package(rb.name), rb.params, originalSpec)
 }
 
 // A step in the install/build graph.
@@ -354,7 +433,7 @@ func enqueueUnresolvedPackage(
 	spec workspace.PackageSpec, parentProj project[workspace.BaseProject],
 	runBundleOut *runBundle, // An async out param of where the plugin was installed.
 	resolvedSpec *workspace.PackageSpec, // An async out param of the resolved spec.
-) error {
+) {
 	specReady, ready := state.dag.NewNode(noOpStep{})
 	contract.AssertNoErrorf(state.dag.NewEdge(specReady, parent), "linking in a new node is safe")
 
@@ -373,7 +452,6 @@ func enqueueUnresolvedPackage(
 	contract.AssertNoErrorf(state.dag.NewEdge(resolve, specReady), "linking in a new node is safe")
 	// We know that resolving a spec doesn't have any concrete dependencies, so we can kick that off immediately.
 	resolveReady()
-	return nil
 }
 
 // copyStep represents a scheduled copy from src to dst.
@@ -412,10 +490,7 @@ func enqueueProjectDependencies(
 		defer linkReady()
 		contract.AssertNoErrorf(state.dag.NewEdge(link, parent), "new nodes cannot be cyclic")
 
-		err := enqueueUnresolvedPackage(ctx, state, link, source, proj, runBundle, new(workspace.PackageSpec))
-		if err != nil {
-			return err
-		}
+		enqueueUnresolvedPackage(ctx, state, link, source, proj, runBundle, new(workspace.PackageSpec))
 	}
 	return nil
 }
@@ -520,9 +595,7 @@ type linkPackageStep struct {
 func (step linkPackageStep) run(ctx context.Context, p state) error {
 	contract.Assertf(step.runBundle != nil, "must set run bundle before running this step")
 
-	provider, err := p.ws.RunPackage(ctx,
-		step.project.projectDir, step.runBundle.pluginPath,
-		tokens.Package(step.packageName), step.runBundle.params, step.specSource)
+	provider, err := step.runBundle.run(ctx, p.ws, step.project.projectDir, step.specSource)
 	if err != nil {
 		return err
 	}
@@ -657,6 +730,17 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 				step.runBundleOut.name = name
 			}
 			return nil
+		} else if isSchemaPath(projectDir) {
+			file, err := p.ws.ReadFile(ctx, projectDir)
+			if err != nil {
+				return err
+			}
+			provider, err := newProviderFromSchemaPath(step.resolvedSpec.Source, file)
+			if err != nil {
+				return errors.Join(err, file.Close())
+			}
+			step.runBundleOut.runningProvider = provider
+			return file.Close()
 		}
 
 		// We don't need to download what's at a local path result, but we might
