@@ -155,15 +155,21 @@ func FilterExamples(description string, lang string) string {
 
 type PulumiRefResolver func(ref DocRef) (string, bool)
 
-func interpretPulumiRefs(node ast.Node, resolveRefToName PulumiRefResolver) {
+func interpretPulumiRefs(node ast.Node, resolveRefToName PulumiRefResolver) error {
 	var c, next ast.Node
 	for c = node.FirstChild(); c != nil; c = next {
-		interpretPulumiRefs(c, resolveRefToName)
+		err := interpretPulumiRefs(c, resolveRefToName)
+		if err != nil {
+			return err
+		}
 
 		next = c.NextSibling()
 		switch c := c.(type) {
 		case *schema.Ref:
 			ref := parseDocRef(c.Destination)
+			if ref.Type == DocRefTypeUnknown {
+				return fmt.Errorf("invalid doc ref: %s", c.Destination)
+			}
 
 			name, ok := resolveRefToName(ref)
 			if !ok {
@@ -181,17 +187,21 @@ func interpretPulumiRefs(node ast.Node, resolveRefToName PulumiRefResolver) {
 			node.RemoveChild(node, c)
 		}
 	}
+	return nil
 }
 
-func InterpretPulumiRefs(description string, resolveRefToName PulumiRefResolver) string {
+func InterpretPulumiRefs(description string, resolveRefToName PulumiRefResolver) (string, error) {
 	if description == "" {
-		return ""
+		return "", nil
 	}
 
 	source := []byte(description)
 	parsed := schema.ParseDocs(source)
-	interpretPulumiRefs(parsed, resolveRefToName)
-	return schema.RenderDocsToString(source, parsed)
+	err := interpretPulumiRefs(parsed, resolveRefToName)
+	if err != nil {
+		return "", err
+	}
+	return schema.RenderDocsToString(source, parsed), nil
 }
 
 type DocRefType string

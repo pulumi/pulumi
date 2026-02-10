@@ -390,12 +390,12 @@ func sanitizeComment(str string) string {
 	return strings.ReplaceAll(str, "*/", "*&#47;")
 }
 
-func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, indent string, selfRef codegen.DocRef) {
+func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, indent string, selfRef codegen.DocRef) error {
 	if comment == "" && deprecationMessage == "" {
-		return
+		return nil
 	}
 
-	comment = codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
+	comment, err := codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
 		var base string
 		switch ref.Type {
 		case codegen.DocRefTypeResource, codegen.DocRefTypeResourceProperty:
@@ -436,6 +436,9 @@ func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, in
 
 		return fmt.Sprintf("%s.%s", base, property), true
 	})
+	if err != nil {
+		return fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
+	}
 
 	comment = sanitizeComment(comment)
 	lines := strings.Split(comment, "\n")
@@ -457,6 +460,7 @@ func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, in
 		fmt.Fprintf(w, "%s * @deprecated %s\n", indent, deprecationMessage)
 	}
 	fmt.Fprintf(w, "%s */\n", indent)
+	return nil
 }
 
 // Generates a plain interface type.
@@ -468,11 +472,15 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 	indent := strings.Repeat("    ", level)
 
 	ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-	mod.printComment(w, comment, "", indent, ref)
+	if err := mod.printComment(w, comment, "", indent, ref); err != nil {
+		return err
+	}
 
 	fmt.Fprintf(w, "%sexport interface %s {\n", indent, name)
 	for _, p := range properties {
-		mod.printComment(w, p.Comment, p.DeprecationMessage, indent+"    ", ref)
+		if err := mod.printComment(w, p.Comment, p.DeprecationMessage, indent+"    ", ref); err != nil {
+			return err
+		}
 
 		prefix := ""
 		if readonly {
@@ -531,8 +539,10 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	//         ...val,
 	defaultProvderName := provideDefaultsFuncNameFromName(name)
 	ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-	mod.printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
-		defaultProvderName, name), "", indent, ref)
+	if err := mod.printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
+		defaultProvderName, name), "", indent, ref); err != nil {
+		return err
+	}
 	fmt.Fprintf(w, "%sexport function %s(val: %s): "+
 		"%s {\n", indent, defaultProvderName, name, name)
 	fmt.Fprintf(w, "%s    return {\n", indent)
@@ -656,7 +666,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 	// Write the TypeDoc/JSDoc for the resource class
 	ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-	mod.printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "", ref)
+	if err := mod.printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "", ref); err != nil {
+		return info, err
+	}
 
 	var baseType, optionsType string
 	switch {
@@ -742,7 +754,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	}
 	for _, prop := range r.Properties {
 		ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-		mod.printComment(w, prop.Comment, prop.DeprecationMessage, "    ", ref)
+		if err := mod.printComment(w, prop.Comment, prop.DeprecationMessage, "    ", ref); err != nil {
+			return info, err
+		}
 
 		// Make a little comment in the code so it's easy to pick out output properties.
 		var outcomment string
@@ -983,7 +997,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	fmt.Fprintf(w, ");\n    }\n")
 
 	// Generate methods.
-	genMethod := func(method *schema.Method) {
+	genMethod := func(method *schema.Method) error {
 		methodName := camel(method.Name)
 		fun := method.Function
 
@@ -995,7 +1009,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				// Currently the code only knows how to generate code for methods returning an
 				// ObjectType or methods returning a plain resource All other methods are simply
 				// skipped; bail here.
-				return
+				return nil
 			}
 		}
 
@@ -1004,7 +1018,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		// Write the TypeDoc/JSDoc for the data source function.
 		fmt.Fprint(w, "\n")
 		ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-		mod.printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), fun.DeprecationMessage, "    ", ref)
+		if err := mod.printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), fun.DeprecationMessage, "    ", ref); err != nil {
+			return err
+		}
 
 		// Now, emit the method signature.
 		var args []*schema.Property
@@ -1108,10 +1124,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
 		}
 		fmt.Fprintf(w, "    }\n")
+		return nil
 	}
 
 	for _, method := range r.Methods {
-		genMethod(method)
+		if err := genMethod(method); err != nil {
+			return info, err
+		}
 	}
 
 	// Finish the class.
@@ -1245,7 +1264,9 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-	mod.printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "", ref)
+	if err := mod.printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "", ref); err != nil {
+		return info, err
+	}
 
 	if fun.DeprecationMessage != "" {
 		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
@@ -1755,7 +1776,9 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		getfunc, cast := mod.configGetter(p)
 
 		ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-		mod.printComment(w, p.Comment, "", "", ref)
+		if err := mod.printComment(w, p.Comment, "", "", ref); err != nil {
+			return err
+		}
 
 		configFetch := fmt.Sprintf("%s__config.%s(\"%s\")", cast, getfunc, p.Name)
 		// TODO: handle ConstValues https://github.com/pulumi/pulumi/issues/4755
@@ -1970,7 +1993,9 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		}
 		e.Name = safeName
 
-		mod.printComment(w, e.Comment, e.DeprecationMessage, indent, ref)
+		if err := mod.printComment(w, e.Comment, e.DeprecationMessage, indent, ref); err != nil {
+			return err
+		}
 		fmt.Fprintf(w, "%s%s: ", indent, e.Name)
 		if val, ok := e.Value.(string); ok {
 			fmt.Fprintf(w, "%q,\n", val)
@@ -1981,7 +2006,9 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	fmt.Fprintf(w, "} as const;\n")
 	fmt.Fprintf(w, "\n")
 
-	mod.printComment(w, enum.Comment, "", "", ref)
+	if err := mod.printComment(w, enum.Comment, "", "", ref); err != nil {
+		return err
+	}
 	fmt.Fprintf(w, "export type %[1]s = (typeof %[1]s)[keyof typeof %[1]s];\n", enumName)
 	return nil
 }
