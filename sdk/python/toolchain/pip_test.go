@@ -281,3 +281,22 @@ func TestParsePipVersion(t *testing.T) {
 		})
 	}
 }
+
+// Test that we show the underlying error from `pip` when linking fails
+func TestPipLinkPackagesError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	err := os.WriteFile(filepath.Join(root, "requirements.txt"), []byte(``), 0o600)
+	require.NoError(t, err)
+	pip, err := newPip(root, "venv")
+	require.NoError(t, err)
+
+	err = pip.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
+	require.NoError(t, err)
+	// Pip linking just adds the package to requirements.txt, but does not actually try to resolve any package names or
+	// versions. Run the installation to catch the error.
+	err = pip.InstallDependencies(t.Context(), root, false, false, nil, nil)
+
+	require.Regexp(t, "It looks like a path. File '.*nope' does not exist.", err)
+}
