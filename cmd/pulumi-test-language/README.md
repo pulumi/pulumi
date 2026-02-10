@@ -114,7 +114,7 @@ As mentioned above, conformance tests are defined using a series of PCL programs
 and some Go code that makes assertions about the execution of language-specific
 programs generated from that PCL. Presently they are laid out as follows:
 
-* A test has a name, `l<N>-<name>`, where `N` is the "level" of the test (see
+* A test has a name, `l<N>-<name>`, where `N` is the "level" of the test or `provider-<test>` (see
   the definitions in the [architecture](language-conformance-tests-arch) section
   below) and `name` is a descriptive name for the test. The `l1-output-string`
   test, for example, has a level of 1 and the name `output-string`.
@@ -192,6 +192,7 @@ as follows:
   such as custom resources, function invocations, and so on.
 * *L3 tests* exercise features that require more advanced language support such
   as first-class functions -- `apply` is a good example of this.
+  * *Provider tests* exercise language code that acts as a provider, iow calls `Construct`.
 
 Each language defines a test function (the *language test host*) responsible for
 running its conformance test suite, if it implements one. For core languages
