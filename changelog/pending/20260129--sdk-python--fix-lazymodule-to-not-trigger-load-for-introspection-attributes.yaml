@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Fix `_LazyModule` to not trigger full module load for introspection attributes

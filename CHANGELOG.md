@@ -1,5 +1,47 @@
 # Changelog
 
+## 3.220.0 (2026-02-10)
+
+
+### Features
+
+- [cli] Show environment variables that were set if a snapshot integrity error happens
+  [#21709](https://github.com/pulumi/pulumi/pull/21709)
+
+- [cli/{install,package}] Use the Pulumi Cloud Registry by default to resolve package names
+
+- [engine] Pass replacement trigger through to Construct
+  [#21408](https://github.com/pulumi/pulumi/pull/21408)
+
+- [engine] Add EnvVarMappings resource option for provider resources, allowing environment variables to be remapped before being passed to the provider
+  [#21572](https://github.com/pulumi/pulumi/pull/21572)
+
+- [pkg] BREAKING: Deprecate github.com/pulumi/pulumi/pkg/v3/codegen/dotnet in favor of github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3/codegen. This package will be removed from pulumi/pulumi soon!
+  [#21720](https://github.com/pulumi/pulumi/pull/21720)
+
+
+### Bug Fixes
+
+- [cli] Retry `yarn install` when it fails (e.g. during `pulumi install`)
+  [#21707](https://github.com/pulumi/pulumi/pull/21707)
+
+- [engine] Deal with errors in elided journal entries correctly
+  [#21576](https://github.com/pulumi/pulumi/pull/21576)
+
+- [sdk/nodejs] Fix remote components with PULUMI_NODEJS_SKIP_COMPONENT_INPUTS
+
+- [sdk/python] Fix `_LazyModule` to not trigger full module load for introspection attributes
+  [#21620](https://github.com/pulumi/pulumi/pull/21620)
+
+- [sdkgen/python] Remove workaround for slow typechecking with MyPy and PyCharm
+  [#21722](https://github.com/pulumi/pulumi/pull/21722)
+
+
+### Miscellaneous
+
+- [cli] Write logfile location if verbosity is >= 1 to stderr instead of stdout
+  [#21663](https://github.com/pulumi/pulumi/pull/21663)
+
 ## 3.219.0 (2026-02-05)
 
 
