@@ -1,0 +1,7 @@
+name: policy-stack-tags
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: mypy
+    virtualenv: venv

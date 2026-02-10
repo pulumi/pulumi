@@ -1,0 +1,109 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tests
+
+import (
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func init() {
+	validate := func(l *L, events []engine.Event, value string) {
+		var policyViolations []engine.PolicyViolationEventPayload
+		for _, event := range events {
+			if event.Type == engine.PolicyViolationEvent {
+				policyViolations = append(policyViolations, event.Payload().(engine.PolicyViolationEventPayload))
+			}
+		}
+
+		opp := "true"
+		if value == "true" {
+			opp = "false"
+		}
+
+		expectedViolations := []engine.PolicyViolationEventPayload{
+			{
+				ResourceURN:       "urn:pulumi:test::policy-stack-tags::simple:index:Resource::res",
+				Message:           "<{%reset%}>Verifies property equals the stack tag value\nProperty was " + opp + "<{%reset%}>\n",
+				Color:             "raw",
+				PolicyName:        "allowed",
+				PolicyPackName:    "stack-tags",
+				PolicyPackVersion: "2.0.0",
+				EnforcementLevel:  "mandatory",
+				Prefix:            "<{%fg 1%}>mandatory: <{%reset%}>",
+			},
+		}
+
+		require.Len(l, policyViolations, len(expectedViolations), "expected %d policy violations", len(expectedViolations))
+
+		for _, violation := range expectedViolations {
+			assert.Contains(l, policyViolations, violation, "expected policy violation %v", violation)
+		}
+	}
+
+	LanguageTests["policy-stack-tags"] = LanguageTest{
+		RunsShareSource: true,
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+		},
+		Runs: []TestRun{
+			{
+				PolicyPacks: map[string]map[string]any{
+					"stack-tags": {},
+				},
+				StackTags: map[apitype.StackTagName]string{
+					"value": "false",
+				},
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					projectDirectory := res.ProjectDirectory
+					err := res.Err
+					plan := res.Plan
+					changes := res.Changes
+					events := res.Events
+					sdks := res.SDKs
+					_, _, _, _, _, _ = projectDirectory, err, plan, changes, events, sdks
+					require.ErrorContains(l, err, "BAIL: step generator errored")
+					validate(l, events, "false")
+				},
+				Assert: func(l *L, res AssertArgs) {
+					err := res.Err
+					events := res.Events
+
+					require.ErrorContains(l, err,
+						"BAIL: resource urn:pulumi:test::policy-stack-tags::simple:index:Resource::res is invalid")
+					validate(l, events, "false")
+				},
+			},
+			{
+				PolicyPacks: map[string]map[string]any{
+					"stack-tags": {},
+				},
+				StackTags: map[apitype.StackTagName]string{
+					"value": "true",
+				},
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					require.NoError(l, res.Err)
+				},
+				Assert: func(l *L, res AssertArgs) {
+					require.NoError(l, res.Err)
+				},
+			},
+		},
+	}
+}

@@ -1372,6 +1372,16 @@ func (eng *languageTestServer) RunLanguageTest(
 				return nil, fmt.Errorf("get test stack: %w", err)
 			}
 		}
+		// Update the stack tags for the test run, nil is not valid so check for that and use an empty map
+		// instead if needed.
+		tags := run.StackTags
+		if tags == nil {
+			tags = map[string]string{}
+		}
+		err = testBackend.UpdateStackTags(ctx, s, tags)
+		if err != nil {
+			return nil, fmt.Errorf("update stack tags: %w", err)
+		}
 
 		updateOptions := run.UpdateOptions
 		updateOptions.Host = pctx.Host
