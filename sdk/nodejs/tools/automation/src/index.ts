@@ -59,10 +59,10 @@ interface Options {
             default: path.join(process.cwd(), "output"),
         })
         .option("result", {
-          alias: "r",
-          type: "string",
-          describe: "The type of the command results.",
-          default: "Promise<Output>"
+            alias: "r",
+            type: "string",
+            describe: "The type of the command results.",
+            default: "Promise<Output>",
         })
         .demand(1, "Path to specification JSON is required.")
         .strict()
@@ -121,7 +121,12 @@ function generateOptionsTypes(
 }
 
 // Generate the command functions for the command tree.
-function generateCommands(structure: Structure, source: SourceFile, returnType: string, breadcrumbs: string[] = []): void {
+function generateCommands(
+    structure: Structure,
+    source: SourceFile,
+    returnType: string,
+    breadcrumbs: string[] = [],
+): void {
     if (structure.type === "menu") {
         if (structure.commands) {
             for (const [name, subcommand] of Object.entries(structure.commands)) {

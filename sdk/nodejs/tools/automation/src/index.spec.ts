@@ -1,4 +1,4 @@
-// Copyright 2026, Pulumi Corporation.
+// Copyright 2026-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import * as path from "path";
 // because the generated code _does_ have types, and we're not testing the
 // actual production code in this file, so types wouldn't give us any more
 // reassurance.
-let generated: any
+let generated: any;
 
 beforeAll(() => {
     const root = path.resolve(process.cwd());
