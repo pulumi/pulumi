@@ -77,8 +77,10 @@ type LanguageTestServer interface {
 
 func newLanguageTestServer() *languageTestServer {
 	return &languageTestServer{
-		sdkLocks:    gsync.Map[string, *sync.Mutex]{},
-		artifactMap: gsync.Map[string, string]{},
+		providersLock:  gsync.Map[string, *sync.Mutex]{},
+		providersCache: make(map[string]bool),
+		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
+		artifactMap:    gsync.Map[string, string]{},
 	}
 }
 
@@ -156,11 +158,13 @@ func installDependencies(
 func Start(ctx context.Context) (LanguageTestServer, error) {
 	// New up an engine RPC server.
 	server := &languageTestServer{
-		ctx:         ctx,
-		cancel:      make(chan bool),
-		sdkLocks:    gsync.Map[string, *sync.Mutex]{},
-		artifactMap: gsync.Map[string, string]{},
-		cliVersion:  "3.200.0",
+		ctx:            ctx,
+		cancel:         make(chan bool),
+		providersLock:  gsync.Map[string, *sync.Mutex]{},
+		providersCache: make(map[string]bool),
+		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
+		artifactMap:    gsync.Map[string, string]{},
+		cliVersion:     "3.200.0",
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -193,6 +197,9 @@ type languageTestServer struct {
 	addr   string
 
 	sdkLocks gsync.Map[string, *sync.Mutex]
+
+	providersLock  gsync.Map[string, *sync.Mutex]
+	providersCache map[string]bool
 
 	// A map storing the paths to the generated package artifacts
 	artifactMap gsync.Map[string, string]
@@ -689,7 +696,6 @@ func (eng *languageTestServer) RunLanguageTest(
 		host:                        pctx.Host,
 		runtime:                     languageClient,
 		runtimeName:                 token.LanguagePluginName,
-		providersLock:               gsync.Map[string, *sync.Mutex]{},
 		providers:                   make(map[string]func() (plugin.Provider, error)),
 		connections:                 make(map[plugin.Provider]io.Closer),
 		skipEnsurePluginsValidation: test.SkipEnsurePluginsValidation,
@@ -722,13 +728,23 @@ func (eng *languageTestServer) RunLanguageTest(
 		// If this is a provider that should be overridden using the languages plugin directory try and do that now.
 		pkg := p.Pkg().String()
 		if slices.Contains(test.LanguageProviders, pkg) {
+			cacheKey := fmt.Sprintf("%s@%s", key, token.TemporaryDirectory)
 			// The second return value indicates whether the result was loaded or stored
 			// in the map. We don't care here, the end result is always that there's a
 			// mutex that we can lock safely in the map.
-			lock, _ := host.providersLock.LoadOrStore(key, &sync.Mutex{})
+			lock, _ := eng.providersLock.LoadOrStore(cacheKey, &sync.Mutex{})
 			lock.Lock()
 			defer lock.Unlock()
-			if host.providers[key] == nil {
+			targetDirectory := filepath.Join(token.TemporaryDirectory, "providers", pkg)
+			if eng.providersCache[cacheKey] {
+				host.providers[key] = func() (plugin.Provider, error) {
+					pluginProvider, err := plugin.NewProviderFromPath(host, pctx, p.Pkg(), targetDirectory)
+					if err != nil {
+						return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
+					}
+					return pluginProvider, nil
+				}
+			} else {
 				if token.ProvidersDirectory == "" {
 					return nil, fmt.Errorf("provider %s should be loaded from language providers directory, "+
 						"but no providers directory was specified", pkg)
@@ -737,7 +753,6 @@ func (eng *languageTestServer) RunLanguageTest(
 				sourceDirectory := filepath.Join(token.ProvidersDirectory, pkg)
 
 				// Copy to a new targetDirectory so we don't mutate the original test data
-				targetDirectory := filepath.Join(token.TemporaryDirectory, "providers", pkg)
 				err = copyDirectory(os.DirFS(sourceDirectory), ".", targetDirectory, nil, nil)
 				if err != nil {
 					return nil, fmt.Errorf("copy provider test data: %w", err)
@@ -771,6 +786,7 @@ func (eng *languageTestServer) RunLanguageTest(
 					}
 					return pluginProvider, nil
 				}
+				eng.providersCache[cacheKey] = true
 			}
 		} else {
 			host.providers[key] = func() (plugin.Provider, error) {
