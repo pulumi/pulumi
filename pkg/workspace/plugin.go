@@ -67,6 +67,7 @@ func (err *InstallPluginError) Unwrap() error {
 
 func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 	log func(sev diag.Severity, msg string),
+	newLoader plugin.NewLoaderFunc,
 ) (*semver.Version, error) {
 	util.SetKnownPluginDownloadURL(&pluginSpec)
 	util.SetKnownPluginVersion(&pluginSpec)
@@ -99,7 +100,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 	}
 
 	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
-	err = InstallPluginContent(ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false)
+	err = InstallPluginContent(ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false, newLoader)
 	if err != nil {
 		return nil, &InstallPluginError{
 			Spec: pluginSpec,
@@ -118,6 +119,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 // installed.
 func InstallPluginContent(
 	ctx context.Context, spec workspace.PluginDescriptor, content pluginstorage.Content, reinstall bool,
+	newLoader plugin.NewLoaderFunc,
 ) (err error) {
 	done, err := pluginstorage.UnpackContents(ctx, spec, content, reinstall)
 	if err != nil {
@@ -125,11 +127,13 @@ func InstallPluginContent(
 	}
 	defer func() { done(err == nil) }()
 
-	return installDependenciesForPluginSpec(ctx, spec, os.Stderr /* redirect stdout to stderr */, os.Stderr)
+	return installDependenciesForPluginSpec(ctx, spec,
+		os.Stderr /* redirect stdout to stderr */, os.Stderr, newLoader)
 }
 
 func installDependenciesForPluginSpec(
 	ctx context.Context, spec workspace.PluginDescriptor, stdout, stderr io.Writer,
+	newLoader plugin.NewLoaderFunc,
 ) error {
 	dir, err := spec.DirPath()
 	if err != nil {
@@ -159,6 +163,7 @@ func installDependenciesForPluginSpec(
 		proj.GetPackageSpecs(),
 		nil, // config
 		nil, // debugging
+		newLoader,
 	)
 	if err != nil {
 		return err

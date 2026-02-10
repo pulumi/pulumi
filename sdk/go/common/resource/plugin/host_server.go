@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // hostServer is the server side of the host RPC machinery.
@@ -44,7 +45,7 @@ type hostServer struct {
 }
 
 // newHostServer creates a new host server wired up to the given host and context.
-func newHostServer(host Host, ctx *Context) (*hostServer, error) {
+func newHostServer(host Host, ctx *Context, newLoader NewLoaderFunc) (*hostServer, error) {
 	// New up an engine RPC server.
 	engine := &hostServer{
 		host:   host,
@@ -57,6 +58,9 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 		Cancel: engine.cancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterEngineServer(srv, engine)
+			if newLoader != nil {
+				codegenrpc.RegisterLoaderServer(srv, newLoader(host))
+			}
 			return nil
 		},
 		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),

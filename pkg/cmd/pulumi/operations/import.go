@@ -695,7 +695,7 @@ func NewImportCmd() *cobra.Command {
 				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
-			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil)
+			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -740,7 +740,7 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
 					}
-					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
+					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromHost)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 						return nil
@@ -902,7 +902,7 @@ func NewImportCmd() *cobra.Command {
 				}
 				sink := cmdutil.Diag()
 
-				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil)
+				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
 				if err != nil {
 					return nil, nil, err
 				}

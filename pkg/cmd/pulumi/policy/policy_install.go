@@ -26,6 +26,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -121,7 +122,7 @@ func (cmd *policyInstallCmd) Run(
 		return fmt.Errorf("getting current working directory: %w", err)
 	}
 
-	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, nil, nil, cwd, nil, true, nil)
+	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
 	if err != nil {
 		return fmt.Errorf("creating plugin context: %w", err)
 	}

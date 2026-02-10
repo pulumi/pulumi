@@ -25,6 +25,7 @@ import (
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -407,7 +408,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromHost)
 	if err != nil {
 		return nil, err
 	}
