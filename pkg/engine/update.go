@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -44,8 +45,18 @@ type RequiredPolicy interface {
 	Name() string
 	// Version of the PolicyPack.
 	Version() string
-	// Install will install the PolicyPack locally, returning the path it was installed to.
-	Install(ctx *plugin.Context) (string, error)
+	// Installed returns true if the PolicyPack is already installed locally.
+	Installed() bool
+	// LocalPath returns the local path of the PolicyPack.
+	LocalPath() (string, error)
+	// Download the PolicyPack.
+	Download(
+		ctx context.Context,
+		wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	) (io.ReadCloser, int64, error)
+	// Install the PolicyPack. content is the tarball of the PolicyPack.
+	// stdout and stderr are used for dependency installation output.
+	Install(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error
 	// Config returns the PolicyPack's configuration.
 	Config() map[string]*json.RawMessage
 }
@@ -257,7 +268,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 func installPlugins(
 	ctx context.Context,
 	proj *workspace.Project, pwd, main string, target *deploy.Target, opts *deploymentOptions,
-	plugctx *plugin.Context, returnInstallErrors bool,
+	plugctx *plugin.Context, returnInstallErrors bool, manager *installManager,
 ) (PluginSet, map[tokens.Package]workspace.PackageDescriptor, error) {
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
@@ -290,17 +301,27 @@ func installPlugins(
 	allPackages := languagePackages.Union(snapshotPackages)
 	allPlugins := allPackages.ToPluginSet().Deduplicate()
 
+	var waitNeeded bool
+	if manager == nil {
+		manager = newInstallManager(returnInstallErrors)
+		waitNeeded = true
+	}
+
 	// If there are any plugins that are not available, we can attempt to install them here.
 	//
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins,
-		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
+	if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.Host.GetProjectPlugins(),
+		false /*reinstall*/, false /*explicitInstall*/, manager); err != nil {
 		if returnInstallErrors {
 			return nil, nil, err
 		}
 		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
+	}
+
+	if waitNeeded {
+		contract.IgnoreError(manager.Wait())
 	}
 
 	// Collect the version information for default providers.
@@ -309,9 +330,9 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
-// installAndLoadPolicyPlugins loads and installs all requird policy plugins and packages as well as any
+// loadPolicyPlugins loads all required policy plugins and packages as well as any
 // local policy packs. It returns fully populated metadata about those policy plugins.
-func installAndLoadPolicyPlugins(plugctx *plugin.Context,
+func loadPolicyPlugins(plugctx *plugin.Context,
 	deployOpts *deploymentOptions, analyzerOpts *plugin.PolicyAnalyzerOptions,
 ) error {
 	var allValidationErrors []string
@@ -325,17 +346,21 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 
 	var wg sync.WaitGroup
 	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
-	// Install and load required policy packs.
+
+	// Load required policy packs (installation already completed above).
 	for _, policy := range deployOpts.RequiredPolicies {
 		deployOpts.Events.PolicyLoadEvent()
-		policyPath, err := policy.Install(plugctx)
-		if err != nil {
-			return err
-		}
 
 		wg.Add(1)
-		go func(policy RequiredPolicy, policyPath string) {
+		go func(policy RequiredPolicy) {
 			defer wg.Done()
+
+			policyPath, err := policy.LocalPath()
+			if err != nil {
+				errs <- err
+				return
+			}
+
 			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, analyzerOpts)
 			if err != nil {
 				errs <- err
@@ -371,7 +396,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 				errs <- fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
 				return
 			}
-		}(policy, policyPath)
+		}(policy)
 	}
 
 	// Load local policy packs.
@@ -463,9 +488,13 @@ func newUpdateSource(ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks, panicErrs chan<- error,
 ) (deploy.Source, error) {
+	manager := newInstallManager(false /*returnPluginErrors*/)
+
 	//
-	// Step 1: Install and load plugins.
+	// Step 1: Install policy packs and plugins.
 	//
+
+	ensurePoliciesAreInstalled(ctx, plugctx, opts, opts.RequiredPolicies, manager)
 
 	allPlugins, defaultProviderVersions, err := installPlugins(
 		ctx,
@@ -476,21 +505,18 @@ func newUpdateSource(ctx context.Context,
 		opts,
 		plugctx,
 		false, /*returnInstallErrors*/
+		manager,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	// Once we've installed all of the plugins we need, make sure that all analyzers and language plugins are
-	// loaded up and ready to go. Provider plugins are loaded lazily by the provider registry and thus don't
-	// need to be loaded here.
-	const kinds = plugin.AnalyzerPlugins | plugin.LanguagePlugins
-	if err := ensurePluginsAreLoaded(plugctx, allPlugins, kinds); err != nil {
-		return nil, err
+	if err := manager.Wait(); err != nil {
+		logging.V(7).Infof("newUpdateSource(): failed to install policy packs and plugins: %v", err)
 	}
 
 	//
-	// Step 2: Install and load policy plugins.
+	// Step 2: Load policy packs and plugins.
 	//
 
 	// Decrypt the configuration.
@@ -507,7 +533,15 @@ func newUpdateSource(ctx context.Context,
 		DryRun:           opts.DryRun,
 		Tags:             target.Tags,
 	}
-	if err := installAndLoadPolicyPlugins(plugctx, opts, analyzerOpts); err != nil {
+	if err := loadPolicyPlugins(plugctx, opts, analyzerOpts); err != nil {
+		return nil, err
+	}
+
+	// Once we've installed all of the plugins we need, make sure that all analyzers and language plugins are
+	// loaded up and ready to go. Provider plugins are loaded lazily by the provider registry and thus don't
+	// need to be loaded here.
+	const kinds = plugin.AnalyzerPlugins | plugin.LanguagePlugins
+	if err := ensurePluginsAreLoaded(plugctx, allPlugins, kinds); err != nil {
 		return nil, err
 	}
 

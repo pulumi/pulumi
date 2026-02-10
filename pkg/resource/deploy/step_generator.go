@@ -22,15 +22,18 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	mapset "github.com/deckarep/golang-set/v2"
+	"golang.org/x/sync/errgroup"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -657,7 +660,6 @@ func (sg *stepGenerator) getOldResource(
 
 func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
 	var invalid bool // will be set to true if this object fails validation.
-
 	goal := event.Goal()
 
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
@@ -706,6 +708,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	if old != nil {
 		refreshBeforeUpdate = old.RefreshBeforeUpdate
 	}
+
 	new := resource.NewState{
 		Type:                    goal.Type,
 		URN:                     urn,
@@ -1257,96 +1260,75 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	// Send the resource off to any Analyzers before being operated on. We do two passes: first we perform
 	// remediations, and *then* we do analysis, since we want analyzers to run on the final resource states.
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
-	for _, remediate := range []bool{true, false} {
-		for _, analyzer := range analyzers {
-			r := plugin.AnalyzerResource{
-				URN:        new.URN,
-				Type:       new.Type,
-				Name:       new.URN.Name(),
-				Properties: inputs,
-				Options: plugin.AnalyzerResourceOptions{
-					Protect:                 new.Protect,
-					IgnoreChanges:           goal.IgnoreChanges,
-					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
-					AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-					Aliases:                 new.GetAliases(),
-					CustomTimeouts:          new.CustomTimeouts,
-					Parent:                  new.Parent,
-				},
-			}
-			providerResource := sg.getProviderResource(new.URN, new.Provider)
-			if providerResource != nil {
-				r.Provider = &plugin.AnalyzerProviderResource{
-					URN:        providerResource.URN,
-					Type:       providerResource.Type,
-					Name:       providerResource.URN.Name(),
-					Properties: providerResource.Inputs,
-				}
-			}
 
-			info, err := analyzer.GetAnalyzerInfo()
-			if err != nil {
-				return nil, false, fmt.Errorf("failed to get analyzer info: %w", err)
-			}
-
-			if remediate {
-				// During the first pass, perform remediations. This ensures subsequent analyzers run
-				// against the transformed properties, ensuring nothing circumvents the analysis checks.
-				response, err := analyzer.Remediate(r)
-				if err != nil {
-					return nil, false, fmt.Errorf("failed to run remediation: %w", err)
-				}
-				for _, tresult := range response.Remediations {
-					if tresult.Diagnostic != "" {
-						// If there is a diagnostic, we have a warning to display.
-						sg.deployment.events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
-							PolicyName:        tresult.PolicyName,
-							PolicyPackName:    tresult.PolicyPackName,
-							PolicyPackVersion: tresult.PolicyPackVersion,
-							Description:       tresult.Description,
-							Message:           tresult.Diagnostic,
-							EnforcementLevel:  apitype.Advisory,
-							URN:               new.URN,
-						})
-					} else if tresult.Properties != nil {
-						// Emit a nice message so users know what was remediated.
-						sg.deployment.events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
-						// Use the transformed inputs rather than the old ones from this point onwards.
-						inputs = tresult.Properties
-						new.Inputs = tresult.Properties
-					}
-				}
-				summary := resourceanalyzer.NewRemediatePolicySummary(new.URN, response, info)
-				sg.deployment.events.OnPolicyRemediateSummary(summary)
-			} else {
-				// During the second pass, perform analysis. This happens after remediations so that
-				// analyzers see properties as they were after the transformations have occurred.
-				response, err := analyzer.Analyze(r)
-				if err != nil {
-					return nil, false, fmt.Errorf("failed to run policy: %w", err)
-				}
-				for _, d := range response.Diagnostics {
-					if d.EnforcementLevel == apitype.Remediate {
-						// If we ran a remediation, but we are still somehow triggering a violation,
-						// "downgrade" the level we report from remediate to mandatory.
-						d.EnforcementLevel = apitype.Mandatory
-					}
-
-					if d.EnforcementLevel == apitype.Mandatory {
-						if !sg.deployment.opts.DryRun {
-							invalid = true
-						}
-						sg.sawError = true
-					}
-					// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
-					sg.deployment.events.OnPolicyViolation(new.URN, d)
-				}
-
-				summary := resourceanalyzer.NewAnalyzePolicySummary(new.URN, response, info)
-				sg.deployment.events.OnPolicyAnalyzeSummary(summary)
+	// First pass: perform remediations sequentially. Each remediation can transform the resource
+	// properties, so subsequent analyzers must see the transformed state.
+	for _, analyzer := range analyzers {
+		r := plugin.AnalyzerResource{
+			URN:        new.URN,
+			Type:       new.Type,
+			Name:       new.URN.Name(),
+			Properties: inputs,
+			Options: plugin.AnalyzerResourceOptions{
+				Protect:                 new.Protect,
+				IgnoreChanges:           goal.IgnoreChanges,
+				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+				Aliases:                 new.GetAliases(),
+				CustomTimeouts:          new.CustomTimeouts,
+				Parent:                  new.Parent,
+			},
+		}
+		providerResource := sg.getProviderResource(new.URN, new.Provider)
+		if providerResource != nil {
+			r.Provider = &plugin.AnalyzerProviderResource{
+				URN:        providerResource.URN,
+				Type:       providerResource.Type,
+				Name:       providerResource.URN.Name(),
+				Properties: providerResource.Inputs,
 			}
 		}
+
+		info, err := analyzer.GetAnalyzerInfo()
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to get analyzer info: %w", err)
+		}
+
+		response, err := analyzer.Remediate(r)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to run remediation: %w", err)
+		}
+		for _, tresult := range response.Remediations {
+			if tresult.Diagnostic != "" {
+				// If there is a diagnostic, we have a warning to display.
+				sg.deployment.events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
+					PolicyName:        tresult.PolicyName,
+					PolicyPackName:    tresult.PolicyPackName,
+					PolicyPackVersion: tresult.PolicyPackVersion,
+					Description:       tresult.Description,
+					Message:           tresult.Diagnostic,
+					EnforcementLevel:  apitype.Advisory,
+					URN:               new.URN,
+				})
+			} else if tresult.Properties != nil {
+				// Emit a nice message so users know what was remediated.
+				sg.deployment.events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
+				// Use the transformed inputs rather than the old ones from this point onwards.
+				inputs = tresult.Properties
+				new.Inputs = tresult.Properties
+			}
+		}
+		summary := resourceanalyzer.NewRemediatePolicySummary(new.URN, response, info)
+		sg.deployment.events.OnPolicyRemediateSummary(summary)
 	}
+
+	// Second pass: perform analysis in parallel. Analysis is read-only (it only produces
+	// diagnostics) so all analyzers can safely run concurrently on the resource inputs.
+	analyzeInvalid, err := sg.analyzeAll(analyzers, new, inputs, goal)
+	if err != nil {
+		return nil, false, err
+	}
+	invalid = invalid || analyzeInvalid
 
 	// If the resource isn't valid, don't proceed any further.
 	if invalid {
@@ -1392,10 +1374,6 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	if wasExternal {
 		logging.V(7).Infof("Planner recognized '%s' as old external resource, creating instead", urn)
 		sg.creates[urn] = true
-		if err != nil {
-			return nil, false, err
-		}
-
 		return []Step{
 			NewCreateReplacementStep(sg.deployment, event, old, new, nil, nil, nil, true),
 			NewReplaceStep(sg.deployment, old, new, nil, nil, nil, true),
@@ -3136,6 +3114,101 @@ func (sg *stepGenerator) findResourcesReplacedWith(urn resource.URN) ([]dependen
 	return resources, nil
 }
 
+// analyzeAll runs analyzer.Analyze for each analyzer in parallel, emitting policy violation
+// and summary events as results arrive. It respects the PULUMI_PARALLEL_ANALYZE environment
+// variable to limit concurrency. A value of 0 (the default) means no limit, and 1 disables
+// parallelism entirely. It returns true if any mandatory violation was found (and we are not
+// in dry-run mode), indicating the resource is invalid.
+func (sg *stepGenerator) analyzeAll(
+	analyzers []plugin.Analyzer,
+	new *resource.State,
+	inputs resource.PropertyMap,
+	goal *resource.Goal,
+) (bool, error) {
+	if len(analyzers) == 0 {
+		return false, nil
+	}
+
+	r := plugin.AnalyzerResource{
+		URN:        new.URN,
+		Type:       new.Type,
+		Name:       new.URN.Name(),
+		Properties: inputs,
+		Options: plugin.AnalyzerResourceOptions{
+			Protect:                 new.Protect,
+			IgnoreChanges:           goal.IgnoreChanges,
+			DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+			AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+			Aliases:                 new.GetAliases(),
+			CustomTimeouts:          new.CustomTimeouts,
+			Parent:                  new.Parent,
+		},
+	}
+	providerResource := sg.getProviderResource(new.URN, new.Provider)
+	if providerResource != nil {
+		r.Provider = &plugin.AnalyzerProviderResource{
+			URN:        providerResource.URN,
+			Type:       providerResource.Type,
+			Name:       providerResource.URN.Name(),
+			Properties: providerResource.Inputs,
+		}
+	}
+
+	var invalid atomic.Bool
+	var sawError atomic.Bool
+
+	// Run Analyze for each analyzer in parallel, respecting the parallelism limit.
+	var g errgroup.Group
+	if parallelism := env.ParallelAnalyze.Value(); parallelism > 0 {
+		g.SetLimit(parallelism)
+	}
+
+	for _, analyzer := range analyzers {
+		g.Go(func() error {
+			info, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				return fmt.Errorf("failed to get analyzer info: %w", err)
+			}
+
+			response, err := analyzer.Analyze(r)
+			if err != nil {
+				return fmt.Errorf("failed to run policy: %w", err)
+			}
+
+			for _, d := range response.Diagnostics {
+				if d.EnforcementLevel == apitype.Remediate {
+					// If we ran a remediation, but we are still somehow triggering a violation,
+					// "downgrade" the level we report from remediate to mandatory.
+					d.EnforcementLevel = apitype.Mandatory
+				}
+
+				if d.EnforcementLevel == apitype.Mandatory {
+					if !sg.deployment.opts.DryRun {
+						invalid.Store(true)
+					}
+					sawError.Store(true)
+				}
+				// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
+				sg.deployment.events.OnPolicyViolation(new.URN, d)
+			}
+
+			summary := resourceanalyzer.NewAnalyzePolicySummary(new.URN, response, info)
+			sg.deployment.events.OnPolicyAnalyzeSummary(summary)
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return false, err
+	}
+
+	if sawError.Load() {
+		sg.sawError = true
+	}
+
+	return invalid.Load(), nil
+}
+
 func (sg *stepGenerator) AnalyzeResources() error {
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
 
@@ -3223,40 +3296,62 @@ func (sg *stepGenerator) AnalyzeResources() error {
 		}
 	}
 
+	var sawError atomic.Bool
+
+	// Run AnalyzeStack for each analyzer in parallel, respecting the parallelism limit.
+	var g errgroup.Group
+	if parallelism := env.ParallelAnalyze.Value(); parallelism > 0 {
+		g.SetLimit(parallelism)
+	}
+
 	for _, analyzer := range analyzers {
-		info, err := analyzer.GetAnalyzerInfo()
-		if err != nil {
-			return fmt.Errorf("failed to get analyzer info: %w", err)
-		}
-
-		response, err := analyzer.AnalyzeStack(resources)
-		if err != nil {
-			return err
-		}
-		for _, d := range response.Diagnostics {
-			if d.EnforcementLevel == apitype.Remediate {
-				// Stack policies cannot be remediated, so treat the level as mandatory.
-				d.EnforcementLevel = apitype.Mandatory
+		g.Go(func() error {
+			info, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				return fmt.Errorf("failed to get analyzer info: %w", err)
 			}
 
-			sg.sawError = sg.sawError || (d.EnforcementLevel == apitype.Mandatory)
-			// If a URN was provided and it is a URN associated with a resource in the stack, use it.
-			// Otherwise, if the URN is empty or is not associated with a resource in the stack, use
-			// the default root stack URN.
-			var urn resource.URN
-			if d.URN != "" {
-				if _, ok := sg.deployment.news.Load(d.URN); ok {
-					urn = d.URN
+			response, err := analyzer.AnalyzeStack(resources)
+			if err != nil {
+				return err
+			}
+
+			for _, d := range response.Diagnostics {
+				if d.EnforcementLevel == apitype.Remediate {
+					// Stack policies cannot be remediated, so treat the level as mandatory.
+					d.EnforcementLevel = apitype.Mandatory
 				}
-			}
-			if urn == "" {
-				urn = resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project())
-			}
-			sg.deployment.events.OnPolicyViolation(urn, d)
-		}
 
-		summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)
-		sg.deployment.events.OnPolicyAnalyzeStackSummary(summary)
+				if d.EnforcementLevel == apitype.Mandatory {
+					sawError.Store(true)
+				}
+				// If a URN was provided and it is a URN associated with a resource in the stack, use it.
+				// Otherwise, if the URN is empty or is not associated with a resource in the stack, use
+				// the default root stack URN.
+				var urn resource.URN
+				if d.URN != "" {
+					if _, ok := sg.deployment.news.Load(d.URN); ok {
+						urn = d.URN
+					}
+				}
+				if urn == "" {
+					urn = resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project())
+				}
+				sg.deployment.events.OnPolicyViolation(urn, d)
+			}
+
+			summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)
+			sg.deployment.events.OnPolicyAnalyzeStackSummary(summary)
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	if sawError.Load() {
+		sg.sawError = true
 	}
 
 	return nil

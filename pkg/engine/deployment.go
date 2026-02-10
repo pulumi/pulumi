@@ -22,6 +22,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -53,7 +54,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	// Create a context for plugins.
 	ctx, err := plugin.NewContextWithRoot(context.TODO(), diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
-		projinfo.Proj.GetPackageSpecs(), config, debugging)
+		projinfo.Proj.GetPackageSpecs(), config, debugging, schema.NewLoaderServerFromHost)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -243,6 +244,7 @@ func newDeployment(
 			opts,
 			plugctx,
 			false, /*returnInstallErrors*/
+			nil,   /*installTasks*/
 		)
 		if pluginErr != nil {
 			return nil, pluginErr

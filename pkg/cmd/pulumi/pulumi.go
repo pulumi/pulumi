@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/clispec"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
@@ -200,7 +201,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				logging.Warningf("could not find the log file: %s", err)
 				logging.Flush()
 			} else {
-				fmt.Printf("The log file for this run is at %s\n", logFile)
+				fmt.Fprintf(os.Stderr, "The log file for this run is at %s\n", logFile)
 			}
 		}
 
@@ -464,6 +465,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				trace.NewViewTraceCmd(),
 				trace.NewConvertTraceCmd(),
 				events.NewReplayEventsCmd(),
+				clispec.NewGenCLISpecCmd(cmd),
 			},
 		},
 		// AI Commands relating to specifically the Pulumi AI service

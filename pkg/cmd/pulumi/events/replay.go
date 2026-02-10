@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -60,7 +61,6 @@ func NewReplayEventsCmd() *cobra.Command {
 			"using either the progress view or the diff view.\n" +
 			"\n" +
 			"The <kind> argument must be one of: update, refresh, destroy, import.\n",
-		Args:   cmdutil.ExactArgs(2),
 		Hidden: !env.DebugCommands.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var action apitype.UpdateKind
@@ -126,7 +126,10 @@ func NewReplayEventsCmd() *cobra.Command {
 			return nil
 		},
 	}
-
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "kind"}, {Name: "events-file"}},
+		Required:  2,
+	})
 	cmd.PersistentFlags().BoolVarP(
 		&preview, "preview", "p", false,
 		"Must be set for events from a `pulumi preview`.")

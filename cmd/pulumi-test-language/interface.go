@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -311,7 +312,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		PluginDownloadURL: descriptor.DownloadURL,
 	}
 
-	provider, err := l.host.Provider(workspaceDescriptor)
+	provider, err := l.host.Provider(workspaceDescriptor, env.Global())
 	if err != nil {
 		return nil, fmt.Errorf("could not load schema for %s: %w", descriptor.Name, err)
 	}
@@ -492,7 +493,8 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	})
 
 	// Start up a plugin context
-	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, nil, "", "", nil, false, nil, nil, nil, nil, nil)
+	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, nil, "", "", nil, false, nil, nil, nil, nil,
+		nil, schema.NewLoaderServerFromHost)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -664,7 +666,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// Start up a plugin context
 	pctx, err := plugin.NewContextWithRoot(
-		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil, nil)
+		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil,
+		nil, schema.NewLoaderServerFromHost)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -708,6 +711,8 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, err
 	}
 	defer contract.IgnoreClose(grpcServer)
+
+	host.loaderAddress = grpcServer.Addr()
 
 	// And fill that host with our test providers
 	for _, provider := range test.Providers {

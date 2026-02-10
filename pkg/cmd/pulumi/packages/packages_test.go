@@ -68,7 +68,7 @@ func TestProviderFromSource(t *testing.T) {
 		}
 
 		mockHost := &plugin.MockHost{
-			ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+			ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 				return mockProvider, nil
 			},
 		}
@@ -113,6 +113,7 @@ func TestProviderFromSource(t *testing.T) {
 			nil,
 			false,
 			nil,
+			schema.NewLoaderServerFromHost,
 		)
 		require.NoError(t, err)
 		defer pctx.Close()

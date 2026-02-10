@@ -639,6 +639,15 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 		},
 		{
+			desc: "replacement trigger",
+			give: ConstructOptions{
+				ReplacementTrigger: resource.NewProperty("trigger-value"),
+			},
+			want: &pulumirpc.ConstructRequest{
+				ReplacementTrigger: structpb.NewStringValue("trigger-value"),
+			},
+		},
+		{
 			desc: "retain on delete",
 			give: ConstructOptions{
 				RetainOnDelete: ptr(true),
@@ -790,7 +799,7 @@ func newTestContext(t testing.TB) *Context {
 	ctx, err := NewContext(
 		context.Background(),
 		sink, sink,
-		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */)
+		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */, nil)
 	require.NoError(t, err, "build context")
 
 	return ctx

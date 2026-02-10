@@ -244,3 +244,6 @@ var JournalingBatchPeriod = env.Int("JOURNALING_BATCH_PERIOD",
 
 var GoroutinePanicRecovery = env.Bool("GOROUTINE_PANIC_RECOVERY",
 	"Enable recovery from panics in goroutines to prevent the process from crashing.", env.Needs(Dev))
+
+var ParallelAnalyze = env.Int("PARALLEL_ANALYZE",
+	"(Experimental) Number of parallel analyze calls per resource (1 for no parallelism)")

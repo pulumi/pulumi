@@ -37,6 +37,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -45,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
@@ -168,7 +170,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	options map[string]any, disableProviderPreview bool, jsonConfig string,
-	projectName tokens.PackageName,
+	projectName tokens.PackageName, e env.Env,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *Plugin
@@ -226,22 +228,28 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 
 		// Runtime options are passed as environment variables to the provider, this is _currently_ used by
 		// dynamic providers to do things like lookup the virtual environment to use.
-		env := os.Environ()
+
+		optionsStore := env.MapStore{}
+
 		for k, v := range options {
-			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
+			optionsStore["PULUMI_RUNTIME_"+strings.ToUpper(k)] = fmt.Sprintf("%v", v)
 		}
 		if projectName != "" {
 			if pkg == tokens.Package(nodejsDynamicProviderPackage) {
 				// The Node.js SDK uses PULUMI_NODEJS_PROJECT to set the project name.
 				// Eventually, we should standardize on PULUMI_PROJECT for all SDKs.
 				// Also see `constructEnv` in sdk/go/common/resource/plugin/analyzer_plugin.go
-				env = append(env, fmt.Sprintf("PULUMI_NODEJS_PROJECT=%s", projectName))
+				optionsStore["PULUMI_NODEJS_PROJECT"] = projectName.String()
 			}
-			env = append(env, fmt.Sprintf("PULUMI_PROJECT=%s", projectName))
+			optionsStore["PULUMI_PROJECT"] = projectName.String()
 		}
 		if jsonConfig != "" {
-			env = append(env, "PULUMI_CONFIG="+jsonConfig)
+			optionsStore["PULUMI_CONFIG"] = jsonConfig
 		}
+
+		// Get existing environment and add options
+		baseStore := e.GetStore()
+		e = envutil.NewEnv(envutil.JoinStore(optionsStore, baseStore))
 
 		handshake := func(
 			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
@@ -260,7 +268,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		}
 
 		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
-			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
+			apitype.ResourcePlugin, []string{host.ServerAddr()}, e,
 			handshake, providerPluginDialOptions(ctx, pkg, ""),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
 		if err != nil {
@@ -371,8 +379,6 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
 func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path string) (Provider, error) {
-	env := os.Environ()
-
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*ProviderHandshakeResponse, error) {
@@ -390,7 +396,7 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 	}
 
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
-		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
+		apitype.ResourcePlugin, []string{host.ServerAddr()}, env.Global(),
 		handshake, providerPluginDialOptions(ctx, "", path),
 		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
 	if err != nil {
@@ -1893,6 +1899,22 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		replaceWithURNs[i] = string(urn)
 	}
 
+	// Marshal the replacement trigger.
+	var replacementTrigger *structpb.Value
+	if !req.Options.ReplacementTrigger.IsNull() {
+		trigger, err := MarshalPropertyValue("replacementTrigger", req.Options.ReplacementTrigger, MarshalOptions{
+			Label:            label + ".replacementTrigger",
+			KeepUnknowns:     req.Info.DryRun,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return ConstructResult{}, err
+		}
+		replacementTrigger = trigger
+	}
+
 	// Marshal the resource hook bindings.
 	var resourceHook *pulumirpc.ConstructRequest_ResourceHooksBinding
 	if len(req.Options.ResourceHooks) > 0 {
@@ -1957,6 +1979,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		AcceptsOutputValues:     true,
 		ResourceHooks:           resourceHook,
 		StackTraceHandle:        req.Info.StackTraceHandle,
+		ReplacementTrigger:      replacementTrigger,
 	}
 	if ct := req.Options.CustomTimeouts; ct != nil {
 		rpcReq.CustomTimeouts = &pulumirpc.ConstructRequest_CustomTimeouts{

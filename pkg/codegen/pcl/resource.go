@@ -71,6 +71,8 @@ type ResourceOptions struct {
 	ImportID model.Expression
 	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
 	ReplacementTrigger model.Expression
+	// Environment variable mappings for provider resources.
+	EnvVarMappings model.Expression
 }
 
 // Resource represents a resource instantiation inside of a program or component.
@@ -215,4 +217,38 @@ func NeedsVersionResourceOption(version model.Expression, schema *schema.Resourc
 	}
 
 	return v.String() != optV.Value.AsString()
+}
+
+func NeedsPluginDownloadURLResourceOption(pluginDownloadURL model.Expression, schema *schema.Resource) bool {
+	if pluginDownloadURL == nil {
+		return false
+	}
+
+	if schema == nil {
+		return true
+	}
+
+	pkg, err := schema.PackageReference.Definition()
+	if err != nil || pkg == nil {
+		return true
+	}
+
+	schemaURL := pkg.PluginDownloadURL
+	if schemaURL == "" {
+		return true
+	}
+
+	e, ok := pluginDownloadURL.(*model.TemplateExpression)
+	contract.Assertf(ok, "Expected a model.TemplateExpression, found %T", pluginDownloadURL)
+	if len(e.Parts) != 1 {
+		return true
+	}
+
+	optURL, ok := e.Parts[0].(*model.LiteralValueExpression)
+	contract.Assertf(ok, "Expected a pluginDownloadURL literal, found %T", optURL)
+	if !optURL.Value.Type().Equals(cty.String) || !optURL.Value.IsKnown() || optURL.Value.IsNull() {
+		return true
+	}
+
+	return schemaURL != optURL.Value.AsString()
 }

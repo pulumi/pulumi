@@ -237,5 +237,23 @@ describe("options", () => {
                 assert.deepStrictEqual(await result.promise(), ["a", "b"]);
             });
         });
+
+        describe("envVarMappings", () => {
+            it("keeps value from opts1 if not provided in opts2", async () => {
+                const result = mergeOptions({ envVarMappings: { MY_VAR: "PROVIDER_VAR" } }, {});
+                assert.deepStrictEqual(result.envVarMappings, { MY_VAR: "PROVIDER_VAR" });
+            });
+            it("keeps value from opts2 if not provided in opts1", async () => {
+                const result = mergeOptions({}, { envVarMappings: { MY_VAR: "PROVIDER_VAR" } });
+                assert.deepStrictEqual(result.envVarMappings, { MY_VAR: "PROVIDER_VAR" });
+            });
+            it("overwrites value from opts1 if given value in opts2", async () => {
+                const result = mergeOptions(
+                    { envVarMappings: { VAR_A: "TARGET_A" } },
+                    { envVarMappings: { VAR_B: "TARGET_B" } },
+                );
+                assert.deepStrictEqual(result.envVarMappings, { VAR_B: "TARGET_B" });
+            });
+        });
     });
 });

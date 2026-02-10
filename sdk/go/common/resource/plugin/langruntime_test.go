@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -170,7 +171,7 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 		},
 	}
 
-	pCtx, err := NewContext(context.Background(), nil, nil, nil, nil, "", nil, false, nil)
+	pCtx, err := NewContext(context.Background(), nil, nil, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 	host := &langhost{
 		ctx:     pCtx,
@@ -184,4 +185,41 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 		WorkingDirectory: "/tmp",
 	})
 	require.Equal(t, returnErr, err)
+}
+
+func TestRunPluginPassesLoaderAddress(t *testing.T) {
+	t.Parallel()
+
+	const expectedLoaderAddr = "127.0.0.1:12345"
+
+	mockLanguageRuntime := &MockLanguageRuntimeClient{
+		RunPluginF: func(
+			ctx context.Context, info *pulumirpc.RunPluginRequest,
+		) (pulumirpc.LanguageRuntime_RunPluginClient, error) {
+			require.Equal(t, expectedLoaderAddr, info.LoaderTarget)
+			return nil, assert.AnError
+		},
+	}
+
+	mockHost := &MockHost{
+		LoaderAddrF: func() string {
+			return expectedLoaderAddr
+		},
+	}
+
+	pCtx, err := NewContext(t.Context(), nil, nil, mockHost, nil, "", nil, false, nil, nil)
+	require.NoError(t, err)
+
+	host := &langhost{
+		ctx:     pCtx,
+		runtime: "test",
+		plug:    nil,
+		client:  mockLanguageRuntime,
+	}
+
+	_, _, _, err = host.RunPlugin(pCtx.Request(), RunPluginInfo{
+		WorkingDirectory: "/tmp",
+		LoaderAddress:    expectedLoaderAddr,
+	})
+	require.ErrorIs(t, err, assert.AnError)
 }

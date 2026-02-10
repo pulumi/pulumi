@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -905,11 +905,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 					g.importer.Import(fnPkg, path.Base(fnPkg) /* name */)
 				}
 			}
-			if t, ok := n.(*model.TemplateExpression); ok {
-				if len(t.Parts) > 1 {
-					g.importer.Import("fmt", "fmt")
-				}
-			}
 			return n, nil
 		})
 		contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
@@ -1200,6 +1195,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions, schema *sche
 	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
 		appendOption("Version", opts.Version, model.StringType)
 	}
+	if opts.PluginDownloadURL != nil && pcl.NeedsPluginDownloadURLResourceOption(opts.PluginDownloadURL, schema) {
+		appendOption("PluginDownloadURL", opts.PluginDownloadURL, model.StringType)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}
@@ -1212,6 +1210,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions, schema *sche
 	}
 	if opts.ImportID != nil {
 		appendOption("Import", opts.ImportID, model.StringType)
+	}
+	if opts.EnvVarMappings != nil {
+		appendOption("EnvVarMappings", opts.EnvVarMappings, model.NewMapType(model.StringType))
 	}
 
 	return block, temps
@@ -1291,6 +1292,17 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 					g.Fgenf(valBuffer, "pulumi.Any(%v)", attr.Value)
 				}
 			}
+		case "EnvVarMappings":
+			// EnvVarMappings is map[string]string
+			g.Fgenf(valBuffer, "map[string]string{")
+			obj := attr.Value.(*model.ObjectConsExpression)
+			for i, item := range obj.Items {
+				if i > 0 {
+					g.Fgenf(valBuffer, ", ")
+				}
+				g.Fgenf(valBuffer, "%v: %v", item.Key, item.Value)
+			}
+			g.Fgenf(valBuffer, "}")
 		default:
 			g.Fgenf(valBuffer, "%v", attr.Value)
 		}
@@ -1395,6 +1407,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
 		var buf bytes.Buffer
+		g.importer.Import("fmt", "fmt")
 		resourceName := fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName)
 		if g.isComponent {
 			resourceName = fmt.Sprintf(`fmt.Sprintf("%%s-%s-%%v", name, key0)`, resName)

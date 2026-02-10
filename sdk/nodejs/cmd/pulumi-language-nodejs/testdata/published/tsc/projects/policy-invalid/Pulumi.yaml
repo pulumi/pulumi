@@ -1,0 +1,5 @@
+name: policy-invalid
+runtime:
+  name: nodejs
+  options:
+    typescript: false

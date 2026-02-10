@@ -27,7 +27,7 @@ module.exports = {
             "line",
             [
                 {
-                    pattern: "Copyright \\d{4}-\\d{4}, Pulumi Corporation.",
+                    pattern: "Copyright \\d{4}(-\\d{4})?, Pulumi Corporation.",
                 },
             ],
         ],

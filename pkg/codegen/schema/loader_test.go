@@ -22,6 +22,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -33,7 +34,7 @@ func initLoader(b testing.TB, options pluginLoaderCacheOptions) ReferenceLoader 
 	cwd, err := os.Getwd()
 	require.NoError(b, err)
 	sink := diagtest.LogSink(b)
-	ctx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil)
+	ctx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost)
 	require.NoError(b, err)
 	loader := newPluginLoaderWithOptions(ctx.Host, options)
 
@@ -159,7 +160,7 @@ func TestLoadParameterized(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+		ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 			assert.Equal(t, "terraform-provider", descriptor.Name)
 			assert.Equal(t, semver.MustParse("1.0.0"), *descriptor.Version)
 			return mockProvider, nil
@@ -227,7 +228,7 @@ func TestLoadNameMismatch(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(workspace.PluginDescriptor) (plugin.Provider, error) {
+		ProviderF: func(workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
 			return provider, nil
 		},
 		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
@@ -298,7 +299,7 @@ func TestLoadVersionMismatch(t *testing.T) {
 	}
 
 	host := &plugin.MockHost{
-		ProviderF: func(workspace.PluginDescriptor) (plugin.Provider, error) {
+		ProviderF: func(workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
 			return provider, nil
 		},
 		ResolvePluginF: func(workspace.PluginDescriptor) (*workspace.PluginInfo, error) {

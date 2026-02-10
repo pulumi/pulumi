@@ -36,12 +36,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // A Host hosts provider plugins and makes them easily accessible by package name.
 type Host interface {
 	// ServerAddr returns the address at which the host's RPC interface may be found.
 	ServerAddr() string
+
+	// LoaderAddr returns the address at which a plugin loader service may be found.
+	LoaderAddr() string
 
 	// Log logs a message, including errors and warnings.  Messages can have a resource URN
 	// associated with them.  If no urn is provided, the message is global.
@@ -68,7 +72,7 @@ type Host interface {
 
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
-	Provider(descriptor workspace.PluginDescriptor) (Provider, error)
+	Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
 	LanguageRuntime(runtime string) (LanguageRuntime, error)
@@ -177,10 +181,13 @@ func collectPluginsFromPackages(
 	return result, nil
 }
 
+type NewLoaderFunc = func(h Host) codegenrpc.LoaderServer
+
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
 	config map[config.Key]string, debugging DebugContext, projectName tokens.PackageName,
+	newLoader NewLoaderFunc,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -229,11 +236,12 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 		projectPlugins:          projectPlugins,
 		debugContext:            debugging,
 		projectName:             projectName,
+		hasLoaderServer:         newLoader != nil,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
 	// to "phone home" in case there are things the host must do on behalf of the plugins (like log, etc).
-	svr, err := newHostServer(host, ctx)
+	svr, err := newHostServer(host, ctx, newLoader)
 	if err != nil {
 		return nil, err
 	}
@@ -350,6 +358,8 @@ type defaultHost struct {
 
 	closer         *sync.Once
 	projectPlugins []workspace.ProjectPlugin
+
+	hasLoaderServer bool
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -374,6 +384,13 @@ type resourcePlugin struct {
 
 func (host *defaultHost) ServerAddr() string {
 	return host.server.Address()
+}
+
+func (host *defaultHost) LoaderAddr() string {
+	if host.hasLoaderServer {
+		return host.ServerAddr()
+	}
+	return ""
 }
 
 func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
@@ -484,7 +501,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 	return analyzers
 }
 
-func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor) (Provider, error) {
+func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {
 	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		pkg := descriptor.Name
 		version := descriptor.Version
@@ -502,10 +519,9 @@ func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor) (Provid
 		if err != nil {
 			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
 		}
-
 		plug, err := NewProvider(
 			host, host.ctx, descriptor,
-			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
+			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName, e)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
 			if infoerr != nil {
@@ -624,7 +640,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kin
 			}
 		case apitype.ResourcePlugin:
 			if kinds&ResourcePlugins != 0 {
-				if _, err := host.Provider(plugin); err != nil {
+				if _, err := host.Provider(plugin, env.Global()); err != nil {
 					result = multierror.Append(result,
 						fmt.Errorf("failed to load resource plugin %s: %w", plugin.Name, err))
 				}

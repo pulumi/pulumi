@@ -93,6 +93,9 @@ from .output import (
 )
 
 from .resource_hooks import (
+    ErrorHook,
+    ErrorHookArgs,
+    ErrorHookFunction,
     ResourceHookArgs,
     ResourceHookFunction,
     ResourceHook,
@@ -189,6 +192,9 @@ __all__ = [
     "contains_unknowns",
     "deferred_output",
     # resource_hooks
+    "ErrorHook",
+    "ErrorHookArgs",
+    "ErrorHookFunction",
     "ResourceHookArgs",
     "ResourceHookFunction",
     "ResourceHook",

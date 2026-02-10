@@ -29,6 +29,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -324,7 +325,9 @@ func installPluginSpec(
 		}
 	}
 	logging.V(1).Infof("%s installing tarball ...", label)
-	if err = pkgWorkspace.InstallPluginContent(ctx, install, payload, reinstall); err != nil {
+	if err = pkgWorkspace.InstallPluginContent(
+		ctx, install, payload, reinstall, schema.NewLoaderServerFromHost,
+	); err != nil {
 		return fmt.Errorf("installing %s from %s: %w", label, source, err)
 	}
 	return nil
@@ -370,8 +373,7 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 ) (workspace.PluginDescriptor, error) {
 	result, err := packageresolution.Resolve(
 		ctx, cmd.registry, pluginstorage.Instance, pluginSpec, packageresolution.Options{
-			ResolveWithRegistry: cmd.env.GetBool(env.Experimental) &&
-				!cmd.env.GetBool(env.DisableRegistryResolve),
+			ResolveWithRegistry:                        !cmd.env.GetBool(env.DisableRegistryResolve),
 			ResolveVersionWithLocalWorkspace:           cmd.reinstall,
 			AllowNonInvertableLocalWorkspaceResolution: cmd.reinstall,
 		})

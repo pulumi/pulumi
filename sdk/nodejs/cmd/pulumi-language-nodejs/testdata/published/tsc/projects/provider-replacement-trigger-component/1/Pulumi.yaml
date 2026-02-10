@@ -1,0 +1,5 @@
+name: provider-replacement-trigger-component
+runtime:
+  name: nodejs
+  options:
+    typescript: false

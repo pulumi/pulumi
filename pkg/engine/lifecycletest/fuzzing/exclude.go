@@ -55,6 +55,12 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeResourceReferencingAliasedProviderDestroyV2,
 		// TODO[pulumi/pulumi#21402]
 		ExcludeRefreshWithTargetedProviderParentChangeDestroyV2,
+		// TODO[pulumi/pulumi#21645]
+		ExcludeDependenciesInProgramButNotInSnapshotRefreshV2,
+		// TODO[pulumi/pulumi#21672]
+		ExcludeParentedResourcesRefreshV2,
+		// TODO[pulumi/pulumi#21675]
+		ExcludeDependenciesOnPendingReplacementRefreshV2,
 	}
 }
 
@@ -80,7 +86,8 @@ func ExcludeDestroyAndRefreshProgramSet(
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
-	if plan.Operation == PlanOperationDestroyV2 && plan.RefreshProgram {
+	if (plan.Operation == PlanOperationDestroyV2 || plan.Operation == PlanOperationDestroy) &&
+		plan.RefreshProgram {
 		return true
 	}
 	return false
@@ -544,6 +551,18 @@ func ExcludeResourceDeletedWithMarkedForDeletionResourceUpdate(
 	}
 
 	for _, res := range snap.Resources {
+		for _, dep := range res.Dependencies {
+			if deletedResources[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if deletedResources[dep] {
+					return true
+				}
+			}
+		}
 		if res.DeletedWith != "" && deletedResources[res.DeletedWith] {
 			return true
 		}
@@ -564,6 +583,124 @@ func ExcludeTargetsRefreshV2(
 
 	if len(plan.TargetURNs) > 0 {
 		return true
+	}
+
+	return false
+}
+
+func ExcludeDependenciesInProgramButNotInSnapshotRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 && !plan.RefreshProgram {
+		return false
+	}
+	snapResources := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		snapResources[res.URN()] = true
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent != "" && !snapResources[res.Parent] {
+			return true
+		}
+		for _, dep := range res.Dependencies {
+			if !snapResources[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if !snapResources[dep] {
+					return true
+				}
+			}
+		}
+		if res.DeletedWith != "" && !snapResources[res.DeletedWith] {
+			return true
+		}
+	}
+	return false
+}
+
+func ExcludeParentedResourcesRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 && !plan.RefreshProgram {
+		return false
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent != "" {
+			return true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent != "" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func ExcludeDependenciesOnPendingReplacementRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 && !plan.RefreshProgram && !plan.Refresh {
+		return false
+	}
+
+	pendingReplacementURNs := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if res.PendingReplacement {
+			pendingReplacementURNs[res.URN()] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		for _, dep := range res.Dependencies {
+			if pendingReplacementURNs[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if pendingReplacementURNs[dep] {
+					return true
+				}
+			}
+		}
+		if res.DeletedWith != "" && pendingReplacementURNs[res.DeletedWith] {
+			return true
+		}
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		for _, dep := range res.Dependencies {
+			if pendingReplacementURNs[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if pendingReplacementURNs[dep] {
+					return true
+				}
+			}
+		}
+		if res.DeletedWith != "" && pendingReplacementURNs[res.DeletedWith] {
+			return true
+		}
 	}
 
 	return false

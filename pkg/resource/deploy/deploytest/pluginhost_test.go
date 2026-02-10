@@ -126,7 +126,7 @@ func TestPluginHostProvider(t *testing.T) {
 		_, err := host.Provider(workspace.PluginDescriptor{
 			Name:    "pkgA",
 			Version: &expectedVersion,
-		})
+		}, nil)
 		assert.ErrorContains(t, err, "Could not find plugin for (pkgA, 1.0.0)")
 	})
 	t.Run("error: plugin host is shutting down", func(t *testing.T) {
@@ -137,7 +137,7 @@ func TestPluginHostProvider(t *testing.T) {
 			_, err := host.Provider(workspace.PluginDescriptor{
 				Name:    "pkgA",
 				Version: &semver.Version{},
-			})
+			}, nil)
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 		t.Run("LanguageRuntime", func(t *testing.T) {

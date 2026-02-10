@@ -19,8 +19,8 @@ import { Input, Inputs, interpolate, Output, output } from "./output";
 import {
     getResource,
     readResource,
-    registerResource,
     registerErrorHook,
+    registerResource,
     registerResourceHook,
     registerResourceOutputs,
     SourcePosition,
@@ -873,6 +873,14 @@ export interface ResourceOptions {
      */
     hideDiffs?: string[];
 
+    /**
+     * Environment variable mappings for provider resources. Maps source environment variable
+     * names to target names. If the source variable exists, the provider will see the target
+     * variable set to its value. For example, `{ "MY_VAR": "PROVIDER_VAR" }` means if MY_VAR
+     * is set, the provider sees PROVIDER_VAR with MY_VAR's value.
+     */
+    envVarMappings?: Record<string, string>;
+
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
 }
@@ -1538,13 +1546,14 @@ export class ComponentResource<TData = any> extends Resource {
         remote: boolean = false,
         packageRef?: Promise<string | undefined>,
     ) {
-        // If the PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable is set,
-        // we skip sending the inputs to the engine.
         super(
             type,
             name,
             /*custom:*/ false,
-            process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS ? {} : args,
+            // If the PULUMI_NODEJS_SKIP_COMPONENT_INPUTS environment variable is set, we skip sending the
+            // inputs to the engine. Unless this is a remote component, in which case we always send the
+            // inputs.
+            process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS && !remote ? {} : args,
             opts,
             remote,
             false,

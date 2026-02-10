@@ -23,8 +23,7 @@ import (
 	"slices"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -119,7 +118,7 @@ func (defaultPluginManager) InstallPlugin(
 	content pluginstorage.Content,
 	reinstall bool,
 ) error {
-	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall)
+	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromHost)
 }
 
 // PluginSet represents a set of plugins.
@@ -416,6 +415,17 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
 	projectPlugins []workspace.ProjectPlugin, reinstall, explicitInstall bool,
 ) error {
+	manager := newInstallManager(true /*returnPluginErrors*/)
+	err := ensurePluginsAreInstalled(ctx, opts, d, plugins, projectPlugins, reinstall, explicitInstall, manager)
+	if err != nil {
+		return err
+	}
+	return manager.Wait()
+}
+
+func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
+	projectPlugins []workspace.ProjectPlugin, reinstall, explicitInstall bool, manager *installManager,
+) error {
 	var pluginManager PluginManager
 	if opts != nil {
 		pluginManager = opts.pluginManager
@@ -425,7 +435,6 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 	}
 
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
-	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
 		if plug.Name == "pulumi" && plug.Kind == apitype.ResourcePlugin {
 			logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): pulumi is a builtin plugin")
@@ -471,23 +480,22 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 
 		// If DISABLE_AUTOMATIC_PLUGIN_ACQUISITION is set just add an error to the error group and continue.
 		if !explicitInstall && env.DisableAutomaticPluginAcquisition.Value() {
-			installTasks.Go(func() error {
+			manager.InstallPlugin(func() error {
 				return fmt.Errorf("plugin %s %s not installed", info.Name, info.Version)
 			})
 			continue
 		}
 
 		// Launch an install task asynchronously and add it to the current error group.
-		installTasks.Go(func() error {
+		manager.InstallPlugin(func() error {
 			logging.V(preparePluginLog).Infof(
 				"EnsurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
 			return installPlugin(ctx, opts, pluginManager, info)
 		})
 	}
 
-	err := installTasks.Wait()
 	logging.V(preparePluginLog).Infof("EnsurePluginsAreInstalled(): completed")
-	return err
+	return nil
 }
 
 // ensurePluginsAreLoaded ensures that all of the plugins in the given plugin set that match the given plugin flags are

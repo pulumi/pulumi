@@ -1185,10 +1185,6 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 		}
 		fmt.Fprintf(w, "]\n\n")
 
-		if input && typedDictEnabled(mod.inputTypes) {
-			fmt.Fprintf(w, "MYPY = False\n\n")
-		}
-
 		var hasTypes bool
 		for _, t := range mod.types {
 			if t.IsOverlay {
@@ -3040,19 +3036,11 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 		}
 	})
 
-	indent := "    "
 	name = pythonCase(name)
 
-	// TODO[pulumi/pulumi/issues/16408]
-	// Running mypy gets very slow when there are a lot of TypedDicts.
-	// https://github.com/python/mypy/issues/17231
-	// For now we only use the TypedDict types when using a typechecker
-	// other than mypy. For mypy we define the XXXArgsDict class as an alias
-	// to the type `Mapping[str, Any]`.
-	fmt.Fprintf(w, "if not MYPY:\n")
-	fmt.Fprintf(w, "%sclass %sDict(TypedDict):\n", indent, name)
+	fmt.Fprintf(w, "class %sDict(TypedDict):\n", name)
 
-	indent += "    "
+	indent := "    "
 
 	docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
 	if comment != "" {
@@ -3079,10 +3067,6 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 	if len(props) == 0 {
 		fmt.Fprintf(w, "%spass\n", indent)
 	}
-
-	indent = "    "
-	fmt.Fprintf(w, "elif False:\n")
-	fmt.Fprintf(w, "%s%sDict: TypeAlias = Mapping[str, Any]\n", indent, name)
 
 	fmt.Fprintf(w, "\n")
 	return nil

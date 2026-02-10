@@ -315,7 +315,8 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil,
+		schema.NewLoaderServerFromHost)
 	if err != nil {
 		return nil, err
 	}
@@ -427,7 +428,6 @@ func ProviderFromSource(
 		version = parts[1]
 	}
 	packageSpec := workspace.PackageSpec{Source: packageSource, Version: version}
-
 	{
 		proj, _, err := pkgWorkspace.Instance.LoadBaseProjectFrom(pctx.Request(), pctx.Pwd)
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
@@ -442,8 +442,7 @@ func ProviderFromSource(
 
 	f, spec, err := packageinstallation.InstallPlugin(pctx.Request(), packageSpec, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
-			ResolveWithRegistry: e.GetBool(env.Experimental) &&
-				!e.GetBool(env.DisableRegistryResolve),
+			ResolveWithRegistry:                        !e.GetBool(env.DisableRegistryResolve),
 			ResolveVersionWithLocalWorkspace:           true,
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},

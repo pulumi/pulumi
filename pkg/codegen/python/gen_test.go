@@ -270,7 +270,7 @@ func TestGenerateTypeNames(t *testing.T) {
 		return func(t schema.Type) string {
 			return root.typeString(t, typeStringOpts{})
 		}
-	})
+	}, filepath.FromSlash("../testing/test/testdata/"))
 }
 
 func TestEscapeDocString(t *testing.T) {

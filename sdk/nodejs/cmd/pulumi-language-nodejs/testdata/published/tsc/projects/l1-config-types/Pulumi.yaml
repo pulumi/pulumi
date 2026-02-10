@@ -1,5 +1,0 @@
-name: l1-config-types
-runtime:
-  name: nodejs
-  options:
-    typescript: false

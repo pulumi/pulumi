@@ -99,11 +99,11 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-config-types": "fails to compile",
-	"l1-proxy-index":  "fails to compile",
-	"l2-proxy-index":  "fails to compile",
-	"l1-builtin-try":  "pulumi#18506 Support try in Go program generation",
-	"l1-builtin-can":  "pulumi#18570 Support can in Go program generation",
+	"l1-config-types-object": "fails to compile",
+	"l1-proxy-index":         "fails to compile",
+	"l2-proxy-index":         "fails to compile",
+	"l1-builtin-try":         "pulumi#18506 Support try in Go program generation",
+	"l1-builtin-can":         "pulumi#18570 Support can in Go program generation",
 
 	// pulumi/pulumi#18345
 	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                                 //nolint:lll
@@ -113,6 +113,7 @@ var expectedFailures = map[string]string{
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
 	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
 	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                                     //nolint:lll
+	"l3-range-resource-output-traversal":  "pulumi#21678: cannot range over an ArrayOutput",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

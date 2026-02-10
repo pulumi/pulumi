@@ -20,6 +20,7 @@ import (
 	"iter"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
@@ -1357,6 +1358,7 @@ func TestConcurrency(t *testing.T) {
 
 	for range 100 {
 		ws := createWorkspace()
+		ws.jitter = time.Millisecond * 5
 		run, spec, err := packageinstallation.InstallPlugin(
 			t.Context(),
 			workspace.PackageSpec{
@@ -1382,6 +1384,126 @@ func TestConcurrency(t *testing.T) {
 			PluginDownloadURL: "https://example.com/root.tar.gz",
 		}, spec)
 
+		assertInvariantWorkspaceEqual(t, *baselineWs, *ws)
+	}
+}
+
+// TestInstallSharedDependencyInParallel tests the scenario where a project
+// directly depends on component A, and also depends on component B which itself
+// depends on A.
+//
+// Dependency graph:
+//
+//	Root -> component-a -> plugin-c
+//	Root -> component-b -> component-a
+//	                    -> plugin-d
+func TestInstallSharedDependencyInParallel(t *testing.T) {
+	t.Parallel()
+
+	createWorkspace := func() *invariantWorkspace {
+		return newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
+			{
+				d: workspace.PluginDescriptor{
+					Name: "component-a",
+					Kind: apitype.ResourcePlugin,
+				},
+				project: &workspace.PluginProject{
+					Runtime: workspace.NewProjectRuntimeInfo("python", nil),
+					Packages: map[string]workspace.PackageSpec{
+						"plugin-c": {Source: "plugin-c", PluginDownloadURL: "https://example.com/plugin-c.tar.gz"},
+					},
+				},
+			},
+			{
+				d: workspace.PluginDescriptor{
+					Name: "component-b",
+					Kind: apitype.ResourcePlugin,
+				},
+				project: &workspace.PluginProject{
+					Runtime: workspace.NewProjectRuntimeInfo("python", nil),
+					Packages: map[string]workspace.PackageSpec{
+						"component-a": {
+							Source:            "component-a",
+							PluginDownloadURL: "https://example.com/component-a.tar.gz",
+						},
+						"plugin-d": {Source: "plugin-d", PluginDownloadURL: "https://example.com/plugin-d.tar.gz"},
+					},
+				},
+			},
+			{
+				d: workspace.PluginDescriptor{
+					Name: "plugin-c",
+					Kind: apitype.ResourcePlugin,
+				},
+				hasBinary: true,
+			},
+			{
+				d: workspace.PluginDescriptor{
+					Name: "plugin-d",
+					Kind: apitype.ResourcePlugin,
+				},
+				hasBinary: true,
+			},
+		})
+	}
+
+	createProject := func() *workspace.Project {
+		return &workspace.Project{
+			Name:    "test-project",
+			Runtime: workspace.NewProjectRuntimeInfo("python", nil),
+			Packages: map[string]workspace.PackageSpec{
+				"component-a": {
+					Source:            "component-a",
+					PluginDownloadURL: "https://example.com/component-a.tar.gz",
+				},
+				"component-b": {
+					Source:            "component-b",
+					PluginDownloadURL: "https://example.com/component-b.tar.gz",
+				},
+			},
+		}
+	}
+
+	baselineWs := createWorkspace()
+	err := packageinstallation.InstallProjectPlugins(t.Context(), createProject(),
+		"/project", packageinstallation.Options{
+			Options: packageresolution.Options{
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			Concurrency: 1, // Sequential
+		}, nil, baselineWs)
+	require.NoError(t, err)
+
+	componentAPath := "$HOME/.pulumi/plugins/resource-component-a"
+	componentBPath := "$HOME/.pulumi/plugins/resource-component-b"
+	pluginCPath := "$HOME/.pulumi/plugins/resource-plugin-c"
+	pluginDPath := "$HOME/.pulumi/plugins/resource-plugin-d"
+
+	require.True(t, baselineWs.plugins[componentAPath].installed,
+		"component-a should be installed in baseline")
+	require.True(t, baselineWs.plugins[componentBPath].installed,
+		"component-b should be installed in baseline")
+
+	require.Contains(t, baselineWs.plugins[componentAPath].linked, pluginCPath,
+		"component-a should be linked to plugin-c")
+	require.Contains(t, baselineWs.plugins[componentBPath].linked, componentAPath,
+		"component-b should be linked to component-a (the shared dependency)")
+	require.Contains(t, baselineWs.plugins[componentBPath].linked, pluginDPath,
+		"component-b should be linked to plugin-d")
+
+	for range 100 {
+		ws := createWorkspace()
+		ws.jitter = time.Millisecond * 10
+		err := packageinstallation.InstallProjectPlugins(t.Context(), createProject(),
+			"/project", packageinstallation.Options{
+				Options: packageresolution.Options{
+					ResolveVersionWithLocalWorkspace:           true,
+					AllowNonInvertableLocalWorkspaceResolution: true,
+				},
+				Concurrency: 0, // unlimited parallelism
+			}, nil, ws)
+		require.NoError(t, err)
 		assertInvariantWorkspaceEqual(t, *baselineWs, *ws)
 	}
 }

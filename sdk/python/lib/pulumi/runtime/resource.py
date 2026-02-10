@@ -39,6 +39,7 @@ from .settings import (
     _get_callbacks,
     _get_rpc_manager,
     _sync_monitor_supports_transforms,
+    monitor_supports_error_hooks,
     monitor_supports_resource_hooks,
     handle_grpc_error,
 )
@@ -53,7 +54,12 @@ if TYPE_CHECKING:
         CustomTimeouts,
     )
     from ..resource import ResourceOptions
-    from ..resource_hooks import ResourceHook, ResourceHookBinding, ResourceHookFunction
+    from ..resource_hooks import (
+        ErrorHook,
+        ResourceHook,
+        ResourceHookBinding,
+        ResourceHookFunction,
+    )
 
 
 class ResourceResolverOperations(NamedTuple):
@@ -1141,6 +1147,7 @@ def register_resource(
                 packageRef=package_ref_str or "",
                 hooks=hooks,
                 hideDiffs=opts.hide_diffs,
+                envVarMappings=opts.env_var_mappings or {},
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
@@ -1344,7 +1351,7 @@ async def _prepare_resource_hooks(
     hooks: Optional["ResourceHookBinding"],
     name_prefix: str,
 ) -> resource_pb2.RegisterResourceRequest.ResourceHooksBinding:
-    from ..resource_hooks import ResourceHook
+    from ..resource_hooks import ErrorHook, ResourceHook
 
     proto = resource_pb2.RegisterResourceRequest.ResourceHooksBinding()
     if not hooks:
@@ -1382,6 +1389,19 @@ async def _prepare_resource_hooks(
             await hook._registered
             getattr(proto, hook_type).append(hook.name)
 
+    on_error_hooks_list: list[ErrorHook] = getattr(hooks, "on_error", []) or []
+    if on_error_hooks_list:
+        if not await monitor_supports_error_hooks():
+            raise Exception(
+                "The Pulumi CLI does not support error hooks. Please update the Pulumi CLI."
+            )
+
+        for error_hook in on_error_hooks_list:
+            if not isinstance(error_hook, ErrorHook):
+                raise ValueError("Error hooks must be ErrorHook instances")
+            await error_hook._registered
+            proto.on_error.append(error_hook.name)
+
     return proto
 
 
@@ -1400,6 +1420,29 @@ def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
 
         result, exception = await _get_rpc_manager().do_rpc(
             "register resource hook", do_register
+        )()
+        if exception:
+            raise exception
+        return result
+
+    return asyncio.ensure_future(wrapper())
+
+
+def register_error_hook(hook: "ErrorHook") -> asyncio.Future[None]:
+    async def do_register() -> None:
+        callbacks = await _get_callbacks()
+        if callbacks is None:
+            raise Exception("No callback server registered.")
+        return callbacks.register_error_hook(hook)
+
+    async def wrapper() -> None:
+        if not await monitor_supports_error_hooks():
+            raise Exception(
+                "The Pulumi CLI does not support error hooks. Please update the Pulumi CLI."
+            )
+
+        result, exception = await _get_rpc_manager().do_rpc(
+            "register error hook", do_register
         )()
         if exception:
             raise exception

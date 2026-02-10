@@ -943,6 +943,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema
 	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
 		appendOption("version", opts.Version)
 	}
+	if opts.PluginDownloadURL != nil && pcl.NeedsPluginDownloadURLResourceOption(opts.PluginDownloadURL, schema) {
+		appendOption("pluginDownloadURL", opts.PluginDownloadURL)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
 	}
@@ -954,6 +957,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema
 	}
 	if opts.ImportID != nil {
 		appendOption("import", opts.ImportID)
+	}
+	if opts.EnvVarMappings != nil {
+		appendOption("envVarMappings", opts.EnvVarMappings)
 	}
 
 	if object == nil {

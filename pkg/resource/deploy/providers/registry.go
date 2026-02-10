@@ -25,6 +25,7 @@ import (
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -34,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -47,6 +49,7 @@ const (
 	nameKey             resource.PropertyKey = "name"
 	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
 	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
+	envVarMappingsKey   resource.PropertyKey = "envVarMappings"
 
 	// versionKey is the key used to store the version of the provider in the Pulumi state. This is _not_ treated as an
 	// internal key. As such a provider can't define it's own configuration key "version". However the "version" that is
@@ -241,6 +244,64 @@ func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.P
 		base64.StdEncoding.EncodeToString(value.Value))
 }
 
+// GetEnvironmentVariableMappings fetches environment variable remappings.
+// Returns a map of NEW_KEY -> OLD_KEY mappings.
+// If NEW_KEY exists in the environment, the provider will see OLD_KEY=value(NEW_KEY).
+func GetEnvironmentVariableMappings(
+	inputs resource.PropertyMap,
+) (map[string]string, error) {
+	internalInputs, err := getInternal(inputs)
+	if err != nil {
+		return nil, err
+	}
+	mappings, ok := internalInputs[envVarMappingsKey]
+	if !ok {
+		return nil, nil
+	}
+	if !mappings.IsObject() {
+		return nil, fmt.Errorf("'%s' must be an object", envVarMappingsKey)
+	}
+	result := make(map[string]string)
+	for k, v := range mappings.ObjectValue() {
+		if !v.IsString() {
+			return nil, fmt.Errorf("'%s[%s]' must be a string", envVarMappingsKey, k)
+		}
+		// NEW_KEY -> OLD_KEY: take value from NEW_KEY, apply to OLD_KEY
+		result[string(k)] = v.StringValue()
+	}
+	return result, nil
+}
+
+// SetEnvironmentVariableMappings sets environment variable remappings in the given property map.
+// The mappings map should be NEW_KEY -> OLD_KEY (if NEW_KEY exists, provider sees OLD_KEY=value(NEW_KEY)).
+func SetEnvironmentVariableMappings(inputs resource.PropertyMap, mappings map[string]string) {
+	internalInputs := addOrGetInternal(inputs)
+	propMap := make(resource.PropertyMap)
+	for newKey, oldKey := range mappings {
+		propMap[resource.PropertyKey(newKey)] = resource.NewProperty(oldKey)
+	}
+	internalInputs[envVarMappingsKey] = resource.NewProperty(propMap)
+}
+
+// buildEnvWithMappings creates an env.Env with the given mappings applied.
+// Mappings are NEW_KEY -> OLD_KEY: if NEW_KEY exists in the environment, the
+// returned env will have OLD_KEY set to the value of NEW_KEY.
+func buildEnvWithMappings(mappings map[string]string) env.Env {
+	baseStore := env.Global().GetStore()
+	if len(mappings) > 0 {
+		mappedStore := make(env.MapStore)
+		for newKey, oldKey := range mappings {
+			if value, ok := baseStore.Raw(newKey); ok {
+				mappedStore[oldKey] = value
+			}
+		}
+		if len(mappedStore) > 0 {
+			baseStore = envutil.JoinStore(mappedStore, baseStore)
+		}
+	}
+	return envutil.NewEnv(baseStore)
+}
+
 // GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
 // parameterization property is not present, this function returns nil.
 func GetProviderParameterization(
@@ -308,7 +369,7 @@ type Registry struct {
 var _ plugin.Provider = (*Registry)(nil)
 
 func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
-	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider,
+	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider, e env.Env,
 ) (plugin.Provider, error) {
 	if builtins != nil && pkg == builtins.Pkg() {
 		return builtins, nil
@@ -322,7 +383,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		Checksums:         checksums,
 	}
 
-	provider, err := host.Provider(descriptor)
+	provider, err := host.Provider(descriptor, e)
 	if err == nil {
 		return provider, nil
 	}
@@ -347,13 +408,13 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromHost)
 	if err != nil {
 		return nil, err
 	}
 
 	// Try to load the provider again, this time it should succeed.
-	return host.Provider(descriptor)
+	return host.Provider(descriptor, e)
 }
 
 // loadParameterizedProvider wraps loadProvider to also support loading parameterized providers.
@@ -362,8 +423,9 @@ func loadParameterizedProvider(
 	name tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
 	parameter *workspace.Parameterization,
 	host plugin.Host, builtins plugin.Provider,
+	e env.Env,
 ) (plugin.Provider, error) {
-	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, host, builtins)
+	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, host, builtins, e)
 	if err != nil {
 		return nil, err
 	}
@@ -552,9 +614,17 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 			Property: "parameter", Reason: err.Error(),
 		}}}, nil
 	}
+
+	envVarMappings, err := GetEnvironmentVariableMappings(req.News)
+	if err != nil {
+		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
+			Property: "envVarMappings", Reason: err.Error(),
+		}}}, nil
+	}
+
 	// TODO: We should thread checksums through here.
 	provider, err := loadParameterizedProvider(
-		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -719,8 +789,14 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
+		envVarMappings, err := GetEnvironmentVariableMappings(res.Inputs)
+		if err != nil {
+			return fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, urn, err)
+		}
+
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(
+			ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -789,8 +865,16 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
+
+		envVarMappings, err := GetEnvironmentVariableMappings(req.Properties)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, req.URN, err)
+		}
+
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(
+			ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)

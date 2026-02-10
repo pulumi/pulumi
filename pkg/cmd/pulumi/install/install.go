@@ -22,8 +22,8 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -46,7 +46,6 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install",
-		Args:  cmdutil.NoArgs,
 		Short: "Install packages and plugins for the current program or policy pack.",
 		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
@@ -98,11 +97,9 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return err
 					}
 
-					// Cloud registry is linked to a backend, but we don't have
-					// one available in a plugin. Use the unauthenticated
-					// registry.
-					reg := unauthenticatedregistry.New(cmdutil.Diag(), env.Global())
-
+					// Cloud registry is linked to a backend, but we don't have one available in a
+					// plugin. Use the global default registry.
+					reg := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 					if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
 						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
@@ -187,6 +184,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			return nil
 		},
 	}
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.Flags().IntVar(&parallel,
 		"parallel", 4, "The max number of concurrent installs to perform. "+

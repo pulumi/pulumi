@@ -1046,7 +1046,7 @@ type PluginDescriptor struct {
 type PluginVersionNotFoundError error
 
 var urlRegex = sync.OnceValue(func() *regexp.Regexp {
-	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/](@.*)?$`)
+	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-_/]*[a-zA-Z0-9/](@.*)?$`)
 })
 
 func IsExternalURL(source string) bool {
