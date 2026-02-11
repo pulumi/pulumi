@@ -3551,10 +3551,15 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 // different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
 // in a second step, we avoid collision and redeclaration.
 func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*nestedTypeInfo) []string {
-	var names []string
+	// Pre-calculate total capacity for names
+	totalNames := 0
+	for _, info := range types {
+		totalNames += len(info.names)
+	}
+	names := slice.Prealloc[string](totalNames)
 
 	// map iteration is unstable so sort items for deterministic codegen
-	sortedElems := []string{}
+	sortedElems := slice.Prealloc[string](len(types))
 	for k := range types {
 		sortedElems = append(sortedElems, k)
 	}
@@ -3563,7 +3568,7 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*n
 	for _, elementTypeName := range sortedElems {
 		info := types[elementTypeName]
 
-		collectionTypes := []string{}
+		collectionTypes := slice.Prealloc[string](len(info.names))
 		for k := range info.names {
 			collectionTypes = append(collectionTypes, k)
 		}

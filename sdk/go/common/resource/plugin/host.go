@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -494,7 +495,7 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *Po
 }
 
 func (host *defaultHost) ListAnalyzers() []Analyzer {
-	analyzers := []Analyzer{}
+	analyzers := slice.Prealloc[Analyzer](len(host.analyzerPlugins))
 	for _, analyzer := range host.analyzerPlugins {
 		analyzers = append(analyzers, analyzer.Plugin)
 	}

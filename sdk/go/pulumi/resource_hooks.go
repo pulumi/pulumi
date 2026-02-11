@@ -20,6 +20,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -89,7 +90,7 @@ func makeStubHooks(names []string) []*ResourceHook {
 	c.Fulfill(struct{}{})
 	registered := c.Promise()
 	stubHook := func(names []string) []*ResourceHook {
-		hooks := []*ResourceHook{}
+		hooks := slice.Prealloc[*ResourceHook](len(names))
 		for _, name := range names {
 			hooks = append(hooks, &ResourceHook{
 				Name:       name,
@@ -108,7 +109,7 @@ func makeStubErrorHooks(names []string) []*ErrorHook {
 	c.Fulfill(struct{}{})
 	registered := c.Promise()
 	stubHook := func(names []string) []*ErrorHook {
-		hooks := []*ErrorHook{}
+		hooks := slice.Prealloc[*ErrorHook](len(names))
 		for _, name := range names {
 			hooks = append(hooks, &ErrorHook{
 				Name:       name,

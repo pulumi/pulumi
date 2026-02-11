@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/hashicorp/hcl/v2"
@@ -44,8 +45,13 @@ func TestCollectImports(t *testing.T) {
 	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 	g.collectImports(g.program)
 
-	var allImports []string
-	for _, group := range g.importer.ImportGroups() {
+	groups := g.importer.ImportGroups()
+	totalImports := 0
+	for _, group := range groups {
+		totalImports += len(group)
+	}
+	allImports := slice.Prealloc[string](totalImports)
+	for _, group := range groups {
 		allImports = append(allImports, group...)
 	}
 

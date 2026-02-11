@@ -25,6 +25,7 @@ import (
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -185,7 +186,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 	}
 
 	toSecretSchema := p.generateSchema(types, 1, 3)
-	allProps := []string{}
+	allProps := slice.Prealloc[string](len(toSecretSchema))
 	for k := range toSecretSchema {
 		allProps = append(allProps, k)
 	}

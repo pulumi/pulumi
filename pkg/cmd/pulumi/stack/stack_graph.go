@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/spf13/cobra"
@@ -245,7 +246,7 @@ type dependencyGraph struct {
 // Roots are edges that point to the root set of our graph. In our case,
 // for simplicity, we define the root set of our dependency graph to be everything.
 func (dg *dependencyGraph) Roots() []graph.Edge {
-	rootEdges := []graph.Edge{}
+	rootEdges := slice.Prealloc[graph.Edge](len(dg.vertices))
 	for _, urn := range maputil.SortedKeys(dg.vertices) {
 		vertex := dg.vertices[urn]
 		edge := &dependencyEdge{

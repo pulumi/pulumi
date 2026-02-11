@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -514,7 +515,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -596,7 +597,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGenerated
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -686,7 +687,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -773,7 +774,7 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -843,7 +844,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)

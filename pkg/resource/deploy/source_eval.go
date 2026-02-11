@@ -874,7 +874,8 @@ func (rm *resmon) Cancel(ctx context.Context) error {
 	close(rm.cancel)
 	close(rm.waitForShutdownChan)                   // Signal to the program that we are ready to shutdown ...
 	_, programErr := rm.programComplete.Result(ctx) // ... and wait for the program to complete.
-	errs := []error{<-rm.done, programErr}
+	errs := slice.Prealloc[error](2 + len(rm.callbacks))
+	errs = append(errs, <-rm.done, programErr)
 	for _, client := range rm.callbacks {
 		errs = append(errs, client.Close())
 	}
