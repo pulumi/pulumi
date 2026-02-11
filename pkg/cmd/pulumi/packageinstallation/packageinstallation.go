@@ -65,16 +65,23 @@ type Context interface {
 	// Download a plugin onto disk, returning the path the plugin was downloaded to.
 	DownloadPlugin(ctx context.Context, plugin workspace.PluginDescriptor) (string, MarkInstallationDone, error)
 
-	// Link a package into a project, generating an SDK if appropriate.
+	// Generate a local SDK in preparation for linking.
 	//
 	// project and projectDir describe the where the SDK is being generated and linked into.
 	//
 	// providers is a running instance of the package being linked into the project. If parameterization is
 	// necessary, then it is already parameterized.
-	LinkPackage(
+	GenerateLocalSDK(
 		ctx context.Context,
 		project *workspace.ProjectRuntimeInfo, projectDir string,
 		provider plugin.Provider,
+	) (workspace.LinkablePackageDescriptor, error)
+
+	// Link packages into a project.
+	LinkIntoProject(
+		ctx context.Context,
+		project *workspace.ProjectRuntimeInfo, projectDir string,
+		packageDescriptors []workspace.LinkablePackageDescriptor,
 	) error
 
 	// Run a package from a directory, parameterized by params.
@@ -387,32 +394,53 @@ func (step copyStep[T]) run(context.Context, state) error { *step.dst = *step.sr
 //
 // parent will not be ready until:
 // 1. Each project dependency is downloaded and installed.
-// 2. Each project dependency is *linked*.
+// 2. Each project dependency has a local SDK generated for it.
+// 3. Local SDKs are linked into the project.
 func enqueueProjectDependencies(
 	ctx context.Context,
 	state state, parent pdag.Node,
 	proj project[workspace.BaseProject],
 ) error {
-	// Sort package names for deterministic ordering
 	packages := proj.proj.GetPackageSpecs()
-	for _, name := range slices.Sorted(maps.Keys(packages)) {
+
+	// If we don't have any local packages to create, we don't need to do anything.
+	if len(packages) == 0 {
+		return nil
+	}
+
+	// We will need to link in the local packages that we generate.
+	//
+	// It is not safe to call link multiple times in parallel, so we call
+	// link only once after all local SDKs have been generated.
+
+	// Each local package owns a slot in descriptors.
+	descriptors := make([]workspace.LinkablePackageDescriptor, len(packages))
+	link, linkReady := state.dag.NewNode(linkPackageStep{
+		project:     proj,
+		descriptors: descriptors,
+	})
+	contract.AssertNoErrorf(state.dag.NewEdge(link, parent), "new nodes cannot be cyclic")
+	defer linkReady()
+
+	// Sort package names for deterministic ordering
+	for i, name := range slices.Sorted(maps.Keys(packages)) {
 		source := packages[name]
 
 		runBundle := new(runBundle)
-		link, linkReady := state.dag.NewNode(linkPackageStep{
-			packageName: name,
-			project:     proj,
-			runBundle:   runBundle, // We don't know this until after we install the spec
-
+		genLocal, genLocalReady := state.dag.NewNode(generateLocalSDKStep{
+			packageName:   name,
+			project:       proj,
+			runBundle:     runBundle, // We don't know this until after we install the spec
+			outDescriptor: &descriptors[i],
 			// Information from the **unresolved** package descriptor, used to
 			// ensure that Git based plugins serve schema that correctly
 			// references the underlying plugin.
 			specSource: source,
 		})
-		defer linkReady()
-		contract.AssertNoErrorf(state.dag.NewEdge(link, parent), "new nodes cannot be cyclic")
+		defer genLocalReady()
+		contract.AssertNoErrorf(state.dag.NewEdge(genLocal, link), "new nodes cannot be cyclic")
 
-		err := enqueueUnresolvedPackage(ctx, state, link, source, proj, runBundle, new(workspace.PackageSpec))
+		err := enqueueUnresolvedPackage(ctx, state, genLocal, source, proj, runBundle, new(workspace.PackageSpec))
 		if err != nil {
 			return err
 		}
@@ -500,8 +528,7 @@ func ensureProjectDir(
 	}
 }
 
-// Link an already downloaded and installed package into a project.
-type linkPackageStep struct {
+type generateLocalSDKStep struct {
 	// The name of the package, as described in the Pulumi or PulumiPlugin packages
 	// section.
 	packageName string
@@ -511,23 +538,40 @@ type linkPackageStep struct {
 	// runBundle must be set to a non-empty value by the time this step executes.
 	runBundle *runBundle
 
+	specSource workspace.PackageSpec
+
 	// The project we are linking into.
 	project project[workspace.BaseProject]
 
-	specSource workspace.PackageSpec
+	outDescriptor *workspace.LinkablePackageDescriptor
 }
 
-func (step linkPackageStep) run(ctx context.Context, p state) error {
-	contract.Assertf(step.runBundle != nil, "must set run bundle before running this step")
-
+func (step generateLocalSDKStep) run(ctx context.Context, p state) error {
 	provider, err := p.ws.RunPackage(ctx,
 		step.project.projectDir, step.runBundle.pluginPath,
 		tokens.Package(step.packageName), step.runBundle.params, step.specSource)
 	if err != nil {
 		return err
 	}
+	descriptor, err := p.ws.GenerateLocalSDK(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, provider)
+	if err != nil {
+		return err
+	}
+	*step.outDescriptor = descriptor
+	return nil
+}
 
-	return p.ws.LinkPackage(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, provider)
+// Link an already downloaded and installed package into a project.
+type linkPackageStep struct {
+	// The project we are linking into.
+	project project[workspace.BaseProject]
+
+	// The descriptors that need to be linked.
+	descriptors []workspace.LinkablePackageDescriptor
+}
+
+func (step linkPackageStep) run(ctx context.Context, p state) error {
+	return p.ws.LinkIntoProject(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, step.descriptors)
 }
 
 // newSpecNode adds a new spec to the DAG, or de-duplicates the spec.
