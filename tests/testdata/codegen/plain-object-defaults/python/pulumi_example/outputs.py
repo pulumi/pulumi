@@ -47,6 +47,7 @@ class KubeClientSettings(dict):
                  rec_test: Optional['outputs.KubeClientSettings'] = None):
         """
         Options for tuning the Kubernetes client used by a Provider.
+
         :param _builtins.int burst: Maximum burst for throttle. Default value is 10.
         :param _builtins.float qps: Maximum queries per second (QPS) to the API server from this client. Default value is 5.
         """

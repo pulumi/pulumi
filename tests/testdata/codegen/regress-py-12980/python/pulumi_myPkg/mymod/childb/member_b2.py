@@ -39,6 +39,7 @@ class MemberB2(pulumi.ComponentResource):
                  __props__=None):
         """
         Create a MemberB2 resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -50,6 +51,7 @@ class MemberB2(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a MemberB2 resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param MemberB2Args args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.

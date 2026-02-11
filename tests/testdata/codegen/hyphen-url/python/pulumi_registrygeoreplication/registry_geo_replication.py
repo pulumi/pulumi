@@ -23,6 +23,7 @@ class RegistryGeoReplicationArgs:
                  resource_group: pulumi.Input['pulumi_azure_native.resources.ResourceGroup']):
         """
         The set of arguments for constructing a RegistryGeoReplication resource.
+
         :param pulumi.Input['pulumi_azure_native.resources.ResourceGroup'] resource_group: The resource group that hosts the component resource
         """
         pulumi.set(__self__, "resource_group", resource_group)
@@ -50,6 +51,7 @@ class RegistryGeoReplication(pulumi.ComponentResource):
                  __props__=None):
         """
         Create a RegistryGeoReplication resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input['pulumi_azure_native.resources.ResourceGroup'] resource_group: The resource group that hosts the component resource
@@ -62,6 +64,7 @@ class RegistryGeoReplication(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a RegistryGeoReplication resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param RegistryGeoReplicationArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.

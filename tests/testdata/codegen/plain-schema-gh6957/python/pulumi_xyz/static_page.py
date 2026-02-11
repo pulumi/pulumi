@@ -25,6 +25,7 @@ class StaticPageArgs:
                  foo: Optional['FooArgs'] = None):
         """
         The set of arguments for constructing a StaticPage resource.
+
         :param pulumi.Input[_builtins.str] index_content: The HTML content for index.html.
         """
         pulumi.set(__self__, "index_content", index_content)
@@ -64,6 +65,7 @@ class StaticPage(pulumi.ComponentResource):
                  __props__=None):
         """
         Create a StaticPage resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[_builtins.str] index_content: The HTML content for index.html.
@@ -76,6 +78,7 @@ class StaticPage(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a StaticPage resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param StaticPageArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.

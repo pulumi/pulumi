@@ -48,6 +48,7 @@ class ConfigurationFilters:
                  filterable_property: Optional[Sequence['FilterableProperty']] = None):
         """
         Configuration filters
+
         :param 'HierarchyInformation' hierarchy_information: Product hierarchy information
         :param Sequence['FilterableProperty'] filterable_property: Filters specific to product
         """
@@ -105,6 +106,7 @@ class CustomerSubscriptionDetails:
                  registered_features: Optional[Sequence['CustomerSubscriptionRegisteredFeatures']] = None):
         """
         Holds Customer subscription details. Clients can display available products to unregistered customers by explicitly passing subscription details
+
         :param _builtins.str quota_id: Quota ID of a subscription
         :param _builtins.str location_placement_id: Location placement Id of a subscription
         :param Sequence['CustomerSubscriptionRegisteredFeatures'] registered_features: List of registered feature flags for subscription
@@ -172,6 +174,7 @@ class CustomerSubscriptionRegisteredFeatures:
                  state: Optional[_builtins.str] = None):
         """
         Represents subscription registered features
+
         :param _builtins.str name: Name of subscription registered feature
         :param _builtins.str state: State of subscription registered feature
         """
@@ -225,6 +228,7 @@ class FilterableProperty:
                  type: Union[_builtins.str, 'SupportedFilterTypes']):
         """
         Different types of filters supported and its values.
+
         :param Sequence[_builtins.str] supported_values: Values to be filtered.
         :param Union[_builtins.str, 'SupportedFilterTypes'] type: Type of product filter.
         """
@@ -286,6 +290,7 @@ class HierarchyInformation:
                  product_name: Optional[_builtins.str] = None):
         """
         Holds details about product hierarchy information
+
         :param _builtins.str configuration_name: Represents configuration name that uniquely identifies configuration
         :param _builtins.str product_family_name: Represents product family name that uniquely identifies product family
         :param _builtins.str product_line_name: Represents product line name that uniquely identifies product line
