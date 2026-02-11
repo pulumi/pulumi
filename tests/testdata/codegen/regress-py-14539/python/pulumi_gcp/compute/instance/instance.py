@@ -81,6 +81,7 @@ class Instance(pulumi.CustomResource):
         """
         A mock of an instance.
 
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict']] boot_disk: The boot disk for the instance.
@@ -94,6 +95,7 @@ class Instance(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A mock of an instance.
+
 
         :param str resource_name: The name of the resource.
         :param InstanceArgs args: The arguments to use to populate this resource's properties.

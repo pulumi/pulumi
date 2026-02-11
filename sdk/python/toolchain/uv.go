@@ -15,7 +15,6 @@
 package toolchain
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -255,9 +254,8 @@ func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error
 
 	paths := slices.Collect(maps.Values(packages))
 	args = append(args, paths...)
-	var stdout, stderr bytes.Buffer
-	cmd := u.uvCommand(ctx, "", true, &stdout, &stderr, args...)
-	if err := cmd.Run(); err != nil {
+	cmd := u.uvCommand(ctx, "", false, nil, nil, args...)
+	if _, err := cmd.Output(); err != nil {
 		return errutil.ErrorWithStderr(err, "linking packages")
 	}
 	return nil
@@ -353,7 +351,7 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 		// uv run does an "inexact" sync, that is it leaves extraneous
 		// dependencies alone and does not remove them.
 		venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync", "--inexact")
-		if err := venvCmd.Run(); err != nil {
+		if _, err := venvCmd.Output(); err != nil {
 			return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
 		}
 	}

@@ -15,6 +15,8 @@
 package toolchain
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -104,4 +106,24 @@ func TestCheckVersion(t *testing.T) {
 
 	_, err = validateVersion("")
 	require.ErrorContains(t, err, "unexpected output from poetry --version")
+}
+
+// Test that we show the underlying error from `poetry` when linking fails
+func TestPoetryLinkPackagesError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject := `name = "my-project"
+[tool.poetry]
+package-mode = false
+[tool.poetry.dependencies]
+`
+	err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+	require.NoError(t, err)
+	poetry, err := newPoetry(root)
+	require.NoError(t, err)
+
+	err = poetry.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
+
+	require.Regexp(t, "Could not find a matching version of package .*nope", err.Error())
 }

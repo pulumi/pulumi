@@ -45,6 +45,7 @@ class Simple(pulumi.ComponentResource):
                  __props__=None):
         """
         Create a Simple resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -56,6 +57,7 @@ class Simple(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Simple resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param SimpleArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.

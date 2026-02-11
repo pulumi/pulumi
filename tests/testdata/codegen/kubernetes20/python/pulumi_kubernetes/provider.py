@@ -99,6 +99,7 @@ class Provider(pulumi.ProviderResource):
         """
         The provider type for the kubernetes package.
 
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
@@ -118,6 +119,7 @@ class Provider(pulumi.ProviderResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         The provider type for the kubernetes package.
+
 
         :param str resource_name: The name of the resource.
         :param ProviderArgs args: The arguments to use to populate this resource's properties.

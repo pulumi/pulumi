@@ -80,12 +80,11 @@ func newPoetry(directory string) (*poetry, error) {
 func poetryVersionOutput(poetryPath string) (string, error) {
 	// Passing `--no-plugins` makes this a fair bit faster
 	cmd := exec.Command(poetryPath, "--version", "--no-ansi", "--no-plugins") //nolint:gosec
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to run poetry --version: %w", err)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", errutil.ErrorWithStderr(err, "failed to run poetry --version: %w")
 	}
-	return strings.TrimSpace(out.String()), nil
+	return strings.TrimSpace(string(out)), nil
 }
 
 func validateVersion(versionOut string) (semver.Version, error) {
@@ -237,7 +236,8 @@ func (p *poetry) LinkPackages(ctx context.Context, packages map[string]string) e
 	paths := slices.Collect(maps.Values(packages))
 	args = append(args, paths...)
 	cmd := exec.CommandContext(ctx, "poetry", args...)
-	if err := cmd.Run(); err != nil {
+	cmd.Dir = p.directory
+	if _, err := cmd.Output(); err != nil {
 		return errutil.ErrorWithStderr(err, "linking packages")
 	}
 	return nil

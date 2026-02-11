@@ -100,6 +100,7 @@ class SqlResourceSqlContainer(pulumi.CustomResource):
         $ pulumi import azure-native:documentdb:SqlResourceSqlContainer containerName /subscriptions/subid/resourceGroups/rg1/providers/Microsoft.DocumentDB/databaseAccounts/ddb1/sqlDatabases/databaseName/sqlContainers/containerName 
         ```
 
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -175,6 +176,7 @@ class SqlResourceSqlContainer(pulumi.CustomResource):
         ```sh
         $ pulumi import azure-native:documentdb:SqlResourceSqlContainer containerName /subscriptions/subid/resourceGroups/rg1/providers/Microsoft.DocumentDB/databaseAccounts/ddb1/sqlDatabases/databaseName/sqlContainers/containerName 
         ```
+
 
         :param str resource_name: The name of the resource.
         :param SqlResourceSqlContainerArgs args: The arguments to use to populate this resource's properties.

@@ -150,4 +150,55 @@ func TestStackGraphCmd(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("output is deterministic", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a snapshot with multiple resources and dependencies
+		// that would expose non-determinism in map iteration
+		resA := resource.URN("urn:pulumi:dev::test::pkg:mod:ResA::a")
+		resB := resource.URN("urn:pulumi:dev::test::pkg:mod:ResB::b")
+		resC := resource.URN("urn:pulumi:dev::test::pkg:mod:ResC::c")
+		resD := resource.URN("urn:pulumi:dev::test::pkg:mod:ResD::d")
+
+		snap := deploy.Snapshot{
+			Resources: []*resource.State{
+				{URN: resA, ID: "a-id", Type: "pkg:mod:ResA"},
+				{URN: resB, ID: "b-id", Type: "pkg:mod:ResB", Dependencies: []resource.URN{resA}},
+				{URN: resC, ID: "c-id", Type: "pkg:mod:ResC", Dependencies: []resource.URN{resA, resB}},
+				{
+					URN:          resD,
+					ID:           "d-id",
+					Type:         "pkg:mod:ResD",
+					Dependencies: []resource.URN{resA},
+					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+						"propZ": {resA},
+						"propA": {resA},
+						"propM": {resA},
+					},
+				},
+			},
+		}
+
+		opts := graphCommandOptions{shortNodeName: true}
+
+		var firstOutput string
+		for i := range 10 {
+			dg := makeDependencyGraph(&snap, &opts)
+
+			var outputBuf bytes.Buffer
+			require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
+
+			output := outputBuf.String()
+			if i == 0 {
+				firstOutput = output
+			} else {
+				require.Equal(t, firstOutput, output,
+					"graph output should be deterministic across multiple runs")
+			}
+		}
+
+		require.Contains(t, firstOutput, `label = "propA, propM, propZ"`,
+			"property dependency labels should be sorted alphabetically")
+	})
 }

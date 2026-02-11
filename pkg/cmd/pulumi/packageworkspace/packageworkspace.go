@@ -25,6 +25,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -57,7 +58,14 @@ func New(
 	host plugin.Host, stdout, stderr io.Writer,
 	parentSpan opentracing.Span, options Options,
 ) Workspace {
-	return Workspace{packageresolution, pkgworkspace, host, stdout, stderr, options, parentSpan}
+	return Workspace{
+		packageresolution,
+		pkgworkspace,
+		host, stdout, stderr,
+		options, parentSpan,
+		new(sync.Mutex),
+		map[string][]schema.PackageReference{},
+	}
 }
 
 type (
@@ -72,6 +80,9 @@ type Workspace struct {
 	stdout, stderr io.Writer
 	options        Options
 	parentSpan     opentracing.Span
+
+	unlinkedProjectsM *sync.Mutex
+	unlinkedProjects  map[string][]schema.PackageReference
 }
 
 func (Workspace) GetPluginPath(ctx context.Context, spec workspace.PluginDescriptor) (string, error) {
@@ -170,26 +181,24 @@ func (w Workspace) DownloadPlugin(
 	return filepath.Join(outDir, pluginSpec.SubDir()), cleanup, nil
 }
 
-// Link a package into a project, generating an SDK if appropriate.
-//
-// project and projectDir describe the where the SDK is being generated and linked into.
-func (w Workspace) LinkPackage(
-	ctx context.Context, runtimeInfo *workspace.ProjectRuntimeInfo,
-	projectDir string, provider plugin.Provider,
-) error {
+func (w Workspace) GenerateLocalSDK(
+	ctx context.Context,
+	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string,
+	provider plugin.Provider,
+) (workspace.LinkablePackageDescriptor, error) {
 	schemaResponse, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{})
 	if err != nil {
-		return err
+		return workspace.LinkablePackageDescriptor{}, err
 	}
 
 	var schemaSpec schema.PackageSpec
 	if err := json.Unmarshal(schemaResponse.Schema, &schemaSpec); err != nil {
-		return err
+		return workspace.LinkablePackageDescriptor{}, err
 	}
 
 	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.host))
 	if err != nil {
-		return fmt.Errorf("failed to bind schema: %w", err)
+		return workspace.LinkablePackageDescriptor{}, fmt.Errorf("failed to bind schema: %w", err)
 	}
 
 	// We _always_ want SupportPack turned on for `package add`, this is an option on schemas because it can change
@@ -197,10 +206,15 @@ func (w Workspace) LinkPackage(
 	// `package add` we know that this is just a local package and it's ok for module paths and similar to be different.
 	boundSchema.SupportPack = true
 
-	tmpDir, servers, err := w.genSDK(ctx, runtimeInfo.Name(), boundSchema)
+	tmpDir, err := w.genSDK(ctx, runtimeInfo.Name(), boundSchema)
 	if err != nil {
-		return fmt.Errorf("failed to generate SDK: %w", err)
+		return workspace.LinkablePackageDescriptor{}, fmt.Errorf("failed to generate SDK: %w", err)
 	}
+
+	// Enter our bound schema into the list of bound schemas for linking
+	w.unlinkedProjectsM.Lock()
+	w.unlinkedProjects[projectDir] = append(w.unlinkedProjects[projectDir], boundSchema.Reference())
+	w.unlinkedProjectsM.Unlock()
 
 	pkgName := boundSchema.Name
 	if boundSchema.Namespace != "" {
@@ -214,12 +228,12 @@ func (w Workspace) LinkPackage(
 	//
 	// [os.RemoveAll] handles the case  where out doesn't exist.
 	if err := os.RemoveAll(out); err != nil {
-		return err
+		return workspace.LinkablePackageDescriptor{}, err
 	}
 
 	// Now move the temp directory to it's final home.
 	if err := os.Mkdir(sdkDir, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
-		return fmt.Errorf("unable to create %q for generated SDKs: %w", sdkDir, err)
+		return workspace.LinkablePackageDescriptor{}, fmt.Errorf("unable to create %q for generated SDKs: %w", sdkDir, err)
 	}
 
 	// We copy instead of renaming to be robust to multiple FS partitions or drives.
@@ -227,32 +241,60 @@ func (w Workspace) LinkPackage(
 	// For example https://github.com/pulumi/pulumi/issues/21547.
 	if err := fsutil.CopyFile(out, tmpDir, nil); err != nil {
 		// If this failed, we still need to clean up tmpDir.
-		return errors.Join(err, os.RemoveAll(tmpDir))
+		return workspace.LinkablePackageDescriptor{}, errors.Join(err, os.RemoveAll(tmpDir))
 	}
 
 	// We have now generated a SDK, the only thing left to do is link it into the existing project.
 
 	sdkPath, err := filepath.Rel(projectDir, out)
 	if err != nil {
-		return err
+		return workspace.LinkablePackageDescriptor{}, err
 	}
-	descriptor, err := boundSchema.Descriptor(ctx)
+	desc, err := boundSchema.Descriptor(ctx)
 	if err != nil {
-		return err
+		return workspace.LinkablePackageDescriptor{}, err
 	}
+
+	return workspace.LinkablePackageDescriptor{
+		Path:       sdkPath,
+		Descriptor: desc,
+	}, nil
+}
+
+// Link a package into a project.
+func (w Workspace) LinkIntoProject(
+	ctx context.Context,
+	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string,
+	packageDescriptors []workspace.LinkablePackageDescriptor,
+) error {
+	w.unlinkedProjectsM.Lock()
+	refs := w.unlinkedProjects[projectDir]
+	delete(w.unlinkedProjects, projectDir)
+	w.unlinkedProjectsM.Unlock()
+
+	if !filepath.IsAbs(projectDir) {
+		var err error
+		projectDir, err = filepath.Abs(projectDir)
+		if err != nil {
+			return err
+		}
+	}
+
+	servers, err := w.servers(ctx, runtimeInfo.Name(), projectDir, refs...)
+	if err != nil {
+		return fmt.Errorf("running servers for linking: %w", err)
+	}
+
 	instructions, err := servers.lang.Link(
 		plugin.NewProgramInfo(projectDir, projectDir, ".", runtimeInfo.Options()),
-		[]workspace.LinkablePackageDescriptor{{
-			Path:       sdkPath,
-			Descriptor: descriptor,
-		}},
+		packageDescriptors,
 		servers.grpc.Addr(),
 	)
 	if err != nil {
-		return fmt.Errorf("linking package: %w", err)
+		return errors.Join(fmt.Errorf("linking package: %w", err), servers.Close())
 	}
 	fmt.Fprintln(w.stderr, instructions)
-	return nil
+	return servers.Close()
 }
 
 type servers struct {
@@ -261,9 +303,15 @@ type servers struct {
 	grpc *plugin.GrpcServer
 }
 
+func (s servers) Close() error {
+	// We do not call s.lang.Close() since that closes the original host,
+	// and thus effectively closes the Workspace.
+	return errors.Join(s.grpc.Close(), s.pctx.Close())
+}
+
 func (w Workspace) servers(
 	ctx context.Context, language string, dir string,
-	schemaRef schema.PackageReference,
+	packageRefs ...schema.PackageReference,
 ) (servers, error) {
 	languageRuntime, err := w.host.LanguageRuntime(language)
 	if err != nil {
@@ -274,10 +322,13 @@ func (w Workspace) servers(
 		Color: diagutils.GetGlobalColorization(),
 	})
 
-	pctx := plugin.NewContextWithHost(ctx, d, d, w.host, dir, dir, w.parentSpan)
-	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx.Host), map[string]schema.PackageReference{
-		schemaRef.Identity(): schemaRef,
-	})
+	refs := make(map[string]schema.PackageReference, len(packageRefs))
+	for _, v := range packageRefs {
+		refs[v.Identity()] = v
+	}
+
+	pctx := plugin.NewContextWithHost(ctx, d, d, noopCloseHost{w.host}, dir, dir, w.parentSpan)
+	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx.Host), refs)
 	loaderServer := schema.NewLoaderServer(loader)
 	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
 	if err != nil {
@@ -290,30 +341,31 @@ func (w Workspace) servers(
 	}, nil
 }
 
-func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Package) (string, servers, error) {
+func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Package) (string, error) {
 	jsonBytes, err := pkg.MarshalJSON()
 	if err != nil {
-		return "", servers{}, err
+		return "", err
 	}
 	tmpDir, err := os.MkdirTemp("", "pulumi-package-")
 	if err != nil {
-		return "", servers{}, fmt.Errorf("unable to make temp dir: %w", err)
+		return "", fmt.Errorf("unable to make temp dir: %w", err)
 	}
 	s, err := w.servers(ctx, language, tmpDir, pkg.Reference())
 	if err != nil {
-		return "", servers{}, errors.Join(err, os.RemoveAll(tmpDir))
+		return "", errors.Join(err, os.RemoveAll(tmpDir))
 	}
 
 	diags, err := s.lang.GeneratePackage(tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
 	if err != nil {
-		return "", servers{}, errors.Join(err, os.RemoveAll(tmpDir))
+		return "", errors.Join(err, s.Close(), os.RemoveAll(tmpDir))
 	}
 
 	if diags.HasErrors() {
-		return "", servers{}, errors.Join(fmt.Errorf("generation failed: %w", diags), os.RemoveAll(tmpDir))
+		return "", errors.Join(fmt.Errorf("generation failed: %w", diags),
+			s.Close(), os.RemoveAll(tmpDir))
 	}
 
-	return tmpDir, s, nil
+	return tmpDir, s.Close()
 }
 
 // Run a package from a directory, parameterized by params.
@@ -425,3 +477,9 @@ func (p pluginProvider) Parameterize(
 	}
 	return p.Provider.Parameterize(ctx, req)
 }
+
+type noopCloseHost struct {
+	plugin.Host
+}
+
+func (h noopCloseHost) Close() error { return nil }

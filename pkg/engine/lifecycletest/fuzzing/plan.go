@@ -160,8 +160,7 @@ var defaultPlanSpecOptions = PlanSpecOptions{
 }
 
 var operationSpecs = []OperationSpec{
-	// TODO[pulumi/pulumi#21275], [pulumi/pulumi#21273]: uncomment when update operations are stable
-	// PlanOperationUpdate,
+	PlanOperationUpdate,
 	PlanOperationRefresh,
 	PlanOperationRefreshV2,
 	PlanOperationDestroy,

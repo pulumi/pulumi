@@ -199,13 +199,24 @@ func (w *recordingWorkspace) LoadBaseProjectFrom(
 	return project, filePath, err
 }
 
-func (w *recordingWorkspace) LinkPackage(
+func (w *recordingWorkspace) GenerateLocalSDK(
 	ctx context.Context,
 	project *workspace.ProjectRuntimeInfo, projectDir string,
 	provider plugin.Provider,
+) (workspace.LinkablePackageDescriptor, error) {
+	w.start("GenerateLocalSDK", ctx, project, projectDir, provider)
+	descriptor, err := w.w.GenerateLocalSDK(ctx, project, projectDir, provider)
+	w.finish(descriptor, err)
+	return descriptor, err
+}
+
+func (w *recordingWorkspace) LinkIntoProject(
+	ctx context.Context,
+	project *workspace.ProjectRuntimeInfo, projectDir string,
+	packageDescriptors []workspace.LinkablePackageDescriptor,
 ) error {
-	w.start("LinkPackage", ctx, project, projectDir, provider)
-	err := w.w.LinkPackage(ctx, project, projectDir, provider)
+	w.start("LinkIntoProject", ctx, project, projectDir, packageDescriptors)
+	err := w.w.LinkIntoProject(ctx, project, projectDir, packageDescriptors)
 	w.finish(err)
 	return err
 }

@@ -2496,6 +2496,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
 	}
+	fmt.Fprintln(b, "")
 
 	// All resources have a resource_name parameter and opts parameter.
 	fmt.Fprintln(b, ":param str resource_name: The name of the resource.")
@@ -2605,6 +2606,7 @@ func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties 
 	// If this type has documentation, write it at the top of the docstring.
 	if comment != "" {
 		fmt.Fprintln(b, comment)
+		fmt.Fprintln(b, "")
 	}
 
 	for _, prop := range properties {

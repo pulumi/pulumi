@@ -103,6 +103,7 @@ class ConfigGroup(pulumi.ComponentResource):
         """
         A non-overlay component resource.
 
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]] files: Set of paths or a URLs that uniquely identify files.
@@ -118,6 +119,7 @@ class ConfigGroup(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A non-overlay component resource.
+
 
         :param str resource_name: The name of the resource.
         :param ConfigGroupArgs args: The arguments to use to populate this resource's properties.

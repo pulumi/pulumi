@@ -46,6 +46,7 @@ class ComponentCallable(pulumi.ComponentResource):
         """
         A component resource that has callable methods.
 
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -57,6 +58,7 @@ class ComponentCallable(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A component resource that has callable methods.
+
 
         :param str resource_name: The name of the resource.
         :param ComponentCallableArgs args: The arguments to use to populate this resource's properties.
