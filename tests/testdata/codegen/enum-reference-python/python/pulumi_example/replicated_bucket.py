@@ -24,6 +24,7 @@ class ReplicatedBucketArgs:
                  destination_region: pulumi.Input[_builtins.str]):
         """
         The set of arguments for constructing a ReplicatedBucket resource.
+
         :param pulumi.Input[_builtins.str] destination_region: Region to which data should be replicated.
         """
         pulumi.set(__self__, "destination_region", destination_region)
@@ -51,6 +52,7 @@ class ReplicatedBucket(pulumi.ComponentResource):
                  __props__=None):
         """
         Create a ReplicatedBucket resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[_builtins.str] destination_region: Region to which data should be replicated.
@@ -63,6 +65,7 @@ class ReplicatedBucket(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a ReplicatedBucket resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param ReplicatedBucketArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
