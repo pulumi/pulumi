@@ -254,7 +254,7 @@ func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error
 
 	paths := slices.Collect(maps.Values(packages))
 	args = append(args, paths...)
-	cmd := u.uvCommand(ctx, "", false, nil, nil, args...)
+	cmd := u.uvCommand(ctx, u.root, false, nil, nil, args...)
 	if _, err := cmd.Output(); err != nil {
 		return errutil.ErrorWithStderr(err, "linking packages")
 	}
