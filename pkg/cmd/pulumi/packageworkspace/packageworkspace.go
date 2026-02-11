@@ -272,6 +272,14 @@ func (w Workspace) LinkIntoProject(
 	delete(w.unlinkedProjects, projectDir)
 	w.unlinkedProjectsM.Unlock()
 
+	if !filepath.IsAbs(projectDir) {
+		var err error
+		projectDir, err = filepath.Abs(projectDir)
+		if err != nil {
+			return err
+		}
+	}
+
 	servers, err := w.servers(ctx, runtimeInfo.Name(), projectDir, refs...)
 	if err != nil {
 		return fmt.Errorf("running servers for linking: %w", err)
