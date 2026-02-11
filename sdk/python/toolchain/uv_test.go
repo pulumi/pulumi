@@ -159,3 +159,22 @@ func TestUvCommandSyncsEnvironmentCustomVenv(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, strings.Contains(string(out), "wheel"), "unexpected output: %s", out)
 }
+
+// Test that we show the underlying error from `uv` when linking fails
+func TestUvLinkPackagesError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject := `[project]
+name = "my-project"
+dependencies = []
+`
+	err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+	require.NoError(t, err)
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	err = uv.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
+
+	require.Regexp(t, "Distribution not found at:.*nope", err.Error())
+}
