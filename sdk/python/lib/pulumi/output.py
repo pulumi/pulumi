@@ -1087,3 +1087,7 @@ def _safe_str(v: Any) -> str:
         return str(v)
     except _OutputToStringError:
         return "Output[T]"
+
+
+def untrack_output(r: Output[T]):
+   SETTINGS.outputs.remove(r._future)
