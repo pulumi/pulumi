@@ -29,6 +29,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/spf13/cobra"
 )
 
@@ -245,7 +246,8 @@ type dependencyGraph struct {
 // for simplicity, we define the root set of our dependency graph to be everything.
 func (dg *dependencyGraph) Roots() []graph.Edge {
 	rootEdges := []graph.Edge{}
-	for _, vertex := range dg.vertices {
+	for _, urn := range maputil.SortedKeys(dg.vertices) {
+		vertex := dg.vertices[urn]
 		edge := &dependencyEdge{
 			to:   vertex,
 			from: nil,
@@ -274,13 +276,14 @@ func makeDependencyGraph(snapshot *deploy.Snapshot, opts *graphCommandOptions) *
 		dg.vertices[resource.URN] = vertex
 	}
 
-	for _, vertex := range dg.vertices {
+	for _, res := range snapshot.Resources {
+		vertex := dg.vertices[res.URN]
 		if !opts.ignoreDependencyEdges {
 			// If we have per-property dependency information, annotate the dependency edges
 			// we generate with the names of the properties associated with each dependency.
 			depBlame := make(map[resource.URN][]string)
-			for k, deps := range vertex.resource.PropertyDependencies {
-				for _, dep := range deps {
+			for _, k := range maputil.SortedKeys(vertex.resource.PropertyDependencies) {
+				for _, dep := range vertex.resource.PropertyDependencies[k] {
 					depBlame[dep] = append(depBlame[dep], string(k))
 				}
 			}
