@@ -30,7 +30,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-var disableSurveyColorOnce sync.Once
+// Make sure we set `surveycore.DisableColor` to true exactly once, to avoid data races.
+// We only ever set `DisableColor` to true, so we don't have to worry about it needing to be reset.
+var disableSurveyColorOnce = sync.OnceFunc(func() { surveycore.DisableColor = true })
 
 func SurveyIcons(color colors.Colorization) survey.AskOpt {
 	return survey.WithIcons(func(icons *survey.IconSet) {
@@ -173,7 +175,7 @@ func PromptUser(
 	surveyAskOpts ...survey.AskOpt,
 ) string {
 	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
-	disableSurveyColorOnce.Do(func() { surveycore.DisableColor = true })
+	disableSurveyColorOnce()
 
 	allSurveyAskOpts := append(
 		surveyAskOpts,
@@ -213,7 +215,7 @@ func PromptUserMulti(msg string, options []string, defaultOptions []string, colo
 
 	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset) + confirmationHint
 
-	disableSurveyColorOnce.Do(func() { surveycore.DisableColor = true })
+	disableSurveyColorOnce()
 	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
 		icons.Question = survey.Icon{}
 		icons.SelectFocus = survey.Icon{Text: colorization.Colorize(colors.BrightGreen + ">" + colors.Reset)}
