@@ -256,7 +256,8 @@ func generatePackageJSON(
 	}
 	packageJSON.WriteString(`
 	}
-}`)
+}
+`)
 
 	return packageJSON.Bytes(), nil
 }
@@ -309,7 +310,8 @@ func GenerateProject(
 
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(`/bin/
-/node_modules/`)
+/node_modules/
+`)
 
 	// Add the basic tsconfig
 	var tsConfig bytes.Buffer
@@ -349,7 +351,8 @@ func GenerateProject(
 	}
 
 	tsConfig.WriteString(`	]
-}`)
+}
+`)
 	files["tsconfig.json"] = tsConfig.Bytes()
 
 	for filename, data := range files {
