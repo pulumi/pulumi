@@ -25,6 +25,7 @@ class ResourceArgs:
                  non_plain_data: Optional[pulumi.Input['DataArgs']] = None):
         """
         The set of arguments for constructing a Resource resource.
+
         :param pulumi.Input['DataArgs'] non_plain_data: A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
         """
         pulumi.set(__self__, "data", data)
@@ -64,6 +65,7 @@ class Resource(pulumi.CustomResource):
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union['DataArgs', 'DataArgsDict']] non_plain_data: A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
@@ -76,6 +78,7 @@ class Resource(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Resource resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param ResourceArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
