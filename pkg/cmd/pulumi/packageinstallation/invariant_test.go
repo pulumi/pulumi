@@ -296,9 +296,25 @@ func (w invariantWorkspace) GetStoredCredentials() (workspace.Credentials, error
 	return workspace.Credentials{}, nil
 }
 
-func (w invariantWorkspace) LinkPackage(
+func (w invariantWorkspace) GenerateLocalSDK(
 	ctx context.Context,
-	project *workspace.ProjectRuntimeInfo, projectDir string, provider plugin.Provider,
+	project *workspace.ProjectRuntimeInfo, projectDir string,
+	provider plugin.Provider,
+) (workspace.LinkablePackageDescriptor, error) {
+	if w.jitter > 0 {
+		time.Sleep(time.Duration(rand.IntN(int(w.jitter))))
+	}
+
+	ip := provider.(invariantProvider)
+	return workspace.LinkablePackageDescriptor{
+		Path: ip.path,
+	}, nil
+}
+
+func (w invariantWorkspace) LinkIntoProject(
+	ctx context.Context,
+	project *workspace.ProjectRuntimeInfo, projectDir string,
+	packageDescriptors []workspace.LinkablePackageDescriptor,
 ) error {
 	if w.jitter > 0 {
 		time.Sleep(time.Duration(rand.IntN(int(w.jitter))))
@@ -309,7 +325,7 @@ func (w invariantWorkspace) LinkPackage(
 	var links *[]string
 	if dst, ok := w.plugins[projectDir]; ok {
 		if !dst.downloaded {
-			assert.Failf(w.t, "", "LinkPackage(%q) called on non-downloaded dst", projectDir)
+			assert.Failf(w.t, "", "LinkIntoProject(%q) called on non-downloaded dst", projectDir)
 			return assert.AnError
 		}
 		links = &dst.linked
@@ -317,17 +333,17 @@ func (w invariantWorkspace) LinkPackage(
 		links = &workDir.linked
 	}
 
-	ip := provider.(invariantProvider)
-
 	w.rw.Lock()
 	defer w.rw.Unlock()
-	if slices.Contains(*links, ip.path) {
-		assert.Failf(w.t, "", "LinkPackage(%q) linked %q >1 time", projectDir, ip.path)
-		return assert.AnError
+	for _, descriptor := range packageDescriptors {
+		if slices.Contains(*links, descriptor.Path) {
+			assert.Failf(w.t, "", "LinkIntoProject(%q) linked %q >1 time", projectDir, descriptor.Path)
+			return assert.AnError
+		}
+		// Insert in sorted order to ensure deterministic comparison
+		pos, _ := slices.BinarySearch(*links, descriptor.Path)
+		*links = slices.Insert(*links, pos, descriptor.Path)
 	}
-	// Insert in sorted order to ensure deterministic comparison
-	pos, _ := slices.BinarySearch(*links, ip.path)
-	*links = slices.Insert(*links, pos, ip.path)
 	return nil
 }
 
