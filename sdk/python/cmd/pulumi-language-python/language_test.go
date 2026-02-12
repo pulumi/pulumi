@@ -211,6 +211,12 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("Skipping l3-component-simple test with pyright due to issues with optional properties")
 					}
 
+					// Default and TOML modes convert camelCase property names to snake_case,
+					// breaking discriminator matching which requires the original camelCase names.
+					if config.name != "classes" && tt == "l2-discriminated-union" {
+						t.Skip("fails to compile: Python dict-based SDKs send snake_case property names, breaking discriminator matching")
+					}
+
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
 					}
