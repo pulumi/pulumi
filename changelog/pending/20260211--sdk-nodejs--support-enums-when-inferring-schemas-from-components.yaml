@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: Support enums when inferring schemas from components

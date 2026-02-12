@@ -44,7 +44,9 @@ export type ComponentDefinition = {
 
 export type TypeDefinition = {
     name: string;
-    properties: Record<string, PropertyDefinition>;
+    type: PropertyType;
+    properties?: Record<string, PropertyDefinition>;
+    enum?: Array<{ name: string; value: string | number; description?: string }>;
     description?: string;
 };
 
@@ -138,7 +140,10 @@ export class Analyzer {
                             componentNames.delete(component.name);
                         }
                     }
-                } else if ((ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name) {
+                } else if (
+                    (ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isEnumDeclaration(node)) &&
+                    node.name
+                ) {
                     // Collect documentation for types
                     const dNode = node as docNode;
                     if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
@@ -322,7 +327,6 @@ Please ensure these components are properly imported to your package's entry poi
             inputs = this.analyzeSymbols(
                 { component: componentName, inputOutput: InputOutput.Neither, typeName: argsSymbol.getName() },
                 symbolTableToSymbols(argsSymbol.members),
-                argsParam,
             );
         }
 
@@ -333,7 +337,6 @@ Please ensure these components are properly imported to your package's entry poi
             outputs = this.analyzeSymbols(
                 { component: componentName, inputOutput: InputOutput.Output },
                 symbolTableToSymbols(classSymbol.members),
-                node,
             );
         }
 
@@ -372,7 +375,6 @@ Please ensure these components are properly imported to your package's entry poi
     private analyzeSymbols(
         context: { component: string; inputOutput: InputOutput; typeName?: string },
         symbols: typescript.Symbol[],
-        location: typescript.Node,
     ): Record<string, PropertyDefinition> {
         const properties: Record<string, PropertyDefinition> = {};
         symbols.forEach((member) => {
@@ -380,7 +382,7 @@ Please ensure these components are properly imported to your package's entry poi
                 return;
             }
             const name = member.escapedName as string;
-            properties[name] = this.analyzeSymbol({ ...context, property: name }, member, location);
+            properties[name] = this.analyzeSymbol({ ...context, property: name }, member);
         });
         return properties;
     }
@@ -388,18 +390,17 @@ Please ensure these components are properly imported to your package's entry poi
     private analyzeSymbol(
         context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
         symbol: typescript.Symbol,
-        location: typescript.Node,
     ): PropertyDefinition {
         // Check if the property is optional, e.g.: myProp?: string; This is
         // defined on the symbol, not the type.
-        const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
+        const propType = this.checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration);
         const optional = isOptional(symbol);
         const dNode = symbol.valueDeclaration as docNode;
         let docString: string | undefined = undefined;
         if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
             docString = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
         }
-        return this.analyzeType({ ...context }, propType, location, optional, docString);
+        return this.analyzeType({ ...context }, propType, symbol.valueDeclaration, optional, docString);
     }
 
     private analyzeType(
@@ -496,7 +497,7 @@ Please ensure these components are properly imported to your package's entry poi
             }
             // Immediately add an empty type definition, so that it can be
             // referenced recursively, then analyze the properties.
-            this.typeDefinitions[name] = { name, properties: {} };
+            this.typeDefinitions[name] = { name, properties: {}, type: "object" };
             if (this.docStrings[name]) {
                 this.typeDefinitions[name].description = this.docStrings[name];
             }
@@ -508,7 +509,7 @@ Please ensure these components are properly imported to your package's entry poi
                 inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
                 typeName: name,
             };
-            const properties = this.analyzeSymbols(typeContext, type.getProperties(), location);
+            const properties = this.analyzeSymbols(typeContext, type.getProperties());
             this.typeDefinitions[name].properties = properties;
             return makeProp({ $ref: `#/types/${this.providerName}:index:${name}` });
         }
@@ -558,6 +559,61 @@ Please ensure these components are properly imported to your package's entry poi
         }
 
         if (type.isUnion()) {
+            // Enums are unions of string or number literals. We support two cases:
+            //
+            //   enum MyEnum { Value1 = "Value1", Value2 = "Value2" }
+            //
+            //   const MyEnum = { Value1: "Value1", Value2: "Value2" } as const;
+            //   type MyEnum = typeof MyEnum[keyof typeof MyEnum];
+            //
+            const unionType = type as typescript.UnionType;
+            const isStringLiteralUnion = unionType.types.every(
+                (t) => t.isStringLiteral() || (t.flags & ts.TypeFlags.Undefined) !== 0,
+            );
+            const isNumberLiteralUnion = unionType.types.every(
+                (t) => t.isNumberLiteral() || (t.flags & ts.TypeFlags.Undefined) !== 0,
+            );
+
+            if (isStringLiteralUnion || isNumberLiteralUnion) {
+                // For `enum MyEnum { ... }` we have the name available directly on the type.
+                let name = type.aliasSymbol?.escapedName as string | undefined;
+                let typeRefNode: typescript.TypeReferenceNode | undefined;
+
+                // For the `as const` object pattern TypeScript doesn't track the name, we have to go get it from the
+                // type of the property.
+                if (!name && (ts.isPropertySignature(location) || ts.isPropertyDeclaration(location))) {
+                    const typeNode = location.type;
+                    if (typeNode && ts.isTypeReferenceNode(typeNode)) {
+                        const resolvedType = this.checker.getTypeFromTypeNode(typeNode);
+                        const isInputOrOutput = getInputInnerType(resolvedType) !== undefined || isOutput(resolvedType);
+                        if (isInputOrOutput && typeNode.typeArguments && typeNode.typeArguments.length > 0) {
+                            const innerTypeNode = typeNode.typeArguments[0];
+                            if (ts.isTypeReferenceNode(innerTypeNode)) {
+                                name = innerTypeNode.typeName.getText();
+                                typeRefNode = innerTypeNode;
+                            }
+                        } else {
+                            name = typeNode.typeName.getText();
+                            typeRefNode = typeNode;
+                        }
+                    }
+                }
+
+                const enumMembers = name
+                    ? this.extractEnumMembers({ ...context, property: name }, type, typeRefNode || location)
+                    : undefined;
+                if (name && enumMembers && enumMembers.members.length > 0) {
+                    if (!this.typeDefinitions[name]) {
+                        const propertyType = isStringLiteralUnion ? "string" : "number";
+                        this.typeDefinitions[name] = { name, enum: enumMembers.members, type: propertyType };
+                        if (enumMembers.description) {
+                            this.typeDefinitions[name].description = enumMembers.description;
+                        }
+                    }
+                    return makeProp({ $ref: `#/types/${this.providerName}:index:${name}` });
+                }
+            }
+
             throw new Error(
                 `Union types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
             );
@@ -572,6 +628,187 @@ Please ensure these components are properly imported to your package's entry poi
         throw new Error(
             `Unsupported type for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
         );
+    }
+
+    private extractEnumMembers(
+        context: { component: string; property: string; typeName?: string },
+        type: typescript.Type,
+        location: typescript.Node,
+    ):
+        | { members: Array<{ name: string; value: string | number; description?: string }>; description?: string }
+        | undefined {
+        // Try to get the symbol from the type first (for enum keyword)
+        let symbol = type.aliasSymbol || type.getSymbol();
+
+        // ... then try to get it from a type reference node (for imports)
+        if (!symbol && ts.isTypeReferenceNode(location)) {
+            symbol = this.checker.getSymbolAtLocation(location.typeName);
+        }
+
+        // ... then search for it by name in the location's source file
+        if (!symbol) {
+            const sourceFile = location.getSourceFile();
+            sourceFile.forEachChild((node) => {
+                if (ts.isVariableStatement(node)) {
+                    for (const decl of node.declarationList.declarations) {
+                        if (ts.isIdentifier(decl.name) && decl.name.text === context.typeName) {
+                            symbol = this.checker.getSymbolAtLocation(decl.name);
+                            return true;
+                        }
+                    }
+                }
+                return undefined;
+            });
+        }
+
+        if (!symbol?.declarations?.[0]) {
+            return undefined;
+        }
+        let declaration = symbol.declarations[0];
+        // If the declaration is an import, follow it to the actual declaration
+        if (ts.isImportSpecifier(declaration) || ts.isImportClause(declaration)) {
+            const importedSymbol = this.checker.getAliasedSymbol(symbol);
+            if (importedSymbol?.declarations?.[0]) {
+                declaration = importedSymbol.declarations[0];
+            }
+        }
+
+        if (ts.isEnumDeclaration(declaration)) {
+            const members: Array<{ name: string; value: string | number }> = [];
+            let lastNumericValue = -1;
+            for (const enumMember of declaration.members) {
+                const memberName = enumMember.name.getText();
+                let memberValue: string | number;
+                if (enumMember.initializer) {
+                    if (ts.isStringLiteral(enumMember.initializer)) {
+                        memberValue = enumMember.initializer.text;
+                    } else if (ts.isNumericLiteral(enumMember.initializer)) {
+                        memberValue = Number(enumMember.initializer.text);
+                        lastNumericValue = memberValue;
+                    } else {
+                        throw new Error(
+                            `Unsupported initializer for enum member ${memberName} in ${this.formatErrorContext(context)}. Must be a string or numeric literal.`,
+                        );
+                    }
+                } else {
+                    // No initializer `enum MyEnum { A, B, C }`
+                    memberValue = lastNumericValue + 1;
+                    lastNumericValue = memberValue;
+                }
+
+                const member: { name: string; value: string | number; description?: string } = {
+                    name: memberName,
+                    value: memberValue,
+                };
+                let memberDescription: string | undefined;
+                const doc = enumMember as docNode;
+                if (doc?.jsDoc && doc.jsDoc.length > 0) {
+                    memberDescription = doc.jsDoc.map((d: typescript.JSDoc) => d.comment).join("\n");
+                }
+                if (memberDescription) {
+                    member.description = memberDescription;
+                }
+                members.push(member);
+            }
+
+            if (members.length === 0) {
+                return undefined;
+            }
+
+            const docNode = declaration as docNode;
+            let enumDescription: string | undefined;
+            if (docNode?.jsDoc && docNode.jsDoc.length > 0) {
+                enumDescription = docNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
+            }
+
+            return { members, description: enumDescription };
+        }
+
+        if (ts.isVariableDeclaration(declaration)) {
+            // `as const` object pattern:
+            //   const MyEnum = { Value1: "Value1", Value2: "Value2" } as const;
+            //   type MyEnum = typeof MyEnum[keyof typeof MyEnum];
+            //
+            // We loop over the object (the initializer), and build a reverse map from values to keys. Then we loop over the
+            // elements of the union (the actual type is the union of the literal values) and fetch the matching object
+            // keys.
+            let initializer = declaration.initializer;
+            // Unwrap `as const` expression
+            if (initializer && ts.isAsExpression(initializer)) {
+                initializer = initializer.expression;
+            }
+
+            if (initializer && ts.isObjectLiteralExpression(initializer) && type.isUnion()) {
+                const valueToMember = new Map<string | number, { key: string; description?: string }>();
+
+                for (const property of initializer.properties) {
+                    if (ts.isPropertyAssignment(property) && ts.isIdentifier(property.name)) {
+                        const memberName = property.name.text;
+                        let memberValue: string | number | undefined;
+
+                        if (ts.isStringLiteral(property.initializer)) {
+                            memberValue = property.initializer.text;
+                        } else if (ts.isNumericLiteral(property.initializer)) {
+                            memberValue = Number(property.initializer.text);
+                        } else {
+                            throw new Error(
+                                `Unsupported initializer for enum member ${memberName} in ${this.formatErrorContext(context)}. Must be a string or numeric literal.`,
+                            );
+                        }
+
+                        // JSDoc for the object property
+                        const propDocNode = property as docNode;
+                        let enumDescription: string | undefined;
+                        if (propDocNode?.jsDoc && propDocNode.jsDoc.length > 0) {
+                            enumDescription = propDocNode.jsDoc.map((d: typescript.JSDoc) => d.comment).join("\n");
+                        }
+
+                        valueToMember.set(memberValue, { key: memberName, description: enumDescription });
+                    }
+                }
+
+                const members: Array<{ name: string; value: string | number; description?: string }> = [];
+                for (const t of type.types) {
+                    let literalValue: string | number | undefined;
+                    if (t.isStringLiteral()) {
+                        literalValue = (t as typescript.StringLiteralType).value;
+                    } else if (t.isNumberLiteral()) {
+                        literalValue = (t as typescript.NumberLiteralType).value;
+                    }
+                    if (literalValue !== undefined) {
+                        const memberInfo = valueToMember.get(literalValue);
+                        if (memberInfo) {
+                            const member: { name: string; value: string | number; description?: string } = {
+                                name: memberInfo.key,
+                                value: literalValue,
+                            };
+                            if (memberInfo.description) {
+                                member.description = memberInfo.description;
+                            }
+                            members.push(member);
+                        }
+                    }
+                }
+
+                if (members.length === 0) {
+                    return undefined;
+                }
+
+                // JSDoc attached to the object itself
+                const variableStatement = declaration.parent?.parent;
+                let description: string | undefined;
+                if (variableStatement && ts.isVariableStatement(variableStatement)) {
+                    const docNode = variableStatement as docNode;
+                    if (docNode?.jsDoc && docNode.jsDoc.length > 0) {
+                        description = docNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
+                    }
+                }
+
+                return { members, description };
+            }
+        }
+
+        return undefined;
     }
 
     unwrapTypeReference(
