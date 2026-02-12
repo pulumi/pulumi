@@ -36,11 +36,12 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:camelNames")
 					first := RequireSingleNamedResource(l, snap.Resources, "firstResource")
 					second := RequireSingleNamedResource(l, snap.Resources, "secondResource")
+					third := RequireSingleNamedResource(l, snap.Resources, "thirdResource")
 
 					wantInputs := resource.NewPropertyMapFromMap(map[string]any{
 						"theInput": resource.NewProperty(true),
@@ -53,6 +54,18 @@ func init() {
 					})
 					assert.Equal(l, wantOutputs, first.Outputs, "expected outputs to be %v", wantOutputs)
 					assert.Equal(l, wantOutputs, second.Outputs, "expected outputs to be %v", wantOutputs)
+
+					wantThirdInputs := resource.NewPropertyMapFromMap(map[string]any{
+						"theInput":     resource.NewProperty(true),
+						"resourceName": "my-cluster",
+					})
+					assert.Equal(l, wantThirdInputs, third.Inputs)
+
+					wantThirdOutputs := resource.NewPropertyMapFromMap(map[string]any{
+						"theOutput":    resource.NewProperty(true),
+						"resourceName": "my-cluster",
+					})
+					assert.Equal(l, wantThirdOutputs, third.Outputs)
 				},
 			},
 		},
