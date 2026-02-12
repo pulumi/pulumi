@@ -864,7 +864,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		if err != nil {
 			return nil, false, err
 		}
-		if goal.Custom && !sdkproviders.IsProviderType(goal.Type) ||
+		if ((goal.Custom || hasSkippedDeps) && !sdkproviders.IsProviderType(goal.Type)) ||
 			sdkproviders.IsProviderType(goal.Type) && hasSkippedDeps {
 			// Custom resources that aren't in state just have to be skipped.
 			if old == nil {
