@@ -13,31 +13,31 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
-import pulumi_azure_native
+import pulumi_using_dashes
 
 __all__ = ['RegistryGeoReplicationArgs', 'RegistryGeoReplication']
 
 @pulumi.input_type
 class RegistryGeoReplicationArgs:
     def __init__(__self__, *,
-                 resource_group: pulumi.Input['pulumi_azure_native.resources.ResourceGroup']):
+                 resource_group: pulumi.Input['pulumi_using_dashes.Dash']):
         """
         The set of arguments for constructing a RegistryGeoReplication resource.
 
-        :param pulumi.Input['pulumi_azure_native.resources.ResourceGroup'] resource_group: The resource group that hosts the component resource
+        :param pulumi.Input['pulumi_using_dashes.Dash'] resource_group: The resource group that hosts the component resource
         """
         pulumi.set(__self__, "resource_group", resource_group)
 
     @_builtins.property
     @pulumi.getter(name="resourceGroup")
-    def resource_group(self) -> pulumi.Input['pulumi_azure_native.resources.ResourceGroup']:
+    def resource_group(self) -> pulumi.Input['pulumi_using_dashes.Dash']:
         """
         The resource group that hosts the component resource
         """
         return pulumi.get(self, "resource_group")
 
     @resource_group.setter
-    def resource_group(self, value: pulumi.Input['pulumi_azure_native.resources.ResourceGroup']):
+    def resource_group(self, value: pulumi.Input['pulumi_using_dashes.Dash']):
         pulumi.set(self, "resource_group", value)
 
 
@@ -47,14 +47,14 @@ class RegistryGeoReplication(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 resource_group: Optional[pulumi.Input['pulumi_azure_native.resources.ResourceGroup']] = None,
+                 resource_group: Optional[pulumi.Input['pulumi_using_dashes.Dash']] = None,
                  __props__=None):
         """
         Create a RegistryGeoReplication resource with the given unique name, props, and options.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input['pulumi_azure_native.resources.ResourceGroup'] resource_group: The resource group that hosts the component resource
+        :param pulumi.Input['pulumi_using_dashes.Dash'] resource_group: The resource group that hosts the component resource
         """
         ...
     @overload
@@ -80,7 +80,7 @@ class RegistryGeoReplication(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 resource_group: Optional[pulumi.Input['pulumi_azure_native.resources.ResourceGroup']] = None,
+                 resource_group: Optional[pulumi.Input['pulumi_using_dashes.Dash']] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -115,7 +115,7 @@ class RegistryGeoReplication(pulumi.ComponentResource):
 
     @_builtins.property
     @pulumi.getter
-    def registry(self) -> pulumi.Output['pulumi_azure_native.containerregistry.Registry']:
+    def registry(self) -> pulumi.Output['pulumi_using_dashes.Dash']:
         """
         The Registry
         """
@@ -123,7 +123,7 @@ class RegistryGeoReplication(pulumi.ComponentResource):
 
     @_builtins.property
     @pulumi.getter
-    def replication(self) -> pulumi.Output['pulumi_azure_native.containerregistry.Replication']:
+    def replication(self) -> pulumi.Output['pulumi_using_dashes.Dash']:
         """
         The replication policy
         """
