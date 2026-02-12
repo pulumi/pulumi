@@ -265,7 +265,7 @@ func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main str
 }
 
 func formatPlugins(p []pluginAbout) string {
-	rows := []cmdutil.TableRow{}
+	rows := slice.Prealloc[cmdutil.TableRow](len(p))
 	for _, plugin := range p {
 		var version string
 		if plugin.Version != nil {

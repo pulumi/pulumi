@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -268,7 +269,7 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 		headers = append(headers, "URL")
 	}
 
-	rows := []cmdutil.TableRow{}
+	rows := slice.Prealloc[cmdutil.TableRow](len(stackSummaries))
 
 	for _, summary := range stackSummaries {
 		const none = "n/a"

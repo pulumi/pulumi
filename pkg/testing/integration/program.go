@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -989,7 +990,8 @@ func (pt *ProgramTester) yarnCmd(args []string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := []string{bin}
+	result := slice.Prealloc[string](1 + len(args))
+	result = append(result, bin)
 	result = append(result, args...)
 	return withOptionalYarnFlags(result), nil
 }

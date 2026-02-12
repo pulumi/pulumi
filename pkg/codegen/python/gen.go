@@ -147,7 +147,7 @@ func (mod *modContext) isTopLevel() bool {
 }
 
 func (mod *modContext) walkSelfWithDescendants() []*modContext {
-	var found []*modContext
+	found := slice.Prealloc[*modContext](1 + len(mod.children))
 	found = append(found, mod)
 	for _, childMod := range mod.children {
 		found = append(found, childMod.walkSelfWithDescendants()...)

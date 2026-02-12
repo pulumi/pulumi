@@ -25,6 +25,7 @@ import (
 
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/testutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // Note to future engineers: keep each file tested as a single test, do not use `t.Run` in the inner
@@ -96,10 +97,11 @@ func getDocsForResource(r *Resource, isProvider bool) []doc {
 		entity = "#/resources/" + url.PathEscape(r.Token)
 	}
 
-	docs := []doc{
-		{entity: entity + "/description", content: r.Comment},
-		{entity: entity + "/deprecationMessage", content: r.DeprecationMessage},
-	}
+	docs := slice.Prealloc[doc](2 + len(r.InputProperties) + len(r.Properties))
+	docs = append(docs,
+		doc{entity: entity + "/description", content: r.Comment},
+		doc{entity: entity + "/deprecationMessage", content: r.DeprecationMessage},
+	)
 	for _, p := range r.InputProperties {
 		docs = append(docs, getDocsForProperty(entity+"/inputProperties", p)...)
 	}

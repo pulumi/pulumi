@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -328,7 +329,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap := p.Run(t, old)
 
-	seen := []resource.URN{}
+	seen := slice.Prealloc[resource.URN](len(snap.Resources))
 	for _, res := range snap.Resources {
 		seen = append(seen, res.URN)
 		switch urn := res.URN; urn {
@@ -354,7 +355,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh, SkipPreview: true}}
 	snap = p.Run(t, old)
 
-	seen = []resource.URN{}
+	seen = slice.Prealloc[resource.URN](len(snap.Resources))
 	for _, res := range snap.Resources {
 		seen = append(seen, res.URN)
 		switch urn := res.URN; urn {
@@ -596,7 +597,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 	urnC := p.NewURN(resType, names[2], "")
 	urns := []resource.URN{urnA, urnB, urnC}
 
-	refreshTargets := []resource.URN{}
+	refreshTargets := slice.Prealloc[resource.URN](len(targets))
 
 	t.Logf("Refreshing targets: %v", targets)
 	for _, target := range targets {

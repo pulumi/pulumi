@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -121,7 +122,7 @@ func formatPolicyGroupsConsole(policyGroups []apitype.PolicyGroupSummary) error 
 	// Header string and formatting options to align columns.
 	headers := []string{"NAME", "DEFAULT", "ENABLED POLICY PACKS", "STACKS"}
 
-	rows := []cmdutil.TableRow{}
+	rows := slice.Prealloc[cmdutil.TableRow](len(policyGroups))
 
 	for _, group := range policyGroups {
 		// Name column

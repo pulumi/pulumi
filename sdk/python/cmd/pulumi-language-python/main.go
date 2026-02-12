@@ -794,7 +794,7 @@ func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
 	}
-	args := []string{}
+	args := slice.Prealloc[string](8)
 	args = append(args, "-Xfrozen_modules=off")
 	args = append(args, "-m", "debugpy", "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	args = append(args, "--wait-for-client")
@@ -938,7 +938,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
-	args := []string{}
+	var args []string //nolint:prealloc // capacity depends on debug mode
 	var dbg *debugger
 	if req.GetAttachDebugger() {
 		args, dbg, err = debugCommand(ctx, opts)
@@ -1295,7 +1295,8 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 			DisplayName: "pip",
 		}
 		// Pip is always available in a Python installation or virtual environment.
-		choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{pipOption}
+		choices := slice.Prealloc[*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue](3)
+		choices = append(choices, pipOption)
 		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry", "uv")...)
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 			Key:         "toolchain",

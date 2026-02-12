@@ -513,12 +513,12 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	display.eventMutex.RLock()
 	defer display.eventMutex.RUnlock()
 
-	result := []*treeNode{}
-
-	result = append(result, &treeNode{
-		row:              display.headerRow,
-		colorizedColumns: display.headerRow.ColorizedColumns(),
-	})
+	result := []*treeNode{
+		{
+			row:              display.headerRow,
+			colorizedColumns: display.headerRow.ColorizedColumns(),
+		},
+	}
 
 	urnToTreeNode := make(map[resource.URN]*treeNode)
 	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)

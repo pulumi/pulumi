@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -2646,7 +2647,7 @@ func TestAutonaming(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		orderedConfig := []integration.ConfigValue{}
+		orderedConfig := slice.Prealloc[integration.ConfigValue](len(tc.config))
 		for k, v := range tc.config {
 			orderedConfig = append(orderedConfig, integration.ConfigValue{Key: k, Value: v, Path: true})
 		}

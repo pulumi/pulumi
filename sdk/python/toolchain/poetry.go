@@ -35,6 +35,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
@@ -232,8 +233,9 @@ func (p *poetry) PrepareProject(
 
 func (p *poetry) LinkPackages(ctx context.Context, packages map[string]string) error {
 	logging.V(9).Infof("poetry linking %s", packages)
-	args := []string{"add", "--lock"} // Add package to lockfile only
 	paths := slices.Collect(maps.Values(packages))
+	args := slice.Prealloc[string](2 + len(paths))
+	args = append(args, "add", "--lock") // Add package to lockfile only
 	args = append(args, paths...)
 	cmd := exec.CommandContext(ctx, "poetry", args...)
 	cmd.Dir = p.directory
