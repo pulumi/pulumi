@@ -132,6 +132,178 @@ describe("Analyzer", function () {
         });
     });
 
+    it("infers Partial<T> utility type", async function () {
+        const dir = path.join(__dirname, "testdata", "partial-type");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    regularType: {
+                        $ref: "#/types/provider:index:SomeType",
+                        optional: true,
+                        description: "The regular type with required fields",
+                    },
+                    partialType: {
+                        $ref: "#/types/provider:index:PartialSomeType",
+                        optional: true,
+                        description: "A partial type where all fields are optional",
+                    },
+                },
+                outputs: {
+                    regularType: {
+                        $ref: "#/types/provider:index:SomeType",
+                        description: "The regular type output",
+                    },
+                    partialType: {
+                        $ref: "#/types/provider:index:PartialSomeType",
+                        description: "The partial type output",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            SomeType: {
+                name: "SomeType",
+                description: "A type with required fields",
+                properties: {
+                    a: {
+                        type: "string",
+                        plain: true,
+                        description: "A required string field",
+                    },
+                    b: {
+                        type: "number",
+                        plain: true,
+                        description: "A required number field",
+                    },
+                    c: {
+                        type: "boolean",
+                        plain: true,
+                        description: "A required boolean field",
+                    },
+                },
+                type: "object",
+            },
+            PartialSomeType: {
+                name: "PartialSomeType",
+                description: "A type with required fields",
+                properties: {
+                    a: {
+                        type: "string",
+                        plain: true,
+                        optional: true,
+                        description: "A required string field",
+                    },
+                    b: {
+                        type: "number",
+                        plain: true,
+                        optional: true,
+                        description: "A required number field",
+                    },
+                    c: {
+                        type: "boolean",
+                        plain: true,
+                        optional: true,
+                        description: "A required boolean field",
+                    },
+                },
+                type: "object",
+            },
+        });
+    });
+
+    it("infers Partial<T> with nested types", async function () {
+        const dir = path.join(__dirname, "testdata", "partial-nested");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    partialOuter: {
+                        $ref: "#/types/provider:index:PartialOuterType",
+                        optional: true,
+                        description: "A partial outer type with nested inner type",
+                    },
+                    partialInner: {
+                        $ref: "#/types/provider:index:PartialInnerType",
+                        optional: true,
+                        description: "A nested partial of the inner type",
+                    },
+                },
+                outputs: {
+                    partialOuter: {
+                        $ref: "#/types/provider:index:PartialOuterType",
+                        description: "The partial outer type output",
+                    },
+                    partialInner: {
+                        $ref: "#/types/provider:index:PartialInnerType",
+                        description: "The partial inner type output",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            InnerType: {
+                name: "InnerType",
+                description: "An inner type",
+                properties: {
+                    x: {
+                        type: "number",
+                        plain: true,
+                        description: "Inner field x",
+                    },
+                    y: {
+                        type: "string",
+                        plain: true,
+                        description: "Inner field y",
+                    },
+                },
+                type: "object",
+            },
+            PartialOuterType: {
+                name: "PartialOuterType",
+                description: "An outer type that contains another type",
+                properties: {
+                    inner: {
+                        $ref: "#/types/provider:index:InnerType",
+                        plain: true,
+                        optional: true,
+                        description: "An inner object",
+                    },
+                    outerField: {
+                        type: "boolean",
+                        plain: true,
+                        optional: true,
+                        description: "An outer field",
+                    },
+                },
+                type: "object",
+            },
+            PartialInnerType: {
+                name: "PartialInnerType",
+                description: "An inner type",
+                properties: {
+                    x: {
+                        type: "number",
+                        plain: true,
+                        optional: true,
+                        description: "Inner field x",
+                    },
+                    y: {
+                        type: "string",
+                        plain: true,
+                        optional: true,
+                        description: "Inner field y",
+                    },
+                },
+                type: "object",
+            },
+        });
+    });
+
     it("infers self recursive complex types", async function () {
         const dir = path.join(__dirname, "testdata", "recursive-complex-types");
         const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));

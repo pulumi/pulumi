@@ -388,7 +388,13 @@ Please ensure these components are properly imported to your package's entry poi
     }
 
     private analyzeSymbol(
-        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        context: {
+            component: string;
+            property: string;
+            inputOutput: InputOutput;
+            typeName?: string;
+            isPartial?: boolean;
+        },
         symbol: typescript.Symbol,
     ): PropertyDefinition {
         // Check if the property is optional, e.g.: myProp?: string; This is
@@ -404,7 +410,13 @@ Please ensure these components are properly imported to your package's entry poi
     }
 
     private analyzeType(
-        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        context: {
+            component: string;
+            property: string;
+            inputOutput: InputOutput;
+            typeName?: string;
+            isPartial?: boolean;
+        },
         type: typescript.Type,
         location: typescript.Node,
         optional: boolean = false,
@@ -426,6 +438,12 @@ Please ensure these components are properly imported to your package's entry poi
         const propType = getSimplePropertyType(type);
         if (propType) {
             return makeProp({ type: propType });
+        }
+
+        const partialInnerType = getPartialInnerType(type);
+        if (partialInnerType) {
+            // For Partial<T>, we need to process T but mark all properties as optional
+            return this.analyzeType({ ...context, isPartial: true }, partialInnerType, location, optional, docString);
         }
 
         const innerInputType = getInputInnerType(type);
@@ -484,12 +502,18 @@ Please ensure these components are properly imported to your package's entry poi
         if (type.isClassOrInterface()) {
             // This is a complex type, create a typedef and then reference it in
             // the PropertyDefinition.
-            const name = type.getSymbol()?.escapedName as string | undefined;
+            let name = type.getSymbol()?.escapedName as string | undefined;
             if (!name) {
                 throw new Error(
                     `Class or interface has no name: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
                 );
             }
+
+            // If this is Partial<T> prefix the name to avoid conflicts with the name of T
+            if (context.isPartial) {
+                name = `Partial${name}`;
+            }
+
             if (this.typeDefinitions[name]) {
                 // Type already exists, just reference it and we're done.
                 const refProp: PropertyDefinition = { $ref: `#/types/${this.providerName}:index:${name}` };
@@ -498,9 +522,12 @@ Please ensure these components are properly imported to your package's entry poi
             // Immediately add an empty type definition, so that it can be
             // referenced recursively, then analyze the properties.
             this.typeDefinitions[name] = { name, properties: {}, type: "object" };
-            if (this.docStrings[name]) {
-                this.typeDefinitions[name].description = this.docStrings[name];
+
+            const originalTypeName = context.isPartial ? (type.getSymbol()?.escapedName as string) : name;
+            if (this.docStrings[originalTypeName]) {
+                this.typeDefinitions[name].description = this.docStrings[originalTypeName];
             }
+
             const typeContext = {
                 ...context,
                 // If the type is used in an output, we never set `plain`,
@@ -508,8 +535,18 @@ Please ensure these components are properly imported to your package's entry poi
                 // whether it's wrapped in an `Input`.
                 inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
                 typeName: name,
+                isPartial: false, // partial is not recursive
             };
             const properties = this.analyzeSymbols(typeContext, type.getProperties());
+
+            if (context.isPartial) {
+                for (const key in properties) {
+                    if (Object.prototype.hasOwnProperty.call(properties, key)) {
+                        properties[key].optional = true;
+                    }
+                }
+            }
+
             this.typeDefinitions[name].properties = properties;
             return makeProp({ $ref: `#/types/${this.providerName}:index:${name}` });
         }
@@ -812,7 +849,13 @@ Please ensure these components are properly imported to your package's entry poi
     }
 
     unwrapTypeReference(
-        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        context: {
+            component: string;
+            property: string;
+            inputOutput: InputOutput;
+            typeName?: string;
+            isPartial?: boolean;
+        },
         type: typescript.Type,
     ): typescript.Type {
         let typeArguments = (type as typescript.TypeReference).typeArguments;
@@ -833,6 +876,7 @@ Please ensure these components are properly imported to your package's entry poi
         property?: string;
         inputOutput?: InputOutput;
         typeName?: string;
+        isPartial?: boolean;
     }): string {
         const parts: string[] = [];
         parts.push(`component '${context.component}'`);
@@ -869,7 +913,13 @@ Please ensure these components are properly imported to your package's entry poi
      * @throws Error if the resource type cannot be determined with detailed context information
      */
     private getResourceType(
-        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        context: {
+            component: string;
+            property: string;
+            inputOutput: InputOutput;
+            typeName?: string;
+            isPartial?: boolean;
+        },
         type: typescript.Type,
     ): {
         pulumiType: string;
@@ -1108,6 +1158,17 @@ function getArrayType(type: typescript.Type): typescript.Type | undefined {
         return undefined;
     }
 
+    return typeArguments[0];
+}
+
+function getPartialInnerType(type: typescript.Type): typescript.Type | undefined {
+    if (!type.aliasSymbol || type.aliasSymbol.escapedName !== "Partial") {
+        return undefined;
+    }
+    const typeArguments = (type as typescript.TypeReference).aliasTypeArguments;
+    if (!typeArguments || typeArguments.length !== 1) {
+        return undefined;
+    }
     return typeArguments[0];
 }
 
