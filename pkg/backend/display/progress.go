@@ -38,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -514,12 +513,12 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	display.eventMutex.RLock()
 	defer display.eventMutex.RUnlock()
 
-	result := slice.Prealloc[*treeNode](1)
-
-	result = append(result, &treeNode{
-		row:              display.headerRow,
-		colorizedColumns: display.headerRow.ColorizedColumns(),
-	})
+	result := []*treeNode{
+		{
+			row:              display.headerRow,
+			colorizedColumns: display.headerRow.ColorizedColumns(),
+		},
+	}
 
 	urnToTreeNode := make(map[resource.URN]*treeNode)
 	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)

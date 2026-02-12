@@ -207,9 +207,8 @@ func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOptio
 }
 
 func buildArgsForNewPlugin(host Host) ([]string, error) {
-	args := slice.Prealloc[string](1)
-	// NOTE: positional argument for the server addresss must come last
-	args = append(args, host.ServerAddr())
+	// NOTE: positional argument for the server address must come last
+	args := []string{host.ServerAddr()}
 	return args, nil
 }
 
