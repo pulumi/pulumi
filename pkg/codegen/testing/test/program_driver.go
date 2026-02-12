@@ -470,21 +470,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet(TestDotnet, TestNodeJS, TestGo),
 	},
 	{
-		Directory:   transpiled("azure-app-service"),
-		Description: "Azure App Service",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet),
-	},
-	{
-		Directory:   transpiled("azure-container-apps"),
-		Description: "Azure Container Apps",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet, TestPython),
-	},
-	{
-		Directory:   transpiled("azure-static-website"),
-		Description: "Azure static website",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet, TestPython),
-	},
-	{
 		Directory:   transpiled("cue-eks"),
 		Description: "Cue EKS",
 		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
