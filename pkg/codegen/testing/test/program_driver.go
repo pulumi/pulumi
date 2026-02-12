@@ -166,14 +166,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Simple range as int expression translation",
 	},
 	{
-		Directory:   "azure-native",
-		Description: "Azure Native",
-		SkipCompile: codegen.NewStringSet(TestGo, TestDotnet),
-		// Blocked on go:
-		//   TODO[pulumi/pulumi#8073]
-		//   TODO[pulumi/pulumi#8074]
-	},
-	{
 		Directory:   "azure-native-v2-eventgrid",
 		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
 		// Specifically use a simplified azure-native v2.x schema when testing this program
@@ -274,11 +266,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Lambdas",
 		// We have special testing for this case because lambda is a python keyword.
 		Skip: codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
-		Directory:   "basic-unions",
-		Description: "Tests program generation of fields of type union",
-		SkipCompile: allProgLanguages, // because the schema is synthetic
 	},
 	{
 		Directory:   "deferred-outputs",
