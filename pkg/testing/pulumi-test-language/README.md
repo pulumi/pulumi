@@ -119,7 +119,7 @@ programs generated from that PCL. Presently they are laid out as follows:
   below) and `name` is a descriptive name for the test. The `l1-output-string`
   test, for example, has a level of 1 and the name `output-string`.
 
-* PCL programs are defined in `cmd/pulumi-test-language/tests/testdata`. Each test has
+* PCL programs are defined in `pkg/testing/pulumi-test-language/tests/testdata`. Each test has
   its own directory, `l<N>-<name>`. If the test runs a single program once, this
   directory will typically just contain a `main.pp` file containing a PCL
   program, or several `.pp` files making up a whole. If the test runs multiple
@@ -127,10 +127,10 @@ programs generated from that PCL. Presently they are laid out as follows:
   one or more `.pp` files to be run in order.
 
 * Go tests (assertions, validations, etc.) are defined in
-  `cmd/pulumi-test-language/tests`. Each test has its own file,
+  `pkg/testing/pulumi-test-language/tests`. Each test has its own file,
   `l<N>_<name>.go`, where any hyphens in `name` are replaced with underscores.
   So for the `l1-output-string` test, for instance, the file would be
-  [](gh-file:pulumi#cmd/pulumi-test-language/tests/l1_output_string.go). Inside
+  [](gh-file:pulumi#pkg/testing/pulumi-test-language/tests/l1_output_string.go). Inside
   this file, an [`init`
   function](https://go.dev/ref/spec#Package_initialization) is used to add the
   test's specification to the list of tests that are served by the test server
@@ -140,8 +140,8 @@ programs generated from that PCL. Presently they are laid out as follows:
   run.
 
 * To add a new test, then, you would create a new directory in
-  `cmd/pulumi-test-language/testdata` with the appropriate PCL program(s) and a
-  new file in `cmd/pulumi-test-language/tests` with the assertions for that
+  `pkg/testing/pulumi-test-language/testdata` with the appropriate PCL program(s) and a
+  new file in `pkg/testing/pulumi-test-language/tests` with the assertions for that
   program.
 
 ### Writing assertions
@@ -179,10 +179,10 @@ Stack outputs can be retrieved by inspect the outputs of the stack resource.
 ## Architecture
 
 Test providers are defined in
-<gh-file:pulumi#cmd/pulumi-test-language/providers>. PCL programs for language
+<gh-file:pulumi#pkg/testing/pulumi-test-language/providers>. PCL programs for language
 conformance tests are defined in
-<gh-file:pulumi#cmd/pulumi-test-language/testdata>.
-<gh-file:pulumi#cmd/pulumi-test-language/tests.go> then references these
+<gh-file:pulumi#pkg/testing/pulumi-test-language/testdata>.
+<gh-file:pulumi#pkg/testing/pulumi-test-language/tests.go> then references these
 programs and defines the assertions to be made about each. Tests are categorised
 as follows:
 

@@ -20,5 +20,5 @@ part of the development, CI/CD and release processes.
 /docs/architecture/testing/unit
 /docs/architecture/testing/integration
 /pkg/engine/lifecycletest/README
-/cmd/pulumi-test-language/README
+/pkg/testing/pulumi-test-language/README
 :::
