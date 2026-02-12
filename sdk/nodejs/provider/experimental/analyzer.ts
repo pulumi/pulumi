@@ -675,6 +675,7 @@ Please ensure these components are properly imported to your package's entry poi
 
         if (ts.isEnumDeclaration(declaration)) {
             const members: Array<{ name: string; value: string | number }> = [];
+            let lastNumericValue = -1;
             for (const enumMember of declaration.members) {
                 const memberName = enumMember.name.getText();
                 let memberValue: string | number;
@@ -683,14 +684,16 @@ Please ensure these components are properly imported to your package's entry poi
                         memberValue = enumMember.initializer.text;
                     } else if (ts.isNumericLiteral(enumMember.initializer)) {
                         memberValue = Number(enumMember.initializer.text);
+                        lastNumericValue = memberValue;
                     } else {
                         throw new Error(
                             `Unsupported initializer for enum member ${memberName} in ${this.formatErrorContext(context)}. Must be a string or numeric literal.`,
                         );
                     }
                 } else {
-                    // No initializer: `enum MyEnum { A, B, C }`, assign 0, 1, 2, ...
-                    memberValue = members.length;
+                    // No initializer `enum MyEnum { A, B, C }`
+                    memberValue = lastNumericValue + 1;
+                    lastNumericValue = memberValue;
                 }
 
                 const member: { name: string; value: string | number; description?: string } = {

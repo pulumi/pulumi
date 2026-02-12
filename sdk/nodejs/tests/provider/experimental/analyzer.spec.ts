@@ -741,6 +741,11 @@ describe("Analyzer", function () {
                         optional: true,
                         description: "The priority level",
                     },
+                    level: {
+                        $ref: "#/types/provider:index:Level",
+                        optional: true,
+                        description: "The level",
+                    },
                 },
                 outputs: {
                     status: {
@@ -750,6 +755,10 @@ describe("Analyzer", function () {
                     priority: {
                         $ref: "#/types/provider:index:Priority",
                         description: "The priority of the resource",
+                    },
+                    level: {
+                        $ref: "#/types/provider:index:Level",
+                        description: "The level of the resource",
                     },
                 },
             },
@@ -774,6 +783,16 @@ describe("Analyzer", function () {
                     { name: "Medium", value: 1 },
                     { name: "High", value: 2 },
                     { name: "Critical", value: 3 },
+                ],
+                type: "number",
+            },
+            Level: {
+                name: "Level",
+                description: "This demonstrates TypeScript numeric enums with computed values",
+                enum: [
+                    { name: "A", value: 2, description: "Starting at 2" },
+                    { name: "B", value: 3, description: "Auto-incremented to 3" },
+                    { name: "C", value: 4, description: "Auto-incremented to 4" },
                 ],
                 type: "number",
             },
