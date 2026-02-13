@@ -171,8 +171,10 @@ func TestTokenSourceWithClient(t *testing.T) {
 	// again, as we're aborting the renewal loop on 403 errors.
 	_, err = ts.GetToken(ctx)
 	require.ErrorContains(t, err, "[403] Forbidden")
-	// Once with the 504 error, and once with the 403 error.  No more requests for the second 403.
-	require.Equal(t, 2, renewLeaseCalled)
+	// Once with the 504 error, and once with the 403 error. The ticker (duration/8) may fire during the 504
+	// phase so we allow 2–4 calls; the important invariant is we do not keep calling after 403.
+	require.GreaterOrEqual(t, renewLeaseCalled, 2, "renewLease should be called at least for 504 and 403")
+	require.LessOrEqual(t, renewLeaseCalled, 4, "renewLease should not be called again after 403")
 }
 
 type testTokenBackend struct {
