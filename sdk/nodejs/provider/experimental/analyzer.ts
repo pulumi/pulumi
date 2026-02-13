@@ -394,6 +394,7 @@ Please ensure these components are properly imported to your package's entry poi
             inputOutput: InputOutput;
             typeName?: string;
             isPartial?: boolean;
+            isRequired?: boolean;
         },
         symbol: typescript.Symbol,
     ): PropertyDefinition {
@@ -416,6 +417,7 @@ Please ensure these components are properly imported to your package's entry poi
             inputOutput: InputOutput;
             typeName?: string;
             isPartial?: boolean;
+            isRequired?: boolean;
         },
         type: typescript.Type,
         location: typescript.Node,
@@ -444,6 +446,12 @@ Please ensure these components are properly imported to your package's entry poi
         if (partialInnerType) {
             // For Partial<T>, we need to process T but mark all properties as optional
             return this.analyzeType({ ...context, isPartial: true }, partialInnerType, location, optional, docString);
+        }
+
+        const requiredInnerType = getRequiredInnerType(type);
+        if (requiredInnerType) {
+            // For Required<T>, we need to process T but mark all properties as required
+            return this.analyzeType({ ...context, isRequired: true }, requiredInnerType, location, optional, docString);
         }
 
         const innerInputType = getInputInnerType(type);
@@ -509,9 +517,12 @@ Please ensure these components are properly imported to your package's entry poi
                 );
             }
 
-            // If this is Partial<T> prefix the name to avoid conflicts with the name of T
+            // If this is a Partial<T> or Required<T> type, use a different name to avoid conflicts
+            // with the regular type T
             if (context.isPartial) {
                 name = `Partial${name}`;
+            } else if (context.isRequired) {
+                name = `Required${name}`;
             }
 
             if (this.typeDefinitions[name]) {
@@ -523,7 +534,9 @@ Please ensure these components are properly imported to your package's entry poi
             // referenced recursively, then analyze the properties.
             this.typeDefinitions[name] = { name, properties: {}, type: "object" };
 
-            const originalTypeName = context.isPartial ? (type.getSymbol()?.escapedName as string) : name;
+            // For Partial/Required types, get description from the original type
+            const originalTypeName =
+                context.isPartial || context.isRequired ? (type.getSymbol()?.escapedName as string) : name;
             if (this.docStrings[originalTypeName]) {
                 this.typeDefinitions[name].description = this.docStrings[originalTypeName];
             }
@@ -535,7 +548,9 @@ Please ensure these components are properly imported to your package's entry poi
                 // whether it's wrapped in an `Input`.
                 inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
                 typeName: name,
-                isPartial: false, // partial is not recursive
+                // Required<T> and Partial<T> are not recursive
+                isPartial: false,
+                isRequired: false,
             };
             const properties = this.analyzeSymbols(typeContext, type.getProperties());
 
@@ -543,6 +558,15 @@ Please ensure these components are properly imported to your package's entry poi
                 for (const key in properties) {
                     if (Object.prototype.hasOwnProperty.call(properties, key)) {
                         properties[key].optional = true;
+                    }
+                }
+            }
+
+            if (context.isRequired) {
+                for (const key in properties) {
+                    if (Object.prototype.hasOwnProperty.call(properties, key)) {
+                        // biome-ignore lint/performance/noDelete: Completely remove the property to not include it in the schema.
+                        delete properties[key].optional;
                     }
                 }
             }
@@ -855,6 +879,7 @@ Please ensure these components are properly imported to your package's entry poi
             inputOutput: InputOutput;
             typeName?: string;
             isPartial?: boolean;
+            isRequired?: boolean;
         },
         type: typescript.Type,
     ): typescript.Type {
@@ -877,6 +902,7 @@ Please ensure these components are properly imported to your package's entry poi
         inputOutput?: InputOutput;
         typeName?: string;
         isPartial?: boolean;
+        isRequired?: boolean;
     }): string {
         const parts: string[] = [];
         parts.push(`component '${context.component}'`);
@@ -919,6 +945,7 @@ Please ensure these components are properly imported to your package's entry poi
             inputOutput: InputOutput;
             typeName?: string;
             isPartial?: boolean;
+            isRequired?: boolean;
         },
         type: typescript.Type,
     ): {
@@ -1163,6 +1190,17 @@ function getArrayType(type: typescript.Type): typescript.Type | undefined {
 
 function getPartialInnerType(type: typescript.Type): typescript.Type | undefined {
     if (!type.aliasSymbol || type.aliasSymbol.escapedName !== "Partial") {
+        return undefined;
+    }
+    const typeArguments = (type as typescript.TypeReference).aliasTypeArguments;
+    if (!typeArguments || typeArguments.length !== 1) {
+        return undefined;
+    }
+    return typeArguments[0];
+}
+
+function getRequiredInnerType(type: typescript.Type): typescript.Type | undefined {
+    if (!type.aliasSymbol || type.aliasSymbol.escapedName !== "Required") {
         return undefined;
     }
     const typeArguments = (type as typescript.TypeReference).aliasTypeArguments;
