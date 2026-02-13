@@ -1459,10 +1459,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// new state correctly.
 			s.new = s.old.Copy()
 			complete = func() {
-				// s.cts will be empty for refreshes that are just being done on state, rather than via a program.
-				if s.cts != nil {
-					s.cts.MustFulfill(s.New())
-				}
+				s.cts.MustFulfill(s.New())
 			}
 		}
 		return resource.StatusOK, complete, nil
