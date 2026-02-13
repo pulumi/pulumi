@@ -1601,7 +1601,7 @@ func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *sch
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	if goPkgInfo.Generics != GenericsSettingNone {
+	if goPkgInfo.Generics == GenericsSettingSideBySide || goPkgInfo.Generics == GenericsSettingGenericsOnly {
 		// ToOutput implementation for pulumix.Input.
 		fmt.Fprintf(w, "func (in *%sPtr) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", typeName, name)
 		fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", name)
@@ -5010,7 +5010,7 @@ func GeneratePackage(tool string,
 			if hasOutputs {
 				goImports = []string{"context", "reflect"}
 				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-				if goPkgInfo.Generics != GenericsSettingNone {
+				if goPkgInfo.Generics == GenericsSettingSideBySide || goPkgInfo.Generics == GenericsSettingGenericsOnly {
 					imports["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 				}
 			}
