@@ -755,11 +755,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// If we're doing refreshes then this is the point where we need to fire off a refresh step for this
 	// resource, to call back into GenerateSteps later.
 	//
-	// Only need to do refresh steps here for custom non-provider resources that have an old state.
+	// Only need to do refresh steps here for resources that have an old state.
 	if old != nil &&
-		sg.refresh &&
-		goal.Custom &&
-		!sdkproviders.IsProviderType(goal.Type) {
+		sg.refresh {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
 		go PanicRecovery(sg.deployment.panicErrs, func() {
