@@ -225,7 +225,7 @@ func (p *UnionProvider) Create(
 	}
 	if urnType == enumOutputType {
 		outputs := req.Properties.Copy()
-		outputs["type"] = resource.NewStringProperty("Block")
+		outputs["type"] = resource.NewProperty("Block")
 		return plugin.CreateResponse{
 			ID:         resource.ID("enum-output-id"),
 			Properties: outputs,
