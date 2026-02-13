@@ -3483,3 +3483,56 @@ func TestRefreshV2ExcludesChildWithExcludedParent(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+func TestRefreshV2PropertyDependencyOrdering(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	compURN := resource.URN("urn:pulumi:test::test::pkg:m:comp::comp")
+
+	snap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pkg:m:comp",
+				URN:    compURN,
+				Custom: false,
+			},
+			{
+				Type:   "pulumi:providers:pkg",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkg::prov",
+				Custom: true,
+				ID:     "id",
+				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+					"p": {compURN},
+				},
+			},
+		},
+	}
+
+	require.NoError(t, snap.VerifyIntegrity())
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		newRes, err := monitor.RegisterResource("pkg:m:t", "new", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+		comp, err := monitor.RegisterResource("pkg:m:comp", "comp", false, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{newRes.URN},
+		})
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pulumi:providers:pkg", "prov", true, deploytest.ResourceOptions{
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{"p": {comp.URN}},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkg", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	_, err := lt.TestOp(engine.RefreshV2).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), lt.TestUpdateOptions{T: t, HostF: hostF}, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
