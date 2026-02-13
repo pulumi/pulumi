@@ -167,6 +167,7 @@ func TestUvLinkPackagesError(t *testing.T) {
 	root := t.TempDir()
 	pyproject := `[project]
 name = "my-project"
+version = "1.2.3"
 dependencies = []
 `
 	err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
@@ -177,4 +178,24 @@ dependencies = []
 	err = uv.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
 
 	require.Regexp(t, "Distribution not found at:.*nope", err.Error())
+}
+
+// Test that link actually runs in the root directory.
+func TestUvLinkCorrectDirectory(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject := `[project]
+name = "my-project"
+version = "invalid"
+dependencies = []
+`
+	err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+	require.NoError(t, err)
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	err = uv.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
+
+	require.ErrorContains(t, err, "expected version to start with a number, but no leading ASCII digits were found")
 }

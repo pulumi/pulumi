@@ -84,8 +84,9 @@ func Normalize(ast TypeAst) TypeAst {
 func transform(t TypeAst, f func(x TypeAst) TypeAst) TypeAst {
 	switch v := t.(type) {
 	case *unionType:
-		var ts []TypeAst
-		for _, x := range v.all() {
+		all := v.all()
+		ts := make([]TypeAst, 0, len(all))
+		for _, x := range all {
 			ts = append(ts, transform(x, f))
 		}
 		return f(Union(ts...))

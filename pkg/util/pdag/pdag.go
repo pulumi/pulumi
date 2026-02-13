@@ -24,6 +24,7 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -158,7 +159,8 @@ func (g *DAG[T]) NewEdge(from, to Node) error {
 				}
 
 				// Build cycle starting from 'from' following the path
-				cycle := []T{g.nodes[from.i].v}
+				cycle := slice.Prealloc[T](1 + len(pathFromTo))
+				cycle = append(cycle, g.nodes[from.i].v)
 				cycle = append(cycle, pathFromTo...)
 				return ErrorCycle[T]{Cycle: cycle}
 			}

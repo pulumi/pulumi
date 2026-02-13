@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -218,7 +219,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -300,7 +301,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -526,7 +527,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -673,7 +674,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -908,7 +909,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -1017,7 +1018,7 @@ func TestExplicitProviderDiffReplacement(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -1581,7 +1582,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			programF := deploytest.NewLanguageRuntimeF(c.prog, c.packages...)
-			loaders := []*deploytest.ProviderLoader{}
+			loaders := slice.Prealloc[*deploytest.ProviderLoader](len(c.versions))
 			for _, v := range c.versions {
 				loaders = append(loaders,
 					deploytest.NewProviderLoader("pkgA", semver.MustParse(v), func() (plugin.Provider, error) {

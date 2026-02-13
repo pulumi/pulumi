@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/assert"
@@ -70,7 +71,11 @@ func TestPolicyPacks(t *testing.T) {
 	for name, test := range tests.LanguageTests {
 		isPolicy := strings.HasPrefix(name, "policy-")
 		// A policy test must use a policy pack in at least one run, a non-policy test must not use a policy pack in any run.
-		policies := []string{}
+		totalPolicies := 0
+		for _, run := range test.Runs {
+			totalPolicies += len(run.PolicyPacks)
+		}
+		policies := slice.Prealloc[string](totalPolicies)
 		for _, run := range test.Runs {
 			for policy := range run.PolicyPacks {
 				policies = append(policies, policy)

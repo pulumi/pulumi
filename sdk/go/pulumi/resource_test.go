@@ -698,7 +698,8 @@ func TestUninitializedParentResource(t *testing.T) {
 				var buff bytes.Buffer
 				ctx.state.engine.(*mockEngine).logger = log.New(&buff, "", 0)
 
-				opts := []ResourceOption{Parent(tt.parent)}
+				opts := slice.Prealloc[ResourceOption](1 + len(tt.opts))
+				opts = append(opts, Parent(tt.parent))
 				opts = append(opts, tt.opts...)
 
 				var res testRes
@@ -1331,7 +1332,7 @@ func (dt *dependenciesTracker) Wrap(cl pulumirpc.ResourceMonitorClient) pulumirp
 		resp *pulumirpc.RegisterResourceResponse,
 		err error,
 	) {
-		var deps []URN
+		deps := slice.Prealloc[URN](len(in.GetDependencies()))
 		for _, dep := range in.GetDependencies() {
 			deps = append(deps, URN(dep))
 		}

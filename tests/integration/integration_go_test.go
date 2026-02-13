@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -1365,7 +1366,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	require.NoError(t, err)
 
 	containsRename := false
-	containedRenames := make([]string, len(gomod.Replace))
+	containedRenames := slice.Prealloc[string](len(gomod.Replace))
 	for _, r := range gomod.Replace {
 		if filepath.ToSlash(r.New.Path) == "./sdks/netapp-cloudmanager" &&
 			r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/netapp-cloudmanager/v25" {

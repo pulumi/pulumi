@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -189,7 +190,9 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("validating stack config: %w", configErr)
 		}
 
-		targetURNs, replaceURNs, excludeURNs := []string{}, []string{}, []string{}
+		targetURNs := slice.Prealloc[string](len(targets) + len(targetReplaces))
+		replaceURNs := slice.Prealloc[string](len(replaces) + len(targetReplaces))
+		excludeURNs := slice.Prealloc[string](len(excludes))
 		targetURNs = append(targetURNs, targets...)
 		excludeURNs = append(excludeURNs, excludes...)
 		replaceURNs = append(replaceURNs, replaces...)

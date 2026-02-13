@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -2646,7 +2647,7 @@ func TestAutonaming(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		orderedConfig := []integration.ConfigValue{}
+		orderedConfig := slice.Prealloc[integration.ConfigValue](len(tc.config))
 		for k, v := range tc.config {
 			orderedConfig = append(orderedConfig, integration.ConfigValue{Key: k, Value: v, Path: true})
 		}
@@ -3015,9 +3016,12 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"aComplexTypeInput": {
 				"$ref": "#/types/nodejs-component-provider:index:Complex"
+			},
+			"enumInput": {
+				"$ref": "#/types/nodejs-component-provider:index:MyEnum"
 			}
 		},
-		"requiredInputs": ["aBooleanInput", "aComplexTypeInput", "aNumber"],
+		"requiredInputs": ["aBooleanInput", "aComplexTypeInput", "aNumber", "enumInput"],
 		"properties": {
 			"aNumberOutput": {
 				"type": "number"
@@ -3036,9 +3040,14 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"aString": {
 				"type": "string"
+			},
+			"enumOutput": {
+				"$ref": "#/types/nodejs-component-provider:index:MyConstEnum"
 			}
 		},
-		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput", "aResourceOutput", "aString"]
+		"required": [
+			"aBooleanOutput", "aComplexTypeOutput", "aNumberOutput", "aResourceOutput", "aString", "enumOutput"
+		]
 	}
 	`
 	expected := make(map[string]any)
@@ -3071,6 +3080,20 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"type": "object",
 			"required": ["aNumber"]
+		},
+		"nodejs-component-provider:index:MyEnum": {
+			"type": "string",
+			"enum": [
+				{ "name": "A", "value": "a" },
+				{ "name": "B", "value": "b" }
+			]
+		},
+		"nodejs-component-provider:index:MyConstEnum": {
+			"type": "string",
+			"enum": [
+				{ "name": "C", "value": "c" },
+				{ "name": "D", "value": "d" }
+			]
 		}
 	}`
 	expectedTypes := make(map[string]any)
@@ -3146,6 +3169,7 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					aComplexTypeOutput := stack.Outputs["aComplexTypeOutput"].(map[string]any)
 					require.Contains(t, stack.Outputs["aResourceOutputUrn"], "RandomPet::comp-pet")
 					require.Equal(t, "hello", stack.Outputs["aString"].(string))
+					require.Equal(t, "d", stack.Outputs["enumOutput"].(string))
 					if runtime == "python" {
 						// The output is stored in the stack as a plain object,
 						// but that means for Python the keys are snake_case.

@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -684,7 +685,7 @@ func destroySpecificTargets(
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.TargetDependents = targetDependents
 
-	destroyTargets := []resource.URN{}
+	destroyTargets := slice.Prealloc[resource.URN](len(targets))
 	for _, target := range targets {
 		destroyTargets = append(destroyTargets, pickURN(t, urns, complexTestDependencyGraphNames, target))
 	}
@@ -851,7 +852,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 				// a URN with no dependents, no other urns will be updated and the test will fail
 				// (incorrectly).
 				found := false
-				updateList := []string{}
+				updateList := slice.Prealloc[string](len(updated))
 				for target := range updated {
 					updateList = append(updateList, target.Name())
 					if !contains(targets, target.Name()) {
@@ -1827,7 +1828,7 @@ func destroySpecificTargetsWithChildren(
 	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	p.Options.TargetDependents = targetDependents
 
-	destroyTargets := []resource.URN{}
+	destroyTargets := slice.Prealloc[resource.URN](len(targets))
 	for _, target := range targets {
 		destroyTargets = append(destroyTargets, pickURN(t, urns, componentBasedTestDependencyGraphNames, target))
 	}

@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -316,7 +317,7 @@ func MakeExecutablePromptChoices(executables ...string) []*pulumirpc.RuntimeOpti
 		name  string
 		found bool
 	}
-	pms := []packagemanagers{}
+	pms := slice.Prealloc[packagemanagers](len(executables))
 	for _, pm := range executables {
 		found := true
 		if _, err := exec.LookPath(pm); err != nil {
@@ -334,7 +335,7 @@ func MakeExecutablePromptChoices(executables ...string) []*pulumirpc.RuntimeOpti
 		return pms[i].found
 	})
 
-	choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{}
+	choices := slice.Prealloc[*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue](len(pms))
 	for _, pm := range pms {
 		displayName := pm.name
 		if !pm.found {

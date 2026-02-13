@@ -122,10 +122,184 @@ describe("Analyzer", function () {
             MyInterfaceType: {
                 name: "MyInterfaceType",
                 properties: { aNumber: { type: "number", plain: true } },
+                type: "object",
             },
             MyClassType: {
                 name: "MyClassType",
                 properties: { aString: { type: "string", plain: true } },
+                type: "object",
+            },
+        });
+    });
+
+    it("infers Partial<T> utility type", async function () {
+        const dir = path.join(__dirname, "testdata", "partial-type");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    regularType: {
+                        $ref: "#/types/provider:index:SomeType",
+                        optional: true,
+                        description: "The regular type with required fields",
+                    },
+                    partialType: {
+                        $ref: "#/types/provider:index:PartialSomeType",
+                        optional: true,
+                        description: "A partial type where all fields are optional",
+                    },
+                },
+                outputs: {
+                    regularType: {
+                        $ref: "#/types/provider:index:SomeType",
+                        description: "The regular type output",
+                    },
+                    partialType: {
+                        $ref: "#/types/provider:index:PartialSomeType",
+                        description: "The partial type output",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            SomeType: {
+                name: "SomeType",
+                description: "A type with required fields",
+                properties: {
+                    a: {
+                        type: "string",
+                        plain: true,
+                        description: "A required string field",
+                    },
+                    b: {
+                        type: "number",
+                        plain: true,
+                        description: "A required number field",
+                    },
+                    c: {
+                        type: "boolean",
+                        plain: true,
+                        description: "A required boolean field",
+                    },
+                },
+                type: "object",
+            },
+            PartialSomeType: {
+                name: "PartialSomeType",
+                description: "A type with required fields",
+                properties: {
+                    a: {
+                        type: "string",
+                        plain: true,
+                        optional: true,
+                        description: "A required string field",
+                    },
+                    b: {
+                        type: "number",
+                        plain: true,
+                        optional: true,
+                        description: "A required number field",
+                    },
+                    c: {
+                        type: "boolean",
+                        plain: true,
+                        optional: true,
+                        description: "A required boolean field",
+                    },
+                },
+                type: "object",
+            },
+        });
+    });
+
+    it("infers Partial<T> with nested types", async function () {
+        const dir = path.join(__dirname, "testdata", "partial-nested");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    partialOuter: {
+                        $ref: "#/types/provider:index:PartialOuterType",
+                        optional: true,
+                        description: "A partial outer type with nested inner type",
+                    },
+                    partialInner: {
+                        $ref: "#/types/provider:index:PartialInnerType",
+                        optional: true,
+                        description: "A nested partial of the inner type",
+                    },
+                },
+                outputs: {
+                    partialOuter: {
+                        $ref: "#/types/provider:index:PartialOuterType",
+                        description: "The partial outer type output",
+                    },
+                    partialInner: {
+                        $ref: "#/types/provider:index:PartialInnerType",
+                        description: "The partial inner type output",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            InnerType: {
+                name: "InnerType",
+                description: "An inner type",
+                properties: {
+                    x: {
+                        type: "number",
+                        plain: true,
+                        description: "Inner field x",
+                    },
+                    y: {
+                        type: "string",
+                        plain: true,
+                        description: "Inner field y",
+                    },
+                },
+                type: "object",
+            },
+            PartialOuterType: {
+                name: "PartialOuterType",
+                description: "An outer type that contains another type",
+                properties: {
+                    inner: {
+                        $ref: "#/types/provider:index:InnerType",
+                        plain: true,
+                        optional: true,
+                        description: "An inner object",
+                    },
+                    outerField: {
+                        type: "boolean",
+                        plain: true,
+                        optional: true,
+                        description: "An outer field",
+                    },
+                },
+                type: "object",
+            },
+            PartialInnerType: {
+                name: "PartialInnerType",
+                description: "An inner type",
+                properties: {
+                    x: {
+                        type: "number",
+                        plain: true,
+                        optional: true,
+                        description: "Inner field x",
+                    },
+                    y: {
+                        type: "string",
+                        plain: true,
+                        optional: true,
+                        description: "Inner field y",
+                    },
+                },
+                type: "object",
             },
         });
     });
@@ -149,10 +323,12 @@ describe("Analyzer", function () {
             SelfRecursive: {
                 name: "SelfRecursive",
                 properties: { self: { $ref: "#/types/provider:index:SelfRecursive", plain: true } },
+                type: "object",
             },
             SelfRecursiveComponentOutput: {
                 name: "SelfRecursiveComponentOutput",
                 properties: { self: { $ref: "#/types/provider:index:SelfRecursiveComponentOutput" } },
+                type: "object",
             },
         });
     });
@@ -174,10 +350,12 @@ describe("Analyzer", function () {
             TypeA: {
                 name: "TypeA",
                 properties: { b: { $ref: "#/types/provider:index:TypeB", plain: true } },
+                type: "object",
             },
             TypeB: {
                 name: "TypeB",
                 properties: { a: { $ref: "#/types/provider:index:TypeA", plain: true } },
+                type: "object",
             },
         });
     });
@@ -451,11 +629,13 @@ describe("Analyzer", function () {
                 name: "MyInterfaceType",
                 properties: { aNumber: { type: "number", plain: true, description: "aNumber comment" } },
                 description: "myInterfaceType comment",
+                type: "object",
             },
             MyClassType: {
                 name: "MyClassType",
                 properties: { aString: { type: "string", plain: true, description: "aString comment" } },
                 description: "myClassType comment",
+                type: "object",
             },
         });
     });
@@ -676,6 +856,219 @@ describe("Analyzer", function () {
                 },
             },
         });
+    });
+
+    it("supports `as const` object pattern enums", async function () {
+        const dir = path.join(__dirname, "testdata", "as-const-object-enum");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    status: {
+                        $ref: "#/types/provider:index:ResourceStatus",
+                        optional: true,
+                        description: "The status of the component",
+                    },
+                },
+                outputs: {
+                    status: {
+                        $ref: "#/types/provider:index:ResourceStatus",
+                        description: "The current status of the resource",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            ResourceStatus: {
+                name: "ResourceStatus",
+                description: "This demonstrates const enums",
+                enum: [
+                    { name: "Provisioning", value: "provisioning", description: "The provisioning status" },
+                    { name: "Active", value: "active", description: "The active status" },
+                    { name: "Deleting", value: "deleting", description: "The deleting status" },
+                    { name: "Failed", value: "failed", description: "The failed status" },
+                ],
+                type: "string",
+            },
+        });
+    });
+
+    it("supports enums", async function () {
+        const dir = path.join(__dirname, "testdata", "enum");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    status: {
+                        $ref: "#/types/provider:index:ResourceStatus",
+                        optional: true,
+                        description: "The status of the component",
+                    },
+                    priority: {
+                        $ref: "#/types/provider:index:Priority",
+                        optional: true,
+                        description: "The priority level",
+                    },
+                    level: {
+                        $ref: "#/types/provider:index:Level",
+                        optional: true,
+                        description: "The level",
+                    },
+                },
+                outputs: {
+                    status: {
+                        $ref: "#/types/provider:index:ResourceStatus",
+                        description: "The current status of the resource",
+                    },
+                    priority: {
+                        $ref: "#/types/provider:index:Priority",
+                        description: "The priority of the resource",
+                    },
+                    level: {
+                        $ref: "#/types/provider:index:Level",
+                        description: "The level of the resource",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            ResourceStatus: {
+                name: "ResourceStatus",
+                description: "This demonstrates TypeScript string enums",
+                enum: [
+                    { name: "Provisioning", value: "provisioning", description: "The provisioning status" },
+                    { name: "Active", value: "active", description: "The active status" },
+                    { name: "Deleting", value: "deleting", description: "The deleting status" },
+                    { name: "Failed", value: "failed", description: "The failed status" },
+                ],
+                type: "string",
+            },
+            Priority: {
+                name: "Priority",
+                description: "This demonstrates TypeScript numeric enums",
+                enum: [
+                    { name: "Low", value: 0 },
+                    { name: "Medium", value: 1 },
+                    { name: "High", value: 2 },
+                    { name: "Critical", value: 3 },
+                ],
+                type: "number",
+            },
+            Level: {
+                name: "Level",
+                description: "This demonstrates TypeScript numeric enums with computed values",
+                enum: [
+                    { name: "A", value: 2, description: "Starting at 2" },
+                    { name: "B", value: 3, description: "Auto-incremented to 3" },
+                    { name: "C", value: 4, description: "Auto-incremented to 4" },
+                ],
+                type: "number",
+            },
+        });
+    });
+
+    it("supports imported `as const` object pattern enums", async function () {
+        const dir = path.join(__dirname, "testdata", "as-const-enum-imported");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    mode: {
+                        $ref: "#/types/provider:index:DeploymentMode",
+                        optional: true,
+                        description: "The deployment mode for the component",
+                    },
+                    retries: {
+                        $ref: "#/types/provider:index:RetryCount",
+                        optional: true,
+                        description: "The retry count for the component",
+                    },
+                },
+                outputs: {
+                    mode: {
+                        $ref: "#/types/provider:index:DeploymentMode",
+                        description: "The current deployment mode",
+                    },
+                    retries: {
+                        $ref: "#/types/provider:index:RetryCount",
+                        description: "The current retry count",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            DeploymentMode: {
+                name: "DeploymentMode",
+                description: "This demonstrates const enums defined in a separate file",
+                enum: [
+                    { name: "Development", value: "dev" },
+                    { name: "Staging", value: "staging" },
+                    { name: "Production", value: "prod" },
+                ],
+                type: "string",
+            },
+            RetryCount: {
+                name: "RetryCount",
+                description: "This demonstrates numeric const enums defined in a separate file",
+                enum: [
+                    { name: "Low", value: 3 },
+                    { name: "Medium", value: 5 },
+                    { name: "High", value: 10 },
+                ],
+                type: "number",
+            },
+        });
+    });
+
+    it("rejects enums with computed initializer values", async function () {
+        const dir = path.join(__dirname, "testdata", "enum-computed-value");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        assert.throws(
+            () => analyzer.analyze(),
+            (err: Error) => {
+                assert.match(
+                    err.message,
+                    /Unsupported type for component 'MyComponent' input 'MyComponentArgs.priority': type 'Priority'/,
+                );
+                return true;
+            },
+        );
+    });
+
+    it("rejects invalid union types (mixed string and number)", async function () {
+        const dir = path.join(__dirname, "testdata", "invalid-union");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        assert.throws(
+            () => analyzer.analyze(),
+            (err: Error) => {
+                assert.match(
+                    err.message,
+                    /Union types are not supported for component 'MyComponent' input 'MyComponentArgs.mixedUnion'/,
+                );
+                return true;
+            },
+        );
+    });
+
+    it("rejects invalid union types (union of objects)", async function () {
+        const dir = path.join(__dirname, "testdata", "invalid-union-objects");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        assert.throws(
+            () => analyzer.analyze(),
+            (err: Error) => {
+                assert.match(
+                    err.message,
+                    /Union types are not supported for component 'MyComponent' input 'MyComponentArgs.objectUnion'/,
+                );
+                return true;
+            },
+        );
     });
 });
 

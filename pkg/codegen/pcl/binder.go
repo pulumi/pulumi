@@ -264,11 +264,12 @@ func BindDirectory(
 		return nil, parseDiagnostics, nil
 	}
 
-	opts := []BindOption{
+	opts := make([]BindOption, 0, 3+len(extraOptions))
+	opts = append(opts,
 		Loader(loader),
 		DirPath(directory),
 		ComponentBinder(ComponentProgramBinderFromFileSystem()),
-	}
+	)
 
 	opts = append(opts, extraOptions...)
 

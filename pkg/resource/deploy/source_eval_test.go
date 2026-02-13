@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -1149,7 +1150,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 		hasExplicit    bool
 		expectFail     bool
 	}
-	cases := []TT{}
+	cases := slice.Prealloc[TT](4)
 	for _, disableDefault := range []bool{true, false} {
 		for _, hasExplicit := range []bool{true, false} {
 			cases = append(cases, TT{

@@ -1739,7 +1739,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			}
 
 			sg.sames[urn] = true
-			updateSteps = []Step{NewSameStep(sg.deployment, event, old, new)}
+			updateSteps = slice.Prealloc[Step](1 + len(sg.deployment.oldViews[urn]))
+			updateSteps = append(updateSteps, NewSameStep(sg.deployment, event, old, new))
 
 			// We're generating a same step for a resource. Generate same steps for any of its views as well.
 			viewSteps := slice.Map(sg.deployment.oldViews[urn], func(res *resource.State) Step {
@@ -1879,6 +1880,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				// To do this, we'll utilize the dependency information contained in the snapshot if it is
 				// trustworthy, which is interpreted by the DependencyGraph type.
 				var steps []Step
+				//nolint:prealloc // capacity depends on dynamic calculations
 				var toReplace []dependentReplace
 
 				// At this point if we're in a preview we might be trying to work out a dependent replace set for a

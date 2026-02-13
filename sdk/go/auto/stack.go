@@ -333,7 +333,8 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		}
 	}()
 
-	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels := slice.Prealloc[chan<- events.EngineEvent](1 + len(preOpts.EventStreams))
+	eventChannels = append(eventChannels, eventChannel)
 	eventChannels = append(eventChannels, preOpts.EventStreams...)
 
 	t, err := tailLogs("preview", eventChannels, s.Workspace().PulumiCommand().Version())
@@ -665,7 +666,8 @@ func (s *Stack) PreviewRefresh(ctx context.Context, opts ...optrefresh.Option) (
 		}
 	}()
 
-	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels := slice.Prealloc[chan<- events.EngineEvent](1 + len(refreshOpts.EventStreams))
+	eventChannels = append(eventChannels, eventChannel)
 	eventChannels = append(eventChannels, refreshOpts.EventStreams...)
 
 	t, err := tailLogs("refresh", eventChannels, s.Workspace().PulumiCommand().Version())
@@ -892,7 +894,8 @@ func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (
 		}
 	}()
 
-	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels := slice.Prealloc[chan<- events.EngineEvent](1 + len(destroyOpts.EventStreams))
+	eventChannels = append(eventChannels, eventChannel)
 	eventChannels = append(eventChannels, destroyOpts.EventStreams...)
 	t, err := tailLogs("destroy", eventChannels, s.Workspace().PulumiCommand().Version())
 	if err != nil {

@@ -12,6 +12,7 @@ resources:
         aNumber: 7
         nestedComplexType:
           aNumber: 9
+      enumInput: b
 outputs:
   urn: ${comp.urn}
   aNumberOutput: ${comp.aNumberOutput}
@@ -20,3 +21,4 @@ outputs:
   aComplexTypeOutput: ${comp.aComplexTypeOutput}
   aResourceOutputUrn: ${comp.aResourceOutput.urn}
   aString: ${comp.aString}
+  enumOutput: ${comp.enumOutput}
