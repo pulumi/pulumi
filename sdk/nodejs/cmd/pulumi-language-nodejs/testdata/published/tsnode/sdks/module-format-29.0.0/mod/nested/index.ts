@@ -2,7 +2,7 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import * as utilities from "../utilities";
+import * as utilities from "../../utilities";
 
 // Export members:
 export { ConcatWorldArgs, ConcatWorldResult, ConcatWorldOutputArgs } from "./concatWorld";
@@ -14,22 +14,15 @@ export * from "./resource";
 import { Resource } from "./resource";
 
 
-// Export sub-modules:
-import * as nested from "./nested";
-
-export {
-    nested,
-};
-
 const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
-            case "module-format:mod_Resource:Resource":
+            case "module-format:mod/nested_Resource:Resource":
                 return new Resource(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
     },
 };
-pulumi.runtime.registerResourceModule("module-format", "mod_Resource", _module)
+pulumi.runtime.registerResourceModule("module-format", "mod/nested_Resource", _module)

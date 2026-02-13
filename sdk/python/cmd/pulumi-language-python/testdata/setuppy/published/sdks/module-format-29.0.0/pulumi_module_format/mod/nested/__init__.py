@@ -3,16 +3,8 @@
 # *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import builtins as _builtins
-from .. import _utilities
+from ... import _utilities
 import typing
 # Export this package's modules as members:
 from .concat_world import *
 from .resource import *
-
-# Make subpackages available:
-if typing.TYPE_CHECKING:
-    import pulumi_module_format.mod.nested as __nested
-    nested = __nested
-else:
-    nested = _utilities.lazy_import('pulumi_module_format.mod.nested')
-

@@ -8,3 +8,11 @@ import typing
 # Export this package's modules as members:
 from .concat_world import *
 from .resource import *
+
+# Make subpackages available:
+if typing.TYPE_CHECKING:
+    import pulumi_module_format.mod.nested as __nested
+    nested = __nested
+else:
+    nested = _utilities.lazy_import('pulumi_module_format.mod.nested')
+
