@@ -29,3 +29,21 @@ res = plain.Resource("res", data=plain.DataArgs(
         "y": "200",
     },
 ))
+empty_list_res = plain.Resource("emptyListRes",
+    data=plain.DataArgs(
+        inner_data=plain.InnerDataArgs(
+            boolean=False,
+            float=0,
+            integer=0,
+            string="",
+            bool_array=[],
+            string_map={},
+        ),
+        boolean=False,
+        float=0,
+        integer=0,
+        string="",
+        bool_array=[],
+        string_map={},
+    ),
+    data_list=[])
