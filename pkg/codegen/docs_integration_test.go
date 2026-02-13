@@ -738,7 +738,7 @@ func testDocsGenHelper(
 			h := golang_codegen.DocLanguageHelper{}
 			var info golang_codegen.GoPackageInfo
 			if i, err := schema.Language("go"); err == nil && i != nil {
-				info = i.(golang_codegen.GoPackageInfo)
+				info, _ = i.(golang_codegen.GoPackageInfo)
 			}
 			h.GeneratePackagesMap(schema, "test", info)
 			return h

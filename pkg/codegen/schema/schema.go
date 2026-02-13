@@ -965,6 +965,9 @@ func (pkg *Package) GetType(token string) (Type, bool) {
 }
 
 func (pkg *Package) Reference() PackageReference {
+	if pkg == nil {
+		return nil
+	}
 	return packageDefRef{pkg: pkg}
 }
 
