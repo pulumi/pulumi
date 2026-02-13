@@ -14,6 +14,10 @@
     },
     "files": [
         "index.ts",
+        "mod/index.ts",
+        "mod/nested/index.ts",
+        "mod/nested/res.ts",
+        "mod/res.ts",
         "provider.ts",
         "resArray.ts",
         "resList.ts",

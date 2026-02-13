@@ -13,3 +13,11 @@ resource "res3" "names:index:ResList" {
 resource "res4" "names:index:ResResource" {
     value = true
 }
+
+resource "res5" "names:mod:Res" {
+    value = true
+}
+
+resource "res6" "names:mod/nested:Res" {
+    value = true
+}

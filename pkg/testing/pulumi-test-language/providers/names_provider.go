@@ -43,6 +43,8 @@ func (p *NamesProvider) Types() []string {
 		prefix + "ResArray",
 		prefix + "ResList",
 		prefix + "ResResource",
+		p.Pkg().Name().String() + ":mod:Res",
+		p.Pkg().Name().String() + ":mod/nested:Res",
 	}
 }
 
