@@ -1,16 +1,25 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA prov <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA prov <{%fg 3%}>updated<{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA prov <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:index:Resource resA <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgB prov <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgB prov <{%fg 3%}>updated<{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgB prov <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgB:index:Component compA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pkgB:index:Component compA <{%fg 3%}>updated<{%reset%}> 
  <{%bold%}><{%fg 10%}>++<{%reset%}> pkgB:index:Component compA <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
  <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgB:index:Component compA <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgC provC <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgC provC <{%fg 3%}>updated<{%reset%}> 
  <{%fg 13%}>+-<{%reset%}> pkgB:index:Component compA <{%fg 13%}>replaced<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 4 updated<{%reset%}>
     <{%fg 13%}>+-1 replaced<{%reset%}>
-    3 unchanged
+    <{%bold%}>5 changes<{%reset%}>. 3 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 
