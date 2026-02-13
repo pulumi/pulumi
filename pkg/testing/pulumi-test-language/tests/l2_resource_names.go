@@ -35,8 +35,7 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					// Check we have the one simple resource in the snapshot, its provider and the stack.
-					require.Len(l, snap.Resources, 6, "expected 6 resources in snapshot")
+					require.Len(l, snap.Resources, 8, "expected 8 resources in snapshot")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:names")
 

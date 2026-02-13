@@ -3860,6 +3860,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 
 // ExtractModulePath creates a go module path for a given package.
 func ExtractModulePath(extPkg schema.PackageReference) string {
+	contract.Assertf(extPkg != nil, "ExtractModulePath(nil) is not allowed")
 	var vPath string
 	version := extPkg.Version()
 	name := extPkg.Name()

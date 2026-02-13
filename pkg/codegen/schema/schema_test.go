@@ -2077,7 +2077,7 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 		{
 			name: "return-type-plain",
 			fn: &Function{
-				PackageReference: packageDefRef{},
+				PackageReference: nil,
 				Token:            "token",
 				ReturnType:       IntType,
 				ReturnTypePlain:  true,
