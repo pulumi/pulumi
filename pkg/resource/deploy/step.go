@@ -1452,14 +1452,21 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	// Component, provider, and pending-replace resources never change with a refresh; just return the current state.
 	if !s.old.Custom || providers.IsProviderType(s.old.Type) || s.old.PendingReplacement {
+		var complete StepCompleteFunc
 		if s.cts != nil {
 			// for persisted refreshes, we need to make a copy of the state, and pretend we
 			// refreshed using that new state. This ensures that further steps will see the
 			// new state correctly.
 			s.new = s.old.Copy()
-			s.cts.MustFulfill(s.new)
+			complete = func() {
+				// s.cts will be empty for refreshes that are just being done on state, rather than via a program.
+				if s.cts != nil {
+					s.cts.MustFulfill(s.New())
+				}
+			}
+
 		}
-		return resource.StatusOK, nil, nil
+		return resource.StatusOK, complete, nil
 	}
 
 	// For a custom resource, fetch the resource's provider and read the resource's current state.
