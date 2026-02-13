@@ -1464,7 +1464,6 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.cts.MustFulfill(s.New())
 				}
 			}
-
 		}
 		return resource.StatusOK, complete, nil
 	}
