@@ -1,0 +1,31 @@
+
+{
+  "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
+  "name": "parameterizedref",
+  "version": "1.0.0",
+  "//": [
+    "Simple schema with a remote reference to a parameterized schemas type"
+  ],
+  "resources": {
+    "parameterizedref:index:Root": {
+      "properties": {
+        "data": {
+          "$ref": "/tfe/v0.68.2/schema.json#/types/tfe:index/PolicySetVcsRepo:PolicySetVcsRepo"
+        }
+      },
+      "required": ["data"],
+      "type": "object"
+    }
+  },
+  "dependencies": [
+    {
+      "name": "tfe",
+      "version":  "0.68.2",
+      "parameterization": {
+        "name": "tfe",
+        "version": "0.68.2",
+        "value": "dGVzdA=="
+      }
+    }
+  ]
+}
