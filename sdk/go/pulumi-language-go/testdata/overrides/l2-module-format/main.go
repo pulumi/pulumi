@@ -2,6 +2,7 @@ package main
 
 import (
 	"example.com/pulumi-module-format/sdk/go/v29/moduleformat/mod"
+	"example.com/pulumi-module-format/sdk/go/v29/moduleformat/mod/nested"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -42,6 +43,40 @@ func main() {
 			return err
 		}
 		ctx.Export("out2", out2.Output())
+
+		// Now test nested module resources using the fully specified token.
+		res3, err := nested.NewResource(ctx, "res3", &nested.ResourceArgs{
+			Text: nested.ConcatWorldOutput(ctx, nested.ConcatWorldOutputArgs{
+				Value: pulumi.String("hello"),
+			}, nil).ApplyT(func(invoke nested.ConcatWorldResult) (string, error) {
+				return invoke.Result, nil
+			}).(pulumi.StringOutput),
+		})
+		if err != nil {
+			return err
+		}
+		out3, err := res3.Call(ctx, &nested.ResourceCallArgs{Input: pulumi.String("x")})
+		if err != nil {
+			return err
+		}
+		ctx.Export("out3", out3.Output())
+
+		// And using just the module name as defined by the module format.
+		res4, err := nested.NewResource(ctx, "res4", &nested.ResourceArgs{
+			Text: nested.ConcatWorldOutput(ctx, nested.ConcatWorldOutputArgs{
+				Value: pulumi.String("goodbye"),
+			}, nil).ApplyT(func(invoke nested.ConcatWorldResult) (string, error) {
+				return invoke.Result, nil
+			}).(pulumi.StringOutput),
+		})
+		if err != nil {
+			return err
+		}
+		out4, err := res4.Call(ctx, &nested.ResourceCallArgs{Input: pulumi.String("xx")})
+		if err != nil {
+			return err
+		}
+		ctx.Export("out4", out4.Output())
 		return nil
 	})
 }

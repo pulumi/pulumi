@@ -20,6 +20,14 @@ _utilities.register(
 [
  {
   "pkg": "module-format",
+  "mod": "mod/nested_Resource",
+  "fqn": "pulumi_module_format.mod.nested",
+  "classes": {
+   "module-format:mod/nested_Resource:Resource": "Resource"
+  }
+ },
+ {
+  "pkg": "module-format",
   "mod": "mod_Resource",
   "fqn": "pulumi_module_format.mod",
   "classes": {

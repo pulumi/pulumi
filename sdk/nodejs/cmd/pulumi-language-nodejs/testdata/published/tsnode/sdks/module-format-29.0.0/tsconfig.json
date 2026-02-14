@@ -16,6 +16,9 @@
         "index.ts",
         "mod/concatWorld.ts",
         "mod/index.ts",
+        "mod/nested/concatWorld.ts",
+        "mod/nested/index.ts",
+        "mod/nested/resource.ts",
         "mod/resource.ts",
         "provider.ts",
         "utilities.ts"

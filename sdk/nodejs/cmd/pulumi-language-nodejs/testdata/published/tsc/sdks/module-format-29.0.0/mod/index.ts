@@ -14,6 +14,13 @@ export * from "./resource";
 import { Resource } from "./resource";
 
 
+// Export sub-modules:
+import * as nested from "./nested";
+
+export {
+    nested,
+};
+
 const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
