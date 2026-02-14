@@ -122,6 +122,17 @@ func (p *PlainProvider) GetSchema(
 				Ref:  "#/types/plain:index:Data",
 			},
 		},
+		"dataList": {
+			TypeSpec: schema.TypeSpec{
+				Type: "array",
+				Items: &schema.TypeSpec{
+					Type:  "ref",
+					Ref:   "#/types/plain:index:InnerData",
+					Plain: true,
+				},
+				Plain: true,
+			},
+		},
 	}
 	resourceRequired := []string{"data"}
 
@@ -223,8 +234,8 @@ func (p *PlainProvider) Check(
 		return *check, nil
 	}
 
-	// Should have one or two properties: data is required, nonPlainData is optional
-	if len(req.News) > 2 {
+	// Should have one to three properties: data is required, nonPlainData and dataList are optional
+	if len(req.News) > 3 {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -321,6 +332,26 @@ func (p *PlainProvider) Check(
 		check = checkInnerData(nonPlainData)
 		if check != nil {
 			return *check, nil
+		}
+	}
+
+	// Check dataList
+	if v, ok := req.News["dataList"]; ok {
+		if !v.IsArray() {
+			return plugin.CheckResponse{
+				Failures: makeCheckFailure("dataList", "dataList is not an array"),
+			}, nil
+		}
+		for _, item := range v.ArrayValue() {
+			if !item.IsObject() {
+				return plugin.CheckResponse{
+					Failures: makeCheckFailure("dataList", "dataList element is not an object"),
+				}, nil
+			}
+			check = checkData(item.ObjectValue())
+			if check != nil {
+				return *check, nil
+			}
 		}
 	}
 

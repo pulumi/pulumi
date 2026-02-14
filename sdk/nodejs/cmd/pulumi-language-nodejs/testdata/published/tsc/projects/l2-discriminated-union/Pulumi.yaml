@@ -1,0 +1,5 @@
+name: l2-discriminated-union
+runtime:
+  name: nodejs
+  options:
+    typescript: false

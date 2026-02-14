@@ -166,31 +166,13 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Simple range as int expression translation",
 	},
 	{
-		Directory:   "azure-native",
-		Description: "Azure Native",
-		SkipCompile: codegen.NewStringSet(TestGo, TestDotnet),
-		// Blocked on go:
-		//   TODO[pulumi/pulumi#8073]
-		//   TODO[pulumi/pulumi#8074]
-	},
-	{
 		Directory:   "azure-native-v2-eventgrid",
 		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
-		// Specifically use a simplified azure-native v2.x schema when testing this program
-		// this schema only contains content from the eventgrid module which is sufficient to test with
-		PluginHost: utils.NewHostWithProviders(testdataPath,
-			utils.NewSchemaProvider("azure-native", "2.41.0")),
+		SkipCompile: allProgLanguages, // uses a simplified azure-native v2.x test schema
 	},
 	{
 		Directory:   "azure-sa",
 		Description: "Azure SA",
-	},
-	{
-		Directory:   "string-enum-union-list",
-		Description: "Contains resource which has a property of type List<Union<String, Enum>>",
-		// skipping compiling on Go because it doesn't know to handle unions in lists
-		// and instead generates pulumi.StringArray
-		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
 		Directory:   "using-object-as-input-for-any",
@@ -252,18 +234,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
 	},
 	{
-		Directory:   "typed-enum",
-		Description: "Supply strongly typed enums",
-		Skip:        codegen.NewStringSet(TestGo),
-	},
-	{
 		Directory:   "pulumi-stack-reference",
 		Description: "StackReference as resource",
-	},
-	{
-		Directory:   "python-resource-names",
-		Description: "Repro for #9357",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   "logical-name",
@@ -274,11 +246,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Lambdas",
 		// We have special testing for this case because lambda is a python keyword.
 		Skip: codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
-		Directory:   "basic-unions",
-		Description: "Tests program generation of fields of type union",
-		SkipCompile: allProgLanguages, // because the schema is synthetic
 	},
 	{
 		Directory:   "deferred-outputs",
@@ -436,10 +403,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except(TestDotnet),
 	},
 	{
-		Directory:   "empty-list-property",
-		Description: "Tests compiling empty list expressions of object properties",
-	},
-	{
 		Directory:   "python-regress-14037",
 		Description: "Regression test for rewriting qoutes in python",
 		Skip:        allProgLanguages.Except(TestPython),
@@ -468,21 +431,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Directory:   transpiled("awsx-fargate"),
 		Description: "AWSx Fargate",
 		Skip:        codegen.NewStringSet(TestDotnet, TestNodeJS, TestGo),
-	},
-	{
-		Directory:   transpiled("azure-app-service"),
-		Description: "Azure App Service",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet),
-	},
-	{
-		Directory:   transpiled("azure-container-apps"),
-		Description: "Azure Container Apps",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet, TestPython),
-	},
-	{
-		Directory:   transpiled("azure-static-website"),
-		Description: "Azure static website",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet, TestPython),
 	},
 	{
 		Directory:   transpiled("cue-eks"),

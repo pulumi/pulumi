@@ -15,7 +15,8 @@ import (
 type SomeResource struct {
 	pulumi.CustomResourceState
 
-	TheOutput pulumi.BoolOutput `pulumi:"theOutput"`
+	ResourceName pulumi.StringPtrOutput `pulumi:"resourceName"`
+	TheOutput    pulumi.BoolOutput      `pulumi:"theOutput"`
 }
 
 // NewSomeResource registers a new resource with the given unique name, arguments, and options.
@@ -61,12 +62,14 @@ func (SomeResourceState) ElementType() reflect.Type {
 }
 
 type someResourceArgs struct {
-	TheInput bool `pulumi:"theInput"`
+	ResourceName *string `pulumi:"resourceName"`
+	TheInput     bool    `pulumi:"theInput"`
 }
 
 // The set of arguments for constructing a SomeResource resource.
 type SomeResourceArgs struct {
-	TheInput pulumi.BoolInput
+	ResourceName pulumi.StringPtrInput
+	TheInput     pulumi.BoolInput
 }
 
 func (SomeResourceArgs) ElementType() reflect.Type {
@@ -154,6 +157,10 @@ func (o SomeResourceOutput) ToSomeResourceOutput() SomeResourceOutput {
 
 func (o SomeResourceOutput) ToSomeResourceOutputWithContext(ctx context.Context) SomeResourceOutput {
 	return o
+}
+
+func (o SomeResourceOutput) ResourceName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *SomeResource) pulumi.StringPtrOutput { return v.ResourceName }).(pulumi.StringPtrOutput)
 }
 
 func (o SomeResourceOutput) TheOutput() pulumi.BoolOutput {

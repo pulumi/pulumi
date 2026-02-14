@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as pulumiAzureNative from "@pulumi/azure-native";
+import * as pulumiUsingDashes from "@pulumi/using-dashes";
 
 export class RegistryGeoReplication extends pulumi.ComponentResource {
     /** @internal */
@@ -28,11 +28,11 @@ export class RegistryGeoReplication extends pulumi.ComponentResource {
     /**
      * The Registry
      */
-    declare public /*out*/ readonly registry: pulumi.Output<pulumiAzureNative.containerregistry.Registry>;
+    declare public /*out*/ readonly registry: pulumi.Output<pulumiUsingDashes.Dash>;
     /**
      * The replication policy
      */
-    declare public /*out*/ readonly replication: pulumi.Output<pulumiAzureNative.containerregistry.Replication>;
+    declare public /*out*/ readonly replication: pulumi.Output<pulumiUsingDashes.Dash>;
 
     /**
      * Create a RegistryGeoReplication resource with the given unique name, arguments, and options.
@@ -69,5 +69,5 @@ export interface RegistryGeoReplicationArgs {
     /**
      * The resource group that hosts the component resource
      */
-    resourceGroup: pulumi.Input<pulumiAzureNative.resources.ResourceGroup>;
+    resourceGroup: pulumi.Input<pulumiUsingDashes.Dash>;
 }

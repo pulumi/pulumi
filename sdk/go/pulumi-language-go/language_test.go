@@ -114,6 +114,8 @@ var expectedFailures = map[string]string{
 	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
 	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                                     //nolint:lll
 	"l3-range-resource-output-traversal":  "pulumi#21678: cannot range over an ArrayOutput",
+	"l2-discriminated-union":              "fails to compile: Go program codegen emits output types instead of Args types for discriminated union variants", //nolint:lll
+	"l2-union":                            "fails to compile: Go program codegen references 'index' module instead of package name for enum types",          //nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
