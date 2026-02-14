@@ -161,9 +161,14 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		}
 	}
 	poetryCmd.Dir = p.directory
-	poetryCmd.Stdout = infoWriter
-	poetryCmd.Stderr = errorWriter
-	return errutil.ErrorWithStderr(poetryCmd.Run(), "poetry install failed")
+	if showOutput {
+		poetryCmd.Stdout = infoWriter
+		poetryCmd.Stderr = errorWriter
+		return poetryCmd.Run()
+	} else {
+		_, err := poetryCmd.Output()
+		return errutil.ErrorWithStderr(err, "poetry install failed")
+	}
 }
 
 func (p *poetry) PrepareProject(

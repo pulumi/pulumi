@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Always surface errors from uv, poetry or pip during dependency installation
