@@ -16,22 +16,45 @@ package version
 
 import (
 	"fmt"
+	"os"
+	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/spf13/cobra"
 )
 
+type versionJSON struct {
+	Version string `json:"version"`
+	Commit  string `json:"commit,omitempty"`
+}
+
 func NewVersionCmd() *cobra.Command {
+	var jsonOut bool
+
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print Pulumi's version number",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if jsonOut {
+				v := versionJSON{Version: version.Version}
+				if info, ok := debug.ReadBuildInfo(); ok {
+					for _, setting := range info.Settings {
+						if setting.Key == "vcs.revision" {
+							v.Commit = setting.Value
+							break
+						}
+					}
+				}
+				return ui.FprintJSON(os.Stdout, v)
+			}
 			fmt.Printf("%v\n", version.Version)
 			return nil
 		},
 	}
 
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit output as JSON")
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	return cmd
