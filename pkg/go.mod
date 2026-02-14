@@ -37,7 +37,7 @@ require (
 	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zclconf/go-cty v1.13.2
 	gocloud.dev v0.37.0
@@ -86,6 +86,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/muesli/cancelreader v0.2.2
 	github.com/natefinch/atomic v1.0.1
+	github.com/pb33f/libopenapi v0.33.7
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pgavlin/fx v0.1.6
 	github.com/pgavlin/fx/v2 v2.0.10
@@ -102,6 +103,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.36.0
 	go.pennock.tech/tabular v1.1.3
 	go.uber.org/automaxprocs v1.6.0
+	go.yaml.in/yaml/v4 v4.0.0-rc.4
 	golang.org/x/mod v0.31.0
 	golang.org/x/sys v0.40.0
 	golang.org/x/term v0.39.0
@@ -151,6 +153,8 @@ require (
 	github.com/aws/smithy-go v1.20.2 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
+	github.com/bahlo/generic-list-go v0.2.0 // indirect
+	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/ccojocar/zxcvbn-go v1.0.1 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
@@ -212,6 +216,8 @@ require (
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
+	github.com/pb33f/jsonpath v0.7.1 // indirect
+	github.com/pb33f/ordered-map/v2 v2.3.0 // indirect
 	github.com/pgavlin/aho-corasick v0.5.1 // indirect
 	github.com/pgavlin/text v0.0.0-20240821195002-b51d0990e284 // indirect
 	github.com/pjbgf/sha1cd v0.3.2 // indirect
