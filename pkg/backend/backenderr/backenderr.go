@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
@@ -140,4 +141,54 @@ func (LoginRequiredError) Is(other error) bool {
 	default:
 		return false
 	}
+}
+
+func (LoginRequiredError) ExitCode() int {
+	return cmdutil.ExitAuthenticationError
+}
+
+func (NotFoundError) ExitCode() int {
+	return cmdutil.ExitStackNotFound
+}
+
+func (ForbiddenError) ExitCode() int {
+	return cmdutil.ExitAuthenticationError
+}
+
+type StackNotFoundError struct {
+	StackName string
+}
+
+func (e StackNotFoundError) Error() string {
+	return fmt.Sprintf("no stack named '%s' found", e.StackName)
+}
+
+func (StackNotFoundError) ExitCode() int {
+	return cmdutil.ExitStackNotFound
+}
+
+var ErrStackNotFound StackNotFoundError
+
+// CancelledError is returned when a user cancels an operation (e.g., declines a confirmation prompt).
+type CancelledError struct {
+	Operation string
+}
+
+func (e CancelledError) Error() string {
+	return e.Operation + " cancelled"
+}
+
+func (CancelledError) ExitCode() int {
+	return cmdutil.ExitCancelled
+}
+
+// NoChangesExpectedError is returned when --expect-no-changes is set but changes were detected.
+type NoChangesExpectedError struct{}
+
+func (NoChangesExpectedError) Error() string {
+	return "no changes were expected but changes occurred"
+}
+
+func (NoChangesExpectedError) ExitCode() int {
+	return cmdutil.ExitNoChanges
 }
