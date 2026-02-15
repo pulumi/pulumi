@@ -77,6 +77,57 @@ func TestShowEvents(t *testing.T) {
 	assert.Contains(t, string(read), "this-is-filtered-from-display")
 }
 
+func TestShowEventsJSONDisplayIncludesInternalEvents(t *testing.T) {
+	t.Parallel()
+
+	// Test that internal events (like default providers) are included in JSON output.
+	events := make(chan engine.Event)
+	done := make(chan bool)
+	stack, err := tokens.ParseStackName("stack")
+	require.NoError(t, err)
+
+	eventLog, err := os.CreateTemp(t.TempDir(), "event-log-")
+	require.NoError(t, err)
+
+	go func() {
+		events <- engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: resource.NewURN(stack.Q(), "proj", "parent", "base", "regular-resource"),
+				Op:  deploy.OpCreate,
+			},
+			Internal: false,
+		})
+		events <- engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: resource.NewURN(stack.Q(), "proj", "", "pulumi:providers:aws", "default"),
+				Op:  deploy.OpCreate,
+			},
+			Internal: true, // Default provider marked as internal
+		})
+		events <- engine.NewCancelEvent()
+		close(events)
+	}()
+
+	var stdout bytes.Buffer
+	ShowEvents("op", apitype.UpdateUpdate, stack, "proj", "permalink", events, done, Options{
+		EventLogPath: eventLog.Name(),
+		Stdout:       &stdout,
+		Color:        colors.Never,
+		JSONDisplay:  true, // JSON mode should include internal events
+	}, false)
+	<-done
+
+	// Read the event log file which contains all events including internal ones
+	read, err := os.ReadFile(eventLog.Name())
+	require.NoError(t, err)
+	output := string(read)
+
+	// Both regular resources and internal default providers should be in JSON output
+	assert.Contains(t, output, "regular-resource")
+	assert.Contains(t, output, "default")
+	assert.Contains(t, output, "pulumi:providers:aws")
+}
+
 func TestEscapeURN(t *testing.T) {
 	t.Parallel()
 
