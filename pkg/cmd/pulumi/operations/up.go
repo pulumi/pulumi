@@ -128,6 +128,9 @@ func NewUpCmd() *cobra.Command {
 	var attachDebugger []string
 	var strict bool
 
+	// Flags for multistack operations.
+	var workspaceFile string
+
 	// Flags for Neo.
 	var neoEnabled bool
 
@@ -548,17 +551,6 @@ func NewUpCmd() *cobra.Command {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
-
-			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
-				return err
-			}
-
-			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
-
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			// Remote implies we're skipping previews.
@@ -625,6 +617,68 @@ func NewUpCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
+			// Check for multistack operation before loading the project from CWD,
+			// since multistack mode loads projects from the specified directories instead.
+			msArgs := MultistackArgs{
+				WorkspaceFile: workspaceFile,
+				Dirs:          args,
+				StackName:     stackName,
+			}
+			if msArgs.IsMultistack() {
+				entries, err := ResolveMultistackEntries(
+					ctx, msArgs, ws, cmdBackend.DefaultLoginManager, ssml, opts.Display)
+				if err != nil {
+					return err
+				}
+
+				PrintMultistackConfirmation(entries, "Update")
+
+				msOpts := backend.MultistackOptions{DisplayOpts: opts.Display}
+
+				// Run preview first unless skipped.
+				if !opts.SkipPreview {
+					previewResults, previewErr := backend.MultistackPreview(ctx, entries, msOpts)
+					if previewErr != nil {
+						return previewErr
+					}
+
+					// Check for preview errors.
+					for _, result := range previewResults {
+						if result.Error != nil {
+							PrintMultistackResults(previewResults, entries)
+							return fmt.Errorf("one or more stacks failed during preview")
+						}
+					}
+
+					// Prompt for confirmation.
+					if !yes {
+						if !cmdutil.Interactive() {
+							return errors.New(
+								"--yes or --skip-preview must be passed in to proceed " +
+									"with multistack update in non-interactive mode",
+							)
+						}
+						// TODO: add interactive confirmation prompt
+					}
+				}
+
+				results, err := backend.MultistackUpdate(
+					ctx, entries, msOpts)
+				if err != nil {
+					return err
+				}
+
+				PrintMultistackResults(results, entries)
+
+				// Check if any stack had errors.
+				for _, result := range results {
+					if result.Error != nil {
+						return fmt.Errorf("one or more stacks failed during update")
+					}
+				}
+				return nil
+			}
+
 			if remoteArgs.Remote {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
@@ -645,6 +699,17 @@ func NewUpCmd() *cobra.Command {
 
 				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
+
+			proj, root, err := readProjectForUpdate(ws, client)
+			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
+
+			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
 
 			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
 			if err != nil {
@@ -689,9 +754,11 @@ func NewUpCmd() *cobra.Command {
 		},
 	}
 
+	// Accept variadic args for multistack directory paths (or a single template URL).
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{{Name: "template-or-url", Usage: "[template|url]"}},
+		Arguments: []constrictor.Argument{{Name: "template-url-or-dir", Usage: "[template|url|dir ...]"}},
 		Required:  0,
+		Variadic:  true,
 	})
 
 	cmd.PersistentFlags().BoolVarP(
@@ -703,6 +770,9 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&workspaceFile, "workspace", "",
+		"Path to a Pulumispace file for multistack operations")
 	cmd.PersistentFlags().StringVar(
 		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")

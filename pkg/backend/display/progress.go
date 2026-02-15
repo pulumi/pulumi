@@ -111,8 +111,10 @@ type ProgressDisplay struct {
 	// i.e. if we're previewing we say things like "Would update" instead of "Updating".
 	isPreview bool
 
-	// The urn of the stack.
-	stackUrn resource.URN
+	// The urns of all stack roots. In multistack mode, there may be multiple.
+	stackUrns map[resource.URN]bool
+	// The first stack urn seen — used as fallback parent for events with no URN.
+	primaryStackUrn resource.URN
 
 	// The set of observed unchanged (same) resources we've seen. In the event
 	// that we've not been explicitly asked to show unchanged resources
@@ -480,7 +482,7 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 	urnToTreeNode[urn] = node
 
 	// if it's the not the root item, attach it as a child node to an appropriate parent item.
-	if urn != "" && urn != display.stackUrn {
+	if urn != "" && !display.stackUrns[urn] {
 		var parentURN resource.URN
 
 		res := row.Step().Res
@@ -491,10 +493,10 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 		parentRow, hasParentRow := display.eventUrnToResourceRow[parentURN]
 
 		if !hasParentRow {
-			// If we haven't heard about this node's parent, then  just parent it to the stack.
-			// Note: getting the parent row for the stack-urn will always succeed as we ensure that
-			// such a row is always there in ensureHeaderAndStackRows
-			parentURN = display.stackUrn
+			// If we haven't heard about this node's parent, then just parent it to its stack root.
+			// In multistack mode there may be multiple roots; find the right one by matching
+			// the project portion of the URN. Fall back to the primary stack URN.
+			parentURN = display.findStackRootForURN(urn)
 			parentRow = display.eventUrnToResourceRow[parentURN]
 		}
 
@@ -1008,11 +1010,11 @@ func (display *ProgressDisplay) printOutputs() {
 		return
 	}
 	// Cannot display outputs for the stack if we don't know its URN.
-	if display.stackUrn == "" {
+	if display.primaryStackUrn == "" {
 		return
 	}
 
-	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
+	stackStep := display.eventUrnToResourceRow[display.primaryStackUrn].Step()
 
 	props := getResourceOutputsPropertiesString(
 		stackStep,
@@ -1117,7 +1119,13 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	// If this is the first time we're seeing an event for the stack resource, check to see if we've already
 	// recorded root events that we want to reassociate with this URN.
 	if isRootURN(urn) {
-		display.stackUrn = urn
+		if display.stackUrns == nil {
+			display.stackUrns = make(map[resource.URN]bool)
+		}
+		display.stackUrns[urn] = true
+		if display.primaryStackUrn == "" {
+			display.primaryStackUrn = urn
+		}
 
 		if row, has = display.eventUrnToResourceRow[""]; has {
 			row.SetStep(step)
@@ -1243,9 +1251,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	if eventUrn == "" {
 		// If this event has no URN, associate it with the stack. Note that there may not yet be a stack resource, in
 		// which case this is a no-op.
-		eventUrn = display.stackUrn
+		eventUrn = display.primaryStackUrn
 	}
-	isRootEvent := eventUrn == display.stackUrn
+	isRootEvent := display.stackUrns[eventUrn]
 
 	row := display.getRowForURN(eventUrn, metadata)
 
@@ -1288,7 +1296,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.stopwatchMutex.Unlock()
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
-		if step.URN == display.stackUrn {
+		if display.stackUrns[step.URN] {
 			display.seenStackOutputs = true
 		}
 
@@ -1379,7 +1387,7 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 	// we've added at least one row to the table.  make sure we have a row to designate the
 	// stack if we haven't already heard about it yet.  This also ensures that as we build
 	// the tree we can always guarantee there's a 'root' to parent anything to.
-	_, hasStackRow := display.eventUrnToResourceRow[display.stackUrn]
+	_, hasStackRow := display.eventUrnToResourceRow[display.primaryStackUrn]
 	if hasStackRow {
 		return
 	}
@@ -1393,8 +1401,20 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		hideRowIfUnnecessary: false,
 	}
 
-	display.eventUrnToResourceRow[display.stackUrn] = stackRow
+	display.eventUrnToResourceRow[display.primaryStackUrn] = stackRow
 	display.resourceRows = append(display.resourceRows, stackRow)
+}
+
+// findStackRootForURN finds the stack root URN that a resource belongs to by matching
+// the stack and project portions of the URN. Falls back to the primary stack URN.
+func (display *ProgressDisplay) findStackRootForURN(urn resource.URN) resource.URN {
+	for stackUrn := range display.stackUrns {
+		// Match if the resource's stack and project match the root's stack and project.
+		if stackUrn != "" && urn.Stack() == stackUrn.Stack() && urn.Project() == stackUrn.Project() {
+			return stackUrn
+		}
+	}
+	return display.primaryStackUrn
 }
 
 func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) {

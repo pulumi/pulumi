@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -45,6 +46,13 @@ type builtinProvider struct {
 	news *gsync.Map[resource.URN, *resource.State]
 	// reads is a map of URNs to resource states that have been read during the current deployment.
 	reads *gsync.Map[resource.URN, *resource.State]
+
+	// outputWaiters is non-nil for multistack deployments. It provides
+	// co-deployed stack output resolution.
+	outputWaiters *OutputWaiterStore
+	// waiterStack identifies which stack this builtin provider belongs to,
+	// used for cycle detection in output waiters.
+	waiterStack string
 }
 
 func newBuiltinProvider(
@@ -62,6 +70,12 @@ func newBuiltinProvider(
 		reads:         reads,
 		diag:          d,
 	}
+}
+
+// WithOutputWaiters configures the builtin provider for multistack operation.
+func (p *builtinProvider) WithOutputWaiters(store *OutputWaiterStore, waiterStack string) {
+	p.outputWaiters = store
+	p.waiterStack = waiterStack
 }
 
 func (p *builtinProvider) Close() error {
@@ -369,6 +383,39 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 	contract.Assertf(ok, "missing required property 'name'")
 	contract.Assertf(name.IsString(), "expected 'name' to be a string")
 
+	stackName := name.StringValue()
+
+	// For multistack deployments, check if the referenced stack is co-deployed.
+	logging.V(4).Infof("builtins.readStackReference: stackName=%q, outputWaiters=%p", stackName, p.outputWaiters)
+	if p.outputWaiters != nil {
+		logging.V(4).Infof("builtins.readStackReference: IsCoDeployed(%q) = %v", stackName, p.outputWaiters.IsCoDeployed(stackName))
+	}
+	if p.outputWaiters != nil && p.outputWaiters.IsCoDeployed(stackName) {
+		logging.V(4).Infof("builtins.readStackReference: waiting for outputs from co-deployed stack %q (waiter=%q)", stackName, p.waiterStack)
+		outputs, err := p.outputWaiters.WaitForOutputs(p.context, p.waiterStack, stackName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve co-deployed stack reference %q: %w", stackName, err)
+		}
+
+		// Convert property.Map outputs to the expected format.
+		secretOutputs := make([]resource.PropertyValue, 0)
+		for k, v := range outputs.All {
+			if v.HasSecrets() {
+				secretOutputs = append(secretOutputs, resource.NewProperty(k))
+			}
+		}
+		sort.Slice(secretOutputs, func(i, j int) bool {
+			return secretOutputs[i].String() < secretOutputs[j].String()
+		})
+
+		return resource.PropertyMap{
+			"name":              name,
+			"outputs":           resource.NewProperty(resource.ToResourcePropertyMap(outputs)),
+			"secretOutputNames": resource.NewProperty(secretOutputs),
+		}, nil
+	}
+
+	// Fall through to existing backend client behavior for non-co-deployed stacks.
 	if p.backendClient == nil {
 		return nil, errors.New("no backend client is available")
 	}
@@ -378,7 +425,7 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 	var decryptionErr error
 	outputs, err := p.backendClient.GetStackOutputs(
 		p.context,
-		name.StringValue(),
+		stackName,
 		func(e error) error { decryptionErr = e; return nil },
 	)
 	if err != nil {
@@ -386,8 +433,8 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 	}
 
 	if decryptionErr != nil {
-		p.diag.Infof(diag.Message("", "eliding undecryptable secrets for stack reference '%s'"), name.StringValue())
-		p.diag.Debugf(diag.Message("", "stack reference '%s' decryption error: %v"), name.StringValue(), decryptionErr)
+		p.diag.Infof(diag.Message("", "eliding undecryptable secrets for stack reference '%s'"), stackName)
+		p.diag.Debugf(diag.Message("", "stack reference '%s' decryption error: %v"), stackName, decryptionErr)
 	}
 
 	secretOutputs := make([]resource.PropertyValue, 0)

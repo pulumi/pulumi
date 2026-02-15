@@ -58,6 +58,7 @@ type Options struct {
 	SuppressProgress         bool                // true to suppress displaying progress spinner.
 	ShowSecrets              bool                // true to display secrets in the output.
 	SuppressDiagEventsInDiff bool                // true to suppress displaying diagnostic events in the diff display
+	SuppressDisplay          bool                // true to suppress terminal display (events still persisted to cloud)
 
 	// Neo options
 	ShowLinkToNeo   bool // true to display a 'explainFailure' link to Neo.

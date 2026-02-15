@@ -227,6 +227,8 @@ func newDeployment(
 		GeneratePlan:              opts.GeneratePlan,
 		ContinueOnError:           opts.ContinueOnError,
 		Autonamer:                 opts.Autonamer,
+		OutputWaiters:             opts.OutputWaiters,
+		OutputWaitersStackName:    opts.OutputWaitersStackName,
 	}
 
 	var depl *deploy.Deployment

@@ -87,6 +87,9 @@ func NewDestroyCmd() *cobra.Command {
 	var excludeProtected bool
 	var continueOnError bool
 
+	// Flags for multistack operations.
+	var workspaceFile string
+
 	// Flags for Neo.
 	var neoEnabled bool
 
@@ -192,6 +195,67 @@ func NewDestroyCmd() *cobra.Command {
 			}
 
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
+
+			// Check for multistack operation.
+			msArgs := MultistackArgs{
+				WorkspaceFile: workspaceFile,
+				Dirs:          args,
+				StackName:     stackName,
+			}
+			if msArgs.IsMultistack() {
+				entries, err := ResolveMultistackEntries(
+					ctx, msArgs, ws, cmdBackend.DefaultLoginManager,
+					cmdStack.SecretsManagerLoader{FallbackToState: true}, opts.Display)
+				if err != nil {
+					return err
+				}
+
+				PrintMultistackConfirmation(entries, "Destroy")
+
+				msOpts := backend.MultistackOptions{DisplayOpts: opts.Display}
+
+				// Run destroy preview first unless skipped.
+				if !opts.SkipPreview {
+					previewResults, previewErr := backend.MultistackDestroyPreview(ctx, entries, msOpts)
+					if previewErr != nil {
+						return previewErr
+					}
+
+					// Check for preview errors.
+					for _, result := range previewResults {
+						if result.Error != nil {
+							PrintMultistackResults(previewResults, entries)
+							return fmt.Errorf("one or more stacks failed during destroy preview")
+						}
+					}
+
+					// Prompt for confirmation.
+					if !yes {
+						if !cmdutil.Interactive() {
+							return errors.New(
+								"--yes or --skip-preview must be passed in to proceed " +
+									"with multistack destroy in non-interactive mode",
+							)
+						}
+						// TODO: add interactive confirmation prompt
+					}
+				}
+
+				results, err := backend.MultistackDestroy(ctx, entries, msOpts)
+				if err != nil {
+					return err
+				}
+
+				PrintMultistackResults(results, entries)
+
+				// Check if any stack had errors.
+				for _, result := range results {
+					if result.Error != nil {
+						return fmt.Errorf("one or more stacks failed during destroy")
+					}
+				}
+				return nil
+			}
 
 			s, err := cmdStack.RequireStack(
 				ctx,
@@ -332,7 +396,7 @@ func NewDestroyCmd() *cobra.Command {
 				SecretsManager:     sm,
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
-			})
+			}, nil /* events */)
 
 			if destroyErr == nil && protectedCount > 0 && !jsonDisplay {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
@@ -364,14 +428,12 @@ func NewDestroyCmd() *cobra.Command {
 		},
 	}
 
-	if deployment.RemoteSupported() {
-		constrictor.AttachArguments(cmd, &constrictor.Arguments{
-			Arguments: []constrictor.Argument{{Name: "url"}},
-			Required:  0,
-		})
-	} else {
-		constrictor.AttachArguments(cmd, constrictor.NoArgs)
-	}
+	// Accept variadic directory args for multistack operations.
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "dir", Usage: "[dir ...]"}},
+		Required:  0,
+		Variadic:  true,
+	})
 
 	cmd.PersistentFlags().BoolVar(
 		&runProgram, "run-program", env.RunProgram.Value(),
@@ -386,6 +448,9 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&workspaceFile, "workspace", "",
+		"Path to a Pulumispace file for multistack operations")
 	cmd.PersistentFlags().StringVar(
 		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")

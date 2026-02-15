@@ -216,7 +216,7 @@ type Backend interface {
 	// Refresh refreshes the stack's state from the cloud provider.
 	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Destroy destroys all of this stack's resources.
-	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	Destroy(ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event) (sdkDisplay.ResourceChanges, error)
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
 
@@ -313,6 +313,20 @@ type EnvironmentsBackend interface {
 		yaml []byte,
 		duration time.Duration,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+}
+
+// DownstreamStackReference represents a stack that references another stack via StackReference.
+type DownstreamStackReference struct {
+	OrgName     string
+	ProjectName string
+	StackName   string
+}
+
+// DownstreamReferenceLister is an optional interface that backends can implement to provide
+// downstream reference information, i.e., the list of stacks that consume outputs from a
+// given stack via StackReferences.
+type DownstreamReferenceLister interface {
+	GetDownstreamReferences(ctx context.Context, stackRef StackReference) ([]DownstreamStackReference, error)
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the

@@ -94,7 +94,7 @@ type MockBackend struct {
 	RefreshF func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(context.Context, Stack,
-		UpdateOperation) (sdkDisplay.ResourceChanges, error)
+		UpdateOperation, chan<- engine.Event) (sdkDisplay.ResourceChanges, error)
 	WatchF func(context.Context, Stack,
 		UpdateOperation, []string) error
 	GetLogsF func(context.Context, secrets.Provider, Stack, StackConfiguration,
@@ -341,10 +341,10 @@ func (be *MockBackend) Refresh(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
-	op UpdateOperation,
+	op UpdateOperation, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	if be.DestroyF != nil {
-		return be.DestroyF(ctx, stack, op)
+		return be.DestroyF(ctx, stack, op, events)
 	}
 	panic("not implemented")
 }

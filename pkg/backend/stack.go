@@ -107,8 +107,10 @@ func RefreshStack(ctx context.Context, s Stack, op UpdateOperation) (display.Res
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, error) {
-	return s.Backend().Destroy(ctx, s, op)
+func DestroyStack(
+	ctx context.Context, s Stack, op UpdateOperation, events chan<- engine.Event,
+) (display.ResourceChanges, error) {
+	return s.Backend().Destroy(ctx, s, op, events)
 }
 
 // WatchStack watches the projects working directory for changes and automatically updates the

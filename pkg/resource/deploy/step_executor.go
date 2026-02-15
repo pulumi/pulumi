@@ -217,6 +217,19 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	// we only replace outputs that have new outputs, but to otherwise leave old outputs untouched.
 	if !finalizingStackOutputs && urn.QualifiedType() == resource.RootStackType {
 		se.stackOutputsEvent = e
+
+		// For multistack deployments, publish outputs immediately so co-deployed stacks
+		// waiting on StackReferences can unblock without waiting for the full deployment to finish.
+		store := se.deployment.opts.OutputWaiters
+		logging.V(4).Infof("stepExecutor: RegisterResourceOutputs for stack root %v, OutputWaiters=%p", urn, store)
+		if store != nil {
+			stackName := se.deployment.opts.OutputWaitersStackName
+			outputs := resource.FromResourcePropertyMap(e.Outputs())
+			logging.V(4).Infof("stepExecutor: publishing outputs for stack %q to OutputWaiterStore", stackName)
+			store.SetOutputs(stackName, outputs)
+			logging.V(4).Infof("stepExecutor: successfully published outputs for stack %q", stackName)
+		}
+
 		e.Done()
 		return nil
 	}

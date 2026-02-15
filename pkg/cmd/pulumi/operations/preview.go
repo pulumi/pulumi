@@ -264,6 +264,9 @@ func NewPreviewCmd() *cobra.Command {
 	var importFilePath string
 	var showSecrets bool
 
+	// Flags for multistack operations.
+	var workspaceFile string
+
 	// Flags for remote operations.
 	remoteArgs := deployment.RemoteArgs{}
 
@@ -316,21 +319,6 @@ func NewPreviewCmd() *cobra.Command {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
-
-			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
-				return err
-			}
-
-			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
-
-			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
-				return err
-			}
-
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			displayType := display.DisplayProgress
 			if diffDisplay {
@@ -361,6 +349,53 @@ func NewPreviewCmd() *cobra.Command {
 				displayOpts.SuppressPermalink = true
 			} else {
 				displayOpts.SuppressPermalink = false
+			}
+
+			// Check for multistack operation.
+			msArgs := MultistackArgs{
+				WorkspaceFile: workspaceFile,
+				Dirs:          args,
+				StackName:     stackName,
+			}
+			if msArgs.IsMultistack() {
+				entries, err := ResolveMultistackEntries(
+					ctx, msArgs, ws, cmdBackend.DefaultLoginManager, ssml, displayOpts)
+				if err != nil {
+					return err
+				}
+
+				PrintMultistackConfirmation(entries, "Preview")
+
+				results, err := backend.MultistackPreview(
+					ctx, entries, backend.MultistackOptions{DisplayOpts: displayOpts})
+				if err != nil {
+					return err
+				}
+
+				PrintMultistackResults(results, entries)
+
+				// Check if any stack had errors.
+				for _, result := range results {
+					if result.Error != nil {
+						return fmt.Errorf("one or more stacks failed during preview")
+					}
+				}
+				return nil
+			}
+
+			proj, root, err := readProjectForUpdate(ws, client)
+			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
+
+			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
+
+			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
+				return err
 			}
 
 			if remoteArgs.Remote {
@@ -533,6 +568,11 @@ func NewPreviewCmd() *cobra.Command {
 				close(events)
 			}
 
+			// Print downstream warnings for single-stack preview.
+			if res == nil && changes != nil && engine.HasChanges(changes) {
+				PrintDownstreamWarnings(ctx, s.Backend(), s.Ref())
+			}
+
 			switch {
 			case res != nil:
 				return res
@@ -577,14 +617,12 @@ func NewPreviewCmd() *cobra.Command {
 		},
 	}
 
-	if deployment.RemoteSupported() {
-		constrictor.AttachArguments(cmd, &constrictor.Arguments{
-			Arguments: []constrictor.Argument{{Name: "url"}},
-			Required:  0,
-		})
-	} else {
-		constrictor.AttachArguments(cmd, constrictor.NoArgs)
-	}
+	// Accept variadic directory args for multistack operations.
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "dir", Usage: "[dir ...]"}},
+		Required:  0,
+		Variadic:  true,
+	})
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
@@ -595,6 +633,9 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&workspaceFile, "workspace", "",
+		"Path to a Pulumispace file for multistack operations")
 	cmd.PersistentFlags().StringVar(
 		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
