@@ -112,6 +112,12 @@ type Options struct {
 	ShowSecrets bool
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
+	// OutputWaiters, when non-nil, enables co-deployed stack output resolution.
+	// StackReferences to co-deployed stacks will block until their outputs are available.
+	OutputWaiters *OutputWaiterStore
+	// OutputWaitersStackName is the fully qualified name of this stack, used for
+	// cycle detection in the output waiter store.
+	OutputWaitersStackName string
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -595,6 +601,13 @@ func NewDeployment(
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
 	builtins := newBuiltinProvider(backendClient, newResources, reads, ctx.Diag)
+	logging.V(4).Infof("deploy.NewDeployment: OutputWaiters=%p, OutputWaitersStackName=%q",
+		opts.OutputWaiters, opts.OutputWaitersStackName)
+	if opts.OutputWaiters != nil {
+		builtins.WithOutputWaiters(opts.OutputWaiters, opts.OutputWaitersStackName)
+		logging.V(4).Infof("deploy.NewDeployment: wired builtinProvider with OutputWaiters for stack %q",
+			opts.OutputWaitersStackName)
+	}
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,

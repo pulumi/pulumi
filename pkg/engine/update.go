@@ -429,6 +429,10 @@ type UpdateOptions struct {
 	// otherwise happens during engine setup. Missing plugins will still be installed lazily by
 	// the provider registry when they are actually requested.
 	SkipPluginPreInstall bool
+	// OutputWaiters, when non-nil, enables co-deployed stack output resolution for multistack operations.
+	OutputWaiters *deploy.OutputWaiterStore
+	// OutputWaitersStackName is the fully qualified name of this stack for the output waiter store.
+	OutputWaitersStackName string
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.

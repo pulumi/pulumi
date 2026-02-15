@@ -1196,7 +1196,7 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 }
 
 func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
@@ -1207,7 +1207,7 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.DestroyUpdate, stack, op, opts, events)
 		return changes, err
 	}
 
@@ -1217,7 +1217,7 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, events)
 }
 
 func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1247,7 +1247,7 @@ func (b *diyBackend) apply(
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
-		op.Opts.Display.Type != display.DisplayWatch {
+		op.Opts.Display.Type != display.DisplayWatch && !op.Opts.Display.SuppressDisplay {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -1269,9 +1269,23 @@ func (b *diyBackend) apply(
 	// Spawn a display loop to show events on the CLI.
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
-	go display.ShowEvents(
-		strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, "",
-		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
+	if !op.Opts.Display.SuppressDisplay {
+		go display.ShowEvents(
+			strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, "",
+			displayEvents, displayDone, op.Opts.Display, opts.DryRun)
+	} else {
+		// No display — drain events and signal done.
+		// Must break on CancelEvent just like ShowEvents does, since
+		// displayDone is waited on before displayEvents is closed.
+		go func() {
+			for e := range displayEvents {
+				if e.Type == engine.CancelEvent {
+					break
+				}
+			}
+			close(displayDone)
+		}()
+	}
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)

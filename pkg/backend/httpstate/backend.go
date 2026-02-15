@@ -1652,7 +1652,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
@@ -1663,10 +1663,10 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.DestroyUpdate, stack, op, opts, events)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b, events)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1918,7 +1918,7 @@ func (b *cloudBackend) apply(
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
-		op.Opts.Display.Type != display.DisplayWatch {
+		op.Opts.Display.Type != display.DisplayWatch && !op.Opts.Display.SuppressDisplay {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -2387,6 +2387,30 @@ var projectNameCleanRegexp = regexp.MustCompile("[^a-zA-Z0-9-_.]")
 // do this cleaning on our end.
 func cleanProjectName(projectName string) string {
 	return projectNameCleanRegexp.ReplaceAllString(projectName, "-")
+}
+
+// GetDownstreamReferences returns stacks that consume outputs from the given stack via StackReferences.
+func (b *cloudBackend) GetDownstreamReferences(
+	ctx context.Context,
+	stackRef backend.StackReference,
+) ([]backend.DownstreamStackReference, error) {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+	refs, err := b.client.ListDownstreamReferences(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]backend.DownstreamStackReference, len(refs))
+	for i, ref := range refs {
+		result[i] = backend.DownstreamStackReference{
+			OrgName:     ref.OrgName,
+			ProjectName: ref.ProjectName,
+			StackName:   ref.StackName,
+		}
+	}
+	return result, nil
 }
 
 // getCloudStackIdentifier converts a backend.StackReference to a client.StackIdentifier for the same logical stack

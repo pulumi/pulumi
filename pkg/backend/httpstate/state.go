@@ -96,9 +96,25 @@ func (b *cloudBackend) recordAndDisplayEvents(
 	}()
 
 	// Start the Go-routines for displaying and persisting events.
-	go display.ShowEvents(
-		label, action, stackRef.Name(), op.Proj.Name, permalink,
-		displayEvents, displayEventsDone, opts, isPreview)
+	if !opts.SuppressDisplay {
+		go display.ShowEvents(
+			label, action, stackRef.Name(), op.Proj.Name, permalink,
+			displayEvents, displayEventsDone, opts, isPreview)
+	} else {
+		// No display — drain events and signal done.
+		// Must break on CancelEvent just like ShowEvents does, since the
+		// internal displayEvents channel is never closed (the for-range loop
+		// in recordAndDisplayEvents breaks on CancelEvent and the channel goes
+		// out of scope).
+		go func() {
+			for e := range displayEvents {
+				if e.Type == engine.CancelEvent {
+					break
+				}
+			}
+			close(displayEventsDone)
+		}()
+	}
 	go b.persistEngineEvents(
 		ctx, tokenSource, update,
 		opts.Debug, /* persist debug events */

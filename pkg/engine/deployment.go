@@ -262,6 +262,8 @@ func newDeployment(
 		Autonamer:                 opts.Autonamer,
 		ShowSecrets:               opts.ShowSecrets,
 		Analyzers:                 opts.LoadedAnalyzers,
+		OutputWaiters:             opts.OutputWaiters,
+		OutputWaitersStackName:    opts.OutputWaitersStackName,
 	}
 
 	var depl *deploy.Deployment
