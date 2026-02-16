@@ -816,10 +816,7 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type) {
 
 	var tokenRange hcl.Range
 	pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
-	vPath, err := g.packageVersionPath(packageRef)
-	if err != nil {
-		panic(err)
-	}
+	vPath := g.packageVersionPath(packageRef)
 	g.addPulumiImport(pkg, vPath, mod, name)
 }
 
@@ -941,20 +938,17 @@ func (g *generator) collectConvertImports(
 	}
 }
 
-func (g *generator) packageVersionPath(packageRef schema.PackageReference) (string, error) {
+func (g *generator) packageVersionPath(packageRef schema.PackageReference) string {
 	if ver := packageRef.Version(); ver != nil && ver.Major > 1 {
-		return fmt.Sprintf("/v%d", ver.Major), nil
+		return fmt.Sprintf("/v%d", ver.Major)
 	}
-	return "", nil
+	return ""
 }
 
 func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, error) {
 	for _, p := range program.PackageReferences() {
 		if p.Name() == pkg {
-			if ver := p.Version(); ver != nil && ver.Major > 1 {
-				return fmt.Sprintf("/v%d", ver.Major), nil
-			}
-			return "", nil
+			return g.packageVersionPath(p), nil
 		}
 	}
 
