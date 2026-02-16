@@ -145,13 +145,6 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 			filepath.Join("testdata", "overrides", "l2-provider-call-explicit"),
 		},
 	},
-
-	// TODO: Import paths are incorrect due to schema object types not having canonical tokens.
-	"l2-module-format": {
-		Paths: []string{
-			filepath.Join("testdata", "overrides", "l2-module-format"),
-		},
-	},
 }
 
 func TestLanguage(t *testing.T) {
