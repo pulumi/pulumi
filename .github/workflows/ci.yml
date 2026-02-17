@@ -55,6 +55,11 @@ on:
         default: 0
         description: "Retry tests n times if there are failures"
         type: number
+      fuzz-test-optional:
+        required: false
+        default: false
+        description: "If true, fuzz test failures won't block the workflow"
+        type: boolean
     secrets:
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
@@ -450,6 +455,7 @@ jobs:
     name: Fuzz Test
     uses: ./.github/workflows/ci-run-test.yml
     needs: [matrix]
+    continue-on-error: ${{ inputs.fuzz-test-optional }}
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
