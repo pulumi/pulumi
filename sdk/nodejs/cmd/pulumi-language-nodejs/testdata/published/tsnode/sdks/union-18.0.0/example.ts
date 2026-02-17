@@ -2,6 +2,9 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
+import * as inputs from "./types/input";
+import * as outputs from "./types/output";
+import * as enums from "./types/enums";
 import * as utilities from "./utilities";
 
 export class Example extends pulumi.CustomResource {
@@ -32,7 +35,9 @@ export class Example extends pulumi.CustomResource {
     }
 
     declare public readonly mapMapUnionProperty: pulumi.Output<{[key: string]: {[key: string]: string | string[]}} | undefined>;
+    declare public readonly stringEnumUnionListProperty: pulumi.Output<(string | enums.AccessRights)[] | undefined>;
     declare public readonly stringOrIntegerProperty: pulumi.Output<string | number | undefined>;
+    declare public readonly typedEnumProperty: pulumi.Output<string | enums.BlobType | undefined>;
 
     /**
      * Create a Example resource with the given unique name, arguments, and options.
@@ -46,10 +51,14 @@ export class Example extends pulumi.CustomResource {
         opts = opts || {};
         if (!opts.id) {
             resourceInputs["mapMapUnionProperty"] = args?.mapMapUnionProperty;
+            resourceInputs["stringEnumUnionListProperty"] = args?.stringEnumUnionListProperty;
             resourceInputs["stringOrIntegerProperty"] = args?.stringOrIntegerProperty;
+            resourceInputs["typedEnumProperty"] = args?.typedEnumProperty;
         } else {
             resourceInputs["mapMapUnionProperty"] = undefined /*out*/;
+            resourceInputs["stringEnumUnionListProperty"] = undefined /*out*/;
             resourceInputs["stringOrIntegerProperty"] = undefined /*out*/;
+            resourceInputs["typedEnumProperty"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Example.__pulumiType, name, resourceInputs, opts);
@@ -61,5 +70,7 @@ export class Example extends pulumi.CustomResource {
  */
 export interface ExampleArgs {
     mapMapUnionProperty?: pulumi.Input<{[key: string]: pulumi.Input<{[key: string]: pulumi.Input<string | pulumi.Input<string>[]>}>}>;
+    stringEnumUnionListProperty?: pulumi.Input<pulumi.Input<string | enums.AccessRights>[]>;
     stringOrIntegerProperty?: pulumi.Input<string | number>;
+    typedEnumProperty?: pulumi.Input<string | enums.BlobType>;
 }

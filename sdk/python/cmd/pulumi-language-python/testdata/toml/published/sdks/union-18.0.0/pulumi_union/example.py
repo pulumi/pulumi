@@ -13,6 +13,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
+from ._enums import *
 
 __all__ = ['ExampleArgs', 'Example']
 
@@ -20,14 +21,20 @@ __all__ = ['ExampleArgs', 'Example']
 class ExampleArgs:
     def __init__(__self__, *,
                  map_map_union_property: Optional[pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]] = None,
-                 string_or_integer_property: Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]] = None):
+                 string_enum_union_list_property: Optional[pulumi.Input[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]] = None,
+                 string_or_integer_property: Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]] = None,
+                 typed_enum_property: Optional[pulumi.Input[Union[_builtins.str, 'BlobType']]] = None):
         """
         The set of arguments for constructing a Example resource.
         """
         if map_map_union_property is not None:
             pulumi.set(__self__, "map_map_union_property", map_map_union_property)
+        if string_enum_union_list_property is not None:
+            pulumi.set(__self__, "string_enum_union_list_property", string_enum_union_list_property)
         if string_or_integer_property is not None:
             pulumi.set(__self__, "string_or_integer_property", string_or_integer_property)
+        if typed_enum_property is not None:
+            pulumi.set(__self__, "typed_enum_property", typed_enum_property)
 
     @_builtins.property
     @pulumi.getter(name="mapMapUnionProperty")
@@ -39,6 +46,15 @@ class ExampleArgs:
         pulumi.set(self, "map_map_union_property", value)
 
     @_builtins.property
+    @pulumi.getter(name="stringEnumUnionListProperty")
+    def string_enum_union_list_property(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]]:
+        return pulumi.get(self, "string_enum_union_list_property")
+
+    @string_enum_union_list_property.setter
+    def string_enum_union_list_property(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]]):
+        pulumi.set(self, "string_enum_union_list_property", value)
+
+    @_builtins.property
     @pulumi.getter(name="stringOrIntegerProperty")
     def string_or_integer_property(self) -> Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]]:
         return pulumi.get(self, "string_or_integer_property")
@@ -46,6 +62,15 @@ class ExampleArgs:
     @string_or_integer_property.setter
     def string_or_integer_property(self, value: Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]]):
         pulumi.set(self, "string_or_integer_property", value)
+
+    @_builtins.property
+    @pulumi.getter(name="typedEnumProperty")
+    def typed_enum_property(self) -> Optional[pulumi.Input[Union[_builtins.str, 'BlobType']]]:
+        return pulumi.get(self, "typed_enum_property")
+
+    @typed_enum_property.setter
+    def typed_enum_property(self, value: Optional[pulumi.Input[Union[_builtins.str, 'BlobType']]]):
+        pulumi.set(self, "typed_enum_property", value)
 
 
 @pulumi.type_token("union:index:Example")
@@ -55,7 +80,9 @@ class Example(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  map_map_union_property: Optional[pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]] = None,
+                 string_enum_union_list_property: Optional[pulumi.Input[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]] = None,
                  string_or_integer_property: Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]] = None,
+                 typed_enum_property: Optional[pulumi.Input[Union[_builtins.str, 'BlobType']]] = None,
                  __props__=None):
         """
         Create a Example resource with the given unique name, props, and options.
@@ -88,7 +115,9 @@ class Example(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  map_map_union_property: Optional[pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]]]]] = None,
+                 string_enum_union_list_property: Optional[pulumi.Input[Sequence[pulumi.Input[Union[_builtins.str, 'AccessRights']]]]] = None,
                  string_or_integer_property: Optional[pulumi.Input[Union[_builtins.str, _builtins.int]]] = None,
+                 typed_enum_property: Optional[pulumi.Input[Union[_builtins.str, 'BlobType']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -99,7 +128,9 @@ class Example(pulumi.CustomResource):
             __props__ = ExampleArgs.__new__(ExampleArgs)
 
             __props__.__dict__["map_map_union_property"] = map_map_union_property
+            __props__.__dict__["string_enum_union_list_property"] = string_enum_union_list_property
             __props__.__dict__["string_or_integer_property"] = string_or_integer_property
+            __props__.__dict__["typed_enum_property"] = typed_enum_property
         super(Example, __self__).__init__(
             'union:index:Example',
             resource_name,
@@ -123,7 +154,9 @@ class Example(pulumi.CustomResource):
         __props__ = ExampleArgs.__new__(ExampleArgs)
 
         __props__.__dict__["map_map_union_property"] = None
+        __props__.__dict__["string_enum_union_list_property"] = None
         __props__.__dict__["string_or_integer_property"] = None
+        __props__.__dict__["typed_enum_property"] = None
         return Example(resource_name, opts=opts, __props__=__props__)
 
     @_builtins.property
@@ -132,7 +165,17 @@ class Example(pulumi.CustomResource):
         return pulumi.get(self, "map_map_union_property")
 
     @_builtins.property
+    @pulumi.getter(name="stringEnumUnionListProperty")
+    def string_enum_union_list_property(self) -> pulumi.Output[Optional[Sequence[_builtins.str]]]:
+        return pulumi.get(self, "string_enum_union_list_property")
+
+    @_builtins.property
     @pulumi.getter(name="stringOrIntegerProperty")
     def string_or_integer_property(self) -> pulumi.Output[Optional[Any]]:
         return pulumi.get(self, "string_or_integer_property")
+
+    @_builtins.property
+    @pulumi.getter(name="typedEnumProperty")
+    def typed_enum_property(self) -> pulumi.Output[Optional[_builtins.str]]:
+        return pulumi.get(self, "typed_enum_property")
 
