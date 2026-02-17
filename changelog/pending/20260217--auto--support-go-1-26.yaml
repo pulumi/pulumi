@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto
-  description: Support Go 1.26
