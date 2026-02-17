@@ -55,6 +55,36 @@ func init() {
 
 				require.Equal(l, resource.NewProperty("forty two"),
 					si2.Outputs["stringOrIntegerProperty"])
+
+				l.Logf("# Checking List<Union<String, Enum>>")
+
+				seul := RequireSingleNamedResource(l, snapshot.Resources, "stringEnumUnionListExample")
+				require.Equal(l,
+					resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty("Listen"),
+						resource.NewProperty("Send"),
+						resource.NewProperty("NotAnEnumValue"),
+					}),
+					seul.Outputs["stringEnumUnionListProperty"])
+
+				l.Logf("# Checking typed enum (safe)")
+
+				safeEnum := RequireSingleNamedResource(l, snapshot.Resources, "safeEnumExample")
+				require.Equal(l,
+					resource.NewProperty("Block"),
+					safeEnum.Outputs["typedEnumProperty"])
+
+				l.Logf("# Checking typed enum (output)")
+
+				enumOutputExample := RequireSingleNamedResource(l, snapshot.Resources, "enumOutputExample")
+				require.Equal(l,
+					resource.NewProperty("Block"),
+					enumOutputExample.Outputs["type"])
+
+				outputEnum := RequireSingleNamedResource(l, snapshot.Resources, "outputEnumExample")
+				require.Equal(l,
+					resource.NewProperty("Block"),
+					outputEnum.Outputs["typedEnumProperty"])
 			},
 		}},
 	}
