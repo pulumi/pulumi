@@ -19,6 +19,13 @@ func main() {
 		if err != nil {
 			return err
 		}
+		_, err = coolmodule.NewSomeResource(ctx, "thirdResource", &coolmodule.SomeResourceArgs{
+			TheInput:     pulumi.Bool(true),
+			ResourceName: pulumi.String("my-cluster"),
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }
