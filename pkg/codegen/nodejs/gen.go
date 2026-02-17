@@ -1652,7 +1652,7 @@ func (mod *modContext) genHeader(w io.Writer, imports []string, externalImports 
 	}
 
 	if len(importedTypes) > 0 {
-		var modules []string
+		modules := slice.Prealloc[string](len(importedTypes))
 		for module := range importedTypes {
 			modules = append(modules, module)
 		}

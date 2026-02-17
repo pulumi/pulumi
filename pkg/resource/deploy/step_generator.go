@@ -864,8 +864,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		if err != nil {
 			return nil, false, err
 		}
-		if goal.Custom && !sdkproviders.IsProviderType(goal.Type) ||
-			sdkproviders.IsProviderType(goal.Type) && hasSkippedDeps {
+		if (goal.Custom && !sdkproviders.IsProviderType(goal.Type)) || hasSkippedDeps {
 			// Custom resources that aren't in state just have to be skipped.
 			if old == nil {
 				sg.sames[urn] = true
@@ -1739,7 +1738,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			}
 
 			sg.sames[urn] = true
-			updateSteps = []Step{NewSameStep(sg.deployment, event, old, new)}
+			updateSteps = slice.Prealloc[Step](1 + len(sg.deployment.oldViews[urn]))
+			updateSteps = append(updateSteps, NewSameStep(sg.deployment, event, old, new))
 
 			// We're generating a same step for a resource. Generate same steps for any of its views as well.
 			viewSteps := slice.Map(sg.deployment.oldViews[urn], func(res *resource.State) Step {
@@ -1879,6 +1879,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				// To do this, we'll utilize the dependency information contained in the snapshot if it is
 				// trustworthy, which is interpreted by the DependencyGraph type.
 				var steps []Step
+				//nolint:prealloc // capacity depends on dynamic calculations
 				var toReplace []dependentReplace
 
 				// At this point if we're in a preview we might be trying to work out a dependent replace set for a
@@ -1935,8 +1936,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 								"as it is currently marked for protection. To unprotect the resource, "+
 								"remove the `protect` flag from the resource in your Pulumi "+
 								"program and run `pulumi up`, or use the command:\n"+
-								"`pulumi state unprotect %q`",
-								dependentResource.URN, urn, dependentResource.URN)
+								"`pulumi state unprotect %s`",
+								dependentResource.URN, urn, dependentResource.URN.Quote())
 							sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
 							sg.sawError = true
 							return nil, result.BailErrorf("%s", message)

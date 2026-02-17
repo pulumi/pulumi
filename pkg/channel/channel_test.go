@@ -30,7 +30,7 @@ func TestFilterRead(t *testing.T) {
 	filter := func(i int) bool { return i < 10 }
 	filtered := FilterRead(ch, filter)
 	seenP := promise.Run(func() ([]int, error) {
-		var out []int
+		var out []int //nolint:prealloc // capacity unknown ahead of time
 		for i := range filtered {
 			out = append(out, i)
 		}

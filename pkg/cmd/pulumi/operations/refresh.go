@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -286,10 +287,10 @@ func NewRefreshCmd() *cobra.Command {
 				}
 			}
 
-			targetUrns := []string{}
+			targetUrns := slice.Prealloc[string](len(*targets))
 			targetUrns = append(targetUrns, *targets...)
 
-			excludeUrns := []string{}
+			excludeUrns := slice.Prealloc[string](len(*excludes))
 			excludeUrns = append(excludeUrns, *excludes...)
 
 			opts.Engine = engine.UpdateOptions{

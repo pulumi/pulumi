@@ -43,10 +43,19 @@ export interface ObjectType {
 }
 
 /**
+ * https://www.pulumi.com/docs/iac/using-pulumi/extending-pulumi/schema/#enumvalue
+ */
+export interface EnumValue {
+    name: string;
+    value: string | number;
+    description?: string;
+}
+
+/**
  * https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#complextype
  */
 export interface ComplexType extends ObjectType {
-    enum?: string[];
+    enum?: EnumValue[];
 }
 
 /**
@@ -127,11 +136,19 @@ export function generateSchema(
     }
 
     for (const [name, type] of Object.entries(typeDefinitions)) {
-        result.types[`${providerName}:index:${name}`] = {
-            type: "object",
-            properties: type.properties,
-            required: required(type.properties),
-        };
+        const typeName = `${providerName}:index:${name}`;
+        if (type.enum) {
+            result.types[typeName] = {
+                type: type.type,
+                enum: type.enum,
+            };
+        } else if (type.properties) {
+            result.types[`${providerName}:index:${name}`] = {
+                type: "object",
+                properties: type.properties,
+                required: required(type.properties),
+            };
+        }
     }
 
     return result;

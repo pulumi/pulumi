@@ -21,7 +21,6 @@ import (
 	"sort"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // Generates code to build and regsiter ResourceModule and
@@ -92,6 +91,7 @@ func makeResourceModuleInfo(pkg, mod, fqn string) resourceModuleInfo {
 }
 
 func allResourceModuleInfos(root *modContext) []resourceModuleInfo {
+	//nolint:prealloc // must be non-nil for JSON serialization to produce [] not null
 	result := []resourceModuleInfo{}
 	for _, mctx := range root.walkSelfWithDescendants() {
 		result = append(result, collectResourceModuleInfos(mctx)...)
@@ -126,7 +126,7 @@ func collectResourceModuleInfos(mctx *modContext) []resourceModuleInfo {
 		}
 	}
 
-	result := slice.Prealloc[resourceModuleInfo](len(byMod))
+	result := make([]resourceModuleInfo, 0, len(byMod))
 	for _, rmi := range byMod {
 		result = append(result, rmi)
 	}
@@ -153,6 +153,7 @@ type resourcePackageInfo struct {
 }
 
 func allResourcePackageInfos(root *modContext) []resourcePackageInfo {
+	//nolint:prealloc // must be non-nil for JSON serialization to produce [] not null
 	result := []resourcePackageInfo{}
 	for _, mctx := range root.walkSelfWithDescendants() {
 		result = append(result, collectResourcePackageInfos(mctx)...)

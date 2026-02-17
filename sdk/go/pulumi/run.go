@@ -25,6 +25,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -250,7 +251,7 @@ func RegisterPackage(info PackageInfo) {
 }
 
 func printRequiredPlugins() {
-	plugins := []PackageInfo{}
+	plugins := slice.Prealloc[PackageInfo](len(packageRegistry))
 	for info := range packageRegistry {
 		plugins = append(plugins, info)
 	}

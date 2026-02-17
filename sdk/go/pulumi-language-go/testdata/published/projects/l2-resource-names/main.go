@@ -2,6 +2,8 @@ package main
 
 import (
 	"example.com/pulumi-names/sdk/go/v6/names"
+	"example.com/pulumi-names/sdk/go/v6/names/mod"
+	"example.com/pulumi-names/sdk/go/v6/names/mod/nested"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -26,6 +28,18 @@ func main() {
 			return err
 		}
 		_, err = names.NewResResource(ctx, "res4", &names.ResResourceArgs{
+			Value: pulumi.Bool(true),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = mod.NewRes(ctx, "res5", &mod.ResArgs{
+			Value: pulumi.Bool(true),
+		})
+		if err != nil {
+			return err
+		}
+		_, err = nested.NewRes(ctx, "res6", &nested.ResArgs{
 			Value: pulumi.Bool(true),
 		})
 		if err != nil {

@@ -949,7 +949,7 @@ type PluginProject struct {
 	// https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
 	// together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
 	// Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
-	PulumiVersionRange string `json:"pulumiVersionRange" yaml:"pulumiVersionRange"`
+	RequiredPulumiVersion string `json:"requiredPulumiVersion" yaml:"requiredPulumiVersion"`
 }
 
 var _ BaseProject = (*PluginProject)(nil)

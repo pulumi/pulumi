@@ -1598,7 +1598,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	// collect here all the deferred output variables
 	// these must be declared before the component instantiation
 	componentInputs := slice.Prealloc[*model.Attribute](len(r.Inputs))
-	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	componentDeferredOutputVariables := slice.Prealloc[*pcl.DeferredOutputVariable](len(r.Inputs))
 	for _, attr := range r.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, r, attr.Value)
 		if len(deferredOutputs) > 0 {
@@ -2089,17 +2089,20 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	mod = strings.ToLower(mod)
 	originalMod = strings.ToLower(originalMod)
-	info, ok := g.getGoPackageInfo(pkg)
-	if !ok {
-		needsAliasing := strings.Contains(mod, "-")
-		if needsAliasing {
-			var moduleAlias strings.Builder
-			for part := range strings.SplitSeq(mod, "-") {
-				moduleAlias.WriteString(strcase.ToLowerCamel(part))
+	info, _ := g.getGoPackageInfo(pkg)
+
+	if info.ImportBasePath == "" {
+		if _, ok := g.packages[pkg]; !ok {
+			needsAliasing := strings.Contains(mod, "-")
+			if needsAliasing {
+				var moduleAlias strings.Builder
+				for part := range strings.SplitSeq(mod, "-") {
+					moduleAlias.WriteString(strcase.ToLowerCamel(part))
+				}
+				return moduleAlias.String()
 			}
-			return moduleAlias.String()
+			return mod
 		}
-		return strings.ToLower(mod)
 	}
 
 	importPath := func(mod string) string {
@@ -2128,18 +2131,14 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 		return g.importer.Import(path, alias)
 	}
 
-	// Trim off anything after the first '/'.
-	// This handles transforming modules like s3/bucket to s3 (as found in
-	// aws:s3/bucket:Bucket).
-	mod = strings.SplitN(mod, "/", 2)[0]
-
-	path = importPath(mod)
 	pkgName := mod
 	if len(pkgName) == 0 || pkgName == IndexToken {
 		// If mod is empty, then the package is the root package.
 		pkgName = pkg
 	}
-	return g.importer.Import(path, pkgName)
+
+	pkgNameParts := strings.Split(pkgName, "/")
+	return g.importer.Import(path, pkgNameParts[len(pkgNameParts)-1])
 }
 
 // Go needs complete package definitions in order to properly resolve names.

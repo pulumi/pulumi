@@ -581,7 +581,7 @@ func componentOutputType(pclType model.Type) string {
 }
 
 func (g *generator) genObjectTypedConfig(w io.Writer, objectType *model.ObjectType) {
-	attributeKeys := []string{}
+	attributeKeys := slice.Prealloc[string](len(objectType.Properties))
 	for attributeKey := range objectType.Properties {
 		attributeKeys = append(attributeKeys, attributeKey)
 	}
@@ -1253,7 +1253,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	// collect here all the deferred output variables
 	// these must be declared before the component instantiation
 	componentInputs := slice.Prealloc[*model.Attribute](len(component.Inputs))
-	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	componentDeferredOutputVariables := slice.Prealloc[*pcl.DeferredOutputVariable](len(component.Inputs))
 	for _, attr := range component.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, component, attr.Value)
 		componentInputs = append(componentInputs, &model.Attribute{

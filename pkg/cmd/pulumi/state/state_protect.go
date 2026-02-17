@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
 	"github.com/spf13/cobra"
@@ -182,7 +183,7 @@ func protectMultipleResources(
 			}
 
 			if len(errs) > 0 {
-				var errMsgs []string
+				errMsgs := slice.Prealloc[string](len(errs))
 				for _, err := range errs {
 					errMsgs = append(errMsgs, err.Error())
 				}

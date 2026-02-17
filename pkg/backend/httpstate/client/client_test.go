@@ -633,6 +633,7 @@ func TestListPackages(t *testing.T) {
 
 		// Call ListPackages and collect results
 		searchName := "my-package"
+		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.PackageMetadata{}
 		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
 			require.NoError(t, err)
@@ -727,6 +728,7 @@ func TestListPackages(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		searchName := "my-package"
+		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.PackageMetadata{}
 		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
 			require.NoError(t, err)

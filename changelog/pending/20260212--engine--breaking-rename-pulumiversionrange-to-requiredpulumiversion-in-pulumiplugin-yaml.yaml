@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: "BREAKING: Rename `pulumiVersionRange` to `requiredPulumiVersion` in `PulumiPlugin.yaml`"

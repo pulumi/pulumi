@@ -1601,7 +1601,7 @@ func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *sch
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	if goPkgInfo.Generics != GenericsSettingNone {
+	if goPkgInfo.Generics == GenericsSettingSideBySide || goPkgInfo.Generics == GenericsSettingGenericsOnly {
 		// ToOutput implementation for pulumix.Input.
 		fmt.Fprintf(w, "func (in *%sPtr) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", typeName, name)
 		fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", name)
@@ -3551,10 +3551,15 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 // different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
 // in a second step, we avoid collision and redeclaration.
 func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*nestedTypeInfo) []string {
-	var names []string
+	// Pre-calculate total capacity for names
+	totalNames := 0
+	for _, info := range types {
+		totalNames += len(info.names)
+	}
+	names := slice.Prealloc[string](totalNames)
 
 	// map iteration is unstable so sort items for deterministic codegen
-	sortedElems := []string{}
+	sortedElems := slice.Prealloc[string](len(types))
 	for k := range types {
 		sortedElems = append(sortedElems, k)
 	}
@@ -3563,7 +3568,7 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*n
 	for _, elementTypeName := range sortedElems {
 		info := types[elementTypeName]
 
-		collectionTypes := []string{}
+		collectionTypes := slice.Prealloc[string](len(info.names))
 		for k := range info.names {
 			collectionTypes = append(collectionTypes, k)
 		}
@@ -3855,6 +3860,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 
 // ExtractModulePath creates a go module path for a given package.
 func ExtractModulePath(extPkg schema.PackageReference) string {
+	contract.Assertf(extPkg != nil, "ExtractModulePath(nil) is not allowed")
 	var vPath string
 	version := extPkg.Version()
 	name := extPkg.Name()
@@ -5004,7 +5010,7 @@ func GeneratePackage(tool string,
 			if hasOutputs {
 				goImports = []string{"context", "reflect"}
 				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-				if goPkgInfo.Generics != GenericsSettingNone {
+				if goPkgInfo.Generics == GenericsSettingSideBySide || goPkgInfo.Generics == GenericsSettingGenericsOnly {
 					imports["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 				}
 			}
