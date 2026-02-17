@@ -34,6 +34,7 @@ export class Resource extends pulumi.CustomResource {
     }
 
     declare public readonly data: pulumi.Output<outputs.Data>;
+    declare public readonly dataList: pulumi.Output<outputs.InnerData[] | undefined>;
     /**
      * A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
      */
@@ -54,9 +55,11 @@ export class Resource extends pulumi.CustomResource {
                 throw new Error("Missing required property 'data'");
             }
             resourceInputs["data"] = args?.data;
+            resourceInputs["dataList"] = args?.dataList;
             resourceInputs["nonPlainData"] = args?.nonPlainData;
         } else {
             resourceInputs["data"] = undefined /*out*/;
+            resourceInputs["dataList"] = undefined /*out*/;
             resourceInputs["nonPlainData"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
@@ -69,6 +72,7 @@ export class Resource extends pulumi.CustomResource {
  */
 export interface ResourceArgs {
     data: inputs.DataArgs;
+    dataList?: inputs.InnerDataArgs[];
     /**
      * A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
      */
