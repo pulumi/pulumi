@@ -150,6 +150,11 @@ jobs:
         if: ${{ runner.os == 'windows' || runner.os == 'macOS' }}
         run: |
           npm install typescript -g
+      - name: Debug
+        if: ${{ runner.os == 'windows' }}
+        run: |
+          echo TMP=$TMP
+          echo TEMP=$TEMP
       - name: "macOS use coreutils"
         if: ${{ runner.os == 'macOS' }}
         run: |
@@ -229,8 +234,8 @@ jobs:
       - name: Set up JDK 11
         uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
-          java-version: '11'
-          distribution: 'temurin'
+          java-version: "11"
+          distribution: "temurin"
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@d9c87d481d55275bb5441eef3fe0e46805f9ef70 # v3
         with:

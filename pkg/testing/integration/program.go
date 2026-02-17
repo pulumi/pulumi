@@ -2003,6 +2003,9 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		tmpdir = targetDir
 		projdir = targetDir
 	}
+
+	pt.t.Logf("tmpdir: %s\n", tmpdir)
+
 	if wd := pt.opts.RelativeWorkDir; wd != "" {
 		projdir = filepath.Join(projdir, wd)
 	}
