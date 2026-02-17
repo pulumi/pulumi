@@ -84,6 +84,28 @@ func (p *ConformanceComponentProvider) GetSchema(
 	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
 }
 
+func marshalReplacementTrigger(pv resource.PropertyValue) *structpb.Value {
+	if pv.IsNull() {
+		return nil
+	}
+	v, err := plugin.MarshalPropertyValue("replacementTrigger", pv, plugin.MarshalOptions{})
+	if err != nil {
+		return nil
+	}
+	return v
+}
+
+func marshalInputs(inputs resource.PropertyMap) *structpb.Struct {
+	if len(inputs) == 0 {
+		return &structpb.Struct{Fields: map[string]*structpb.Value{}}
+	}
+	s, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{})
+	if err != nil {
+		return &structpb.Struct{Fields: map[string]*structpb.Value{}}
+	}
+	return s
+}
+
 func (p *ConformanceComponentProvider) Construct(
 	ctx context.Context,
 	req plugin.ConstructRequest,
@@ -104,11 +126,20 @@ func (p *ConformanceComponentProvider) Construct(
 		return plugin.ConstructResponse{}, fmt.Errorf("unknown type %v", req.Type)
 	}
 
-	// Register the parent component.
+	// Register the parent component. Include Object so the engine can build the goal's
+	// properties, and ensure ReplaceOnChanges is a non-nil slice for proper serialization.
+	replaceOnChanges := req.Options.ReplaceOnChanges
+	if replaceOnChanges == nil {
+		replaceOnChanges = []string{}
+	}
 	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:     "conformance-component:index:Simple",
-		Name:     req.Name,
-		Provider: req.Options.Providers["conformance-component"],
+		Type:               "conformance-component:index:Simple",
+		Name:               req.Name,
+		Provider:           req.Options.Providers["conformance-component"],
+		Object:             marshalInputs(req.Inputs),
+		IgnoreChanges:      req.Options.IgnoreChanges,
+		ReplaceOnChanges:   replaceOnChanges,
+		ReplacementTrigger: marshalReplacementTrigger(req.Options.ReplacementTrigger),
 	})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)

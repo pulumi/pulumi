@@ -1,0 +1,5 @@
+name: provider-replace-on-changes-component
+runtime:
+  name: nodejs
+  options:
+    typescript: false
