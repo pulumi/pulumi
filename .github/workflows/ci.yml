@@ -455,7 +455,6 @@ jobs:
     name: Fuzz Test
     uses: ./.github/workflows/ci-run-test.yml
     needs: [matrix]
-    continue-on-error: ${{ inputs.fuzz-test-optional }}
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
@@ -467,6 +466,7 @@ jobs:
       enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       version-set: ${{ needs.matrix.outputs.version-set }}
+      continue-on-error: ${{ inputs.fuzz-test-optional }}
     secrets: inherit
 
   test-collect-reports:
