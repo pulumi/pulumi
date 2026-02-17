@@ -251,7 +251,7 @@ func (h *testHost) ResolvePlugin(
 			if err != nil {
 				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
 			}
-			if spec.Name == string(pkg) && spec.Version == nil || spec.Version.EQ(providerVersion) {
+			if spec.Name == string(pkg) && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
 				return &workspace.PluginInfo{
 					Name:    spec.Name,
 					Kind:    spec.Kind,
