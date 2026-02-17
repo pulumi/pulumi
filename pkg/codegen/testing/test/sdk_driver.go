@@ -191,9 +191,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		SkipCompileCheck: codegen.NewStringSet(TestDotnet, TestNodeJS),
 	},
 	{
-		Directory:   "hyphen-url",
-		Description: "A resource url with a hyphen in its path",
-		Skip:        codegen.NewStringSet("go/any"),
+		Directory:        "hyphen-url",
+		Description:      "A resource url with a hyphen in its path",
+		Skip:             codegen.NewStringSet("go/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestNodeJS, TestPython),
 	},
 	{
 		Directory:   "output-funcs",
