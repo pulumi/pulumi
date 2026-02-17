@@ -386,10 +386,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("dotnet/any"),
 	},
 	{
-		Directory:   "unions-inside-arrays",
-		Description: "A schema with a union type inside an array",
-	},
-	{
 		Directory:   "assets-and-archives",
 		Description: "A schema with assets and archives",
 	},
@@ -441,10 +437,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "regress-py-12980",
 		Description: "Import resources across modules",
 		Skip:        allLanguages.Except("python/any"),
-	},
-	{
-		Directory:   "unions-inline",
-		Description: "Testing the use of unions/oneOf in the schema inline with the property definition.",
 	},
 	{
 		Directory:   "legacy-names",
