@@ -538,37 +538,10 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 // call args where the binder doesn't individually wrap each field value with __convert.
 func (g *generator) genInputValue(w io.Writer, value model.Expression, destType model.Type) {
 	typeName := g.argumentTypeName(destType, true)
-	isPulumiType := strings.HasPrefix(typeName, "pulumi.")
-	switch value := value.(type) {
-	case *model.LiteralValueExpression:
-		if isPulumiType {
-			switch value.Type() {
-			case model.StringType:
-				g.Fgenf(w, "%s(", typeName)
-				g.genStringLiteral(w, value.Value.AsString(), true)
-				g.Fgenf(w, ")")
-			case model.NumberType, model.IntType:
-				bf := value.Value.AsBigFloat()
-				if i, acc := bf.Int64(); acc == big.Exact {
-					g.Fgenf(w, "%s(%d)", typeName, i)
-				} else {
-					f, _ := bf.Float64()
-					g.Fgenf(w, "%s(%g)", typeName, f)
-				}
-			case model.BoolType:
-				g.Fgenf(w, "%s(%v)", typeName, value.Value.True())
-			default:
-				g.Fgenf(w, "%.v", value)
-			}
-		} else {
-			g.Fgenf(w, "%.v", value)
-		}
-	default:
-		if isPulumiType {
-			g.Fgenf(w, "%s(%.v)", typeName, value)
-		} else {
-			g.Fgenf(w, "%.v", value)
-		}
+	if typeName != "" && strings.HasPrefix(typeName, "pulumi.") {
+		g.Fgenf(w, "%s(%.v)", typeName, value)
+	} else {
+		g.Fgenf(w, "%.v", value)
 	}
 }
 
