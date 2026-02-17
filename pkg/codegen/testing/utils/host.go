@@ -101,7 +101,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"std", "1.0.0"},
 		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
 		SchemaProvider{"aws", "5.4.0"},
-		SchemaProvider{"azure-native", "1.56.0"},
 		SchemaProvider{"eks", "0.40.0"},
 		SchemaProvider{"docker", "4.0.0-alpha.0"},
 		SchemaProvider{"awsx", "1.0.0-beta.5"},
@@ -126,6 +125,8 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"aliases", "1.0.0"},
 		SchemaProvider{"dangling-reference-bad", "0.1.0"},
 		SchemaProvider{"dangling-reference-good", "0.1.0"},
+
+		SchemaProvider{"azure-native", "2.41.0"},
 
 		// parameterized schemas
 		SchemaProvider{"tfe", "0.68.2"},
