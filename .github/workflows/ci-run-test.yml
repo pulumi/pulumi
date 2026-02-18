@@ -127,12 +127,12 @@ jobs:
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
       TEST_ALL_DEPS: ""
-      NPM_CONFIG_CACHE: ${{ runner.os == 'Windows' && 'D:/npm-cache' || '' }}
-      YARN_CACHE_FOLDER: ${{ runner.os == 'Windows' && 'D:/yarn-cache' || '' }}
-      PNPM_HOME: ${{ runner.os == 'Windows' && 'D:/pnpm-cache' || '' }}
-      BUN_INSTALL: ${{ runner.os == 'Windows' && 'D:/bun' || '' }}
-      GOCACHE: ${{ runner.os == 'Windows' && 'D:/go-build-cache' || '' }}
-      GOMODCACHE: ${{ runner.os == 'Windows' && 'D:/go-mod-cache' || '' }}
+      NPM_CONFIG_CACHE: ${{ contains(inputs.platform, 'windows') && 'D:/npm-cache' || '' }}
+      YARN_CACHE_FOLDER: ${{ contains(inputs.platform, 'windows') && 'D:/yarn-cache' || '' }}
+      PNPM_HOME: ${{ contains(inputs.platform, 'windows') && 'D:/pnpm-cache' || '' }}
+      BUN_INSTALL: ${{ contains(inputs.platform, 'windows') && 'D:/bun' || '' }}
+      GOCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-build-cache' || '' }}
+      GOMODCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-mod-cache' || '' }}
 
     runs-on: ${{ inputs.platform }}
 
