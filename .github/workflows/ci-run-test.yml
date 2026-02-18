@@ -95,11 +95,44 @@ env:
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
 
 jobs:
+  debug-temp:
+    name: Debug Temp Directory Info
+    runs-on: ${{ inputs.platform }}
+    steps:
+      - name: Print temp directory info (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          echo "TEMP: $env:TEMP"
+          echo "TMP: $env:TMP"
+          echo "Current directory: $(Get-Location)"
+          echo "GitHub workspace: ${{ github.workspace }}"
+          echo "Runner temp: ${{ runner.temp }}"
+          echo ""
+          echo "Drive information:"
+          Get-PSDrive -PSProvider FileSystem
+          echo ""
+          echo "Testing Go TempDir:"
+          go run -<<'EOF'
+          package main
+          import ("fmt"; "os")
+          func main() {
+            fmt.Println("Go TempDir:", os.TempDir())
+          }
+          EOF
+        shell: pwsh
+
   test:
     name: ${{ inputs.test-name }}
+    needs: debug-temp
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
       TEST_ALL_DEPS: ""
+      NPM_CONFIG_CACHE: ${{ runner.os == 'Windows' && 'D:/npm-cache' || '' }}
+      YARN_CACHE_FOLDER: ${{ runner.os == 'Windows' && 'D:/yarn-cache' || '' }}
+      PNPM_HOME: ${{ runner.os == 'Windows' && 'D:/pnpm-cache' || '' }}
+      BUN_INSTALL: ${{ runner.os == 'Windows' && 'D:/bun' || '' }}
+      GOCACHE: ${{ runner.os == 'Windows' && 'D:/go-build-cache' || '' }}
+      GOMODCACHE: ${{ runner.os == 'Windows' && 'D:/go-mod-cache' || '' }}
 
     runs-on: ${{ inputs.platform }}
 
