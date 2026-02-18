@@ -464,6 +464,10 @@ type resmon struct {
 	// cleared by the RegisterResourceOutputs publish step. Only populated when observer is non-nil.
 	componentAliases     map[resource.URN][]resource.URN
 	componentAliasesLock sync.Mutex
+
+	// For multistack: the stack and project names to embed in Goals for URN generation.
+	goalStack   tokens.QName
+	goalProject tokens.PackageName
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -494,6 +498,8 @@ func newResourceMonitor(
 		requests:            make(chan defaultProviderRequest),
 		providerRegChan:     regChan,
 		cancel:              cancel,
+		goalStack:           src.runinfo.Target.Name.Q(),
+		goalProject:         src.Project(),
 	}
 
 	// New up an engine RPC server.
@@ -523,6 +529,8 @@ func newResourceMonitor(
 		grpcDialOptions:     src.plugctx.DialOptions,
 		observer:            src.observer,
 		componentAliases:    map[resource.URN][]resource.URN{},
+		goalStack:           src.runinfo.Target.Name.Q(),
+		goalProject:         src.Project(),
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -1306,6 +1314,8 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		sourcePosition:          sourcePosition,
 		stackTrace:              stackTrace,
 		done:                    make(chan *ReadResult),
+		stack:                   rm.goalStack,
+		project:                 rm.goalProject,
 	}
 	select {
 	case rm.regReadChan <- event:
@@ -2690,6 +2700,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
+			Stack:                   rm.goalStack,
+			Project:                 rm.goalProject,
 		}.Make()
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{
@@ -3016,6 +3028,8 @@ type readResourceEvent struct {
 	sourcePosition          string
 	stackTrace              []resource.StackFrame
 	done                    chan *ReadResult
+	stack                   tokens.QName
+	project                 tokens.PackageName
 }
 
 var _ ReadResourceEvent = (*readResourceEvent)(nil)
@@ -3034,6 +3048,8 @@ func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
 }
 func (g *readResourceEvent) SourcePosition() string            { return g.sourcePosition }
 func (g *readResourceEvent) StackTrace() []resource.StackFrame { return g.stackTrace }
+func (g *readResourceEvent) Stack() tokens.QName               { return g.stack }
+func (g *readResourceEvent) Project() tokens.PackageName       { return g.project }
 
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result

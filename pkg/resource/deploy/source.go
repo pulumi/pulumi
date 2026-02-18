@@ -137,6 +137,10 @@ type ReadResourceEvent interface {
 	SourcePosition() string
 	// The stack grace at the time of the read
 	StackTrace() []resource.StackFrame
+	// Stack returns the per-source stack name override for multistack deployments.
+	Stack() tokens.QName
+	// Project returns the per-source project name override for multistack deployments.
+	Project() tokens.PackageName
 }
 
 type ReadResult struct {
