@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -76,8 +77,12 @@ func WriteYarnRCForTest(root string) error {
 
 // NewEnvironment returns a new Environment object, located in a temp directory.
 func NewEnvironment(t *testing.T) *Environment {
+	dir := ""
+	if runtime.GOOS == "windows" {
+		dir = "D:\\" // Use some env var to set this?
+	}
 	//nolint:usetesting // We control the lifecycle of the environment.
-	root, err := os.MkdirTemp("", "test-env")
+	root, err := os.MkdirTemp(dir, "test-env")
 	require.NoError(t, err, "creating temp directory")
 	require.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
 
