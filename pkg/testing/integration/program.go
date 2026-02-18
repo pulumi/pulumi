@@ -1996,11 +1996,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		tmpdir = targetDir
 		projdir = targetDir
 	} else {
-		dir := ""
-		if runtime.GOOS == "windows" {
-			dir = "D:\\"
-		}
-		targetDir, tempErr := os.MkdirTemp(dir, stackName+"-")
+		targetDir, tempErr := os.MkdirTemp("", stackName+"-")
 		if tempErr != nil {
 			return "", "", fmt.Errorf("Couldn't create temporary directory: %w", tempErr)
 		}

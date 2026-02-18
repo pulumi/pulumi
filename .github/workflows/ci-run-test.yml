@@ -101,15 +101,16 @@ jobs:
       PULUMI_HOME: ${{ github.workspace }}/home
       TEST_ALL_DEPS: ""
       # Use the D drive for package manager caches on windows
-      NPM_CONFIG_CACHE: ${{ contains(inputs.platform, 'windows') && 'D:/npm-cache' || '' }}
-      YARN_CACHE_FOLDER: ${{ contains(inputs.platform, 'windows') && 'D:/yarn-cache' || '' }}
-      PNPM_HOME: ${{ contains(inputs.platform, 'windows') && 'D:/pnpm-cache' || '' }}
-      BUN_INSTALL_CACHE_DIR: ${{ contains(inputs.platform, 'windows') && 'D:/bun-cache' || '' }}
-      GOCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-build-cache' || '' }}
-      GOMODCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-mod-cache' || '' }}
-      PIP_CACHE_DIR: ${{ contains(inputs.platform, 'windows') && 'D:/pip-cache' || '' }}
-      NUGET_PACKAGES: ${{ contains(inputs.platform, 'windows') && 'D:/nuget-cache' || '' }}
-      MAVEN_OPTS: ${{ contains(inputs.platform, 'windows') && '-Dmaven.repo.local=D:/maven-cache' || '' }}
+      # NPM_CONFIG_CACHE: ${{ contains(inputs.platform, 'windows') && 'D:/npm-cache' || '' }}
+      # YARN_CACHE_FOLDER: ${{ contains(inputs.platform, 'windows') && 'D:/yarn-cache' || '' }}
+      # PNPM_HOME: ${{ contains(inputs.platform, 'windows') && 'D:/pnpm-cache' || '' }}
+      # BUN_INSTALL_CACHE_DIR: ${{ contains(inputs.platform, 'windows') && 'D:/bun-cache' || '' }}
+      # GOCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-build-cache' || '' }}
+      # GOMODCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-mod-cache' || '' }}
+      # PIP_CACHE_DIR: ${{ contains(inputs.platform, 'windows') && 'D:/pip-cache' || '' }}
+      # NUGET_PACKAGES: ${{ contains(inputs.platform, 'windows') && 'D:/nuget-cache' || '' }}
+      # MAVEN_OPTS: ${{ contains(inputs.platform, 'windows') && '-Dmaven.repo.local=D:/maven-cache' || '' }}
+      TMP: ${{ contains(inputs.platform, 'windows') && runner.temp || '' }}
 
     runs-on: ${{ inputs.platform }}
 
