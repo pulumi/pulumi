@@ -9,3 +9,14 @@ const mapMapUnionExample = new union.Example("mapMapUnionExample", {mapMapUnionP
     },
 }});
 export const mapMapUnionOutput = mapMapUnionExample.mapMapUnionProperty;
+// List<Union<String, Enum>> pattern
+const stringEnumUnionListExample = new union.Example("stringEnumUnionListExample", {stringEnumUnionListProperty: [
+    union.AccessRights.Listen,
+    union.AccessRights.Send,
+    "NotAnEnumValue",
+]});
+// Safe enum: literal string matching an enum value
+const safeEnumExample = new union.Example("safeEnumExample", {typedEnumProperty: union.BlobType.Block});
+// Output enum: output from another resource used as enum input
+const enumOutputExample = new union.EnumOutput("enumOutputExample", {name: "example"});
+const outputEnumExample = new union.Example("outputEnumExample", {typedEnumProperty: enumOutputExample.type});
