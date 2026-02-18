@@ -21,12 +21,15 @@ func main() {
 		if err != nil {
 			return err
 		}
-		out1, err := res1.Call(ctx, &mod.ResourceCallArgs{Input: pulumi.String("x")})
+		callCall, err := res1.Call(ctx, &mod.ResourceCallArgs{
+			Input: pulumi.String("x"),
+		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("out1", out1.Output())
-
+		ctx.Export("out1", callCall.ApplyT(func(call mod.ResourceCallResult) (float64, error) {
+			return call.Output, nil
+		}).(pulumi.Float64Output))
 		// Next use just the module name as defined by the module format
 		res2, err := mod.NewResource(ctx, "res2", &mod.ResourceArgs{
 			Text: mod.ConcatWorldOutput(ctx, mod.ConcatWorldOutputArgs{
@@ -38,13 +41,16 @@ func main() {
 		if err != nil {
 			return err
 		}
-		out2, err := res2.Call(ctx, &mod.ResourceCallArgs{Input: pulumi.String("xx")})
+		callCall1, err := res2.Call(ctx, &mod.ResourceCallArgs{
+			Input: pulumi.String("xx"),
+		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("out2", out2.Output())
-
-		// Now test nested module resources using the fully specified token.
+		ctx.Export("out2", callCall1.ApplyT(func(call mod.ResourceCallResult) (float64, error) {
+			return call.Output, nil
+		}).(pulumi.Float64Output))
+		// First use the fully specified token to invoke and create a resource.
 		res3, err := nested.NewResource(ctx, "res3", &nested.ResourceArgs{
 			Text: nested.ConcatWorldOutput(ctx, nested.ConcatWorldOutputArgs{
 				Value: pulumi.String("hello"),
@@ -55,13 +61,16 @@ func main() {
 		if err != nil {
 			return err
 		}
-		out3, err := res3.Call(ctx, &nested.ResourceCallArgs{Input: pulumi.String("x")})
+		callCall2, err := res3.Call(ctx, &nested.ResourceCallArgs{
+			Input: pulumi.String("x"),
+		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("out3", out3.Output())
-
-		// And using just the module name as defined by the module format.
+		ctx.Export("out3", callCall2.ApplyT(func(call nested.ResourceCallResult) (float64, error) {
+			return call.Output, nil
+		}).(pulumi.Float64Output))
+		// Next use just the module name as defined by the module format
 		res4, err := nested.NewResource(ctx, "res4", &nested.ResourceArgs{
 			Text: nested.ConcatWorldOutput(ctx, nested.ConcatWorldOutputArgs{
 				Value: pulumi.String("goodbye"),
@@ -72,11 +81,15 @@ func main() {
 		if err != nil {
 			return err
 		}
-		out4, err := res4.Call(ctx, &nested.ResourceCallArgs{Input: pulumi.String("xx")})
+		callCall3, err := res4.Call(ctx, &nested.ResourceCallArgs{
+			Input: pulumi.String("xx"),
+		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("out4", out4.Output())
+		ctx.Export("out4", callCall3.ApplyT(func(call nested.ResourceCallResult) (float64, error) {
+			return call.Output, nil
+		}).(pulumi.Float64Output))
 		return nil
 	})
 }

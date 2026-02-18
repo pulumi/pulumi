@@ -232,6 +232,12 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
+	// Handle method-related tokens like "Resource/callResult" → "ResourceCallResult".
+	// Method function tokens use the format "ResourceName/methodName" in the name component,
+	// and derived types append "Result" or "Args" to produce e.g. "Resource/callResult".
+	if idx := strings.Index(name, "/"); idx >= 0 {
+		name = name[:idx] + Title(name[idx+1:])
+	}
 	name = Title(name)
 	if modPkg, ok := pkg.packages[mod]; ok {
 		newName, renamed := modPkg.renamed[name]
