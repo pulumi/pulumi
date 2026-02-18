@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs,python
+  description: Fix hang when loading policy packs that use v1.18.1 or older of the policy SDK
