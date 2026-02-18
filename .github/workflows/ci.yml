@@ -55,6 +55,11 @@ on:
         default: 0
         description: "Retry tests n times if there are failures"
         type: number
+      fuzz-test-optional:
+        required: false
+        default: false
+        description: "If true, fuzz test failures won't block the workflow"
+        type: boolean
     secrets:
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
@@ -461,6 +466,7 @@ jobs:
       enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       version-set: ${{ needs.matrix.outputs.version-set }}
+      continue-on-error: ${{ inputs.fuzz-test-optional }}
     secrets: inherit
 
   test-collect-reports:

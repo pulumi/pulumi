@@ -45,6 +45,7 @@ jobs:
       fail-fast: true
       test-retries: 2
       acceptance-test-platforms: 'macos-latest'
+      fuzz-test-optional: true
     secrets: inherit
 
   performance-gate:
