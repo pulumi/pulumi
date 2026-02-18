@@ -103,8 +103,9 @@ jobs:
       # Point $TMP and $TEMP to the value of `runner.temp` on Windows. This ensures that our Go tests which use
       # os.MkdirTemp create their test environments in this directory. This directory is on the D: drive, as opposed to
       # the C: drive for the default temp directory, and IO seems to be massively faster on that drive.
-      # Note: Windows will first use $TMP, then fallback to $TEMP. Set both here for consistency.
-      # Similarly, we set GOPATH and GOCACHE to be on the D: drive.
+      # Note: Windows will first use $TMP, then fallback to $TEMP. We set both here for consistency.
+      # Similarly, we set GOPATH and GOCACHE to be on the D: drive, so ProgramTest with the Go language runtime will
+      # also run on the D: drive, see pkg/testing/integration/program.go#L1990.
       TMP: ${{ contains(inputs.platform, 'windows') && 'D:/a/_temp' || '' }}
       TEMP: ${{ contains(inputs.platform, 'windows') && 'D:/a/_temp' || '' }}
       GOPATH: ${{ contains(inputs.platform, 'windows') && 'D:/go' || '' }}
