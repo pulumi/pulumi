@@ -110,7 +110,7 @@ jobs:
       # PIP_CACHE_DIR: ${{ contains(inputs.platform, 'windows') && 'D:/pip-cache' || '' }}
       # NUGET_PACKAGES: ${{ contains(inputs.platform, 'windows') && 'D:/nuget-cache' || '' }}
       # MAVEN_OPTS: ${{ contains(inputs.platform, 'windows') && '-Dmaven.repo.local=D:/maven-cache' || '' }}
-      TMP: ${{ contains(inputs.platform, 'windows') && runner.temp || '' }}
+      TMP: ${{ contains(inputs.platform, 'windows') && 'D:/a/_temp' || '' }}
 
     runs-on: ${{ inputs.platform }}
 
