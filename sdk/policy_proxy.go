@@ -26,7 +26,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -150,7 +152,15 @@ func (p *PolicyProxy) Attach(ctx context.Context, cmd *exec.Cmd) error {
 	if has {
 		_, err := client.ConfigureStack(ctx, stkcfg)
 		if err != nil {
-			return fmt.Errorf("policy pack configuration failed: %w", err)
+			st, ok := status.FromError(err)
+			if !ok || st.Code() != codes.Unimplemented {
+				// Reject the client promise so any goroutines waiting in awaitClient can unblock.
+				configErr := fmt.Errorf("policy pack configuration failed: %w", err)
+				p.client.Reject(configErr)
+				return configErr
+			}
+			// codes.Unimplemented is fine -- older policy packs don't implement ConfigureStack.
+			logging.V(7).Infof("PolicyProxy.Attach: ConfigureStack not supported by policy pack, ignoring")
 		}
 	}
 
