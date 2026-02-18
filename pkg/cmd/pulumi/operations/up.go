@@ -631,23 +631,26 @@ func NewUpCmd() *cobra.Command {
 					return err
 				}
 
-				PrintMultistackConfirmation(entries, "Update")
-
-				msOpts := backend.MultistackOptions{DisplayOpts: opts.Display}
+				msOpts := backend.MultistackOptions{
+					DisplayOpts: opts.Display,
+					Engine: engine.UpdateOptions{
+						Parallel: parallel,
+						Debug:    debug,
+					},
+				}
 
 				// Run preview first unless skipped.
 				if !opts.SkipPreview {
+					PrintMultistackConfirmation(entries, "Previewing update")
+
 					previewResults, previewErr := backend.MultistackPreview(ctx, entries, msOpts)
 					if previewErr != nil {
 						return previewErr
 					}
 
 					// Check for preview errors.
-					for _, result := range previewResults {
-						if result.Error != nil {
-							PrintMultistackResults(previewResults, entries)
-							return fmt.Errorf("one or more stacks failed during preview")
-						}
+					if err := checkMultistackErrors(previewResults, "preview"); err != nil {
+						return err
 					}
 
 					// Prompt for confirmation.
@@ -658,9 +661,13 @@ func NewUpCmd() *cobra.Command {
 									"with multistack update in non-interactive mode",
 							)
 						}
-						// TODO: add interactive confirmation prompt
+						if err := confirmMultistackOperation("update", previewResults, entries, opts.Display); err != nil {
+							return err
+						}
 					}
 				}
+
+				PrintMultistackConfirmation(entries, "Updating")
 
 				results, err := backend.MultistackUpdate(
 					ctx, entries, msOpts)
@@ -668,15 +675,9 @@ func NewUpCmd() *cobra.Command {
 					return err
 				}
 
-				PrintMultistackResults(results, entries)
-
-				// Check if any stack had errors.
-				for _, result := range results {
-					if result.Error != nil {
-						return fmt.Errorf("one or more stacks failed during update")
-					}
-				}
-				return nil
+				// The unified display already rendered resource changes and summary.
+				// Only report per-stack errors that the display may not have surfaced.
+				return checkMultistackErrors(results, "update")
 			}
 
 			if remoteArgs.Remote {

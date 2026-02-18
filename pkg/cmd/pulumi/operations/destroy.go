@@ -210,23 +210,26 @@ func NewDestroyCmd() *cobra.Command {
 					return err
 				}
 
-				PrintMultistackConfirmation(entries, "Destroy")
-
-				msOpts := backend.MultistackOptions{DisplayOpts: opts.Display}
+				msOpts := backend.MultistackOptions{
+					DisplayOpts: opts.Display,
+					Engine: engine.UpdateOptions{
+						Parallel: parallel,
+						Debug:    debug,
+					},
+				}
 
 				// Run destroy preview first unless skipped.
 				if !opts.SkipPreview {
+					PrintMultistackConfirmation(entries, "Previewing destroy")
+
 					previewResults, previewErr := backend.MultistackDestroyPreview(ctx, entries, msOpts)
 					if previewErr != nil {
 						return previewErr
 					}
 
 					// Check for preview errors.
-					for _, result := range previewResults {
-						if result.Error != nil {
-							PrintMultistackResults(previewResults, entries)
-							return fmt.Errorf("one or more stacks failed during destroy preview")
-						}
+					if err := checkMultistackErrors(previewResults, "destroy preview"); err != nil {
+						return err
 					}
 
 					// Prompt for confirmation.
@@ -237,24 +240,22 @@ func NewDestroyCmd() *cobra.Command {
 									"with multistack destroy in non-interactive mode",
 							)
 						}
-						// TODO: add interactive confirmation prompt
+						if err := confirmMultistackOperation("destroy", previewResults, entries, opts.Display); err != nil {
+							return err
+						}
 					}
 				}
+
+				PrintMultistackConfirmation(entries, "Destroying")
 
 				results, err := backend.MultistackDestroy(ctx, entries, msOpts)
 				if err != nil {
 					return err
 				}
 
-				PrintMultistackResults(results, entries)
-
-				// Check if any stack had errors.
-				for _, result := range results {
-					if result.Error != nil {
-						return fmt.Errorf("one or more stacks failed during destroy")
-					}
-				}
-				return nil
+				// The unified display already rendered resource changes and summary.
+				// Only report per-stack errors that the display may not have surfaced.
+				return checkMultistackErrors(results, "destroy")
 			}
 
 			s, err := cmdStack.RequireStack(

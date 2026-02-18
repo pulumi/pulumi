@@ -238,6 +238,20 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 	return snap, nil
 }
 
+// getSnapshotUnchecked loads a snapshot without running integrity verification.
+// This is used for multistack operations where per-stack snapshots may contain
+// cross-stack dependency references from previous multistack runs.
+func (b *cloudBackend) getSnapshotUnchecked(ctx context.Context,
+	secretsProvider secrets.Provider, stackRef backend.StackReference,
+) (*deploy.Snapshot, error) {
+	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
+	if err != nil {
+		return nil, err
+	}
+
+	return stack.DeserializeUntypedDeployment(ctx, untypedDeployment, secretsProvider)
+}
+
 func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 	secretsProvider secrets.Provider, stackRef backend.StackReference,
 ) (property.Map, error) {

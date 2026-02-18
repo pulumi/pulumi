@@ -160,7 +160,7 @@ func TestOutputWaiterStoreBackendFallback(t *testing.T) {
 	// Request a stack that is NOT co-deployed -- should use the backend.
 	result, err := p.readStackReference(resource.PropertyMap{
 		"name": resource.NewProperty("org/proj/stack-other"),
-	})
+	}, "org/proj/stack-a")
 	require.NoError(t, err)
 	assert.True(t, backendCalled, "expected backend client to be called for non-co-deployed stack")
 	assert.Equal(t, "backend-value",
@@ -195,7 +195,7 @@ func TestOutputWaiterStoreCoDeployedReadStackReference(t *testing.T) {
 
 	result, err := p.readStackReference(resource.PropertyMap{
 		"name": resource.NewProperty("org/proj/stack-b"),
-	})
+	}, "org/proj/stack-a")
 	require.NoError(t, err)
 	assert.False(t, backendCalled, "backend client should NOT be called for co-deployed stack")
 

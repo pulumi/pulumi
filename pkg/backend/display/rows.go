@@ -304,12 +304,15 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	step := data.step
 
 	urn := data.step.URN
-	if urn == "" {
+	if urn == "" && !data.display.stack.IsEmpty() {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
-	name := escapeURN(urn.Name())
-	typ := urn.Type().DisplayName()
+	var name, typ string
+	if urn != "" {
+		name = escapeURN(urn.Name())
+		typ = urn.Type().DisplayName()
+	}
 
 	done := data.IsDone()
 

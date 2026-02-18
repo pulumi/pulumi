@@ -51,8 +51,11 @@ type builtinProvider struct {
 	// co-deployed stack output resolution.
 	outputWaiters *OutputWaiterStore
 	// waiterStack identifies which stack this builtin provider belongs to,
-	// used for cycle detection in output waiters.
+	// used for cycle detection in output waiters. Used in single-stack mode.
 	waiterStack string
+	// stackFQNs maps project name → stack FQN for multistack mode. When set,
+	// the waiter stack is resolved from the resource URN's project name.
+	stackFQNs map[tokens.PackageName]string
 }
 
 func newBuiltinProvider(
@@ -76,6 +79,25 @@ func newBuiltinProvider(
 func (p *builtinProvider) WithOutputWaiters(store *OutputWaiterStore, waiterStack string) {
 	p.outputWaiters = store
 	p.waiterStack = waiterStack
+}
+
+// WithOutputWaitersMultistack configures the builtin provider for multistack operation
+// with per-stack FQN resolution. The stackFQNs map resolves project names to stack FQNs,
+// allowing the provider to identify which stack a resource belongs to from its URN.
+func (p *builtinProvider) WithOutputWaitersMultistack(store *OutputWaiterStore, stackFQNs map[tokens.PackageName]string) {
+	p.outputWaiters = store
+	p.stackFQNs = stackFQNs
+}
+
+// resolveWaiterStack returns the FQN of the stack that a resource belongs to,
+// for use as the "waiter" identity in OutputWaiterStore cycle detection.
+func (p *builtinProvider) resolveWaiterStack(urn resource.URN) string {
+	if p.stackFQNs != nil && urn != "" {
+		if fqn, ok := p.stackFQNs[urn.Project()]; ok {
+			return fqn
+		}
+	}
+	return p.waiterStack
 }
 
 func (p *builtinProvider) Close() error {
@@ -216,7 +238,7 @@ func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (p
 	switch typ { //nolint:exhaustive
 	case stackReferenceType:
 
-		state, err := p.readStackReference(req.Properties)
+		state, err := p.readStackReference(req.Properties, p.resolveWaiterStack(req.URN))
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
 		}
@@ -303,7 +325,7 @@ func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugi
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
 		}
 
-		outputs, err := p.readStackReference(req.State)
+		outputs, err := p.readStackReference(req.State, p.resolveWaiterStack(req.URN))
 		if err != nil {
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, err
 		}
@@ -350,7 +372,7 @@ func (p *builtinProvider) Invoke(_ context.Context, req plugin.InvokeRequest) (p
 	var err error
 	switch req.Tok {
 	case readStackOutputs:
-		outs, err = p.readStackReference(req.Args)
+		outs, err = p.readStackReference(req.Args, p.waiterStack)
 	case readStackResourceOutputs:
 		outs, err = p.readStackResourceOutputs(req.Args)
 	case getResource:
@@ -378,7 +400,7 @@ func (p *builtinProvider) SignalCancellation(context.Context) error {
 	return nil
 }
 
-func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+func (p *builtinProvider) readStackReference(inputs resource.PropertyMap, waiterStackFQN string) (resource.PropertyMap, error) {
 	name, ok := inputs["name"]
 	contract.Assertf(ok, "missing required property 'name'")
 	contract.Assertf(name.IsString(), "expected 'name' to be a string")
@@ -391,8 +413,8 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 		logging.V(4).Infof("builtins.readStackReference: IsCoDeployed(%q) = %v", stackName, p.outputWaiters.IsCoDeployed(stackName))
 	}
 	if p.outputWaiters != nil && p.outputWaiters.IsCoDeployed(stackName) {
-		logging.V(4).Infof("builtins.readStackReference: waiting for outputs from co-deployed stack %q (waiter=%q)", stackName, p.waiterStack)
-		outputs, err := p.outputWaiters.WaitForOutputs(p.context, p.waiterStack, stackName)
+		logging.V(4).Infof("builtins.readStackReference: waiting for outputs from co-deployed stack %q (waiter=%q)", stackName, waiterStackFQN)
+		outputs, err := p.outputWaiters.WaitForOutputs(p.context, waiterStackFQN, stackName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve co-deployed stack reference %q: %w", stackName, err)
 		}

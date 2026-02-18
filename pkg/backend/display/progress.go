@@ -1014,20 +1014,57 @@ func (display *ProgressDisplay) printOutputs() {
 		return
 	}
 
-	stackStep := display.eventUrnToResourceRow[display.primaryStackUrn].Step()
+	isMultistack := len(display.stackUrns) > 1
 
-	props := getResourceOutputsPropertiesString(
-		stackStep,
-		1, /* indent */
-		display.isPreview,
-		display.opts.Debug,
-		false, /* refresh */
-		display.opts.ShowSameResources,
-		display.opts.ShowSecrets,
-		display.opts.TruncateOutput)
-	if props != "" {
-		display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
-		display.println(props)
+	if isMultistack {
+		// In multistack mode, print outputs for each stack under a labeled section.
+		stackUrnList := sortedStackUrns(display.stackUrns, display.opts.StackLabels)
+
+		var allProps []string
+		for _, stackUrn := range stackUrnList {
+			row, ok := display.eventUrnToResourceRow[stackUrn]
+			if !ok {
+				continue
+			}
+			props := getResourceOutputsPropertiesString(
+				row.Step(),
+				2, /* indent (extra level for nesting under stack label) */
+				display.isPreview,
+				display.opts.Debug,
+				false, /* refresh */
+				display.opts.ShowSameResources,
+				display.opts.ShowSecrets,
+				display.opts.TruncateOutput)
+			if props != "" {
+				label := stackLabel(stackUrn, display.opts.StackLabels)
+				allProps = append(allProps,
+					fmt.Sprintf("    %s%s%s:\n%s",
+						colors.Bold, label, colors.Reset, strings.TrimRight(props, "\n")))
+			}
+		}
+		if len(allProps) > 0 {
+			display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
+			for _, p := range allProps {
+				display.println(p)
+			}
+		}
+	} else {
+		// Single-stack mode: original behavior.
+		stackStep := display.eventUrnToResourceRow[display.primaryStackUrn].Step()
+
+		props := getResourceOutputsPropertiesString(
+			stackStep,
+			1, /* indent */
+			display.isPreview,
+			display.opts.Debug,
+			false, /* refresh */
+			display.opts.ShowSameResources,
+			display.opts.ShowSecrets,
+			display.opts.TruncateOutput)
+		if props != "" {
+			display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
+			display.println(props)
+		}
 	}
 }
 
@@ -1037,11 +1074,17 @@ func (display *ProgressDisplay) printSummary() {
 	if display.summaryEventPayload == nil {
 		return
 	}
-	// track resources errored
+
+	isMultistack := len(display.stackUrns) > 1
+
+	if isMultistack {
+		display.printMultistackSummary()
+		return
+	}
+
+	// Single-stack: original behavior.
 	resourcesErrored := 0
-
 	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
-
 	for _, r := range rr {
 		if r.DiagInfo().ErrorCount > 0 {
 			resourcesErrored++
@@ -1049,6 +1092,122 @@ func (display *ProgressDisplay) printSummary() {
 	}
 	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, false, display.opts)
 	display.println(msg)
+}
+
+// printMultistackSummary prints a single "Resources:" section with per-stack breakdowns and a total.
+// Format:
+//
+//	Resources:
+//	    vpc:
+//	        + 8 to create
+//	    webserver:
+//	        + 3 to create
+//	    Total:
+//	        + 11 to create
+func (display *ProgressDisplay) printMultistackSummary() {
+	payload := *display.summaryEventPayload
+
+	// Collect stack URNs sorted by label.
+	stackUrnList := sortedStackUrns(display.stackUrns, display.opts.StackLabels)
+
+	// Bucket resources by stack.
+	perStack := make(map[resource.URN]*perStackSummary, len(stackUrnList))
+	for _, su := range stackUrnList {
+		perStack[su] = newPerStackSummary()
+	}
+
+	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+	for _, r := range rr {
+		step := r.Step()
+		stackRoot := display.findStackRootForURN(step.URN)
+		info := perStack[stackRoot]
+		if info == nil {
+			continue
+		}
+		if step.Op != "" {
+			info.changes[step.Op]++
+		}
+		if r.DiagInfo().ErrorCount > 0 {
+			info.errored++
+		}
+	}
+
+	// Print the "Resources:" header, then per-stack summaries indented underneath.
+	display.println(display.opts.Color.Colorize(
+		fmt.Sprintf("%sResources:%s", colors.SpecHeadline, colors.Reset)))
+
+	for _, stackUrn := range stackUrnList {
+		info := perStack[stackUrn]
+		label := stackLabel(stackUrn, display.opts.StackLabels)
+		display.println(display.opts.Color.Colorize(
+			fmt.Sprintf("    %s%s%s:", colors.Bold, label, colors.Reset)))
+		perStackPayload := engine.SummaryEventPayload{
+			IsPreview:       payload.IsPreview,
+			ResourceChanges: info.changes,
+		}
+		msg := renderIndentedSummaryChanges(perStackPayload, info.errored, display.opts)
+		if msg != "" {
+			display.println(strings.TrimRight(msg, "\n"))
+		}
+	}
+
+	// Print aggregate total.
+	resourcesErrored := 0
+	for _, r := range rr {
+		if r.DiagInfo().ErrorCount > 0 {
+			resourcesErrored++
+		}
+	}
+	display.println(display.opts.Color.Colorize(
+		fmt.Sprintf("    %sTotal%s:", colors.Bold, colors.Reset)))
+	msg := renderIndentedSummaryChanges(payload, resourcesErrored, display.opts)
+	if msg != "" {
+		display.println(strings.TrimRight(msg, "\n"))
+	}
+
+	// Print duration for actual deploys.
+	if !payload.IsPreview {
+		roundedSeconds := int64(payload.Duration.Seconds() + 0.5)
+		roundedDuration := fmt.Sprintf("%ds", roundedSeconds)
+		display.println(display.opts.Color.Colorize(
+			fmt.Sprintf("\n%sDuration:%s %s", colors.SpecHeadline, colors.Reset, roundedDuration)))
+	}
+	display.println("")
+}
+
+// perStackSummary holds per-stack resource change counts for multistack summary display.
+// Defined at package level to avoid shadowing the imported "display" package in method bodies.
+type perStackSummary struct {
+	changes display.ResourceChanges
+	errored int
+}
+
+func newPerStackSummary() *perStackSummary {
+	return &perStackSummary{changes: make(display.ResourceChanges)}
+}
+
+// sortedStackUrns returns stack URNs sorted by label for deterministic display.
+func sortedStackUrns(stackUrns map[resource.URN]bool, labels map[string]string) []resource.URN {
+	result := make([]resource.URN, 0, len(stackUrns))
+	for urn := range stackUrns {
+		result = append(result, urn)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return stackLabel(result[i], labels) < stackLabel(result[j], labels)
+	})
+	return result
+}
+
+// stackLabel returns the display label for a stack URN. If StackLabels is set (multistack mode),
+// uses the logical name (e.g., "vpc"); otherwise falls back to the project name from the URN.
+func stackLabel(urn resource.URN, labels map[string]string) string {
+	project := string(urn.Project())
+	if labels != nil {
+		if label, ok := labels[project]; ok {
+			return label
+		}
+	}
+	return project
 }
 
 func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
@@ -1239,6 +1398,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			// associated at the top level with the stack.  That way if things are taking a while,
 			// there's insight in the display as to what's going on.
 			display.processNormalEvent(engine.NewEvent(engine.DiagEventPayload{
+				URN:       display.findStackRootForURN(eventUrn),
 				Ephemeral: true,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),
@@ -1382,6 +1542,36 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 	if display.headerRow == nil {
 		// about to make our first status message.  make sure we present the header line first.
 		display.headerRow = &headerRowData{display: display}
+	}
+
+	// In multistack mode, pre-populate rows for all expected stack roots so they appear
+	// immediately rather than waiting for each stack's first event.
+	if len(display.opts.ExpectedStackURNs) > 0 {
+		for _, urn := range display.opts.ExpectedStackURNs {
+			if _, has := display.eventUrnToResourceRow[urn]; has {
+				continue
+			}
+
+			if display.stackUrns == nil {
+				display.stackUrns = make(map[resource.URN]bool)
+			}
+			display.stackUrns[urn] = true
+			if display.primaryStackUrn == "" {
+				display.primaryStackUrn = urn
+			}
+
+			stackRow := &resourceRowData{
+				display:              display,
+				tick:                 display.currentTick,
+				diagInfo:             &DiagInfo{},
+				policyPayloads:       policyPayloads,
+				step:                 engine.StepEventMetadata{URN: urn, Op: deploy.OpSame},
+				hideRowIfUnnecessary: false,
+			}
+			display.eventUrnToResourceRow[urn] = stackRow
+			display.resourceRows = append(display.resourceRows, stackRow)
+		}
+		return
 	}
 
 	// we've added at least one row to the table.  make sure we have a row to designate the

@@ -17,60 +17,52 @@ package deploy
 import (
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-// StackIdentity uniquely identifies a stack in a multistack deployment.
-type StackIdentity struct {
-	Project tokens.PackageName
-	Stack   tokens.QName
-}
-
-func (si StackIdentity) String() string {
-	return string(si.Stack)
-}
-
-// MultiSourceEntry represents a single source (program) in a multistack deployment.
-type MultiSourceEntry struct {
-	Identity StackIdentity
-	Source   Source
-}
-
-// MultiSource multiplexes multiple Sources into a single Source.
-// It runs N programs concurrently and merges their events.
+// MultiSource multiplexes N Sources into a single Source. Each sub-source runs
+// concurrently, with events interleaved into a single stream consumed by one Deployment.
+// This is the key enabler for single-engine multistack deployment.
 type MultiSource struct {
-	project tokens.PackageName
-	entries []MultiSourceEntry
+	sources []Source
 }
 
-// NewMultiSource creates a new MultiSource that multiplexes the given entries into a single Source.
-func NewMultiSource(project tokens.PackageName, entries []MultiSourceEntry) *MultiSource {
-	return &MultiSource{project: project, entries: entries}
+// NewMultiSource creates a MultiSource from the given sources.
+func NewMultiSource(sources []Source) *MultiSource {
+	return &MultiSource{sources: sources}
 }
 
+// Project returns the project name. In multistack mode, each source embeds its own
+// project in Goals, so this is only used as a fallback and returns the first source's project.
+func (ms *MultiSource) Project() tokens.PackageName {
+	if len(ms.sources) > 0 {
+		return ms.sources[0].Project()
+	}
+	return ""
+}
+
+// Close closes all sub-sources.
 func (ms *MultiSource) Close() error {
 	var errs []error
-	for _, entry := range ms.entries {
-		if err := entry.Source.Close(); err != nil {
+	for _, s := range ms.sources {
+		if err := s.Close(); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
 }
 
-func (ms *MultiSource) Project() tokens.PackageName {
-	return ms.project
-}
-
+// Iterate starts all N source iterators and returns a multiplexing iterator.
 func (ms *MultiSource) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
-	iterators := make([]SourceIterator, len(ms.entries))
-	for i, entry := range ms.entries {
-		iter, err := entry.Source.Iterate(ctx, providers)
+	iterators := make([]SourceIterator, len(ms.sources))
+	for i, s := range ms.sources {
+		iter, err := s.Iterate(ctx, providers)
 		if err != nil {
-			// Cancel any iterators we already created.
+			// Cancel any iterators we already started.
 			for j := 0; j < i; j++ {
 				_ = iterators[j].Cancel(ctx)
 			}
@@ -80,53 +72,68 @@ func (ms *MultiSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	}
 
 	msi := &multiSourceIterator{
-		entries:   ms.entries,
 		iterators: iterators,
-		events:    make(chan multiSourceEvent, len(ms.entries)),
-		done:      make(chan struct{}),
-		remaining: int32(len(ms.entries)),
+		events:    make(chan multiSourceEvent, len(ms.sources)),
+		remaining: int32(len(ms.sources)),
 	}
 
 	// Launch a goroutine per source to pump events into the shared channel.
 	for i, iter := range iterators {
-		go msi.pump(ms.entries[i].Identity, iter)
+		go msi.pump(i, iter)
 	}
 
 	return msi, nil
 }
 
-// multiSourceEvent is an internal event carrying the stack identity, the event, and any error.
+// multiSourceEvent carries an event (or error) from a sub-source.
 type multiSourceEvent struct {
-	identity StackIdentity
-	event    SourceEvent
-	err      error
+	event SourceEvent
+	err   error
 }
 
-// multiSourceIterator merges events from multiple source iterators.
+// multiSourceIterator merges events from N sub-iterators into one stream.
 type multiSourceIterator struct {
-	entries   []MultiSourceEntry
 	iterators []SourceIterator
 	events    chan multiSourceEvent
+	remaining int32     // atomic counter of active sources
+	canceled  sync.Once // protects against double-cancel
 	done      chan struct{}
-	remaining int32 // atomic counter of active sources
+	doneInit  sync.Once
+}
+
+func (msi *multiSourceIterator) getDone() chan struct{} {
+	msi.doneInit.Do(func() {
+		msi.done = make(chan struct{})
+	})
+	return msi.done
 }
 
 // pump reads events from a single source iterator and sends them to the shared channel.
-func (msi *multiSourceIterator) pump(identity StackIdentity, iter SourceIterator) {
+func (msi *multiSourceIterator) pump(idx int, iter SourceIterator) {
 	for {
 		event, err := iter.Next()
+		if err != nil {
+			logging.V(4).Infof("multiSourceIterator: source %d returned error: %v", idx, err)
+			msi.events <- multiSourceEvent{err: err}
+			return
+		}
+		if event == nil {
+			// Source finished normally.
+			logging.V(4).Infof("multiSourceIterator: source %d completed", idx)
+			msi.events <- multiSourceEvent{} // signal completion
+			return
+		}
+
 		select {
-		case msi.events <- multiSourceEvent{identity: identity, event: event, err: err}:
-			if err != nil || event == nil {
-				// Source finished (nil event) or errored; stop pumping.
-				return
-			}
-		case <-msi.done:
+		case msi.events <- multiSourceEvent{event: event}:
+		case <-msi.getDone():
 			return
 		}
 	}
 }
 
+// Next returns the next event from any sub-source. Returns (nil, nil) when all
+// sub-sources are done. Returns the first error from any sub-source immediately.
 func (msi *multiSourceIterator) Next() (SourceEvent, error) {
 	for {
 		select {
@@ -141,16 +148,18 @@ func (msi *multiSourceIterator) Next() (SourceEvent, error) {
 				}
 				continue
 			}
-			// Wrap the event with stack identity information.
-			return annotateEvent(ev.identity, ev.event), nil
-		case <-msi.done:
+			return ev.event, nil
+		case <-msi.getDone():
 			return nil, nil
 		}
 	}
 }
 
+// Cancel cancels all sub-iterators.
 func (msi *multiSourceIterator) Cancel(ctx context.Context) error {
-	close(msi.done)
+	msi.canceled.Do(func() {
+		close(msi.getDone())
+	})
 	var errs []error
 	for _, iter := range msi.iterators {
 		if err := iter.Cancel(ctx); err != nil {
@@ -158,91 +167,4 @@ func (msi *multiSourceIterator) Cancel(ctx context.Context) error {
 		}
 	}
 	return errors.Join(errs...)
-}
-
-// annotateEvent wraps a SourceEvent with the stack identity it originated from. For events that
-// implement specific interfaces (RegisterResourceEvent, RegisterResourceOutputsEvent,
-// ReadResourceEvent), a typed wrapper is returned that preserves the interface.
-func annotateEvent(stack StackIdentity, event SourceEvent) SourceEvent {
-	switch e := event.(type) {
-	case RegisterResourceEvent:
-		return &AnnotatedRegisterResourceEvent{Stack: stack, Inner: e}
-	case RegisterResourceOutputsEvent:
-		return &AnnotatedRegisterResourceOutputsEvent{Stack: stack, Inner: e}
-	case ReadResourceEvent:
-		return &AnnotatedReadResourceEvent{Stack: stack, Inner: e}
-	default:
-		return &AnnotatedEvent{Stack: stack, Inner: e}
-	}
-}
-
-// AnnotatedEvent wraps a SourceEvent with the stack identity it came from.
-type AnnotatedEvent struct {
-	Stack StackIdentity
-	Inner SourceEvent
-}
-
-func (a *AnnotatedEvent) event() {}
-
-// AnnotatedRegisterResourceEvent wraps a RegisterResourceEvent with stack identity.
-type AnnotatedRegisterResourceEvent struct {
-	Stack StackIdentity
-	Inner RegisterResourceEvent
-}
-
-var _ RegisterResourceEvent = (*AnnotatedRegisterResourceEvent)(nil)
-
-func (a *AnnotatedRegisterResourceEvent) event()                    {}
-func (a *AnnotatedRegisterResourceEvent) Goal() *resource.Goal      { return a.Inner.Goal() }
-func (a *AnnotatedRegisterResourceEvent) Done(result *RegisterResult) { a.Inner.Done(result) }
-
-// AnnotatedRegisterResourceOutputsEvent wraps a RegisterResourceOutputsEvent with stack identity.
-type AnnotatedRegisterResourceOutputsEvent struct {
-	Stack StackIdentity
-	Inner RegisterResourceOutputsEvent
-}
-
-var _ RegisterResourceOutputsEvent = (*AnnotatedRegisterResourceOutputsEvent)(nil)
-
-func (a *AnnotatedRegisterResourceOutputsEvent) event()                       {}
-func (a *AnnotatedRegisterResourceOutputsEvent) URN() resource.URN           { return a.Inner.URN() }
-func (a *AnnotatedRegisterResourceOutputsEvent) Outputs() resource.PropertyMap { return a.Inner.Outputs() }
-func (a *AnnotatedRegisterResourceOutputsEvent) Done()                        { a.Inner.Done() }
-
-// AnnotatedReadResourceEvent wraps a ReadResourceEvent with stack identity.
-type AnnotatedReadResourceEvent struct {
-	Stack StackIdentity
-	Inner ReadResourceEvent
-}
-
-var _ ReadResourceEvent = (*AnnotatedReadResourceEvent)(nil)
-
-func (a *AnnotatedReadResourceEvent) event()                                       {}
-func (a *AnnotatedReadResourceEvent) ID() resource.ID                              { return a.Inner.ID() }
-func (a *AnnotatedReadResourceEvent) Name() string                                 { return a.Inner.Name() }
-func (a *AnnotatedReadResourceEvent) Type() tokens.Type                            { return a.Inner.Type() }
-func (a *AnnotatedReadResourceEvent) Provider() string                             { return a.Inner.Provider() }
-func (a *AnnotatedReadResourceEvent) Parent() resource.URN                         { return a.Inner.Parent() }
-func (a *AnnotatedReadResourceEvent) Properties() resource.PropertyMap             { return a.Inner.Properties() }
-func (a *AnnotatedReadResourceEvent) Dependencies() []resource.URN                 { return a.Inner.Dependencies() }
-func (a *AnnotatedReadResourceEvent) Done(result *ReadResult)                      { a.Inner.Done(result) }
-func (a *AnnotatedReadResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey { return a.Inner.AdditionalSecretOutputs() }
-func (a *AnnotatedReadResourceEvent) SourcePosition() string                       { return a.Inner.SourcePosition() }
-func (a *AnnotatedReadResourceEvent) StackTrace() []resource.StackFrame            { return a.Inner.StackTrace() }
-
-// GetEventStackIdentity extracts the StackIdentity from an annotated event.
-// Returns a zero value and false if the event is not annotated.
-func GetEventStackIdentity(event SourceEvent) (StackIdentity, bool) {
-	switch e := event.(type) {
-	case *AnnotatedEvent:
-		return e.Stack, true
-	case *AnnotatedRegisterResourceEvent:
-		return e.Stack, true
-	case *AnnotatedRegisterResourceOutputsEvent:
-		return e.Stack, true
-	case *AnnotatedReadResourceEvent:
-		return e.Stack, true
-	default:
-		return StackIdentity{}, false
-	}
 }

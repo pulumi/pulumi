@@ -121,6 +121,13 @@ type stepGenerator struct {
 	// true. This does _not_ exclude resources that have been implicitly targeted,
 	// like providers.
 	excludesActual UrnTargets
+
+	// Old resources from create-before-delete replacements that are candidates for eager deletion.
+	// These are accumulated during step generation and drained by the deployment executor.
+	deferredReplacementDeletes []*resource.State
+
+	// Resources that have been eagerly deleted during the main loop. GenerateDeletes will skip these.
+	eagerlyDeleted map[*resource.State]bool
 }
 
 // Check whether `res` is explicitly (via `targets`) or implicitly (via
@@ -240,11 +247,19 @@ func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...any) error {
 }
 
 // generateURN generates a URN for a new resource and confirms we haven't seen it before in this deployment.
+// In multistack mode, stack and project are per-source overrides from the Goal or ReadResourceEvent;
+// when non-empty they are used instead of the deployment-level defaults.
 func (sg *stepGenerator) generateURN(
 	parent resource.URN, ty tokens.Type, name string,
+	stack tokens.QName, project tokens.PackageName,
 ) (resource.URN, error) {
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
-	urn := sg.deployment.generateURN(parent, ty, name)
+	var urn resource.URN
+	if stack != "" || project != "" {
+		urn = sg.deployment.generateURNWith(parent, ty, name, stack, project)
+	} else {
+		urn = sg.deployment.generateURN(parent, ty, name)
+	}
 	if sg.urns[urn] {
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		return "", sg.bailDiag(diag.GetDuplicateResourceURNError(urn), urn)
@@ -262,7 +277,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		return nil, err
 	}
 
-	urn, err := sg.generateURN(parent, event.Type(), event.Name())
+	urn, err := sg.generateURN(parent, event.Type(), event.Name(), event.Stack(), event.Project())
 	if err != nil {
 		return nil, err
 	}
@@ -669,7 +684,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	}
 	goal.Parent = parent
 
-	urn, err := sg.generateURN(goal.Parent, goal.Type, goal.Name)
+	urn, err := sg.generateURN(goal.Parent, goal.Type, goal.Name, goal.Stack, goal.Project)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1975,11 +1990,17 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				), nil
 			}
 
+			// Track the old resource as a candidate for eager deletion. The deployment executor
+			// will attempt to delete it as soon as all its dependents' steps have completed, rather
+			// than waiting for all source events to finish.
+			sg.deferredReplacementDeletes = append(sg.deferredReplacementDeletes, old)
+
 			return []Step{
 				NewCreateReplacementStep(
 					sg.deployment, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true),
 				NewReplaceStep(sg.deployment, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true),
 				// note that the delete step is generated "later" on, after all creates/updates finish.
+				// With eager replacement deletes, "later" may be during the main loop rather than post-steps.
 			}, nil
 		}
 
@@ -2030,6 +2051,20 @@ func (sg *stepGenerator) isOperatedOn(urn resource.URN) bool {
 	return sg.sames[urn] || sg.updates[urn] || sg.replaces[urn] || sg.reads[urn] || sg.refreshes[urn]
 	// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 	// delete steps for the same URN if the old checkpoint contained pending deletes.
+}
+
+// DrainDeferredReplacementDeletes retrieves and clears the list of old resources from create-before-delete
+// replacements that are candidates for eager deletion.
+func (sg *stepGenerator) DrainDeferredReplacementDeletes() []*resource.State {
+	result := sg.deferredReplacementDeletes
+	sg.deferredReplacementDeletes = nil
+	return result
+}
+
+// MarkEagerlyDeleted marks a resource as having been eagerly deleted during the main loop.
+// GenerateDeletes will skip resources marked this way.
+func (sg *stepGenerator) MarkEagerlyDeleted(res *resource.State) {
+	sg.eagerlyDeleted[res] = true
 }
 
 // GenerateRefreshes generates refresh steps for the resources that are present in the old snapshot and were
@@ -2153,6 +2188,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				}
 
 				if res.Delete {
+					// Skip resources that were already eagerly deleted during the main loop.
+					if sg.eagerlyDeleted[res] {
+						logging.V(7).Infof(
+							"Planner skipping eagerly-deleted resource (%v, %v)", res.URN, res.ID)
+						continue
+					}
+
 					// The below assert is commented-out because it's believed to be wrong.
 					//
 					// The original justification for this assert is that the author (swgillespie) believed that
@@ -3393,7 +3435,8 @@ func newStepGenerator(
 		aliased:              make(map[resource.URN]resource.URN),
 		aliases:              make(map[resource.URN]resource.URN),
 
-		refreshStates: make(map[*resource.State]*resource.State),
+		refreshStates:  make(map[*resource.State]*resource.State),
+		eagerlyDeleted: make(map[*resource.State]bool),
 
 		// We clone the targets passed as options because we will modify these sets as
 		// we compute the full sets (e.g. by expanding globs, or traversing

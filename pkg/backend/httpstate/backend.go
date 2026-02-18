@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jonboulle/clockwork"
 	opentracing "github.com/opentracing/opentracing-go"
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
@@ -1874,6 +1875,98 @@ func (b *cloudBackend) runEngineAction(
 	}
 
 	return plan, changes, updateErr
+}
+
+// SetupPerStackSnapshots implements backend.PerStackSnapshotProvider for the Pulumi Cloud backend.
+// For each stack, it creates an update record, loads the snapshot (without integrity checking
+// for multistack compatibility), and creates a snapshot manager that persists state to the Cloud.
+// The returned complete function must be called to finalize update records and release leases.
+func (b *cloudBackend) SetupPerStackSnapshots(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	entries []backend.MultistackEntry,
+	dryRun bool,
+) (map[string]engine.SnapshotManager, map[string]*deploy.Snapshot, func(apitype.UpdateStatus) error, error) {
+	type perStackState struct {
+		fqn         string
+		update      client.UpdateIdentifier
+		tokenSource *tokenSource
+	}
+
+	states := make([]perStackState, 0, len(entries))
+	managers := make(map[string]engine.SnapshotManager, len(entries))
+	snapshots := make(map[string]*deploy.Snapshot, len(entries))
+
+	// Clean up on error: complete any already-started updates as failed and close token sources.
+	cleanup := func() {
+		for _, s := range states {
+			_ = b.completeUpdate(ctx, s.tokenSource, s.update, apitype.UpdateStatusFailed)
+		}
+	}
+
+	for _, entry := range entries {
+		fqn := string(entry.Stack.Ref().FullyQualifiedName())
+
+		// Create and start update record on the Cloud.
+		update, meta, err := b.createAndStartUpdate(ctx, kind, entry.Stack, &entry.Op, dryRun)
+		if err != nil {
+			cleanup()
+			return nil, nil, nil, fmt.Errorf("creating update for %s: %w", fqn, err)
+		}
+
+		// Create token source for lease management directly (we skip newUpdate because
+		// it loads + verifies the snapshot, which fails for multistack snapshots that
+		// may contain cross-stack dependency references from a previous multistack run).
+		var tokenSrc *tokenSource
+		if meta.leaseToken != "" {
+			duration := 5 * time.Minute
+			assumedExpires := func() time.Time {
+				return time.Now().Add(duration)
+			}
+			renewLease := RenewLeaseFunc(b.Client(), update, assumedExpires)
+			ts, err := newTokenSource(ctx, clockwork.NewRealClock(), meta.leaseToken, assumedExpires(), duration, renewLease)
+			if err != nil {
+				cleanup()
+				return nil, nil, nil, fmt.Errorf("creating token source for %s: %w", fqn, err)
+			}
+			tokenSrc = ts
+		}
+
+		// Load the per-stack snapshot without integrity checking. Multistack snapshots
+		// may contain cross-stack dependency references from previous multistack runs
+		// that would fail normal integrity verification.
+		snap, err := b.getSnapshotUnchecked(ctx, entry.Op.SecretsProvider, entry.Stack.Ref())
+		if err != nil {
+			logging.V(4).Infof("multistack: could not load snapshot for %s: %v", fqn, err)
+		}
+		snapshots[fqn] = snap
+
+		// Create a per-stack snapshot manager that tracks mutations and persists state.
+		// Integrity checks are skipped because the per-stack base snapshot won't include
+		// cross-stack parents; final integrity is verified at the RoutingSnapshotManager level.
+		persister := b.newSnapshotPersister(ctx, update, tokenSrc)
+		mgr := backend.NewMultistackSnapshotManager(persister, entry.Op.SecretsManager, snap)
+
+		states = append(states, perStackState{
+			fqn:         fqn,
+			update:      update,
+			tokenSource: tokenSrc,
+		})
+		managers[fqn] = mgr
+	}
+
+	// The complete function finalizes all update records and releases leases.
+	completeFn := func(status apitype.UpdateStatus) error {
+		var firstErr error
+		for _, s := range states {
+			if err := b.completeUpdate(ctx, s.tokenSource, s.update, status); err != nil && firstErr == nil {
+				firstErr = fmt.Errorf("completing update for %s: %w", s.fqn, err)
+			}
+		}
+		return firstErr
+	}
+
+	return managers, snapshots, completeFn, nil
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {

@@ -17,15 +17,20 @@ package backend
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -46,6 +51,25 @@ type MultistackOptions struct {
 	FailFast bool
 	// DisplayOpts controls how the unified display renders events.
 	DisplayOpts display.Options
+	// Engine contains engine-level options (parallelism, debug, etc.).
+	Engine engine.UpdateOptions
+}
+
+// PerStackSnapshotProvider can set up per-stack snapshot managers for single-engine
+// multistack deployments. This is implemented by the Pulumi Cloud backend to enable
+// resource-level cross-stack parallelism (vs. the legacy stack-level approach).
+type PerStackSnapshotProvider interface {
+	// SetupPerStackSnapshots creates update records and snapshot managers for each stack.
+	// Returns a map from stack FQN to SnapshotManager, a map of per-stack snapshots (loaded
+	// without integrity checking for multistack compatibility), and a completion function that
+	// must be called with the final update status to finalize update records and release leases.
+	SetupPerStackSnapshots(
+		ctx context.Context,
+		kind apitype.UpdateKind,
+		entries []MultistackEntry,
+		dryRun bool,
+	) (managers map[string]engine.SnapshotManager, snapshots map[string]*deploy.Snapshot,
+		complete func(apitype.UpdateStatus) error, err error)
 }
 
 // MultistackResult holds the results for a single stack in a multistack operation.
@@ -56,48 +80,302 @@ type MultistackResult struct {
 	Plan *deploy.Plan
 	// Error is any error that occurred during the operation.
 	Error error
+	// Events collected during the operation (for "details" display in confirmation prompt).
+	Events []engine.Event
 }
 
-// MultistackPreview runs a preview across multiple stacks in dependency order.
-// Stacks are ordered by StackReference dependencies discovered from their previous snapshots.
-// Independent stacks at the same level run in parallel.
+// MultistackPreview runs a unified preview across multiple stacks using a single engine deployment.
+// All stacks' programs run concurrently with resource-level interleaving.
 func MultistackPreview(
 	ctx context.Context,
 	entries []MultistackEntry,
 	opts MultistackOptions,
 ) (map[string]*MultistackResult, error) {
-	return runMultistackOperation(ctx, entries, opts, operationPreview)
+	return runMultistackPreviewViaEngine(ctx, entries, opts, false /* isDestroy */)
 }
 
-// MultistackUpdate runs an update across multiple stacks in dependency order.
-// Stacks are ordered by StackReference dependencies discovered from their previous snapshots.
-// Independent stacks at the same level run in parallel.
+// MultistackUpdate runs an update across multiple stacks.
+// If the backend supports per-stack snapshots, uses the single-engine path for
+// resource-level cross-stack parallelism. Otherwise falls back to per-stack operations.
 func MultistackUpdate(
 	ctx context.Context,
 	entries []MultistackEntry,
 	opts MultistackOptions,
 ) (map[string]*MultistackResult, error) {
+	if provider, ok := entries[0].Stack.Backend().(PerStackSnapshotProvider); ok {
+		return runMultistackUpdateViaEngine(ctx, entries, opts, provider, false /* isDestroy */)
+	}
 	return runMultistackOperation(ctx, entries, opts, operationUpdate)
 }
 
-// MultistackDestroyPreview runs a destroy preview across multiple stacks, showing what would
-// be destroyed without actually destroying anything. Uses the same dependency ordering as destroy.
+// MultistackDestroyPreview runs a unified destroy preview across multiple stacks.
 func MultistackDestroyPreview(
 	ctx context.Context,
 	entries []MultistackEntry,
 	opts MultistackOptions,
 ) (map[string]*MultistackResult, error) {
-	return runMultistackOperation(ctx, entries, opts, operationDestroyPreview)
+	return runMultistackPreviewViaEngine(ctx, entries, opts, true /* isDestroy */)
 }
 
-// MultistackDestroy destroys multiple stacks in reverse dependency order.
-// Dependencies are automatically reversed so downstream stacks are destroyed first.
+// MultistackDestroy destroys multiple stacks.
+// If the backend supports per-stack snapshots, uses the single-engine path.
+// Otherwise falls back to per-stack operations.
 func MultistackDestroy(
 	ctx context.Context,
 	entries []MultistackEntry,
 	opts MultistackOptions,
 ) (map[string]*MultistackResult, error) {
+	if provider, ok := entries[0].Stack.Backend().(PerStackSnapshotProvider); ok {
+		return runMultistackUpdateViaEngine(ctx, entries, opts, provider, true /* isDestroy */)
+	}
 	return runMultistackOperation(ctx, entries, opts, operationDestroy)
+}
+
+// runMultistackPreviewViaEngine runs a unified preview through a single engine deployment.
+// This is the new single-engine path: N programs run concurrently in one Deployment with
+// a single step generator and step executor. Resources from all stacks are interleaved.
+func runMultistackPreviewViaEngine(
+	ctx context.Context,
+	entries []MultistackEntry,
+	opts MultistackOptions,
+	isDestroy bool,
+) (map[string]*MultistackResult, error) {
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("no stacks specified for multistack operation")
+	}
+
+	// Build engine-level multistack entries.
+	engineEntries := make([]engine.MultistackEntry, len(entries))
+	for i, entry := range entries {
+		fqn := string(entry.Stack.Ref().FullyQualifiedName())
+
+		// Load the snapshot without integrity checking. Per-stack snapshots may
+		// contain cross-stack dependency references from previous multistack runs.
+		snapshot := loadMultistackSnapshot(ctx, entry.Stack, entry.Op.SecretsProvider)
+
+		// Build the deploy target.
+		target := &deploy.Target{
+			Name:      entry.Stack.Ref().Name(),
+			Config:    entry.Op.StackConfiguration.Config,
+			Decrypter: entry.Op.StackConfiguration.Decrypter,
+			Snapshot:  snapshot,
+		}
+
+		engineEntries[i] = engine.MultistackEntry{
+			Project: entry.Op.Proj,
+			Target:  target,
+			Root:    entry.Op.Root,
+			FQN:     fqn,
+		}
+	}
+
+	// Determine display settings.
+	var action apitype.UpdateKind
+	if isDestroy {
+		action = apitype.DestroyUpdate
+	} else {
+		action = apitype.PreviewUpdate
+	}
+	label := ActionLabel(action, true /* isPreview */)
+
+	// Create unified event channel and display.
+	unifiedEvents := make(chan engine.Event)
+	displayDone := make(chan bool)
+
+	displayOpts := opts.DisplayOpts
+	displayOpts.SuppressPermalink = true
+	displayOpts.StackLabels = buildStackLabels(entries)
+	displayOpts.ExpectedStackURNs = buildExpectedStackURNs(entries)
+
+	go display.ShowEvents(
+		strings.ToLower(label), action,
+		tokens.StackName{}, "",
+		"", unifiedEvents, displayDone, displayOpts, true /* isPreview */)
+
+	// Collect events for each stack result.
+	engineEvents := make(chan engine.Event)
+	var collectedEvents []engine.Event
+	var forwardWg sync.WaitGroup
+	forwardWg.Add(1)
+	go func() {
+		defer forwardWg.Done()
+		for e := range engineEvents {
+			if !e.Internal() {
+				if e.Type == engine.ResourcePreEvent ||
+					e.Type == engine.ResourceOutputsEvent ||
+					e.Type == engine.PolicyRemediationEvent {
+					collectedEvents = append(collectedEvents, e)
+				}
+			}
+			unifiedEvents <- e
+		}
+	}()
+
+	// Use engine options from the multistack options.
+	engineOpts := opts.Engine
+	if isDestroy {
+		engineOpts.DestroyProgram = true
+	}
+
+	// Build the multistack context.
+	mctx := &engine.MultistackContext{
+		Events:        engineEvents,
+		BackendClient: NewBackendClient(entries[0].Stack.Backend(), entries[0].Op.SecretsProvider),
+	}
+
+	// Call the unified engine.
+	changes, err := engine.MultistackUpdate(engineEntries, mctx, engineOpts, true /* dryRun */)
+
+	close(engineEvents)
+	forwardWg.Wait()
+	close(unifiedEvents)
+	<-displayDone
+
+	// For the unified engine path, errors are not per-stack — return directly.
+	if err != nil {
+		return nil, err
+	}
+
+	// Build per-stack results for the confirmation prompt's "details" view.
+	results := make(map[string]*MultistackResult, len(entries))
+	for _, entry := range entries {
+		fqn := string(entry.Stack.Ref().FullyQualifiedName())
+		results[fqn] = &MultistackResult{
+			Changes: changes,
+			Events:  collectedEvents,
+		}
+	}
+
+	return results, nil
+}
+
+// runMultistackUpdateViaEngine runs a real update or destroy through a single engine deployment.
+// Unlike the preview path, this sets up per-stack snapshot managers via the PerStackSnapshotProvider
+// so that resource state is persisted back to each stack independently.
+func runMultistackUpdateViaEngine(
+	ctx context.Context,
+	entries []MultistackEntry,
+	opts MultistackOptions,
+	provider PerStackSnapshotProvider,
+	isDestroy bool,
+) (map[string]*MultistackResult, error) {
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("no stacks specified for multistack operation")
+	}
+
+	// Set up per-stack snapshot managers via the cloud backend.
+	var action apitype.UpdateKind
+	if isDestroy {
+		action = apitype.DestroyUpdate
+	} else {
+		action = apitype.UpdateUpdate
+	}
+
+	managers, perStackSnaps, complete, err := provider.SetupPerStackSnapshots(ctx, action, entries, false /* dryRun */)
+	if err != nil {
+		return nil, fmt.Errorf("setting up per-stack snapshots: %w", err)
+	}
+	// Ensure we always complete the update records, even on error.
+	var updateErr error
+	defer func() {
+		status := apitype.UpdateStatusSucceeded
+		if updateErr != nil {
+			status = apitype.UpdateStatusFailed
+		}
+		if completeErr := complete(status); completeErr != nil {
+			logging.V(4).Infof("multistack: error completing updates: %v", completeErr)
+		}
+	}()
+
+	// Build engine-level multistack entries using snapshots from SetupPerStackSnapshots
+	// (which loads them without integrity checking for multistack compatibility).
+	engineEntries := make([]engine.MultistackEntry, len(entries))
+	for i, entry := range entries {
+		fqn := string(entry.Stack.Ref().FullyQualifiedName())
+		target := &deploy.Target{
+			Name:      entry.Stack.Ref().Name(),
+			Config:    entry.Op.StackConfiguration.Config,
+			Decrypter: entry.Op.StackConfiguration.Decrypter,
+			Snapshot:  perStackSnaps[fqn],
+		}
+		engineEntries[i] = engine.MultistackEntry{
+			Project: entry.Op.Proj,
+			Target:  target,
+			Root:    entry.Op.Root,
+			FQN:     fqn,
+		}
+	}
+
+	// Set up display.
+	label := ActionLabel(action, false /* isPreview */)
+	unifiedEvents := make(chan engine.Event)
+	displayDone := make(chan bool)
+
+	displayOpts := opts.DisplayOpts
+	displayOpts.SuppressPermalink = true
+	displayOpts.StackLabels = buildStackLabels(entries)
+	displayOpts.ExpectedStackURNs = buildExpectedStackURNs(entries)
+
+	go display.ShowEvents(
+		strings.ToLower(label), action,
+		tokens.StackName{}, "",
+		"", unifiedEvents, displayDone, displayOpts, false /* isPreview */)
+
+	// Forward engine events to the unified display.
+	engineEvents := make(chan engine.Event)
+	var collectedEvents []engine.Event
+	var forwardWg sync.WaitGroup
+	forwardWg.Add(1)
+	go func() {
+		defer forwardWg.Done()
+		for e := range engineEvents {
+			if !e.Internal() {
+				if e.Type == engine.ResourcePreEvent ||
+					e.Type == engine.ResourceOutputsEvent ||
+					e.Type == engine.PolicyRemediationEvent {
+					collectedEvents = append(collectedEvents, e)
+				}
+			}
+			unifiedEvents <- e
+		}
+	}()
+
+	// Build engine options.
+	engineOpts := opts.Engine
+	if isDestroy {
+		engineOpts.DestroyProgram = true
+	}
+
+	// Build the multistack context with per-stack snapshot managers.
+	mctx := &engine.MultistackContext{
+		Events:           engineEvents,
+		SnapshotManagers: managers,
+		BackendClient:    NewBackendClient(entries[0].Stack.Backend(), entries[0].Op.SecretsProvider),
+	}
+
+	// Run the single-engine deployment.
+	changes, updateErr := engine.MultistackUpdate(engineEntries, mctx, engineOpts, false /* dryRun */)
+
+	close(engineEvents)
+	forwardWg.Wait()
+	close(unifiedEvents)
+	<-displayDone
+
+	if updateErr != nil {
+		return nil, updateErr
+	}
+
+	// Build per-stack results.
+	results := make(map[string]*MultistackResult, len(entries))
+	for _, entry := range entries {
+		fqn := string(entry.Stack.Ref().FullyQualifiedName())
+		results[fqn] = &MultistackResult{
+			Changes: changes,
+			Events:  collectedEvents,
+		}
+	}
+
+	return results, nil
 }
 
 type operationType int
@@ -109,11 +387,8 @@ const (
 	operationDestroyPreview
 )
 
-// runMultistackOperation orchestrates a multistack operation by:
-// 1. Building a dependency graph from StackReference resources in previous snapshots
-// 2. Topologically sorting stacks
-// 3. Running each level of the topological sort in parallel
-// 4. Routing all events to a unified display
+// runMultistackOperation orchestrates a multistack operation using per-stack backend operations.
+// This is the legacy path used for update and destroy until MultistackBackend support is added.
 func runMultistackOperation(
 	ctx context.Context,
 	entries []MultistackEntry,
@@ -146,21 +421,17 @@ func runMultistackOperation(
 	if err != nil {
 		return nil, err
 	}
+	logging.V(4).Infof("multistack: topological levels (before reversal): %v", levels)
 
 	// For destroy operations, reverse the order (destroy downstream first).
 	if opType == operationDestroy || opType == operationDestroyPreview {
 		for i, j := 0, len(levels)-1; i < j; i, j = i+1, j-1 {
 			levels[i], levels[j] = levels[j], levels[i]
 		}
+		logging.V(4).Infof("multistack: topological levels (after destroy reversal): %v", levels)
 	}
 
-	// Lock all stacks upfront in deterministic order to avoid deadlocks.
-	// NOTE: For the MVP, we rely on the backend's per-stack locking during
-	// individual operations. True upfront locking will be added in a follow-up.
-
 	// Create an OutputWaiterStore for co-deployed stack output resolution.
-	// This allows StackReferences between co-deployed stacks to resolve lazily,
-	// even when they run in parallel (e.g., new stacks with no prior snapshots).
 	coDeployedNames := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		coDeployedNames = append(coDeployedNames, string(entry.Stack.Ref().FullyQualifiedName()))
@@ -168,8 +439,7 @@ func runMultistackOperation(
 	outputWaiters := deploy.NewOutputWaiterStore(coDeployedNames)
 	logging.V(4).Infof("multistack: created OutputWaiterStore with co-deployed stacks: %v", coDeployedNames)
 
-	// Set the output waiter store on each entry's engine options so it flows
-	// through to the builtinProvider in each deployment.
+	// Set the output waiter store on each entry's engine options.
 	for i := range entries {
 		key := string(entries[i].Stack.Ref().FullyQualifiedName())
 		entries[i].Op.Opts.Engine.OutputWaiters = outputWaiters
@@ -193,67 +463,95 @@ func runMultistackOperation(
 	label := ActionLabel(action, isPreview)
 
 	// Create unified event channel and display goroutine.
-	// All stacks' events are forwarded here for a single tree display.
 	unifiedEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 
 	displayOpts := opts.DisplayOpts
-	// Suppress permalink in unified display — each stack has its own permalink in the cloud.
 	displayOpts.SuppressPermalink = true
+	displayOpts.StackLabels = buildStackLabels(entries)
+	displayOpts.ExpectedStackURNs = buildExpectedStackURNs(entries)
 
 	go display.ShowEvents(
 		strings.ToLower(label), action,
-		tokens.StackName{} /* no single stack */, "" /* no single project */,
-		"" /* permalink */, unifiedEvents, displayDone, displayOpts, isPreview)
+		tokens.StackName{}, "",
+		"", unifiedEvents, displayDone, displayOpts, isPreview)
 
 	// Execute stacks level by level.
+	startTime := time.Now()
 	results := make(map[string]*MultistackResult, len(entries))
-	failed := make(map[string]bool) // tracks stacks that failed
+	failed := make(map[string]bool)
 
-	for levelIdx, level := range levels {
-		logging.V(4).Infof("multistack: executing level %d with %d stacks", levelIdx, len(level))
+	isDestroyOp := opType == operationDestroy || opType == operationDestroyPreview
 
-		// Check if any dependency of stacks in this level has failed.
-		var skippedInLevel []string
-		var runnableInLevel []string
-		for _, key := range level {
-			if shouldSkip(key, deps, failed) {
-				skippedInLevel = append(skippedInLevel, key)
-			} else {
-				runnableInLevel = append(runnableInLevel, key)
-			}
-		}
+	if isDestroyOp {
+		// For destroy operations, we must execute level-by-level in reverse topological order
+		// so that dependents are destroyed before their dependencies. The OutputWaiterStore
+		// cannot help with ordering here since there are no outputs to wait for during destroy.
+		for levelIdx, level := range levels {
+			logging.V(4).Infof("multistack: executing destroy level %d with %d stacks", levelIdx, len(level))
 
-		// Mark skipped stacks.
-		for _, key := range skippedInLevel {
-			results[key] = &MultistackResult{
-				Error: fmt.Errorf("skipped: dependency failed"),
-			}
-			failed[key] = true
-		}
-
-		// If FailFast and we've already had failures, skip remaining.
-		if opts.FailFast && len(failed) > 0 {
-			for _, key := range runnableInLevel {
-				results[key] = &MultistackResult{
-					Error: fmt.Errorf("skipped: fail-fast mode and a prior stack failed"),
+			var skippedInLevel []string
+			var runnableInLevel []string
+			for _, key := range level {
+				if shouldSkip(key, deps, failed) {
+					skippedInLevel = append(skippedInLevel, key)
+				} else {
+					runnableInLevel = append(runnableInLevel, key)
 				}
 			}
-			continue
-		}
 
-		// Run stacks in this level in parallel.
+			for _, key := range skippedInLevel {
+				results[key] = &MultistackResult{
+					Error: fmt.Errorf("skipped: dependency failed"),
+				}
+				failed[key] = true
+			}
+
+			if opts.FailFast && len(failed) > 0 {
+				for _, key := range runnableInLevel {
+					results[key] = &MultistackResult{
+						Error: fmt.Errorf("skipped: fail-fast mode and a prior stack failed"),
+					}
+				}
+				continue
+			}
+
+			var wg sync.WaitGroup
+			var mu sync.Mutex
+			for _, key := range runnableInLevel {
+				wg.Add(1)
+				go func(key string) {
+					defer wg.Done()
+					entry := entryMap[key]
+					result := executeStackOperation(ctx, entry, opType, unifiedEvents)
+					mu.Lock()
+					results[key] = result
+					if result.Error != nil {
+						failed[key] = true
+					}
+					mu.Unlock()
+				}(key)
+			}
+			wg.Wait()
+		}
+	} else {
+		// For update/preview, launch all stacks concurrently. Cross-stack dependencies are
+		// handled by the OutputWaiterStore: when stack A publishes its outputs, any stack B
+		// that reads a StackReference to A unblocks immediately — giving us resource-level
+		// parallelism across stacks rather than waiting for entire stacks to complete.
 		var wg sync.WaitGroup
 		var mu sync.Mutex
-		for _, key := range runnableInLevel {
+		allKeys := make([]string, 0, len(entryMap))
+		for key := range entryMap {
+			allKeys = append(allKeys, key)
+		}
+		for _, key := range allKeys {
 			wg.Add(1)
 			go func(key string) {
 				defer wg.Done()
 				entry := entryMap[key]
 				result := executeStackOperation(ctx, entry, opType, unifiedEvents)
 
-				// If the stack failed, notify the output waiter store so
-				// co-deployed stacks waiting on this stack's outputs unblock with an error.
 				if result.Error != nil {
 					outputWaiters.FailStack(key, result.Error)
 				}
@@ -270,7 +568,7 @@ func runMultistackOperation(
 	}
 
 	// Send an aggregated SummaryEvent before closing the unified channel.
-	sendAggregatedSummary(results, unifiedEvents)
+	sendAggregatedSummary(results, unifiedEvents, isPreview, time.Since(startTime))
 
 	close(unifiedEvents)
 	<-displayDone
@@ -280,7 +578,10 @@ func runMultistackOperation(
 
 // sendAggregatedSummary sends a single SummaryEvent to the unified display channel
 // that aggregates changes across all stacks.
-func sendAggregatedSummary(results map[string]*MultistackResult, events chan<- engine.Event) {
+func sendAggregatedSummary(
+	results map[string]*MultistackResult, events chan<- engine.Event,
+	isPreview bool, duration time.Duration,
+) {
 	changes := make(sdkDisplay.ResourceChanges)
 	for _, result := range results {
 		if result.Changes != nil {
@@ -290,6 +591,8 @@ func sendAggregatedSummary(results map[string]*MultistackResult, events chan<- e
 		}
 	}
 	events <- engine.NewEvent(engine.SummaryEventPayload{
+		IsPreview:       isPreview,
+		Duration:        duration,
 		ResourceChanges: changes,
 	})
 }
@@ -306,13 +609,24 @@ func executeStackOperation(
 	entry.Op.Opts.Display.SuppressDisplay = true
 	entry.Op.Opts.Display.SuppressPermalink = true
 
-	// Create a per-stack event channel that forwards to the unified channel.
+	// Create a per-stack event channel that forwards to the unified channel
+	// and collects events for the confirmation prompt's "details" view.
 	events := make(chan engine.Event)
+	var collectedEvents []engine.Event
 	var forwardWg sync.WaitGroup
 	forwardWg.Add(1)
 	go func() {
 		defer forwardWg.Done()
 		for e := range events {
+			// Collect relevant events for the "details" diff display.
+			if !e.Internal() {
+				if e.Type == engine.ResourcePreEvent ||
+					e.Type == engine.ResourceOutputsEvent ||
+					e.Type == engine.PolicyRemediationEvent ||
+					e.Type == engine.SummaryEvent {
+					collectedEvents = append(collectedEvents, e)
+				}
+			}
 			// Filter per-stack SummaryEvent and CancelEvent — we send our own aggregated one.
 			if e.Type == engine.SummaryEvent || e.Type == engine.CancelEvent {
 				continue
@@ -332,6 +646,7 @@ func executeStackOperation(
 		// Skip preview & auto-approve — the multistack orchestrator handles prompting.
 		entry.Op.Opts.SkipPreview = true
 		entry.Op.Opts.AutoApprove = true
+		entry.Op.Opts.PreviewOnly = false
 		changes, err := UpdateStack(ctx, entry.Stack, entry.Op, events)
 		result.Changes = changes
 		result.Error = err
@@ -339,13 +654,14 @@ func executeStackOperation(
 		// Skip preview & auto-approve — the multistack orchestrator handles prompting.
 		entry.Op.Opts.SkipPreview = true
 		entry.Op.Opts.AutoApprove = true
+		entry.Op.Opts.PreviewOnly = false
 		changes, err := DestroyStack(ctx, entry.Stack, entry.Op, events)
 		result.Changes = changes
 		result.Error = err
 	case operationDestroyPreview:
-		// Run destroy in preview-only mode to show what will be destroyed.
-		entry.Op.Opts.PreviewOnly = true
-		changes, err := DestroyStack(ctx, entry.Stack, entry.Op, events)
+		entry.Op.Opts.Engine.DestroyProgram = true
+		plan, changes, err := PreviewStack(ctx, entry.Stack, entry.Op, events)
+		result.Plan = plan
 		result.Changes = changes
 		result.Error = err
 	}
@@ -353,7 +669,26 @@ func executeStackOperation(
 	close(events)
 	forwardWg.Wait()
 
+	result.Events = collectedEvents
+
 	return result
+}
+
+// loadMultistackSnapshot loads a stack's snapshot with integrity checking temporarily disabled.
+// Per-stack snapshots from previous multistack runs may contain cross-stack dependency references
+// that would fail normal integrity verification. Returns nil if the snapshot can't be loaded.
+func loadMultistackSnapshot(ctx context.Context, stack Stack, secretsProvider secrets.Provider) *deploy.Snapshot {
+	origDisable := DisableIntegrityChecking
+	DisableIntegrityChecking = true
+	defer func() { DisableIntegrityChecking = origDisable }()
+
+	snap, err := stack.Snapshot(ctx, secretsProvider)
+	if err != nil {
+		fqn := string(stack.Ref().FullyQualifiedName())
+		logging.V(4).Infof("multistack: could not load snapshot for %s: %v", fqn, err)
+		return nil
+	}
+	return snap
 }
 
 // buildMultistackDependencyGraph analyzes StackReference resources in previous snapshots
@@ -370,11 +705,7 @@ func buildMultistackDependencyGraph(
 		deps[key] = nil // Initialize even if no deps
 
 		// Get the stack's snapshot to find StackReference resources.
-		snapshot, err := entry.Stack.Snapshot(ctx, entry.Op.SecretsProvider)
-		if err != nil {
-			logging.V(4).Infof("multistack: could not load snapshot for %s: %v", key, err)
-			continue // No snapshot = new stack = no dependencies
-		}
+		snapshot := loadMultistackSnapshot(ctx, entry.Stack, entry.Op.SecretsProvider)
 		if snapshot == nil {
 			continue
 		}
@@ -385,15 +716,26 @@ func buildMultistackDependencyGraph(
 				// The "name" input property contains the fully qualified stack reference.
 				if nameVal, ok := res.Inputs["name"]; ok && nameVal.IsString() {
 					refName := nameVal.StringValue()
+					logging.V(4).Infof("multistack: stack %q has StackReference to %q", key, refName)
 					// Only add dependency if the referenced stack is co-deployed.
 					if _, coDeployed := entryMap[refName]; coDeployed {
 						deps[key] = append(deps[key], refName)
+						logging.V(4).Infof("multistack: added dependency %q -> %q", key, refName)
+					} else {
+						logging.V(4).Infof("multistack: %q not co-deployed (keys: %v)", refName, func() []string {
+							keys := make([]string, 0, len(entryMap))
+							for k := range entryMap {
+								keys = append(keys, k)
+							}
+							return keys
+						}())
 					}
 				}
 			}
 		}
 	}
 
+	logging.V(4).Infof("multistack: dependency graph: %v", deps)
 	return deps, nil
 }
 
@@ -495,71 +837,33 @@ func shouldSkip(key string, deps map[string][]string, failed map[string]bool) bo
 	return false
 }
 
-// FormatMultistackSummary formats the multistack deployment plan for display.
-func FormatMultistackSummary(entries []MultistackEntry) string {
-	var sb strings.Builder
-	sb.WriteString("Multistack deployment:\n")
+// buildStackLabels creates a mapping from project name to logical display label
+// for multistack operations. The label is the directory basename (e.g., "vpc" for
+// a project in the "vpc/" directory), matching what PrintMultistackConfirmation shows.
+func buildStackLabels(entries []MultistackEntry) map[string]string {
+	labels := make(map[string]string, len(entries))
 	for _, entry := range entries {
-		ref := entry.Stack.Ref().FullyQualifiedName()
+		projectName := string(entry.Op.Proj.Name)
 		dir := entry.Dir
-		if dir == "" {
-			dir = "."
+		// Use relative path from cwd if possible, otherwise just basename.
+		if cwd, err := os.Getwd(); err == nil {
+			if rel, err := filepath.Rel(cwd, dir); err == nil {
+				dir = rel
+			}
 		}
-		sb.WriteString(fmt.Sprintf("  %-20s → %s\n", dir, ref))
+		labels[projectName] = filepath.Base(dir)
 	}
-	return sb.String()
+	return labels
 }
 
-// FormatMultistackResults formats the results of a multistack operation for display.
-func FormatMultistackResults(
-	results map[string]*MultistackResult,
-	entries []MultistackEntry,
-) string {
-	var sb strings.Builder
-	sb.WriteString("\nMultistack results:\n")
-
-	totalChanges := make(sdkDisplay.ResourceChanges)
-
+// buildExpectedStackURNs constructs the expected stack root URNs for each entry
+// so the display can pre-populate stack rows immediately.
+func buildExpectedStackURNs(entries []MultistackEntry) []resource.URN {
+	urns := make([]resource.URN, 0, len(entries))
 	for _, entry := range entries {
-		key := string(entry.Stack.Ref().FullyQualifiedName())
-		result := results[key]
-		if result == nil {
-			sb.WriteString(fmt.Sprintf("  %s: no result\n", key))
-			continue
-		}
-		if result.Error != nil {
-			sb.WriteString(fmt.Sprintf("  %s: FAILED - %v\n", key, result.Error))
-			continue
-		}
-		// Summarize changes.
-		var changeParts []string
-		for op, count := range result.Changes {
-			if count > 0 {
-				changeParts = append(changeParts, fmt.Sprintf("%d %s", count, op))
-			}
-			totalChanges[op] += count
-		}
-		if len(changeParts) == 0 {
-			sb.WriteString(fmt.Sprintf("  %s: no changes\n", key))
-		} else {
-			sort.Strings(changeParts)
-			sb.WriteString(fmt.Sprintf("  %s: %s\n", key, strings.Join(changeParts, ", ")))
-		}
+		stackName := entry.Stack.Ref().Name().Q()
+		projName := entry.Op.Proj.Name
+		urns = append(urns, resource.DefaultRootStackURN(stackName, projName))
 	}
-
-	sb.WriteString("\nSummary:\n")
-	sb.WriteString(fmt.Sprintf("  %d stacks", len(entries)))
-	var totalParts []string
-	for op, count := range totalChanges {
-		if count > 0 {
-			totalParts = append(totalParts, fmt.Sprintf("%d %s", count, op))
-		}
-	}
-	if len(totalParts) > 0 {
-		sort.Strings(totalParts)
-		sb.WriteString(fmt.Sprintf(", %s", strings.Join(totalParts, ", ")))
-	}
-	sb.WriteString("\n")
-
-	return sb.String()
+	return urns
 }

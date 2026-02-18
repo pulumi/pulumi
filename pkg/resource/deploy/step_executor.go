@@ -125,11 +125,17 @@ type stepExecutor struct {
 	// Channel to collect panic errors from goroutines in this step executor
 	panicErrs chan error
 
-	// ExecuteRegisterResourceOutputs will save the event for the stack resource so that the stack outputs
+	// ExecuteRegisterResourceOutputs will save events for stack resources so that stack outputs
 	// can be finalized at the end of the deployment. We do this so we can determine whether or not the
 	// deployment succeeded. If there were errors, we update any stack outputs that were updated, but don't delete
-	// any old outputs.
-	stackOutputsEvent RegisterResourceOutputsEvent
+	// any old outputs. In multistack mode, there are N stack roots — one per project.
+	stackOutputsEvents []RegisterResourceOutputsEvent
+
+	// Track completed step URNs for eager replacement delete scheduling.
+	completedMu       sync.Mutex
+	completedURNs     map[resource.URN]bool
+	eagerDeletedURNs  map[resource.URN]bool // URNs whose delete steps have completed
+	stepCompletedChan chan struct{}          // buffered(1), signaled after each step completes
 }
 
 //
@@ -216,18 +222,30 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	// deployment succeeded. If the deployment was successful, we use the new stack outputs. If there was an error,
 	// we only replace outputs that have new outputs, but to otherwise leave old outputs untouched.
 	if !finalizingStackOutputs && urn.QualifiedType() == resource.RootStackType {
-		se.stackOutputsEvent = e
+		se.stackOutputsEvents = append(se.stackOutputsEvents, e)
 
 		// For multistack deployments, publish outputs immediately so co-deployed stacks
 		// waiting on StackReferences can unblock without waiting for the full deployment to finish.
 		store := se.deployment.opts.OutputWaiters
 		logging.V(4).Infof("stepExecutor: RegisterResourceOutputs for stack root %v, OutputWaiters=%p", urn, store)
 		if store != nil {
-			stackName := se.deployment.opts.OutputWaitersStackName
-			outputs := resource.FromResourcePropertyMap(e.Outputs())
-			logging.V(4).Infof("stepExecutor: publishing outputs for stack %q to OutputWaiterStore", stackName)
-			store.SetOutputs(stackName, outputs)
-			logging.V(4).Infof("stepExecutor: successfully published outputs for stack %q", stackName)
+			// In multistack mode, derive the stack FQN from the URN's project name.
+			// In single-stack mode, use OutputWaitersStackName directly.
+			var stackName string
+			if fqns := se.deployment.opts.OutputWaitersStackFQNs; fqns != nil {
+				project := urn.Project()
+				stackName = fqns[project]
+			} else {
+				stackName = se.deployment.opts.OutputWaitersStackName
+			}
+			if stackName != "" {
+				outputs := resource.FromResourcePropertyMap(e.Outputs())
+				logging.V(4).Infof("stepExecutor: publishing outputs for stack %q to OutputWaiterStore", stackName)
+				store.SetOutputs(stackName, outputs)
+				logging.V(4).Infof("stepExecutor: successfully published outputs for stack %q", stackName)
+			} else {
+				logging.V(4).Infof("stepExecutor: stackName is empty for URN=%v, not calling SetOutputs", urn)
+			}
 		}
 
 		e.Done()
@@ -356,6 +374,28 @@ func (se *stepExecutor) Errored() error {
 	_, err, _ := se.sawError.Promise().TryResult()
 	// err will be nil if the promise has not been rejected yet
 	return err
+}
+
+// StepCompleted returns a channel that is signaled whenever a step completes. This allows the
+// deployment executor's main loop to react to step completions for eager replacement delete scheduling.
+func (se *stepExecutor) StepCompleted() <-chan struct{} {
+	return se.stepCompletedChan
+}
+
+// IsCompleted returns true if a step for the given URN has completed execution.
+func (se *stepExecutor) IsCompleted(urn resource.URN) bool {
+	se.completedMu.Lock()
+	defer se.completedMu.Unlock()
+	return se.completedURNs[urn]
+}
+
+// IsEagerlyDeleted returns true if a delete step for the given URN has completed execution.
+// This is separate from IsCompleted to avoid URN collisions between old (Delete=true) and
+// new (non-Delete) resources that share the same URN.
+func (se *stepExecutor) IsEagerlyDeleted(urn resource.URN) bool {
+	se.completedMu.Lock()
+	defer se.completedMu.Unlock()
+	return se.eagerDeletedURNs[urn]
 }
 
 // SignalCompletion signals to the stepExecutor that there are no more chains left to execute. All worker
@@ -617,6 +657,18 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 		stepComplete()
 	}
 
+	// Track completion for eager replacement delete scheduling.
+	se.completedMu.Lock()
+	se.completedURNs[step.URN()] = true
+	if step.Op() == OpDeleteReplaced || step.Op() == OpDelete {
+		se.eagerDeletedURNs[step.URN()] = true
+	}
+	se.completedMu.Unlock()
+	select {
+	case se.stepCompletedChan <- struct{}{}:
+	default: // already signaled
+	}
+
 	if err != nil {
 		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
 		return StepApplyFailed{err}
@@ -706,12 +758,15 @@ func newStepExecutor(
 	ignoreErrors bool,
 ) *stepExecutor {
 	exec := &stepExecutor{
-		deployment:     deployment,
-		ignoreErrors:   ignoreErrors,
-		incomingChains: make(chan incomingChain),
-		ctx:            ctx,
-		cancel:         cancel,
-		panicErrs:      make(chan error, 1),
+		deployment:        deployment,
+		ignoreErrors:      ignoreErrors,
+		incomingChains:    make(chan incomingChain),
+		ctx:               ctx,
+		cancel:            cancel,
+		panicErrs:         make(chan error, 1),
+		completedURNs:     make(map[resource.URN]bool),
+		eagerDeletedURNs:  make(map[resource.URN]bool),
+		stepCompletedChan: make(chan struct{}, 1),
 	}
 
 	// Start a goroutine to monitor for panic errors and handle them

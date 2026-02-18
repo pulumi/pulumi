@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // Type of output to display.
@@ -66,6 +67,15 @@ type Options struct {
 	// Neo options that are ignored if ShowCopilotFeatures is false.
 	NeoSummaryModel  string // the Neo summary model to use (default: "gpt-4o-mini").
 	NeoSummaryMaxLen int    // the maximum length of the Neo summary. (default 80 characters).
+
+	// Multistack options
+	// StackLabels maps project names to logical labels for multistack display.
+	// When set, per-stack outputs and summaries use these labels instead of project names.
+	StackLabels map[string]string
+	// ExpectedStackURNs is the set of stack root URNs expected in multistack mode.
+	// When set, the display pre-populates stack root rows so they appear immediately
+	// rather than waiting for the first event for each stack.
+	ExpectedStackURNs []resource.URN
 
 	// Low level options
 	term                terminal.Terminal

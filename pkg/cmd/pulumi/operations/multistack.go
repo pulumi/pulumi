@@ -26,15 +26,20 @@ import (
 	"sort"
 	"strings"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -233,10 +238,10 @@ func resolveOneStack(
 }
 
 // PrintMultistackConfirmation prints a stylized confirmation header for a multistack operation.
+// The format mirrors single-stack headers (e.g., "Previewing update (stack)") but lists multiple stacks.
 func PrintMultistackConfirmation(entries []backend.MultistackEntry, operation string) {
 	c := cmdutil.GetGlobalColorization()
 
-	fmt.Println()
 	fmt.Print(c.Colorize(
 		colors.SpecHeadline + fmt.Sprintf("%s (%d stacks)", operation, len(entries)) + colors.Reset + "\n"))
 
@@ -273,12 +278,39 @@ func PrintMultistackConfirmation(entries []backend.MultistackEntry, operation st
 	fmt.Println()
 }
 
-// PrintMultistackResults prints the results of a multistack operation.
-func PrintMultistackResults(
-	results map[string]*backend.MultistackResult,
-	entries []backend.MultistackEntry,
-) {
-	fmt.Println(backend.FormatMultistackResults(results, entries))
+// checkMultistackErrors checks if any stack in the results had errors and returns
+// an appropriate error. The unified display already renders resource changes and
+// summary, so this only surfaces per-stack failures.
+func checkMultistackErrors(results map[string]*backend.MultistackResult, operation string) error {
+	// Collect unique errors (deduplicate identical errors from unified engine path).
+	var errors []error
+	seen := make(map[string]bool)
+	for _, result := range results {
+		if result != nil && result.Error != nil {
+			msg := result.Error.Error()
+			if !seen[msg] {
+				seen[msg] = true
+				errors = append(errors, result.Error)
+			}
+		}
+	}
+	if len(errors) == 0 {
+		return nil
+	}
+	// Single error: return it directly (matches normal single-stack error behavior).
+	if len(errors) == 1 {
+		return errors[0]
+	}
+	// Multiple distinct errors: list them.
+	var failedDetails []string
+	for key, result := range results {
+		if result != nil && result.Error != nil {
+			failedDetails = append(failedDetails, fmt.Sprintf("  %s: %v", key, result.Error))
+		}
+	}
+	sort.Strings(failedDetails)
+	return fmt.Errorf("one or more stacks failed during %s:\n%s",
+		operation, strings.Join(failedDetails, "\n"))
 }
 
 // PrintDownstreamWarnings prints warnings about downstream stacks that consume outputs
@@ -388,4 +420,62 @@ func readCurrentStackForProject(dir string) (string, error) {
 	}
 
 	return settings.Stack, nil
+}
+
+// confirmMultistackOperation prompts the user whether to proceed with a multistack operation.
+// Supports yes/no/details, matching the single-stack confirmation flow.
+func confirmMultistackOperation(
+	kind string,
+	previewResults map[string]*backend.MultistackResult,
+	entries []backend.MultistackEntry,
+	displayOpts display.Options,
+) error {
+	// Collect all preview events across stacks for the "details" view.
+	var allEvents []engine.Event
+	for _, entry := range entries {
+		key := string(entry.Stack.Ref().FullyQualifiedName())
+		if r := previewResults[key]; r != nil {
+			allEvents = append(allEvents, r.Events...)
+		}
+	}
+
+	for {
+		var response string
+
+		surveycore.DisableColor = true
+		surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
+			icons.Question = survey.Icon{}
+			icons.SelectFocus = survey.Icon{
+				Text: displayOpts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset),
+			}
+		})
+
+		prompt := "\b" + displayOpts.Color.Colorize(
+			colors.SpecPrompt+fmt.Sprintf("Do you want to perform this %s?", kind)+colors.Reset)
+
+		if err := survey.AskOne(&survey.Select{
+			Message: prompt,
+			Options: []string{"yes", "no", "details"},
+			Default: "no",
+		}, &response, surveyIcons); err != nil {
+			return fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)
+		}
+
+		if response == "no" {
+			return result.FprintBailf(os.Stdout, "confirmation declined, not proceeding with the %s", kind)
+		}
+
+		if response == "yes" {
+			return nil
+		}
+
+		if response == "details" {
+			diff, err := display.CreateDiff(allEvents, displayOpts)
+			if err != nil {
+				return err
+			}
+			fmt.Println(diff)
+			continue
+		}
+	}
 }

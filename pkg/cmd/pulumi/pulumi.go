@@ -928,6 +928,11 @@ func getLatestBrewFormulaVersion() (semver.Version, bool, error) {
 }
 
 func isLocalVersion(s semver.Version) bool {
+	// A zero version (0.0.0) indicates a locally-built binary without version injection.
+	if s.Major == 0 && s.Minor == 0 && s.Patch == 0 && len(s.Pre) == 0 {
+		return true
+	}
+
 	if len(s.Pre) == 0 {
 		return false
 	}

@@ -364,23 +364,23 @@ func NewPreviewCmd() *cobra.Command {
 					return err
 				}
 
-				PrintMultistackConfirmation(entries, "Preview")
+				PrintMultistackConfirmation(entries, "Previewing update")
 
 				results, err := backend.MultistackPreview(
-					ctx, entries, backend.MultistackOptions{DisplayOpts: displayOpts})
+					ctx, entries, backend.MultistackOptions{
+						DisplayOpts: displayOpts,
+						Engine: engine.UpdateOptions{
+							Parallel: parallel,
+							Debug:    debug,
+						},
+					})
 				if err != nil {
 					return err
 				}
 
-				PrintMultistackResults(results, entries)
-
-				// Check if any stack had errors.
-				for _, result := range results {
-					if result.Error != nil {
-						return fmt.Errorf("one or more stacks failed during preview")
-					}
-				}
-				return nil
+				// The unified display already rendered resource changes and summary.
+				// Only report per-stack errors that the display may not have surfaced.
+				return checkMultistackErrors(results, "preview")
 			}
 
 			proj, root, err := readProjectForUpdate(ws, client)
