@@ -100,10 +100,12 @@ jobs:
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
       TEST_ALL_DEPS: ""
-      # Point $TMP to the value of `runner.temp` on Windows. This ensures that our Go tests which use os.MkdirTemp
-      # create their test environments in this directory. This directory is on the D: drive, as opposed to the C: drive
-      # for the default temp directory, and IO seems to be massively faster on that drive.
+      # Point $TMP and $TEMP to the value of `runner.temp` on Windows. This ensures that our Go tests which use
+      # os.MkdirTemp create their test environments in this directory. This directory is on the D: drive, as opposed to
+      # the C: drive for the default temp directory, and IO seems to be massively faster on that drive.
+      # Note: Windows will first use $TMP, then fallback to $TEMP. Set both here for consistency.
       TMP: ${{ contains(inputs.platform, 'windows') && 'D:/a/_temp' || '' }}
+      TEMP: ${{ contains(inputs.platform, 'windows') && 'D:/a/_temp' || '' }}
 
     runs-on: ${{ inputs.platform }}
 
@@ -238,8 +240,8 @@ jobs:
       - name: Set up JDK 11
         uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
-          java-version: "11"
-          distribution: "temurin"
+          java-version: '11'
+          distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@d9c87d481d55275bb5441eef3fe0e46805f9ef70 # v3
         with:

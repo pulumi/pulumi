@@ -92,7 +92,7 @@ if shutil.which('gotestsum') is not None:
         os.mkdir(str(junit_dir))
     json_file = str(test_results_dir.joinpath(f'{test_run}.json'))
     junit_file = str(junit_dir.joinpath(f'{test_run}-junit.xml'))
-    args = ['gotestsum', '--format', 'standard-verbose', '--junitfile', junit_file, '--jsonfile', json_file, '--packages', pkgs, '--'] + \
+    args = ['gotestsum', '--junitfile', junit_file, '--jsonfile', json_file, '--packages', pkgs, '--'] + \
         opts
 else:
     args = ['go', 'test'] + args
