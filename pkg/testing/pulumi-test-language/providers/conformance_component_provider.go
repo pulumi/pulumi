@@ -106,9 +106,10 @@ func (p *ConformanceComponentProvider) Construct(
 
 	// Register the parent component.
 	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:     "conformance-component:index:Simple",
-		Name:     req.Name,
-		Provider: req.Options.Providers["conformance-component"],
+		Type:          "conformance-component:index:Simple",
+		Name:          req.Name,
+		Provider:      req.Options.Providers["conformance-component"],
+		IgnoreChanges: req.Options.IgnoreChanges,
 	})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)

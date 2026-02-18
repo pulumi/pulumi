@@ -877,6 +877,8 @@ func (p *providerServer) Construct(ctx context.Context,
 		DeletedWith:          resource.URN(req.DeletedWith),
 		ReplaceWith:          replaceWith,
 		ReplacementTrigger:   replacementTrigger,
+		IgnoreChanges:        req.GetIgnoreChanges(),
+		ReplaceOnChanges:     req.GetReplaceOnChanges(),
 	}
 
 	resp, err := p.provider.Construct(ctx, ConstructRequest{
