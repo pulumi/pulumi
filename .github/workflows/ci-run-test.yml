@@ -104,10 +104,12 @@ jobs:
       # os.MkdirTemp create their test environments in this directory. This directory is on the D: drive, as opposed to
       # the C: drive for the default temp directory, and IO seems to be massively faster on that drive.
       # Note: Windows will first use $TMP, then fallback to $TEMP. Set both here for consistency.
-      # Similarly, we set GOPATH.
+      # Similarly, we set GOPATH and GOMODCACHE.
       TMP: ${{ contains(inputs.platform, 'windows') && 'D:/a/_temp' || '' }}
       TEMP: ${{ contains(inputs.platform, 'windows') && 'D:/a/_temp' || '' }}
       GOPATH: ${{ contains(inputs.platform, 'windows') && 'D:/go' || '' }}
+      GOCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-build-cache' || '' }}
+      GOMODCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-mod-cache' || '' }}
 
     runs-on: ${{ inputs.platform }}
 
