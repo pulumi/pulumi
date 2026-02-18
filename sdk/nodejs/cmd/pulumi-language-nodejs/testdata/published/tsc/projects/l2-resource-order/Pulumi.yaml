@@ -1,0 +1,5 @@
+name: l2-resource-order
+runtime:
+  name: nodejs
+  options:
+    typescript: false
