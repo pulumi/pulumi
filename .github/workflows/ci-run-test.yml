@@ -100,16 +100,9 @@ jobs:
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
       TEST_ALL_DEPS: ""
-      # Use the D drive for package manager caches on windows
-      # NPM_CONFIG_CACHE: ${{ contains(inputs.platform, 'windows') && 'D:/npm-cache' || '' }}
-      # YARN_CACHE_FOLDER: ${{ contains(inputs.platform, 'windows') && 'D:/yarn-cache' || '' }}
-      # PNPM_HOME: ${{ contains(inputs.platform, 'windows') && 'D:/pnpm-cache' || '' }}
-      # BUN_INSTALL_CACHE_DIR: ${{ contains(inputs.platform, 'windows') && 'D:/bun-cache' || '' }}
-      # GOCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-build-cache' || '' }}
-      # GOMODCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-mod-cache' || '' }}
-      # PIP_CACHE_DIR: ${{ contains(inputs.platform, 'windows') && 'D:/pip-cache' || '' }}
-      # NUGET_PACKAGES: ${{ contains(inputs.platform, 'windows') && 'D:/nuget-cache' || '' }}
-      # MAVEN_OPTS: ${{ contains(inputs.platform, 'windows') && '-Dmaven.repo.local=D:/maven-cache' || '' }}
+      # Point $TMP to the value of `runner.temp` on Windows. This ensures that our Go tests which use os.MkdirTemp
+      # create their test environments in this directory. This directory is on the D: drive, as opposed to the C: drive
+      # for the default temp directory, and IO seems to be massively faster on that drive.
       TMP: ${{ contains(inputs.platform, 'windows') && 'D:/a/_temp' || '' }}
 
     runs-on: ${{ inputs.platform }}
@@ -117,6 +110,11 @@ jobs:
     timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
+      - name: Print RUNNER_TEMP
+        run: |
+          echo "RUNNER_TEMP: ${{ runner.temp }}"
+          echo "TMP: ${TMP}"
+          echo "TEMP: ${TEMP}"
       - if: contains(inputs.platform, 'ubuntu')
         name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
@@ -161,11 +159,6 @@ jobs:
         if: ${{ runner.os == 'windows' || runner.os == 'macOS' }}
         run: |
           npm install typescript -g
-      - name: Debug
-        if: ${{ runner.os == 'windows' }}
-        run: |
-          echo TMP=$TMP
-          echo TEMP=$TEMP
       - name: "macOS use coreutils"
         if: ${{ runner.os == 'macOS' }}
         run: |
