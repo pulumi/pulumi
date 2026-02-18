@@ -5,6 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { EnumOutputArgs } from "./enumOutput";
+export type EnumOutput = import("./enumOutput").EnumOutput;
+export const EnumOutput: typeof import("./enumOutput").EnumOutput = null as any;
+utilities.lazyLoad(exports, ["EnumOutput"], () => require("./enumOutput"));
+
 export { ExampleArgs } from "./example";
 export type Example = import("./example").Example;
 export const Example: typeof import("./example").Example = null as any;
@@ -16,10 +21,22 @@ export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 
+// Export enums:
+export * from "./types/enums";
+
+// Export sub-modules:
+import * as types from "./types";
+
+export {
+    types,
+};
+
 const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "union:index:EnumOutput":
+                return new EnumOutput(name, <any>undefined, { urn })
             case "union:index:Example":
                 return new Example(name, <any>undefined, { urn })
             default:

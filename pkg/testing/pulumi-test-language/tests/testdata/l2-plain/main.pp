@@ -22,3 +22,23 @@ resource "res" "plain:index:Resource" {
         }
     }
 }
+
+resource "emptyListRes" "plain:index:Resource" {
+    data = {
+        innerData = {
+            boolean = false
+            float = 0
+            integer = 0
+            string = ""
+            boolArray = []
+            stringMap = {}
+        }
+        boolean = false
+        float = 0
+        integer = 0
+        string = ""
+        boolArray = []
+        stringMap = {}
+    }
+    dataList = []
+}

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/install,package
-  description: Don't panic when a non-absolute path is passed to `pulumi package get-schema` where the PulumiPlugin.yaml has a packages section

@@ -439,11 +439,6 @@ func typingImports() []string {
 }
 
 func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typingImports []string) {
-	rel, err := filepath.Rel(mod.mod, "")
-	contract.AssertNoErrorf(err, "could not turn %q into a relative path", mod.mod)
-	relRoot := path.Dir(rel)
-	relImport := relPathToRelImport(relRoot)
-
 	fmt.Fprintf(w, "import warnings\n")
 	if typedDictEnabled(mod.inputTypes) {
 		fmt.Fprintf(w, "import sys\n")
@@ -457,7 +452,7 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 		fmt.Fprintf(w, "else:\n")
 		fmt.Fprintf(w, "    from typing_extensions import NotRequired, TypedDict, TypeAlias\n")
 	}
-	fmt.Fprintf(w, "from %s import _utilities\n", relImport)
+	fmt.Fprintf(w, "%s\n", mod.genUtilitiesImport())
 	for _, imp := range imports.strings() {
 		fmt.Fprintf(w, "%s\n", imp)
 	}
@@ -891,6 +886,9 @@ func (mod *modContext) genInit(exports []string) string {
 
 func (mod *modContext) getRelImportFromRoot(target string) string {
 	rel, err := filepath.Rel(mod.mod, target)
+	// On Go >=1.26 filepath.Rel calls filepath.Clean already, but not on version on <1.26. Once we drop support for
+	// older versions we can drop the call to filepath.Clean here.
+	rel = filepath.Clean(rel)
 	contract.AssertNoErrorf(err, "error turning %q into a relative path", mod.mod)
 	if path.Base(rel) == "." {
 		rel = path.Dir(rel)
@@ -901,8 +899,10 @@ func (mod *modContext) getRelImportFromRoot(target string) string {
 func (mod *modContext) genUtilitiesImport() string {
 	rel, err := filepath.Rel(mod.mod, "")
 	contract.AssertNoErrorf(err, "error turning %q into a relative path", mod.mod)
-	relRoot := path.Dir(rel)
-	relImport := relPathToRelImport(relRoot)
+	// On Go >=1.26 filepath.Rel calls filepath.Clean already, but not on version on <1.26. Once we drop support for
+	// older versions we can drop the call to filepath.Clean here.
+	rel = filepath.Clean(rel)
+	relImport := relPathToRelImport(rel)
 	return fmt.Sprintf("from %s import _utilities", relImport)
 }
 

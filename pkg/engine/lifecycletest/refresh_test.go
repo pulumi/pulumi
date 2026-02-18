@@ -3351,9 +3351,6 @@ func TestRefreshV2ParentChildOrdering(t *testing.T) {
 func TestRefreshV2DependencyNotInOriginalSnapshot(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#21645]: Remove this once the underlying issue is fixed.
-	t.Skip("Skipping test, repro for snapshot integrity issue")
-
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",

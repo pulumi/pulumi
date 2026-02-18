@@ -6,6 +6,8 @@ import builtins as _builtins
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from ._enums import *
+from .enum_output import *
 from .example import *
 from .provider import *
 _utilities.register(
@@ -16,6 +18,7 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_union",
   "classes": {
+   "union:index:EnumOutput": "EnumOutput",
    "union:index:Example": "Example"
   }
  }

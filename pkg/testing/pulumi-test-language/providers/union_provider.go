@@ -71,6 +71,12 @@ func (p *UnionProvider) GetSchema(
 
 	mapMapUnionType := mapOf(mapOf(oneOf(stringType, arrayOf(stringType))))
 
+	typeRef := func(name string) schema.TypeSpec {
+		return schema.TypeSpec{
+			Ref: fmt.Sprintf("#/types/%s:index:%s", p.Pkg(), name),
+		}
+	}
+
 	resourceProperties := map[string]schema.PropertySpec{
 		"stringOrIntegerProperty": {
 			TypeSpec: oneOf(stringType, integerType),
@@ -78,11 +84,47 @@ func (p *UnionProvider) GetSchema(
 		"mapMapUnionProperty": {
 			TypeSpec: mapMapUnionType,
 		},
+		"stringEnumUnionListProperty": {
+			TypeSpec: arrayOf(oneOf(stringType, typeRef("AccessRights"))),
+		},
+		"typedEnumProperty": {
+			TypeSpec: oneOf(stringType, typeRef("BlobType")),
+		},
+	}
+
+	enumOutputProperties := map[string]schema.PropertySpec{
+		"name": {TypeSpec: stringType},
+		"type": {TypeSpec: stringType},
+	}
+	enumOutputInputProperties := map[string]schema.PropertySpec{
+		"name": {TypeSpec: stringType},
 	}
 
 	pkg := schema.PackageSpec{
 		Name:    string(p.Pkg()),
 		Version: p.version(),
+		Types: map[string]schema.ComplexTypeSpec{
+			fmt.Sprintf("%s:index:AccessRights", p.Pkg()): {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "string",
+				},
+				Enum: []schema.EnumValueSpec{
+					{Value: "Listen"},
+					{Value: "Manage"},
+					{Value: "Send"},
+				},
+			},
+			fmt.Sprintf("%s:index:BlobType", p.Pkg()): {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "string",
+				},
+				Enum: []schema.EnumValueSpec{
+					{Value: "Block"},
+					{Value: "Append"},
+					{Value: "Page"},
+				},
+			},
+		},
 		Resources: map[string]schema.ResourceSpec{
 			fmt.Sprintf("%s:index:Example", p.Pkg()): {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -90,6 +132,15 @@ func (p *UnionProvider) GetSchema(
 					Properties: resourceProperties,
 				},
 				InputProperties: resourceProperties,
+			},
+			fmt.Sprintf("%s:index:EnumOutput", p.Pkg()): {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: enumOutputProperties,
+					Required:   []string{"name", "type"},
+				},
+				InputProperties: enumOutputInputProperties,
+				RequiredInputs:  []string{"name"},
 			},
 		},
 	}
@@ -146,7 +197,10 @@ func (p *UnionProvider) DiffConfig(
 func (p *UnionProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	if string(req.URN.Type()) != fmt.Sprintf("%s:index:Example", p.Pkg()) {
+	urnType := string(req.URN.Type())
+	exampleType := fmt.Sprintf("%s:index:Example", p.Pkg())
+	enumOutputType := fmt.Sprintf("%s:index:EnumOutput", p.Pkg())
+	if urnType != exampleType && urnType != enumOutputType {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
@@ -158,10 +212,23 @@ func (p *UnionProvider) Check(
 func (p *UnionProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if string(req.URN.Type()) == fmt.Sprintf("%s:index:Example", p.Pkg()) {
+	urnType := string(req.URN.Type())
+	exampleType := fmt.Sprintf("%s:index:Example", p.Pkg())
+	enumOutputType := fmt.Sprintf("%s:index:EnumOutput", p.Pkg())
+
+	if urnType == exampleType {
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
 			Properties: req.Properties,
+			Status:     resource.StatusOK,
+		}, nil
+	}
+	if urnType == enumOutputType {
+		outputs := req.Properties.Copy()
+		outputs["type"] = resource.NewProperty("Block")
+		return plugin.CreateResponse{
+			ID:         resource.ID("enum-output-id"),
+			Properties: outputs,
 			Status:     resource.StatusOK,
 		}, nil
 	}
