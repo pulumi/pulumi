@@ -14,11 +14,14 @@ __all__ = ['SomeResourceArgs', 'SomeResource']
 @pulumi.input_type
 class SomeResourceArgs:
     def __init__(__self__, *,
-                 the_input: pulumi.Input[_builtins.bool]):
+                 the_input: pulumi.Input[_builtins.bool],
+                 resource_name: Optional[pulumi.Input[_builtins.str]] = None):
         """
         The set of arguments for constructing a SomeResource resource.
         """
         pulumi.set(__self__, "the_input", the_input)
+        if resource_name is not None:
+            pulumi.set(__self__, "resource_name", resource_name)
 
     @_builtins.property
     @pulumi.getter(name="theInput")
@@ -29,6 +32,15 @@ class SomeResourceArgs:
     def the_input(self, value: pulumi.Input[_builtins.bool]):
         pulumi.set(self, "the_input", value)
 
+    @_builtins.property
+    @pulumi.getter(name="resourceName")
+    def resource_name(self) -> Optional[pulumi.Input[_builtins.str]]:
+        return pulumi.get(self, "resource_name")
+
+    @resource_name.setter
+    def resource_name(self, value: Optional[pulumi.Input[_builtins.str]]):
+        pulumi.set(self, "resource_name", value)
+
 
 @pulumi.type_token("camelNames:CoolModule:SomeResource")
 class SomeResource(pulumi.CustomResource):
@@ -36,6 +48,7 @@ class SomeResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 resource_name_: Optional[pulumi.Input[_builtins.str]] = None,
                  the_input: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         """
@@ -68,6 +81,7 @@ class SomeResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 resource_name_: Optional[pulumi.Input[_builtins.str]] = None,
                  the_input: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -78,6 +92,7 @@ class SomeResource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = SomeResourceArgs.__new__(SomeResourceArgs)
 
+            __props__.__dict__["resource_name"] = resource_name_
             if the_input is None and not opts.urn:
                 raise TypeError("Missing required property 'the_input'")
             __props__.__dict__["the_input"] = the_input
@@ -104,8 +119,14 @@ class SomeResource(pulumi.CustomResource):
 
         __props__ = SomeResourceArgs.__new__(SomeResourceArgs)
 
+        __props__.__dict__["resource_name"] = None
         __props__.__dict__["the_output"] = None
         return SomeResource(resource_name, opts=opts, __props__=__props__)
+
+    @_builtins.property
+    @pulumi.getter(name="resourceName")
+    def resource_name(self) -> pulumi.Output[Optional[_builtins.str]]:
+        return pulumi.get(self, "resource_name")
 
     @_builtins.property
     @pulumi.getter(name="theOutput")

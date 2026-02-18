@@ -36,11 +36,10 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					// Check we have the one simple resource in the snapshot, its provider and the stack.
-					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:plain")
-					plain := RequireSingleResource(l, snap.Resources, "plain:index:Resource")
+					plain := RequireSingleNamedResource(l, snap.Resources, "res")
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"data": resource.NewPropertyMapFromMap(map[string]any{
@@ -68,6 +67,29 @@ func init() {
 					})
 					assert.Equal(l, want, plain.Inputs, "expected inputs to be %v", want)
 					assert.Equal(l, plain.Inputs, plain.Outputs, "expected inputs and outputs to match")
+
+					emptyListRes := RequireSingleNamedResource(l, snap.Resources, "emptyListRes")
+					wantEmpty := resource.NewPropertyMapFromMap(map[string]any{
+						"data": resource.NewPropertyMapFromMap(map[string]any{
+							"innerData": resource.NewPropertyMapFromMap(map[string]any{
+								"boolean":   false,
+								"float":     0.0,
+								"integer":   0.0,
+								"string":    "",
+								"boolArray": []any{},
+								"stringMap": map[string]any{},
+							}),
+							"boolean":   false,
+							"float":     0.0,
+							"integer":   0.0,
+							"string":    "",
+							"boolArray": []any{},
+							"stringMap": map[string]any{},
+						}),
+						"dataList": []any{},
+					})
+					assert.Equal(l, wantEmpty, emptyListRes.Inputs)
+					assert.Equal(l, emptyListRes.Inputs, emptyListRes.Outputs)
 				},
 			},
 		},

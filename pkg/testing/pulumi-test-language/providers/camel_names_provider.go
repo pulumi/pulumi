@@ -67,6 +67,11 @@ func (p *CamelNamesProvider) GetSchema(
 								Type: "boolean",
 							},
 						},
+						"resourceName": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
 					},
 					Required: []string{"theOutput"},
 				},
@@ -74,6 +79,11 @@ func (p *CamelNamesProvider) GetSchema(
 					"theInput": {
 						TypeSpec: schema.TypeSpec{
 							Type: "boolean",
+						},
+					},
+					"resourceName": {
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
 						},
 					},
 				},
@@ -125,7 +135,7 @@ func (p *CamelNamesProvider) Check(
 		}, nil
 	}
 
-	// Expect just the boolean value
+	// Expect theInput (required) and optionally resourceName
 	value, ok := req.News["theInput"]
 	if !ok {
 		return plugin.CheckResponse{
@@ -137,9 +147,18 @@ func (p *CamelNamesProvider) Check(
 			Failures: makeCheckFailure("theInput", "theInput is not a boolean"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	expectedCount := 1
+	if _, hasName := req.News["resourceName"]; hasName {
+		if !req.News["resourceName"].IsString() && !req.News["resourceName"].IsComputed() {
+			return plugin.CheckResponse{
+				Failures: makeCheckFailure("resourceName", "resourceName is not a string"),
+			}, nil
+		}
+		expectedCount = 2
+	}
+	if len(req.News) != expectedCount {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
 		}, nil
 	}
 
@@ -167,6 +186,9 @@ func (p *CamelNamesProvider) Create(
 
 	properties := resource.PropertyMap{
 		"theOutput": value,
+	}
+	if name, hasName := req.Properties["resourceName"]; hasName {
+		properties["resourceName"] = name
 	}
 
 	return plugin.CreateResponse{
