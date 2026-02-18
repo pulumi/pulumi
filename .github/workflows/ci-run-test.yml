@@ -110,16 +110,6 @@ jobs:
           echo ""
           echo "Drive information:"
           Get-PSDrive -PSProvider FileSystem
-          echo ""
-          echo "Testing Go TempDir:"
-          $goCode = @'
-          package main
-          import ("fmt"; "os")
-          func main() {
-            fmt.Println("Go TempDir:", os.TempDir())
-          }
-          '@
-          $goCode | go run -
         shell: pwsh
 
   test:
