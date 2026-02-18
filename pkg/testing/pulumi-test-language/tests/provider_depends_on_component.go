@@ -15,7 +15,7 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +37,7 @@ func init() {
 					changes := args.Changes
 
 					RequireStackResource(l, err, changes)
-					require.Len(l, snap.Resources, 9, "expected 9 resources in snapshot")
+					require.Len(l, snap.Resources, 8, "expected 8 resources in snapshot")
 
 					noDependsOn := RequireSingleNamedResource(l, snap.Resources, "noDependsOn")
 					assert.Empty(l, noDependsOn.Dependencies, "expected noDependsOn component to have no dependencies")
