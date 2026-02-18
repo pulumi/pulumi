@@ -116,11 +116,6 @@ jobs:
     timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
-      - name: Print RUNNER_TEMP
-        run: |
-          echo "RUNNER_TEMP: ${{ runner.temp }}"
-          echo "TMP: ${TMP}"
-          echo "TEMP: ${TEMP}"
       - if: contains(inputs.platform, 'ubuntu')
         name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
