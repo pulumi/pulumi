@@ -254,8 +254,8 @@ func (s *cloudStack) SnapshotStackOutputs(
 	return *s.snapshotStackOutputs.Load(), nil
 }
 
-func (s *cloudStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
-	return service.NewServiceSecretsManager(s.b.Client(), s.StackIdentifier(), info)
+func (s *cloudStack) DefaultSecretManager(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
+	return service.NewServiceSecretsManager(ctx, s.b.Client(), s.StackIdentifier(), info)
 }
 
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping

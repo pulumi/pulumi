@@ -97,7 +97,7 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 				// Pass a dummy ProjectStack here since DefaultSecretManger will want to write to it to say no
 				// encryption is in use, but for import purposes we don't care about that.
 				ps := workspace.ProjectStack{}
-				sm, err := s.DefaultSecretManager(&ps)
+				sm, err := s.DefaultSecretManager(ctx, &ps)
 				if err != nil {
 					return fmt.Errorf("could not create service secrets manager for stack %q: %w",
 						s.Ref().String(), err)

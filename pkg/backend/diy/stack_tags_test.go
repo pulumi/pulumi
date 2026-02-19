@@ -441,7 +441,7 @@ func (m *mockStackForTesting) SnapshotStackOutputs(context.Context, secrets.Prov
 }
 func (m *mockStackForTesting) Backend() backend.Backend              { return nil }
 func (m *mockStackForTesting) Tags() map[apitype.StackTagName]string { return nil }
-func (m *mockStackForTesting) DefaultSecretManager(*workspace.ProjectStack) (secrets.Manager, error) {
+func (m *mockStackForTesting) DefaultSecretManager(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
 	return nil, nil
 }
 
