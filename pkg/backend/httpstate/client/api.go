@@ -29,12 +29,17 @@ import (
 
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -428,6 +433,16 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 		opentracing.Tag{Key: "retry", Value: opts.RetryPolicy.String()})
 	defer requestSpan.Finish()
 
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, getEndpointName(method, path),
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("http.method", method),
+			attribute.String("http.url", cloudAPI+path),
+			attribute.String("http.retry", opts.RetryPolicy.String()),
+		))
+	defer otelSpan.End()
+
 	// Compute query string from query object
 	querystring := ""
 	if queryObj != nil {
@@ -461,7 +476,16 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	url, resp, err := pulumiAPICall(
 		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil {
+		otelSpan.RecordError(err)
+		otelSpan.SetStatus(codes.Error, err.Error())
 		return err
+	}
+
+	otelSpan.SetAttributes(attribute.Int("http.status_code", resp.StatusCode))
+	if resp.StatusCode >= 400 {
+		otelSpan.SetStatus(codes.Error, resp.Status)
+	} else {
+		otelSpan.SetStatus(codes.Ok, "")
 	}
 
 	switch respObj := respObj.(type) {

@@ -35,10 +35,12 @@ import (
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -275,6 +277,33 @@ func CloseOTelReceiver() {
 	}
 
 	otelEndpoint = ""
+}
+
+// StartSpan starts a new OTel span with a stack trace attribute.
+// This is a convenience wrapper around tracer.Start that automatically
+// captures the call stack.
+func StartSpan(
+	ctx context.Context,
+	tracer trace.Tracer,
+	name string,
+	opts ...trace.SpanStartOption,
+) (context.Context, trace.Span) {
+	// Capture stack trace, skipping this function and the caller
+	const maxDepth = 32
+	var pcs [maxDepth]uintptr
+	n := runtime.Callers(2, pcs[:])
+	frames := runtime.CallersFrames(pcs[:n])
+
+	var stackBuilder strings.Builder
+	more := true
+	for more {
+		var frame runtime.Frame
+		frame, more = frames.Next()
+		fmt.Fprintf(&stackBuilder, "%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line)
+	}
+
+	opts = append(opts, trace.WithAttributes(attribute.String("code.stacktrace", stackBuilder.String())))
+	return tracer.Start(ctx, name, opts...)
 }
 
 // Starts an AppDash server listening on any available TCP port
