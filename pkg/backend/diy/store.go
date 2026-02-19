@@ -61,6 +61,7 @@ type referenceStore interface {
 	// This is the path to the file without the extension.
 	// The real file path is StackBasePath + ".json"
 	// or StackBasePath + ".json.gz".
+	// or StackBasePath + ".json.zst".
 	StackBasePath(*diyBackendReference) string
 
 	// HistoryDir returns the path to the directory
@@ -271,6 +272,8 @@ func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*diyBacke
 
 		// Key is in the form,
 		//   $StacksDir/$projName/$stackName.json[.gz]
+		// or
+		//   $StacksDir/$projName/$stackName.json[.zst]
 		// We want to extract projName and stackName from it.
 
 		parts := strings.Split(strings.TrimPrefix(file.Key, prefix), "/")
@@ -289,9 +292,9 @@ func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*diyBacke
 
 		// Skip files without valid extensions (e.g., *.bak files).
 		ext := filepath.Ext(objName)
-		// But accept gzip compression
-		if ext == encoding.GZIPExt {
-			objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+		// But accept gzip/zstd compression.
+		if ext == encoding.GZIPExt || ext == encoding.ZSTDExt {
+			objName = strings.TrimSuffix(objName, ext)
 			ext = filepath.Ext(objName)
 		}
 
@@ -384,9 +387,9 @@ func (p *legacyReferenceStore) ListReferences(ctx context.Context) ([]*diyBacken
 		objName := objectName(file)
 		// Skip files without valid extensions (e.g., *.bak files).
 		ext := filepath.Ext(objName)
-		// But accept gzip compression
-		if ext == encoding.GZIPExt {
-			objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+		// But accept gzip/zstd compression.
+		if ext == encoding.GZIPExt || ext == encoding.ZSTDExt {
+			objName = strings.TrimSuffix(objName, ext)
 			ext = filepath.Ext(objName)
 		}
 
