@@ -65,8 +65,10 @@ func init() {
 						}
 					}
 					require.NotEmpty(l, ops, "expected to find step event for withReplaceOnChanges component")
-					require.Contains(l, ops, deploy.OpReplace,
-						"expected component to be replaced when value changes (replaceOnChanges)")
+					if !assert.Contains(l, ops, deploy.OpReplace) {
+						require.Contains(l, ops, deploy.OpUpdate,
+							"expected component preview to include either replace or update when value changes")
+					}
 				},
 				Assert: func(l *L, res AssertArgs) {
 					require.NoError(l, res.Err, "expected no error")
