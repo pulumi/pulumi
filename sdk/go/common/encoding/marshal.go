@@ -226,7 +226,8 @@ func (c Compression) Ext() string {
 	}
 }
 
-// IsCompressed returns if data is zip compressed.
+// IsCompressed returns if data is gzip compressed.
+// Deprecated: use DetectCompression instead.
 func IsCompressed(buf []byte) bool {
 	return isGzipCompressed(buf)
 }
