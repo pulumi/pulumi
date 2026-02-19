@@ -207,10 +207,7 @@ func TestPolicyProxy_Attach_ConfigureStackError(t *testing.T) {
 	_, err = proxy.ConfigureStack(ctx, &pulumirpc.AnalyzerStackConfigureRequest{})
 	require.NoError(t, err)
 
-	// We don't need a long-running cmd here: Attach returns early on ConfigureStack error before
-	// waiting for the process to exit. Use a no-op process so cmd.Wait() is valid.
-	cmd := exec.Command("true")
-	require.NoError(t, cmd.Start())
+	cmd := startLongRunningCmd(t)
 	attachDone := runAttach(ctx, proxy, cmd)
 
 	// Write port after starting Attach goroutine so the synchronous pipe write doesn't block.
