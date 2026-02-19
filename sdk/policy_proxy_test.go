@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"testing"
 	"time"
@@ -80,7 +81,10 @@ func startMockPolicyPackServer(t *testing.T, srv *mockPolicyPackServer) int {
 // startLongRunningCmd starts a process that stays alive until the test ends (or it is killed).
 func startLongRunningCmd(t *testing.T) *exec.Cmd {
 	t.Helper()
-	cmd := exec.Command("sleep", "100")
+	exe, err := os.Executable()
+	require.NoError(t, err)
+	cmd := exec.Command(exe, "-test.run=^TestPolicyProxyHelperProcess$")
+	cmd.Env = append(os.Environ(), "PULUMI_TEST_HELPER_PROCESS=1")
 	require.NoError(t, cmd.Start())
 	t.Cleanup(func() {
 		if cmd.Process != nil {
@@ -88,6 +92,17 @@ func startLongRunningCmd(t *testing.T) *exec.Cmd {
 		}
 	})
 	return cmd
+}
+
+//nolint:paralleltest // not a real test
+func TestPolicyProxyHelperProcess(t *testing.T) {
+	if os.Getenv("PULUMI_TEST_HELPER_PROCESS") != "1" {
+		// This is not a real test.
+		// It's a fake test that we'll run as a long-running subprocess.
+		return
+	}
+	// Block forever; the parent test kills this helper process during cleanup.
+	select {}
 }
 
 // runAttach runs proxy.Attach in a goroutine and returns a channel that receives the result.
