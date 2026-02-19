@@ -19,12 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strings"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
-	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
@@ -74,46 +69,4 @@ func NewExporter(endpoint string) (SpanExporter, error) {
 	default:
 		return nil, fmt.Errorf("unsupported endpoint scheme: %s", u.Scheme)
 	}
-}
-
-// GRPCExporter sends spans to an OTLP gRPC collector.
-type GRPCExporter struct {
-	conn   *grpc.ClientConn
-	client coltracepb.TraceServiceClient
-}
-
-func newGRPCExporter(target string) (*GRPCExporter, error) {
-	target = strings.TrimPrefix(target, "grpc://")
-
-	conn, err := grpc.NewClient(target,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to OTLP collector: %w", err)
-	}
-
-	return &GRPCExporter{
-		conn:   conn,
-		client: coltracepb.NewTraceServiceClient(conn),
-	}, nil
-}
-
-func (e *GRPCExporter) ExportSpans(ctx context.Context, spans []*tracepb.ResourceSpans) error {
-	if len(spans) == 0 {
-		return nil
-	}
-
-	req := &coltracepb.ExportTraceServiceRequest{
-		ResourceSpans: spans,
-	}
-
-	_, err := e.client.Export(ctx, req)
-	return err
-}
-
-func (e *GRPCExporter) Shutdown(ctx context.Context) error {
-	if e.conn != nil {
-		return e.conn.Close()
-	}
-	return nil
 }
