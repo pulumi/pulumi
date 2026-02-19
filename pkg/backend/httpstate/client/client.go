@@ -71,11 +71,21 @@ type NeoTaskEntityDiff struct {
 	Remove []NeoTaskEntity `json:"remove,omitempty"`
 }
 
-// NeoTaskEntity represents an entity (like a stack) that the agent can work with.
+// NeoTaskEntity represents an entity (like a stack or repository) that the agent can work with.
 type NeoTaskEntity struct {
-	Type    string `json:"type"`    // "stack"
-	Name    string `json:"name"`    // stack name
-	Project string `json:"project"` // project name
+	Type    string `json:"type"`              // "stack" or "repository"
+	Name    string `json:"name"`              // stack name or repo name
+	Project string `json:"project,omitempty"` // project name (for stack entities)
+	Org     string `json:"org,omitempty"`     // organization name (for repository entities)
+	Forge   string `json:"forge,omitempty"`   // forge/provider e.g. "github" (for repository entities)
+}
+
+// NeoTaskRepoInfo contains information about a git repository for Neo task creation.
+type NeoTaskRepoInfo struct {
+	Name      string // repository name
+	Org       string // organization/owner
+	Forge     string // forge/provider e.g. "github", "gitlab"
+	BranchURL string // URL to the branch with the code
 }
 
 // NeoTaskResponse represents the response from creating a Neo task.
@@ -1627,15 +1637,36 @@ func (pc *Client) ExplainPreviewWithNeo(
 
 // CreateNeoTask creates a new Neo agent task via the Neo Tasks API.
 // This is used to start an AI-assisted debugging session when errors occur.
+// If repoInfo is provided, a repository entity will also be added to the task context.
 func (pc *Client) CreateNeoTask(
 	ctx context.Context,
 	orgName string,
 	content string,
 	stackName string,
 	projectName string,
+	repoInfo *NeoTaskRepoInfo,
 ) (*NeoTaskResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
+
+	// Build the list of entities to add
+	entities := []NeoTaskEntity{
+		{
+			Type:    "stack",
+			Name:    stackName,
+			Project: projectName,
+		},
+	}
+
+	// Add repository entity if provided
+	if repoInfo != nil {
+		entities = append(entities, NeoTaskEntity{
+			Type:  "repository",
+			Name:  repoInfo.Name,
+			Org:   repoInfo.Org,
+			Forge: repoInfo.Forge,
+		})
+	}
 
 	request := NeoTaskRequest{
 		Message: NeoTaskMessage{
@@ -1643,13 +1674,7 @@ func (pc *Client) CreateNeoTask(
 			Content:   content,
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 			EntityDiff: &NeoTaskEntityDiff{
-				Add: []NeoTaskEntity{
-					{
-						Type:    "stack",
-						Name:    stackName,
-						Project: projectName,
-					},
-				},
+				Add: entities,
 			},
 		},
 	}

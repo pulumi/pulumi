@@ -1460,7 +1460,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 	permalink := b.getPermalink(update, updateMeta.version, dryRun)
 	if renderer.OutputIncludesFailure() {
 		if op.Opts.Display.StartNeoTaskOnError {
-			taskResp, taskErr := b.createNeoTaskOnError(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+			taskResp, taskErr := b.createNeoTaskOnError(ctx, renderer.Output(), stack.Ref(), op.Root, op.Opts.Display)
 			stackID, err := b.getCloudStackIdentifier(stack.Ref())
 			if err != nil {
 				return
@@ -1507,8 +1507,11 @@ func (b *cloudBackend) summarizeErrorWithNeo(
 }
 
 // createNeoTaskOnError creates a Neo agent task to help debug errors that occurred during an operation.
+// It optionally detects a git repository and offers to push uncommitted changes to a branch for Neo to analyze.
+// Returns the task response, org name (for URL construction), and any error.
 func (b *cloudBackend) createNeoTaskOnError(
-	ctx context.Context, pulumiOutput string, stackRef backend.StackReference, opts display.Options,
+	ctx context.Context, pulumiOutput string, stackRef backend.StackReference,
+	projectRoot string, opts display.Options,
 ) (*client.NeoTaskResponse, error) {
 	if len(pulumiOutput) == 0 {
 		return nil, nil
@@ -1518,11 +1521,56 @@ func (b *cloudBackend) createNeoTaskOnError(
 	if err != nil {
 		return nil, err
 	}
+	orgName := stackID.Owner
 
-	// Construct a message that includes the error context
-	content := fmt.Sprintf("Help me debug the following Pulumi error:\n\n%s", pulumiOutput)
+	// Try to detect git repository and offer to push code for Neo
+	var repoInfo *client.NeoTaskRepoInfo
+	var branchURL string
 
-	return b.client.CreateNeoTask(ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project)
+	gitInfo, err := DetectGitRepo(projectRoot)
+	if err != nil {
+		logging.V(7).Infof("error detecting git repository: %v", err)
+	}
+
+	if gitInfo != nil && gitInfo.RemoteURL != "" {
+		// Check if there are uncommitted changes
+		hasChanges, err := HasUncommittedChanges(gitInfo.RepoRoot)
+		if err != nil {
+			logging.V(7).Infof("error checking for uncommitted changes: %v", err)
+		}
+
+		if hasChanges {
+			// Generate the branch name to show in the prompt
+			stackName := stackID.Stack.String()
+			proposedBranch := fmt.Sprintf("pulumi-debug/%s/%s", sanitizeBranchName(stackName), time.Now().Format("20060102-150405"))
+
+			// Prompt user for confirmation
+			if display.PromptNeoTaskPushCode(proposedBranch, opts) {
+				display.RenderNeoTaskPushProgress(opts)
+
+				_, branchURL, err = CreateAndPushDebugBranch(gitInfo, stackName)
+				if err != nil {
+					display.RenderNeoTaskPushError(err, opts)
+					// Continue without repository context
+				} else {
+					display.RenderNeoTaskPushSuccess(branchURL, opts)
+					repoInfo = gitInfo.ToNeoRepoInfo(branchURL)
+				}
+			}
+		}
+	}
+
+	// Construct a message that includes the error context and optional branch URL
+	var content string
+	if branchURL != "" {
+		content = fmt.Sprintf("Help me debug the following Pulumi error. Make sure to check out the repository at the given branch to see the current code. Fix the issue and open a PR. If the issue is not related to the code in the repository, please explain why.\n\nGit branch with current code: %s\n\n%s",
+			branchURL, pulumiOutput)
+	} else {
+		content = fmt.Sprintf("Help me debug the following Pulumi error:\n\n%s", pulumiOutput)
+	}
+
+	resp, err := b.client.CreateNeoTask(ctx, orgName, content, stackID.Stack.String(), stackID.Project, repoInfo)
+	return resp, err
 }
 
 type updateMetadata struct {

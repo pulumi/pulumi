@@ -866,12 +866,52 @@ func TestCreateNeoTask(t *testing.T) {
 		defer successServer.Close()
 
 		client := newMockClient(successServer)
-		resp, err := client.CreateNeoTask(context.Background(), "my-org", "Help me debug this error", "my-stack", "my-project")
+		resp, err := client.CreateNeoTask(context.Background(), "my-org", "Help me debug this error", "my-stack", "my-project", nil)
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.Equal(t, "task_abc123", resp.TaskID)
 		assert.Equal(t, "task_abc123", resp.GetTaskID())
+	})
+
+	t.Run("SuccessWithRepoInfo", func(t *testing.T) {
+		t.Parallel()
+
+		// When Neo Tasks API returns a valid response with task ID and repo info is provided
+		var receivedRequest NeoTaskRequest
+		requestServer := newMockServerRequestProcessor(http.StatusCreated, func(req *http.Request) string {
+			_ = json.NewDecoder(req.Body).Decode(&receivedRequest)
+			return `{"taskId": "task_xyz789"}`
+		})
+		defer requestServer.Close()
+
+		client := newMockClient(requestServer)
+		repoInfo := &NeoTaskRepoInfo{
+			Name:      "my-repo",
+			Org:       "my-org",
+			Forge:     "github",
+			BranchURL: "https://github.com/my-org/my-repo/tree/pulumi-debug/dev/20260205-143022",
+		}
+		resp, err := client.CreateNeoTask(context.Background(), "my-org", "Help me debug this error", "my-stack", "my-project", repoInfo)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, "task_xyz789", resp.TaskID)
+
+		// Verify that both stack and repository entities were included
+		require.NotNil(t, receivedRequest.Message.EntityDiff)
+		require.Len(t, receivedRequest.Message.EntityDiff.Add, 2)
+
+		// First entity should be the stack
+		assert.Equal(t, "stack", receivedRequest.Message.EntityDiff.Add[0].Type)
+		assert.Equal(t, "my-stack", receivedRequest.Message.EntityDiff.Add[0].Name)
+		assert.Equal(t, "my-project", receivedRequest.Message.EntityDiff.Add[0].Project)
+
+		// Second entity should be the repository
+		assert.Equal(t, "repository", receivedRequest.Message.EntityDiff.Add[1].Type)
+		assert.Equal(t, "my-repo", receivedRequest.Message.EntityDiff.Add[1].Name)
+		assert.Equal(t, "my-org", receivedRequest.Message.EntityDiff.Add[1].Org)
+		assert.Equal(t, "github", receivedRequest.Message.EntityDiff.Add[1].Forge)
 	})
 
 	t.Run("Error", func(t *testing.T) {
@@ -881,7 +921,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer errorServer.Close()
 
 		client := newMockClient(errorServer)
-		resp, err := client.CreateNeoTask(context.Background(), "my-org", "Help me debug this error", "my-stack", "my-project")
+		resp, err := client.CreateNeoTask(context.Background(), "my-org", "Help me debug this error", "my-stack", "my-project", nil)
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -895,7 +935,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		client := newMockClient(unauthorizedServer)
-		resp, err := client.CreateNeoTask(context.Background(), "my-org", "Help me debug this error", "my-stack", "my-project")
+		resp, err := client.CreateNeoTask(context.Background(), "my-org", "Help me debug this error", "my-stack", "my-project", nil)
 
 		require.Error(t, err)
 		require.Nil(t, resp)

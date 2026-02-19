@@ -149,3 +149,79 @@ func RenderNeoTaskCreated(taskResult NeoTaskResult, err error, cloudConsoleURL, 
 	fmt.Fprintln(out, "  "+opts.Color.Colorize(colors.Underline+colors.BrightBlue+taskURL+colors.Reset))
 	fmt.Fprintln(out)
 }
+
+// PromptNeoTaskPushCode prompts the user to confirm pushing their uncommitted changes
+// to a new branch for Neo to analyze. Returns true if the user confirms, false otherwise.
+// If the session is not interactive, returns false without prompting.
+func PromptNeoTaskPushCode(branchName string, opts Options) bool {
+	// Only prompt in interactive sessions
+	if !opts.IsInteractive {
+		return false
+	}
+
+	out := opts.Stdout
+	if out == nil {
+		out = os.Stdout
+	}
+
+	fmt.Fprintln(out)
+	header := opts.Color.Colorize(
+		colors.SpecHeadline + "Neo Task" + neoDelimiterEmoji() + colors.Reset)
+	fmt.Fprintln(out, header)
+	fmt.Fprintln(out, "  Would you like to push your uncommitted changes to a new branch?")
+	fmt.Fprintln(out, "  This will help Neo analyze your code to debug the error.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "  Branch: "+opts.Color.Colorize(colors.BrightBlue+branchName+colors.Reset))
+	fmt.Fprintln(out)
+
+	// Simple yes/no prompt reading from stdin
+	fmt.Fprint(out, "  Push changes? [y/N]: ")
+
+	in := opts.Stdin
+	if in == nil {
+		in = os.Stdin
+	}
+
+	var response string
+	_, err := fmt.Fscanln(in, &response)
+	if err != nil {
+		return false
+	}
+
+	response = strings.ToLower(strings.TrimSpace(response))
+	return response == "y" || response == "yes"
+}
+
+// RenderNeoTaskPushProgress renders a message while pushing code to the branch.
+func RenderNeoTaskPushProgress(opts Options) {
+	out := opts.Stdout
+	if out == nil {
+		out = os.Stdout
+	}
+	fmt.Fprintln(out, "  Pushing changes to branch...")
+}
+
+// RenderNeoTaskPushSuccess renders a success message after pushing code.
+func RenderNeoTaskPushSuccess(branchURL string, opts Options) {
+	out := opts.Stdout
+	if out == nil {
+		out = os.Stdout
+	}
+	fmt.Fprintln(out, "  "+opts.Color.Colorize(colors.Green+"Changes pushed successfully."+colors.Reset))
+	if branchURL != "" {
+		fmt.Fprintln(out, "  "+opts.Color.Colorize(colors.Underline+colors.BrightBlue+branchURL+colors.Reset))
+	}
+	fmt.Fprintln(out)
+}
+
+// RenderNeoTaskPushError renders an error message if pushing code fails.
+func RenderNeoTaskPushError(err error, opts Options) {
+	out := opts.Stdout
+	if out == nil {
+		out = os.Stdout
+	}
+	fmt.Fprintf(out, "  "+opts.Color.Colorize(colors.SpecWarning+"Warning:"+colors.Reset)+
+		" Could not push changes: %s\n", err)
+	fmt.Fprintln(out, "  Continuing to create Neo task without repository context.")
+	fmt.Fprintln(out)
+}
