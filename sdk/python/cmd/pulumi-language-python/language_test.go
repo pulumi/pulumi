@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -184,7 +185,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					},
 					{
 						Path:        "requirements\\.txt",
-						Pattern:     rootDir + "/artifacts",
+						Pattern:     regexp.QuoteMeta(rootDir) + "/artifacts",
 						Replacement: "ROOT/artifacts",
 					},
 				},

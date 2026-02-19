@@ -21,6 +21,7 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -222,7 +223,7 @@ func TestLanguage(t *testing.T) {
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
 						Path:        "(.+/)?go\\.mod",
-						Pattern:     rootDir + "/",
+						Pattern:     regexp.QuoteMeta(rootDir) + "/",
 						Replacement: "/ROOT/",
 					},
 				},
