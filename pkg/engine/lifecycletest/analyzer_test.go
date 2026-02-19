@@ -15,6 +15,7 @@
 package lifecycletest
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -1170,4 +1171,112 @@ func TestAnalyzeStackRunsInParallel(t *testing.T) {
 	close(gate)
 
 	require.NoError(t, <-done)
+}
+
+// failingDownloadRequiredPolicy is a RequiredPolicy that fails during download, used to test that
+// policy pack installation errors are properly surfaced rather than silently dropped.
+type failingDownloadRequiredPolicy struct {
+	name string
+}
+
+func (p *failingDownloadRequiredPolicy) Name() string                        { return p.name }
+func (p *failingDownloadRequiredPolicy) Version() string                     { return "" }
+func (p *failingDownloadRequiredPolicy) Installed() bool                     { return false }
+func (p *failingDownloadRequiredPolicy) LocalPath() (string, error)          { return "", nil }
+func (p *failingDownloadRequiredPolicy) Config() map[string]*json.RawMessage { return nil }
+func (p *failingDownloadRequiredPolicy) Download(
+	_ context.Context,
+	_ func(io.ReadCloser, int64) io.ReadCloser,
+) (io.ReadCloser, int64, error) {
+	return nil, 0, errors.New("policy pack download failed")
+}
+
+func (p *failingDownloadRequiredPolicy) Install(_ *plugin.Context, _ io.ReadCloser, _, _ io.Writer) error {
+	return nil
+}
+
+// failingInstallRequiredPolicy is a RequiredPolicy that fails during installation, used to test that
+// policy pack installation errors are properly surfaced rather than silently dropped.
+type failingInstallRequiredPolicy struct {
+	name string
+}
+
+func (p *failingInstallRequiredPolicy) Name() string                        { return p.name }
+func (p *failingInstallRequiredPolicy) Version() string                     { return "" }
+func (p *failingInstallRequiredPolicy) Installed() bool                     { return false }
+func (p *failingInstallRequiredPolicy) LocalPath() (string, error)          { return "", nil }
+func (p *failingInstallRequiredPolicy) Config() map[string]*json.RawMessage { return nil }
+func (p *failingInstallRequiredPolicy) Download(
+	_ context.Context,
+	_ func(io.ReadCloser, int64) io.ReadCloser,
+) (io.ReadCloser, int64, error) {
+	return io.NopCloser(bytes.NewReader(nil)), 0, nil
+}
+
+func (p *failingInstallRequiredPolicy) Install(_ *plugin.Context, _ io.ReadCloser, _, _ io.Writer) error {
+	return errors.New("policy pack install failed")
+}
+
+// TestPolicyPackDownloadFailureReturnsError is a regression test verifying that errors from the download
+// step of policy pack installation are returned to the caller rather than silently dropped.
+func TestPolicyPackDownloadFailureReturnsError(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			SkipDisplayTests: true,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{&failingDownloadRequiredPolicy{name: "failing-download-policy"}},
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "policy pack download failed")
+}
+
+// TestPolicyPackInstallFailureReturnsError is a regression test verifying that errors from the install
+// step of policy pack installation are returned to the caller rather than silently dropped.
+func TestPolicyPackInstallFailureReturnsError(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			SkipDisplayTests: true,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{&failingInstallRequiredPolicy{name: "failing-install-policy"}},
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "policy pack install failed")
 }
