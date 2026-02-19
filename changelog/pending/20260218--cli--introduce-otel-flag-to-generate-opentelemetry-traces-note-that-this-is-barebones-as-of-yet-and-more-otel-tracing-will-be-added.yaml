@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Introduce --otel flag to generate opentelemetry traces. Note that this is barebones as of yet, and more otel tracing will be added

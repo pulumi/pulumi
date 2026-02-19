@@ -57,8 +57,8 @@ var TracingRootSpan opentracing.Span
 
 var traceCloser io.Closer
 
-// OTelEndpoint is the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
-var OTelEndpoint string
+// otelEndpoint is the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
+var otelEndpoint string
 
 var (
 	otelReceiver       *otelreceiver.Receiver
@@ -193,7 +193,7 @@ func CloseTracing() {
 
 // IsOTelEnabled returns true if OTEL is enabled via environment variable or endpoint is set.
 func IsOTelEnabled() bool {
-	return OTelEndpoint != ""
+	return otelEndpoint != ""
 }
 
 // InitOTelReceiver starts the OTLP receiver with the given endpoint.
@@ -213,12 +213,12 @@ func InitOtelReceiver(endpoint string) error {
 		return fmt.Errorf("failed to start OTLP receiver: %w", err)
 	}
 
-	OTelEndpoint = otelReceiver.Endpoint()
-	logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", OTelEndpoint, endpoint)
+	otelEndpoint = otelReceiver.Endpoint()
+	logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", otelEndpoint, endpoint)
 
 	// Set up Otel TracerProvider for CLI's own spans
 	// The CLI sends its spans to the local receiver, which forwards to the configured exporter
-	if err := initOtelTracerProvider(OTelEndpoint); err != nil {
+	if err := initOtelTracerProvider(otelEndpoint); err != nil {
 		logging.V(3).Infof("failed to initialize OTel tracer provider: %v", err)
 	}
 
@@ -274,7 +274,7 @@ func CloseOTelReceiver() {
 		otelReceiver = nil
 	}
 
-	OTelEndpoint = ""
+	otelEndpoint = ""
 }
 
 // Starts an AppDash server listening on any available TCP port
