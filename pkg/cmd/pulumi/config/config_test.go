@@ -1267,7 +1267,7 @@ func TestConfigPathOperations(t *testing.T) {
 				ConfigLocationF: func() backend.StackConfigLocation {
 					return backend.StackConfigLocation{}
 				},
-				DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+				DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 					return &secrets.MockSecretsManager{
 						TypeF: func() string { return "mock" },
 						EncrypterF: func() config.Encrypter {
@@ -1346,7 +1346,7 @@ func TestConfigPathOperations(t *testing.T) {
 				// Decrypt if needed
 				var actualValue string
 				if v.Secure() {
-					secretsManager, err := s.DefaultSecretManager(ps)
+					secretsManager, err := s.DefaultSecretManager(t.Context(), ps)
 					require.NoError(t, err)
 					decrypter := secretsManager.Decrypter()
 					actualValue, err = v.Value(decrypter)

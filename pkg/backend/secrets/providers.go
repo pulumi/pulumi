@@ -15,6 +15,7 @@
 package secrets
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -35,14 +36,14 @@ type secretsProvider struct{}
 
 // OfType returns a secrets manager for the given secrets type. Returns an error
 // if the type is unknown or the state is invalid.
-func (secretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+func (secretsProvider) OfType(ctx context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
 	var sm secrets.Manager
 	var err error
 	switch ty {
 	case passphrase.Type:
 		sm, err = passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	case service.Type:
-		sm, err = service.NewServiceSecretsManagerFromState(state)
+		sm, err = service.NewServiceSecretsManagerFromState(ctx, state)
 	case cloud.Type:
 		sm, err = cloud.NewCloudSecretsManagerFromState(state)
 	default:
@@ -65,14 +66,14 @@ type NamedStackProvider struct {
 
 // OfType returns a secrets manager for the given secrets type. Returns an error
 // if the type is unknown or the state is invalid.
-func (s NamedStackProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+func (s NamedStackProvider) OfType(ctx context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
 	var sm secrets.Manager
 	var err error
 	switch ty {
 	case passphrase.Type:
 		sm, err = passphrase.NewStackPromptingPassphraseSecretsManagerFromState(state, s.StackName)
 	case service.Type:
-		sm, err = service.NewServiceSecretsManagerFromState(state)
+		sm, err = service.NewServiceSecretsManagerFromState(ctx, state)
 	case cloud.Type:
 		sm, err = cloud.NewCloudSecretsManagerFromState(state)
 	default:

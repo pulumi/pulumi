@@ -44,12 +44,12 @@ type serviceCrypter struct {
 	supportsBatchEncryption *promise.Promise[bool]
 }
 
-func newServiceCrypter(client *client.Client, stack client.StackIdentifier) config.Crypter {
+func newServiceCrypter(ctx context.Context, client *client.Client, stack client.StackIdentifier) config.Crypter {
 	return &serviceCrypter{
 		client: client,
 		stack:  stack,
 		supportsBatchEncryption: promise.Run(func() (bool, error) {
-			capabilitiesResponse, err := client.GetCapabilities(context.Background())
+			capabilitiesResponse, err := client.GetCapabilities(ctx)
 			if err != nil {
 				logging.V(3).Infof("error requesting service capabilities: %v", err)
 				return false, nil
@@ -163,7 +163,7 @@ func (sm *serviceSecretsManager) Encrypter() config.Encrypter {
 }
 
 func NewServiceSecretsManager(
-	client *client.Client, id client.StackIdentifier, info *workspace.ProjectStack,
+	ctx context.Context, client *client.Client, id client.StackIdentifier, info *workspace.ProjectStack,
 ) (secrets.Manager, error) {
 	// To change the secrets provider to a serviceSecretsManager we would need to ensure that there are no
 	// remnants of the old secret manager To remove those remnants, we would set those values to be empty in
@@ -192,7 +192,7 @@ func NewServiceSecretsManager(
 		return nil, fmt.Errorf("marshalling state: %w", err)
 	}
 
-	crypter := newServiceCrypter(client, id)
+	crypter := newServiceCrypter(ctx, client, id)
 	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	return &serviceSecretsManager{
 		state:   state,
@@ -202,7 +202,7 @@ func NewServiceSecretsManager(
 
 // NewServiceSecretsManagerFromState returns a Pulumi service-based secrets manager based on the
 // existing state.
-func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
+func NewServiceSecretsManagerFromState(ctx context.Context, state json.RawMessage) (secrets.Manager, error) {
 	var s serviceSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
 		return nil, fmt.Errorf("unmarshalling state: %w", err)
@@ -232,7 +232,7 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Color: colors.Never,
 	}))
 
-	crypter := newServiceCrypter(c, id)
+	crypter := newServiceCrypter(ctx, c, id)
 	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	return &serviceSecretsManager{
 		state:   state,

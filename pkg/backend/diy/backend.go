@@ -1564,7 +1564,7 @@ func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.S
 	return nil
 }
 
-func (b *diyBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error) {
+func (b *diyBackend) DefaultSecretManager(_ context.Context, ps *workspace.ProjectStack) (secrets.Manager, error) {
 	// The default secrets manager for stacks against a DIY backend is a
 	// passphrase-based manager.
 	return passphrase.NewPromptingPassphraseSecretsManager(ps, false /* rotateSecretsProvider */)

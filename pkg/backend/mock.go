@@ -102,7 +102,7 @@ type MockBackend struct {
 
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 
-	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManagerF func(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error)
 
 	SupportsTemplatesF        func() bool
 	ListTemplatesF            func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
@@ -471,9 +471,9 @@ func (be *MockBackend) GetGHAppIntegration(ctx context.Context, stack Stack) (*a
 	panic("not implemented")
 }
 
-func (be *MockBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error) {
+func (be *MockBackend) DefaultSecretManager(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error) {
 	if be.DefaultSecretManagerF != nil {
-		return be.DefaultSecretManagerF(ps)
+		return be.DefaultSecretManagerF(ctx, ps)
 	}
 	panic("not implemented")
 }
@@ -590,7 +590,7 @@ type MockStack struct {
 	SnapshotF             func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	TagsF                 func() map[apitype.StackTagName]string
 	BackendF              func() Backend
-	DefaultSecretManagerF func(info *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManagerF func(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error)
 }
 
 var _ Stack = (*MockStack)(nil)
@@ -676,9 +676,9 @@ func (ms *MockStack) Backend() Backend {
 	panic("not implemented: MockStack.Backend")
 }
 
-func (ms *MockStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
+func (ms *MockStack) DefaultSecretManager(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 	if ms.DefaultSecretManagerF != nil {
-		return ms.DefaultSecretManagerF(info)
+		return ms.DefaultSecretManagerF(ctx, info)
 	}
 	panic("not implemented: MockStack.DefaultSecretManager")
 }

@@ -72,7 +72,7 @@ func TestStackImport_ChangeServiceSecrets(t *testing.T) {
 			}
 		},
 		BackendF: func() backend.Backend { return be },
-		DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return newSm, nil
 		},
 	}

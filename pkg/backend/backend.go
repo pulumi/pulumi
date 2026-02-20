@@ -265,7 +265,7 @@ type Backend interface {
 	//
 	// When a stack has been instantiated, you should favor using the Stack.DefaultSecretManager method to get a default
 	// secrets manager for that stack.
-	DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManager(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error)
 
 	// SupportsTemplates checks if the backend supports listing and downloading templates.
 	SupportsTemplates() bool
