@@ -2679,13 +2679,9 @@ func (sg *stepGenerator) diff(
 	// actual diff between old and new inputs so that applyReplaceOnChanges (in continueStepsFromDiff) can correctly
 	// convert changed properties that are in ReplaceOnChanges into a replace step.
 	if prov == nil {
-		effectiveNewInputs := processIgnoreChanges(sg.deployment.Diag(), urn, newInputs, oldInputs, goal.IgnoreChanges)
-		if oldInputs.DeepEquals(effectiveNewInputs) {
-			return plugin.DiffResult{Changes: plugin.DiffNone}, nil, nil
-		}
-		objectDiff := oldInputs.Diff(effectiveNewInputs)
+		objectDiff := oldInputs.Diff(newInputs)
 		if objectDiff == nil || !objectDiff.AnyChanges() {
-			return plugin.DiffResult{Changes: plugin.DiffNone}, nil, nil 
+			return plugin.DiffResult{Changes: plugin.DiffNone}, nil, nil
 		}
 		changedKeys := objectDiff.ChangedKeys()
 		detailedDiff := plugin.NewDetailedDiffFromObjectDiff(objectDiff, true /* inputDiff */)
