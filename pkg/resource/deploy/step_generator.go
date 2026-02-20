@@ -891,6 +891,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					State:  event.Old(),
 					Result: ResultStateSuccess,
 				})
+				return []Step{}, false, nil
 			}
 			return []Step{NewSameStep(sg.deployment, event, old, new)}, false, nil
 		}
