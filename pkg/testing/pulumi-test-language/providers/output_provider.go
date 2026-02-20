@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/blang/semver"
@@ -31,6 +32,8 @@ import (
 // A provider where the inputs are a subset of outputs for testing unknown values in programs.
 type OutputProvider struct {
 	plugin.UnimplementedProvider
+
+	elideUnknowns bool
 }
 
 var _ plugin.Provider = (*OutputProvider)(nil)
@@ -40,8 +43,23 @@ func (p *OutputProvider) Close() error {
 }
 
 func (p *OutputProvider) Configure(
-	context.Context, plugin.ConfigureRequest,
+	_ context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
+	elide, has := req.Inputs["elideUnknowns"]
+	if has {
+		if elide.IsBool() {
+			p.elideUnknowns = elide.BoolValue()
+		} else if elide.IsString() {
+			parsed, err := strconv.ParseBool(elide.StringValue())
+			if err != nil {
+				return plugin.ConfigureResponse{}, fmt.Errorf("invalid value for elideUnknowns: %v", elide.StringValue())
+			}
+			p.elideUnknowns = parsed
+		} else {
+			return plugin.ConfigureResponse{}, fmt.Errorf("invalid type for elideUnknowns: %v", elide.TypeString())
+		}
+	}
+
 	return plugin.ConfigureResponse{}, nil
 }
 
@@ -62,6 +80,15 @@ func (p *OutputProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    "output",
 		Version: "23.0.0",
+		Provider: schema.ResourceSpec{
+			InputProperties: map[string]schema.PropertySpec{
+				"elideUnknowns": {
+					TypeSpec: schema.TypeSpec{
+						Type: "boolean",
+					},
+				},
+			},
+		},
 		Resources: map[string]schema.ResourceSpec{
 			"output:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -117,7 +144,23 @@ func (p *OutputProvider) CheckConfig(
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	elide, hasElide := req.News["elideUnknowns"]
+	if hasElide {
+		if elide.IsString() {
+			_, err := strconv.ParseBool(elide.StringValue())
+			if err != nil {
+				return plugin.CheckConfigResponse{
+					Failures: makeCheckFailure("elideUnknowns", fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.StringValue())),
+				}, nil
+			}
+		} else if !elide.IsBool() {
+			return plugin.CheckConfigResponse{
+				Failures: makeCheckFailure("elideUnknowns", fmt.Sprintf("elideUnknowns is not a boolean: %v", elide.TypeString())),
+			}, nil
+		}
+	}
+
+	if (!hasElide && len(req.News) != 1) || (hasElide && len(req.News) != 2) {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -172,16 +215,16 @@ func (p *OutputProvider) Create(
 		id = ""
 	}
 
-	out := resource.NewProperty(resource.Computed{})
-	// Only generate the output property during an actual up
-	if !req.Preview {
-		out = resource.NewProperty(
-			strings.Repeat("hello", int(req.Properties["value"].NumberValue())))
+	properties := resource.PropertyMap{
+		"value": req.Properties["value"],
 	}
 
-	properties := resource.PropertyMap{
-		"value":  req.Properties["value"],
-		"output": out,
+	if !req.Preview {
+		// Only generate the output property during an actual up
+		properties["output"] = resource.NewProperty(
+			strings.Repeat("hello", int(req.Properties["value"].NumberValue())))
+	} else if !p.elideUnknowns {
+		properties["output"] = resource.NewProperty(resource.Computed{})
 	}
 
 	return plugin.CreateResponse{
@@ -201,16 +244,16 @@ func (p *OutputProvider) Update(
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	out := resource.NewProperty(resource.Computed{})
-	// Only generate the output property during an actual up
-	if !req.Preview {
-		out = resource.NewProperty(
-			strings.Repeat("hello", int(req.NewInputs["value"].NumberValue())))
+	properties := resource.PropertyMap{
+		"value": req.NewInputs["value"],
 	}
 
-	properties := resource.PropertyMap{
-		"value":  req.NewInputs["value"],
-		"output": out,
+	if !req.Preview {
+		// Only generate the output property during an actual up
+		properties["output"] = resource.NewProperty(
+			strings.Repeat("hello", int(req.NewInputs["value"].NumberValue())))
+	} else if !p.elideUnknowns {
+		properties["output"] = resource.NewProperty(resource.Computed{})
 	}
 
 	return plugin.UpdateResponse{

@@ -1,0 +1,5 @@
+name: l2-resource-elide-unknowns
+runtime:
+  name: nodejs
+  options:
+    typescript: false
