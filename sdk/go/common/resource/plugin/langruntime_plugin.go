@@ -187,7 +187,7 @@ func GetLanguageAttachPort(runtime string) (*int, error) {
 
 func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOption {
 	dialOpts := append(
-		rpcutil.OpenTracingInterceptorDialOptions(),
+		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)

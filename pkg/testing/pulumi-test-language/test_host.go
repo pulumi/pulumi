@@ -336,7 +336,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 			pulumirpc.RegisterResourceProviderServer(srv, newProviderServer(provider))
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)

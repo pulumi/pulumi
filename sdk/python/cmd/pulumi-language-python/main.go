@@ -180,7 +180,7 @@ func main() {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))

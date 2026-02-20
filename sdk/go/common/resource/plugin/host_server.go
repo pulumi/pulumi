@@ -63,7 +63,7 @@ func newHostServer(host Host, ctx *Context, newLoader NewLoaderFunc) (*hostServe
 			}
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
+		Options: rpcutil.TracingServerInterceptorOptions(ctx.tracingSpan),
 	})
 	if err != nil {
 		return nil, err

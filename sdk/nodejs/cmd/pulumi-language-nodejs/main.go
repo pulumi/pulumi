@@ -155,7 +155,7 @@ func main() {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
@@ -678,7 +678,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 			pulumirpc.RegisterResourceMonitorServer(srv, &monitorProxy{target: target})
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(tracingSpan),
+		Options: rpcutil.TracingServerInterceptorOptions(tracingSpan),
 	})
 	if err != nil {
 		return nil, err

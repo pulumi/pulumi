@@ -37,7 +37,7 @@ func NewCallbacksServer() (*CallbackServer, error) {
 			pulumirpc.RegisterCallbacksServer(srv, callbackServer)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not start resource provider service: %w", err)

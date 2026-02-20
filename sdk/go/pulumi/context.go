@@ -100,11 +100,12 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	var monitorConn *grpc.ClientConn
 	var monitor pulumirpc.ResourceMonitorClient
 	if addr := info.MonitorAddr; addr != "" {
-		conn, err := grpc.NewClient(
-			info.MonitorAddr,
+		dialOpts := append(
+			rpcutil.TracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
+		conn, err := grpc.NewClient(info.MonitorAddr, dialOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("connecting to resource monitor over RPC: %w", err)
 		}
@@ -118,11 +119,12 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		engineConn = info.engineConn
 		engine = pulumirpc.NewEngineClient(engineConn)
 	} else if addr := info.EngineAddr; addr != "" {
-		conn, err := grpc.NewClient(
-			info.EngineAddr,
+		dialOpts := append(
+			rpcutil.TracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
+		conn, err := grpc.NewClient(info.EngineAddr, dialOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("connecting to engine over RPC: %w", err)
 		}
