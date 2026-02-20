@@ -757,6 +757,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	//
 	// Only need to do refresh steps here for resources that have an old state.
 	if old != nil &&
+		goal.Custom &&
+		!sdkproviders.IsProviderType(goal.Type) &&
 		sg.refresh {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
@@ -876,6 +878,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					State:  event.Old(),
 					Result: ResultStateSuccess,
 				})
+				return []Step{}, false, nil
 			}
 			return []Step{NewSameStep(sg.deployment, event, old, new)}, false, nil
 		}
