@@ -294,13 +294,11 @@ func GeneratedProgramSpec(
 			if urn == "" {
 				return "", false
 			}
-			rewriteCount := 0
 			wasRewritten := false
 			for {
 				if newURN, has := rewritten[urn]; has {
 					urn = newURN
 					wasRewritten = true
-					rewriteCount++
 				} else {
 					return urn, wasRewritten
 				}
