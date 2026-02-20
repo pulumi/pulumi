@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -184,7 +185,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					},
 					{
 						Path:        "requirements\\.txt",
-						Pattern:     rootDir + "/artifacts",
+						Pattern:     regexp.QuoteMeta(rootDir) + "/artifacts",
 						Replacement: "ROOT/artifacts",
 					},
 				},
@@ -205,10 +206,6 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					// Only bother testing the provider plugin tests once.
 					if strings.HasPrefix(tt, "provider-") && config.name != "default" {
 						t.Skip("Skipping non-default provider tests")
-					}
-
-					if (config.name == "default" || config.name == "toml") && tt == "l2-discriminated-union" {
-						t.Skip("pulumi#21830: Expected to fail")
 					}
 
 					if config.typechecker == "pyright" && tt == "l3-component-simple" {
