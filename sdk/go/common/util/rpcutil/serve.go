@@ -17,6 +17,7 @@ package rpcutil
 import (
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -65,6 +66,17 @@ type ServeHandle struct {
 	// The channel is non-nil and is closed when the server stops serving. The server will pass a non-nil error on
 	// this channel if something went wrong in the background and it did not terminate gracefully.
 	Done <-chan error
+
+	// The underlying network listener.
+	listener net.Listener
+}
+
+// Close closes the underlying listener
+func (h ServeHandle) Close() error {
+	if h.listener != nil {
+		return h.listener.Close()
+	}
+	return nil
 }
 
 // ServeWithOptions creates a new gRPC server, calls opts.Init and listens on a TCP port.
@@ -118,7 +130,13 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 			for v, ok := <-cancel; !v && ok; v, ok = <-cancel {
 			}
 
-			srv.GracefulStop()
+			// In fuzz test mode, use immediate Stop() for faster port release
+			// In normal mode, use GracefulStop() to let RPCs finish cleanly
+			if os.Getenv("PULUMI_LIFECYCLE_TEST_FUZZ") != "" {
+				srv.Stop()
+			} else {
+				srv.GracefulStop()
+			}
 		}()
 	}
 
@@ -133,7 +151,7 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 		close(done)
 	}()
 
-	return ServeHandle{Port: port, Done: done}, done, nil
+	return ServeHandle{Port: port, Done: done, listener: lis}, done, nil
 }
 
 // Deprecated: Please use [ServeWithOptions] and [OpenTracingServerInterceptorOptions].

@@ -154,11 +154,20 @@ var nopCloser io.Closer = nopCloserT(0)
 type grpcWrapper struct {
 	stop   chan bool
 	handle rpcutil.ServeHandle
+	conn   *grpc.ClientConn
 }
 
 func (w *grpcWrapper) Close() error {
 	w.stop <- true
-	return <-w.handle.Done
+
+	_ = w.handle.Close()
+	err := <-w.handle.Done
+	if w.conn != nil {
+		if connErr := w.conn.Close(); connErr != nil {
+			err = errors.Join(err, connErr)
+		}
+	}
+	return err
 }
 
 func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer, error) {
@@ -186,6 +195,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		contract.IgnoreClose(wrapper)
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
+	wrapper.conn = conn
 	wrapped := plugin.NewProviderWithClient(nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil
 }
@@ -215,6 +225,7 @@ func wrapAnalyzerWithGrpc(analyzer plugin.Analyzer) (plugin.Analyzer, io.Closer,
 		contract.IgnoreClose(wrapper)
 		return nil, nil, fmt.Errorf("could not connect to policy analyzer service: %w", err)
 	}
+	wrapper.conn = conn
 	wrapped := plugin.NewAnalyzerWithClient(nil, analyzer.Name(), pulumirpc.NewAnalyzerClient(conn))
 	return wrapped, wrapper, nil
 }
@@ -475,12 +486,11 @@ func (host *pluginHost) Close() error {
 
 	var err error
 	for _, closer := range host.plugins {
-		if pErr := closer.Close(); pErr != nil {
-			err = errors.Join(err, pErr)
-		}
+		_ = closer.Close()
 	}
 
 	host.engine.stop <- true
+	_ = host.engine.handle.Close()
 	err = <-host.engine.handle.Done
 	host.closed = true
 	return err
