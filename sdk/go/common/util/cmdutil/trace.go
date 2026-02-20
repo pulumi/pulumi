@@ -288,7 +288,7 @@ func StartSpan(
 	name string,
 	opts ...trace.SpanStartOption,
 ) (context.Context, trace.Span) {
-	// Capture stack trace, skipping this function and the caller
+	// Capture stack trace, skipping this function and the runtime
 	const maxDepth = 32
 	var pcs [maxDepth]uintptr
 	n := runtime.Callers(2, pcs[:])
