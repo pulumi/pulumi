@@ -26,6 +26,8 @@ import (
 
 type ConformanceComponentProvider struct {
 	plugin.UnimplementedProvider
+
+	Version *semver.Version
 }
 
 var _ plugin.Provider = (*ConformanceComponentProvider)(nil)
@@ -38,9 +40,17 @@ func (p *ConformanceComponentProvider) Pkg() tokens.Package {
 	return "conformance-component"
 }
 
+func (p *ConformanceComponentProvider) version() semver.Version {
+	if p.Version == nil {
+		return semver.Version{Major: 22}
+	}
+	return *p.Version
+}
+
 func (p *ConformanceComponentProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
+	version := p.version()
 	return plugin.PluginInfo{
-		Version: &semver.Version{Major: 22},
+		Version: &version,
 	}, nil
 }
 
@@ -58,7 +68,7 @@ func (p *ConformanceComponentProvider) GetSchema(
 
 	pkg := schema.PackageSpec{
 		Name:    "conformance-component",
-		Version: "22.0.0",
+		Version: p.version().String(),
 		Resources: map[string]schema.ResourceSpec{
 			"conformance-component:index:Simple": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
