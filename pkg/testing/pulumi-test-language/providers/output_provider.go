@@ -150,12 +150,14 @@ func (p *OutputProvider) CheckConfig(
 			_, err := strconv.ParseBool(elide.StringValue())
 			if err != nil {
 				return plugin.CheckConfigResponse{
-					Failures: makeCheckFailure("elideUnknowns", fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.StringValue())),
+					Failures: makeCheckFailure("elideUnknowns",
+						fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.StringValue())),
 				}, nil
 			}
 		} else if !elide.IsBool() {
 			return plugin.CheckConfigResponse{
-				Failures: makeCheckFailure("elideUnknowns", fmt.Sprintf("elideUnknowns is not a boolean: %v", elide.TypeString())),
+				Failures: makeCheckFailure("elideUnknowns",
+					fmt.Sprintf("elideUnknowns is not a boolean: %v", elide.TypeString())),
 			}, nil
 		}
 	}

@@ -51,8 +51,10 @@ func init() {
 
 					require.NotNil(l, simpleEvent)
 					require.NotNil(l, stackEvent)
-					assert.True(l, simpleEvent.Metadata.New.Inputs["value"].IsComputed(), "expected resource input to be unknown: %v", simpleEvent.Metadata.New.Inputs)
-					assert.True(l, stackEvent.Metadata.New.Outputs["out"].IsComputed(), "expected stack output to be unknown: %v", stackEvent.Metadata.New.Outputs)
+					assert.True(l, simpleEvent.Metadata.New.Inputs["value"].IsComputed(),
+						"expected resource input to be unknown: %v", simpleEvent.Metadata.New.Inputs)
+					assert.True(l, stackEvent.Metadata.New.Outputs["out"].IsComputed(),
+						"expected stack output to be unknown: %v", stackEvent.Metadata.New.Outputs)
 				},
 				Assert: func(l *L, res AssertArgs) {
 					err := res.Err
