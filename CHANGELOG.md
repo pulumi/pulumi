@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.223.0 (2026-02-19)
+
+
+### Bug Fixes
+
+- [engine] Report policy pack installation errors
+  [#21882](https://github.com/pulumi/pulumi/pull/21882)
+
+## 3.222.0 (2026-02-18)
+
+
+### Features
+
+- [programgen/go] Generate Call requests
+  [#21836](https://github.com/pulumi/pulumi/pull/21836)
+
+
+### Bug Fixes
+
+- [sdk/{nodejs,python}] Fix hang when loading policy packs that use v1.18.1 or older of the policy SDK
+  [#21866](https://github.com/pulumi/pulumi/pull/21866)
+
 ## 3.221.0 (2026-02-17)
 
 

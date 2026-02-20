@@ -488,11 +488,11 @@ func newUpdateSource(ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks, panicErrs chan<- error,
 ) (deploy.Source, error) {
-	manager := newInstallManager(false /*returnPluginErrors*/)
-
 	//
 	// Step 1: Install policy packs and plugins.
 	//
+
+	manager := newInstallManager(false /*returnPluginErrors*/)
 
 	ensurePoliciesAreInstalled(ctx, plugctx, opts, opts.RequiredPolicies, manager)
 
@@ -512,7 +512,7 @@ func newUpdateSource(ctx context.Context,
 	}
 
 	if err := manager.Wait(); err != nil {
-		logging.V(7).Infof("newUpdateSource(): failed to install policy packs and plugins: %v", err)
+		return nil, err
 	}
 
 	//
