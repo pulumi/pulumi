@@ -70,6 +70,7 @@ func newPulumiPackage() *Package {
 								Ref: "pulumi.json#/Any",
 							},
 						}},
+						"name": {TypeSpec: TypeSpec{Type: "string"}},
 					},
 					Required: []string{
 						"outputs",
