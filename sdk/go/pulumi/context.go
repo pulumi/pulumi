@@ -102,6 +102,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	if addr := info.MonitorAddr; addr != "" {
 		conn, err := grpc.NewClient(
 			info.MonitorAddr,
+			rpcutil.OpenTracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
@@ -120,6 +121,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	} else if addr := info.EngineAddr; addr != "" {
 		conn, err := grpc.NewClient(
 			info.EngineAddr,
+			rpcutil.OpenTracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)

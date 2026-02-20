@@ -20,15 +20,28 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 )
 
-// Configures interceptors to propagate OpenTracing metadata through headers. If parentSpan is non-nil, it becomes the
-// default parent for orphan spans.
-func OpenTracingServerInterceptorOptions(parentSpan opentracing.Span, options ...otgrpc.Option) []grpc.ServerOption {
+// Configures interceptors to propagate OpenTracing and OpenTelemetry metadata through headers.
+// If parentSpan is non-nil, it becomes the default parent for orphan spans.
+func TracingServerInterceptorOptions(parentSpan opentracing.Span, options ...otgrpc.Option) []grpc.ServerOption {
 	return []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(OpenTracingServerInterceptor(parentSpan, options...)),
 		grpc.ChainStreamInterceptor(OpenTracingStreamServerInterceptor(parentSpan, options...)),
+		// Add OTel stats handler for trace context propagation
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	}
+}
+
+// Configures gRPC clients with OpenTracing and OpenTelemetry interceptors.
+func TracingInterceptorDialOptions(opts ...otgrpc.Option) []grpc.DialOption {
+	return []grpc.DialOption{
+		grpc.WithChainUnaryInterceptor(OpenTracingClientInterceptor(opts...)),
+		grpc.WithChainStreamInterceptor(OpenTracingStreamClientInterceptor(opts...)),
+		// Add OTel stats handler for trace context propagation
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	}
 }
 
@@ -80,14 +93,6 @@ func OpenTracingStreamClientInterceptor(options ...otgrpc.Option) grpc.StreamCli
 	return otgrpc.OpenTracingStreamClientInterceptor(opentracing.GlobalTracer(), options...)
 }
 
-// Configures gRPC clients with OpenTracing interceptors.
-func OpenTracingInterceptorDialOptions(opts ...otgrpc.Option) []grpc.DialOption {
-	return []grpc.DialOption{
-		grpc.WithChainUnaryInterceptor(OpenTracingClientInterceptor(opts...)),
-		grpc.WithChainStreamInterceptor(OpenTracingStreamClientInterceptor(opts...)),
-	}
-}
-
 // Wraps an opentracing.Tracer to reparent orphan traces with a given
 // default parent span.
 type reparentingTracer struct {
@@ -137,4 +142,22 @@ func logPayloads() []otgrpc.Option {
 		res = append(res, otgrpc.LogPayloads())
 	}
 	return res
+}
+
+// OTelServerInterceptorOptions returns gRPC server options that add OpenTelemetry
+// tracing interceptors. These interceptors automatically propagate trace context
+// via gRPC metadata.
+func OTelServerInterceptorOptions() []grpc.ServerOption {
+	return []grpc.ServerOption{
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	}
+}
+
+// OTelInterceptorDialOptions returns gRPC dial options that add OpenTelemetry
+// tracing interceptors. These interceptors automatically propagate trace context
+// via gRPC metadata.
+func OTelInterceptorDialOptions() []grpc.DialOption {
+	return []grpc.DialOption{
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+	}
 }
