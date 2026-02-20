@@ -88,6 +88,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type commandGroup struct {
@@ -184,16 +186,23 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var logToStderr bool
 	var tracingFlag string
 	var tracingHeaderFlag string
+	var otelFlag string
 	var profiling string
 	var verbose int
 	var color string
 	var memProfileRate int
+	var rootSpan oteltrace.Span
 
 	updateCheckResult := make(chan *updateCheckResult)
 
 	cleanup := func() {
 		logging.Flush()
 		cmdutil.CloseTracing()
+
+		if rootSpan != nil {
+			rootSpan.End()
+		}
+		cmdutil.CloseOTelReceiver()
 
 		if logging.Verbose > 0 && !logging.LogToStderr {
 			logFile, err := logging.GetLogfilePath()
@@ -267,6 +276,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			logging.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
+			if err := cmdutil.InitOtelReceiver(otelFlag); err != nil {
+				logging.V(3).Infof("failed to initialize OTLP receiver: %v", err)
+			}
+
 			ctx := cmd.Context()
 			if cmdutil.IsTracingEnabled() {
 				if cmdutil.TracingRootSpan != nil {
@@ -284,6 +297,11 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					TracingHeader:  tracingHeader,
 				}
 				ctx = tracing.ContextWithOptions(ctx, tracingOptions)
+			}
+
+			if cmdutil.IsOTelEnabled() {
+				tracer := otel.Tracer("pulumi-cli")
+				ctx, rootSpan = tracer.Start(ctx, "pulumi")
 			}
 			cmd.SetContext(ctx)
 
@@ -365,6 +383,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Disable interactive mode for all commands")
 	cmd.PersistentFlags().StringVar(&tracingFlag, "tracing", "",
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
+	cmd.PersistentFlags().StringVar(&otelFlag, "otel", "",
+		"Export OpenTelemetry data to the specified endpoint. "+
+			"Use file:// for local JSON files, grpc:// for remote collectors")
+	_ = cmd.PersistentFlags().MarkHidden("otel")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,
