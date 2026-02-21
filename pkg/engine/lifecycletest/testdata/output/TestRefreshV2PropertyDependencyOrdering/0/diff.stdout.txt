@@ -1,0 +1,22 @@
+<{%fg 2%}>+ pulumi:providers:pkg: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkg::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkg:m:t: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkg:m:t::new]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pkg:m:comp: (update)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkg:m:comp::comp]
+<{%reset%}><{%reset%}><{%reset%}>  pkg:m:comp: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkg:m:comp::comp]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pulumi:providers:pkg: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkg::prov]
+<{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkg: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkg::prov]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 2 updated<{%reset%}>
+    3 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

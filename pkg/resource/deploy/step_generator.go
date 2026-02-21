@@ -755,11 +755,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// If we're doing refreshes then this is the point where we need to fire off a refresh step for this
 	// resource, to call back into GenerateSteps later.
 	//
-	// Only need to do refresh steps here for custom non-provider resources that have an old state.
+	// Only need to do refresh steps here for resources that have an old state.
 	if old != nil &&
-		sg.refresh &&
 		goal.Custom &&
-		!sdkproviders.IsProviderType(goal.Type) {
+		!sdkproviders.IsProviderType(goal.Type) &&
+		sg.refresh {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
 		go PanicRecovery(sg.deployment.panicErrs, func() {
@@ -871,13 +871,16 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 				sg.skippedCreates[urn] = true
 				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
 			}
-			// We've already refreshed this resource, so we can just trigger the done event (refresh steps never do this
-			// alone) and return no further steps.
-			event.Done(&RegisterResult{
-				State:  event.Old(),
-				Result: ResultStateSuccess,
-			})
-			return []Step{}, false, nil
+			if goal.Custom && !sdkproviders.IsProviderType(goal.Type) {
+				// We've already refreshed this resource, so we can just trigger the done event (refresh steps never do this
+				// alone) and return no further steps.
+				event.Done(&RegisterResult{
+					State:  event.Old(),
+					Result: ResultStateSuccess,
+				})
+				return []Step{}, false, nil
+			}
+			return []Step{NewSameStep(sg.deployment, event, old, new)}, false, nil
 		}
 	}
 	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for custom

@@ -55,8 +55,6 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeResourceReferencingAliasedProviderDestroyV2,
 		// TODO[pulumi/pulumi#21402]
 		ExcludeRefreshWithTargetedProviderParentChangeDestroyV2,
-		// TODO[pulumi/pulumi#21645]
-		ExcludeDependenciesInProgramButNotInSnapshotRefreshV2,
 		// TODO[pulumi/pulumi#21672]
 		ExcludeParentedResourcesRefreshV2,
 		// TODO[pulumi/pulumi#21675]
