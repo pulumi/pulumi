@@ -209,30 +209,43 @@ only_test_fast:: lint test_fast
 # invoking make from the command line
 ifneq ($(SUB_PROJECTS),)
 $(SUB_PROJECTS:%=%_default):
+	@printf "\033[1;37m=== $(@:%_default=%) (default) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_default=%) default
 $(SUB_PROJECTS:%=%_all):
+	@printf "\033[1;37m=== $(@:%_all=%) (all) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_all=%) all
 $(SUB_PROJECTS:%=%_ensure):
+	@printf "\033[1;37m=== $(@:%_ensure=%) (ensure) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_ensure=%) ensure
 $(SUB_PROJECTS:%=%_build):
+	@printf "\033[1;37m=== $(@:%_build=%) (build) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_build=%) build
 $(SUB_PROJECTS:%=%_lint):
+	@printf "\033[1;37m=== $(@:%_lint=%) (lint) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_lint=%) lint
 $(SUB_PROJECTS:%=%_test_fast):
+	@printf "\033[1;37m=== $(@:%_test_fast=%) (test_fast) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_test_fast=%) test_fast
 $(SUB_PROJECTS:%=%_test_all):
+	@printf "\033[1;37m=== $(@:%_test_all=%) (test_all) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_test_all=%) test_all
 $(SUB_PROJECTS:%=%_install):
+	@printf "\033[1;37m=== $(@:%_install=%) (install) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_install=%) install
 $(SUB_PROJECTS:%=%_only_build):
+	@printf "\033[1;37m=== $(@:%_only_build=%) (only_build) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_only_build=%) only_build
 $(SUB_PROJECTS:%=%_only_test):
+	@printf "\033[1;37m=== $(@:%_only_test=%) (only_test) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_only_test=%) only_test
 $(SUB_PROJECTS:%=%_only_test_fast):
+	@printf "\033[1;37m=== $(@:%_only_test_fast=%) (only_test_fast) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_only_test_fast=%) only_test_fast
 $(SUB_PROJECTS:%=%_dist):
+	@printf "\033[1;37m=== $(@:%_dist=%) (dist) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_dist=%) dist
 $(SUB_PROJECTS:%=%_brew):
+	@printf "\033[1;37m=== $(@:%_brew=%) (brew) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_brew=%) brew
 endif
 
