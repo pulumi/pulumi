@@ -122,7 +122,7 @@ GO_TEST_FAST = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 GOPROXY = https://proxy.golang.org
 export GOPROXY
 
-.PHONY: default all only_build only_test lint install test_all core build
+.PHONY: default all only_build only_test lint install test_all core build clean
 
 # ensure that `default` is the target that is run when no arguments are passed to make
 default::
@@ -140,6 +140,7 @@ install:: $(SUB_PROJECTS:%=%_install)
 test_all:: $(SUB_PROJECTS:%=%_test_all)
 dist:: $(SUB_PROJECTS:%=%_dist)
 brew:: $(SUB_PROJECTS:%=%_brew)
+clean:: $(SUB_PROJECTS:%=%_clean)
 endif
 
 # `core` is like `default` except it does not build sub projects.
@@ -181,6 +182,9 @@ dist::
 	$(call STEP_MESSAGE)
 
 brew::
+	$(call STEP_MESSAGE)
+
+clean::
 	$(call STEP_MESSAGE)
 
 test_all::
@@ -234,6 +238,8 @@ $(SUB_PROJECTS:%=%_dist):
 	@$(MAKE) -C ./$(@:%_dist=%) dist
 $(SUB_PROJECTS:%=%_brew):
 	@$(MAKE) -C ./$(@:%_brew=%) brew
+$(SUB_PROJECTS:%=%_clean):
+	@$(MAKE) -C ./$(@:%_clean=%) clean
 endif
 
 # As a convenience, we provide a format target that folks can build to run go fmt over all

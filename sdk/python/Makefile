@@ -107,6 +107,10 @@ brew::
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
 
+clean::
+	rm -rf build
+	rm -rf .make
+
 publish:: ensure
 	for file in ../../artifacts/sdk-python-*.whl; do \
 		basename=$$(basename $${file}); \
