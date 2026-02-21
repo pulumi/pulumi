@@ -69,6 +69,9 @@ lint:: .make/ensure/golangci-lint
 	cd pulumi-language-go && \
 		golangci-lint run -c ../../../.golangci.yml --timeout 5m --path-prefix pulumi-language-go
 
+clean::
+	rm -rf .make
+
 publish:
 	git tag sdk/v${VERSION}
 	git push origin sdk/v${VERSION}

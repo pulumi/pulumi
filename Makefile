@@ -271,6 +271,10 @@ get_schemas: \
 changelog:
 	go run github.com/pulumi/go-change@v0.1.3 create
 
+clean::
+	rm -rf bin/*
+	rm -rf .make
+
 .PHONY: work
 work:
 	rm -f go.work go.work.sum
