@@ -316,13 +316,9 @@ func TestRunCanceled(t *testing.T) {
 		"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple",
 	}
 	_, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
-	if runtime.GOOS == "windows" {
-		require.ErrorContains(t, err, "exit status 0xffffffff")
-		require.Equal(t, 4294967295, code)
-	} else {
-		require.ErrorContains(t, err, "exit status 255")
-		require.Equal(t, 255, code)
-	}
+	// Exit code 1 is consistent across platforms (unlike -1 which wraps differently).
+	require.ErrorContains(t, err, "exit status 1")
+	require.Equal(t, 1, code)
 
 	e.RunCommand("pulumi", "stack", "rm", "--yes", stackName)
 }

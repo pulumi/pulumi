@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -324,11 +325,11 @@ func NewRefreshCmd() *cobra.Command {
 
 			switch {
 			case err == context.Canceled:
-				return errors.New("refresh cancelled")
+				return backenderr.CancelledError{Operation: "refresh"}
 			case err != nil:
 				return err
 			case expectNop && changes != nil && engine.HasChanges(changes):
-				return errors.New("no changes were expected but changes occurred")
+				return backenderr.NoChangesExpectedError{}
 			default:
 				return nil
 			}
