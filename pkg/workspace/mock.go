@@ -22,6 +22,7 @@ import (
 
 type MockContext struct {
 	NewF                  func() (W, error)
+	NewFromDirF           func(dir string) (W, error)
 	ReadProjectF          func() (*workspace.Project, string, error)
 	GetStoredCredentialsF func() (workspace.Credentials, error)
 	LoadPluginProjectAtF  func(ctx context.Context, path string) (*workspace.PluginProject, string, error)
@@ -31,6 +32,13 @@ type MockContext struct {
 func (c *MockContext) New() (W, error) {
 	if c.NewF != nil {
 		return c.NewF()
+	}
+	return nil, workspace.ErrProjectNotFound
+}
+
+func (c *MockContext) NewFromDir(dir string) (W, error) {
+	if c.NewFromDirF != nil {
+		return c.NewFromDirF(dir)
 	}
 	return nil, workspace.ErrProjectNotFound
 }

@@ -106,6 +106,16 @@ type Options struct {
 	ContinueOnError bool
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
+
+	// OutputWaiters, when non-nil, enables co-deployed stack output resolution.
+	// StackReferences to co-deployed stacks will block until their outputs are available.
+	OutputWaiters *OutputWaiterStore
+	// OutputWaitersStackName is the fully qualified name of this stack, used for
+	// cycle detection in the output waiter store. Used in single-stack mode.
+	OutputWaitersStackName string
+	// OutputWaitersStackFQNs maps project name → stack FQN for multistack mode.
+	// When set, the builtin provider resolves the waiter stack from resource URNs.
+	OutputWaitersStackFQNs map[tokens.PackageName]string
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -564,6 +574,19 @@ func NewDeployment(
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
 	builtins := newBuiltinProvider(backendClient, newResources, reads, ctx.Diag)
+	logging.V(4).Infof("deploy.NewDeployment: OutputWaiters=%p, OutputWaitersStackName=%q",
+		opts.OutputWaiters, opts.OutputWaitersStackName)
+	if opts.OutputWaiters != nil {
+		if opts.OutputWaitersStackFQNs != nil {
+			builtins.WithOutputWaitersMultistack(opts.OutputWaiters, opts.OutputWaitersStackFQNs)
+			logging.V(4).Infof("deploy.NewDeployment: wired builtinProvider with OutputWaiters (multistack, %d stacks)",
+				len(opts.OutputWaitersStackFQNs))
+		} else {
+			builtins.WithOutputWaiters(opts.OutputWaiters, opts.OutputWaitersStackName)
+			logging.V(4).Infof("deploy.NewDeployment: wired builtinProvider with OutputWaiters for stack %q",
+				opts.OutputWaitersStackName)
+		}
+	}
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
@@ -699,14 +722,42 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 	switch e := event.(type) {
 	case RegisterResourceEvent:
 		goal := e.Goal()
-		return d.generateURN(goal.Parent, goal.Type, goal.Name)
+		// In multistack mode, the Goal carries per-source stack/project overrides.
+		stack := d.Target().Name.Q()
+		project := d.source.Project()
+		if goal.Stack != "" {
+			stack = goal.Stack
+		}
+		if goal.Project != "" {
+			project = goal.Project
+		}
+		return d.generateURNWith(goal.Parent, goal.Type, goal.Name, stack, project)
 	case ReadResourceEvent:
-		return d.generateURN(e.Parent(), e.Type(), e.Name())
+		// For reads, extract stack/project from the parent URN if available.
+		stack := d.Target().Name.Q()
+		project := d.source.Project()
+		if e.Parent() != "" {
+			stack = e.Parent().Stack()
+			project = e.Parent().Project()
+		}
+		return d.generateURNWith(e.Parent(), e.Type(), e.Name(), stack, project)
 	case RegisterResourceOutputsEvent:
 		return e.URN()
 	default:
 		return ""
 	}
+}
+
+// generateURNWith generates a resource URN using explicit stack and project names.
+func (d *Deployment) generateURNWith(
+	parent resource.URN, ty tokens.Type, name string,
+	stack tokens.QName, project tokens.PackageName,
+) resource.URN {
+	parentType := tokens.Type("")
+	if parent != "" && parent.QualifiedType() != resource.RootStackType {
+		parentType = parent.QualifiedType()
+	}
+	return resource.NewURN(stack, project, parentType, ty, name)
 }
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.

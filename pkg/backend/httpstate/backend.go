@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jonboulle/clockwork"
 	opentracing "github.com/opentracing/opentracing-go"
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
@@ -1379,7 +1380,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
@@ -1390,10 +1391,10 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.DestroyUpdate, stack, op, opts, events)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b, events)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1609,7 +1610,7 @@ func (b *cloudBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch && !op.Opts.Display.SuppressDisplay {
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
@@ -1876,6 +1877,98 @@ func (b *cloudBackend) runEngineAction(
 	return plan, changes, updateErr
 }
 
+// SetupPerStackSnapshots implements backend.PerStackSnapshotProvider for the Pulumi Cloud backend.
+// For each stack, it creates an update record, loads the snapshot (without integrity checking
+// for multistack compatibility), and creates a snapshot manager that persists state to the Cloud.
+// The returned complete function must be called to finalize update records and release leases.
+func (b *cloudBackend) SetupPerStackSnapshots(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	entries []backend.MultistackEntry,
+	dryRun bool,
+) (map[string]engine.SnapshotManager, map[string]*deploy.Snapshot, func(apitype.UpdateStatus) error, error) {
+	type perStackState struct {
+		fqn         string
+		update      client.UpdateIdentifier
+		tokenSource *tokenSource
+	}
+
+	states := make([]perStackState, 0, len(entries))
+	managers := make(map[string]engine.SnapshotManager, len(entries))
+	snapshots := make(map[string]*deploy.Snapshot, len(entries))
+
+	// Clean up on error: complete any already-started updates as failed and close token sources.
+	cleanup := func() {
+		for _, s := range states {
+			_ = b.completeUpdate(ctx, s.tokenSource, s.update, apitype.UpdateStatusFailed)
+		}
+	}
+
+	for _, entry := range entries {
+		fqn := string(entry.Stack.Ref().FullyQualifiedName())
+
+		// Create and start update record on the Cloud.
+		update, meta, err := b.createAndStartUpdate(ctx, kind, entry.Stack, &entry.Op, dryRun)
+		if err != nil {
+			cleanup()
+			return nil, nil, nil, fmt.Errorf("creating update for %s: %w", fqn, err)
+		}
+
+		// Create token source for lease management directly (we skip newUpdate because
+		// it loads + verifies the snapshot, which fails for multistack snapshots that
+		// may contain cross-stack dependency references from a previous multistack run).
+		var tokenSrc *tokenSource
+		if meta.leaseToken != "" {
+			duration := 5 * time.Minute
+			assumedExpires := func() time.Time {
+				return time.Now().Add(duration)
+			}
+			renewLease := RenewLeaseFunc(b.Client(), update, assumedExpires)
+			ts, err := newTokenSource(ctx, clockwork.NewRealClock(), meta.leaseToken, assumedExpires(), duration, renewLease)
+			if err != nil {
+				cleanup()
+				return nil, nil, nil, fmt.Errorf("creating token source for %s: %w", fqn, err)
+			}
+			tokenSrc = ts
+		}
+
+		// Load the per-stack snapshot without integrity checking. Multistack snapshots
+		// may contain cross-stack dependency references from previous multistack runs
+		// that would fail normal integrity verification.
+		snap, err := b.getSnapshotUnchecked(ctx, entry.Op.SecretsProvider, entry.Stack.Ref())
+		if err != nil {
+			logging.V(4).Infof("multistack: could not load snapshot for %s: %v", fqn, err)
+		}
+		snapshots[fqn] = snap
+
+		// Create a per-stack snapshot manager that tracks mutations and persists state.
+		// Integrity checks are skipped because the per-stack base snapshot won't include
+		// cross-stack parents; final integrity is verified at the RoutingSnapshotManager level.
+		persister := b.newSnapshotPersister(ctx, update, tokenSrc)
+		mgr := backend.NewMultistackSnapshotManager(persister, entry.Op.SecretsManager, snap)
+
+		states = append(states, perStackState{
+			fqn:         fqn,
+			update:      update,
+			tokenSource: tokenSrc,
+		})
+		managers[fqn] = mgr
+	}
+
+	// The complete function finalizes all update records and releases leases.
+	completeFn := func(status apitype.UpdateStatus) error {
+		var firstErr error
+		for _, s := range states {
+			if err := b.completeUpdate(ctx, s.tokenSource, s.update, status); err != nil && firstErr == nil {
+				firstErr = fmt.Errorf("completing update for %s: %w", s.fqn, err)
+			}
+		}
+		return firstErr
+	}
+
+	return managers, snapshots, completeFn, nil
+}
+
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
@@ -2084,6 +2177,30 @@ var projectNameCleanRegexp = regexp.MustCompile("[^a-zA-Z0-9-_.]")
 // do this cleaning on our end.
 func cleanProjectName(projectName string) string {
 	return projectNameCleanRegexp.ReplaceAllString(projectName, "-")
+}
+
+// GetDownstreamReferences returns stacks that consume outputs from the given stack via StackReferences.
+func (b *cloudBackend) GetDownstreamReferences(
+	ctx context.Context,
+	stackRef backend.StackReference,
+) ([]backend.DownstreamStackReference, error) {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+	refs, err := b.client.ListDownstreamReferences(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]backend.DownstreamStackReference, len(refs))
+	for i, ref := range refs {
+		result[i] = backend.DownstreamStackReference{
+			OrgName:     ref.OrgName,
+			ProjectName: ref.ProjectName,
+			StackName:   ref.StackName,
+		}
+	}
+	return result, nil
 }
 
 // getCloudStackIdentifier converts a backend.StackReference to a client.StackIdentifier for the same logical stack

@@ -28,6 +28,10 @@ type Context interface {
 	// in the folder hierarchy between the current working directory and the .pulumi folder.
 	New() (W, error)
 
+	// NewFromDir creates a new workspace rooted at the given directory. Requires a Pulumi.yaml file be
+	// present in the folder hierarchy between dir and the .pulumi folder.
+	NewFromDir(dir string) (W, error)
+
 	// ReadProject attempts to detect and read a Pulumi project for the current workspace. If the
 	// project is successfully detected and read, it is returned along with the path to its containing
 	// directory, which will be used as the root of the project's Pulumi program.
@@ -59,6 +63,10 @@ type workspaceContext struct{}
 
 func (*workspaceContext) New() (W, error) {
 	return newW()
+}
+
+func (*workspaceContext) NewFromDir(dir string) (W, error) {
+	return newWFromDir(dir)
 }
 
 func (*workspaceContext) ReadProject() (*workspace.Project, string, error) {

@@ -345,6 +345,63 @@ func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int,
 	return out.String()
 }
 
+// renderIndentedSummaryChanges renders just the change lines (e.g., "+ 8 to create") with extra
+// indentation for nesting under a per-stack label in multistack summary display.
+func renderIndentedSummaryChanges(event engine.SummaryEventPayload, resourcesErrored int, opts Options) string {
+	changes := event.ResourceChanges
+
+	out := &bytes.Buffer{}
+
+	var planTo string
+	if event.IsPreview {
+		planTo = "to "
+	}
+
+	changeKindCount := 0
+	changeCount := 0
+	sameCount := changes[deploy.OpSame]
+
+	for _, op := range deploy.StepOps {
+		if op != deploy.OpSame && op != deploy.OpRead && op != deploy.OpReadDiscard && op != deploy.OpReadReplacement {
+			if c := changes[op]; c > 0 {
+				opDescription := string(op)
+				if !event.IsPreview {
+					opDescription = deploy.PastTense(op)
+				}
+				changeCount += c
+				changeKindCount++
+				fprintIgnoreError(out, opts.Color.Colorize(
+					fmt.Sprintf("        %s%d %s%s%s\n", deploy.Prefix(op, true), c, planTo, opDescription, colors.Reset)))
+			}
+		}
+	}
+
+	summaryPieces := []string{}
+	if changeKindCount >= 2 {
+		summaryPieces = append(summaryPieces, fmt.Sprintf("%s%d %s%s",
+			colors.Bold, changeCount, english.PluralWord(changeCount, "change", ""), colors.Reset))
+	}
+	if sameCount != 0 {
+		summaryPieces = append(summaryPieces, fmt.Sprintf("%d unchanged", sameCount))
+	}
+	if len(summaryPieces) > 0 {
+		fprintIgnoreError(out, "        ")
+		for i, piece := range summaryPieces {
+			if i > 0 {
+				fprintIgnoreError(out, ". ")
+			}
+			out.WriteString(opts.Color.Colorize(piece))
+		}
+		fprintIgnoreError(out, "\n")
+	}
+
+	if resourcesErrored > 0 {
+		out.WriteString("        " + colors.Red + fmt.Sprintf("%d errored", resourcesErrored) + colors.Reset + "\n")
+	}
+
+	return out.String()
+}
+
 func renderPolicyPacks(out io.Writer, policyPacks map[string]string, opts Options) {
 	if len(policyPacks) == 0 {
 		return

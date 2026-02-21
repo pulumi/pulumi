@@ -586,6 +586,31 @@ func (pc *Client) DoesProjectExist(ctx context.Context, owner string, projectNam
 	return true, nil
 }
 
+// DownstreamReference represents a stack that references another stack via StackReference.
+type DownstreamReference struct {
+	OrgName     string `json:"orgName"`
+	ProjectName string `json:"projectName"`
+	StackName   string `json:"stackName"`
+}
+
+// listDownstreamReferencesResponse is the response from the downstream references API.
+type listDownstreamReferencesResponse struct {
+	References []DownstreamReference `json:"references"`
+}
+
+// ListDownstreamReferences returns the list of stacks that reference the given stack via StackReferences.
+func (pc *Client) ListDownstreamReferences(
+	ctx context.Context,
+	stack StackIdentifier,
+) ([]DownstreamReference, error) {
+	var resp listDownstreamReferencesResponse
+	if err := pc.restCall(ctx, "GET",
+		getStackPath(stack, "downstreamreferences"), nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp.References, nil
+}
+
 // GetStack retrieves the stack with the given name.
 func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apitype.Stack, error) {
 	var stack apitype.Stack

@@ -87,7 +87,8 @@ type SnapshotManager struct {
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
-	isRefresh bool // Whether or not the snapshot is part of a refresh
+	isRefresh            bool // Whether or not the snapshot is part of a refresh
+	skipIntegrityChecks  bool // Skip per-save integrity checks (used in multistack routing)
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -808,7 +809,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	if err := sm.persister.Save(deployment); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
-	if !DisableIntegrityChecking && integrityError != nil {
+	if !DisableIntegrityChecking && !sm.skipIntegrityChecks && integrityError != nil {
 		return fmt.Errorf("failed to verify snapshot: %w", integrityError)
 	}
 	return nil
@@ -895,4 +896,19 @@ func NewSnapshotManager(
 	go serviceLoop(mutationRequests, done)
 
 	return manager
+}
+
+// NewMultistackSnapshotManager creates a SnapshotManager for use within a multistack
+// RoutingSnapshotManager. It skips per-save integrity checks because the per-stack base
+// snapshot may not include all parent resources that newly-created children reference
+// (those parents arrive later from the base snapshot during Snap() merging).
+// Final integrity is verified by the RoutingSnapshotManager at Write() time.
+func NewMultistackSnapshotManager(
+	persister SnapshotPersister,
+	secretsManager secrets.Manager,
+	baseSnap *deploy.Snapshot,
+) *SnapshotManager {
+	mgr := NewSnapshotManager(persister, secretsManager, baseSnap)
+	mgr.skipIntegrityChecks = true
+	return mgr
 }

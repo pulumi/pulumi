@@ -108,13 +108,20 @@ func DetectProjectStackPath(stackName tokens.QName) (*Project, string, error) {
 		return nil, "", err
 	}
 
+	return proj, ProjectStackPath(proj, projPath, stackName), nil
+}
+
+// ProjectStackPath returns the path to the stack-specific config file for the given project,
+// project file path, and stack name. The config file is named Pulumi.<stack-name>.yaml and is
+// placed next to the project file (or in the project's StackConfigDir if set).
+func ProjectStackPath(proj *Project, projPath string, stackName tokens.QName) string {
 	fileName := fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath))
 
 	if proj.StackConfigDir != "" {
-		return proj, filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
+		return filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName)
 	}
 
-	return proj, filepath.Join(filepath.Dir(projPath), fileName), nil
+	return filepath.Join(filepath.Dir(projPath), fileName)
 }
 
 func DetectProjectStackDeploymentPath(stackName tokens.QName) (string, error) {
