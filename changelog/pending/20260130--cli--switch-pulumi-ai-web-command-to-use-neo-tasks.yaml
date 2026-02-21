@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Switch 'pulumi ai web' command to use Neo tasks

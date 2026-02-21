@@ -855,3 +855,49 @@ func TestCallCopilot(t *testing.T) {
 		require.Empty(t, response)
 	})
 }
+
+func TestCreateNeoTask(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Success", func(t *testing.T) {
+		t.Parallel()
+
+		expectedTaskID := "task-12345"
+		server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Equal(t, "/api/preview/agents/test-org/tasks", req.URL.Path)
+			assert.Equal(t, "POST", req.Method)
+
+			// Verify the request body structure
+			var reqBody apitype.CreateNeoTaskRequest
+			err := json.NewDecoder(req.Body).Decode(&reqBody)
+			require.NoError(t, err)
+			assert.Equal(t, "user_message", reqBody.Message.Type)
+			assert.Equal(t, "Deploy an S3 bucket", reqBody.Message.Content)
+
+			response := apitype.CreateNeoTaskResponse{TaskID: expectedTaskID}
+			data, _ := json.Marshal(response)
+			return string(data)
+		})
+		defer server.Close()
+
+		client := newMockClient(server)
+		taskID, err := client.CreateNeoTask(context.Background(), "test-org", "Deploy an S3 bucket")
+
+		require.NoError(t, err)
+		assert.Equal(t, expectedTaskID, taskID)
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		t.Parallel()
+
+		server := newMockServer(500, "Internal server error")
+		defer server.Close()
+
+		client := newMockClient(server)
+		taskID, err := client.CreateNeoTask(context.Background(), "test-org", "Deploy an S3 bucket")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "creating Neo task")
+		assert.Empty(t, taskID)
+	})
+}
