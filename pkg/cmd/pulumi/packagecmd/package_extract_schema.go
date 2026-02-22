@@ -54,9 +54,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			if err != nil {
 				return err
 			}
-			defer func() {
-				contract.IgnoreError(pctx.Close())
-			}()
+			defer contract.IgnoreClose(pctx)
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,

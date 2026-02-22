@@ -848,7 +848,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		contract.IgnoreError(os.Stdout.Sync())
 		contract.IgnoreError(os.Stderr.Sync())
 		// Close the write end of the pipe to signal to the sniffer that it should stop scanning.
-		contract.IgnoreError(w.Close())
+		contract.IgnoreClose(w)
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often,
 			// since user errors will trigger this.  So, the error message should look as nice as

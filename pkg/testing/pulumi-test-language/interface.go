@@ -505,9 +505,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
-	defer func() {
-		contract.IgnoreError(pctx.Close())
-	}()
+	defer contract.IgnoreClose(pctx)
 
 	// Connect to the language host
 	conn, err := grpc.NewClient(req.LanguagePluginTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
