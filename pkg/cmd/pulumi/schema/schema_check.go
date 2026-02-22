@@ -139,4 +139,3 @@ func schemaFromStdin(cmd *cobra.Command) (*schema.PackageSpec, error) {
 	}
 	return &spec, nil
 }
-
