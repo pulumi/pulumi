@@ -414,7 +414,18 @@ jobs:
           if [ -n "$(ls -A "$PULUMI_GOCOVERDIR")" ]; then
             # Cross-platform way to get milliseconds since Unix epoch.
             UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
-            go tool covdata textfmt -i="$PULUMI_GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov"
+
+            # First merge coverage data to resolve incompatibilities between different coverage files
+            MERGED_DIR=$(mktemp -d)
+            if go tool covdata merge -i="$PULUMI_GOCOVERDIR" -o="$MERGED_DIR" 2>/dev/null; then
+              # If merge succeeds, convert merged data to text format
+              go tool covdata textfmt -i="$MERGED_DIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov"
+            else
+              # If merge fails (e.g., incompatible coverage data), try direct conversion
+              # and if that also fails, skip coverage collection for this run
+              go tool covdata textfmt -i="$PULUMI_GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov" 2>/dev/null
+            fi
+            rm -rf "$MERGED_DIR"
           fi
       - name: Upload code coverage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

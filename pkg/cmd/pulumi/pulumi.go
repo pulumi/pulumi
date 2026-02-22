@@ -301,7 +301,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			if cmdutil.IsOTelEnabled() {
 				tracer := otel.Tracer("pulumi-cli")
-				ctx, rootSpan = tracer.Start(ctx, "pulumi")
+				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi")
 			}
 			cmd.SetContext(ctx)
 
