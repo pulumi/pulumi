@@ -32,7 +32,7 @@ on:
         type: string
       acceptance-test-platforms:
         required: false
-        default: macos-latest
+        default: macos-26
         description: Platforms on which to run integration tests, as a space delimited list
         type: string
       enable-coverage:
@@ -221,14 +221,14 @@ jobs:
           fi
 
           ACCEPTANCE_TEST_MATRIX_MACOS="{}"
-          if [[ " ${ACCEPTANCE_PLATFORMS[*]} " =~ [[:space:]]macos-latest[[:space:]] ]]; then
+          if [[ " ${ACCEPTANCE_PLATFORMS[*]} " =~ [[:space:]]macos-26[[:space:]] ]]; then
             ACCEPTANCE_TEST_MATRIX_MACOS=$(
               ./scripts/get-job-matrix.py \
               -vvv \
               generate-matrix \
               --kind acceptance-test \
               "$CODEGEN_TESTS_FLAG" \
-              --platform macos-latest \
+              --platform macos-26 \
               --version-set current \
               --partition-module pkg 1 \
               --partition-module sdk 1 \

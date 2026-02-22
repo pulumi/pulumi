@@ -44,7 +44,7 @@ jobs:
       enable-coverage: true
       fail-fast: true
       test-retries: 2
-      acceptance-test-platforms: 'macos-latest'
+      acceptance-test-platforms: 'macos-26'
       fuzz-test-optional: true
     secrets: inherit
 
