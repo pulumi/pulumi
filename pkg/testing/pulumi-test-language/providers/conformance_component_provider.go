@@ -160,8 +160,11 @@ func (p *ConformanceComponentProvider) Construct(
 	}
 
 	// Register a child resource, parented to the component we just created.
-	// Keep legacy name for existing single-resource tests; use unique names when
-	// multiple component instances of this type are in one stack.
+	// Use "res-child" when the component is named "res" (provider_resource_component,
+	// provider_alias_component, provider_replacement_trigger_component) so those tests
+	// can RequireSingleNamedResource(l, resources, "res-child"). Otherwise use a unique
+	// name per component to avoid duplicate URNs (e.g. provider_version_component,
+	// provider_ignore_changes_component).
 	childName := "res-child"
 	if req.Name != "res" {
 		childName = req.Name + "-res-child"
