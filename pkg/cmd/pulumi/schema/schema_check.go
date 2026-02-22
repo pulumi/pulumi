@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,15 @@
 package schema
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -49,28 +53,11 @@ schema spec as well as additional requirements imposed by the supported
 target languages.
 
 <schema_source> can be a package name, the path to a plugin binary or folder,
-or a JSON/YAML schema file.`,
+or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
-			wd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				contract.IgnoreError(pctx.Close())
-			}()
-
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
-				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-				env.Global(), 0 /* unbounded concurrency */)
+			spec, err := schemaFromSourceOrStdin(cmd, source, args[1:])
 			if err != nil {
 				return err
 			}
@@ -106,3 +93,50 @@ or a JSON/YAML schema file.`,
 
 	return cmd
 }
+
+// schemaFromSourceOrStdin loads a PackageSpec from the given source. If source is "-",
+// the schema is read as JSON from stdin. Otherwise it delegates to SchemaFromSchemaSource
+// which supports files, plugin names, and plugin paths.
+func schemaFromSourceOrStdin(cmd *cobra.Command, source string, extraArgs []string) (*schema.PackageSpec, error) {
+	if source == "-" {
+		return schemaFromStdin(cmd)
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	sink := cmdutil.Diag()
+	pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
+		nil, schema.NewLoaderServerFromHost)
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(pctx)
+
+	parameters := &plugin.ParameterizeArgs{Args: extraArgs}
+	spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
+		cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+		env.Global(), 0 /* unbounded concurrency */)
+	if err != nil {
+		return nil, err
+	}
+	return spec, nil
+}
+
+func schemaFromStdin(cmd *cobra.Command) (*schema.PackageSpec, error) {
+	b, err := io.ReadAll(cmd.InOrStdin())
+	if err != nil {
+		return nil, fmt.Errorf("failed to read schema from stdin: %w", err)
+	}
+
+	var spec schema.PackageSpec
+	if err := json.Unmarshal(b, &spec); err != nil {
+		// Fall back to YAML if JSON parsing fails.
+		if yamlErr := yaml.Unmarshal(b, &spec); yamlErr != nil {
+			return nil, fmt.Errorf("failed to unmarshal schema: %w", err)
+		}
+	}
+	return &spec, nil
+}
+
