@@ -32,8 +32,6 @@ jobs:
       version: ${{ needs.info.outputs.version }}
       lint: true
       test-version-sets: 'all'
-      integration-test-platforms: ubuntu-latest
-      acceptance-test-platforms: 'macos-latest windows-latest'
       # Disable coverage in daily runs.  This is unfortunately flaky
       # on windows, and the daily cron job runs the most extensive set
       # of tests, leading to quite a bit of flakyness.  We get coverage
