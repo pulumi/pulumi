@@ -5,6 +5,9 @@
 
 ### Bug Fixes
 
+- [programgen/go] Fix panic on digit-prefixed schema properties in Go code generation
+  [#21917](https://github.com/pulumi/pulumi/pull/21917)
+
 - [engine] Report policy pack installation errors
   [#21882](https://github.com/pulumi/pulumi/pull/21882)
 
