@@ -1,5 +1,0 @@
-name: provider-version-component
-runtime:
-  name: nodejs
-  options:
-    typescript: false
