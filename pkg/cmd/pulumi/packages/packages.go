@@ -379,7 +379,7 @@ func SchemaFromSchemaSource(
 	if err != nil {
 		return nil, nil, err
 	}
-	defer func() { contract.IgnoreClose(p) }()
+	defer contract.IgnoreClose(p)
 
 	var request plugin.GetSchemaRequest
 	if !parameters.Empty() {

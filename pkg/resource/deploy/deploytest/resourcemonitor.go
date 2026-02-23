@@ -61,12 +61,12 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 	// Check feature support.
 	supportsSecrets, err := supportsFeature(ctx, resmon, "secrets")
 	if err != nil {
-		contract.IgnoreError(conn.Close())
+		contract.IgnoreClose(conn)
 		return nil, fmt.Errorf("could not determine whether secrets are supported: %w", err)
 	}
 	supportsResourceReferences, err := supportsFeature(ctx, resmon, "resourceReferences")
 	if err != nil {
-		contract.IgnoreError(conn.Close())
+		contract.IgnoreClose(conn)
 		return nil, fmt.Errorf("could not determine whether resource references are supported: %w", err)
 	}
 

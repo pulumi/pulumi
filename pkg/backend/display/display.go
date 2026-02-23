@@ -246,9 +246,7 @@ func startEventLogger(
 	outEvents, outDone := make(chan engine.StampedEvent), make(chan bool)
 	go func() {
 		defer close(done)
-		defer func() {
-			contract.IgnoreError(logFile.Close())
-		}()
+		defer contract.IgnoreClose(logFile)
 
 		encoder := json.NewEncoder(logFile)
 		encoder.SetEscapeHTML(false)

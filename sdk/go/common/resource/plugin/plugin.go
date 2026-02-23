@@ -280,7 +280,7 @@ func newPlugin[T any](
 	// If we did not successfully launch the plugin, we still need to wait for stderr and stdout to drain.
 	defer func() {
 		if plug.Conn == nil {
-			contract.IgnoreError(plug.Close())
+			contract.IgnoreClose(plug)
 		}
 	}()
 

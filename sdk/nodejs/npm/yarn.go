@@ -165,7 +165,7 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 	packfile := tmpfile.Name()
 	// Clean up the tarball after we're done here.
 	defer func() {
-		contract.IgnoreError(tmpfile.Close())
+		contract.IgnoreClose(tmpfile)
 		contract.IgnoreError(os.Remove(packfile))
 	}()
 

@@ -126,9 +126,7 @@ func (cmd *policyInstallCmd) Run(
 	if err != nil {
 		return fmt.Errorf("creating plugin context: %w", err)
 	}
-	defer func() {
-		contract.IgnoreError(pctx.Close())
-	}()
+	defer contract.IgnoreClose(pctx)
 
 	// Install the required policy packs.
 	if err := engine.EnsurePoliciesAreInstalled(ctx, pctx, nil, policyPacks); err != nil {
