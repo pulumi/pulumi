@@ -104,6 +104,8 @@ func (d *typeDetails) markMap(input, output bool) {
 // Title converts the input string to a title case
 // where only the initial letter is upper-cased.
 // It also removes $-prefix if any.
+// If the result starts with a digit, it is prefixed with "_" to produce
+// a valid Go identifier.
 func Title(s string) string {
 	if s == "" {
 		return ""
@@ -113,6 +115,9 @@ func Title(s string) string {
 	}
 	s = cgstrings.UppercaseFirst(s)
 	s = cgstrings.Unhyphenate(s)
+	if len(s) > 0 && s[0] >= '0' && s[0] <= '9' {
+		s = "_" + s
+	}
 	return s
 }
 
