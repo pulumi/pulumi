@@ -470,5 +470,5 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
+          name: gotestsum-test-results-${{ replace(inputs.test-name, '/', '_') }}-${{ env.TEST_HASH_ID }}-${{ runner.os }}
           path: test-results/*.json
