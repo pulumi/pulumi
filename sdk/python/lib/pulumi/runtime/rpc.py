@@ -20,6 +20,7 @@ import asyncio
 import functools
 import inspect
 import os
+import types
 import typing
 from abc import ABC, abstractmethod
 from collections import abc
@@ -1275,6 +1276,51 @@ def translate_output_properties(
     if typ is Any:
         typ = None
 
+    # For unions, try each member type until one translates successfully.
+    # This allows discriminated unions of output types to deserialize provider-returned dicts.
+    if typ is not None and get_origin(typ) in [Union, types.UnionType]:
+        union_types = [t for t in get_args(typ) if t is not type(None)]
+        if output is None and len(union_types) != len(get_args(typ)):
+            return None
+
+        # When translating dict outputs, prefer output types whose Pulumi properties
+        # cover the incoming keys. This helps discriminate object unions.
+        if isinstance(output, dict):
+            output_keys = set(output.keys())
+
+            def rank_candidate(union_type: type) -> int:
+                if _types.is_output_type(union_type):
+                    union_keys = set(_types.output_type_types(union_type).keys())
+                    return len(output_keys.difference(union_keys))
+                return len(output_keys) + 1
+
+            union_types = sorted(union_types, key=rank_candidate)
+
+        for union_type in union_types:
+            try:
+                translated = translate_output_properties(
+                    output,
+                    output_transformer,
+                    union_type,
+                    transform_using_type_metadata,
+                    path,
+                    return_none_on_dict_type_mismatch=True,
+                )
+            except AssertionError:
+                continue
+
+            if translated is not None:
+                return translated
+
+        if return_none_on_dict_type_mismatch:
+            return None
+
+        raise AssertionError(
+            f"Unexpected type; expected a value of type `{typ}`"
+            f" but got a value of type `{type(output)}`{_Path.format(path)}:"
+            f" {output}"
+        )
+
     if isinstance(output, dict):
         # Function called to lookup a type for a given key.
         # The default always returns None.
@@ -1287,8 +1333,8 @@ def translate_output_properties(
             # method.
             if _types.is_output_type(typ):
                 # If typ is an output type, get its types, so we can pass the type along for each property.
-                types = _types.output_type_types(typ)
-                get_type = types.get
+                output_types = _types.output_type_types(typ)
+                get_type = output_types.get
 
                 translated_values = {
                     k: translate_output_properties(

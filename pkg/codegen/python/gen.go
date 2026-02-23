@@ -1627,7 +1627,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// Write out Python property getters for each of the resource's properties.
 	mod.genProperties(w, res.Properties, false /*setters*/, "", func(prop *schema.Property) string {
-		ty := mod.typeString(prop.Type, typeStringOpts{})
+		ty := mod.typeString(prop.Type, typeStringOpts{resourceOutputUnion: true})
 		return fmt.Sprintf("pulumi.Output[%s]", ty)
 	})
 
@@ -2496,10 +2496,39 @@ type typeStringOpts struct {
 	input bool
 	// Whether we should try to use the UnionType directly and avoid the InputType wrapper if possible
 	acceptMapping bool
+	// Whether unions in resource output property getters should preserve concrete object member types.
+	resourceOutputUnion bool
 	// Whether the object is a dict or not
 	forDict bool
 	// Whether these types are going to be used in the docs
 	forDocs bool
+}
+
+func hasObjectUnionMember(t *schema.UnionType) bool {
+	for _, e := range t.ElementTypes {
+		if isObjectLikeType(e) {
+			return true
+		}
+	}
+	return false
+}
+
+func isObjectLikeType(t schema.Type) bool {
+	switch t := t.(type) {
+	case *schema.OptionalType:
+		return isObjectLikeType(t.ElementType)
+	case *schema.InputType:
+		return isObjectLikeType(t.ElementType)
+	case *schema.TokenType:
+		if t.UnderlyingType != nil {
+			return isObjectLikeType(t.UnderlyingType)
+		}
+		return false
+	case *schema.ObjectType, *schema.ResourceType:
+		return true
+	default:
+		return false
+	}
 }
 
 func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
@@ -2566,6 +2595,22 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 				if typ, ok := e.(*schema.EnumType); ok {
 					return mod.typeString(typ.ElementType, opts)
 				}
+			}
+			if opts.resourceOutputUnion && hasObjectUnionMember(t) {
+				elementTypeSet := codegen.NewStringSet()
+				elements := slice.Prealloc[string](len(t.ElementTypes))
+				for _, e := range t.ElementTypes {
+					et := mod.typeString(e, opts)
+					if !elementTypeSet.Has(et) {
+						elementTypeSet.Add(et)
+						elements = append(elements, et)
+					}
+				}
+
+				if len(elements) == 1 {
+					return elements[0]
+				}
+				return fmt.Sprintf("Union[%s]", strings.Join(elements, ", "))
 			}
 			if t.DefaultType != nil {
 				return mod.typeString(t.DefaultType, opts)

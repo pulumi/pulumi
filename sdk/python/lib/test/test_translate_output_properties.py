@@ -14,7 +14,7 @@
 
 import unittest
 from enum import Enum
-from typing import Any, Dict, List, NamedTuple, Mapping, Optional, Sequence
+from typing import Any, Dict, List, NamedTuple, Mapping, Optional, Sequence, Union
 
 from pulumi.runtime import rpc
 import pulumi
@@ -703,6 +703,74 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
         self.assertEqual(result["first_arg"], "hello")
         self.assertEqual(result.second_arg, 42)
         self.assertEqual(result["second_arg"], 42)
+
+    def test_union_output_type(self):
+        @pulumi.output_type
+        class VariantOne(dict):
+            discriminant_kind: str = pulumi.property("discriminantKind")
+            field1: Optional[str] = pulumi.property("field1")
+
+            def __init__(self, discriminant_kind: str, field1: Optional[str] = None):
+                pulumi.set(self, "discriminant_kind", "variant1")
+                if field1 is not None:
+                    pulumi.set(self, "field1", field1)
+
+        @pulumi.output_type
+        class VariantTwo(dict):
+            discriminant_kind: str = pulumi.property("discriminantKind")
+            field2: Optional[str] = pulumi.property("field2")
+
+            def __init__(self, discriminant_kind: str, field2: Optional[str] = None):
+                pulumi.set(self, "discriminant_kind", "variant2")
+                if field2 is not None:
+                    pulumi.set(self, "field2", field2)
+
+        result = rpc.translate_output_properties(
+            {"discriminantKind": "variant2", "field2": "v2"},
+            translate_output_property,
+            Union[VariantOne, VariantTwo],
+        )
+        self.assertIsInstance(result, VariantTwo)
+        self.assertEqual("variant2", result.discriminant_kind)
+        self.assertEqual("v2", result.field2)
+
+    def test_sequence_of_union_output_type(self):
+        @pulumi.output_type
+        class VariantOne(dict):
+            discriminant_kind: str = pulumi.property("discriminantKind")
+            field1: Optional[str] = pulumi.property("field1")
+
+            def __init__(self, discriminant_kind: str, field1: Optional[str] = None):
+                pulumi.set(self, "discriminant_kind", "variant1")
+                if field1 is not None:
+                    pulumi.set(self, "field1", field1)
+
+        @pulumi.output_type
+        class VariantTwo(dict):
+            discriminant_kind: str = pulumi.property("discriminantKind")
+            field2: Optional[str] = pulumi.property("field2")
+
+            def __init__(self, discriminant_kind: str, field2: Optional[str] = None):
+                pulumi.set(self, "discriminant_kind", "variant2")
+                if field2 is not None:
+                    pulumi.set(self, "field2", field2)
+
+        result = rpc.translate_output_properties(
+            [
+                {"discriminantKind": "variant1", "field1": "v1"},
+                {"discriminantKind": "variant2", "field2": "v2"},
+            ],
+            translate_output_property,
+            Sequence[Union[VariantOne, VariantTwo]],
+        )
+
+        self.assertEqual(2, len(result))
+        self.assertIsInstance(result[0], VariantOne)
+        self.assertEqual("variant1", result[0].discriminant_kind)
+        self.assertEqual("v1", result[0].field1)
+        self.assertIsInstance(result[1], VariantTwo)
+        self.assertEqual("variant2", result[1].discriminant_kind)
+        self.assertEqual("v2", result[1].field2)
 
     def test_nested_types(self):
         def assertFoo(val, first_arg, second_arg):
