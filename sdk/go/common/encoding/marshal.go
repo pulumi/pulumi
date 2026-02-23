@@ -217,6 +217,8 @@ const (
 // Ext returns the extension for this compression format.
 func (c Compression) Ext() string {
 	switch c {
+	case CompressionNone:
+		return ""
 	case CompressionGzip:
 		return GZIPExt
 	case CompressionZstd:
@@ -272,6 +274,8 @@ func Zstd(m Marshaler) Marshaler {
 // Compress wraps a marshaler with the selected compression.
 func Compress(m Marshaler, c Compression) Marshaler {
 	switch c {
+	case CompressionNone:
+		return m
 	case CompressionGzip:
 		return Gzip(m)
 	case CompressionZstd:
