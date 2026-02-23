@@ -246,12 +246,12 @@ func (b *diyBackend) saveCheckpoint(
 	bckGzip := backupTarget(ctx, b.bucket, fileGzip, b.compression == encoding.CompressionGzip)
 	bckZstd := backupTarget(ctx, b.bucket, fileZstd, b.compression == encoding.CompressionZstd)
 	switch b.compression {
+	case encoding.CompressionNone:
+		backupFile = bckPlain
 	case encoding.CompressionGzip:
 		backupFile = bckGzip
 	case encoding.CompressionZstd:
 		backupFile = bckZstd
-	default:
-		backupFile = bckPlain
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
