@@ -26,7 +26,6 @@ import (
 
 type ConformanceComponentProvider struct {
 	plugin.UnimplementedProvider
-	Version *semver.Version
 }
 
 var _ plugin.Provider = (*ConformanceComponentProvider)(nil)
@@ -39,29 +38,15 @@ func (p *ConformanceComponentProvider) Pkg() tokens.Package {
 	return "conformance-component"
 }
 
-func (p *ConformanceComponentProvider) Configure(
-	context.Context, plugin.ConfigureRequest,
-) (plugin.ConfigureResponse, error) {
-	return plugin.ConfigureResponse{}, nil
-}
-
 func (p *ConformanceComponentProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	version := semver.Version{Major: 22}
-	if p.Version != nil {
-		version = *p.Version
-	}
-	return plugin.PluginInfo{Version: &version}, nil
+	return plugin.PluginInfo{
+		Version: &semver.Version{Major: 22},
+	}, nil
 }
 
 func (p *ConformanceComponentProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
-	// N.B. This provider intentionally has no runtime behavior.
-	// It only exists to provide schema for codegen/binding scenarios.
-	version := semver.Version{Major: 22}
-	if p.Version != nil {
-		version = *p.Version
-	}
 	resourceProperties := map[string]schema.PropertySpec{
 		"value": {
 			TypeSpec: schema.TypeSpec{
@@ -73,10 +58,9 @@ func (p *ConformanceComponentProvider) GetSchema(
 
 	pkg := schema.PackageSpec{
 		Name:    "conformance-component",
-		Version: version.String(),
+		Version: "22.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"conformance-component:index:Simple": {
-				IsComponent: true,
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: resourceProperties,
@@ -91,3 +75,5 @@ func (p *ConformanceComponentProvider) GetSchema(
 	jsonBytes, err := json.Marshal(pkg)
 	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
 }
+
+// N.B This provider should not implement any runtime code. It is just used for its schema for program binding.
