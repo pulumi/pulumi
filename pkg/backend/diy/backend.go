@@ -114,7 +114,7 @@ type diyBackend struct {
 
 	lockID string
 
-	gzip bool
+	compression encoding.Compression
 
 	Env env.Env
 
@@ -283,7 +283,10 @@ func newDIYBackend(
 		return nil, err
 	}
 
-	gzipCompression := opts.Env.GetBool(env.DIYBackendGzip)
+	compression, err := resolveCompression(opts.Env)
+	if err != nil {
+		return nil, err
+	}
 
 	wbucket := &wrappedBucket{bucket: bucket}
 
@@ -298,7 +301,7 @@ func newDIYBackend(
 		url:         u,
 		bucket:      wbucket,
 		lockID:      lockID.String(),
-		gzip:        gzipCompression,
+		compression: compression,
 		Env:         opts.Env,
 	}
 	backend.currentProject.Store(project)
@@ -1568,6 +1571,21 @@ func (b *diyBackend) DefaultSecretManager(_ context.Context, ps *workspace.Proje
 	// The default secrets manager for stacks against a DIY backend is a
 	// passphrase-based manager.
 	return passphrase.NewPromptingPassphraseSecretsManager(ps, false /* rotateSecretsProvider */)
+}
+
+func resolveCompression(e env.Env) (encoding.Compression, error) {
+	gzip := e.GetBool(env.DIYBackendGzip)
+	zstd := e.GetBool(env.DIYBackendZstd)
+	if gzip && zstd {
+		return "", errors.New("DIY_BACKEND_GZIP and DIY_BACKEND_ZSTD cannot both be enabled")
+	}
+	if zstd {
+		return encoding.CompressionZstd, nil
+	}
+	if gzip {
+		return encoding.CompressionGzip, nil
+	}
+	return encoding.CompressionNone, nil
 }
 
 // getParallel returns the number of parallel operations to use from the environment
