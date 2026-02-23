@@ -118,6 +118,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			span := opentracing.SpanFromContext(ctx)
 			projinfo := &engine.Projinfo{Proj: proj, Root: root}
 			pwd, main, pctx, err := engine.ProjectInfoContext(
+				ctx,
 				projinfo,
 				nil,
 				cmdutil.Diag(),
