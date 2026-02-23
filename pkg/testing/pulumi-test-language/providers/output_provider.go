@@ -116,6 +116,64 @@ func (p *OutputProvider) GetSchema(
 				},
 				RequiredInputs: []string{"value"},
 			},
+			"output:index:ComplexResource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"value": {
+							TypeSpec: schema.TypeSpec{
+								Type: "number",
+							},
+						},
+						"outputArray": {
+							TypeSpec: schema.TypeSpec{
+								Type: "array",
+								Items: &schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						"outputMap": {
+							TypeSpec: schema.TypeSpec{
+								Type: "object",
+								AdditionalProperties: &schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						"outputObject": {
+							TypeSpec: schema.TypeSpec{
+								Type: "ref",
+								Ref:  "#/types/output:index:Data",
+							},
+						},
+					},
+					Required: []string{"value", "outputArray", "outputMap", "outputObject"},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"value": {
+						TypeSpec: schema.TypeSpec{
+							Type: "number",
+						},
+					},
+				},
+				RequiredInputs: []string{"value"},
+			},
+		},
+		Types: map[string]schema.ComplexTypeSpec{
+			"output:index:Data": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"output": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"output"},
+				},
+			},
 		},
 	}
 
@@ -174,8 +232,7 @@ func (p *OutputProvider) CheckConfig(
 func (p *OutputProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	// URN should be of the form "output:index:Resource"
-	if req.URN.Type() != "output:index:Resource" {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
@@ -205,8 +262,7 @@ func (p *OutputProvider) Check(
 func (p *OutputProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	// URN should be of the form "output:index:Resource"
-	if req.URN.Type() != "output:index:Resource" {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -217,17 +273,7 @@ func (p *OutputProvider) Create(
 		id = ""
 	}
 
-	properties := resource.PropertyMap{
-		"value": req.Properties["value"],
-	}
-
-	if !req.Preview {
-		// Only generate the output property during an actual up
-		properties["output"] = resource.NewProperty(
-			strings.Repeat("hello", int(req.Properties["value"].NumberValue())))
-	} else if !p.elideUnknowns {
-		properties["output"] = resource.NewProperty(resource.Computed{})
-	}
+	properties := p.makeOutputs(req.URN.Type(), req.Properties, req.Preview)
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
@@ -239,24 +285,13 @@ func (p *OutputProvider) Create(
 func (p *OutputProvider) Update(
 	_ context.Context, req plugin.UpdateRequest,
 ) (plugin.UpdateResponse, error) {
-	// URN should be of the form "output:index:Resource"
-	if req.URN.Type() != "output:index:Resource" {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
 		return plugin.UpdateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	properties := resource.PropertyMap{
-		"value": req.NewInputs["value"],
-	}
-
-	if !req.Preview {
-		// Only generate the output property during an actual up
-		properties["output"] = resource.NewProperty(
-			strings.Repeat("hello", int(req.NewInputs["value"].NumberValue())))
-	} else if !p.elideUnknowns {
-		properties["output"] = resource.NewProperty(resource.Computed{})
-	}
+	properties := p.makeOutputs(req.URN.Type(), req.NewInputs, req.Preview)
 
 	return plugin.UpdateResponse{
 		Properties: properties,
@@ -289,8 +324,7 @@ func (p *OutputProvider) DiffConfig(
 func (p *OutputProvider) Diff(
 	ctx context.Context, req plugin.DiffRequest,
 ) (plugin.DiffResponse, error) {
-	// URN should be of the form "output:index:Resource"
-	if req.URN.Type() != "output:index:Resource" {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
 		return plugin.DiffResponse{}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
@@ -314,7 +348,7 @@ func (p *OutputProvider) Delete(
 }
 
 func (p *OutputProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-	if req.URN.Type() != "output:index:Resource" {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
 		return plugin.ReadResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -328,4 +362,43 @@ func (p *OutputProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 		},
 		Status: resource.StatusOK,
 	}, nil
+}
+
+func (p *OutputProvider) makeOutputs(
+	typ tokens.Type,
+	inputs resource.PropertyMap,
+	preview bool,
+) resource.PropertyMap {
+	properties := resource.PropertyMap{
+		"value": inputs["value"],
+	}
+
+	if !preview {
+		output := strings.Repeat("hello", int(inputs["value"].NumberValue()))
+		switch typ {
+		case "output:index:Resource":
+			properties["output"] = resource.NewStringProperty(output)
+		case "output:index:ComplexResource":
+			properties["outputArray"] = resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty(output),
+			})
+			properties["outputMap"] = resource.NewObjectProperty(resource.PropertyMap{
+				"x": resource.NewStringProperty(output),
+			})
+			properties["outputObject"] = resource.NewObjectProperty(resource.PropertyMap{
+				"output": resource.NewStringProperty(output),
+			})
+		}
+	} else if !p.elideUnknowns {
+		switch typ {
+		case "output:index:Resource":
+			properties["output"] = resource.NewComputedProperty(resource.Computed{})
+		case "output:index:ComplexResource":
+			properties["outputArray"] = resource.NewComputedProperty(resource.Computed{})
+			properties["outputMap"] = resource.NewComputedProperty(resource.Computed{})
+			properties["outputObject"] = resource.NewComputedProperty(resource.Computed{})
+		}
+	}
+
+	return properties
 }

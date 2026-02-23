@@ -147,6 +147,13 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 			filepath.Join("testdata", "overrides", "l2-provider-call-explicit"),
 		},
 	},
+
+	// TODO: Programgen tries to access map attributes as if they were properties, .X, instead of ["x"]
+	"l2-resource-elide-unknowns": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l2-resource-elide-unknowns"),
+		},
+	},
 }
 
 func TestLanguage(t *testing.T) {
