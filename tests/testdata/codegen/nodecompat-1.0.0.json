@@ -1,0 +1,25 @@
+{
+  "name": "nodecompat",
+  "version": "1.0.0",
+  "types": {
+    "nodecompat:index:MyConfig": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "service": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "language": {
+    "nodejs": {
+      "packageName": "@pulumi/nodecompat"
+    }
+  }
+}

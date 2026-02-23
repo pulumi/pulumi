@@ -305,11 +305,12 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	},
 	{
 		Directory: "external-node-compatibility",
-		// In this case, this test's schema has kubernetes20 set, but is referencing a type from Google Native
-		// which doesn't have any compatibility modes set, so the referenced type should be `AuditConfigArgs`
-		// (with the `Args` suffix) and not `AuditConfig`.
-		Description: "Ensure external package compatibility modes are used when referencing external types",
-		Skip:        allLanguages.Except("nodejs/any"),
+		// In this case, this test's schema has kubernetes20 set, but is referencing a type from an
+		// external package (nodecompat) which doesn't have any compatibility modes set, so the
+		// referenced type should be `MyConfigArgs` (with the `Args` suffix) and not `MyConfig`.
+		Description:      "Ensure external package compatibility modes are used when referencing external types",
+		Skip:             allLanguages.Except("nodejs/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestNodeJS),
 	},
 	{
 		Directory: "external-go-import-aliases",
