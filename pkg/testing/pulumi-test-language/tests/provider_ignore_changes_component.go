@@ -25,7 +25,7 @@ func init() {
 	LanguageTests["provider-ignore-changes-component"] = LanguageTest{
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.SimpleProvider{} },
-			func() plugin.Provider { return &providers.ConformanceComponentProvider{} },
+			func() plugin.Provider { return &providers.ConformanceComponentRuntimeProvider{} },
 		},
 		LanguageProviders: []string{"conformance-component"},
 		Runs: []TestRun{

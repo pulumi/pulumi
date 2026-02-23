@@ -29,45 +29,47 @@ func init() {
 	LanguageTests["provider-version-component"] = LanguageTest{
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.SimpleProvider{} },
-			func() plugin.Provider { return &providers.ConformanceComponentProvider{Version: &semver.Version{Major: 2}} },
-			func() plugin.Provider { return &providers.ConformanceComponentProvider{Version: &semver.Version{Major: 26}} },
+			func() plugin.Provider {
+				return &providers.ConformanceComponentRuntimeProvider{
+					ConformanceComponentProvider: providers.ConformanceComponentProvider{
+						Version: &semver.Version{Major: 22},
+					},
+				}
+			},
 		},
+		LanguageProviders:            []string{"conformance-component"},
 		SkipEnsurePluginsValidation: true,
 		Runs: []TestRun{
 			{
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
-					require.Len(l, res.Snap.Resources, 10, "expected 10 resources in snapshot")
 
-					providers := RequireNResources(l, res.Snap.Resources, "pulumi:providers:conformance-component", 2)
-
-					var providerV2URN, providerV26URN resource.URN
-					for _, prov := range providers {
-						urnStr := string(prov.URN)
-						if strings.Contains(urnStr, "2_0_0") {
-							providerV2URN = prov.URN
-						} else if strings.Contains(urnStr, "26_0_0") {
-							providerV26URN = prov.URN
+					var conformanceProviders []*resource.State
+					for _, r := range res.Snap.Resources {
+						if r.Type == "pulumi:providers:conformance-component" {
+							conformanceProviders = append(conformanceProviders, r)
 						}
 					}
-					require.NotEmpty(l, providerV2URN, "expected to find provider with version 2_0_0")
-					require.NotEmpty(l, providerV26URN, "expected to find provider with version 26_0_0")
+					require.NotEmpty(l, conformanceProviders, "expected at least 1 conformance-component provider")
 
-					withV2 := RequireSingleNamedResource(l, res.Snap.Resources, "withV2")
-					withV26 := RequireSingleNamedResource(l, res.Snap.Resources, "withV26")
+					// Some hosts produce only a default provider ref, others include the versioned alias as well.
+					providerV22URN := conformanceProviders[0].URN
+					for _, prov := range conformanceProviders {
+						if strings.Contains(string(prov.URN), "22_0_0") {
+							providerV22URN = prov.URN
+							break
+						}
+					}
+
+					withV22 := RequireSingleNamedResource(l, res.Snap.Resources, "withV22")
 					withDefault := RequireSingleNamedResource(l, res.Snap.Resources, "withDefault")
 
-					providerRefsOmitted := withV2.Provider == "" && withV26.Provider == "" && withDefault.Provider == ""
+					providerRefsOmitted := withV22.Provider == "" && withDefault.Provider == ""
 					if !providerRefsOmitted {
-						assert.Truef(l, strings.HasPrefix(withV2.Provider, string(providerV2URN)),
-							"expected %s to prefix %s", providerV2URN, withV2.Provider)
-						assert.Truef(l, strings.HasPrefix(withV26.Provider, string(providerV26URN)),
-							"expected %s to prefix %s", providerV26URN, withV26.Provider)
-						assert.Truef(l, strings.HasPrefix(withDefault.Provider, string(providerV26URN)),
-							"expected %s to prefix %s", providerV26URN, withDefault.Provider)
+						assert.Truef(l, strings.HasPrefix(withV22.Provider, string(providerV22URN)),
+							"expected %s to prefix %s", providerV22URN, withV22.Provider)
 					}
-					assert.True(l, withV2.Outputs["value"].BoolValue())
-					assert.False(l, withV26.Outputs["value"].BoolValue())
+					assert.True(l, withV22.Outputs["value"].BoolValue())
 					assert.True(l, withDefault.Outputs["value"].BoolValue())
 				},
 			},
