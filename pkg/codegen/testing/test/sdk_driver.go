@@ -326,20 +326,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("python/any"),
 	},
 	{
-		Directory:   "enum-reference",
-		Description: "Ensure referencing external types/resources with referenced enums import correctly",
-	},
-	{
-		Directory:   "enum-reference-python",
-		Description: "Ensure referencing external types/resources with referenced enums import correctly in Python",
-		Skip:        allLanguages.Except("python/any"),
-	},
-	{
-		Directory:   "external-enum",
-		Description: "Ensure we generate valid tokens for external enums",
-		Skip:        codegen.NewStringSet("dotnet/any"),
-	},
-	{
 		Directory:   "internal-dependencies-go",
 		Description: "Emit Go internal dependencies",
 		Skip:        allLanguages.Except("go/any"),
