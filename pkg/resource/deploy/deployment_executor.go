@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -35,6 +36,16 @@ import (
 // deploymentExecutor is responsible for taking a deployment and driving it to completion.
 // Its primary responsibility is to own a `stepGenerator` and `stepExecutor`, serving
 // as the glue that links the two subsystems together.
+// pendingEagerDelete tracks an old resource from a create-before-delete replacement that is a candidate
+// for eager deletion during the main loop. The delete fires when all direct dependents have completed
+// their steps, unless any dependent is also a condemned create-before-delete resource.
+type pendingEagerDelete struct {
+	oldResource     *resource.State
+	awaitingURNs    map[resource.URN]bool // non-delete dependents: check via completedURNs
+	awaitingDeletes map[resource.URN]bool // delete-true dependents: check via eagerDeletedURNs
+	condemned       bool                  // true if any dependent is also a create-before-delete replacement (current deployment only)
+}
+
 type deploymentExecutor struct {
 	deployment *Deployment // The deployment that we are executing
 
@@ -46,6 +57,24 @@ type deploymentExecutor struct {
 	// The number of expected events remaining from step generaton, this tells us we're still expecting events
 	// to be posted back to us from async work such as DiffSteps.
 	asyncEventsExpected int32
+
+	// Reverse dependency map: URN → list of resource states that directly depend on it (from old snapshot).
+	// Used for eager replacement delete scheduling.
+	oldReverseDeps map[resource.URN][]*resource.State
+
+	// Pending eager deletes, keyed by old resource pointer (since there can be multiple resources with the same URN).
+	pendingEagerDeletes map[*resource.State]*pendingEagerDelete
+
+	// Set of URNs of old resources that are candidates for eager deletion (from create-before-delete replacements).
+	eagerDeleteCandidateURNs map[resource.URN]bool
+
+	// Separate deletions map for eager deletes. We cannot use sg.deletes because the step generator
+	// reads it to determine if a resource is being "recreated" (delete-before-replace). Setting
+	// sg.deletes during the main loop would confuse the step generator.
+	eagerDeletions map[resource.URN]bool
+
+	// WaitGroup for background eager delete goroutines.
+	eagerDeleteWg sync.WaitGroup
 }
 
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
@@ -235,6 +264,16 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	// Set up a step generator and executor for this deployment.
 	ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, false)
 
+	// Build the reverse dependency map for eager replacement delete scheduling.
+	ex.oldReverseDeps = buildReverseDeps(ex.deployment.prev)
+	ex.pendingEagerDeletes = make(map[*resource.State]*pendingEagerDelete)
+	ex.eagerDeleteCandidateURNs = make(map[resource.URN]bool)
+	ex.eagerDeletions = make(map[resource.URN]bool)
+
+	// Register pre-existing Delete=true resources (from prior create-before-delete replacements)
+	// as eager delete candidates. These can be deleted during the main loop as their dependents complete.
+	ex.initPreexistingDeletes()
+
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
 	type nextEvent struct {
@@ -287,6 +326,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 					return false, result.BailError(err)
 				}
 
+				// Check for eager replacement deletes after handling the event.
+				ex.drainDeferredDeletes()
+				ex.checkEagerDeletes(ctx)
+
 			case event := <-incomingEvents:
 				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming source event (nil? %v, %v)", event.Event == nil,
 					event.Error)
@@ -313,6 +356,16 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 						return false, result.BailError(err)
 					}
 				}
+
+				// Check for eager replacement deletes after handling the event.
+				ex.drainDeferredDeletes()
+				ex.checkEagerDeletes(ctx)
+
+			case <-ex.stepExec.StepCompleted():
+				// A step completed — check if any pending eager deletes are now ready.
+				logging.V(4).Infof("deploymentExecutor.Execute(...): StepCompleted signal received")
+				ex.checkEagerDeletes(ctx)
+
 			case <-ctx.Done():
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
 
@@ -322,8 +375,15 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 			}
 
 			// Exit if we've seen a nil event and the step generator has no more async work to do. See the comment at
-			// the top of the loop for more details.
-			if seenNil && ex.asyncEventsExpected == 0 {
+			// the top of the loop for more details. We also stay in the loop if there are pending non-condemned
+			// eager deletes — these need step completions to trigger, and exiting now would defer them to
+			// performPostSteps, defeating the purpose of eager deletion.
+			hasPending := ex.hasPendingNonCondemnedEagerDeletes()
+			if seenNil {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): exit check: seenNil=%v, asyncEventsExpected=%d, hasPendingEagerDeletes=%v",
+					seenNil, ex.asyncEventsExpected, hasPending)
+			}
+			if seenNil && ex.asyncEventsExpected == 0 && !hasPending {
 				// Check targets before performDeletes mutates the initial Snapshot.
 				targetErr := ex.checkTargets(ex.deployment.opts.Targets)
 
@@ -349,8 +409,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 
 	stepExecutorError := ex.stepExec.Errored()
 
-	// Finalize the stack outputs.
-	if e := ex.stepExec.stackOutputsEvent; e != nil {
+	// Finalize the stack outputs (may be multiple in multistack mode).
+	for _, e := range ex.stepExec.stackOutputsEvents {
 		errored := err != nil || stepExecutorError != nil || ex.stepGen.Errored()
 		finalizingStackOutputs := true
 		if err := ex.stepExec.executeRegisterResourceOutputs(e, errored, finalizingStackOutputs); err != nil {
@@ -454,6 +514,9 @@ func (ex *deploymentExecutor) performPostSteps(
 
 	logging.V(7).Infof("performPostSteps(...): beginning")
 
+	// Wait for any in-flight eager deletes to be submitted before proceeding.
+	ex.eagerDeleteWg.Wait()
+
 	// GenerateDeletes/Refreshes mutates state we need to lock the step executor while we do this.
 	ex.stepExec.Lock()
 
@@ -547,6 +610,294 @@ func (ex *deploymentExecutor) performPostSteps(
 	}
 
 	return nil
+}
+
+// buildReverseDeps builds a reverse dependency map from the old snapshot: for each resource URN,
+// it returns the list of resource states that directly depend on it (via Dependencies, PropertyDependencies, or Parent).
+func buildReverseDeps(prev *Snapshot) map[resource.URN][]*resource.State {
+	if prev == nil {
+		return nil
+	}
+	reverseDeps := make(map[resource.URN][]*resource.State)
+	for _, res := range prev.Resources {
+		// Parent dependency.
+		if res.Parent != "" {
+			reverseDeps[res.Parent] = append(reverseDeps[res.Parent], res)
+		}
+		// Direct dependencies.
+		seen := make(map[resource.URN]bool)
+		for _, dep := range res.Dependencies {
+			if !seen[dep] {
+				seen[dep] = true
+				reverseDeps[dep] = append(reverseDeps[dep], res)
+			}
+		}
+		// Property dependencies.
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if !seen[dep] {
+					seen[dep] = true
+					reverseDeps[dep] = append(reverseDeps[dep], res)
+				}
+			}
+		}
+	}
+	for u, deps := range reverseDeps {
+		depURNs := make([]string, len(deps))
+		for i, d := range deps {
+			depURNs[i] = string(d.URN)
+		}
+		logging.V(4).Infof("buildReverseDeps: %v has %d reverse deps: %v", u, len(deps), depURNs)
+	}
+	return reverseDeps
+}
+
+// initPreexistingDeletes scans the old snapshot for resources that already have Delete=true
+// (from prior create-before-delete replacements) and registers them as eager delete candidates.
+// These can be deleted during the main loop as their dependents' steps complete, rather than
+// waiting for performPostSteps.
+func (ex *deploymentExecutor) initPreexistingDeletes() {
+	prev := ex.deployment.prev
+	if prev == nil {
+		return
+	}
+
+	// First pass: collect all Delete=true resource URNs so we can categorize dependents.
+	deleteURNs := make(map[resource.URN]bool)
+	for _, res := range prev.Resources {
+		if res.Delete {
+			deleteURNs[res.URN] = true
+		}
+	}
+
+	if len(deleteURNs) == 0 {
+		return
+	}
+
+	// Second pass: register each Delete=true resource as an eager delete candidate.
+	for _, res := range prev.Resources {
+		if !res.Delete {
+			continue
+		}
+
+		awaitingSteps := make(map[resource.URN]bool)
+		awaitingDeletes := make(map[resource.URN]bool)
+
+		// Always wait for the resource's own URN to have a step complete. This ensures:
+		// 1. The provider is ready (the new version's step uses the provider).
+		// 2. The new replacement resource exists before we delete the old one.
+		// 3. Resources with no new version (truly deleted, no re-registration) naturally
+		//    fall back to post-steps since no step will ever complete for their URN.
+		awaitingSteps[res.URN] = true
+
+		// Categorize each reverse dep as either a delete-dep or a step-dep.
+		if deps, ok := ex.oldReverseDeps[res.URN]; ok {
+			for _, dep := range deps {
+				if dep.Delete {
+					// This dependent is also Delete=true — we must wait for its delete to complete
+					// before we can delete this resource (cloud dependency ordering).
+					awaitingDeletes[dep.URN] = true
+				} else {
+					// This dependent is live — we must wait for its step to complete.
+					awaitingSteps[dep.URN] = true
+				}
+			}
+		}
+
+		pending := &pendingEagerDelete{
+			oldResource:     res,
+			awaitingURNs:    awaitingSteps,
+			awaitingDeletes: awaitingDeletes,
+		}
+		ex.pendingEagerDeletes[res] = pending
+		ex.eagerDeleteCandidateURNs[res.URN] = true
+
+		awaitStepList := make([]string, 0, len(awaitingSteps))
+		for u := range awaitingSteps {
+			awaitStepList = append(awaitStepList, string(u))
+		}
+		awaitDeleteList := make([]string, 0, len(awaitingDeletes))
+		for u := range awaitingDeletes {
+			awaitDeleteList = append(awaitDeleteList, string(u))
+		}
+		logging.V(4).Infof("initPreexistingDeletes: registered %v (awaitingSteps=%v, awaitingDeletes=%v)",
+			res.URN, awaitStepList, awaitDeleteList)
+	}
+}
+
+// drainDeferredDeletes picks up new deferred replacement deletes from the step generator and creates
+// pendingEagerDelete entries for them.
+func (ex *deploymentExecutor) drainDeferredDeletes() {
+	candidates := ex.stepGen.DrainDeferredReplacementDeletes()
+	for _, old := range candidates {
+		awaiting := make(map[resource.URN]bool)
+
+		// Wait for the resource's own URN step to complete. This ensures the
+		// CreateReplacementStep has applied (setting old.Delete=true) and the new
+		// replacement resource exists before we delete the old one.
+		awaiting[old.URN] = true
+
+		// Find all direct dependents of this old resource in the old snapshot.
+		if deps, ok := ex.oldReverseDeps[old.URN]; ok {
+			for _, dep := range deps {
+				// Only wait for dependents that aren't themselves pending deletion (i.e., not already
+				// marked as Delete=true in the old snapshot from a prior deployment).
+				if !dep.Delete {
+					awaiting[dep.URN] = true
+				}
+			}
+		}
+
+		// Check if any of the awaiting dependents is also a condemned create-before-delete resource.
+		condemned := false
+		for awaitURN := range awaiting {
+			if ex.eagerDeleteCandidateURNs[awaitURN] {
+				condemned = true
+				break
+			}
+		}
+
+		pending := &pendingEagerDelete{
+			oldResource:  old,
+			awaitingURNs: awaiting,
+			condemned:    condemned,
+		}
+		ex.pendingEagerDeletes[old] = pending
+		ex.eagerDeleteCandidateURNs[old.URN] = true
+
+		// Now re-check existing pending deletes: a previously-registered pending delete might have a
+		// dependent that is this new candidate. If so, mark it as condemned.
+		for _, existing := range ex.pendingEagerDeletes {
+			if existing == pending || existing.condemned {
+				continue
+			}
+			if existing.awaitingURNs[old.URN] {
+				existing.condemned = true
+			}
+		}
+
+		awaitList := make([]string, 0, len(awaiting))
+		for u := range awaiting {
+			awaitList = append(awaitList, string(u))
+		}
+		logging.V(4).Infof("deploymentExecutor: registered eager delete candidate for %v "+
+			"(awaiting %d dependents: %v, condemned=%v)", old.URN, len(awaiting), awaitList, condemned)
+	}
+}
+
+// checkEagerDeletes checks all pending eager deletes and fires any that are ready.
+func (ex *deploymentExecutor) checkEagerDeletes(ctx context.Context) {
+	if len(ex.pendingEagerDeletes) > 0 {
+		logging.V(4).Infof("deploymentExecutor.checkEagerDeletes: checking %d pending eager deletes",
+			len(ex.pendingEagerDeletes))
+	}
+
+	var readyDeletes []*pendingEagerDelete
+
+	for _, pending := range ex.pendingEagerDeletes {
+		// Skip condemned entries — those with a dependent that is also a create-before-delete.
+		// These will be handled in post-steps where ScheduleDeletes can order them correctly.
+		if pending.condemned {
+			logging.V(4).Infof("deploymentExecutor.checkEagerDeletes: skipping condemned %v", pending.oldResource.URN)
+			continue
+		}
+
+		// Check if all non-delete dependents have completed their steps.
+		allDone := true
+		for awaitURN := range pending.awaitingURNs {
+			if !ex.stepExec.IsCompleted(awaitURN) {
+				logging.V(4).Infof("deploymentExecutor.checkEagerDeletes: %v still waiting on step for %v",
+					pending.oldResource.URN, awaitURN)
+				allDone = false
+				break
+			}
+		}
+		if !allDone {
+			continue
+		}
+
+		// Check if all Delete=true dependents have been eagerly deleted.
+		for awaitURN := range pending.awaitingDeletes {
+			if !ex.stepExec.IsEagerlyDeleted(awaitURN) {
+				logging.V(4).Infof("deploymentExecutor.checkEagerDeletes: %v still waiting on delete of %v",
+					pending.oldResource.URN, awaitURN)
+				allDone = false
+				break
+			}
+		}
+		if !allDone {
+			continue
+		}
+
+		logging.V(4).Infof("deploymentExecutor.checkEagerDeletes: %v is READY for eager delete",
+			pending.oldResource.URN)
+		readyDeletes = append(readyDeletes, pending)
+	}
+
+	if len(readyDeletes) == 0 {
+		return
+	}
+
+	// Create delete steps for all ready deletes. We're on the main thread, which is the only
+	// thread that accesses sg.deletes and creates steps, so no worker lock is needed. Importantly,
+	// we must NOT acquire the step executor's write lock here — workers hold RLock while executing
+	// steps, and acquiring the write lock would block until all in-flight steps (like the IGW update)
+	// complete, defeating the purpose of eager deletes.
+	var deleteSteps []Step
+	for _, pending := range readyDeletes {
+		res := pending.oldResource
+		delete(ex.pendingEagerDeletes, res)
+
+		// Mark as eagerly deleted so GenerateDeletes skips it later.
+		ex.stepGen.MarkEagerlyDeleted(res)
+
+		logging.V(4).Infof("deploymentExecutor: eagerly deleting old resource %v", res.URN)
+
+		// Use our own eagerDeletions map, NOT sg.deletes. The step generator reads sg.deletes
+		// to detect "recreating" (delete-before-replace) resources, and setting it during the
+		// main loop would cause assertion failures.
+		ex.eagerDeletions[res.URN] = true
+		oldViews := ex.deployment.GetOldViews(res.URN)
+		step := NewDeleteReplacementStep(ex.deployment, ex.eagerDeletions, res, false, oldViews)
+
+		deleteSteps = append(deleteSteps, step)
+	}
+
+	// Schedule the delete steps. If there are multiple, use ScheduleDeletes for correct ordering.
+	// ScheduleDeletes only reads the dependency graph and doesn't modify worker-accessible state,
+	// so no worker lock is needed.
+	if len(deleteSteps) == 1 {
+		ex.eagerDeleteWg.Add(1)
+		step := deleteSteps[0]
+		go PanicRecovery(ex.deployment.panicErrs, func() {
+			defer ex.eagerDeleteWg.Done()
+			logging.V(4).Infof("deploymentExecutor: submitting eager delete for %v", step.URN())
+			ex.stepExec.ExecuteSerial(chain{step})
+		})
+	} else if len(deleteSteps) > 1 {
+		antichains := ex.stepGen.ScheduleDeletes(deleteSteps)
+
+		ex.eagerDeleteWg.Add(1)
+		go PanicRecovery(ex.deployment.panicErrs, func() {
+			defer ex.eagerDeleteWg.Done()
+			for _, ac := range antichains {
+				logging.V(4).Infof("deploymentExecutor: submitting eager delete antichain (%d steps)", len(ac))
+				tok := ex.stepExec.ExecuteParallel(ac)
+				tok.Wait(ctx)
+			}
+		})
+	}
+}
+
+// hasPendingNonCondemnedEagerDeletes returns true if there are any pending eager deletes that are
+// not condemned (i.e., that could potentially fire during the main loop once their dependents complete).
+func (ex *deploymentExecutor) hasPendingNonCondemnedEagerDeletes() bool {
+	for _, pending := range ex.pendingEagerDeletes {
+		if !pending.condemned {
+			return true
+		}
+	}
+	return false
 }
 
 func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {

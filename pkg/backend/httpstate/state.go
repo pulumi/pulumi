@@ -96,9 +96,25 @@ func (b *cloudBackend) recordAndDisplayEvents(
 	}()
 
 	// Start the Go-routines for displaying and persisting events.
-	go display.ShowEvents(
-		label, action, stackRef.Name(), op.Proj.Name, permalink,
-		displayEvents, displayEventsDone, opts, isPreview)
+	if !opts.SuppressDisplay {
+		go display.ShowEvents(
+			label, action, stackRef.Name(), op.Proj.Name, permalink,
+			displayEvents, displayEventsDone, opts, isPreview)
+	} else {
+		// No display — drain events and signal done.
+		// Must break on CancelEvent just like ShowEvents does, since the
+		// internal displayEvents channel is never closed (the for-range loop
+		// in recordAndDisplayEvents breaks on CancelEvent and the channel goes
+		// out of scope).
+		go func() {
+			for e := range displayEvents {
+				if e.Type == engine.CancelEvent {
+					break
+				}
+			}
+			close(displayEventsDone)
+		}()
+	}
 	go b.persistEngineEvents(
 		ctx, tokenSource, update,
 		opts.Debug, /* persist debug events */
@@ -220,6 +236,20 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 	}
 
 	return snap, nil
+}
+
+// getSnapshotUnchecked loads a snapshot without running integrity verification.
+// This is used for multistack operations where per-stack snapshots may contain
+// cross-stack dependency references from previous multistack runs.
+func (b *cloudBackend) getSnapshotUnchecked(ctx context.Context,
+	secretsProvider secrets.Provider, stackRef backend.StackReference,
+) (*deploy.Snapshot, error) {
+	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
+	if err != nil {
+		return nil, err
+	}
+
+	return stack.DeserializeUntypedDeployment(ctx, untypedDeployment, secretsProvider)
 }
 
 func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,

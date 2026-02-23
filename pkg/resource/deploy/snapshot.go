@@ -493,6 +493,98 @@ func topoVisit(
 	return nil
 }
 
+// MergeSnapshots merges N snapshots into a single in-memory view for the engine to compute diffs.
+// The merged snapshot is never persisted — all writes go through a RoutingSnapshotManager back to
+// per-stack managers. URNs are naturally unique across stacks because they contain both the stack
+// and project components.
+//
+// For cross-stack ordering during destroy, synthetic dependency edges are added: each
+// pulumi:pulumi:StackReference resource that references a co-deployed stack gets a dependency on
+// that stack's pulumi:pulumi:Stack root resource.
+func MergeSnapshots(snapshots []*Snapshot, coDeployedProjects map[string]bool) *Snapshot {
+	if len(snapshots) == 0 {
+		return nil
+	}
+	if len(snapshots) == 1 {
+		return snapshots[0]
+	}
+
+	// Concatenate all resources and pending operations.
+	var allResources []*resource.State
+	var allPendingOps []resource.Operation
+	for _, snap := range snapshots {
+		if snap == nil {
+			continue
+		}
+		allResources = append(allResources, snap.Resources...)
+		allPendingOps = append(allPendingOps, snap.PendingOperations...)
+	}
+
+	// Build a map of project name → stack root resource URN for cross-stack dependency injection.
+	stackRoots := make(map[string]resource.URN)
+	for _, res := range allResources {
+		if res.URN.QualifiedType() == resource.RootStackType {
+			stackRoots[string(res.URN.Project())] = res.URN
+		}
+	}
+
+	// For each StackReference resource that references a co-deployed stack, add a dependency
+	// on the referenced stack's root resource. This ensures destroy ordering respects
+	// cross-stack dependencies.
+	//
+	// IMPORTANT: We mutate the resource state in-place rather than cloning. The per-stack
+	// SnapshotManagers rely on pointer identity between the merged snapshot's resources and
+	// their base snapshots (via the `dones` map). Cloning would break this identity, causing
+	// the SnapshotManager's Snap() to include both the original and the clone, producing
+	// duplicate resources in the persisted snapshot.
+	for _, res := range allResources {
+		if res.Type == "pulumi:pulumi:StackReference" {
+			if nameVal, ok := res.Inputs["name"]; ok && nameVal.IsString() {
+				refName := nameVal.StringValue()
+				// Check if this references a co-deployed stack by checking all stack roots.
+				// The StackReference name is a fully qualified stack name, but we match
+				// against project names in the merged snapshot.
+				for project, rootURN := range stackRoots {
+					_ = project
+					// If the reference name matches a co-deployed stack's FQN, add a dependency.
+					if coDeployedProjects != nil && coDeployedProjects[refName] {
+						// Add dependency from this StackReference to the referenced stack's root.
+						hasDep := false
+						for _, dep := range res.Dependencies {
+							if dep == rootURN {
+								hasDep = true
+								break
+							}
+						}
+						if !hasDep {
+							res.Dependencies = append(res.Dependencies, rootURN)
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// Use the first non-nil snapshot's manifest and secrets manager.
+	var manifest Manifest
+	var secretsMgr secrets.Manager
+	for _, snap := range snapshots {
+		if snap != nil {
+			manifest = snap.Manifest
+			secretsMgr = snap.SecretsManager
+			break
+		}
+	}
+
+	return &Snapshot{
+		Manifest:          manifest,
+		SecretsManager:    secretsMgr,
+		Resources:         allResources,
+		PendingOperations: allPendingOps,
+	}
+}
+
 // NormalizeURNReferences fixes up all URN references in a snapshot to use the new URNs instead of potentially-aliased
 // URNs.  This will affect resources that are "old", and which would be expected to be updated to refer to the new names
 // later in the deployment.  But until they are, we still want to ensure that any serialization of the snapshot uses URN
