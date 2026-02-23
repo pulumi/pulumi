@@ -80,14 +80,14 @@ func init() {
 					}
 
 					complex := RequireSingleNamedResource(l, snap.Resources, "complex")
-					assert.Equal(l, resource.NewArrayProperty([]resource.PropertyValue{
-						resource.NewStringProperty("hello"),
+					assert.Equal(l, resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty("hello"),
 					}), complex.Outputs["outputArray"])
-					assert.Equal(l, resource.NewObjectProperty(resource.PropertyMap{
-						"x": resource.NewStringProperty("hello"),
+					assert.Equal(l, resource.NewProperty(resource.PropertyMap{
+						"x": resource.NewProperty("hello"),
 					}), complex.Outputs["outputMap"])
-					assert.Equal(l, resource.NewObjectProperty(resource.PropertyMap{
-						"output": resource.NewStringProperty("hello"),
+					assert.Equal(l, resource.NewProperty(resource.PropertyMap{
+						"output": resource.NewProperty("hello"),
 					}), complex.Outputs["outputObject"])
 
 					stk := RequireSingleResource(l, snap.Resources, resource.RootStackType)

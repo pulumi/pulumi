@@ -375,28 +375,28 @@ func (p *OutputProvider) makeOutputs(
 
 	if !preview {
 		output := strings.Repeat("hello", int(inputs["value"].NumberValue()))
-		switch typ {
+		switch typ { //nolint:exhaustive
 		case "output:index:Resource":
-			properties["output"] = resource.NewStringProperty(output)
+			properties["output"] = resource.NewProperty(output)
 		case "output:index:ComplexResource":
-			properties["outputArray"] = resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty(output),
+			properties["outputArray"] = resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty(output),
 			})
-			properties["outputMap"] = resource.NewObjectProperty(resource.PropertyMap{
-				"x": resource.NewStringProperty(output),
+			properties["outputMap"] = resource.NewProperty(resource.PropertyMap{
+				"x": resource.NewProperty(output),
 			})
-			properties["outputObject"] = resource.NewObjectProperty(resource.PropertyMap{
-				"output": resource.NewStringProperty(output),
+			properties["outputObject"] = resource.NewProperty(resource.PropertyMap{
+				"output": resource.NewProperty(output),
 			})
 		}
 	} else if !p.elideUnknowns {
-		switch typ {
+		switch typ { //nolint:exhaustive
 		case "output:index:Resource":
-			properties["output"] = resource.NewComputedProperty(resource.Computed{})
+			properties["output"] = resource.NewProperty(resource.Computed{})
 		case "output:index:ComplexResource":
-			properties["outputArray"] = resource.NewComputedProperty(resource.Computed{})
-			properties["outputMap"] = resource.NewComputedProperty(resource.Computed{})
-			properties["outputObject"] = resource.NewComputedProperty(resource.Computed{})
+			properties["outputArray"] = resource.NewProperty(resource.Computed{})
+			properties["outputMap"] = resource.NewProperty(resource.Computed{})
+			properties["outputObject"] = resource.NewProperty(resource.Computed{})
 		}
 	}
 
