@@ -1398,7 +1398,8 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 			return false
 		}
 		name := info.Name()
-		return name == "yarn.lock" || name == "package-lock.json"
+		return name == "yarn.lock" || name == "package-lock.json" ||
+			name == "pnpm-lock.yaml" || name == "bun.lock" || name == "bun.lockb"
 	}
 	packagePath, err := fsutil.WalkUp(req.Info.ProgramDirectory, packagePathCheck, nil)
 	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
@@ -1408,12 +1409,13 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to locate package-lock.json or yarn.lock file: %w", err)
+		return nil, fmt.Errorf("failed to locate lock file (package-lock.json, yarn.lock, pnpm-lock.yaml, or bun.lock): %w", err)
 	}
 
 	if packagePath == "" {
 		return nil, fmt.Errorf(
-			"no package-lock.json or yarn.lock file found (searching upwards from %s)", req.Info.ProgramDirectory)
+			"no lock file found (searching upwards from %s). "+
+				"Expected one of: package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lock, bun.lockb", req.Info.ProgramDirectory)
 	}
 
 	packagePath = filepath.Dir(packagePath)
@@ -1433,10 +1435,44 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 		if err != nil {
 			return nil, err
 		}
-	} else if os.IsNotExist(err) {
-		return nil, fmt.Errorf("could not find either %s or %s", yarnFile, npmFile)
 	} else {
-		return nil, fmt.Errorf("could not get node dependency data: %w", err)
+		// For pnpm and bun, we don't have dedicated lock file parsers yet.
+		// Fall back to reading dependency info from package.json directly.
+		pnpmFile := filepath.Join(packagePath, "pnpm-lock.yaml")
+		bunFile := filepath.Join(packagePath, "bun.lock")
+		bunFileb := filepath.Join(packagePath, "bun.lockb")
+		if _, err = os.Stat(pnpmFile); err == nil {
+			// pnpm detected
+		} else if _, err = os.Stat(bunFile); err == nil {
+			// bun detected
+		} else if _, err = os.Stat(bunFileb); err == nil {
+			// bun detected
+		} else if os.IsNotExist(err) {
+			return nil, fmt.Errorf("could not find a supported lock file in %s", packagePath)
+		} else {
+			return nil, fmt.Errorf("could not get node dependency data: %w", err)
+		}
+		// For pnpm/bun, parse package.json to get direct dependency versions.
+		file, err := os.ReadFile(packageFile)
+		if err != nil {
+			return nil, fmt.Errorf("could not read %s: %w", packageFile, err)
+		}
+		var body packageJSON
+		if err := json.Unmarshal(file, &body); err != nil {
+			return nil, fmt.Errorf("could not parse %s: %w", packageFile, err)
+		}
+		for name, version := range body.Dependencies {
+			result = append(result, &pulumirpc.DependencyInfo{
+				Name:    name,
+				Version: version,
+			})
+		}
+		for name, version := range body.DevDependencies {
+			result = append(result, &pulumirpc.DependencyInfo{
+				Name:    name,
+				Version: version,
+			})
+		}
 	}
 	if !req.TransitiveDependencies {
 		file, err := os.ReadFile(packageFile)
