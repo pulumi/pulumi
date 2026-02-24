@@ -264,7 +264,6 @@ get_schemas: \
 			schema-eks!0.40.0           \
 			schema-docker!4.0.0-alpha.0 \
 			schema-awsx!1.0.0-beta.5    \
-			schema-google-native!0.18.2 \
 			schema-tls!4.10.0
 
 .PHONY: changelog
