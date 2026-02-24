@@ -202,7 +202,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		if rootSpan != nil {
 			rootSpan.End()
 		}
-		cmdutil.CloseOTelReceiver()
+		cmdutil.CloseOtelTracing()
 
 		if logging.Verbose > 0 && !logging.LogToStderr {
 			logFile, err := logging.GetLogfilePath()

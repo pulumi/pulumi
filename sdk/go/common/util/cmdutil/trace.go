@@ -37,6 +37,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
@@ -198,6 +199,11 @@ func IsOTelEnabled() bool {
 	return otelEndpoint != ""
 }
 
+// OTelEndpoint returns the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
+func OTelEndpoint() string {
+	return otelEndpoint
+}
+
 // InitOTelReceiver starts the OTLP receiver with the given endpoint.
 func InitOtelReceiver(endpoint string) error {
 	if endpoint == "" {
@@ -220,15 +226,18 @@ func InitOtelReceiver(endpoint string) error {
 
 	// Set up Otel TracerProvider for CLI's own spans
 	// The CLI sends its spans to the local receiver, which forwards to the configured exporter
-	if err := initOtelTracerProvider(otelEndpoint); err != nil {
+	if err := InitOtelTracing("pulumi-cli", otelEndpoint); err != nil {
 		logging.V(3).Infof("failed to initialize OTel tracer provider: %v", err)
 	}
 
 	return nil
 }
 
-// initOTelTracerProviderForService sets up the global OTel TracerProvider.
-func initOtelTracerProvider(endpoint string) error {
+// InitOTelTracing initializes OTel tracing for a service connecting to the given OTLP endpoint.
+func InitOtelTracing(serviceName, endpoint string) error {
+	if endpoint == "" {
+		return nil
+	}
 	ctx := context.Background()
 
 	conn, err := grpc.NewClient(endpoint,
@@ -245,7 +254,7 @@ func initOtelTracerProvider(endpoint string) error {
 
 	res := resource.NewWithAttributes(
 		"",
-		semconv.ServiceName("pulumi-cli"),
+		semconv.ServiceName(serviceName),
 	)
 
 	otelTracerProvider = sdktrace.NewTracerProvider(
@@ -255,10 +264,13 @@ func initOtelTracerProvider(endpoint string) error {
 
 	otel.SetTracerProvider(otelTracerProvider)
 
+	// Set up W3C Trace Context propagator for context propagation across process boundaries
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
 	return nil
 }
 
-func CloseOTelReceiver() {
+func CloseOtelTracing() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
