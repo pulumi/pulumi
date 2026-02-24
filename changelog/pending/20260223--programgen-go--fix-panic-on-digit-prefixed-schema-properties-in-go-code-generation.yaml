@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go
+  description: Fix panic on digit-prefixed schema properties in Go code generation
