@@ -42,7 +42,20 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:secret")
 					secret := RequireSingleResource(l, snap.Resources, "secret:index:Resource")
 
-					want := resource.NewPropertyMapFromMap(map[string]any{
+					wantCorrect := resource.NewPropertyMapFromMap(map[string]any{
+						"public":  "open",
+						"private": resource.MakeSecret(resource.NewProperty("closed")),
+						"publicData": map[string]any{
+							"public":  "open",
+							"private": resource.MakeSecret(resource.NewProperty("closed")),
+						},
+						"privateData": resource.MakeSecret(resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
+							"public":  "open",
+							"private": "closed",
+						}))),
+					})
+
+					wantExpected := resource.NewPropertyMapFromMap(map[string]any{
 						"public":  "open",
 						"private": resource.MakeSecret(resource.NewProperty("closed")),
 						"publicData": map[string]any{
@@ -57,7 +70,12 @@ func init() {
 							"private": "closed",
 						}))),
 					})
-					assert.Equal(l, want, secret.Inputs, "expected inputs to be %v", want)
+
+					if !wantCorrect.DeepEquals(secret.Inputs) {
+						assert.Equal(l, wantExpected, secret.Inputs,
+							"expected inputs to be %v, will accept %v", wantCorrect, wantExpected)
+					}
+
 					assert.Equal(l, secret.Inputs, secret.Outputs, "expected inputs and outputs to match")
 				},
 			},
