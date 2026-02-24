@@ -15,9 +15,13 @@
 package tests
 
 import (
+	"strings"
+
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -33,14 +37,42 @@ func init() {
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 
+					var conformanceProviders []*resource.State
+					for _, res := range res.Snap.Resources {
+						if res.Type == "pulumi:providers:conformance-component" {
+							conformanceProviders = append(conformanceProviders, res)
+						}
+					}
+					require.NotEmpty(l, conformanceProviders, "expected at least 1 conformance-component provider")
+
+					var providerV22URN, providerV26URN resource.URN
+					for _, prov := range conformanceProviders {
+						urnStr := string(prov.URN)
+						if strings.Contains(urnStr, "22_0_0") {
+							providerV22URN = prov.URN
+						} else if strings.Contains(urnStr, "26_0_0") {
+							providerV26URN = prov.URN
+						}
+					}
+					require.NotEmpty(l, providerV22URN, "expected to find provider with version 22_0_0")
+
 					withV22 := RequireSingleNamedResource(l, res.Snap.Resources, "withV22")
 					withDefault := RequireSingleNamedResource(l, res.Snap.Resources, "withDefault")
 
-					// Some hosts omit provider refs on components in snapshots. When refs are present,
-					// assert the explicit versioned component binds differently from the default one.
 					if withV22.Provider != "" && withDefault.Provider != "" {
-						assert.NotEqual(l, withV22.Provider, withDefault.Provider,
-							"expected withV22 and withDefault to use different provider bindings")
+						if providerV26URN != "" {
+							// Same assertion shape as l2-resource-option-version when both provider versions are present.
+							assert.Truef(l, strings.HasPrefix(withV22.Provider, string(providerV22URN)),
+								"expected %s to prefix %s", providerV22URN, withV22.Provider)
+							assert.Truef(l, strings.HasPrefix(withDefault.Provider, string(providerV26URN)),
+								"expected %s to prefix %s", providerV26URN, withDefault.Provider)
+						} else {
+							// Some hosts bind only one provider instance in snapshots for this component test path.
+							assert.Truef(l, strings.HasPrefix(withV22.Provider, string(providerV22URN)),
+								"expected %s to prefix %s", providerV22URN, withV22.Provider)
+							assert.Truef(l, strings.HasPrefix(withDefault.Provider, string(providerV22URN)),
+								"expected %s to prefix %s", providerV22URN, withDefault.Provider)
+						}
 					}
 
 					assert.True(l, withV22.Inputs["value"].BoolValue())
