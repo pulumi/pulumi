@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// IMPORTANT: This must be imported FIRST, before any other modules that might load @grpc/grpc-js.
+// The OpenTelemetry instrumentation works by monkey-patching the gRPC module.
+import "./instrumentation";
+
 // Enable source map support so we get good stack traces.
 import "source-map-support/register";
 
@@ -143,9 +147,18 @@ async function beforeExitHandler(code: number) {
         return;
     }
     hasSignaled = true;
-    settings.signalAndWaitForShutdown().catch((err) => {
+    // Wrap in root context so the shutdown call is traced correctly
+    const { withRootContext, shutdownTracing } = require("./instrumentation");
+    try {
+        await withRootContext(() => settings.signalAndWaitForShutdown());
+    } catch (err) {
         console.error(`Error while signaling shutdown: ${err}`);
-    });
+    }
+    try {
+        await shutdownTracing();
+    } catch (err) {
+        console.error(`Error while shutting down tracing: ${err}`);
+    }
 }
 
 // As the second thing we do, ensure that we're connected to v8's inspector API.  We need to do
@@ -243,13 +256,19 @@ function main(args: string[]): void {
 
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
     v8Hooks.isInitializedAsync().then(() => {
-        const promise: Promise<void> = require("./run").run(
-            argv,
-            /*programStarted:   */ () => {
-                programRunning = true;
-            },
-            /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err),
-            /*isErrorReported:  */ (err: Error) => loggedErrors.has(err),
+        const { withRootContext } = require("./instrumentation");
+
+        // Wrap the program execution within the root trace context so that
+        // all gRPC calls from the Node.js SDK propagate the trace context.
+        const promise: Promise<void> = withRootContext(() =>
+            require("./run").run(
+                argv,
+                /*programStarted:   */ () => {
+                    programRunning = true;
+                },
+                /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err),
+                /*isErrorReported:  */ (err: Error) => loggedErrors.has(err),
+            ),
         );
 
         // when the user's program completes successfully, set programRunning back to false.  That way, if the Pulumi
