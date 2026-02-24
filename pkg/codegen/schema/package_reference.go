@@ -36,6 +36,9 @@ type PackageReference interface {
 	// Version returns the package version.
 	Version() *semver.Version
 
+	// The pluginDownloadURL of the schema.
+	PluginDownloadURL() string
+
 	Identity() string
 
 	// Description returns the packages description.
@@ -174,6 +177,10 @@ func (p packageDefRef) Name() string {
 
 func (p packageDefRef) Version() *semver.Version {
 	return p.pkg.Version
+}
+
+func (p packageDefRef) PluginDownloadURL() string {
+	return p.pkg.PluginDownloadURL
 }
 
 func (p packageDefRef) Identity() string {
@@ -382,6 +389,16 @@ func (p *PartialPackage) Version() *semver.Version {
 		return p.def.Version
 	}
 	return p.types.pkg.Version
+}
+
+func (p *PartialPackage) PluginDownloadURL() string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.PluginDownloadURL
+	}
+	return p.types.pkg.PluginDownloadURL
 }
 
 func (p *PartialPackage) Identity() string {
