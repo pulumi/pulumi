@@ -46,6 +46,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/iwdgo/sigintwindows v0.2.2
+	github.com/klauspost/compress v1.18.0
 	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
@@ -97,6 +98,7 @@ require (
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/pjbgf/sha1cd v0.3.2 // indirect
+	github.com/quasilyte/go-ruleguard/dsl v0.3.23 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/zclconf/go-cty v1.13.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
@@ -133,4 +135,7 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-tool github.com/iwahbe/helpmakego
+tool (
+	github.com/iwahbe/helpmakego
+	github.com/quasilyte/go-ruleguard/dsl
+)

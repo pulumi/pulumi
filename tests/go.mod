@@ -219,6 +219,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/pulumi/esc v0.17.0 // indirect
 	github.com/pulumi/inflector v0.1.1 // indirect
+	github.com/quasilyte/go-ruleguard/dsl v0.3.23 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
@@ -287,3 +288,5 @@ require (
 	lukechampine.com/frand v1.5.1 // indirect
 	mvdan.cc/gofumpt v0.5.0 // indirect
 )
+
+tool github.com/quasilyte/go-ruleguard/dsl

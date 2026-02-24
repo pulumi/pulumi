@@ -6,8 +6,10 @@ import builtins as _builtins
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from .complex_resource import *
 from .provider import *
 from .resource import *
+from . import outputs
 _utilities.register(
     resource_modules="""
 [
@@ -16,6 +18,7 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_output",
   "classes": {
+   "output:index:ComplexResource": "ComplexResource",
    "output:index:Resource": "Resource"
   }
  }

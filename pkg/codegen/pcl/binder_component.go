@@ -164,7 +164,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 				}
 
 				err = parser.ParseFile(file, fileName)
-				contract.IgnoreError(file.Close())
+				contract.IgnoreClose(file)
 				if err != nil {
 					diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 					return nil, diagnostics, err

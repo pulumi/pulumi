@@ -61,9 +61,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			if err != nil {
 				return err
 			}
-			defer func() {
-				contract.IgnoreError(pctx.Close())
-			}()
+			defer contract.IgnoreClose(pctx)
 
 			if function != "" && resource != "" {
 				return errors.New("only one of --function or --resource can be specified")

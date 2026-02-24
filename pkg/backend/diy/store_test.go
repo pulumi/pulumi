@@ -245,13 +245,21 @@ func TestLegacyReferenceStore_ListReferences(t *testing.T) {
 			want: []tokens.QName{"foo"},
 		},
 		{
+			desc: "zstd",
+			files: []string{
+				".pulumi/stacks/foo.json.zst",
+			},
+			want: []tokens.QName{"foo"},
+		},
+		{
 			desc: "multiple",
 			files: []string{
 				".pulumi/stacks/foo.json",
 				".pulumi/stacks/bar.json.gz",
+				".pulumi/stacks/qux.json.zst",
 				".pulumi/stacks/baz.json",
 			},
-			want: []tokens.QName{"bar", "baz", "foo"},
+			want: []tokens.QName{"bar", "baz", "foo", "qux"},
 		},
 		{
 			desc: "extraneous directories",
@@ -327,18 +335,28 @@ func TestProjectReferenceStore_List(t *testing.T) {
 			projects: []tokens.Name{"foo"},
 		},
 		{
+			desc: "zstd",
+			files: []string{
+				".pulumi/stacks/foo/bar.json.zst",
+			},
+			stacks:   []tokens.QName{"organization/foo/bar"},
+			projects: []tokens.Name{"foo"},
+		},
+		{
 			desc: "multiple",
 			files: []string{
 				".pulumi/stacks/a/foo.json",
 				".pulumi/stacks/b/bar.json.gz",
+				".pulumi/stacks/d/qux.json.zst",
 				".pulumi/stacks/c/baz.json",
 			},
 			stacks: []tokens.QName{
 				"organization/a/foo",
 				"organization/b/bar",
 				"organization/c/baz",
+				"organization/d/qux",
 			},
-			projects: []tokens.Name{"a", "b", "c"},
+			projects: []tokens.Name{"a", "b", "c", "d"},
 		},
 		{
 			desc: "extraneous files and directories",

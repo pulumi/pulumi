@@ -169,7 +169,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 			pulumirpc.RegisterResourceProviderServer(srv, plugin.NewProviderServer(provider))
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
@@ -198,7 +198,7 @@ func wrapAnalyzerWithGrpc(analyzer plugin.Analyzer) (plugin.Analyzer, io.Closer,
 			pulumirpc.RegisterAnalyzerServer(srv, plugin.NewAnalyzerServer(analyzer))
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start policy analyzer service: %w", err)
@@ -321,7 +321,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 			pulumirpc.RegisterEngineServer(srv, engine)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		panic(fmt.Errorf("could not start engine service: %w", err))

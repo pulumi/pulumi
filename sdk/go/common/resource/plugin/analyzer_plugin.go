@@ -82,7 +82,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}
 	contract.Assertf(path != "", "unexpected empty path for analyzer plugin %s", name)
 
-	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
+	dialOpts := rpcutil.TracingInterceptorDialOptions()
 
 	plug, _, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
 		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil, /*env*/
@@ -718,7 +718,7 @@ func (a *analyzer) getPolicySeverity(policyName string) apitype.PolicySeverity {
 
 func analyzerPluginDialOptions(ctx *Context, name string) []grpc.DialOption {
 	dialOpts := append(
-		rpcutil.OpenTracingInterceptorDialOptions(),
+		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
