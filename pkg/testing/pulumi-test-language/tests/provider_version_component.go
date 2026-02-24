@@ -36,6 +36,13 @@ func init() {
 					withV22 := RequireSingleNamedResource(l, res.Snap.Resources, "withV22")
 					withDefault := RequireSingleNamedResource(l, res.Snap.Resources, "withDefault")
 
+					// Some hosts omit provider refs on components in snapshots. When refs are present,
+					// assert the explicit versioned component binds differently from the default one.
+					if withV22.Provider != "" && withDefault.Provider != "" {
+						assert.NotEqual(l, withV22.Provider, withDefault.Provider,
+							"expected withV22 and withDefault to use different provider bindings")
+					}
+
 					assert.True(l, withV22.Inputs["value"].BoolValue())
 					assert.True(l, withDefault.Inputs["value"].BoolValue())
 				},
