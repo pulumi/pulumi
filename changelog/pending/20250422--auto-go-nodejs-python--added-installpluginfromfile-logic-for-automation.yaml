@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go,nodejs,python
+  description: Added installPluginFromFile logic for automation
