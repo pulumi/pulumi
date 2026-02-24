@@ -79,7 +79,11 @@ generate::
 
 .PHONY: generate-cli-spec
 generate-cli-spec::
-	go run -C pkg ./cmd/pulumi generate-cli-spec
+	go run -C pkg ./cmd/pulumi generate-cli-spec > specification.json
+
+.PHONY: generate-nodejs-automation-api
+generate-nodejs-automation-api:: generate-cli-spec
+	cd sdk/nodejs/tools/automation && npm start ../../../../specification.json
 
 bin/pulumi: proto/.checksum.txt .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
 	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}

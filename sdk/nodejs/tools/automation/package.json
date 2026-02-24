@@ -10,7 +10,8 @@
     },
     "main": "src/index.ts",
     "scripts": {
-        "start": "tsx src/index.ts"
+        "start": "tsx src/index.ts",
+        "test": "jest"
     },
     "devDependencies": {
         "@types/node": "14.18.63",

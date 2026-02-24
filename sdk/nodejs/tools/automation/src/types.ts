@@ -1,4 +1,4 @@
-// Copyright 2026-2026, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,55 +14,51 @@
 
 // A single flag on a command or menu.
 export interface Flag {
-    /** The canonical flag name (for example, "stack"). */
+    // The canonical flag name (for example, "stack").
     name: string;
 
-    /** A primitive logical type: "string", "boolean", "int", etc. */
+    // A primitive logical type: "string", "boolean", "int", etc.
     type: string;
 
-    /** The user-facing description of the flag. */
+    // The user-facing description of the flag.
     description?: string;
 
-    /** True if the flag may appear multiple times (for example, string arrays). */
+    // True if the flag may appear multiple times (for example, string arrays).
     repeatable?: boolean;
 }
 
 // A positional argument to a command.
 export interface Argument {
-    /** The human-readable name for the argument. */
+    // The human-readable name for the argument.
     name: string;
 
-    /** The argument type, defaulting to "string" when omitted. */
+    // The argument type, defaulting to "string" when omitted.
     type?: string;
 
-    /**
-     * Optional override for how the argument appears in the usage string.
-     * Mirrors the `Usage` field in the Go struct.
-     */
+    // Optional override for how the argument appears in the usage string.
+    // Mirrors the `Usage` field in the Go struct.
     usage?: string;
 }
 
 // The full positional argument specification for a command.
 export interface Arguments {
-    /** All positional arguments (in order). */
+    // All positional arguments (in order).
     arguments: Argument[];
 
-    /** The number of required leading arguments. */
+    // The number of required leading arguments.
     requiredArguments?: number;
 
-    /** True if the last argument is variadic. */
+    // True if the last argument is variadic.
     variadic?: boolean;
 }
 
 // Base shape shared by menus and commands.
 interface NodeBase {
-    /** The node type discriminator. */
+    // The node type discriminator. This is either "menu" or "command".
     type: string;
 
-    /**
-     * Flags available at this level of the hierarchy, keyed by their
-     * canonical flag name.
-     */
+    // Flags available at this level of the hierarchy, keyed by their canonical
+    // flag name.
     flags?: Record<string, Flag>;
 }
 
@@ -70,7 +66,11 @@ interface NodeBase {
 export interface Menu extends NodeBase {
     type: "menu";
 
-    /** Subcommands in this menu. */
+    // True when this menu can be executed. When false, this is a pure menu of
+    // subcommands and does nothing when invoked by itself.
+    executable?: boolean;
+
+    // Subcommands in this menu.
     commands?: Record<string, Structure>;
 }
 
@@ -78,10 +78,10 @@ export interface Menu extends NodeBase {
 export interface Command extends NodeBase {
     type: "command";
 
-    /** Positional arguments for this command (if any). */
+    // Positional arguments for this command (if any).
     arguments?: Arguments;
 
-    /** Free-form documentation about what the command does. */
+    // Free-form documentation about what the command does.
     description?: string;
 }
 
