@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -56,10 +55,7 @@ func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Hos
 	// Note that we can't simply pass `ctx` here, because the cancellation for plugins
 	// requires that it isn't canceled when the main context is canceled.  See also
 	// https://github.com/pulumi/pulumi/pull/20561.
-	pluginCtx := context.Background()
-	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
-		pluginCtx = trace.ContextWithSpan(pluginCtx, span)
-	}
+	pluginCtx := context.WithoutCancel(ctx)
 
 	pctx, err := plugin.NewContextWithRoot(pluginCtx, diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
