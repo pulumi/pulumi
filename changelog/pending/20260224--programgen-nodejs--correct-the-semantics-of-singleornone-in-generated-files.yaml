@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/nodejs
+  description: Correct the semantics of singleOrNone in generated files

@@ -105,6 +105,8 @@ var expectedFailures = map[string]string{
 	"l1-builtin-try":         "pulumi#18506 Support try in Go program generation",
 	"l1-builtin-can":         "pulumi#18570 Support can in Go program generation",
 	"l1-builtin-base64":      "cannot use bytes (variable of type string) as pulumi.Input value in argument to ctx.Export", //nolint:lll
+	"l1-builtin-list":        "list(string) config decoded as string; element/split emit TODO stubs",
+	"l1-builtin-object":      "entries/lookup emit TODO stubs",
 
 	// pulumi/pulumi#18345
 	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                           //nolint:lll
