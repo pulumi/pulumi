@@ -133,6 +133,13 @@ func (bun *bunManager) Link(ctx context.Context, dir, packageName, path string) 
 	return nil
 }
 
+func (bun *bunManager) ListPackages(_ context.Context, dir string) ([]PackageDependency, error) {
+	// bun does not yet have a dedicated lock file parser. Fall back to reading
+	// dependency information from package.json, which gives version ranges
+	// rather than pinned versions.
+	return listPackagesFromPackageJSON(dir)
+}
+
 type packageDotJSON struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`

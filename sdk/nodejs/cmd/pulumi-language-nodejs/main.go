@@ -1236,111 +1236,6 @@ func (host *nodeLanguageHost) Handshake(ctx context.Context,
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
 }
 
-// The shape of a `yarn list --json`'s output.
-type yarnLock struct {
-	Type string       `json:"type"`
-	Data yarnLockData `json:"data"`
-}
-
-type yarnLockData struct {
-	Type  string         `json:"type"`
-	Trees []yarnLockTree `json:"trees"`
-}
-
-type yarnLockTree struct {
-	Name     string         `json:"name"`
-	Children []yarnLockTree `json:"children"`
-}
-
-func parseYarnLockFile(programDirectory, path string) ([]*pulumirpc.DependencyInfo, error) {
-	ex, err := executable.FindExecutable("yarn")
-	if err != nil {
-		return nil, fmt.Errorf("found %s but no yarn executable: %w", path, err)
-	}
-	cmdArgs := []string{"list", "--json"}
-	cmd := exec.Command(ex, cmdArgs...)
-	cmd.Dir = programDirectory
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run \"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
-	}
-
-	var lock yarnLock
-	if err = json.Unmarshal(out, &lock); err != nil {
-		return nil, fmt.Errorf("failed to parse\"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
-	}
-	leafs := lock.Data.Trees
-
-	result := make([]*pulumirpc.DependencyInfo, len(leafs))
-
-	// Has the form name@version
-	splitName := func(index int, nameVersion string) (string, string, error) {
-		if nameVersion == "" {
-			return "", "", fmt.Errorf("expected \"name\" in dependency %d", index)
-		}
-		split := strings.LastIndex(nameVersion, "@")
-		if split == -1 {
-			return "", "", fmt.Errorf("failed to parse name and version from %s", nameVersion)
-		}
-		return nameVersion[:split], nameVersion[split+1:], nil
-	}
-
-	for i, v := range leafs {
-		name, version, err := splitName(i, v.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		result[i] = &pulumirpc.DependencyInfo{
-			Name:    name,
-			Version: version,
-		}
-	}
-	return result, nil
-}
-
-// Describes the shape of `npm ls --json --depth=0`'s output.
-type npmFile struct {
-	Name            string                `json:"name"`
-	LockFileVersion int                   `json:"lockfileVersion"`
-	Requires        bool                  `json:"requires"`
-	Dependencies    map[string]npmPackage `json:"dependencies"`
-}
-
-// A package in npmFile.
-type npmPackage struct {
-	Version  string `json:"version"`
-	Resolved string `json:"resolved"`
-}
-
-func parseNpmLockFile(programDirectory, path string) ([]*pulumirpc.DependencyInfo, error) {
-	ex, err := executable.FindExecutable("npm")
-	if err != nil {
-		return nil, fmt.Errorf("found %s but not npm: %w", path, err)
-	}
-	cmdArgs := []string{"ls", "--json", "--depth=0"}
-	cmd := exec.Command(ex, cmdArgs...)
-	cmd.Dir = programDirectory
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf(`failed to run "%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
-	}
-	file := npmFile{}
-	if err = json.Unmarshal(out, &file); err != nil {
-		return nil, fmt.Errorf(`failed to parse \"%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
-	}
-	result := make([]*pulumirpc.DependencyInfo, len(file.Dependencies))
-	var i int
-	for k, v := range file.Dependencies {
-		result[i] = &pulumirpc.DependencyInfo{
-			Name:    k,
-			Version: v.Version,
-		}
-		i++
-	}
-	return result, nil
-}
-
 // Intersect a list of packages with the contents of `package.json`. Returns
 // only packages that appear in both sets. `path` is used only for error handling.
 func crossCheckPackageJSONFile(path string, file []byte,
@@ -1378,19 +1273,16 @@ func crossCheckPackageJSONFile(path string, file []byte,
 func (host *nodeLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	// We get the node dependencies. This requires either a yarn.lock file and the
-	// yarn executable, a package-lock.json file and the npm executable. If
-	// transitive is false, we also need the package.json file.
+	// We get the node dependencies by delegating to the appropriate PackageManager via
+	// ResolvePackageManager. Each package manager knows how to list its own packages.
 	//
-	// If we find a yarn.lock file, we assume that yarn is used.
-	// Only then do we look for a package-lock.json file.
-
-	// Neither "yarn list" or "npm ls" can describe what packages are required
-	//
+	// Neither "yarn list" nor "npm ls" can describe what packages are required
 	// (direct dependencies). Only what packages they have installed (transitive
 	// dependencies). This means that to accurately report only direct
 	// dependencies, we need to also parse "package.json" and intersect it with
 	// reported dependencies.
+
+	// Find the project root by walking up to find a lock file.
 	var err error
 	packagePathCheck := func(path string) bool {
 		info, err := os.Stat(path)
@@ -1420,61 +1312,28 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 
 	packagePath = filepath.Dir(packagePath)
 
-	yarnFile := filepath.Join(packagePath, "yarn.lock")
-	npmFile := filepath.Join(packagePath, "package-lock.json")
-	packageFile := filepath.Join(packagePath, "package.json")
-	var result []*pulumirpc.DependencyInfo
+	// Resolve the package manager based on the lock file found in the project root.
+	// This delegates the choice of package manager to the lock file detection logic.
+	// We use ResolvePackageManagerForListing which does not require the package manager
+	// executable to be installed, since ListPackages for pnpm/bun reads package.json directly.
+	pkgManager := npm.ResolvePackageManagerForListing(packagePath)
 
-	if _, err = os.Stat(yarnFile); err == nil {
-		result, err = parseYarnLockFile(packagePath, yarnFile)
-		if err != nil {
-			return nil, err
-		}
-	} else if _, err = os.Stat(npmFile); err == nil {
-		result, err = parseNpmLockFile(packagePath, npmFile)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// For pnpm and bun, we don't have dedicated lock file parsers yet.
-		// Fall back to reading dependency info from package.json directly.
-		pnpmFile := filepath.Join(packagePath, "pnpm-lock.yaml")
-		bunFile := filepath.Join(packagePath, "bun.lock")
-		bunFileb := filepath.Join(packagePath, "bun.lockb")
-		if _, err = os.Stat(pnpmFile); err == nil {
-			// pnpm detected
-		} else if _, err = os.Stat(bunFile); err == nil {
-			// bun detected
-		} else if _, err = os.Stat(bunFileb); err == nil {
-			// bun detected
-		} else if os.IsNotExist(err) {
-			return nil, fmt.Errorf("could not find a supported lock file in %s", packagePath)
-		} else {
-			return nil, fmt.Errorf("could not get node dependency data: %w", err)
-		}
-		// For pnpm/bun, parse package.json to get direct dependency versions.
-		file, err := os.ReadFile(packageFile)
-		if err != nil {
-			return nil, fmt.Errorf("could not read %s: %w", packageFile, err)
-		}
-		var body packageJSON
-		if err := json.Unmarshal(file, &body); err != nil {
-			return nil, fmt.Errorf("could not parse %s: %w", packageFile, err)
-		}
-		for name, version := range body.Dependencies {
-			result = append(result, &pulumirpc.DependencyInfo{
-				Name:    name,
-				Version: version,
-			})
-		}
-		for name, version := range body.DevDependencies {
-			result = append(result, &pulumirpc.DependencyInfo{
-				Name:    name,
-				Version: version,
-			})
+	// Use the resolved package manager's ListPackages to get dependency info.
+	packages, err := pkgManager.ListPackages(ctx, packagePath)
+	if err != nil {
+		return nil, fmt.Errorf("could not list packages using %s: %w", pkgManager.Name(), err)
+	}
+
+	result := make([]*pulumirpc.DependencyInfo, len(packages))
+	for i, pkg := range packages {
+		result[i] = &pulumirpc.DependencyInfo{
+			Name:    pkg.Name,
+			Version: pkg.Version,
 		}
 	}
+
 	if !req.TransitiveDependencies {
+		packageFile := filepath.Join(packagePath, "package.json")
 		file, err := os.ReadFile(packageFile)
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("could not find %s. "+

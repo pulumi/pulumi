@@ -17,6 +17,7 @@ package npm
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -98,6 +99,37 @@ func (node *npmManager) Link(ctx context.Context, dir, packageName, path string)
 		return fmt.Errorf("error executing npm command %s: %w, output: %s", cmd.String(), err, out)
 	}
 	return nil
+}
+
+func (node *npmManager) ListPackages(ctx context.Context, dir string) ([]PackageDependency, error) {
+	if node.executable == "" {
+		// If npm is not available, fall back to reading package.json.
+		return listPackagesFromPackageJSON(dir)
+	}
+	//nolint:gosec // False positive on tainted command execution. We aren't accepting input from the user here.
+	cmd := exec.CommandContext(ctx, node.executable, "ls", "--json", "--depth=0")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run \"%s ls --json --depth=0\": %w", node.executable, err)
+	}
+	var file struct {
+		Dependencies map[string]struct {
+			Version  string `json:"version"`
+			Resolved string `json:"resolved"`
+		} `json:"dependencies"`
+	}
+	if err := json.Unmarshal(out, &file); err != nil {
+		return nil, fmt.Errorf("failed to parse npm ls output: %w", err)
+	}
+	result := make([]PackageDependency, 0, len(file.Dependencies))
+	for name, pkg := range file.Dependencies {
+		result = append(result, PackageDependency{
+			Name:    name,
+			Version: pkg.Version,
+		})
+	}
+	return result, nil
 }
 
 func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
