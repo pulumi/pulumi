@@ -363,6 +363,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
+		ctx,
 		projinfo,
 		nil, /* host */
 		cmdutil.Diag(),
