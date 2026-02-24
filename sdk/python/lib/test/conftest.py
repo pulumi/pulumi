@@ -26,7 +26,7 @@ def mock_config(config_settings):
 
 def pytest_collection_modifyitems(items):
     for i, item in enumerate(items):
-        # We need to run `test_automation_api_in_forked_worker` first before any other test uses grpcio
+        # We need to run `test_automation_api_in_forked_worker` first before any other test sets up grpc.aio.
         if item.name == "test_automation_api_in_forked_worker":
             items.insert(0, items.pop(i))
             break

@@ -19,6 +19,8 @@ import time
 import pytest
 
 
+# Note: this test is run as the first test via sdk/python/lib/test/conftest.py to avoid any other test setting up
+# grpc.aio before us.
 def test_automation_api_in_forked_worker():
     """
     Test that Pulumi Automation API works in a forked process.
