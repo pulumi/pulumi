@@ -334,10 +334,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages,
 	},
 	{
-		Directory:   "single-or-none",
-		Description: "Tests using the singleOrNone function",
-	},
-	{
 		Directory:   "simple-splat",
 		Description: "An example that shows we can compile splat expressions from array of objects",
 		// Skip compiling because we are using a test schema without a corresponding real package
