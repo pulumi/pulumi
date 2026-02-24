@@ -360,7 +360,7 @@ func (h *PolicySimpleLanguageHost) RunPlugin(
 			pulumirpc.RegisterAnalyzerServer(srv, analyzer)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return fmt.Errorf("could not start analyzer plugin: %w", err)

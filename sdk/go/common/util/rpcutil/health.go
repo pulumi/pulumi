@@ -27,13 +27,12 @@ import (
 
 // Healthcheck will poll the address at duration intervals and then call cancel once it reports unhealthy
 func Healthcheck(context context.Context, addr string, duration time.Duration, cancel context.CancelFunc) error {
-	conn, err := grpc.NewClient(
-		addr,
+	dialOpts := append(
+		TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(OpenTracingClientInterceptor()),
-		grpc.WithStreamInterceptor(OpenTracingStreamClientInterceptor()),
 		GrpcChannelOptions(),
 	)
+	conn, err := grpc.NewClient(addr, dialOpts...)
 	if err != nil {
 		return err
 	}

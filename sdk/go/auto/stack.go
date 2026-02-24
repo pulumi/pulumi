@@ -1708,7 +1708,7 @@ func startLanguageRuntimeServer(fn pulumi.RunFunc) (*languageRuntimeServer, erro
 			pulumirpc.RegisterLanguageRuntimeServer(srv, s)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, err
@@ -1914,7 +1914,7 @@ func tailLogs(command string, receivers []chan<- events.EngineEvent, version sem
 				return nil
 			},
 			Cancel:  cancel,
-			Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+			Options: rpcutil.TracingServerInterceptorOptions(nil),
 		})
 		if err != nil {
 			return nil, err
