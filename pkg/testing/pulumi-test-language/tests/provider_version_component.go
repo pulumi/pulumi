@@ -26,7 +26,7 @@ func init() {
 			func() plugin.Provider { return &providers.SimpleProvider{} },
 			func() plugin.Provider { return &providers.ConformanceComponentProvider{} },
 		},
-		LanguageProviders:            []string{"conformance-component"},
+		LanguageProviders:           []string{"conformance-component"},
 		SkipEnsurePluginsValidation: true,
 		Runs: []TestRun{
 			{
