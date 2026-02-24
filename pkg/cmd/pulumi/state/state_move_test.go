@@ -511,6 +511,56 @@ func TestParentsAreBeingMoved(t *testing.T) {
 		destSnapshot.Resources[3].Parent)
 }
 
+func TestMoveRewritesQualifiedTypeWhenReparentingToRoot(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:pkgA", "default_1_0_0")
+	parentURN := resource.NewURN("sourceStack", "test", "", "parentComponent", "parent")
+	componentURN := resource.NewURN("sourceStack", "test", parentURN.QualifiedType(), "targetComponent", "component")
+	childURN := resource.NewURN("sourceStack", "test", componentURN.QualifiedType(),
+		"pkgA:index:typB", "child")
+
+	sourceResources := []*resource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:pkgA::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:  parentURN,
+			Type: "parentComponent",
+		},
+		{
+			URN:    componentURN,
+			Type:   "targetComponent",
+			Parent: parentURN,
+		},
+		{
+			URN:      childURN,
+			Type:     "pkgA:index:typB",
+			Custom:   true,
+			ID:       "id2",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   componentURN,
+		},
+	}
+
+	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(componentURN)})
+
+	require.Len(t, sourceSnapshot.Resources, 2) // provider + workspace remain
+	require.Len(t, destSnapshot.Resources, 4)   // root + provider + moved component + moved child
+
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::targetComponent::component"),
+		destSnapshot.Resources[2].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[2].Parent)
+
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::targetComponent$pkgA:index:typB::child"),
+		destSnapshot.Resources[3].URN)
+	assert.Equal(t, destSnapshot.Resources[2].URN, destSnapshot.Resources[3].Parent)
+}
+
 func TestEmptySourceStack(t *testing.T) {
 	t.Parallel()
 
