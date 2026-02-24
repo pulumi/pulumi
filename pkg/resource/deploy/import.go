@@ -161,6 +161,7 @@ type noopEvent int
 func (noopEvent) event()                      {}
 func (noopEvent) Goal() *resource.Goal        { return nil }
 func (noopEvent) Done(result *RegisterResult) {}
+func (noopEvent) Reject(err error)            {}
 
 type noopOutputsEvent resource.URN
 
@@ -168,6 +169,7 @@ func (noopOutputsEvent) event()                        {}
 func (e noopOutputsEvent) URN() resource.URN           { return resource.URN(e) }
 func (noopOutputsEvent) Outputs() resource.PropertyMap { return resource.PropertyMap{} }
 func (noopOutputsEvent) Done()                         {}
+func (noopOutputsEvent) Reject(err error)              {}
 
 type importer struct {
 	deployment *Deployment
