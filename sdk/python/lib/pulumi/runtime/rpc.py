@@ -1276,39 +1276,28 @@ def translate_output_properties(
     if typ is Any:
         typ = None
 
-    # For unions, try each member type until one translates successfully.
-    # This allows discriminated unions of output types to deserialize provider-returned dicts.
-    if typ is not None and get_origin(typ) in [Union, types.UnionType]:
-        union_types = [t for t in get_args(typ) if t is not type(None)]
-        if output is None and len(union_types) != len(get_args(typ)):
+    # For Union[...] outputs, try each member type until one matches.
+    # This is required for provider-returned dicts that must be deserialized
+    # into a concrete @output_type member of the union.
+    if typ is not None and _types._is_union_type(typ):
+        union_args = get_args(typ)
+        union_types = [t for t in union_args if t is not type(None)]
+        has_none_member = any(t is type(None) for t in union_args)
+        # Optional-style unions (e.g. Union[T, None]) accept None directly.
+        if output is None and has_none_member:
             return None
 
-        # When translating dict outputs, prefer output types whose Pulumi properties
-        # cover the incoming keys. This helps discriminate object unions.
-        if isinstance(output, dict):
-            output_keys = set(output.keys())
-
-            def rank_candidate(union_type: type) -> int:
-                if _types.is_output_type(union_type):
-                    union_keys = set(_types.output_type_types(union_type).keys())
-                    return len(output_keys.difference(union_keys))
-                return len(output_keys) + 1
-
-            union_types = sorted(union_types, key=rank_candidate)
-
         for union_type in union_types:
-            try:
-                translated = translate_output_properties(
-                    output,
-                    output_transformer,
-                    union_type,
-                    transform_using_type_metadata,
-                    path,
-                    return_none_on_dict_type_mismatch=True,
-                )
-            except AssertionError:
-                continue
-
+            # Probe each candidate in mismatch mode so non-matching dict shapes
+            # return None and allow trying the next union member.
+            translated = translate_output_properties(
+                output,
+                output_transformer,
+                union_type,
+                transform_using_type_metadata,
+                path,
+                return_none_on_dict_type_mismatch=True,
+            )
             if translated is not None:
                 return translated
 
@@ -1333,8 +1322,14 @@ def translate_output_properties(
             # method.
             if _types.is_output_type(typ):
                 # If typ is an output type, get its types, so we can pass the type along for each property.
-                output_types = _types.output_type_types(typ)
-                get_type = output_types.get
+                types = _types.output_type_types(typ)
+                get_type = types.get
+                # When probing Union members, reject this output type if the incoming object
+                # contains keys that are not known properties for the candidate type.
+                if return_none_on_dict_type_mismatch and any(
+                    k not in types for k in output.keys()
+                ):
+                    return None
 
                 translated_values = {
                     k: translate_output_properties(

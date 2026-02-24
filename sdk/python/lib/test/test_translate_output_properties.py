@@ -711,7 +711,7 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             field1: Optional[str] = pulumi.property("field1")
 
             def __init__(self, discriminant_kind: str, field1: Optional[str] = None):
-                pulumi.set(self, "discriminant_kind", "variant1")
+                pulumi.set(self, "discriminant_kind", discriminant_kind)
                 if field1 is not None:
                     pulumi.set(self, "field1", field1)
 
@@ -721,7 +721,7 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             field2: Optional[str] = pulumi.property("field2")
 
             def __init__(self, discriminant_kind: str, field2: Optional[str] = None):
-                pulumi.set(self, "discriminant_kind", "variant2")
+                pulumi.set(self, "discriminant_kind", discriminant_kind)
                 if field2 is not None:
                     pulumi.set(self, "field2", field2)
 
@@ -741,7 +741,7 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             field1: Optional[str] = pulumi.property("field1")
 
             def __init__(self, discriminant_kind: str, field1: Optional[str] = None):
-                pulumi.set(self, "discriminant_kind", "variant1")
+                pulumi.set(self, "discriminant_kind", discriminant_kind)
                 if field1 is not None:
                     pulumi.set(self, "field1", field1)
 
@@ -751,7 +751,7 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             field2: Optional[str] = pulumi.property("field2")
 
             def __init__(self, discriminant_kind: str, field2: Optional[str] = None):
-                pulumi.set(self, "discriminant_kind", "variant2")
+                pulumi.set(self, "discriminant_kind", discriminant_kind)
                 if field2 is not None:
                     pulumi.set(self, "field2", field2)
 
@@ -763,7 +763,6 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
             translate_output_property,
             Sequence[Union[VariantOne, VariantTwo]],
         )
-
         self.assertEqual(2, len(result))
         self.assertIsInstance(result[0], VariantOne)
         self.assertEqual("variant1", result[0].discriminant_kind)
@@ -771,6 +770,22 @@ class TranslateOutputPropertiesTests(unittest.TestCase):
         self.assertIsInstance(result[1], VariantTwo)
         self.assertEqual("variant2", result[1].discriminant_kind)
         self.assertEqual("v2", result[1].field2)
+
+    def test_optional_union_output_type_none(self):
+        @pulumi.output_type
+        class VariantOne(dict):
+            discriminant_kind: str = pulumi.property("discriminantKind")
+
+        @pulumi.output_type
+        class VariantTwo(dict):
+            discriminant_kind: str = pulumi.property("discriminantKind")
+
+        result = rpc.translate_output_properties(
+            None,
+            translate_output_property,
+            Optional[Union[VariantOne, VariantTwo]],
+        )
+        self.assertIsNone(result)
 
     def test_nested_types(self):
         def assertFoo(val, first_arg, second_arg):
