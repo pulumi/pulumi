@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ func testTemplates() []apitype.TemplateMetadata {
 			Publisher:   "org-a",
 			Source:      "private",
 			DisplayName: "Template Two",
-			Description: nil, // nil description
+			Description: nil,
 			Language:    "typescript",
 			Visibility:  apitype.VisibilityPrivate,
 			UpdatedAt:   time.Date(2025, 2, 20, 14, 30, 0, 0, time.UTC),
@@ -102,25 +102,15 @@ func TestTemplateLsCmd_Success(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
-	output := buf.String()
-	// Check table headers
-	require.Contains(t, output, "NAME")
-	require.Contains(t, output, "PUBLISHER")
-	require.Contains(t, output, "LANGUAGE")
-	// Check template names (short names in table)
-	require.Contains(t, output, "template-one")
-	require.Contains(t, output, "template-two")
-	require.Contains(t, output, "template-three")
-	// Check publishers
-	require.Contains(t, output, "org-a")
-	require.Contains(t, output, "org-b")
-	// Check languages
-	require.Contains(t, output, "python")
-	require.Contains(t, output, "typescript")
-	require.Contains(t, output, "go")
+	expected := `NAME            PUBLISHER  LANGUAGE
+template-one    org-a      python
+template-two    org-a      typescript
+template-three  org-b      go
+`
+	require.Equal(t, expected, buf.String())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -133,13 +123,13 @@ func TestTemplateLsCmd_WithNameFilter(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"--name", "template-one"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
-	output := buf.String()
-	require.Contains(t, output, "template-one")
-	require.NotContains(t, output, "template-two")
-	require.NotContains(t, output, "template-three")
+	expected := `NAME          PUBLISHER  LANGUAGE
+template-one  org-a      python
+`
+	require.Equal(t, expected, buf.String())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -152,9 +142,7 @@ func TestTemplateLsCmd_ValidatesNameFilterPassedToAPI(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 						capturedFilter = name
-						return func(yield func(apitype.TemplateMetadata, error) bool) {
-							// Empty iterator
-						}
+						return func(yield func(apitype.TemplateMetadata, error) bool) {}
 					},
 				},
 			}, nil
@@ -166,15 +154,16 @@ func TestTemplateLsCmd_ValidatesNameFilterPassedToAPI(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"--name", "specific-template"})
 
-	err := cmd.ExecuteContext(context.Background())
-	require.NoError(t, err)
+	err := cmd.ExecuteContext(t.Context())
+	require.Error(t, err)
+	require.Equal(t, "no templates found", err.Error())
 	require.NotNil(t, capturedFilter)
 	require.Equal(t, "specific-template", *capturedFilter)
 }
 
 //nolint:paralleltest // This test uses the global backend variable
 func TestTemplateLsCmd_CombinedFilters(t *testing.T) {
-	templates := testTemplates() // Contains org-a and org-b templates
+	templates := testTemplates()
 	testutil.MockBackendInstance(t, mockRegistryWithTemplates(templates))
 
 	cmd := newTemplateLsCmd()
@@ -182,13 +171,13 @@ func TestTemplateLsCmd_CombinedFilters(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"--publisher", "org-a", "--name", "template-one"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
-	output := buf.String()
-	require.Contains(t, output, "template-one")
-	require.NotContains(t, output, "template-two")
-	require.NotContains(t, output, "template-three")
+	expected := `NAME          PUBLISHER  LANGUAGE
+template-one  org-a      python
+`
+	require.Equal(t, expected, buf.String())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -201,15 +190,14 @@ func TestTemplateLsCmd_WithPublisherFilter(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"--publisher", "org-a"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
-	output := buf.String()
-	// Check that org-a templates are shown (short names in table)
-	require.Contains(t, output, "template-one")
-	require.Contains(t, output, "template-two")
-	// Check that org-b template is filtered out
-	require.NotContains(t, output, "template-three")
+	expected := `NAME          PUBLISHER  LANGUAGE
+template-one  org-a      python
+template-two  org-a      typescript
+`
+	require.Equal(t, expected, buf.String())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -221,28 +209,9 @@ func TestTemplateLsCmd_EmptyResult(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{})
 
-	err := cmd.ExecuteContext(context.Background())
-	require.NoError(t, err)
-
-	output := buf.String()
-	require.Contains(t, output, "No templates found")
-}
-
-//nolint:paralleltest // This test uses the global backend variable
-func TestTemplateLsCmd_EmptyResultWithPublisher(t *testing.T) {
-	testutil.MockBackendInstance(t, mockRegistryWithTemplates([]apitype.TemplateMetadata{}))
-
-	cmd := newTemplateLsCmd()
-	buf := new(bytes.Buffer)
-	cmd.SetOut(buf)
-	cmd.SetArgs([]string{"--publisher", "nonexistent-org"})
-
-	err := cmd.ExecuteContext(context.Background())
-	require.NoError(t, err)
-
-	output := buf.String()
-	require.Contains(t, output, "No templates found for publisher")
-	require.Contains(t, output, "nonexistent-org")
+	err := cmd.ExecuteContext(t.Context())
+	require.Error(t, err)
+	require.Equal(t, "no templates found", err.Error())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -255,7 +224,7 @@ func TestTemplateLsCmd_JSON(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"--json"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
 	var output []templateListJSON
@@ -264,7 +233,6 @@ func TestTemplateLsCmd_JSON(t *testing.T) {
 
 	require.Len(t, output, 3)
 
-	// Verify first template
 	require.Equal(t, "template-one", output[0].Name)
 	require.Equal(t, "org-a", output[0].Publisher)
 	require.Equal(t, "python", output[0].Language)
@@ -272,11 +240,9 @@ func TestTemplateLsCmd_JSON(t *testing.T) {
 	require.NotNil(t, output[0].Description)
 	require.Equal(t, "First template", *output[0].Description)
 
-	// Verify second template has nil description
 	require.Equal(t, "template-two", output[1].Name)
 	require.Nil(t, output[1].Description)
 
-	// Verify third template
 	require.Equal(t, "template-three", output[2].Name)
 	require.Equal(t, "org-b", output[2].Publisher)
 	require.Equal(t, "public", output[2].Visibility)
@@ -291,11 +257,9 @@ func TestTemplateLsCmd_JSONEmpty(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"--json"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
-
-	output := buf.String()
-	require.Equal(t, "[]\n", output)
+	require.Equal(t, "[]\n", buf.String())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -311,9 +275,9 @@ func TestTemplateLsCmd_RegistryNotSupported(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "backend does not support Private Registry operations")
+	require.Equal(t, "backend does not support Private Registry operations: registry not supported", err.Error())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -324,7 +288,6 @@ func TestTemplateLsCmd_IteratorError(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 						return func(yield func(apitype.TemplateMetadata, error) bool) {
-							// Return one template then an error
 							yield(apitype.TemplateMetadata{
 								Name:      "template-one",
 								Publisher: "org-a",
@@ -342,15 +305,13 @@ func TestTemplateLsCmd_IteratorError(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to list templates")
-	require.Contains(t, err.Error(), "iterator failed")
+	require.Equal(t, "failed to list templates: iterator failed", err.Error())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
 func TestTemplateLsCmd_NilFields(t *testing.T) {
-	// Test that templates with nil fields don't crash
 	templates := []apitype.TemplateMetadata{
 		{
 			Name:        "minimal-template",
@@ -360,7 +321,7 @@ func TestTemplateLsCmd_NilFields(t *testing.T) {
 			Description: nil,
 			RepoSlug:    nil,
 			Metadata:    nil,
-			UpdatedAt:   time.Now(),
+			UpdatedAt:   time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -371,7 +332,7 @@ func TestTemplateLsCmd_NilFields(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"--json"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
 	var output []templateListJSON

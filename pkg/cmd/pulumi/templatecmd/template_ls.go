@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -97,13 +98,7 @@ func newTemplateLsCmd() *cobra.Command {
 				if jsonOut {
 					return ui.FprintJSON(cmd.OutOrStdout(), []templateListJSON{})
 				}
-
-				if publisher != "" {
-					fmt.Fprintf(cmd.OutOrStdout(), "No templates found for publisher %q\n", publisher)
-				} else {
-					fmt.Fprintln(cmd.OutOrStdout(), "No templates found")
-				}
-				return nil
+				return errors.New("no templates found")
 			}
 
 			if jsonOut {
@@ -135,7 +130,7 @@ func formatTemplatesJSON(cmd *cobra.Command, templates []apitype.TemplateMetadat
 			Language:    tmpl.Language,
 			Visibility:  tmpl.Visibility.String(),
 			Description: tmpl.Description,
-			UpdatedAt:   tmpl.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:   tmpl.UpdatedAt.Format(time.RFC3339),
 		}
 	}
 

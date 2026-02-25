@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -46,7 +47,6 @@ type templateInfoJSON struct {
 
 func newTemplateInfoCmd() *cobra.Command {
 	var jsonOut bool
-	var publisher string
 
 	cmd := &cobra.Command{
 		Use:   "info <name>",
@@ -54,8 +54,8 @@ func newTemplateInfoCmd() *cobra.Command {
 		Long: "Show information about a template published to the Private Registry.\n" +
 			"\n" +
 			"The template can be specified by:\n" +
-			"  - Full reference from 'pulumi template ls': publisher/name\n" +
-			"  - Just the template name (may require --publisher for disambiguation)",
+			"  - Just the template name: my-template\n" +
+			"  - Publisher and name: org/my-template",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
@@ -80,37 +80,28 @@ func newTemplateInfoCmd() *cobra.Command {
 				return fmt.Errorf("backend does not support Private Registry operations: %w", err)
 			}
 
-			var matches []apitype.TemplateMetadata
+			// Collect all templates for matching
+			var allTemplates []apitype.TemplateMetadata
 			for tmpl, err := range registry.ListTemplates(ctx, nil) {
 				if err != nil {
 					return fmt.Errorf("failed to list templates: %w", err)
 				}
-
-				if publisher != "" && tmpl.Publisher != publisher {
-					continue
-				}
-
-				publisherSlashName := tmpl.Publisher + "/" + tmpl.Name
-				if tmpl.Name == templateArg ||
-					publisherSlashName == templateArg ||
-					strings.HasSuffix(tmpl.Name, "/"+templateArg) {
-					matches = append(matches, tmpl)
-				}
+				allTemplates = append(allTemplates, tmpl)
 			}
 
+			// Find matching templates using multiple strategies
+			matches := findTemplateMatches(allTemplates, templateArg)
+
 			if len(matches) == 0 {
-				if publisher != "" {
-					return fmt.Errorf("template %q not found for publisher %q", templateArg, publisher)
-				}
 				return fmt.Errorf("template %q not found", templateArg)
 			}
 
 			if len(matches) > 1 {
 				var names []string
 				for _, m := range matches {
-					names = append(names, fmt.Sprintf("  %s/%s", m.Publisher, m.Name))
+					names = append(names, fmt.Sprintf("  %s/%s", m.Publisher, shortName(m.Name)))
 				}
-				return fmt.Errorf("template %q is ambiguous, matches:\n%s\n\nUse --publisher to disambiguate",
+				return fmt.Errorf("template %q is ambiguous, matches:\n%s\n\nSpecify as publisher/name to disambiguate",
 					templateArg, strings.Join(names, "\n"))
 			}
 
@@ -132,10 +123,59 @@ func newTemplateInfoCmd() *cobra.Command {
 
 	cmd.Flags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
-	cmd.Flags().StringVarP(
-		&publisher, "publisher", "p", "", "Filter by publisher (for disambiguation)")
 
 	return cmd
+}
+
+func shortName(name string) string {
+	if idx := strings.LastIndex(name, "/"); idx >= 0 {
+		return name[idx+1:]
+	}
+	return name
+}
+
+func findTemplateMatches(templates []apitype.TemplateMetadata, arg string) []apitype.TemplateMetadata {
+	var matches []apitype.TemplateMetadata
+
+	// Strategy 1: Exact match on full template name
+	for _, tmpl := range templates {
+		if tmpl.Name == arg {
+			return []apitype.TemplateMetadata{tmpl}
+		}
+	}
+
+	// Strategy 2: Match by suffix (just the template name without path)
+	for _, tmpl := range templates {
+		if strings.HasSuffix(tmpl.Name, "/"+arg) || shortName(tmpl.Name) == arg {
+			matches = append(matches, tmpl)
+		}
+	}
+
+	if len(matches) == 1 {
+		return matches
+	}
+
+	// Strategy 3: If arg contains "/" and we have multiple matches (or no matches),
+	// try parsing as publisher/name format
+	if idx := strings.Index(arg, "/"); idx >= 0 {
+		publisher := arg[:idx]
+		name := arg[idx+1:]
+
+		var publisherMatches []apitype.TemplateMetadata
+		for _, tmpl := range templates {
+			if tmpl.Publisher == publisher {
+				if tmpl.Name == name || strings.HasSuffix(tmpl.Name, "/"+name) || shortName(tmpl.Name) == name {
+					publisherMatches = append(publisherMatches, tmpl)
+				}
+			}
+		}
+
+		if len(publisherMatches) > 0 {
+			return publisherMatches
+		}
+	}
+
+	return matches
 }
 
 func formatTemplateInfoJSON(cmd *cobra.Command, tmpl apitype.TemplateMetadata) error {
@@ -148,7 +188,7 @@ func formatTemplateInfoJSON(cmd *cobra.Command, tmpl apitype.TemplateMetadata) e
 		Visibility:  tmpl.Visibility.String(),
 		Description: tmpl.Description,
 		RepoSlug:    tmpl.RepoSlug,
-		UpdatedAt:   tmpl.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:   tmpl.UpdatedAt.Format(time.RFC3339),
 		Metadata:    tmpl.Metadata,
 	}
 
@@ -168,6 +208,6 @@ func formatTemplateInfoConsole(cmd *cobra.Command, tmpl apitype.TemplateMetadata
 	if tmpl.RepoSlug != nil && *tmpl.RepoSlug != "" {
 		fmt.Fprintf(cmd.OutOrStdout(), "Repository: %s\n", *tmpl.RepoSlug)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "Updated: %s\n", tmpl.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	fmt.Fprintf(cmd.OutOrStdout(), "Updated: %s\n", tmpl.UpdatedAt.Format(time.RFC3339))
 	return nil
 }

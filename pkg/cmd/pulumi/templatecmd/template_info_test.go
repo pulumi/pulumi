@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,17 +77,18 @@ func TestTemplateInfoCmd_Success(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"pulumi/my-org-templates/my-template"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
-	output := buf.String()
-	require.Contains(t, output, "Name: pulumi/my-org-templates/my-template")
-	require.Contains(t, output, "Publisher: my-org")
-	require.Contains(t, output, "Display Name: My Template")
-	require.Contains(t, output, "Language: python")
-	require.Contains(t, output, "Description: A sample template for testing")
-	require.Contains(t, output, "Repository: pulumi/my-org-templates")
-	require.Contains(t, output, "Updated: 2025-01-15T10:00:00Z")
+	expected := `Name: pulumi/my-org-templates/my-template
+Publisher: my-org
+Display Name: My Template
+Language: python
+Description: A sample template for testing
+Repository: pulumi/my-org-templates
+Updated: 2025-01-15T10:00:00Z
+`
+	require.Equal(t, expected, buf.String())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -98,14 +99,20 @@ func TestTemplateInfoCmd_MatchBySuffix(t *testing.T) {
 	cmd := newTemplateInfoCmd()
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
-	// Just pass the last part of the name
 	cmd.SetArgs([]string{"my-template"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
-	output := buf.String()
-	require.Contains(t, output, "Name: pulumi/my-org-templates/my-template")
+	expected := `Name: pulumi/my-org-templates/my-template
+Publisher: my-org
+Display Name: My Template
+Language: python
+Description: A sample template for testing
+Repository: pulumi/my-org-templates
+Updated: 2025-01-15T10:00:00Z
+`
+	require.Equal(t, expected, buf.String())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -116,15 +123,20 @@ func TestTemplateInfoCmd_MatchByPublisherAndName(t *testing.T) {
 	cmd := newTemplateInfoCmd()
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
-	// Use publisher/name format from ls output
-	cmd.SetArgs([]string{"my-org/pulumi/my-org-templates/my-template"})
+	cmd.SetArgs([]string{"my-org/my-template"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
-	output := buf.String()
-	require.Contains(t, output, "Name: pulumi/my-org-templates/my-template")
-	require.Contains(t, output, "Publisher: my-org")
+	expected := `Name: pulumi/my-org-templates/my-template
+Publisher: my-org
+Display Name: My Template
+Language: python
+Description: A sample template for testing
+Repository: pulumi/my-org-templates
+Updated: 2025-01-15T10:00:00Z
+`
+	require.Equal(t, expected, buf.String())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -136,7 +148,7 @@ func TestTemplateInfoCmd_AmbiguousMatch(t *testing.T) {
 			Source:     "github",
 			Language:   "python",
 			Visibility: apitype.VisibilityPrivate,
-			UpdatedAt:  time.Now(),
+			UpdatedAt:  time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			Name:       "pulumi/org-b/my-template",
@@ -144,7 +156,7 @@ func TestTemplateInfoCmd_AmbiguousMatch(t *testing.T) {
 			Source:     "github",
 			Language:   "typescript",
 			Visibility: apitype.VisibilityPrivate,
-			UpdatedAt:  time.Now(),
+			UpdatedAt:  time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 	}
 	testutil.MockBackendInstance(t, mockRegistryWithListTemplatesForInfo(templates))
@@ -154,16 +166,16 @@ func TestTemplateInfoCmd_AmbiguousMatch(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"my-template"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "ambiguous")
-	require.Contains(t, err.Error(), "org-a/pulumi/org-a/my-template")
-	require.Contains(t, err.Error(), "org-b/pulumi/org-b/my-template")
-	require.Contains(t, err.Error(), "--publisher")
+	require.Contains(t, err.Error(), "org-a/my-template")
+	require.Contains(t, err.Error(), "org-b/my-template")
+	require.Contains(t, err.Error(), "Specify as publisher/name to disambiguate")
 }
 
 //nolint:paralleltest // This test uses the global backend variable
-func TestTemplateInfoCmd_DisambiguateWithPublisher(t *testing.T) {
+func TestTemplateInfoCmd_DisambiguateWithPublisherPrefix(t *testing.T) {
 	templates := []apitype.TemplateMetadata{
 		{
 			Name:       "pulumi/org-a/my-template",
@@ -171,7 +183,7 @@ func TestTemplateInfoCmd_DisambiguateWithPublisher(t *testing.T) {
 			Source:     "github",
 			Language:   "python",
 			Visibility: apitype.VisibilityPrivate,
-			UpdatedAt:  time.Now(),
+			UpdatedAt:  time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			Name:       "pulumi/org-b/my-template",
@@ -179,7 +191,7 @@ func TestTemplateInfoCmd_DisambiguateWithPublisher(t *testing.T) {
 			Source:     "github",
 			Language:   "typescript",
 			Visibility: apitype.VisibilityPrivate,
-			UpdatedAt:  time.Now(),
+			UpdatedAt:  time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 	}
 	testutil.MockBackendInstance(t, mockRegistryWithListTemplatesForInfo(templates))
@@ -187,9 +199,9 @@ func TestTemplateInfoCmd_DisambiguateWithPublisher(t *testing.T) {
 	cmd := newTemplateInfoCmd()
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
-	cmd.SetArgs([]string{"my-template", "--publisher", "org-a"})
+	cmd.SetArgs([]string{"org-a/my-template"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
 	output := buf.String()
@@ -207,7 +219,7 @@ func TestTemplateInfoCmd_JSON(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"my-template", "--json"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
 	var output templateInfoJSON
@@ -238,9 +250,9 @@ func TestTemplateInfoCmd_NotFound(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"nonexistent-template"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "not found")
+	require.Equal(t, `template "nonexistent-template" not found`, err.Error())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -250,12 +262,11 @@ func TestTemplateInfoCmd_NotFoundWithPublisher(t *testing.T) {
 	cmd := newTemplateInfoCmd()
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
-	cmd.SetArgs([]string{"nonexistent-template", "--publisher", "my-org"})
+	cmd.SetArgs([]string{"my-org/nonexistent-template"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "not found")
-	require.Contains(t, err.Error(), "my-org")
+	require.Equal(t, `template "my-org/nonexistent-template" not found`, err.Error())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -271,9 +282,9 @@ func TestTemplateInfoCmd_RegistryNotSupported(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"my-template"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "backend does not support Private Registry operations")
+	require.Equal(t, "backend does not support Private Registry operations: registry not supported", err.Error())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -285,7 +296,7 @@ func TestTemplateInfoCmd_MissingArgument(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "accepts 1 arg(s)")
 }
@@ -311,15 +322,15 @@ func TestTemplateInfoCmd_NilOptionalFields(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"minimal-template"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
-	output := buf.String()
-	require.Contains(t, output, "Name: pulumi/org/minimal-template")
-	require.Contains(t, output, "Publisher: org")
-	require.NotContains(t, output, "Display Name:")
-	require.NotContains(t, output, "Description:")
-	require.NotContains(t, output, "Repository:")
+	expected := `Name: pulumi/org/minimal-template
+Publisher: org
+Language: python
+Updated: 2025-01-15T10:00:00Z
+`
+	require.Equal(t, expected, buf.String())
 }
 
 //nolint:paralleltest // This test uses the global backend variable
@@ -343,8 +354,7 @@ func TestTemplateInfoCmd_IteratorError(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetArgs([]string{"my-template"})
 
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to list templates")
-	require.Contains(t, err.Error(), "iterator failed")
+	require.Equal(t, "failed to list templates: iterator failed", err.Error())
 }
