@@ -1811,9 +1811,13 @@ func (pc *Client) GetTemplate(
 	if version != nil {
 		v = version.String()
 	}
-	url := fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions/%s", source, publisher, name, v)
+	reqURL := fmt.Sprintf("/api/registry/templates/%s/%s/%s/versions/%s",
+		url.PathEscape(source),
+		url.PathEscape(publisher),
+		url.PathEscape(name),
+		url.PathEscape(v))
 	var resp apitype.TemplateMetadata
-	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
+	err := pc.restCall(ctx, "GET", reqURL, nil, nil, &resp)
 	return resp, err
 }
 
