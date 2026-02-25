@@ -20,7 +20,6 @@ import asyncio
 import functools
 import inspect
 import os
-import types
 import typing
 from abc import ABC, abstractmethod
 from collections import abc
@@ -1494,7 +1493,7 @@ def resolve_outputs(
     # Get the resource's output types, so we can convert dicts from the engine into actual
     # instantiated output types or primitive types into enums as needed.
     resource_cls = type(res)
-    types = _types.resource_types(resource_cls)
+    resource_types = _types.resource_types(resource_cls)
     translate, translate_to_pass = (
         res.translate_output_property,
         res.translate_output_property,
@@ -1514,7 +1513,7 @@ def resolve_outputs(
         translated_value = translate_output_properties(
             value,
             translate_to_pass,
-            types.get(key),
+            resource_types.get(key),
             transform_using_type_metadata,
             path=_Path(translated_key, resource=f"{res._name}"),
         )
@@ -1544,7 +1543,7 @@ def resolve_outputs(
                 all_properties[translated_key] = translate_output_properties(
                     deserialize_property(value),
                     translate_to_pass,
-                    types.get(key),
+                    resource_types.get(key),
                     transform_using_type_metadata,
                     path=_Path(translated_key, resource=f"{res._name}"),
                     return_none_on_dict_type_mismatch=True,
