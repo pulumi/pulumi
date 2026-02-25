@@ -15,6 +15,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -566,5 +567,67 @@ func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
 	}
 
 	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+func TestUntargetedComponentResource(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					// This call to RegisterResourceOutputs triggers the panic when the component
+					// is filtered out by targeting. The panic occurs because findResourceInNewOrOld()
+					// cannot locate the resource in either the base snapshot or the new resources map.
+					outs := resource.PropertyMap{}
+					err = monitor.RegisterResourceOutputs(resp.URN, outs)
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{
+						URN:     resp.URN,
+						Outputs: outs,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	registerComponent := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "existingResource", true)
+		require.NoError(t, err)
+
+		if registerComponent {
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "newComponent", false, deploytest.ResourceOptions{
+				Remote: true,
+			})
+		}
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	existingResourceURN := p.NewURN("pkgA:m:typA", "existingResource", "")
+	opts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{existingResourceURN})
+	registerComponent = true
+
+	_, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
