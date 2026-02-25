@@ -41,6 +41,14 @@ func init() {
 						}),
 						"lookupOutput":        resource.NewProperty("hello"),
 						"lookupOutputDefault": resource.NewProperty("default"),
+						"entriesObjectOutput": resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("output"),
+								"value": resource.NewProperty("hello"),
+							}),
+						}),
+						"lookupObjectOutput":        resource.NewProperty("hello"),
+						"lookupObjectOutputDefault": resource.NewProperty("default"),
 					}, stack.Outputs)
 				},
 			},

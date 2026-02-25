@@ -13,3 +13,15 @@ output "lookupOutput" {
 output "lookupOutputDefault" {
     value = lookup(res.outputMap, "y", "default")
 }
+
+output "entriesObjectOutput" {
+    value = entries(res.outputObject)
+}
+
+output "lookupObjectOutput" {
+    value = lookup(res.outputObject, "output", "default")
+}
+
+output "lookupObjectOutputDefault" {
+    value = lookup(res.outputObject, "missing", "default")
+}
