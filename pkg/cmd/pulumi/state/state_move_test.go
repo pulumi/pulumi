@@ -224,7 +224,7 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 	depsURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "deps")
 	deletedWithURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "deletedWith")
 	propDepsURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "propDeps")
-	movedChildURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "movedChildURN")
+	movedChildURN := resource.NewURN("sourceStack", "test", "a:b:c", "a:b:c", "movedChildURN")
 	dependsOnMovedChildURN := resource.NewURN("sourceStack", "test", "a:b:c", "a:b:c", "dependsOnMovedChildURN")
 	sourceResources := []*resource.State{
 		{
@@ -285,7 +285,7 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 	expectedStdout := `Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:
 
   - urn:pulumi:sourceStack::test::a:b:c::resToMove
-  - urn:pulumi:sourceStack::test::a:b:c::movedChildURN
+  - urn:pulumi:sourceStack::test::a:b:c$a:b:c::movedChildURN
   - urn:pulumi:sourceStack::test::a:b:c$a:b:c::dependsOnMovedChildURN
 
 The following resources remaining in organization/test/sourceStack have dependencies on resources moved to organization/test/destStack:
@@ -333,7 +333,7 @@ Successfully moved resources from organization/test/sourceStack to organization/
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::a:b:c::resToMove"),
 		destSnapshot.Resources[2].URN)
 	assert.Empty(t, destSnapshot.Resources[2].Dependencies)
-	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::a:b:c::movedChildURN"),
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::a:b:c$a:b:c::movedChildURN"),
 		destSnapshot.Resources[3].URN)
 	assert.Empty(t, destSnapshot.Resources[3].Dependencies)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::a:b:c$a:b:c::dependsOnMovedChildURN"),
