@@ -7,7 +7,7 @@ set -euo pipefail
 mkdir -p ../../junit
 JUNIT_DIR=$(realpath ../../junit)
 
-coverage run --append -m pytest -n auto --junitxml "$JUNIT_DIR/python-test-auto.xml" lib/test/automation
+uv run -m pytest --cov pulumi --cov-append -n auto --junitxml "$JUNIT_DIR/python-test-auto.xml" lib/test/automation
 
 if [[ "$PULUMI_TEST_COVERAGE_PATH" ]]; then
     if [ -e .coverage ]; then

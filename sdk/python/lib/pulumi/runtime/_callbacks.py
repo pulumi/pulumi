@@ -29,7 +29,7 @@ from typing import (
 import grpc
 from google.protobuf.message import Message
 from grpc import aio
-from grpc.experimental.aio import init_grpc_aio
+from packaging import version
 
 from .. import log
 from ..invoke import InvokeOptions, InvokeTransform
@@ -57,11 +57,6 @@ if TYPE_CHECKING:
     from ..resource_hooks import ErrorHook, ResourceHook
 
 
-# Workaround for https://github.com/grpc/grpc/issues/38679,
-# https://github.com/grpc/grpc/issues/22365#issuecomment-2254278769
-# This will be fixed in grpcio 1.75.1 with https://github.com/grpc/grpc/pull/40649
-init_grpc_aio()
-
 _CallbackFunction = Callable[[bytes], Awaitable[Message]]
 
 
@@ -87,6 +82,13 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         self._target = f"127.0.0.1:{port}"
 
     async def serve(self):
+        # Workaround for https://github.com/grpc/grpc/issues/38679,
+        # https://github.com/grpc/grpc/issues/22365#issuecomment-2254278769
+        # This will be fixed in grpcio 1.75.1 with https://github.com/grpc/grpc/pull/40649
+        if version.parse(grpc.__version__) < version.parse("1.75.1"):
+            from grpc.experimental.aio import init_grpc_aio
+
+            init_grpc_aio()
         await self._server.start()
 
     @classmethod
