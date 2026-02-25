@@ -105,6 +105,7 @@ var expectedFailures = map[string]string{
 	"l1-builtin-can":    "Temporarily disabled until pr #18916 is submitted",
 	"l1-builtin-list":   "singleOrNone throws for empty list instead of returning null",
 	"l1-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
+	"l2-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
 }
 
 type languageTestConfig struct {
