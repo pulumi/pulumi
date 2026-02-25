@@ -80,7 +80,6 @@ func newTemplateInfoCmd() *cobra.Command {
 				return fmt.Errorf("backend does not support Private Registry operations: %w", err)
 			}
 
-			// Collect all templates for matching
 			var allTemplates []apitype.TemplateMetadata
 			for tmpl, err := range registry.ListTemplates(ctx, nil) {
 				if err != nil {
@@ -89,7 +88,6 @@ func newTemplateInfoCmd() *cobra.Command {
 				allTemplates = append(allTemplates, tmpl)
 			}
 
-			// Find matching templates using multiple strategies
 			matches := findTemplateMatches(allTemplates, templateArg)
 
 			if len(matches) == 0 {
@@ -137,14 +135,12 @@ func shortName(name string) string {
 func findTemplateMatches(templates []apitype.TemplateMetadata, arg string) []apitype.TemplateMetadata {
 	var matches []apitype.TemplateMetadata
 
-	// Strategy 1: Exact match on full template name
 	for _, tmpl := range templates {
 		if tmpl.Name == arg {
 			return []apitype.TemplateMetadata{tmpl}
 		}
 	}
 
-	// Strategy 2: Match by suffix (just the template name without path)
 	for _, tmpl := range templates {
 		if strings.HasSuffix(tmpl.Name, "/"+arg) || shortName(tmpl.Name) == arg {
 			matches = append(matches, tmpl)
@@ -155,8 +151,6 @@ func findTemplateMatches(templates []apitype.TemplateMetadata, arg string) []api
 		return matches
 	}
 
-	// Strategy 3: If arg contains "/" and we have multiple matches (or no matches),
-	// try parsing as publisher/name format
 	if idx := strings.Index(arg, "/"); idx >= 0 {
 		publisher := arg[:idx]
 		name := arg[idx+1:]
