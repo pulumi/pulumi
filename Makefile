@@ -181,6 +181,7 @@ test_lifecycle_fuzz:
 	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzz$$' \
 		-tags all \
+		-timeout 1h \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 test_lifecycle_fuzz_from_state_file: GO_TEST_RACE = false
@@ -188,6 +189,7 @@ test_lifecycle_fuzz_from_state_file:
 	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzzFromStateFile$$' \
 		-tags all \
+		-timeout 1h \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 lang=$(subst test_codegen_,,$(word 1,$(subst !, ,$@)))
