@@ -55,6 +55,21 @@ func NewTemplateMatcher(templateName string) (func(TemplateMatchable) bool, erro
 		return func(TemplateMatchable) bool { return true }, nil
 	}
 
+	urlInfo, err := parseTemplateReference(templateName)
+	if err != nil {
+		return nil, err
+	}
+
+	return matcherFromURLInfo(urlInfo, templateName), nil
+}
+
+// parseTemplateReference parses a template name or URL into registry URL info.
+// Returns nil URLInfo for plain names that couldn't be parsed as registry URLs.
+func parseTemplateReference(templateName string) (*registry.URLInfo, error) {
+	if templateName == "" {
+		return nil, nil
+	}
+
 	var urlInfo *registry.URLInfo
 	var err error
 
@@ -90,13 +105,15 @@ func NewTemplateMatcher(templateName string) (func(TemplateMatchable) bool, erro
 		}
 	}
 
-	// Validation: versions other than "latest" are not yet supported because the
-	// list endpoint used by `pulumi new` only returns the latest version.
-	if urlInfo != nil && urlInfo.Version() != nil {
-		return nil, &registry.UnsupportedVersionError{Version: urlInfo.Version().String()}
+	// Validate that version-pinned references include a publisher, since the
+	// GetTemplate API requires source and publisher to resolve a specific version.
+	if urlInfo != nil && urlInfo.Version() != nil && urlInfo.Publisher() == "" {
+		return nil, errors.New(
+			"version pinning requires at least publisher/name@version format " +
+				"(e.g., 'myorg/my-template@1.0.0')")
 	}
 
-	return matcherFromURLInfo(urlInfo, templateName), nil
+	return urlInfo, nil
 }
 
 func matcherFromURLInfo(urlInfo *registry.URLInfo, templateName string) func(TemplateMatchable) bool {
@@ -140,6 +157,32 @@ func (s *Source) getCloudTemplates(
 func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateName string) {
 	r := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
 
+	// Parse the template reference to check for version pinning.
+	urlInfo, err := parseTemplateReference(templateName)
+	if err != nil {
+		s.addError(err)
+		return
+	}
+
+	// If a specific version is requested, fetch that exact version using GetTemplate
+	// instead of listing all templates.
+	if urlInfo != nil && urlInfo.Version() != nil {
+		source := urlInfo.Source()
+		if source == "" {
+			source = "private"
+		}
+
+		tmpl, err := r.GetTemplate(ctx, source, urlInfo.Publisher(), urlInfo.Name(), urlInfo.Version())
+		if err != nil {
+			s.addError(fmt.Errorf("could not get template %s/%s@%s: %w",
+				urlInfo.Publisher(), urlInfo.Name(), urlInfo.Version(), err))
+			return
+		}
+		s.addTemplate(registryTemplate{tmpl, r, s})
+		return
+	}
+
+	// No version specified: list all templates and filter.
 	matches, err := NewTemplateMatcher(templateName)
 	if err != nil {
 		s.addError(err)

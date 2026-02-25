@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
@@ -765,6 +766,107 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 	assert.Equal(t, "target", templates[1].Name())
 	assert.Equal(t, "target [pulumi-org]", templates[1].DisplayName())
 	assert.Equal(t, "This is from the registry", templates[1].Description())
+}
+
+//nolint:paralleltest // replaces global backend instance
+func TestVersionPinning(t *testing.T) {
+	ctx := testContext(t)
+
+	mockRegistry := &backend.MockCloudRegistry{
+		Mock: registry.Mock{
+			GetTemplateF: func(
+				ctx context.Context, source, publisher, name string, version *semver.Version,
+			) (apitype.TemplateMetadata, error) {
+				return apitype.TemplateMetadata{
+					Name:        name,
+					Source:      source,
+					Publisher:   publisher,
+					Description: ref("Pinned template v" + version.String()),
+				}, nil
+			},
+			// ListTemplates should not be called for version-pinned requests.
+			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+				t.Fatal("ListTemplates should not be called for version-pinned requests")
+				return nil
+			},
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+
+	testCases := []struct {
+		name                string
+		templateURL         string
+		shouldMatch         bool
+		expectedName        string
+		expectedDisplayName string
+		description         string
+		expectSpecificError string
+	}{
+		{
+			name:                "partial URL with semver version",
+			templateURL:         "myorg/my-template@1.0.0",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [myorg]",
+			description:         "Pinned template v1.0.0",
+		},
+		{
+			name:                "full source/publisher/name with version",
+			templateURL:         "private/myorg/my-template@2.1.0",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [myorg]",
+			description:         "Pinned template v2.1.0",
+		},
+		{
+			name:                "registry URL with semver version",
+			templateURL:         "registry://templates/private/myorg/my-template@1.0.0",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [myorg]",
+			description:         "Pinned template v1.0.0",
+		},
+		{
+			name:                "name-only with version requires publisher",
+			templateURL:         "my-template@1.0.0",
+			shouldMatch:         false,
+			expectSpecificError: "version pinning requires at least publisher/name@version",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			source := newImpl(ctx, tc.templateURL, ScopeAll, workspace.TemplateKindPulumiProject,
+				templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+				env.NewEnv(env.MapStore{
+					"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
+					"PULUMI_EXPERIMENTAL":             "true",
+				}))
+
+			templates, err := source.Templates()
+			if tc.shouldMatch {
+				require.NoError(t, err)
+				require.Len(t, templates, 1)
+				assert.Equal(t, tc.expectedName, templates[0].Name())
+				assert.Equal(t, tc.expectedDisplayName, templates[0].DisplayName())
+				if tc.description != "" {
+					assert.Equal(t, tc.description, templates[0].Description())
+				}
+			} else {
+				require.Error(t, err)
+				if tc.expectSpecificError != "" {
+					assert.Contains(t, err.Error(), tc.expectSpecificError)
+				} else {
+					var templateNotFound workspace.TemplateNotFoundError
+					assert.ErrorAs(t, err, &templateNotFound)
+				}
+			}
+		})
+	}
 }
 
 func templateRepository(repo workspace.TemplateRepository, err error) getWorkspaceTemplateFunc {
