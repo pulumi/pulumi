@@ -166,3 +166,26 @@ func configureNeoOptions(neoEnabledFlag bool, cmd *cobra.Command, displayOpts *d
 	displayOpts.NeoSummaryModel = env.NeoSummaryModel.Value()
 	displayOpts.NeoSummaryMaxLen = env.NeoSummaryMaxLen.Value()
 }
+
+// configureNeoTaskOption configures the display option for starting a Neo task on error.
+func configureNeoTaskOption(neoTaskOnFailureFlag bool, cmd *cobra.Command, displayOpts *display.Options,
+	isDIYBackend bool,
+) {
+	// If the flag is explicitly set, use that value. Otherwise fall back to environment variable.
+	var startNeoTask bool
+	if cmd.Flags().Changed("neo-task-on-failure") {
+		startNeoTask = neoTaskOnFailureFlag
+	} else {
+		startNeoTask = env.NeoTaskOnFailure.Value()
+	}
+	logging.V(7).Infof("neo-task-on-failure flag=%v, PULUMI_NEO_TASK_ON_FAILURE=%v, using value=%v",
+		neoTaskOnFailureFlag, env.NeoTaskOnFailure.Value(), startNeoTask)
+
+	// Do not enable Neo task creation if we are using a DIY backend
+	if startNeoTask && isDIYBackend {
+		logging.Warningf("Neo task creation is not available with DIY backends.")
+		return
+	}
+
+	displayOpts.StartNeoTaskOnError = startNeoTask
+}

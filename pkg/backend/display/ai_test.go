@@ -129,3 +129,79 @@ Resource has been created`
 	formattedSummary := renderBoldMarkdown(summary, Options{Color: colors.Never})
 	assert.Equal(t, expectedSummary, formattedSummary)
 }
+
+// mockNeoTaskResult implements NeoTaskResult for testing
+type mockNeoTaskResult struct {
+	taskID string
+}
+
+func (m *mockNeoTaskResult) GetTaskID() string {
+	return m.taskID
+}
+
+func TestRenderNeoTaskCreated(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stdout: buf,
+		Color:  colors.Never,
+	}
+
+	taskResult := &mockNeoTaskResult{taskID: "task_abc123"}
+	RenderNeoTaskCreated(taskResult, nil, "https://app.pulumi.com", "test-org", opts)
+
+	expected := fmt.Sprintf(`
+Neo Task Created%s
+  A Neo task has been started to help debug this error.
+  https://app.pulumi.com/test-org/neo/tasks/task_abc123
+
+`, neoDelimiterEmoji())
+	assert.Equal(t, expected, buf.String())
+}
+
+func TestRenderNeoTaskCreatedError(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stdout: buf,
+		Color:  colors.Never,
+	}
+
+	RenderNeoTaskCreated(nil, errors.New("failed to create task"), "https://app.pulumi.com", "test-org", opts)
+
+	expected := fmt.Sprintf(`
+Neo Task%s
+  error creating Neo task: failed to create task
+
+`, neoDelimiterEmoji())
+	assert.Equal(t, expected, buf.String())
+}
+
+func TestRenderNeoTaskCreatedNilResult(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stdout: buf,
+		Color:  colors.Never,
+	}
+
+	RenderNeoTaskCreated(nil, nil, "https://app.pulumi.com", "test-org", opts)
+	assert.Equal(t, "", buf.String())
+}
+
+func TestRenderNeoTaskCreatedEmptyTaskID(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stdout: buf,
+		Color:  colors.Never,
+	}
+
+	taskResult := &mockNeoTaskResult{taskID: ""}
+	RenderNeoTaskCreated(taskResult, nil, "https://app.pulumi.com", "test-org", opts)
+	assert.Equal(t, "", buf.String())
+}
