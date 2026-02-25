@@ -642,7 +642,7 @@ func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]
 	rewrittenPropDeps := map[resource.PropertyKey][]urn.URN{}
 
 	for _, dep := range allDeps {
-		rewrittenURN := dep.URN
+		var rewrittenURN resource.URN
 		if newURN, ok := rewriteMap[string(dep.URN)]; ok {
 			rewrittenURN = urn.URN(newURN)
 		} else {
