@@ -1203,7 +1203,8 @@ func (c *testPulumiClient) EnvironmentExists(
 	projectName string,
 	envName string,
 ) (bool, error) {
-	return false, nil
+	_, ok := c.environments[path.Join(orgName, projectName, envName)]
+	return ok, nil
 }
 
 func (c *testPulumiClient) CreateEnvironmentOpenRequest(
