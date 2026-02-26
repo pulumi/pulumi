@@ -160,26 +160,25 @@ func writeOptionsStruct(
 	}
 	sort.Strings(names)
 
-	fields := make([]jen.Code, 0, len(names)*2)
+	file.Type().Id(typeName).StructFunc(func(g *jen.Group) {
+		for _, name := range names {
+			flag := flags[name]
 
-	for _, name := range names {
-		flag := flags[name]
+			goType, err := convertType(flag.Type, flag.Repeatable)
+			if err != nil {
+				// propagate the error via panic; generateOptionsTypes will surface it.
+				panic(err)
+			}
 
-		goType, err := convertType(flag.Type, flag.Repeatable)
-		if err != nil {
-			return err
+			fieldName := strcase.ToCamel(flag.Name)
+
+			if flag.Description != "" {
+				g.Comment(flag.Description)
+			}
+
+			g.Id(fieldName).Add(goType)
 		}
-
-		fieldName := strcase.ToCamel(flag.Name)
-
-		if flag.Description != "" {
-			fields = append(fields, jen.Comment(flag.Description).Line())
-		}
-
-		fields = append(fields, jen.Id(fieldName).Add(goType))
-	}
-
-	file.Type().Id(typeName).Struct(fields...)
+	})
 
 	return nil
 }
