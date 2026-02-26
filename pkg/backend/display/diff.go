@@ -424,7 +424,7 @@ func renderDiff(
 	opts Options,
 ) {
 	indent := getIndent(metadata, seen)
-	summary := getResourcePropertiesSummary(metadata, indent)
+	summary := getResourcePropertiesSummary(metadata, indent, opts.ShowURNs)
 
 	var details string
 	// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
@@ -527,7 +527,7 @@ func renderDiffResourceOutputsEvent(
 		)
 		if refresh && (payload.Metadata.Op != deploy.OpRefresh || text != "" || isRootStack(payload.Metadata)) {
 			// We would not have rendered the summary yet in this case, so do it now.
-			summary := getResourcePropertiesSummary(payload.Metadata, indent)
+			summary := getResourcePropertiesSummary(payload.Metadata, indent, opts.ShowURNs)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
 

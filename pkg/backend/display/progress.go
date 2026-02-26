@@ -740,8 +740,13 @@ func (display *ProgressDisplay) printResourceDiffs() {
 		}
 
 		columns := row.ColorizedColumns()
-		display.println(
-			"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+		var resourceHeader string
+		if display.opts.ShowURNs {
+			resourceHeader = "  " + colors.BrightBlue + columns[typeColumn] + ":" + colors.Reset
+		} else {
+			resourceHeader = "  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset
+		}
+		display.println(resourceHeader)
 
 		lines := splitIntoDisplayableLines(diff)
 		for _, line := range lines {
@@ -802,8 +807,13 @@ func (display *ProgressDisplay) printDiagnostics() {
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
 					columns := row.ColorizedColumns()
-					display.println(
-						"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+					var resourceHeader string
+					if display.opts.ShowURNs {
+						resourceHeader = "  " + colors.BrightBlue + columns[typeColumn] + ":" + colors.Reset
+					} else {
+						resourceHeader = "  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset
+					}
+					display.println(resourceHeader)
 				}
 
 				for _, line := range lines {
