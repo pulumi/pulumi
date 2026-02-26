@@ -702,6 +702,7 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
 		KeepUnknowns:  true,
 		KeepResources: true,
+		KeepSecrets:   true,
 	})
 	if err != nil {
 		return nil, nil, err

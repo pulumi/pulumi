@@ -51,7 +51,7 @@ func TestPreviewInvoke(t *testing.T) {
 					}, nil
 				},
 			}, nil
-		}, deploytest.WithGrpc),
+		}, deploytest.WithGrpc, deploytest.WithHandshake),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
