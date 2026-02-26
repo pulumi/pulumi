@@ -31,6 +31,13 @@ export const ResResource: typeof import("./resResource").ResResource = null as a
 utilities.lazyLoad(exports, ["ResResource"], () => require("./resResource"));
 
 
+// Export sub-modules:
+import * as mod from "./mod";
+
+export {
+    mod,
+};
+
 const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {

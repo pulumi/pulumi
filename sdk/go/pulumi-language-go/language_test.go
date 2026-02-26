@@ -43,7 +43,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
 	binary := t.TempDir() + "/pulumi-test-language"
-	cmd := exec.Command("go", "build", "-C", "../../../cmd/pulumi-test-language", "-o", binary)
+	cmd := exec.Command("go", "build", "-C", "../../../pkg", "-o", binary, "./testing/pulumi-test-language")
 	output, err := cmd.CombinedOutput()
 	t.Logf("build output: %s", output)
 	require.NoError(t, err)
@@ -104,16 +104,22 @@ var expectedFailures = map[string]string{
 	"l2-proxy-index":         "fails to compile",
 	"l1-builtin-try":         "pulumi#18506 Support try in Go program generation",
 	"l1-builtin-can":         "pulumi#18570 Support can in Go program generation",
+	"l1-builtin-base64":      "cannot use bytes (variable of type string) as pulumi.Input value in argument to ctx.Export", //nolint:lll
+	"l1-builtin-list":        "list(string) config decoded as string; element/split emit TODO stubs",
+	"l1-builtin-object":      "entries/lookup emit TODO stubs",
+	"l2-builtin-object":      "entries/lookup emit TODO stubs",
 
 	// pulumi/pulumi#18345
-	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                                 //nolint:lll
-	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",       //nolint:lll
-	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",       //nolint:lll
+	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                           //nolint:lll
+	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
+	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
+	"l2-discriminated-union":              "pulumi#21829: does not compile",
 	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
 	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
 	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                                     //nolint:lll
 	"l3-range-resource-output-traversal":  "pulumi#21678: cannot range over an ArrayOutput",
+	"l2-resource-order":                   "cannot convert localVar (variable of struct type pulumi.BoolOutput) to type pulumi.Bool", //nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
@@ -146,10 +152,10 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 		},
 	},
 
-	// TODO: Import paths are incorrect due to schema object types not having canonical tokens.
-	"l2-module-format": {
+	// TODO: Programgen tries to access map attributes as if they were properties, .X, instead of ["x"]
+	"l2-resource-elide-unknowns": {
 		Paths: []string{
-			filepath.Join("testdata", "overrides", "l2-module-format"),
+			filepath.Join("testdata", "overrides", "l2-resource-elide-unknowns"),
 		},
 	},
 }

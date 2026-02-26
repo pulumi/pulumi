@@ -11,6 +11,14 @@ from .res_array import *
 from .res_list import *
 from .res_map import *
 from .res_resource import *
+
+# Make subpackages available:
+if typing.TYPE_CHECKING:
+    import pulumi_names.mod as __mod
+    mod = __mod
+else:
+    mod = _utilities.lazy_import('pulumi_names.mod')
+
 _utilities.register(
     resource_modules="""
 [
@@ -23,6 +31,22 @@ _utilities.register(
    "names:index:ResList": "ResList",
    "names:index:ResMap": "ResMap",
    "names:index:ResResource": "ResResource"
+  }
+ },
+ {
+  "pkg": "names",
+  "mod": "mod",
+  "fqn": "pulumi_names.mod",
+  "classes": {
+   "names:mod:Res": "Res"
+  }
+ },
+ {
+  "pkg": "names",
+  "mod": "mod/nested",
+  "fqn": "pulumi_names.mod.nested",
+  "classes": {
+   "names:mod/nested:Res": "Res"
   }
  }
 ]

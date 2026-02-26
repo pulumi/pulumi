@@ -15,6 +15,7 @@
 package cmdutil
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -29,8 +30,20 @@ import (
 	"github.com/pulumi/appdash"
 	appdash_opentracing "github.com/pulumi/appdash/opentracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // TracingEndpoint is the Zipkin-compatible tracing endpoint where tracing data will be sent.
@@ -46,6 +59,14 @@ var TracingToFile bool
 var TracingRootSpan opentracing.Span
 
 var traceCloser io.Closer
+
+// otelEndpoint is the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
+var otelEndpoint string
+
+var (
+	otelReceiver       *otelreceiver.Receiver
+	otelTracerProvider *sdktrace.TracerProvider
+)
 
 type localStore struct {
 	path  string
@@ -171,6 +192,130 @@ func CloseTracing() {
 	}
 
 	contract.IgnoreClose(traceCloser)
+}
+
+// IsOTelEnabled returns true if OTEL is enabled via environment variable or endpoint is set.
+func IsOTelEnabled() bool {
+	return otelEndpoint != ""
+}
+
+// OTelEndpoint returns the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
+func OTelEndpoint() string {
+	return otelEndpoint
+}
+
+// InitOTelReceiver starts the OTLP receiver with the given endpoint.
+func InitOtelReceiver(endpoint string) error {
+	if endpoint == "" {
+		return nil
+	}
+
+	exporter, err := otelreceiver.NewExporter(endpoint)
+	if err != nil {
+		return fmt.Errorf("failed to create OTLP exporter: %w", err)
+	}
+
+	otelReceiver, err = otelreceiver.Start(exporter)
+	if err != nil {
+		_ = exporter.Shutdown(context.Background())
+		return fmt.Errorf("failed to start OTLP receiver: %w", err)
+	}
+
+	otelEndpoint = otelReceiver.Endpoint()
+	logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", otelEndpoint, endpoint)
+
+	// Set up Otel TracerProvider for CLI's own spans
+	// The CLI sends its spans to the local receiver, which forwards to the configured exporter
+	if err := InitOtelTracing("pulumi-cli", otelEndpoint); err != nil {
+		logging.V(3).Infof("failed to initialize OTel tracer provider: %v", err)
+	}
+
+	return nil
+}
+
+// InitOTelTracing initializes OTel tracing for a service connecting to the given OTLP endpoint.
+func InitOtelTracing(serviceName, endpoint string) error {
+	if endpoint == "" {
+		return nil
+	}
+	ctx := context.Background()
+
+	conn, err := grpc.NewClient(endpoint,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC connection: %w", err)
+	}
+
+	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
+	if err != nil {
+		return fmt.Errorf("failed to create trace exporter: %w", err)
+	}
+
+	res := resource.NewWithAttributes(
+		"",
+		semconv.ServiceName(serviceName),
+	)
+
+	otelTracerProvider = sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(traceExporter),
+		sdktrace.WithResource(res),
+	)
+
+	otel.SetTracerProvider(otelTracerProvider)
+
+	// Set up W3C Trace Context propagator for context propagation across process boundaries
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	return nil
+}
+
+func CloseOtelTracing() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if otelTracerProvider != nil {
+		if err := otelTracerProvider.Shutdown(ctx); err != nil {
+			logging.V(3).Infof("error closing OTel tracer provider: %v", err)
+		}
+		otelTracerProvider = nil
+	}
+
+	if otelReceiver != nil {
+		if err := otelReceiver.Shutdown(ctx); err != nil {
+			logging.V(3).Infof("error closing OTLP receiver: %v", err)
+		}
+		otelReceiver = nil
+	}
+
+	otelEndpoint = ""
+}
+
+// StartSpan starts a new OTel span with a stack trace attribute.
+// This is a convenience wrapper around tracer.Start that automatically
+// captures the call stack.
+func StartSpan(
+	ctx context.Context,
+	tracer trace.Tracer,
+	name string,
+	opts ...trace.SpanStartOption,
+) (context.Context, trace.Span) {
+	// Capture stack trace, skipping this function and the runtime
+	const maxDepth = 32
+	var pcs [maxDepth]uintptr
+	n := runtime.Callers(2, pcs[:])
+	frames := runtime.CallersFrames(pcs[:n])
+
+	var stackBuilder strings.Builder
+	more := true
+	for more {
+		var frame runtime.Frame
+		frame, more = frames.Next()
+		fmt.Fprintf(&stackBuilder, "%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line)
+	}
+
+	opts = append(opts, trace.WithAttributes(attribute.String("code.stacktrace", stackBuilder.String())))
+	return tracer.Start(ctx, name, opts...)
 }
 
 // Starts an AppDash server listening on any available TCP port

@@ -1,0 +1,404 @@
+// Copyright 2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package providers
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/blang/semver"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+)
+
+// A provider where the inputs are a subset of outputs for testing unknown values in programs.
+type OutputProvider struct {
+	plugin.UnimplementedProvider
+
+	elideUnknowns bool
+}
+
+var _ plugin.Provider = (*OutputProvider)(nil)
+
+func (p *OutputProvider) Close() error {
+	return nil
+}
+
+func (p *OutputProvider) Configure(
+	_ context.Context, req plugin.ConfigureRequest,
+) (plugin.ConfigureResponse, error) {
+	elide, has := req.Inputs["elideUnknowns"]
+	if has {
+		if elide.IsBool() {
+			p.elideUnknowns = elide.BoolValue()
+		} else if elide.IsString() {
+			parsed, err := strconv.ParseBool(elide.StringValue())
+			if err != nil {
+				return plugin.ConfigureResponse{}, fmt.Errorf("invalid value for elideUnknowns: %v", elide.StringValue())
+			}
+			p.elideUnknowns = parsed
+		} else {
+			return plugin.ConfigureResponse{}, fmt.Errorf("invalid type for elideUnknowns: %v", elide.TypeString())
+		}
+	}
+
+	return plugin.ConfigureResponse{}, nil
+}
+
+func (p *OutputProvider) Pkg() tokens.Package {
+	return "output"
+}
+
+func (p *OutputProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
+	ver := semver.MustParse("23.0.0")
+	return plugin.PluginInfo{
+		Version: &ver,
+	}, nil
+}
+
+func (p *OutputProvider) GetSchema(
+	context.Context, plugin.GetSchemaRequest,
+) (plugin.GetSchemaResponse, error) {
+	pkg := schema.PackageSpec{
+		Name:    "output",
+		Version: "23.0.0",
+		Provider: schema.ResourceSpec{
+			InputProperties: map[string]schema.PropertySpec{
+				"elideUnknowns": {
+					TypeSpec: schema.TypeSpec{
+						Type: "boolean",
+					},
+				},
+			},
+		},
+		Resources: map[string]schema.ResourceSpec{
+			"output:index:Resource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"value": {
+							TypeSpec: schema.TypeSpec{
+								Type: "number",
+							},
+						},
+						"output": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"value", "output"},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"value": {
+						TypeSpec: schema.TypeSpec{
+							Type: "number",
+						},
+					},
+				},
+				RequiredInputs: []string{"value"},
+			},
+			"output:index:ComplexResource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"value": {
+							TypeSpec: schema.TypeSpec{
+								Type: "number",
+							},
+						},
+						"outputArray": {
+							TypeSpec: schema.TypeSpec{
+								Type: "array",
+								Items: &schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						"outputMap": {
+							TypeSpec: schema.TypeSpec{
+								Type: "object",
+								AdditionalProperties: &schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						"outputObject": {
+							TypeSpec: schema.TypeSpec{
+								Type: "ref",
+								Ref:  "#/types/output:index:Data",
+							},
+						},
+					},
+					Required: []string{"value", "outputArray", "outputMap", "outputObject"},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"value": {
+						TypeSpec: schema.TypeSpec{
+							Type: "number",
+						},
+					},
+				},
+				RequiredInputs: []string{"value"},
+			},
+		},
+		Types: map[string]schema.ComplexTypeSpec{
+			"output:index:Data": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"output": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"output"},
+				},
+			},
+		},
+	}
+
+	jsonBytes, err := json.Marshal(pkg)
+	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
+}
+
+func (p *OutputProvider) CheckConfig(
+	_ context.Context, req plugin.CheckConfigRequest,
+) (plugin.CheckConfigResponse, error) {
+	// Expect just the version
+	version, ok := req.News["version"]
+	if !ok {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("version", "missing version"),
+		}, nil
+	}
+	if !version.IsString() {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("version", "version is not a string"),
+		}, nil
+	}
+	if version.StringValue() != "23.0.0" {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("version", "version is not 23.0.0"),
+		}, nil
+	}
+
+	elide, hasElide := req.News["elideUnknowns"]
+	if hasElide {
+		if elide.IsString() {
+			_, err := strconv.ParseBool(elide.StringValue())
+			if err != nil {
+				return plugin.CheckConfigResponse{
+					Failures: makeCheckFailure("elideUnknowns",
+						fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.StringValue())),
+				}, nil
+			}
+		} else if !elide.IsBool() {
+			return plugin.CheckConfigResponse{
+				Failures: makeCheckFailure("elideUnknowns",
+					fmt.Sprintf("elideUnknowns is not a boolean: %v", elide.TypeString())),
+			}, nil
+		}
+	}
+
+	if (!hasElide && len(req.News) != 1) || (hasElide && len(req.News) != 2) {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+		}, nil
+	}
+
+	return plugin.CheckConfigResponse{Properties: req.News}, nil
+}
+
+func (p *OutputProvider) Check(
+	_ context.Context, req plugin.CheckRequest,
+) (plugin.CheckResponse, error) {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
+		}, nil
+	}
+
+	// Expect just the number value
+	value, ok := req.News["value"]
+	if !ok {
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("value", "missing value"),
+		}, nil
+	}
+	if !value.IsNumber() && !value.IsComputed() {
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("value", "value is not a number"),
+		}, nil
+	}
+	if len(req.News) != 1 {
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+		}, nil
+	}
+
+	return plugin.CheckResponse{Properties: req.News}, nil
+}
+
+func (p *OutputProvider) Create(
+	_ context.Context, req plugin.CreateRequest,
+) (plugin.CreateResponse, error) {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
+		return plugin.CreateResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	id := "id"
+	if req.Preview {
+		id = ""
+	}
+
+	properties := p.makeOutputs(req.URN.Type(), req.Properties, req.Preview)
+
+	return plugin.CreateResponse{
+		ID:         resource.ID(id),
+		Properties: properties,
+		Status:     resource.StatusOK,
+	}, nil
+}
+
+func (p *OutputProvider) Update(
+	_ context.Context, req plugin.UpdateRequest,
+) (plugin.UpdateResponse, error) {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
+		return plugin.UpdateResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	properties := p.makeOutputs(req.URN.Type(), req.NewInputs, req.Preview)
+
+	return plugin.UpdateResponse{
+		Properties: properties,
+		Status:     resource.StatusOK,
+	}, nil
+}
+
+func (p *OutputProvider) SignalCancellation(context.Context) error {
+	return nil
+}
+
+func (p *OutputProvider) GetMapping(
+	context.Context, plugin.GetMappingRequest,
+) (plugin.GetMappingResponse, error) {
+	return plugin.GetMappingResponse{}, nil
+}
+
+func (p *OutputProvider) GetMappings(
+	context.Context, plugin.GetMappingsRequest,
+) (plugin.GetMappingsResponse, error) {
+	return plugin.GetMappingsResponse{}, nil
+}
+
+func (p *OutputProvider) DiffConfig(
+	context.Context, plugin.DiffConfigRequest,
+) (plugin.DiffConfigResponse, error) {
+	return plugin.DiffResult{}, nil
+}
+
+func (p *OutputProvider) Diff(
+	ctx context.Context, req plugin.DiffRequest,
+) (plugin.DiffResponse, error) {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
+		return plugin.DiffResponse{}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	changes := plugin.DiffNone
+	var changedKeys []resource.PropertyKey
+	if !req.OldInputs["value"].DeepEquals(req.NewInputs["value"]) {
+		changes = plugin.DiffSome
+		changedKeys = append(changedKeys, "value")
+	}
+
+	return plugin.DiffResponse{
+		Changes:     changes,
+		ChangedKeys: changedKeys,
+	}, nil
+}
+
+func (p *OutputProvider) Delete(
+	context.Context, plugin.DeleteRequest,
+) (plugin.DeleteResponse, error) {
+	return plugin.DeleteResponse{}, nil
+}
+
+func (p *OutputProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
+		return plugin.ReadResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	return plugin.ReadResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
+			Inputs:  req.Inputs,
+			Outputs: req.State,
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
+
+func (p *OutputProvider) makeOutputs(
+	typ tokens.Type,
+	inputs resource.PropertyMap,
+	preview bool,
+) resource.PropertyMap {
+	properties := resource.PropertyMap{
+		"value": inputs["value"],
+	}
+
+	if !preview {
+		output := strings.Repeat("hello", int(inputs["value"].NumberValue()))
+		switch typ { //nolint:exhaustive
+		case "output:index:Resource":
+			properties["output"] = resource.NewProperty(output)
+		case "output:index:ComplexResource":
+			properties["outputArray"] = resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty(output),
+			})
+			properties["outputMap"] = resource.NewProperty(resource.PropertyMap{
+				"x": resource.NewProperty(output),
+			})
+			properties["outputObject"] = resource.NewProperty(resource.PropertyMap{
+				"output": resource.NewProperty(output),
+			})
+		}
+	} else if !p.elideUnknowns {
+		switch typ { //nolint:exhaustive
+		case "output:index:Resource":
+			properties["output"] = resource.NewProperty(resource.Computed{})
+		case "output:index:ComplexResource":
+			properties["outputArray"] = resource.NewProperty(resource.Computed{})
+			properties["outputMap"] = resource.NewProperty(resource.Computed{})
+			properties["outputObject"] = resource.NewProperty(resource.Computed{})
+		}
+	}
+
+	return properties
+}

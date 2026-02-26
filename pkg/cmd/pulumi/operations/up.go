@@ -295,9 +295,7 @@ func NewUpCmd() *cobra.Command {
 		templateSource := cmdTemplates.New(ctx,
 			templateNameOrURL, cmdTemplates.ScopeAll,
 			workspace.TemplateKindPulumiProject, env.Global())
-		defer func() {
-			contract.IgnoreError(templateSource.Close())
-		}()
+		defer contract.IgnoreClose(templateSource)
 
 		// List the templates from the repo.
 		templates, err := templateSource.Templates()
@@ -428,7 +426,8 @@ func NewUpCmd() *cobra.Command {
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		_, main, pctx, err := engine.ProjectInfoContext(
+			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
 		}
@@ -557,7 +556,7 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 
-			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
+			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 

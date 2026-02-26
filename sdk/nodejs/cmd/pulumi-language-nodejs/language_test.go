@@ -42,7 +42,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
 	binary := t.TempDir() + "/pulumi-test-language"
-	cmd := exec.Command("go", "build", "-C", "../../../../cmd/pulumi-test-language", "-o", binary)
+	cmd := exec.Command("go", "build", "-C", "../../../../pkg", "-o", binary, "./testing/pulumi-test-language")
 	output, err := cmd.CombinedOutput()
 	t.Logf("build output: %s", output)
 	require.NoError(t, err)
@@ -131,7 +131,7 @@ func testLanguage(t *testing.T, forceTsc bool) {
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					host := newLanguageHost(engineAddress, "", forceTsc)
+					host := newLanguageHost(engineAddress, "", "", forceTsc)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},

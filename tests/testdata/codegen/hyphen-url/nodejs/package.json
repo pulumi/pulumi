@@ -5,8 +5,8 @@
         "build": "tsc"
     },
     "dependencies": {
-        "@pulumi/azure-native": "^1.56.0",
-        "@pulumi/pulumi": "^3.7.0"
+        "@pulumi/pulumi": "^3.7.0",
+        "@pulumi/using-dashes": "^1.0.0"
     },
     "devDependencies": {
         "@types/node": "^18",

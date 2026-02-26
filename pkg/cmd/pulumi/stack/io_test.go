@@ -90,7 +90,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 			require.NoError(t, err)
 			return nil, nil
 		},
-		DefaultSecretManagerF: func(*workspace.ProjectStack) (secrets.Manager, error) {
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
 			return expectedSm, nil
 		},
 	}

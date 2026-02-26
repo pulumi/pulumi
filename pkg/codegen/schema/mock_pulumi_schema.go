@@ -25,7 +25,7 @@ func newPulumiPackage() *Package {
 	spec := PackageSpec{
 		Name:        "pulumi",
 		DisplayName: "Pulumi",
-		Version:     "1.0.0",
+		Version:     "3.0.0",
 		Description: "mock pulumi package",
 		Resources: map[string]ResourceSpec{
 			"pulumi:index:Stash": {
@@ -70,6 +70,13 @@ func newPulumiPackage() *Package {
 								Ref: "pulumi.json#/Any",
 							},
 						}},
+						"secretOutputNames": {TypeSpec: TypeSpec{
+							Type: "object",
+							AdditionalProperties: &TypeSpec{
+								Type: "string",
+							},
+						}},
+						"name": {TypeSpec: TypeSpec{Type: "string"}},
 					},
 					Required: []string{
 						"outputs",
@@ -89,6 +96,11 @@ func newPulumiPackage() *Package {
 					},
 				},
 			},
+		},
+		Language: map[string]RawMessage{
+			"go": []byte(`{
+				"importBasePath": "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+			}`),
 		},
 	}
 

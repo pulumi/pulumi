@@ -38,8 +38,8 @@ func getHelperMethodIfNeeded(function *model.FunctionCallExpression, indent stri
 %s}`, indent, indent, indent), true
 	case "singleOrNone":
 		return fmt.Sprintf(
-			`%sfunction singleOrNone<T>(elements: pulumi.Input<T>[]): pulumi.Input<T> {
-%s    if (elements.length != 1) {
+			`%sfunction singleOrNone<T>(elements: pulumi.Input<T>[]): pulumi.Input<T> | undefined {
+%s    if (elements.length > 1) {
 %s        throw new Error("singleOrNone expected input list to have a single element");
 %s    }
 %s    return elements[0];

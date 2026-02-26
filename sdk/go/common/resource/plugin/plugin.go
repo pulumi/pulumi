@@ -280,7 +280,7 @@ func newPlugin[T any](
 	// If we did not successfully launch the plugin, we still need to wait for stderr and stdout to drain.
 	defer func() {
 		if plug.Conn == nil {
-			contract.IgnoreError(plug.Close())
+			contract.IgnoreClose(plug)
 		}
 	}()
 
@@ -452,11 +452,15 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		verbose:         logging.Verbose,
 	})
 
-	var environment []string
+	environment := os.Environ()
 	if e != nil && e.GetStore() != nil {
 		for k, v := range e.GetStore().Values() {
 			environment = append(environment, k+"="+v)
 		}
+	}
+
+	if otelEndpoint := cmdutil.OTelEndpoint(); otelEndpoint != "" {
+		environment = append(environment, "OTEL_EXPORTER_OTLP_ENDPOINT="+otelEndpoint)
 	}
 
 	// Check to see if we have a binary we can invoke directly

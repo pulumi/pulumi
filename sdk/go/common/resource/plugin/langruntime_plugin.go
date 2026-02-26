@@ -187,7 +187,7 @@ func GetLanguageAttachPort(runtime string) (*int, error) {
 
 func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOption {
 	dialOpts := append(
-		rpcutil.OpenTracingInterceptorDialOptions(),
+		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
@@ -498,8 +498,8 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 			msg, err := resp.Recv()
 			if err != nil {
 				if err == io.EOF {
-					contract.IgnoreError(outw.Close())
-					contract.IgnoreError(errw.Close())
+					contract.IgnoreClose(outw)
+					contract.IgnoreClose(errw)
 
 					done <- nil
 					break

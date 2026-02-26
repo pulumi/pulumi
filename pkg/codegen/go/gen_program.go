@@ -66,6 +66,7 @@ type generator struct {
 	splatSpiller        *splatSpiller
 	optionalSpiller     *optionalSpiller
 	inlineInvokeSpiller *inlineInvokeSpiller
+	callSpiller         *callSpiller
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
@@ -123,6 +124,7 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 		splatSpiller:        &splatSpiller{},
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
+		callSpiller:         &callSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		externalCache:       opts.ExternalCache,
@@ -797,8 +799,8 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type) {
 		packageRef = t.PackageReference
 	case *schema.TokenType:
 		token = t.Token
-		var tokenRange hcl.Range
-		pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
+		pkg, _, name, _ := pcl.DecomposeToken(token, hcl.Range{})
+		mod := g.resolveModule(token)
 		vPath, err := g.getVersionPath(program, pkg)
 		if err != nil {
 			panic(err)
@@ -814,12 +816,9 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type) {
 		return
 	}
 
-	var tokenRange hcl.Range
-	pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
-	vPath, err := g.packageVersionPath(packageRef)
-	if err != nil {
-		panic(err)
-	}
+	pkg, _, name, _ := pcl.DecomposeToken(token, hcl.Range{})
+	mod := g.resolveModule(token)
+	vPath := g.packageVersionPath(packageRef)
 	g.addPulumiImport(pkg, vPath, mod, name)
 }
 
@@ -839,6 +838,8 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 				} else if mod == "" {
 					continue
 				}
+			} else {
+				mod = g.resolveModule(r.Token)
 			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
@@ -862,7 +863,8 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 					tokenArg := call.Args[0]
 					token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 					tokenRange := tokenArg.SyntaxNode().Range()
-					pkg, mod, name, diagnostics := pcl.DecomposeToken(token, tokenRange)
+					pkg, _, name, diagnostics := pcl.DecomposeToken(token, tokenRange)
+					mod := g.resolveModule(token)
 					if call.Type() == model.DynamicType {
 						// then this is an unknown function, create a dummy import for it without a version
 						dummyVersionPath := ""
@@ -877,6 +879,21 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 						panic(err)
 					}
 					g.addPulumiImport(pkg, vPath, mod, name)
+				case pcl.Call:
+					// Collect imports for the resource method's module.
+					// The resource is the first argument; get its token from the type annotation.
+					if objectType, ok := call.Args[0].Type().(*model.ObjectType); ok {
+						if annotation, ok := model.GetObjectTypeAnnotation[*pcl.ResourceAnnotation](objectType); ok {
+							res := annotation.Node
+							resPkg, _, resName, _ := res.DecomposeToken()
+							resMod := g.resolveModule(res.Token)
+							vPath, err := g.getVersionPath(program, resPkg)
+							if err != nil {
+								panic(err)
+							}
+							g.addPulumiImport(resPkg, vPath, resMod, resName)
+						}
+					}
 				case pcl.IntrinsicConvert:
 					g.collectConvertImports(program, call)
 				}
@@ -941,20 +958,17 @@ func (g *generator) collectConvertImports(
 	}
 }
 
-func (g *generator) packageVersionPath(packageRef schema.PackageReference) (string, error) {
+func (g *generator) packageVersionPath(packageRef schema.PackageReference) string {
 	if ver := packageRef.Version(); ver != nil && ver.Major > 1 {
-		return fmt.Sprintf("/v%d", ver.Major), nil
+		return fmt.Sprintf("/v%d", ver.Major)
 	}
-	return "", nil
+	return ""
 }
 
 func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, error) {
 	for _, p := range program.PackageReferences() {
 		if p.Name() == pkg {
-			if ver := p.Version(); ver != nil && ver.Major > 1 {
-				return fmt.Sprintf("/v%d", ver.Major), nil
-			}
-			return "", nil
+			return g.packageVersionPath(p), nil
 		}
 	}
 
@@ -968,6 +982,20 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 	}
 	info, ok := p.Language["go"].(GoPackageInfo)
 	return info, ok
+}
+
+// resolveModule applies the schema package's TokenToModule to resolve the actual module name
+// from a full type token. This is needed because tokens like "module-format:mod_Resource:Resource"
+// have a raw module component "mod_Resource" that must be parsed by the module format regex to
+// get the actual module name "mod".
+func (g *generator) resolveModule(token string) string {
+	pkg, mod, _, _ := pcl.DecomposeToken(token, hcl.Range{})
+	if p, ok := g.packages[pkg]; ok {
+		if resolved := p.TokenToModule(token); resolved != "" {
+			return resolved
+		}
+	}
+	return mod
 }
 
 func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
@@ -998,22 +1026,25 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 	}
 
 	if !hasInfo {
-		mod = strings.SplitN(mod, "/", 2)[0]
 		path := importPath(mod)
-		// users hasn't provided any extra overrides
-		if mod == "" || mod == IndexToken {
-			mod = pkg
+		pkgName := mod
+		if pkgName == "" || pkgName == IndexToken {
+			pkgName = pkg
+		}
+		// Use the last path component as the package name for nested modules
+		// (e.g. "mod/nested" → "nested").
+		if parts := strings.Split(pkgName, "/"); len(parts) > 1 {
+			pkgName = parts[len(parts)-1]
 		}
 
-		if strings.Contains(mod, "-") {
+		if strings.Contains(pkgName, "-") {
 			var alias strings.Builder
-			for _, part := range strings.Split(mod, "-") {
+			for _, part := range strings.Split(pkgName, "-") {
 				alias.WriteString(strcase.ToLowerCamel(part))
 			}
-			// convert the dashed package such as package-name into packagename
-			mod = alias.String()
+			pkgName = alias.String()
 		}
-		g.importer.Import(path, mod)
+		g.importer.Import(path, pkgName)
 		return
 	}
 
@@ -1313,7 +1344,8 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
-	pkg, mod, typ, _ := r.DecomposeToken()
+	pkg, _, typ, _ := r.DecomposeToken()
+	mod := g.resolveModule(r.Token)
 	originalMod := mod
 	if pkg == "pulumi" && mod == "providers" {
 		pkg = typ
@@ -1342,7 +1374,8 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			input.Value = expr
 			g.genTemps(w, temps)
 		}
-		pkg, mod, _, _ := r.DecomposeToken()
+		pkg, _, _, _ := r.DecomposeToken()
+		mod := g.resolveModule(r.Token)
 		if pkgCtx := g.contexts[pkg][mod]; pkgCtx != nil {
 			typ = disambiguatedResourceName(r.Schema, pkgCtx)
 		}
@@ -1899,6 +1932,12 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 			g.Fgenf(w, "return err\n")
 			g.Fgenf(w, "}\n")
 			g.isErrAssigned = true
+		case *callTemp:
+			g.Fgenf(w, "%s, err := %.v\n", t.Name, t.Value)
+			g.Fgenf(w, "if err != nil {\n")
+			g.Fgenf(w, "return err\n")
+			g.Fgenf(w, "}\n")
+			g.isErrAssigned = true
 		default:
 			contract.Failf("unexpected temp type: %v", t)
 		}
@@ -2089,17 +2128,20 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	mod = strings.ToLower(mod)
 	originalMod = strings.ToLower(originalMod)
-	info, ok := g.getGoPackageInfo(pkg)
-	if !ok {
-		needsAliasing := strings.Contains(mod, "-")
-		if needsAliasing {
-			var moduleAlias strings.Builder
-			for part := range strings.SplitSeq(mod, "-") {
-				moduleAlias.WriteString(strcase.ToLowerCamel(part))
+	info, _ := g.getGoPackageInfo(pkg)
+
+	if info.ImportBasePath == "" {
+		if _, ok := g.packages[pkg]; !ok {
+			needsAliasing := strings.Contains(mod, "-")
+			if needsAliasing {
+				var moduleAlias strings.Builder
+				for part := range strings.SplitSeq(mod, "-") {
+					moduleAlias.WriteString(strcase.ToLowerCamel(part))
+				}
+				return moduleAlias.String()
 			}
-			return moduleAlias.String()
+			return mod
 		}
-		return strings.ToLower(mod)
 	}
 
 	importPath := func(mod string) string {
@@ -2128,18 +2170,14 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 		return g.importer.Import(path, alias)
 	}
 
-	// Trim off anything after the first '/'.
-	// This handles transforming modules like s3/bucket to s3 (as found in
-	// aws:s3/bucket:Bucket).
-	mod = strings.SplitN(mod, "/", 2)[0]
-
-	path = importPath(mod)
 	pkgName := mod
 	if len(pkgName) == 0 || pkgName == IndexToken {
 		// If mod is empty, then the package is the root package.
 		pkgName = pkg
 	}
-	return g.importer.Import(path, pkgName)
+
+	pkgNameParts := strings.Split(pkgName, "/")
+	return g.importer.Import(path, pkgNameParts[len(pkgNameParts)-1])
 }
 
 // Go needs complete package definitions in order to properly resolve names.

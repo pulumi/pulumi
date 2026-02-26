@@ -1,5 +1,98 @@
 # Changelog
 
+## 3.223.0 (2026-02-19)
+
+
+### Bug Fixes
+
+- [engine] Report policy pack installation errors
+  [#21882](https://github.com/pulumi/pulumi/pull/21882)
+
+## 3.222.0 (2026-02-18)
+
+
+### Features
+
+- [programgen/go] Generate Call requests
+  [#21836](https://github.com/pulumi/pulumi/pull/21836)
+
+
+### Bug Fixes
+
+- [sdk/{nodejs,python}] Fix hang when loading policy packs that use v1.18.1 or older of the policy SDK
+  [#21866](https://github.com/pulumi/pulumi/pull/21866)
+
+## 3.221.0 (2026-02-17)
+
+
+### Features
+
+- [auto] Support Go 1.26
+  [#21835](https://github.com/pulumi/pulumi/pull/21835)
+
+- [engine] BREAKING: Rename `pulumiVersionRange` to `requiredPulumiVersion` in `PulumiPlugin.yaml`
+  [#21807](https://github.com/pulumi/pulumi/pull/21807)
+
+- [cli/plugin] Reduce GitHub API usage when downloading plugins
+  [#21774](https://github.com/pulumi/pulumi/pull/21774)
+
+- [protobuf] Add loader_target to RunPluginRequest
+  [#21763](https://github.com/pulumi/pulumi/pull/21763)
+
+- [sdk/nodejs] Support enums when inferring schemas from components
+  [#21787](https://github.com/pulumi/pulumi/pull/21787)
+
+- [sdk/nodejs] Support the Partial<T> utility type in component schema inference
+  [#21802](https://github.com/pulumi/pulumi/pull/21802)
+
+- [sdk/nodejs] Support the Required<T> utility type in component schema inference
+  [#21803](https://github.com/pulumi/pulumi/pull/21803)
+
+
+### Bug Fixes
+
+- [cli] Make stack graph output deterministic
+  [#21786](https://github.com/pulumi/pulumi/pull/21786)
+
+- [engine] Fix snapshot integrity error in `refresh --run-program` with component resources
+  [#21806](https://github.com/pulumi/pulumi/pull/21806)
+
+- [engine] Fix race in refresh --run-program
+  [#21815](https://github.com/pulumi/pulumi/pull/21815)
+
+- [programgen/go] Correctly handle import paths for nested modules
+  [#21812](https://github.com/pulumi/pulumi/pull/21812)
+
+- [sdkgen] Support type references to parameterized and third-party packages
+  [#21804](https://github.com/pulumi/pulumi/pull/21804)
+
+- [sdkgen/go] Do not depend on pulumix against instructions for enums
+  [#21818](https://github.com/pulumi/pulumi/pull/21818)
+
+- [cli/{install,package}] Don't panic when a non-absolute path is passed to `pulumi package get-schema` where the PulumiPlugin.yaml has a packages section
+  [#21794](https://github.com/pulumi/pulumi/pull/21794)
+
+- [cli/{install,package}] Only link a Pulumi project once
+  [#21788](https://github.com/pulumi/pulumi/pull/21788)
+
+- [cli/{install,package}] Run in the correct location when using `uv` to link python packages
+  [#21796](https://github.com/pulumi/pulumi/pull/21796)
+
+- [cli/package] Allow underscores in the path of plugin URLs
+  [#21778](https://github.com/pulumi/pulumi/pull/21778)
+
+- [sdk/{nodejs,python}] Use new policy plugin support to run policy packs
+  [#21684](https://github.com/pulumi/pulumi/pull/21684)
+
+- [sdk/python] Surface errors from uv, poetry or pip during linking
+  [#21770](https://github.com/pulumi/pulumi/pull/21770)
+
+- [sdk/python] Always surface errors from uv, poetry or pip during dependency installation
+  [#21814](https://github.com/pulumi/pulumi/pull/21814)
+
+- [sdkgen/python] Add missing blank line before :param lists
+  [#21789](https://github.com/pulumi/pulumi/pull/21789)
+
 ## 3.220.0 (2026-02-10)
 
 

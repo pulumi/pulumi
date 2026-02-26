@@ -355,7 +355,7 @@ func handshake(
 
 func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []grpc.DialOption {
 	dialOpts := append(
-		rpcutil.OpenTracingInterceptorDialOptions(otgrpc.SpanDecorator(decorateProviderSpans)),
+		rpcutil.TracingInterceptorDialOptions(otgrpc.SpanDecorator(decorateProviderSpans)),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)

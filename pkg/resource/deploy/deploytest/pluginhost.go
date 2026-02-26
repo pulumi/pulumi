@@ -44,6 +44,8 @@ var ErrHostIsClosed = errors.New("plugin host is shutting down")
 
 var UseGrpcPluginsByDefault = false
 
+var UseHandshakePluginsByDefault = false
+
 type (
 	LoadPluginFunc         func(opts any) (any, error)
 	LoadPluginWithHostFunc func(opts any, host plugin.Host) (any, error)
@@ -69,6 +71,14 @@ func WithGrpc(p *PluginLoader) {
 	p.useGRPC = true
 }
 
+func WithoutHandshake(p *PluginLoader) {
+	p.useHandshake = false
+}
+
+func WithHandshake(p *PluginLoader) {
+	p.useHandshake = true
+}
+
 type PluginLoader struct {
 	kind         apitype.PluginKind
 	name         string
@@ -76,6 +86,7 @@ type PluginLoader struct {
 	load         LoadPluginFunc
 	loadWithHost LoadPluginWithHostFunc
 	useGRPC      bool
+	useHandshake bool
 }
 
 type (
@@ -87,11 +98,12 @@ func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProv
 	opts ...ProviderOption,
 ) *ProviderLoader {
 	p := &ProviderLoader{
-		kind:    apitype.ResourcePlugin,
-		name:    string(pkg),
-		version: version,
-		load:    func(_ any) (any, error) { return load() },
-		useGRPC: UseGrpcPluginsByDefault,
+		kind:         apitype.ResourcePlugin,
+		name:         string(pkg),
+		version:      version,
+		load:         func(_ any) (any, error) { return load() },
+		useGRPC:      UseGrpcPluginsByDefault,
+		useHandshake: UseHandshakePluginsByDefault,
 	}
 	for _, o := range opts {
 		o(p)
@@ -108,6 +120,7 @@ func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version,
 		version:      version,
 		loadWithHost: func(_ any, host plugin.Host) (any, error) { return load(host) },
 		useGRPC:      UseGrpcPluginsByDefault,
+		useHandshake: UseHandshakePluginsByDefault,
 	}
 	for _, o := range opts {
 		o(p)
@@ -166,10 +179,11 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: wrapper.stop,
 		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterResourceProviderServer(srv, plugin.NewProviderServer(provider))
+			server := plugin.NewProviderServer(provider)
+			pulumirpc.RegisterResourceProviderServer(srv, server)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
@@ -198,7 +212,7 @@ func wrapAnalyzerWithGrpc(analyzer plugin.Analyzer) (plugin.Analyzer, io.Closer,
 			pulumirpc.RegisterAnalyzerServer(srv, plugin.NewAnalyzerServer(analyzer))
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start policy analyzer service: %w", err)
@@ -321,7 +335,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 			pulumirpc.RegisterEngineServer(srv, engine)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		panic(fmt.Errorf("could not start engine service: %w", err))
@@ -392,6 +406,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 			if err != nil {
 				return nil, err
 			}
+
 		case apitype.LanguagePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 			// We don't support gRPC wrapping for these plugin types yet.
 		}
@@ -404,7 +419,20 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 	case apitype.AnalyzerPlugin:
 		host.analyzers = append(host.analyzers, plug.(plugin.Analyzer))
 	case apitype.ResourcePlugin:
-		host.providers = append(host.providers, plug.(plugin.Provider))
+		provider := plug.(plugin.Provider)
+		if best.useHandshake {
+			_, err := provider.Handshake(context.Background(), plugin.ProviderHandshakeRequest{
+				EngineAddress:               host.engine.address,
+				ConfigureWithUrn:            true,
+				SupportsViews:               true,
+				SupportsRefreshBeforeUpdate: true,
+				InvokeWithPreview:           true,
+			})
+			if err != nil {
+				return nil, errors.Join(err, provider.Close())
+			}
+		}
+		host.providers = append(host.providers, provider)
 	case apitype.LanguagePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 		// Nothing to do for these to plugins.
 	}

@@ -15,12 +15,9 @@
 package schema
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestEmptySchemaResponse(t *testing.T) {
@@ -37,19 +34,4 @@ func TestEmptySchemaResponse(t *testing.T) {
 	assert.True(t, schemaIsEmpty([]byte("\n		 {   	 	 				}  	\n\n")))
 
 	assert.False(t, schemaIsEmpty([]byte(`{"key": "value"}`)))
-}
-
-func BenchmarkSchemaEmptyCheck(b *testing.B) {
-	schemaPath, err := filepath.Abs("../testing/test/testdata/azure-native.json")
-	require.NoError(b, err)
-	largeSchema, err := os.ReadFile(schemaPath)
-	if err != nil {
-		b.Fatalf("failed to read schema file, ensure that you have run "+
-			"`make get_schemas` to create schema file %q", schemaPath)
-	}
-
-	b.Run("large-schema-empty-check-time", func(b *testing.B) {
-		empty := schemaIsEmpty(largeSchema)
-		assert.False(b, empty)
-	})
 }

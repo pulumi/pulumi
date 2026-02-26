@@ -21,7 +21,7 @@ TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/
 VERSION         = $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
-LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python cmd/pulumi-test-language
+LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python
 
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
@@ -76,6 +76,10 @@ check_proto:
 generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
+
+.PHONY: generate-cli-spec
+generate-cli-spec::
+	go run -C pkg ./cmd/pulumi generate-cli-spec
 
 bin/pulumi: proto/.checksum.txt .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
 	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
@@ -177,6 +181,7 @@ test_lifecycle_fuzz:
 	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzz$$' \
 		-tags all \
+		-timeout 1h \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 test_lifecycle_fuzz_from_state_file: GO_TEST_RACE = false
@@ -184,6 +189,7 @@ test_lifecycle_fuzz_from_state_file:
 	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzzFromStateFile$$' \
 		-tags all \
+		-timeout 1h \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 lang=$(subst test_codegen_,,$(word 1,$(subst !, ,$@)))
@@ -257,7 +263,6 @@ get_schemas: \
 			schema-aws!4.26.0           \
 			schema-aws!5.4.0            \
 			schema-aws!5.16.2           \
-			schema-azure-native!1.56.0  \
 			schema-azure!4.18.0         \
 			schema-kubernetes!3.0.0     \
 			schema-kubernetes!3.7.0     \
@@ -265,18 +270,20 @@ get_schemas: \
 			schema-eks!0.40.0           \
 			schema-docker!4.0.0-alpha.0 \
 			schema-awsx!1.0.0-beta.5    \
-			schema-google-native!0.18.2 \
 			schema-tls!4.10.0
 
 .PHONY: changelog
 changelog:
 	go run github.com/pulumi/go-change@v0.1.3 create
 
+clean::
+	rm -rf bin/*
+	rm -rf .make
+
 .PHONY: work
 work:
 	rm -f go.work go.work.sum
 	go work init \
-		cmd/pulumi-test-language \
 		pkg \
 		sdk \
 		sdk/go/pulumi-language-go \

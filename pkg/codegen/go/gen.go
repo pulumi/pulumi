@@ -232,6 +232,12 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
+	// Handle method-related tokens like "Resource/callResult" → "ResourceCallResult".
+	// Method function tokens use the format "ResourceName/methodName" in the name component,
+	// and derived types append "Result" or "Args" to produce e.g. "Resource/callResult".
+	if idx := strings.Index(name, "/"); idx >= 0 {
+		name = name[:idx] + Title(name[idx+1:])
+	}
 	name = Title(name)
 	if modPkg, ok := pkg.packages[mod]; ok {
 		newName, renamed := modPkg.renamed[name]
@@ -1684,7 +1690,7 @@ func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *sch
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	if goPkgInfo.Generics != GenericsSettingNone {
+	if goPkgInfo.Generics == GenericsSettingSideBySide || goPkgInfo.Generics == GenericsSettingGenericsOnly {
 		// ToOutput implementation for pulumix.Input.
 		fmt.Fprintf(w, "func (in *%sPtr) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", typeName, name)
 		fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", name)
@@ -4050,6 +4056,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 
 // ExtractModulePath creates a go module path for a given package.
 func ExtractModulePath(extPkg schema.PackageReference) string {
+	contract.Assertf(extPkg != nil, "ExtractModulePath(nil) is not allowed")
 	var vPath string
 	version := extPkg.Version()
 	name := extPkg.Name()
@@ -5205,7 +5212,7 @@ func GeneratePackage(tool string,
 			if hasOutputs {
 				goImports = []string{"context", "reflect"}
 				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-				if goPkgInfo.Generics != GenericsSettingNone {
+				if goPkgInfo.Generics == GenericsSettingSideBySide || goPkgInfo.Generics == GenericsSettingGenericsOnly {
 					imports["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 				}
 			}

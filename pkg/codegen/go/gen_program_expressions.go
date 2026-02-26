@@ -434,12 +434,114 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%v.PulumiResourceName()", expr.Args[0])
 	case "pulumiResourceType":
 		g.Fgenf(w, "%v.PulumiResourceType()", expr.Args[0])
+	case pcl.Call:
+		g.genMethodCall(w, expr)
 	default:
 		// toJSON and readDir are reduced away, shouldn't see them here
 		reducedFunctions := codegen.NewStringSet("toJSON", "readDir")
 		contract.Assertf(!reducedFunctions.Has(expr.Name), "unlowered function %s", expr.Name)
 		// TODO: implement "element", "entries", "lookup", "split" and "range"
 		g.genNYI(w, "call %v", expr.Name)
+	}
+}
+
+// genMethodCall generates Go code for a `call(self, method, args)` PCL expression.
+// In Go, resource methods have the signature:
+//
+//	func (r *Resource) Method(ctx *pulumi.Context, args *ResourceMethodArgs) (ResourceMethodResultOutput, error)
+//
+// The generated code is: self.Method(ctx, &mod.ResourceMethodArgs{Field: value, ...})
+func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpression) {
+	self := expr.Args[0]
+	method := expr.Args[1].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+	methodName := Title(method)
+
+	// Get the resource schema from the receiver's type annotation.
+	objectType := self.Type().(*model.ObjectType)
+	annotation, _ := model.GetObjectTypeAnnotation[*pcl.ResourceAnnotation](objectType)
+	res := annotation.Node
+
+	// Get the disambiguated resource name and module alias.
+	pkg, _, _, _ := res.DecomposeToken()
+	mod := g.resolveModule(res.Token)
+	originalMod := mod
+	if mod == "" || strings.HasPrefix(mod, "/") || mod == IndexToken {
+		originalMod = mod
+		mod = pkg
+	}
+	var resourceName string
+	if res.Schema != nil {
+		if pkgCtx := g.contexts[pkg][mod]; pkgCtx != nil {
+			resourceName = disambiguatedResourceName(res.Schema, pkgCtx)
+		} else {
+			resourceName = rawResourceName(res.Schema)
+		}
+	} else {
+		resourceName = tokenToName(res.Token)
+	}
+	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
+
+	// Extract the args object and its schema-bound type.
+	var args *model.ObjectConsExpression
+	var argsDestType model.Type
+	if converted, objectArgs, objType := pcl.RecognizeTypedObjectCons(expr.Args[2]); converted {
+		args = objectArgs
+		argsDestType = objType
+	} else {
+		args = expr.Args[2].(*model.ObjectConsExpression)
+		argsDestType = expr.Args[2].Type()
+	}
+
+	// Build a map from property name to its destination type for proper value wrapping.
+	// The args type may be wrapped in a union type (from model.InputType), so unwrap it.
+	propTypes := map[string]model.Type{}
+	switch t := argsDestType.(type) {
+	case *model.ObjectType:
+		for name, propType := range t.Properties {
+			propTypes[name] = propType
+		}
+	case *model.UnionType:
+		for _, elemType := range t.ElementTypes {
+			if objType, ok := elemType.(*model.ObjectType); ok {
+				for name, propType := range objType.Properties {
+					propTypes[name] = propType
+				}
+				break
+			}
+		}
+	}
+
+	// Generate: self.Method(ctx, &mod.ResourceMethodArgs{...})
+	g.Fgenf(w, "%v.%s(ctx, ", self, methodName)
+	if len(args.Items) > 0 {
+		argsTypeName := fmt.Sprintf("%s.%s%sArgs", modOrAlias, resourceName, methodName)
+		g.Fgenf(w, "&%s{\n", argsTypeName)
+		for _, item := range args.Items {
+			key := item.Key.(*model.LiteralValueExpression).Value.AsString()
+			if destType, ok := propTypes[key]; ok {
+				g.Fgenf(w, "%s: ", Title(key))
+				g.genInputValue(w, item.Value, destType)
+				g.Fgenf(w, ",\n")
+			} else {
+				g.Fgenf(w, "%s: %.v,\n", Title(key), item.Value)
+			}
+		}
+		g.Fprint(w, "}")
+	} else {
+		g.Fprint(w, "nil")
+	}
+	g.Fprint(w, ")")
+}
+
+// genInputValue generates a value expression with the appropriate input type wrapper
+// (e.g. pulumi.String("x")) based on the destination type. This is used for method
+// call args where the binder doesn't individually wrap each field value with __convert.
+func (g *generator) genInputValue(w io.Writer, value model.Expression, destType model.Type) {
+	typeName := g.argumentTypeName(destType, true)
+	if typeName != "" && strings.HasPrefix(typeName, "pulumi.") {
+		g.Fgenf(w, "%s(%.v)", typeName, value)
+	} else {
+		g.Fgenf(w, "%.v", value)
 	}
 }
 
@@ -1063,8 +1165,9 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr)
 	expr, rTemps, readDirDiags := g.rewriteReadDir(expr, g.readDirTempSpiller)
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
+	expr, cTemps := g.rewriteInlineCalls(expr)
 
-	bufferSize := len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps)
+	bufferSize := len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps) + len(cTemps)
 	temps := slice.Prealloc[any](bufferSize)
 	for _, t := range tTemps {
 		temps = append(temps, t)
@@ -1079,6 +1182,9 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 		temps = append(temps, t)
 	}
 	for _, t := range oTemps {
+		temps = append(temps, t)
+	}
+	for _, t := range cTemps {
 		temps = append(temps, t)
 	}
 	diags = append(diags, convertDiags...)
@@ -1264,7 +1370,8 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 	tokenRange := tokenArg.SyntaxNode().Range()
 
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkg, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	module := g.resolveModule(token)
 	if strings.HasPrefix(member, "get") {
 		if g.useLookupInvokeForm(token) {
 			member = strings.Replace(member, "get", "lookup", 1)

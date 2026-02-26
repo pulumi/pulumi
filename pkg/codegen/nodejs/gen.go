@@ -1809,7 +1809,10 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 func (mod *modContext) getRelativePath() string {
 	rel, err := filepath.Rel(mod.mod, "")
 	contract.AssertNoErrorf(err, "could not turn %q into a relative path", mod.mod)
-	return path.Dir(filepath.ToSlash(rel))
+	// On Go >=1.26 filepath.Rel calls filepath.Clean already, but not on version on <1.26. Once we drop support for
+	// older versions we can drop the call to filepath.Clean here.
+	rel = filepath.Clean(rel)
+	return filepath.ToSlash(rel)
 }
 
 func (mod *modContext) sdkImports(nested, utilities bool) []string {

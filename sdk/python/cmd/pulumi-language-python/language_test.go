@@ -45,7 +45,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
 	binary := t.TempDir() + "/pulumi-test-language"
-	cmd := exec.Command("go", "build", "-C", "../../../../cmd/pulumi-test-language", "-o", binary)
+	cmd := exec.Command("go", "build", "-C", "../../../../pkg", "-o", binary, "./testing/pulumi-test-language")
 	output, err := cmd.CombinedOutput()
 	t.Logf("build output: %s", output)
 	require.NoError(t, err)
@@ -101,8 +101,11 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try": "Temporarily disabled until pr #18915 is submitted",
-	"l1-builtin-can": "Temporarily disabled until pr #18916 is submitted",
+	"l1-builtin-try":    "Temporarily disabled until pr #18915 is submitted",
+	"l1-builtin-can":    "Temporarily disabled until pr #18916 is submitted",
+	"l1-builtin-list":   "singleOrNone throws for empty list instead of returning null",
+	"l1-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
+	"l2-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
 }
 
 type languageTestConfig struct {
@@ -205,6 +208,10 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					// Only bother testing the provider plugin tests once.
 					if strings.HasPrefix(tt, "provider-") && config.name != "default" {
 						t.Skip("Skipping non-default provider tests")
+					}
+
+					if (config.name == "default" || config.name == "toml") && tt == "l2-discriminated-union" {
+						t.Skip("pulumi#21830: Expected to fail")
 					}
 
 					if config.typechecker == "pyright" && tt == "l3-component-simple" {

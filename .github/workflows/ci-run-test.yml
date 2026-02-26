@@ -100,6 +100,16 @@ jobs:
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
       TEST_ALL_DEPS: ""
+      # Point $TMP and $TEMP to the value of `runner.temp` on Windows. This ensures that our Go tests which use
+      # os.MkdirTemp create their test environments in this directory. This directory is on the D: drive, as opposed to
+      # the C: drive for the default temp directory, and IO seems to be massively faster on that drive.
+      # Note: Windows will first use $TMP, then fallback to $TEMP. We set both here for consistency.
+      # Similarly, we set GOPATH and GOCACHE to be on the D: drive, so ProgramTest with the Go language runtime will
+      # also run on the D: drive, see pkg/testing/integration/program.go#L1990.
+      TMP: ${{ contains(inputs.platform, 'windows') && 'D:/a/_temp' || '' }}
+      TEMP: ${{ contains(inputs.platform, 'windows') && 'D:/a/_temp' || '' }}
+      GOPATH: ${{ contains(inputs.platform, 'windows') && 'D:/go' || '' }}
+      GOCACHE: ${{ contains(inputs.platform, 'windows') && 'D:/go-build-cache' || '' }}
 
     runs-on: ${{ inputs.platform }}
 
@@ -373,6 +383,7 @@ jobs:
       - name: run tests "${{ inputs.test-command }}"
         id: test
         run: ${{ inputs.test-command }}
+        continue-on-error: ${{ inputs.continue-on-error }}
         env:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -403,7 +414,18 @@ jobs:
           if [ -n "$(ls -A "$PULUMI_GOCOVERDIR")" ]; then
             # Cross-platform way to get milliseconds since Unix epoch.
             UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
-            go tool covdata textfmt -i="$PULUMI_GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov"
+
+            # First merge coverage data to resolve incompatibilities between different coverage files
+            MERGED_DIR=$(mktemp -d)
+            if go tool covdata merge -i="$PULUMI_GOCOVERDIR" -o="$MERGED_DIR" 2>/dev/null; then
+              # If merge succeeds, convert merged data to text format
+              go tool covdata textfmt -i="$MERGED_DIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov"
+            else
+              # If merge fails (e.g., incompatible coverage data), try direct conversion
+              # and if that also fails, skip coverage collection for this run
+              go tool covdata textfmt -i="$PULUMI_GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov" 2>/dev/null
+            fi
+            rm -rf "$MERGED_DIR"
           fi
       - name: Upload code coverage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

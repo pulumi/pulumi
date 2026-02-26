@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+        "outDir": "bin",
+        "target": "ES2020",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true
+    },
+    "files": [
+        "index.ts",
+        "mod/index.ts",
+        "mod/nested/index.ts",
+        "mod/nested/res.ts",
+        "mod/res.ts",
+        "provider.ts",
+        "res.ts",
+        "types/enums/index.ts",
+        "types/enums/mod/index.ts",
+        "types/enums/mod/nested/index.ts",
+        "types/index.ts",
+        "types/input.ts",
+        "types/output.ts",
+        "utilities.ts"
+    ]
+}

@@ -37,7 +37,7 @@ func TestErrorCatchingSecretsProvider_OfType_Success(t *testing.T) {
 	provider := newErrorCatchingSecretsProvider(delegate, func(err error) error { return err })
 
 	// Act
-	manager, err := provider.OfType("test", nil)
+	manager, err := provider.OfType(t.Context(), "test", nil)
 
 	// Assert
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestErrorCatchingSecretsProvider_Batching_OfType_Success(t *testing.T) {
 	provider := newErrorCatchingSecretsProvider(delegate, func(err error) error { return err })
 
 	// Act
-	manager, err := provider.OfType("test", nil)
+	manager, err := provider.OfType(t.Context(), "test", nil)
 
 	// Assert
 	require.NoError(t, err)
@@ -77,7 +77,7 @@ func TestErrorCatchingSecretsProvider_OfType_Error(t *testing.T) {
 	provider := newErrorCatchingSecretsProvider(delegate, func(err error) error { return err })
 
 	// Act
-	manager, err := provider.OfType("test", nil)
+	manager, err := provider.OfType(t.Context(), "test", nil)
 
 	// Assert
 	assert.Error(t, err)
@@ -341,7 +341,7 @@ func TestErrorCatchingSecretsManager_Batching_Enqueue_Success(t *testing.T) {
 	delegateManager := &MockProviderManager{batching: true, encrypterDecrypter: encDecrypter}
 
 	provider := newErrorCatchingSecretsProvider(delegateManager, func(err error) error { return err })
-	manager, err := provider.OfType("test", nil)
+	manager, err := provider.OfType(t.Context(), "test", nil)
 	require.NoError(t, err)
 
 	batchingManager, ok := manager.(stack.BatchingSecretsManager)
@@ -411,7 +411,7 @@ func TestErrorCatchingSecretsManager_Batching_ErrorPropagated(t *testing.T) {
 		onDecryptErrorCalled = true
 		return err
 	})
-	manager, err := provider.OfType("test", nil)
+	manager, err := provider.OfType(t.Context(), "test", nil)
 	require.NoError(t, err)
 
 	batchingManager, ok := manager.(stack.BatchingSecretsManager)
@@ -478,7 +478,7 @@ func TestErrorCatchingSecretsManager_Batching_ErrorIgnored(t *testing.T) {
 		onDecryptErrorCalled = true
 		return nil
 	})
-	manager, err := provider.OfType("test", nil)
+	manager, err := provider.OfType(t.Context(), "test", nil)
 	require.NoError(t, err)
 
 	batchingManager, ok := manager.(stack.BatchingSecretsManager)
@@ -532,7 +532,7 @@ func TestErrorCatchingSecretsManager_Batching_NilDecrypter(t *testing.T) {
 	delegateManager := &MockProviderManager{batching: true, encrypterDecrypter: nil}
 
 	provider := newErrorCatchingSecretsProvider(delegateManager, func(err error) error { return err })
-	manager, err := provider.OfType("test", nil)
+	manager, err := provider.OfType(t.Context(), "test", nil)
 	require.NoError(t, err)
 
 	batchingManager, ok := manager.(stack.BatchingSecretsManager)
@@ -602,7 +602,7 @@ func (m *MockProviderManager) Decrypter() config.Decrypter {
 	return nil
 }
 
-func (m *MockProviderManager) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+func (m *MockProviderManager) OfType(_ context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
 	m.ofTypeCalled = true
 	if m.ofTypeErr != nil {
 		return nil, m.ofTypeErr

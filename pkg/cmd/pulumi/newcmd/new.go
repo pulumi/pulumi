@@ -182,7 +182,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 	templateSource := cmdTemplates.New(ctx,
 		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject, env.Global())
-	defer func() { contract.IgnoreError(templateSource.Close()) }()
+	defer contract.IgnoreClose(templateSource)
 
 	// List the templates from the repo.
 	templates, err := templateSource.Templates()
@@ -363,6 +363,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
+		ctx,
 		projinfo,
 		nil, /* host */
 		cmdutil.Diag(),

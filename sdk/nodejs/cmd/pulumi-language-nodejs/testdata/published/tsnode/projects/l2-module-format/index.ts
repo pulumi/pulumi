@@ -17,3 +17,17 @@ const res2 = new module_format.mod.Resource("res2", {text: module_format.mod.con
 export const out2 = res2.call(({
     input: "xx",
 })).apply(call => call.output);
+// First use the fully specified token to invoke and create a resource.
+const res3 = new module_format.mod.nested.Resource("res3", {text: module_format.mod.nested.concatWorldOutput({
+    value: "hello",
+}).apply(invoke => invoke.result)});
+export const out3 = res3.call(({
+    input: "x",
+})).apply(call => call.output);
+// Next use just the module name as defined by the module format
+const res4 = new module_format.mod.nested.Resource("res4", {text: module_format.mod.nested.concatWorldOutput({
+    value: "goodbye",
+}).apply(invoke => invoke.result)});
+export const out4 = res4.call(({
+    input: "xx",
+})).apply(call => call.output);

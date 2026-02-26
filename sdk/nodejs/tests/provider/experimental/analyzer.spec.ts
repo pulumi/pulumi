@@ -304,6 +304,176 @@ describe("Analyzer", function () {
         });
     });
 
+    it("infers Required<T> utility type", async function () {
+        const dir = path.join(__dirname, "testdata", "required-type");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    regularType: {
+                        $ref: "#/types/provider:index:SomeType",
+                        optional: true,
+                        description: "The regular type with optional fields",
+                    },
+                    requiredType: {
+                        $ref: "#/types/provider:index:RequiredSomeType",
+                        optional: true,
+                        description: "A required type where all fields are required",
+                    },
+                },
+                outputs: {
+                    regularType: {
+                        $ref: "#/types/provider:index:SomeType",
+                        description: "The regular type output",
+                    },
+                    requiredType: {
+                        $ref: "#/types/provider:index:RequiredSomeType",
+                        description: "The required type output",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            SomeType: {
+                name: "SomeType",
+                description: "A type with optional fields",
+                properties: {
+                    a: {
+                        type: "string",
+                        plain: true,
+                        optional: true,
+                        description: "An optional string field",
+                    },
+                    b: {
+                        type: "number",
+                        plain: true,
+                        optional: true,
+                        description: "An optional number field",
+                    },
+                    c: {
+                        type: "boolean",
+                        plain: true,
+                        optional: true,
+                        description: "An optional boolean field",
+                    },
+                },
+                type: "object",
+            },
+            RequiredSomeType: {
+                name: "RequiredSomeType",
+                description: "A type with optional fields",
+                properties: {
+                    a: {
+                        type: "string",
+                        plain: true,
+                        description: "An optional string field",
+                    },
+                    b: {
+                        type: "number",
+                        plain: true,
+                        description: "An optional number field",
+                    },
+                    c: {
+                        type: "boolean",
+                        plain: true,
+                        description: "An optional boolean field",
+                    },
+                },
+                type: "object",
+            },
+        });
+    });
+
+    it("infers Required<T> with nested types", async function () {
+        const dir = path.join(__dirname, "testdata", "required-nested");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    requiredOuter: {
+                        $ref: "#/types/provider:index:RequiredOuterType",
+                        optional: true,
+                        description: "A required outer type with nested inner type",
+                    },
+                    requiredInner: {
+                        $ref: "#/types/provider:index:RequiredInnerType",
+                        optional: true,
+                        description: "A nested required of the inner type",
+                    },
+                },
+                outputs: {
+                    requiredOuter: {
+                        $ref: "#/types/provider:index:RequiredOuterType",
+                        description: "The required outer type output",
+                    },
+                    requiredInner: {
+                        $ref: "#/types/provider:index:RequiredInnerType",
+                        description: "The required inner type output",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            InnerType: {
+                name: "InnerType",
+                description: "An inner type with optional fields",
+                properties: {
+                    x: {
+                        type: "number",
+                        plain: true,
+                        optional: true,
+                        description: "Inner field x",
+                    },
+                    y: {
+                        type: "string",
+                        plain: true,
+                        optional: true,
+                        description: "Inner field y",
+                    },
+                },
+                type: "object",
+            },
+            RequiredOuterType: {
+                name: "RequiredOuterType",
+                description: "An outer type with optional fields including a nested type",
+                properties: {
+                    inner: {
+                        $ref: "#/types/provider:index:InnerType",
+                        plain: true,
+                        description: "An inner object",
+                    },
+                    outerField: {
+                        type: "boolean",
+                        plain: true,
+                        description: "An outer field",
+                    },
+                },
+                type: "object",
+            },
+            RequiredInnerType: {
+                name: "RequiredInnerType",
+                description: "An inner type with optional fields",
+                properties: {
+                    x: {
+                        type: "number",
+                        plain: true,
+                        description: "Inner field x",
+                    },
+                    y: {
+                        type: "string",
+                        plain: true,
+                        description: "Inner field y",
+                    },
+                },
+                type: "object",
+            },
+        });
+    });
+
     it("infers self recursive complex types", async function () {
         const dir = path.join(__dirname, "testdata", "recursive-complex-types");
         const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
