@@ -109,12 +109,11 @@ func (r *environmentRef) String() string {
 	return s
 }
 
-func (cmd *envCommand) warnIfAmbiguousTwoPartRef(refString string) {
-	fmt.Fprintf(
-		cmd.esc.stderr,
-		"warning: environment reference %q is ambiguous (could be <project>/<environment> or <org>/default/<environment>); prefer <org>/<project>/<environment>.\n",
-		refString,
-	)
+func (cmd *envCommand) warnAmbiguousTwoPartRef(refString string, resolvedRef environmentRef) {
+	msg := fmt.Sprintf(
+		"%swarning: environment reference %q is ambiguous (resolved to %s). Use <org>/<project>/<environment> instead.%s\n",
+		colors.SpecWarning, refString, resolvedRef.String(), colors.Reset)
+	fmt.Fprint(cmd.esc.stderr, cmd.esc.colors.Colorize(msg))
 }
 
 func (cmd *envCommand) parseRef(refStr string) environmentRef {
@@ -232,11 +231,12 @@ func (cmd *envCommand) getNewEnvRef(
 	}
 
 	if existsLegacyPath {
-		cmd.warnIfAmbiguousTwoPartRef(cmd.envNameFlag)
-	}
-
-	if !existsProject && existsLegacyPath {
-		return legacyRef, args, nil
+		if existsProject {
+			cmd.warnAmbiguousTwoPartRef(cmd.envNameFlag, ref)
+		} else {
+			cmd.warnAmbiguousTwoPartRef(cmd.envNameFlag, legacyRef)
+			return legacyRef, args, nil
+		}
 	}
 
 	return ref, args, nil
@@ -300,7 +300,7 @@ func (cmd *envCommand) getExistingEnvRefWithRelative(
 	}
 
 	if existsLegacyPath {
-		cmd.warnIfAmbiguousTwoPartRef(refString)
+		cmd.warnAmbiguousTwoPartRef(refString, legacyRef)
 		return legacyRef, nil
 	}
 

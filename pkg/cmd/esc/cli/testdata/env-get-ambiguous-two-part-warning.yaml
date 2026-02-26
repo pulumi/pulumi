@@ -12,4 +12,4 @@ values:
 
 ---
 > esc env get test-org/env --definition
-warning: environment reference "test-org/env" is ambiguous (could be <project>/<environment> or <org>/default/<environment>); prefer <org>/<project>/<environment>.
+warning: environment reference "test-org/env" is ambiguous (resolved to test-org/default/env). Use <org>/<project>/<environment> instead.

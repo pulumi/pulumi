@@ -497,7 +497,7 @@ func (c *testPulumiClient) URL() string {
 
 // GetPulumiAccountDetails returns the user implied by the API token associated with this client.
 func (c *testPulumiClient) GetPulumiAccountDetails(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
-	return c.user, nil, nil, nil
+	return c.user, []string{"test-org"}, nil, nil
 }
 
 func (c *testPulumiClient) GetRevisionNumber(ctx context.Context, orgName, projectName, envName, version string) (int, error) {
