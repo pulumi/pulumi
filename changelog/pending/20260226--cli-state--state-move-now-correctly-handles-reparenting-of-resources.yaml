@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/state
+  description: `state move` now correctly handles reparenting of resources
