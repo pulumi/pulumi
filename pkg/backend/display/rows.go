@@ -308,7 +308,12 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
-	name := escapeURN(urn.Name())
+	var name string
+	if data.display.opts.ShowURNs {
+		name = escapeURN(string(urn))
+	} else {
+		name = escapeURN(urn.Name())
+	}
 	typ := urn.Type().DisplayName()
 
 	done := data.IsDone()

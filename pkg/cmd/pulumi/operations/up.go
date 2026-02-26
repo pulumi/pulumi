@@ -109,6 +109,7 @@ func NewUpCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var showSecrets bool
+	var showURNs bool
 	var showReads bool
 	var skipPreview bool
 	var showFullOutput bool
@@ -605,6 +606,8 @@ func NewUpCmd() *cobra.Command {
 				ShowReplacementSteps:   showReplacementSteps,
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
+				ShowSecrets:            showSecrets,
+				ShowURNs:               showURNs,
 				SuppressOutputs:        suppressOutputs,
 				SuppressProgress:       suppressProgress,
 				TruncateOutput:         !showFullOutput,
@@ -613,7 +616,6 @@ func NewUpCmd() *cobra.Command {
 				EventLogPath:           eventLogPath,
 				Debug:                  debug,
 				JSONDisplay:            jsonDisplay,
-				ShowSecrets:            showSecrets,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -795,6 +797,9 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showReads, "show-reads", false,
 		"Show resources that are being read in, alongside those being managed directly in the stack")
+	cmd.PersistentFlags().BoolVar(
+		&showURNs, "urns", false,
+		"Display full URNs instead of short resource names")
 
 	cmd.PersistentFlags().BoolVarP(
 		&skipPreview, "skip-preview", "f", false,

@@ -177,8 +177,12 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	}
 
 	// Print the individual remediation's name and target resource type/name.
+	resourceName := payload.ResourceURN.Name()
+	if opts.ShowURNs {
+		resourceName = string(payload.ResourceURN)
+	}
 	remediationLine := fmt.Sprintf("%s[remediate]  %s%s  (%s: %s)",
-		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), payload.ResourceURN.Name())
+		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), resourceName)
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
@@ -219,9 +223,13 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 	}
 
 	// Print the individual policy's name and target resource type/name.
+	policyResourceName := payload.ResourceURN.Name()
+	if opts.ShowURNs {
+		policyResourceName = string(payload.ResourceURN)
+	}
 	policyLine := fmt.Sprintf("%s[%s]%s  %s%s  (%s: %s)",
 		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
-		payload.ResourceURN.Type(), payload.ResourceURN.Name())
+		payload.ResourceURN.Type(), policyResourceName)
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
