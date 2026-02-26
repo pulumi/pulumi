@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/config
+  description: Add `pulumi config edit` for interactive JSON editing of stack config
