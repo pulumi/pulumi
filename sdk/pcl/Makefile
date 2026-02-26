@@ -2,6 +2,7 @@ PROJECT_NAME     := Pulumi pcl SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh pcl))
 
+ensure::
 
 build_plugin: ../../bin/pulumi-language-pcl
 
