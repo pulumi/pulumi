@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix panic when a new component resource in the program is not targeted
