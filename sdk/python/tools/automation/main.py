@@ -206,7 +206,7 @@ def _generate_commands(
     method_name = _snake_case("_".join(breadcrumbs))
 
     # Argument specification for the CLI command.
-    arguments: list[Dict[str, Any]] = []
+    argument_info: list[Dict[str, Any]] = []
     variadic_info: Dict[str, Any] | None = None
 
     if node_type == "command":
@@ -235,7 +235,7 @@ def _generate_commands(
                     "annotation": annotation_expr,
                 }
 
-                arguments.append(info)
+                argument_info.append(info)
 
                 if is_variadic:
                     variadic_info = info
@@ -247,7 +247,7 @@ def _generate_commands(
     ]
     has_default: list[bool] = [False, False]
 
-    for info in arg_infos:
+    for info in argument_info:
         if info.get("variadic"):
             continue
 
@@ -474,7 +474,7 @@ def _generate_commands(
         )
     )
 
-    if arguments:
+    if argument_info:
         # __arguments = []
         body.append(
             ast.Assign(
@@ -483,7 +483,7 @@ def _generate_commands(
             )
         )
 
-        for info in arguments:
+        for info in argument_info:
             name = str(info.get("name", ""))
             optional = bool(info.get("optional", False))
             variadic = bool(info.get("variadic", False))
