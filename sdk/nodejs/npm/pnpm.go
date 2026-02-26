@@ -132,6 +132,13 @@ func (pnpm *pnpmManager) Link(ctx context.Context, dir, packageName, path string
 	return nil
 }
 
+func (pnpm *pnpmManager) ListPackages(_ context.Context, dir string) ([]PackageDependency, error) {
+	// pnpm does not yet have a dedicated lock file parser. Fall back to reading
+	// dependency information from package.json, which gives version ranges
+	// rather than pinned versions.
+	return listPackagesFromPackageJSON(dir)
+}
+
 func (pnpm *pnpmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, pnpm.executable, "pack", "--use-stderr")

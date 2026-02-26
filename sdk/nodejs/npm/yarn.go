@@ -17,6 +17,7 @@ package npm
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -142,6 +143,47 @@ func (yarn *yarnClassic) Link(ctx context.Context, dir, packageName, path string
 		return fmt.Errorf("error executing yarn command %s: %w, output: %s", cmd.String(), err, out)
 	}
 	return nil
+}
+
+func (yarn *yarnClassic) ListPackages(ctx context.Context, dir string) ([]PackageDependency, error) {
+	if yarn.executable == "" {
+		// If yarn is not available, fall back to reading package.json.
+		return listPackagesFromPackageJSON(dir)
+	}
+	//nolint:gosec // False positive on tainted command execution. We aren't accepting input from the user here.
+	cmd := exec.CommandContext(ctx, yarn.executable, "list", "--json")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run \"%s list --json\": %w", yarn.executable, err)
+	}
+	var lock struct {
+		Data struct {
+			Trees []struct {
+				Name string `json:"name"`
+			} `json:"trees"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(out, &lock); err != nil {
+		return nil, fmt.Errorf("failed to parse yarn list output: %w", err)
+	}
+	result := make([]PackageDependency, 0, len(lock.Data.Trees))
+	for _, tree := range lock.Data.Trees {
+		nameVersion := tree.Name
+		if nameVersion == "" {
+			continue
+		}
+		// Has the form name@version
+		split := strings.LastIndex(nameVersion, "@")
+		if split <= 0 {
+			continue
+		}
+		result = append(result, PackageDependency{
+			Name:    nameVersion[:split],
+			Version: nameVersion[split+1:],
+		})
+	}
+	return result, nil
 }
 
 // Pack runs `yarn pack` in the given directory, packaging the Node.js app located

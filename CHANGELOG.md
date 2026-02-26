@@ -5,6 +5,9 @@
 
 ### Bug Fixes
 
+- [sdk/nodejs] Add pnpm and bun lock file detection to GetProgramDependencies
+  [#21916](https://github.com/pulumi/pulumi/pull/21916)
+
 - [engine] Report policy pack installation errors
   [#21882](https://github.com/pulumi/pulumi/pull/21882)
 

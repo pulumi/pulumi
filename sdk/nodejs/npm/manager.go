@@ -16,9 +16,11 @@ package npm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -35,6 +37,12 @@ const (
 	PnpmPackageManager PackageManagerType = "pnpm"
 	BunPackageManager  PackageManagerType = "bun"
 )
+
+// PackageDependency represents a single package dependency with its name and resolved version.
+type PackageDependency struct {
+	Name    string
+	Version string
+}
 
 // A `PackageManager` is responsible for installing dependencies,
 // packaging Pulumi programs, and executing Node in the context of
@@ -54,6 +62,10 @@ type PackageManager interface {
 	Name() string
 	// Version returns the version of the package manager.
 	Version() (semver.Version, error)
+	// ListPackages returns the list of packages and their versions in the given directory.
+	// Each package manager uses its own mechanism to determine the packages (e.g. by querying
+	// the package manager CLI or by reading lock/manifest files).
+	ListPackages(ctx context.Context, dir string) ([]PackageDependency, error)
 }
 
 // Pack runs `npm pack` in the given directory, packaging the Node.js app located there into a
@@ -171,7 +183,67 @@ func preferYarn() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_PREFER_YARN"))
 }
 
+// ResolvePackageManagerForListing resolves the appropriate package manager for listing packages
+// in the given directory. Unlike ResolvePackageManager, this function does not require the
+// package manager executable to be installed. For package managers without dedicated lock file
+// parsers (pnpm, bun), it creates a lightweight manager that reads from package.json.
+func ResolvePackageManagerForListing(pwd string) PackageManager {
+	if preferYarn() || checkYarnLock(pwd) {
+		yarn, err := newYarnClassic()
+		if err == nil {
+			return yarn
+		}
+	}
+	if checkPnpmLock(pwd) {
+		return &pnpmManager{}
+	}
+	if checkBunLock(pwd) {
+		return &bunManager{}
+	}
+	// Default to npm if available, otherwise use a stub that reads package.json.
+	node, err := newNPM()
+	if err == nil {
+		return node
+	}
+	return &npmManager{}
+}
+
 // getLinkPackageProperty returns a string to use in `npm pkg set` to add the package to package.json dependencies.
 func getLinkPackageProperty(packageName, path string) string {
 	return fmt.Sprintf("dependencies.%s=file:%s", packageName, path)
+}
+
+// packageJSONFile represents the structure of a package.json file, used for reading dependency information.
+type packageJSONFile struct {
+	Dependencies    map[string]string `json:"dependencies"`
+	DevDependencies map[string]string `json:"devDependencies"`
+}
+
+// listPackagesFromPackageJSON reads dependency information directly from package.json in the given
+// directory. This is used as a fallback for package managers that don't yet have dedicated lock
+// file parsers. It returns version ranges rather than pinned versions.
+func listPackagesFromPackageJSON(dir string) ([]PackageDependency, error) {
+	packageFile := filepath.Join(dir, "package.json")
+	data, err := os.ReadFile(packageFile)
+	if err != nil {
+		return nil, fmt.Errorf("could not read %s: %w", packageFile, err)
+	}
+	var body packageJSONFile
+	if err := json.Unmarshal(data, &body); err != nil {
+		return nil, fmt.Errorf("could not parse %s: %w", packageFile, err)
+	}
+	var result []PackageDependency
+	for name, version := range body.Dependencies {
+		result = append(result, PackageDependency{
+			Name:    name,
+			Version: version,
+		})
+	}
+	for name, version := range body.DevDependencies {
+		result = append(result, PackageDependency{
+			Name:    name,
+			Version: version,
+		})
+	}
+	return result, nil
 }

@@ -413,7 +413,7 @@ func TestGetProgramDependencies(t *testing.T) {
 				EntryPoint:       ".",
 			},
 		})
-		require.ErrorContains(t, err, "no package-lock.json or yarn.lock file found (searching upwards from")
+		require.ErrorContains(t, err, "no lock file found (searching upwards from")
 	})
 
 	t.Run("With package.json in project root, no lock files", func(t *testing.T) {
@@ -438,7 +438,7 @@ func TestGetProgramDependencies(t *testing.T) {
 				EntryPoint:       ".",
 			},
 		})
-		require.ErrorContains(t, err, "no package-lock.json or yarn.lock file found (searching upwards from")
+		require.ErrorContains(t, err, "no lock file found (searching upwards from")
 	})
 
 	t.Run("With package.json and yarn.lock in project root", func(t *testing.T) {
@@ -669,6 +669,66 @@ func TestGetProgramDependencies(t *testing.T) {
 		require.Len(t, resp.Dependencies, 1)
 		require.Equal(t, "random", resp.Dependencies[0].Name)
 		require.Equal(t, "5.1.0", resp.Dependencies[0].Version)
+	})
+
+	t.Run("With pnpm-lock.yaml", func(t *testing.T) {
+		t.Parallel()
+
+		testDir := setupFiles(t, []filePathAndContents{
+			{
+				path:    "package.json",
+				content: `{ "name": "test-pnpm", "dependencies": { "@pulumi/pulumi": "^3.113.0", "express": "^4.18.0" } }`,
+			},
+			{
+				path:    "pnpm-lock.yaml",
+				content: `lockfileVersion: '9.0'`,
+			},
+		})
+		host := &nodeLanguageHost{}
+		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
+			Program: testDir,
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    testDir,
+				ProgramDirectory: testDir,
+				EntryPoint:       ".",
+			},
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Dependencies, 2)
+		names := map[string]string{}
+		for _, d := range resp.Dependencies {
+			names[d.Name] = d.Version
+		}
+		require.Equal(t, "^3.113.0", names["@pulumi/pulumi"])
+		require.Equal(t, "^4.18.0", names["express"])
+	})
+
+	t.Run("With bun.lock", func(t *testing.T) {
+		t.Parallel()
+
+		testDir := setupFiles(t, []filePathAndContents{
+			{
+				path:    "package.json",
+				content: `{ "name": "test-bun", "dependencies": { "@pulumi/aws": "^6.0.0" } }`,
+			},
+			{
+				path:    "bun.lock",
+				content: `{}`,
+			},
+		})
+		host := &nodeLanguageHost{}
+		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
+			Program: testDir,
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    testDir,
+				ProgramDirectory: testDir,
+				EntryPoint:       ".",
+			},
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Dependencies, 1)
+		require.Equal(t, "@pulumi/aws", resp.Dependencies[0].Name)
+		require.Equal(t, "^6.0.0", resp.Dependencies[0].Version)
 	})
 }
 
