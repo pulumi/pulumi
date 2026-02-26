@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -1563,6 +1564,156 @@ func TestCreateStack_gzip(t *testing.T) {
 	// With PULUMI_DIY_BACKEND_GZIP enabled,
 	// we'll store state into gzipped files.
 	assert.FileExists(t, filepath.Join(stateDir, ".pulumi", "stacks", "testproj", "foo.json.gz"))
+}
+
+func TestCreateStack_zstd(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	ctx := context.Background()
+
+	s := make(env.MapStore)
+	s[env.DIYBackendZstd.Var().Name()] = "true"
+
+	b, err := newDIYBackend(
+		ctx,
+		diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir),
+		&workspace.Project{Name: "testproj"},
+		&diyBackendOptions{Env: env.NewEnv(s)},
+	)
+	require.NoError(t, err)
+
+	fooRef, err := b.ParseStackReference("foo")
+	require.NoError(t, err)
+
+	_, err = b.CreateStack(ctx, fooRef, "", nil, nil)
+	require.NoError(t, err)
+
+	assert.FileExists(t, filepath.Join(stateDir, ".pulumi", "stacks", "testproj", "foo.json.zst"))
+
+	diyRef, ok := fooRef.(*diyBackendReference)
+	require.True(t, ok)
+
+	checkpoint, _, _, err := b.getCheckpoint(ctx, diyRef)
+	require.NoError(t, err)
+	require.NotNil(t, checkpoint)
+}
+
+func TestCreateStack_transitionCompression(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	ctx := context.Background()
+	project := &workspace.Project{Name: "testproj"}
+
+	newBackend := func(store env.MapStore) *diyBackend {
+		t.Helper()
+
+		b, err := newDIYBackend(
+			ctx,
+			diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir),
+			project,
+			&diyBackendOptions{Env: env.NewEnv(store)},
+		)
+		require.NoError(t, err)
+		return b
+	}
+
+	stackPath := filepath.Join(stateDir, ".pulumi", "stacks", "testproj", "foo.json")
+	stackPathGzip := stackPath + encoding.GZIPExt
+	stackPathZstd := stackPath + encoding.ZSTDExt
+
+	b := newBackend(env.MapStore{})
+	ref, err := b.ParseStackReference("foo")
+	require.NoError(t, err)
+
+	_, err = b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+	assert.FileExists(t, stackPath)
+	assert.NoFileExists(t, stackPathGzip)
+	assert.NoFileExists(t, stackPathZstd)
+
+	b = newBackend(env.MapStore{env.DIYBackendGzip.Var().Name(): "true"})
+	ref, err = b.ParseStackReference("foo")
+	require.NoError(t, err)
+
+	s, err := b.GetStack(ctx, ref)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	deployment, err := b.ExportDeployment(ctx, s)
+	require.NoError(t, err)
+	err = b.ImportDeployment(ctx, s, deployment)
+	require.NoError(t, err)
+	assert.NoFileExists(t, stackPath)
+	assert.FileExists(t, stackPathGzip)
+	assert.NoFileExists(t, stackPathZstd)
+
+	b = newBackend(env.MapStore{env.DIYBackendZstd.Var().Name(): "true"})
+	ref, err = b.ParseStackReference("foo")
+	require.NoError(t, err)
+
+	s, err = b.GetStack(ctx, ref)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	deployment, err = b.ExportDeployment(ctx, s)
+	require.NoError(t, err)
+	err = b.ImportDeployment(ctx, s, deployment)
+	require.NoError(t, err)
+	assert.NoFileExists(t, stackPath)
+	assert.NoFileExists(t, stackPathGzip)
+	assert.FileExists(t, stackPathZstd)
+}
+
+func TestResolveCompression(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		store       env.MapStore
+		expected    encoding.Compression
+		expectError bool
+	}{
+		{
+			name:     "default is none",
+			store:    env.MapStore{},
+			expected: encoding.CompressionNone,
+		},
+		{
+			name:     "gzip env var",
+			store:    env.MapStore{env.DIYBackendGzip.Var().Name(): "true"},
+			expected: encoding.CompressionGzip,
+		},
+		{
+			name:     "zstd env var",
+			store:    env.MapStore{env.DIYBackendZstd.Var().Name(): "true"},
+			expected: encoding.CompressionZstd,
+		},
+		{
+			name: "gzip and zstd is an error",
+			store: env.MapStore{
+				env.DIYBackendGzip.Var().Name(): "true",
+				env.DIYBackendZstd.Var().Name(): "true",
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := resolveCompression(env.NewEnv(tt.store))
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
 }
 
 func TestCreateStack_retainCheckpoints(t *testing.T) {

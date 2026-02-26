@@ -248,7 +248,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// If a specific plugin wasn't given, compute the set of plugins the current project needs.
-		plugins, err := getProjectPlugins()
+		plugins, err := getProjectPlugins(ctx)
 		if err != nil {
 			return err
 		}

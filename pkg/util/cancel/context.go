@@ -61,6 +61,10 @@ func NewContext(ctx context.Context) (*Context, *Source) {
 	return c, s
 }
 
+func (c *Context) Base() context.Context {
+	return c.cancel
+}
+
 // Canceled returns a channel that will be closed when the context is canceled or terminated.
 func (c *Context) Canceled() <-chan struct{} {
 	return c.cancel.Done()

@@ -13,11 +13,22 @@ __all__ = ['ProviderArgs', 'Provider']
 
 @pulumi.input_type
 class ProviderArgs:
-    def __init__(__self__):
+    def __init__(__self__, *,
+                 elide_unknowns: Optional[pulumi.Input[_builtins.bool]] = None):
         """
         The set of arguments for constructing a Provider resource.
         """
-        pass
+        if elide_unknowns is not None:
+            pulumi.set(__self__, "elide_unknowns", elide_unknowns)
+
+    @_builtins.property
+    @pulumi.getter(name="elideUnknowns")
+    def elide_unknowns(self) -> Optional[pulumi.Input[_builtins.bool]]:
+        return pulumi.get(self, "elide_unknowns")
+
+    @elide_unknowns.setter
+    def elide_unknowns(self, value: Optional[pulumi.Input[_builtins.bool]]):
+        pulumi.set(self, "elide_unknowns", value)
 
 
 @pulumi.type_token("pulumi:providers:output")
@@ -26,6 +37,7 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 elide_unknowns: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         """
         Create a Output resource with the given unique name, props, and options.
@@ -57,6 +69,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 elide_unknowns: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -66,6 +79,7 @@ class Provider(pulumi.ProviderResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ProviderArgs.__new__(ProviderArgs)
 
+            __props__.__dict__["elide_unknowns"] = pulumi.Output.from_input(elide_unknowns).apply(pulumi.runtime.to_json) if elide_unknowns is not None else None
         super(Provider, __self__).__init__(
             'output',
             resource_name,

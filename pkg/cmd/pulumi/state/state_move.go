@@ -213,7 +213,7 @@ func (cmd *stateMoveCmd) Run(
 			return err
 		}
 
-		destSecretManager, err := dest.DefaultSecretManager(ps)
+		destSecretManager, err := dest.DefaultSecretManager(ctx, ps)
 		if err != nil {
 			return err
 		}

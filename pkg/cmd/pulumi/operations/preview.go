@@ -325,7 +325,7 @@ func NewPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
+			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
 				return err

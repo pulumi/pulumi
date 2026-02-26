@@ -236,9 +236,9 @@ func New(ctx context.Context, d diag.Sink,
 		url:            cloudURL,
 		client:         apiClient,
 		escClient:      escClient,
-		capabilities:   detectCapabilities(d, apiClient),
-		userInfo:       detectUserInfo(d, cloudURL, apiClient),
-		defaultOrg:     detectDefaultOrg(d, apiClient),
+		capabilities:   detectCapabilities(ctx, d, apiClient),
+		userInfo:       detectUserInfo(ctx, d, cloudURL, apiClient),
+		defaultOrg:     detectDefaultOrg(ctx, d, apiClient),
 		currentProject: project,
 	}, nil
 }
@@ -2569,9 +2569,13 @@ func (c httpstateBackendClient) GetStackResourceOutputs(
 }
 
 // Builds a lazy wrapper around doDetectCapabilities.
-func detectCapabilities(d diag.Sink, client *client.Client) *promise.Promise[apitype.Capabilities] {
+func detectCapabilities(
+	ctx context.Context,
+	d diag.Sink,
+	client *client.Client,
+) *promise.Promise[apitype.Capabilities] {
 	return promise.Run(func() (apitype.Capabilities, error) {
-		return doDetectCapabilities(context.Background(), d, client), nil
+		return doDetectCapabilities(ctx, d, client), nil
 	})
 }
 
@@ -2599,7 +2603,12 @@ func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Clien
 }
 
 // Builds a lazy wrapper around fetching user info.
-func detectUserInfo(d diag.Sink, cloudURL string, client *client.Client) *promise.Promise[userInfo] {
+func detectUserInfo(
+	ctx context.Context,
+	d diag.Sink,
+	cloudURL string,
+	client *client.Client,
+) *promise.Promise[userInfo] {
 	return promise.Run(func() (userInfo, error) {
 		account, err := workspace.GetAccount(cloudURL)
 		if err == nil && account.Username != "" {
@@ -2612,7 +2621,7 @@ func detectUserInfo(d diag.Sink, cloudURL string, client *client.Client) *promis
 		}
 
 		logging.V(1).Infof("no username for access token")
-		username, orgs, tokenInfo, err := client.GetPulumiAccountDetails(context.Background())
+		username, orgs, tokenInfo, err := client.GetPulumiAccountDetails(ctx)
 		if err != nil {
 			d.Warningf(diag.Message("" /*urn*/, "failed to get user account details: %v"), err)
 			return userInfo{}, err
@@ -2626,9 +2635,9 @@ func detectUserInfo(d diag.Sink, cloudURL string, client *client.Client) *promis
 }
 
 // Builds a lazy wrapper around fetching default org.
-func detectDefaultOrg(d diag.Sink, client *client.Client) *promise.Promise[string] {
+func detectDefaultOrg(ctx context.Context, d diag.Sink, client *client.Client) *promise.Promise[string] {
 	return promise.Run(func() (string, error) {
-		resp, err := client.GetDefaultOrg(context.Background())
+		resp, err := client.GetDefaultOrg(ctx)
 		if err != nil {
 			logging.V(1).Infof("failed to get default org: %v", err)
 			return "", err
@@ -2637,7 +2646,7 @@ func detectDefaultOrg(d diag.Sink, client *client.Client) *promise.Promise[strin
 	})
 }
 
-func (b *cloudBackend) DefaultSecretManager(*workspace.ProjectStack) (secrets.Manager, error) {
+func (b *cloudBackend) DefaultSecretManager(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
 	// The default secrets manager for a cloud-backed stack is a cloud secrets manager, which is inherently
 	// stack-specific. Thus at the backend level we return nil, deferring to Stack.DefaultSecretManager when the stack has
 	// been created.

@@ -2573,7 +2573,7 @@ func TestGetLanguageRuntimeMetadata(t *testing.T) {
 	project, err := workspace.LoadProject(filepath.Join(e.RootPath, "Pulumi.yaml"))
 	require.NoError(t, err)
 
-	p := metadata.GetLanguageRuntimeMetadata(e.RootPath, project)
+	p := metadata.GetLanguageRuntimeMetadata(t.Context(), e.RootPath, project)
 	meta, err := p.Result(context.Background())
 
 	require.NoError(t, err)

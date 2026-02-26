@@ -305,37 +305,25 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	},
 	{
 		Directory: "external-node-compatibility",
-		// In this case, this test's schema has kubernetes20 set, but is referencing a type from Google Native
-		// which doesn't have any compatibility modes set, so the referenced type should be `AuditConfigArgs`
-		// (with the `Args` suffix) and not `AuditConfig`.
-		Description: "Ensure external package compatibility modes are used when referencing external types",
-		Skip:        allLanguages.Except("nodejs/any"),
+		// In this case, this test's schema has kubernetes20 set, but is referencing a type from an
+		// external package (nodecompat) which doesn't have any compatibility modes set, so the
+		// referenced type should be `MyConfigArgs` (with the `Args` suffix) and not `MyConfig`.
+		Description:      "Ensure external package compatibility modes are used when referencing external types",
+		Skip:             allLanguages.Except("nodejs/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestNodeJS),
 	},
 	{
 		Directory: "external-go-import-aliases",
-		// Google Native has its own import aliases, so those should be respected, unless there are local aliases.
+		// The goalias package has its own import aliases, so those should be respected, unless there are local aliases.
 		// AWS Classic doesn't have any import aliases, so none should be used, unless there are local aliases.
-		Description: "Ensure external import aliases are honored, and any local import aliases override them",
-		Skip:        allLanguages.Except("go/any"),
+		Description:      "Ensure external import aliases are honored, and any local import aliases override them",
+		Skip:             allLanguages.Except("go/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestGo),
 	},
 	{
 		Directory:   "external-python-same-module-name",
 		Description: "Ensure referencing external types/resources with the same module name are referenced correctly",
 		Skip:        allLanguages.Except("python/any"),
-	},
-	{
-		Directory:   "enum-reference",
-		Description: "Ensure referencing external types/resources with referenced enums import correctly",
-	},
-	{
-		Directory:   "enum-reference-python",
-		Description: "Ensure referencing external types/resources with referenced enums import correctly in Python",
-		Skip:        allLanguages.Except("python/any"),
-	},
-	{
-		Directory:   "external-enum",
-		Description: "Ensure we generate valid tokens for external enums",
-		Skip:        codegen.NewStringSet("dotnet/any"),
 	},
 	{
 		Directory:   "internal-dependencies-go",

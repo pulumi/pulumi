@@ -175,6 +175,10 @@ var (
 		"Enables gzip compression when writing state files.",
 		env.Alternative("SELF_MANAGED_STATE_GZIP"))
 
+	DIYBackendZstd = env.Bool("DIY_BACKEND_ZSTD",
+		"Enables zstd compression when writing state files.",
+		env.Alternative("SELF_MANAGED_STATE_ZSTD"))
+
 	DIYBackendRetainCheckpoints = env.Bool("DIY_BACKEND_RETAIN_CHECKPOINTS",
 		"If set every checkpoint will be duplicated to a timestamped file.",
 		env.Alternative("RETAIN_CHECKPOINTS"))

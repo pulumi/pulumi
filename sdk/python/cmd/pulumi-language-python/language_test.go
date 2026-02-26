@@ -102,8 +102,10 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try": "Temporarily disabled until pr #18915 is submitted",
-	"l1-builtin-can": "Temporarily disabled until pr #18916 is submitted",
+	"l1-builtin-try":    "Temporarily disabled until pr #18915 is submitted",
+	"l1-builtin-can":    "Temporarily disabled until pr #18916 is submitted",
+	"l1-builtin-list":   "singleOrNone throws for empty list instead of returning null",
+	"l1-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
 }
 
 type languageTestConfig struct {

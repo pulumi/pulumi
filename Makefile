@@ -77,6 +77,10 @@ generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
+.PHONY: generate-cli-spec
+generate-cli-spec::
+	go run -C pkg ./cmd/pulumi generate-cli-spec
+
 bin/pulumi: proto/.checksum.txt .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
 	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
@@ -177,6 +181,7 @@ test_lifecycle_fuzz:
 	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzz$$' \
 		-tags all \
+		-timeout 1h \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 test_lifecycle_fuzz_from_state_file: GO_TEST_RACE = false
@@ -184,6 +189,7 @@ test_lifecycle_fuzz_from_state_file:
 	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzzFromStateFile$$' \
 		-tags all \
+		-timeout 1h \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 lang=$(subst test_codegen_,,$(word 1,$(subst !, ,$@)))
@@ -264,12 +270,15 @@ get_schemas: \
 			schema-eks!0.40.0           \
 			schema-docker!4.0.0-alpha.0 \
 			schema-awsx!1.0.0-beta.5    \
-			schema-google-native!0.18.2 \
 			schema-tls!4.10.0
 
 .PHONY: changelog
 changelog:
 	go run github.com/pulumi/go-change@v0.1.3 create
+
+clean::
+	rm -rf bin/*
+	rm -rf .make
 
 .PHONY: work
 work:

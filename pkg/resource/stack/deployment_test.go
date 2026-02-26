@@ -1067,7 +1067,7 @@ func TestDeserializeStackOutputs_SecretsInSnapshotButNotInStackOutputs_NoDecrypt
 func TestDeserializeStackOutputs_SecretsInStackOutputs_Decrypted(t *testing.T) {
 	t.Parallel()
 
-	manager, err := b64.Base64SecretsProvider.OfType("b64", nil)
+	manager, err := b64.Base64SecretsProvider.OfType(t.Context(), "b64", nil)
 	require.NoError(t, err)
 	ciphertext, err := manager.Encrypter().EncryptValue(t.Context(), "\"super secret\"")
 	require.NoError(t, err)

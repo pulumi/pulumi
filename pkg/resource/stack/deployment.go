@@ -390,7 +390,7 @@ func DeserializeStackOutputs(
 		return nil, nil
 	}
 
-	secretsManager, err := initializeSecretsManager(deployment, secretsProv)
+	secretsManager, err := initializeSecretsManager(ctx, deployment, secretsProv)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +415,7 @@ func DeserializeDeploymentV3(
 		return nil, err
 	}
 
-	secretsManager, err := initializeSecretsManager(deployment, secretsProv)
+	secretsManager, err := initializeSecretsManager(ctx, deployment, secretsProv)
 	if err != nil {
 		return nil, err
 	}
@@ -468,6 +468,7 @@ func DeserializeDeploymentV3(
 
 // initializeSecretsManager initializes the secrets manager for a deployment.
 func initializeSecretsManager(
+	ctx context.Context,
 	deployment apitype.DeploymentV3,
 	secretsProv secrets.Provider,
 ) (secrets.Manager, error) {
@@ -477,7 +478,7 @@ func initializeSecretsManager(
 			return nil, errors.New("deployment uses a SecretsProvider but no SecretsProvider was provided")
 		}
 
-		sm, err := secretsProv.OfType(deployment.SecretsProviders.Type, deployment.SecretsProviders.State)
+		sm, err := secretsProv.OfType(ctx, deployment.SecretsProviders.Type, deployment.SecretsProviders.State)
 		if err != nil {
 			return nil, err
 		}
