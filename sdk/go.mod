@@ -10,6 +10,8 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cheggaaa/pb v1.0.29
+	github.com/dave/jennifer v1.6.0
+	github.com/iancoleman/strcase v0.3.0
 	github.com/djherbis/times v1.5.0
 	github.com/golang/glog v1.2.5
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
