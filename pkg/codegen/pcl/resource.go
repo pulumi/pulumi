@@ -196,7 +196,7 @@ func (p *ResourceProperty) Value(*hcl.EvalContext) (cty.Value, hcl.Diagnostics) 
 		case hcl.TraverseIndex:
 			switch t.Key.Type() {
 			case cty.String:
-				_, err = fmt.Fprintf(&buffer, ".%s", t.Key.AsString())
+				_, err = fmt.Fprintf(&buffer, "[%s]", t.Key.AsString())
 			case cty.Number:
 				idx, _ := t.Key.AsBigFloat().Int64()
 				_, err = fmt.Fprintf(&buffer, "[%d]", idx)
