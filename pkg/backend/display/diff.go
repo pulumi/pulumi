@@ -167,6 +167,15 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
+// resourceText returns the full URN string when ShowURNs is set, or the short
+// resource name otherwise.
+func resourceText(urn resource.URN, opts Options) string {
+	if opts.ShowURNs {
+		return string(urn)
+	}
+	return urn.Name()
+}
+
 func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPayload,
 	prefix string, detailed bool, opts Options,
 ) string {
@@ -177,12 +186,8 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	}
 
 	// Print the individual remediation's name and target resource type/name.
-	resourceName := payload.ResourceURN.Name()
-	if opts.ShowURNs {
-		resourceName = string(payload.ResourceURN)
-	}
 	remediationLine := fmt.Sprintf("%s[remediate]  %s%s  (%s: %s)",
-		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), resourceName)
+		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), resourceText(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
@@ -223,13 +228,9 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 	}
 
 	// Print the individual policy's name and target resource type/name.
-	policyResourceName := payload.ResourceURN.Name()
-	if opts.ShowURNs {
-		policyResourceName = string(payload.ResourceURN)
-	}
 	policyLine := fmt.Sprintf("%s[%s]%s  %s%s  (%s: %s)",
 		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
-		payload.ResourceURN.Type(), policyResourceName)
+		payload.ResourceURN.Type(), resourceText(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {

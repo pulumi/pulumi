@@ -102,7 +102,7 @@ func (data *headerRowData) ColorizedColumns() []string {
 			statusColumn = header("Status")
 		}
 		if data.display.opts.ShowURNs {
-			data.columns = []string{"", header("URN"), "", statusColumn, header("Info")}
+			data.columns = []string{"", header("URN"), statusColumn, header("Info")}
 		} else {
 			data.columns = []string{"", header("Type"), header("Name"), statusColumn, header("Info")}
 		}
@@ -314,22 +314,24 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	}
 	done := data.IsDone()
 
-	columns := make([]string, 5)
-	columns[opColumn] = data.display.getStepOpLabel(step, done)
+	diagInfo := data.diagInfo
+	failed := data.failed || diagInfo.ErrorCount > 0
+
 	if data.display.opts.ShowURNs {
 		// When showing URNs, collapse Type and Name into a single URN column.
 		// The URN already contains the type, so showing both would be redundant.
-		columns[typeColumn] = escapeURN(string(urn))
-		columns[nameColumn] = ""
-	} else {
-		columns[typeColumn] = urn.Type().DisplayName()
-		columns[nameColumn] = escapeURN(urn.Name())
+		columns := make([]string, 4)
+		columns[0] = data.display.getStepOpLabel(step, done)
+		columns[1] = escapeURN(string(urn))
+		columns[2] = data.display.getStepStatus(step, done, failed)
+		columns[3] = data.getInfoColumn()
+		return columns
 	}
 
-	diagInfo := data.diagInfo
-
-	failed := data.failed || diagInfo.ErrorCount > 0
-
+	columns := make([]string, 5)
+	columns[opColumn] = data.display.getStepOpLabel(step, done)
+	columns[typeColumn] = urn.Type().DisplayName()
+	columns[nameColumn] = escapeURN(urn.Name())
 	columns[statusColumn] = data.display.getStepStatus(step, done, failed)
 	columns[infoColumn] = data.getInfoColumn()
 	return columns

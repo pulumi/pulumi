@@ -258,6 +258,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		renderer = newNonInteractiveRenderer(stdout, op, opts)
 	}
 
+	suffixCol := int(statusColumn)
+	if opts.ShowURNs {
+		suffixCol = 2 // status column is at index 2 in the 4-column URN layout
+	}
 	display := &ProgressDisplay{
 		action:                action,
 		isPreview:             isPreview,
@@ -268,7 +272,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixCol,
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -322,6 +326,10 @@ func RenderProgressEvents(
 
 	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
+	suffixCol := int(statusColumn)
+	if o.ShowURNs {
+		suffixCol = 2 // status column is at index 2 in the 4-column URN layout
+	}
 	display := &ProgressDisplay{
 		action:                action,
 		isPreview:             isPreview,
@@ -332,7 +340,7 @@ func RenderProgressEvents(
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixCol,
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -381,6 +389,10 @@ func NewCaptureProgressEvents(
 
 	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
+	suffixCol := int(statusColumn)
+	if o.ShowURNs {
+		suffixCol = 2 // status column is at index 2 in the 4-column URN layout
+	}
 	display := &ProgressDisplay{
 		action:                action,
 		isPreview:             isPreview,
@@ -391,7 +403,7 @@ func NewCaptureProgressEvents(
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixCol,
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -452,6 +464,16 @@ func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
 
 func (display *ProgressDisplay) println(line string) {
 	display.renderer.println(line)
+}
+
+// resourceHeader formats a resource header for diagnostics/changes sections.
+// In URN mode the columns have 4 entries [op, URN, status, info], so the URN
+// is at index 1. In normal mode they have 5 entries with type at 1 and name at 2.
+func (display *ProgressDisplay) resourceHeader(columns []string) string {
+	if display.opts.ShowURNs {
+		return "  " + colors.BrightBlue + columns[1] + ":" + colors.Reset
+	}
+	return "  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset
 }
 
 type treeNode struct {
@@ -740,13 +762,7 @@ func (display *ProgressDisplay) printResourceDiffs() {
 		}
 
 		columns := row.ColorizedColumns()
-		var resourceHeader string
-		if display.opts.ShowURNs {
-			resourceHeader = "  " + colors.BrightBlue + columns[typeColumn] + ":" + colors.Reset
-		} else {
-			resourceHeader = "  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset
-		}
-		display.println(resourceHeader)
+		display.println(display.resourceHeader(columns))
 
 		lines := splitIntoDisplayableLines(diff)
 		for _, line := range lines {
@@ -807,13 +823,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
 					columns := row.ColorizedColumns()
-					var resourceHeader string
-					if display.opts.ShowURNs {
-						resourceHeader = "  " + colors.BrightBlue + columns[typeColumn] + ":" + colors.Reset
-					} else {
-						resourceHeader = "  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset
-					}
-					display.println(resourceHeader)
+					display.println(display.resourceHeader(columns))
 				}
 
 				for _, line := range lines {
