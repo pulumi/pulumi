@@ -204,16 +204,17 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				var diagnostics hcl.Diagnostics
 
 				mapType, elementType := model.Type(model.DynamicType), model.Type(model.DynamicType)
+				var argIsEventual bool
 				if len(args) > 0 {
 					switch t := model.ResolveOutputs(args[0].Type()).(type) {
 					case *model.MapType:
-						mapType, elementType = args[0].Type(), t.ElementType
+						mapType, elementType = model.ResolveOutputs(args[0].Type()), t.ElementType
 					case *model.ObjectType:
 						var unifiedType model.Type
 						for _, t := range t.Properties {
 							_, unifiedType = model.UnifyTypes(unifiedType, t)
 						}
-						mapType, elementType = args[0].Type(), unifiedType
+						mapType, elementType = model.ResolveOutputs(args[0].Type()), unifiedType
 					default:
 						rng := args[0].SyntaxNode().Range()
 						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
@@ -222,10 +223,12 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 							Subject:  &rng,
 						}}
 					}
+					p, o := model.ContainsEventuals(args[0].Type())
+					argIsEventual = p || o
 				}
 
 				returnType := elementType
-				if p, o := model.ContainsEventuals(mapType); p || o {
+				if argIsEventual {
 					returnType = model.NewOutputType(returnType)
 				}
 
