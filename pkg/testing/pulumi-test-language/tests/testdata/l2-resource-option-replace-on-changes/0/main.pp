@@ -62,3 +62,19 @@ resource "multiplePropReplace" "replaceonchanges:index:ResourceA" {
         replaceOnChanges = [value, replaceProp]
     }
 }
+
+// Local component with replaceOnChanges
+component "localWithReplace" "./localComponent" {
+    input = true
+    options {
+        replaceOnChanges = [input]
+    }
+}
+
+// Remote component with replaceOnChanges
+resource "remoteWithReplace" "conformance-component:index:Simple" {
+    value = true
+    options {
+        replaceOnChanges = [value]
+    }
+}
