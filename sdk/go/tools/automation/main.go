@@ -86,7 +86,7 @@ func run() int {
 	}
 
 	outputPath := filepath.Join(outputDir, "options.go")
-	if err := os.WriteFile(outputPath, formatted, 0o644); err != nil {
+	if err := os.WriteFile(outputPath, formatted, 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write output: %v\n", err)
 		return 1
 	}
