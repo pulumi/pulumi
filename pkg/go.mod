@@ -23,7 +23,7 @@ require (
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/hcl/v2 v2.22.0
-	github.com/iancoleman/strcase v0.2.0
+	github.com/iancoleman/strcase v0.3.0
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/moby/moby v28.3.3+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
