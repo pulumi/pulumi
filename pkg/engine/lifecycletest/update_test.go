@@ -621,13 +621,17 @@ func TestUntargetedComponentResource(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
-	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
 	existingResourceURN := p.NewURN("pkgA:m:typA", "existingResource", "")
 	opts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{existingResourceURN})
 	registerComponent = true
 
-	_, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
+	for _, res := range snap.Resources {
+		require.NotContains(t, res.URN, "newComponent",
+			"newComponent should not be in the snapshot because it's not being targeted")
+	}
 }
