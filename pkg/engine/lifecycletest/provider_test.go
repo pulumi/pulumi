@@ -1879,7 +1879,8 @@ func TestProvidersOptionInheritance(t *testing.T) {
 	p.Run(t, nil)
 }
 
-// TestProvidersOptionInheritanceRemote checks that a remote component resource _does not_ inherit its parent's Provider option unless its for the correct package.
+// TestProvidersOptionInheritanceRemote checks that a remote component resource _does not_ inherit its parent's Provider
+// option unless its for the correct package.
 func TestProvidersOptionInheritanceRemote(t *testing.T) {
 	t.Parallel()
 
@@ -1915,8 +1916,12 @@ func TestProvidersOptionInheritanceRemote(t *testing.T) {
 		return nil
 	})
 
-	construct := func(expectedType tokens.Type) func(context.Context, plugin.ConstructRequest, *deploytest.ResourceMonitor) (plugin.ConstructResponse, error) {
-		return func(_ context.Context, req plugin.ConstructRequest, mon *deploytest.ResourceMonitor) (plugin.ConstructResponse, error) {
+	construct := func(expectedType tokens.Type) func(
+		context.Context, plugin.ConstructRequest, *deploytest.ResourceMonitor,
+	) (plugin.ConstructResponse, error) {
+		return func(
+			_ context.Context, req plugin.ConstructRequest, mon *deploytest.ResourceMonitor,
+		) (plugin.ConstructResponse, error) {
 			assert.Equal(t, expectedType, req.Type)
 			resp, err := mon.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
 				Parent: req.Parent,
@@ -1963,11 +1968,14 @@ func TestProvidersOptionInheritanceRemote(t *testing.T) {
 					}
 				}
 
-				// Should be two providers one for pkgA and one for pkgB, and only the provider for pkgA should have the expected provider ref.
+				// Should be two providers one for pkgA and one for pkgB, and only the provider for pkgA should have the
+				// expected provider ref.
 				assert.Contains(t, providerResources, "pkgA")
 				assert.Contains(t, providerResources, "pkgB")
-				assert.Equal(t, expectedProviderRef, string(providerResources["pkgA"].URN)+"::"+string(providerResources["pkgA"].ID))
-				assert.NotEqual(t, expectedProviderRef, string(providerResources["pkgB"].URN)+"::"+string(providerResources["pkgB"].ID))
+				assert.Equal(t, expectedProviderRef,
+					string(providerResources["pkgA"].URN)+"::"+string(providerResources["pkgA"].ID))
+				assert.NotEqual(t, expectedProviderRef,
+					string(providerResources["pkgB"].URN)+"::"+string(providerResources["pkgB"].ID))
 
 				providersByName := map[string]string{}
 				for _, res := range snap.Resources {
