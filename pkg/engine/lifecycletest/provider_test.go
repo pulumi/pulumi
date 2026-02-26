@@ -1807,6 +1807,77 @@ func TestProviderOptionInheritance(t *testing.T) {
 	p.Run(t, nil)
 }
 
+// TestProvidersOptionInheritance checks that a child custom resource inherits its parent's Providers option.
+func TestProvidersOptionInheritance(t *testing.T) {
+	t.Parallel()
+
+	var expectedProviderRef string
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		providerResp, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(providerResp.URN, providerResp.ID)
+		require.NoError(t, err)
+		expectedProviderRef = provRef.String()
+
+		parentResp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": expectedProviderRef},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: parentResp.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps: []lt.TestStep{{
+			Op: Update,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+				require.NotEmpty(t, expectedProviderRef)
+
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+
+				providersByName := map[string]string{}
+				for _, res := range snap.Resources {
+					switch res.URN.Name() {
+					case "resA", "resB":
+						providersByName[res.URN.Name()] = res.Provider
+					}
+				}
+
+				require.Equal(t, map[string]string{
+					"resA": expectedProviderRef,
+					"resB": expectedProviderRef,
+				}, providersByName)
+				return nil
+			},
+		}},
+	}
+	p.Run(t, nil)
+}
+
 // TestComponentProvidersInheritance is to test that the `providers` map is propagated to child resources. The rules
 // around providers inheritances are _weird_. They are only used for remote construct calls, but they propagate through
 // any "component parent", not custom resource parents. This is probably just badly spec'd behavior from the first
