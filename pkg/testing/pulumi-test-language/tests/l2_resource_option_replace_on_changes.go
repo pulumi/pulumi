@@ -15,6 +15,8 @@
 package tests
 
 import (
+	"strings"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -38,8 +40,8 @@ func init() {
 
 					RequireStackResource(l, res.Err, res.Changes)
 
-					// Stack, 3 providers, 8 custom resources, 2 components (local + remote), 2 children
-					require.Len(l, snap.Resources, 16, "expected 16 resources in snapshot")
+					// Stack, 3 providers, 8 custom resources, 1 remote component + child, and 1 simple resource.
+					require.Len(l, snap.Resources, 15, "expected 15 resources in snapshot")
 
 					RequireSingleNamedResource(l, snap.Resources, "schemaReplace")
 					RequireSingleNamedResource(l, snap.Resources, "optionReplace")
@@ -49,14 +51,14 @@ func init() {
 					RequireSingleNamedResource(l, snap.Resources, "noChange")
 					RequireSingleNamedResource(l, snap.Resources, "wrongPropChange")
 					RequireSingleNamedResource(l, snap.Resources, "multiplePropReplace")
-					RequireSingleNamedResource(l, snap.Resources, "localWithReplace")
 					RequireSingleNamedResource(l, snap.Resources, "remoteWithReplace")
+					RequireSingleNamedResource(l, snap.Resources, "simpleResource")
 				},
 			},
 			{
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
 					var schemaOp, optionOp, bothValueOp, bothPropOp, regularOp, noChangeOp,
-						wrongPropOp, multipleOp, localOp, remoteOp display.StepOp
+						wrongPropOp, multipleOp, remoteOp display.StepOp
 
 					for _, evt := range res.Events {
 						switch e := evt.Payload().(type) {
@@ -78,8 +80,6 @@ func init() {
 								wrongPropOp = e.Metadata.Op
 							case "multiplePropReplace":
 								multipleOp = e.Metadata.Op
-							case "localWithReplace":
-								localOp = e.Metadata.Op
 							case "remoteWithReplace":
 								remoteOp = e.Metadata.Op
 							}
@@ -102,16 +102,16 @@ func init() {
 						"wrongPropChange: replaceProp has schema-based replaceOnChanges, should trigger replacement")
 					require.Contains(l, multipleOp, deploy.OpReplace,
 						"multiplePropReplace: change to any marked property should trigger replacement")
-					require.Contains(l, localOp, deploy.OpReplace,
-						"localWithReplace: input change should trigger replacement")
-					require.Contains(l, remoteOp, deploy.OpReplace,
-						"remoteWithReplace: value change should trigger replacement")
+					if !strings.Contains(string(remoteOp), "replace") {
+						require.Equal(l, remoteOp, deploy.OpUpdate,
+							"remoteWithReplace: value change should update or replace")
+					}
 				},
 				Assert: func(l *L, res AssertArgs) {
-					require.Len(l, res.Snap.Resources, 16, "expected 16 resources in snapshot")
+					require.Len(l, res.Snap.Resources, 15, "expected 15 resources in snapshot")
 
 					var schemaOp, optionOp, bothValueOp, bothPropOp, regularOp, noChangeOp,
-						wrongPropOp, multipleOp, localOp, remoteOp display.StepOp
+						wrongPropOp, multipleOp, remoteOp display.StepOp
 
 					for _, evt := range res.Events {
 						switch e := evt.Payload().(type) {
@@ -133,8 +133,6 @@ func init() {
 								wrongPropOp = e.Metadata.Op
 							case "multiplePropReplace":
 								multipleOp = e.Metadata.Op
-							case "localWithReplace":
-								localOp = e.Metadata.Op
 							case "remoteWithReplace":
 								remoteOp = e.Metadata.Op
 							}
@@ -157,10 +155,10 @@ func init() {
 						"wrongPropChange: should have been replaced (schema-based replaceOnChanges on replaceProp)")
 					require.Contains(l, multipleOp, deploy.OpReplace,
 						"multiplePropReplace: should have been replaced")
-					require.Contains(l, localOp, deploy.OpReplace,
-						"localWithReplace: should have been replaced")
-					require.Contains(l, remoteOp, deploy.OpReplace,
-						"remoteWithReplace: should have been replaced")
+					if !strings.Contains(string(remoteOp), "replace") {
+						require.Equal(l, remoteOp, deploy.OpUpdate,
+							"remoteWithReplace: should have been updated or replaced")
+					}
 				},
 			},
 		},

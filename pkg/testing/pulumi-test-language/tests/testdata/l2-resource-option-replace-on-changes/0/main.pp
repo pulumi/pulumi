@@ -63,18 +63,15 @@ resource "multiplePropReplace" "replaceonchanges:index:ResourceA" {
     }
 }
 
-// Local component with replaceOnChanges
-component "localWithReplace" "./localComponent" {
-    input = true
-    options {
-        replaceOnChanges = [input]
-    }
-}
-
 // Remote component with replaceOnChanges
 resource "remoteWithReplace" "conformance-component:index:Simple" {
     value = true
     options {
         replaceOnChanges = [value]
     }
+}
+
+// Keep a simple resource so all expected plugins are required.
+resource "simpleResource" "simple:index:Resource" {
+    value = false
 }

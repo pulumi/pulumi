@@ -1,3 +1,5 @@
 ROOT/artifacts/pulumi-CORE.VERSION-py3-none-any.whl
+ROOT/artifacts/pulumi_conformance_component-22.0.0-py3-none-any.whl
 ROOT/artifacts/pulumi_replaceonchanges-25.0.0-py3-none-any.whl
+ROOT/artifacts/pulumi_simple-2.0.0-py3-none-any.whl
 mypy

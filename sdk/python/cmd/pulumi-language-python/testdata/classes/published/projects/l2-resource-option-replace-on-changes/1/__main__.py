@@ -1,5 +1,7 @@
 import pulumi
+import pulumi_conformance_component as conformance_component
 import pulumi_replaceonchanges as replaceonchanges
+import pulumi_simple as simple
 
 # Stage 1: Change properties to trigger replacements
 # Scenario 1: Change replaceProp → REPLACE (schema triggers)
@@ -39,3 +41,8 @@ multiple_prop_replace = replaceonchanges.ResourceA("multiplePropReplace",
             "value",
             "replaceProp",
         ]))
+# Remote component: change value → REPLACE
+remote_with_replace = conformance_component.Simple("remoteWithReplace", value=False,
+opts = pulumi.ResourceOptions(replace_on_changes=["value"]))
+# Keep a simple resource so all expected plugins are required.
+simple_resource = simple.Resource("simpleResource", value=False)

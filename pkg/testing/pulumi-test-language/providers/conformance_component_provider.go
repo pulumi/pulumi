@@ -61,6 +61,7 @@ func (p *ConformanceComponentProvider) GetSchema(
 		Version: "22.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"conformance-component:index:Simple": {
+				IsComponent: true,
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: resourceProperties,
