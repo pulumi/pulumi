@@ -1,4 +1,4 @@
-module example.com/pulumi-conformance-component/sdk/go/v22
+module example.com/pulumi-component/sdk/go/v13
 
 go 1.20
 

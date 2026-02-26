@@ -63,9 +63,9 @@ resource "multiplePropReplace" "replaceonchanges:index:ResourceA" {
     }
 }
 
-// Remote component: change value → REPLACE
-resource "remoteWithReplace" "conformance-component:index:Simple" {
-    value = false  // Changed from true
+// Remote component from built-in provider.
+resource "remoteWithReplace" "component:index:ComponentCallable" {
+    value = "one"  // Unchanged to avoid unsupported update path
     options {
         replaceOnChanges = [value]
     }

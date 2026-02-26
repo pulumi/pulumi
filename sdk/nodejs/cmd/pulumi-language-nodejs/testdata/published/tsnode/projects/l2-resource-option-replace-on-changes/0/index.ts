@@ -1,5 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as conformance_component from "@pulumi/conformance-component";
+import * as component from "@pulumi/component";
 import * as replaceonchanges from "@pulumi/replaceonchanges";
 import * as simple from "@pulumi/simple";
 
@@ -51,7 +51,7 @@ const multiplePropReplace = new replaceonchanges.ResourceA("multiplePropReplace"
     ],
 });
 // Remote component with replaceOnChanges
-const remoteWithReplace = new conformance_component.Simple("remoteWithReplace", {value: true}, {
+const remoteWithReplace = new component.ComponentCallable("remoteWithReplace", {value: "one"}, {
     replaceOnChanges: ["value"],
 });
 // Keep a simple resource so all expected plugins are required.

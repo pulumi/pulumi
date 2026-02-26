@@ -1,7 +1,7 @@
 package main
 
 import (
-	"example.com/pulumi-conformance-component/sdk/go/v22/conformancecomponent"
+	"example.com/pulumi-component/sdk/go/v13/component"
 	"example.com/pulumi-replaceonchanges/sdk/go/v25/replaceonchanges"
 	"example.com/pulumi-simple/sdk/go/v2/simple"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -85,8 +85,8 @@ func main() {
 			return err
 		}
 		// Remote component with replaceOnChanges
-		_, err = conformancecomponent.NewSimple(ctx, "remoteWithReplace", &conformancecomponent.SimpleArgs{
-			Value: pulumi.Bool(true),
+		_, err = component.NewComponentCallable(ctx, "remoteWithReplace", &component.ComponentCallableArgs{
+			Value: pulumi.String("one"),
 		}, pulumi.ReplaceOnChanges([]string{
 			"value",
 		}))
