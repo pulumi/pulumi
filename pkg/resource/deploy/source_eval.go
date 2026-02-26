@@ -1894,7 +1894,21 @@ func inheritFromParent(child *pulumirpc.RegisterResourceRequest, parent resource
 		child.RetainOnDelete = parent.RetainOnDelete
 	}
 	if child.Provider == "" {
-		child.Provider = parent.Provider
+		// We only inherit the provider if this is either a local component or custom resource, or
+		// if this is a remote component resource and the provider is for the same package.
+		inherit := false
+		if child.Remote {
+			ref, err := sdkproviders.ParseReference(parent.Provider)
+			if err == nil {
+				inherit = ref.URN().Type().Name() == tokens.TypeName(tokens.Type(child.Type).Package())
+			}
+		} else {
+			inherit = true
+		}
+
+		if inherit {
+			child.Provider = parent.Provider
+		}
 	}
 }
 

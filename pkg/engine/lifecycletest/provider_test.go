@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -1870,6 +1871,117 @@ func TestProvidersOptionInheritance(t *testing.T) {
 				require.Equal(t, map[string]string{
 					"resA": expectedProviderRef,
 					"resB": expectedProviderRef,
+				}, providersByName)
+				return nil
+			},
+		}},
+	}
+	p.Run(t, nil)
+}
+
+// TestProvidersOptionInheritanceRemote checks that a remote component resource _does not_ inherit its parent's Provider option unless its for the correct package.
+func TestProvidersOptionInheritanceRemote(t *testing.T) {
+	t.Parallel()
+
+	var expectedProviderRef string
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		providerResp, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(providerResp.URN, providerResp.ID)
+		require.NoError(t, err)
+		expectedProviderRef = provRef.String()
+
+		parentResp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": expectedProviderRef},
+		})
+		require.NoError(t, err)
+
+		// This resource should inherit the provider because it's for the same package.
+		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", false, deploytest.ResourceOptions{
+			Remote: true,
+			Parent: parentResp.URN,
+		})
+		require.NoError(t, err)
+
+		// This resource should not inherit the provider because it's for a different package.
+		_, err = monitor.RegisterResource("pkgB:m:typC", "resC", false, deploytest.ResourceOptions{
+			Remote: true,
+			Parent: parentResp.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	construct := func(expectedType tokens.Type) func(context.Context, plugin.ConstructRequest, *deploytest.ResourceMonitor) (plugin.ConstructResponse, error) {
+		return func(_ context.Context, req plugin.ConstructRequest, mon *deploytest.ResourceMonitor) (plugin.ConstructResponse, error) {
+			assert.Equal(t, expectedType, req.Type)
+			resp, err := mon.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+				Parent: req.Parent,
+			})
+			require.NoError(t, err)
+			return plugin.ConstructResponse{
+				URN: resp.URN,
+			}, nil
+		}
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: construct("pkgA:m:typB"),
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: construct("pkgB:m:typC"),
+			}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps: []lt.TestStep{{
+			Op: Update,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+				require.NotEmpty(t, expectedProviderRef)
+
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+
+				providerResources := map[string]*resource.State{}
+				for _, res := range snap.Resources {
+					if providers.IsProviderType(res.Type) {
+						providerResources[string(res.Type.Name())] = res
+					}
+				}
+
+				// Should be two providers one for pkgA and one for pkgB, and only the provider for pkgA should have the expected provider ref.
+				assert.Contains(t, providerResources, "pkgA")
+				assert.Contains(t, providerResources, "pkgB")
+				assert.Equal(t, expectedProviderRef, string(providerResources["pkgA"].URN)+"::"+string(providerResources["pkgA"].ID))
+				assert.NotEqual(t, expectedProviderRef, string(providerResources["pkgB"].URN)+"::"+string(providerResources["pkgB"].ID))
+
+				providersByName := map[string]string{}
+				for _, res := range snap.Resources {
+					switch res.URN.Name() {
+					case "resA", "resB", "resC":
+						providersByName[res.URN.Name()] = res.Provider
+					}
+				}
+
+				// Components don't have "provider" saved in their state
+				require.Equal(t, map[string]string{
+					"resA": expectedProviderRef,
+					"resB": "",
+					"resC": "",
 				}, providersByName)
 				return nil
 			},
