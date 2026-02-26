@@ -16,6 +16,10 @@
 The runtime implementation of the Pulumi Python SDK.
 """
 
+# IMPORTANT: Import _instrumentation BEFORE any other modules to enable OTel tracing.
+# The instrumentation works by monkey-patching grpc, which must happen before it's loaded.
+from . import _instrumentation  # noqa: F401 - imported for side effects
+
 from .config import (
     set_config,
     set_all_config,
