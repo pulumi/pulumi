@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: pkg
-  description: Correct the schema for "pulumi:pulumi:StackReference"

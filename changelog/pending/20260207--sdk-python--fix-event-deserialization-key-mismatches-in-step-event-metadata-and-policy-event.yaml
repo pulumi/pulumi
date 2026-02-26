@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Fix `StepEventMetadata.from_json` reading `detailed_diff` (snake_case) instead of `detailedDiff` (camelCase), and `PolicyEvent.from_json` reading `resource_urn` instead of `resourceUrn`, causing both fields to always be `None`
