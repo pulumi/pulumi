@@ -51,6 +51,10 @@ import (
 	"github.com/google/shlex"
 	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -125,6 +129,12 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
 
+	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if err := cmdutil.InitOtelTracing("pulumi-language-nodejs", otelEndpoint); err != nil {
+		logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+	}
+	defer cmdutil.CloseOtelTracing()
+
 	// Optionally pluck out the engine so we can do logging, etc.
 	var engineAddress string
 	if len(args) > 0 {
@@ -151,7 +161,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing, false /* forceTsc */)
+			host := newLanguageHost(engineAddress, tracing, otelEndpoint, false /* forceTsc */)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -199,8 +209,17 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin
 		opentracing.Tag{Key: "component", Value: "exec.Command"},
 		opentracing.Tag{Key: "command", Value: nodeBin},
 		opentracing.Tag{Key: "args", Value: args})
-
 	defer tracingSpan.Finish()
+
+	tracer := otel.Tracer("pulumi-language-nodejs")
+	_, otelSpan := tracer.Start(ctx, "locateModule",
+		trace.WithAttributes(
+			attribute.String("module", mod),
+			attribute.String("component", "exec.Command"),
+			attribute.String("command", nodeBin),
+			attribute.StringSlice("args", args),
+		))
+	defer otelSpan.End()
 
 	cmd := exec.Command(nodeBin, args...)
 	cmd.Dir = programDir
@@ -221,6 +240,7 @@ type nodeLanguageHost struct {
 
 	engineAddress string
 	tracing       string
+	otelEndpoint  string
 
 	// used by language conformance tests to force TSC usage
 	forceTsc bool
@@ -295,11 +315,12 @@ func parseOptions(options map[string]any) (nodeOptions, error) {
 }
 
 func newLanguageHost(
-	engineAddress, tracing string, forceTsc bool,
+	engineAddress, tracing, otelEndpoint string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		otelEndpoint:  otelEndpoint,
 		forceTsc:      forceTsc,
 	}
 }
@@ -309,11 +330,12 @@ func (host *nodeLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Clos
 		return nil, nil, errors.New("when debugging or running explicitly, must call Handshake before Run")
 	}
 
-	conn, err := grpc.NewClient(
-		host.engineAddress,
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
+	conn, err := grpc.NewClient(host.engineAddress, dialOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("language host could not make connection to engine: %w", err)
 	}
@@ -651,11 +673,12 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	defer contract.IgnoreClose(closer)
 
 	// Make a connection to the real monitor that we will forward messages to.
-	conn, err := grpc.NewClient(
-		req.GetMonitorAddress(),
+	monitorDialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
+	conn, err := grpc.NewClient(req.GetMonitorAddress(), monitorDialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -797,6 +820,32 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
 	}
 
+	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
+		"execNodejs",
+		opentracing.Tag{Key: "component", Value: "exec.Command"},
+		opentracing.Tag{Key: "command", Value: nodeBin},
+		opentracing.Tag{Key: "args", Value: nodeargs})
+	defer tracingSpan.Finish()
+
+	tracer := otel.Tracer("pulumi-language-nodejs")
+	ctx, otelSpan := tracer.Start(ctx, "execNodejs",
+		trace.WithAttributes(
+			attribute.String("component", "exec.Command"),
+			attribute.String("command", nodeBin),
+			attribute.StringSlice("args", nodeargs),
+		))
+	defer otelSpan.End()
+
+	carrier := make(propagation.MapCarrier)
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	if traceparent := carrier.Get("traceparent"); traceparent != "" {
+		env = append(env, "TRACEPARENT="+traceparent)
+	}
+
+	if host.otelEndpoint != "" {
+		env = append(env, "OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
+	}
+
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
 	// #nosec G204
@@ -816,13 +865,6 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	sniffer.Scan(stderrDup)
 
 	cmd.Env = env
-
-	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
-		"execNodejs",
-		opentracing.Tag{Key: "component", Value: "exec.Command"},
-		opentracing.Tag{Key: "command", Value: nodeBin},
-		opentracing.Tag{Key: "args", Value: nodeargs})
-	defer tracingSpan.Finish()
 
 	run := func() error {
 		err := cmd.Start()
@@ -982,6 +1024,10 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	tracingSpan, ctx := opentracing.StartSpanFromContext(server.Context(), "npm-install")
 	defer tracingSpan.Finish()
+
+	tracer := otel.Tracer("pulumi-language-nodejs")
+	ctx, otelSpan := tracer.Start(ctx, "npm-install")
+	defer otelSpan.End()
 
 	if req.UseLanguageVersionTools {
 		// Look for a .nvmrc or .node-version file, install the version specified in it, and set it
