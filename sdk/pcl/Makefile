@@ -2,7 +2,9 @@ PROJECT_NAME     := Pulumi pcl SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh pcl))
 
-ensure::
+include ../../build/common.mk
+
+ensure: .make/ensure/go
 
 build_plugin: ../../bin/pulumi-language-pcl
 
@@ -31,8 +33,5 @@ brew::
 	go install -C cmd/pulumi-language-pcl \
 	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
-lint:: .make/ensure/pcllangci-lint
-	cd .. && pcllangci-lint run -c ../.pcllangci.yml --timeout 5m --path-prefix ..
-
-	cd pulumi-language-pcl && \
-		pcllangci-lint run -c ../../../.pcllangci.yml --timeout 5m --path-prefix pulumi-language-pcl
+lint:: .make/ensure/golangci-lint
+	cd .. && golangci-lint run -c ../.golangci.yml --timeout 5m
