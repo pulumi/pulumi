@@ -2675,21 +2675,13 @@ func (sg *stepGenerator) diff(
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil, nil
 	}
 
-	// If there is no provider for this resource (which should only happen for component resources), compute the
-	// actual diff between old and new inputs so that applyReplaceOnChanges (in continueStepsFromDiff) can correctly
-	// convert changed properties that are in ReplaceOnChanges into a replace step.
+	// If there is no provider for this resource (which should only happen for component resources), simply return a
+	// "diffs exist" result.
 	if prov == nil {
-		objectDiff := oldInputs.Diff(newInputs)
-		if objectDiff == nil || !objectDiff.AnyChanges() {
+		if oldInputs.DeepEquals(newInputs) {
 			return plugin.DiffResult{Changes: plugin.DiffNone}, nil, nil
 		}
-		changedKeys := objectDiff.ChangedKeys()
-		detailedDiff := plugin.NewDetailedDiffFromObjectDiff(objectDiff, true /* inputDiff */)
-		return plugin.DiffResult{
-			Changes:     plugin.DiffSome,
-			ChangedKeys: changedKeys,
-			DetailedDiff: detailedDiff,
-		}, nil, nil
+		return plugin.DiffResult{Changes: plugin.DiffSome}, nil, nil
 	}
 
 	if !sg.deployment.opts.ParallelDiff {

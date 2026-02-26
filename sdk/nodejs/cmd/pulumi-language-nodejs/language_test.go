@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -174,7 +173,7 @@ func testLanguage(t *testing.T, forceTsc bool) {
 					},
 					{
 						Path:        "package\\.json",
-						Pattern:     regexp.QuoteMeta(rootDir) + "/artifacts",
+						Pattern:     rootDir + "/artifacts",
 						Replacement: "ROOT/artifacts",
 					},
 				},
