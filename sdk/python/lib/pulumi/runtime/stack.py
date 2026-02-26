@@ -26,6 +26,7 @@ import grpc
 
 
 from . import settings
+from ._instrumentation import wrap_with_context
 from .. import log
 from ..resource import (
     ComponentResource,
@@ -60,7 +61,7 @@ async def _wait_for_shutdown() -> None:
         if monitor is None:
             return
         await asyncio.get_event_loop().run_in_executor(
-            None, lambda: monitor.SignalAndWaitForShutdown(empty_pb2.Empty())
+            None, wrap_with_context(lambda: monitor.SignalAndWaitForShutdown(empty_pb2.Empty()))
         )
     except grpc.RpcError as exn:
         # If we are running against an older version of the CLI,
