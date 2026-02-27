@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Build language plugins with the grpcnotrace tag to reduce the binary size

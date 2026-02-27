@@ -42,6 +42,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // VCSKind represents the hostname of a specific type of VCS.
@@ -519,6 +522,14 @@ func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumb
 func GitCloneOrPull(
 	ctx context.Context, rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool,
 ) error {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "git-clone-or-pull",
+		trace.WithAttributes(
+			attribute.String("url", rawurl),
+			attribute.String("ref", referenceName.String()),
+		))
+	defer span.End()
+
 	logging.V(10).Infof("Attempting to clone from %s at ref %s", rawurl, referenceName)
 
 	// TODO: https://github.com/go-git/go-git/pull/613 should have resolved the issue preventing this from cloning.

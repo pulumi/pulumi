@@ -17,6 +17,7 @@ package rpcutil
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strings"
@@ -49,10 +50,12 @@ func OpenTracingServerInterceptorOptions(parentSpan opentracing.Span, options ..
 func TracingServerInterceptorOptions(parentSpan opentracing.Span, options ...otgrpc.Option) []grpc.ServerOption {
 	return []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
+			otelUnaryServerInterceptor(),
 			OpenTracingServerInterceptor(parentSpan, options...),
 			stackTraceUnaryServerInterceptor(),
 		),
 		grpc.ChainStreamInterceptor(
+			otelStreamServerInterceptor(),
 			OpenTracingStreamServerInterceptor(parentSpan, options...),
 			stackTraceStreamServerInterceptor(),
 		),
@@ -197,6 +200,78 @@ func captureStackTrace(skip int) string {
 	return stackBuilder.String()
 }
 
+func otelUnaryServerInterceptor() grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req any,
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (any, error) {
+		ctx = extractOTelContext(ctx)
+		ctx, span := startServerSpan(ctx, info.FullMethod)
+		defer span.End()
+
+		resp, err := handler(ctx, req)
+		setSpanStatus(span, err)
+		return resp, err
+	}
+}
+
+func otelStreamServerInterceptor() grpc.StreamServerInterceptor {
+	return func(
+		srv any,
+		ss grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
+		ctx := extractOTelContext(ss.Context())
+		ctx, span := startServerSpan(ctx, info.FullMethod)
+		defer span.End()
+
+		wrapped := &serverStreamWithContext{ServerStream: ss, ctx: ctx}
+		err := handler(srv, wrapped)
+		setSpanStatus(span, err)
+		return err
+	}
+}
+
+// serverStreamWithContext wraps a grpc.ServerStream to provide a custom context.
+type serverStreamWithContext struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (s *serverStreamWithContext) Context() context.Context {
+	return s.ctx
+}
+
+func extractOTelContext(ctx context.Context) context.Context {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ctx
+	}
+	return otel.GetTextMapPropagator().Extract(ctx, propagationCarrier(md))
+}
+
+func startServerSpan(ctx context.Context, method string) (context.Context, trace.Span) {
+	name := strings.TrimPrefix(method, "/")
+
+	var attrs []attribute.KeyValue
+	if idx := strings.LastIndex(name, "/"); idx >= 0 {
+		attrs = []attribute.KeyValue{
+			semconv.RPCSystemGRPC,
+			semconv.RPCServiceKey.String(name[:idx]),
+			semconv.RPCMethodKey.String(name[idx+1:]),
+		}
+	}
+
+	tracer := otel.Tracer("pulumi-cli")
+	return tracer.Start(ctx, name,
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(attrs...),
+	)
+}
+
 func stackTraceUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
@@ -315,7 +390,7 @@ type trackedClientStream struct {
 
 func (s *trackedClientStream) RecvMsg(m any) error {
 	err := s.ClientStream.RecvMsg(m)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		setSpanStatus(s.span, err)
 		s.span.End()
 	}

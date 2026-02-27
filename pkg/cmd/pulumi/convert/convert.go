@@ -578,6 +578,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		diags, err := packages.GenSDK(
+			pctx.Request(),
 			language,
 			tempOut,
 			pkgSchema,

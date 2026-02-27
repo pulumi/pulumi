@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/python
-  description: Improve the performance of `contains_unknowns` for large objects

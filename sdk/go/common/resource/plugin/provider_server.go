@@ -35,21 +35,26 @@ import (
 type providerServer struct {
 	pulumirpc.UnsafeResourceProviderServer // opt out of forward compat
 
-	provider      Provider
-	keepSecrets   bool
-	keepResources bool
+	provider                       Provider
+	acceptSecrets, sendSecrets     bool
+	acceptResources, sendResources bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
-	return &providerServer{provider: provider}
+	return &providerServer{
+		provider: provider,
+		// Apply defaults unless Handshake overrides
+		acceptSecrets: true, sendSecrets: true,
+		acceptResources: true, sendResources: true,
+	}
 }
 
 func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) MarshalOptions {
 	return MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    true,
+		KeepSecrets:      p.acceptSecrets,
+		KeepResources:    p.acceptResources,
 		KeepOutputValues: keepOutputValues,
 		PropagateNil:     true,
 	}
@@ -59,8 +64,8 @@ func (p *providerServer) marshalOptions(label string) MarshalOptions {
 	return MarshalOptions{
 		Label:         label,
 		KeepUnknowns:  true,
-		KeepSecrets:   p.keepSecrets,
-		KeepResources: p.keepResources,
+		KeepSecrets:   p.sendSecrets,
+		KeepResources: p.sendResources,
 		PropagateNil:  true,
 	}
 }
@@ -151,14 +156,13 @@ func (p *providerServer) Handshake(
 		return nil, err
 	}
 
-	return &pulumirpc.ProviderHandshakeResponse{
-		// providerServer can shim support for all these features, so we always set them to true. Note that we do the same
-		// in Configure.
-		AcceptSecrets:   true,
-		AcceptResources: true,
-		AcceptOutputs:   true,
+	p.acceptSecrets = res.AcceptSecrets
+	p.acceptResources = res.AcceptResources
 
-		// For features we don't shim, we just pass through the response from the provider as expected.
+	return &pulumirpc.ProviderHandshakeResponse{
+		AcceptSecrets:                   res.AcceptSecrets,
+		AcceptResources:                 res.AcceptResources,
+		AcceptOutputs:                   res.AcceptOutputs,
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
 	}, nil
 }
@@ -403,14 +407,14 @@ func (p *providerServer) Configure(ctx context.Context,
 		return nil, err
 	}
 
-	p.keepSecrets = req.GetAcceptSecrets()
-	p.keepResources = req.GetAcceptResources()
+	p.sendSecrets = req.GetAcceptSecrets()
+	p.sendResources = req.GetAcceptResources()
 	return &pulumirpc.ConfigureResponse{
+		AcceptSecrets:   p.acceptSecrets,
+		AcceptResources: p.acceptResources,
 		// providerServer can shim support for all these features, so we always set them to true. Note that we do the same
 		// in Handshake (though Handshake implies SupportsPreview, so we don't shim that there).
-		AcceptSecrets:   true,
 		SupportsPreview: true,
-		AcceptResources: true,
 		AcceptOutputs:   true,
 	}, nil
 }

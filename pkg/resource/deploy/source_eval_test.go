@@ -1831,16 +1831,16 @@ func TestResourceInheritsOptionsFromParent(t *testing.T) {
 			}
 
 			childURN := resource.NewURN("a", "proj", "d:e:f", "a:b:c", "child")
-			goal := &resource.Goal{
-				Parent:      parentURN,
-				Type:        childURN.Type(),
+			request := &pulumirpc.RegisterResourceRequest{
+				Parent:      string(parentURN),
+				Type:        string(childURN.Type()),
 				Name:        childURN.Name(),
-				DeletedWith: test.childDeletedWith,
+				DeletedWith: string(test.childDeletedWith),
 			}
 
-			newGoal := inheritFromParent(*goal, *parentGoal)
+			inheritFromParent(request, *parentGoal)
 
-			assert.Equal(t, test.wantDeletedWith, newGoal.DeletedWith)
+			assert.Equal(t, string(test.wantDeletedWith), request.DeletedWith)
 		})
 	}
 }
