@@ -81,12 +81,15 @@ generate::
 generate-cli-spec::
 	go run -C pkg ./cmd/pulumi generate-cli-spec
 
+# For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
+# dead code elimation due to the usage of certain reflection methods.
+bin/pulumi: GO_BUILD_TAGS =
 bin/pulumi: proto/.checksum.txt .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
-	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+	go build -C pkg -o ../$@ -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: bin/pulumi-display.wasm
 bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display/wasm/gold-size.txt
-	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" -trimpath ./backend/display/wasm
+	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -tags="${GO_BUILD_TAGS}" -ldflags "-w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" -trimpath ./backend/display/wasm
 	python3 scripts/wasm-size-check.py bin/pulumi-display.wasm pkg/backend/display/wasm/gold-size.txt
 
 .PHONY: build
@@ -101,6 +104,7 @@ build_debug::
 
 build_cover::
 	cd pkg && go build -cover -o ../bin/pulumi \
+		-tags="${GO_BUILD_TAGS}" \
 		-coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/... \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
@@ -111,7 +115,7 @@ developer_docs::
 	cd developer-docs && make html
 
 dist::
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: brew
 # NOTE: the brew target intentionally avoids the dependency on `build`, as each language SDK has its own brew target
