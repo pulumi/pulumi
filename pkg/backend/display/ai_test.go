@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
 )
@@ -130,10 +131,6 @@ Resource has been created`
 	assert.Equal(t, expectedSummary, formattedSummary)
 }
 
-type mockNeoTaskResult struct {
-	TaskID string
-}
-
 func TestRenderNeoTaskCreated(t *testing.T) {
 	t.Parallel()
 
@@ -143,8 +140,7 @@ func TestRenderNeoTaskCreated(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	taskResult := &mockNeoTaskResult{TaskID: "task_abc123"}
-	RenderNeoTaskCreated(taskResult, nil, "https://app.pulumi.com", "test-org", opts)
+	RenderNeoTaskCreated(&client.NeoTaskResponse{TaskID: "task_abc123"}, nil, "https://app.pulumi.com", "test-org", opts)
 
 	expected := fmt.Sprintf(`
 Neo Task Created%s
@@ -196,7 +192,7 @@ func TestRenderNeoTaskCreatedEmptyTaskID(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	taskResult := &mockNeoTaskResult{TaskID: ""}
+	taskResult := &client.NeoTaskResponse{TaskID: ""}
 	RenderNeoTaskCreated(taskResult, nil, "https://app.pulumi.com", "test-org", opts)
 	assert.Equal(t, "", buf.String())
 }
