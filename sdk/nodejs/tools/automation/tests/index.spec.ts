@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,15 +13,45 @@
 // limitations under the License.
 
 import { API, PulumiImportOptions, PulumiUpOptions } from "../output";
+import { describe, it } from "mocha";
+import * as assert from "assert";
 
 describe("Command examples", () => {
     const api = new API();
+
+    it("about", () => {
+        const command = api.about({}); // An executable menu
+        assert.strictEqual(command, "pulumi about");
+    });
+
+    it("config env add", () => {
+        const command = api.configEnvAdd({});
+        assert.strictEqual(command, "pulumi config env add");
+    });
+
+    it("template publish", () => {
+        const command = api.templatePublish(
+            {
+                name: "test",
+                version: "1.0.0",
+            },
+            ".", // Required flags
+        );
+
+        assert.strictEqual(
+            command,
+            "pulumi template publish --name test --version 1.0.0 -- .",
+        );
+    });
 
     it("import", () => {
         const options: PulumiImportOptions = {};
 
         const command = api.import(options, "'aws:iam/user:User'", "name", "id");
-        expect(command).toBe("pulumi import -- 'aws:iam/user:User' name id");
+        assert.strictEqual(
+            command,
+            "pulumi import -- 'aws:iam/user:User' name id",
+        );
     });
 
     it("up", () => {
@@ -30,6 +60,10 @@ describe("Command examples", () => {
         };
 
         const command = api.up(options, "https://pulumi.com");
-        expect(command).toBe("pulumi up --target urnA --target urnB -- https://pulumi.com");
+        assert.strictEqual(
+            command,
+            "pulumi up --target urnA --target urnB -- https://pulumi.com",
+        );
     });
 });
+

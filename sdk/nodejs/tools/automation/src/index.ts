@@ -31,7 +31,7 @@ import {
 import type { Argument, Arguments, Command, Flag, Structure } from "./types";
 
 // Known collisions between the Pulumi CLI and the TypeScript keywords or globals.
-const reservedWords: string[] = ["package"];
+const reservedWords: string[] = ["options", "package"];
 
 (function main(): void {
     if (!process.argv[2]) {
@@ -106,7 +106,7 @@ function generateCommands(structure: Structure, container: ClassDeclaration, bre
     const parameters: ParameterDeclarationStructure[] = [];
     parameters.push({
         kind: StructureKind.Parameter,
-        name: "__options",
+        name: "options",
         type: createOptionsTypeName(breadcrumbs),
     });
 
@@ -150,7 +150,7 @@ function generateBody(structure: Structure, breadcrumbs: string[]): WriterFuncti
         // repeatable, we need to loop through the array to add them to the command.
         // If they're boolean, we don't need to add a value after the flag.
         function option(flag: Flag, override: string = ""): void {
-            const name: string = override ? override : "__options." + sanitiseValueName(flag.name);
+            const name: string = override ? override : "options." + sanitiseValueName(flag.name);
 
             if (flag.repeatable) {
                 writer.writeLine(`for (const __item of ${name} ?? []) {`);
