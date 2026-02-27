@@ -762,7 +762,7 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 	}
 
 	path := strings.TrimPrefix(u.Path, "/")
-	paths := strings.Split(path, "/")
+	paths := strings.Split(strings.TrimSuffix(path, "/"), "/")
 	if len(paths) < 2 {
 		return gitRepoURLParts{}, errors.New("invalid Git URL")
 	}
