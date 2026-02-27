@@ -130,13 +130,8 @@ Resource has been created`
 	assert.Equal(t, expectedSummary, formattedSummary)
 }
 
-// mockNeoTaskResult implements NeoTaskResult for testing
 type mockNeoTaskResult struct {
-	taskID string
-}
-
-func (m *mockNeoTaskResult) GetTaskID() string {
-	return m.taskID
+	TaskID string
 }
 
 func TestRenderNeoTaskCreated(t *testing.T) {
@@ -148,7 +143,7 @@ func TestRenderNeoTaskCreated(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	taskResult := &mockNeoTaskResult{taskID: "task_abc123"}
+	taskResult := &mockNeoTaskResult{TaskID: "task_abc123"}
 	RenderNeoTaskCreated(taskResult, nil, "https://app.pulumi.com", "test-org", opts)
 
 	expected := fmt.Sprintf(`
@@ -201,7 +196,7 @@ func TestRenderNeoTaskCreatedEmptyTaskID(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	taskResult := &mockNeoTaskResult{taskID: ""}
+	taskResult := &mockNeoTaskResult{TaskID: ""}
 	RenderNeoTaskCreated(taskResult, nil, "https://app.pulumi.com", "test-org", opts)
 	assert.Equal(t, "", buf.String())
 }

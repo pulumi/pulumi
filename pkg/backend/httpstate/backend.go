@@ -1457,7 +1457,6 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 	)
 	renderer.ProcessEventSlice(events)
 
-	permalink := b.getPermalink(update, updateMeta.version, dryRun)
 	if renderer.OutputIncludesFailure() {
 		if op.Opts.Display.StartNeoTaskOnError {
 			taskResp, taskErr := b.createNeoTaskOnError(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
@@ -1469,6 +1468,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 		}
 
 		if op.Opts.Display.ShowNeoFeatures {
+			permalink := b.getPermalink(update, updateMeta.version, dryRun)
 			summary, err := b.summarizeErrorWithNeo(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
 			// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 			// if we can't generate a summary.
@@ -1521,7 +1521,6 @@ func (b *cloudBackend) createNeoTaskOnError(
 		return nil, err
 	}
 
-	// Construct a message that includes the error context
 	content := fmt.Sprintf("Help me debug the following Pulumi error for project %s and stack %s:\n\n%s", stackID.Project, stackID.Stack.String(), pulumiOutput)
 
 	return b.client.CreateNeoTask(ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project)

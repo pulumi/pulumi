@@ -73,6 +73,7 @@ type NeoTaskEntityDiff struct {
 
 // NeoTaskEntity represents an entity (like a stack) that the agent can work with.
 type NeoTaskEntity struct {
+	// Type can be "stack", "repository", "pull_request" or "policy_issue"
 	Type    string `json:"type"`
 	Name    string `json:"name"`
 	Project string `json:"project"`
@@ -81,12 +82,6 @@ type NeoTaskEntity struct {
 // NeoTaskResponse represents the response from creating a Neo task.
 type NeoTaskResponse struct {
 	TaskID string `json:"taskId"`
-}
-
-// GetTaskID returns the task ID from the response.
-// This implements the display.NeoTaskResult interface.
-func (r *NeoTaskResponse) GetTaskID() string {
-	return r.TaskID
 }
 
 // TemplatePublishOperationID uniquely identifies a template publish operation.

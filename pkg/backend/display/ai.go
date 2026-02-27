@@ -21,8 +21,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // NeoErrorSummaryMetadata contains metadata about a Neo error summary.
@@ -108,16 +110,11 @@ func renderBoldMarkdown(summary string, opts Options) string {
 	return summary
 }
 
-// NeoTaskResult is an interface for the Neo task creation response.
-type NeoTaskResult interface {
-	GetTaskID() string
-}
-
 // RenderNeoTaskCreated renders a message after a Neo task has been created.
-func RenderNeoTaskCreated(taskResult NeoTaskResult, err error, cloudConsoleURL, orgName string, opts Options) {
-	out := opts.Stdout
+func RenderNeoTaskCreated(taskResult *client.NeoTaskResponse, err error, cloudConsoleURL, orgName string, opts Options) {
+	out := opts.Stderr
 	if out == nil {
-		out = os.Stdout
+		out = os.Stderr
 	}
 
 	if err != nil {
@@ -134,11 +131,8 @@ func RenderNeoTaskCreated(taskResult NeoTaskResult, err error, cloudConsoleURL, 
 		return
 	}
 
-	taskID := taskResult.GetTaskID()
-	if taskID == "" {
-		return
-	}
-
+	taskID := taskResult.TaskID
+	contract.Assertf(taskID != "", "taskID is empty")
 	fmt.Fprintf(out, "\n")
 	header := opts.Color.Colorize(
 		colors.SpecHeadline + "Neo Task Created" + neoDelimiterEmoji() + colors.Reset)

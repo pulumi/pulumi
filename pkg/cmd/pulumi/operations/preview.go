@@ -719,8 +719,10 @@ func NewPreviewCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(
 		&neoTaskOnFailure, "neo-task-on-failure", false,
-		"Start a Neo task to help debug errors that occur during the operation "+
-			"(can also be set with PULUMI_NEO_TASK_ON_FAILURE environment variable)")
+		"Start a Neo task to help debug errors that occur during the operation")
+	if !env.Experimental.Value() {
+		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("neo-task-on-failure"), `Could not mark "neo-task-on-failure" as hidden`)
+	}
 
 	// Keep --copilot flag for backwards compatibility, but hide it
 	cmd.PersistentFlags().BoolVar(
