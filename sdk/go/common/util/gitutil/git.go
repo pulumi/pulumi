@@ -762,7 +762,7 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 	}
 
 	path := strings.TrimPrefix(u.Path, "/")
-	paths := strings.Split(strings.TrimSuffix(path, "/"), "/")
+	paths := strings.Split(path, "/")
 	if len(paths) < 2 {
 		return gitRepoURLParts{}, errors.New("invalid Git URL")
 	}
@@ -786,21 +786,7 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 		return gitRepoURLParts{}, errors.New("invalid Git URL; no owner")
 	}
 
-	var repo string
-	var resultPath string
-	// GitLab supports nested groups (subgroups), so for GitLab URLs without a .git suffix
-	// the last path component is the repository name and all preceding components form the
-	// owner/group path (e.g. gitlab.com/group/subgroup/repo).
-	// For other hosts (GitHub, Bitbucket, etc.) the structure is always owner/repo/subpath,
-	// so only the first two components are the repo URL and the rest is a sub-directory path.
-	if strings.Contains(hostname, "gitlab") && len(paths) > 2 {
-		owner = strings.Join(paths[:len(paths)-1], "/")
-		repo = paths[len(paths)-1]
-	} else {
-		repo = paths[1]
-		resultPath = strings.TrimSuffix(strings.Join(paths[2:], "/"), "/")
-	}
-
+	repo := paths[1]
 	if repo == "" {
 		return gitRepoURLParts{}, errors.New("invalid Git URL; no repository")
 	}
@@ -810,6 +796,7 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 	}
 
 	resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + owner + "/" + repo
+	resultPath := strings.TrimSuffix(strings.Join(paths[2:], "/"), "/")
 
 	return gitRepoURLParts{
 		URL:      resultURL,
