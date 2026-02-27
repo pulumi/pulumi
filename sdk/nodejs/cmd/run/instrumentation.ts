@@ -21,7 +21,6 @@ import * as opentelemetry from "@opentelemetry/api";
 let rootContext: opentelemetry.Context | null = null;
 let tracerProvider: any = null;
 
-// Set up instrumentation if TRACEPARENT is present
 if (process.env.TRACEPARENT) {
     // These imports are done dynamically inside the if block to avoid
     // loading unnecessary modules when tracing is not enabled
@@ -35,7 +34,7 @@ if (process.env.TRACEPARENT) {
 
     const provider = new NodeTracerProvider({
         resource: new Resource({
-            [ATTR_SERVICE_NAME]: "pulumi-nodejs",
+            [ATTR_SERVICE_NAME]: "pulumi-sdk-nodejs",
         }),
     });
 
@@ -58,7 +57,6 @@ if (process.env.TRACEPARENT) {
     function captureStackTrace(): string {
         const err = new Error();
         const stack = err.stack || "";
-        // Remove the first few lines (Error message and captureStackTrace/requestHook frames)
         const lines = stack.split("\n").slice(4);
         return lines
             .map((line) => line.trim().replace(/^at /, ""))
@@ -80,18 +78,8 @@ if (process.env.TRACEPARENT) {
     }
 
     const envCarrier: Record<string, string> = {};
-    if (process.env.TRACEPARENT) {
-        envCarrier["traceparent"] = process.env.TRACEPARENT;
-    }
+    envCarrier["traceparent"] = process.env.TRACEPARENT;
     rootContext = opentelemetry.propagation.extract(opentelemetry.context.active(), envCarrier);
-}
-
-/**
- * Get the root tracing context, if tracing is enabled.
- * Returns null if tracing is not enabled or TRACEPARENT was not set.
- */
-export function getRootContext(): opentelemetry.Context | null {
-    return rootContext;
 }
 
 /**
