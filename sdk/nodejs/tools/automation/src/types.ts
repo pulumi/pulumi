@@ -76,10 +76,7 @@ interface NodeBase {
 export interface Menu extends NodeBase {
     type: "menu";
 
-    /**
-     * True when this menu can be executed.
-     * When false, this is a pure menu of subcommands and does nothing when invoked by itself.
-     */
+    /** True if this menu can also be executed directly as a command. */
     executable?: boolean;
 
     /** Subcommands in this menu. */
