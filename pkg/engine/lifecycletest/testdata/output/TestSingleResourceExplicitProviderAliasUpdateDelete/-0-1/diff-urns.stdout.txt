@@ -1,0 +1,12 @@
+<{%fg 3%}>~ urn:pulumi:test::test::pulumi:providers:pkgA::provB: (update)
+<{%reset%}>    [id=1]
+<{%reset%}><{%fg 3%}>  ~ id: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>first<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>second<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pkgA:m:typA::resA: (delete)
+<{%fg 1%}>    [id=3]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::1]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+    <{%bold%}>2 changes<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

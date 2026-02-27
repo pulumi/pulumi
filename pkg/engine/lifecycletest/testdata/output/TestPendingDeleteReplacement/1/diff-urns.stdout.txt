@@ -1,0 +1,20 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resA: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typB::resB: (create-replacement)
+<{%reset%}>    [id=4]
+<{%reset%}><{%fg 3%}>  ~ frob: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>active<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>in<{%reset%}><{%reset%}>active<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typB::resB: (replace)
+<{%reset%}>    [id=4]
+<{%reset%}><{%fg 3%}>  ~ frob: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>active<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>in<{%reset%}><{%reset%}>active<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:m:typB::resB: (delete-replaced)
+<{%fg 9%}>    [id=4]
+<{%reset%}><{%fg 9%}>    frob  : <{%reset%}><{%fg 9%}>"active"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%fg 9%}>    parent: <{%reset%}><{%fg 9%}>"0"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 replaced<{%reset%}>
+    1 unchanged
+    <{%fg 1%}>1 errored<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

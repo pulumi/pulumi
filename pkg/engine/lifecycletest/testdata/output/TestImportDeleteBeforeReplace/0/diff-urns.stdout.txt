@@ -1,0 +1,17 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}><{%fg 2%}>= urn:pulumi:test::test::pkgA:m:typA::resB: (import)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:m:typA::resB: (delete-replaced)
+<{%fg 9%}>    [id=3]
+<{%reset%}><{%fg 9%}>    foo: <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::resB: (replace)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::resB: (create-replacement)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 to replace<{%reset%}>
+    <{%fg 2%}>= 1 to import<{%reset%}>
+    <{%bold%}>2 changes<{%reset%}>

@@ -1,0 +1,9 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}>    <{%fg 5%}>analyzerA@v <{%reset%}><{%fg 1%}>[mandatory] [severity: high]  always-fails<{%reset%}>  (pkgA:m:typA: urn:pulumi:test::test::pkgA:m:typA::resA)<{%reset%}>a policy failed<{%reset%}>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>
+    <{%underline%}><{%fg 12%}>Name<{%reset%}>       <{%underline%}><{%fg 12%}>Version<{%reset%}>
+    analyzerA  
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

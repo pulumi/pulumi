@@ -1,0 +1,11 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pkgA:m:typA::resA: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ frob: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>baz<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>updated<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%reset%}>    baz : <{%reset%}><{%reset%}>24<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

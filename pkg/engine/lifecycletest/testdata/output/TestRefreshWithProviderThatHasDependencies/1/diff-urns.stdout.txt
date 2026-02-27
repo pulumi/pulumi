@@ -1,0 +1,15 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::resA: (create)
+<{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::resX: (create)
+<{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typB::resB: (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::resX::4]
+<{%reset%}><{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC::resD: (create)
+<{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"baz"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

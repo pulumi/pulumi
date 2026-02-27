@@ -1,0 +1,8 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkg::provA: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    value: <{%reset%}><{%reset%}>"100"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

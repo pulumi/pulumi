@@ -1,0 +1,8 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}><{%fg 14%}>> urn:pulumi:test::test::pkgA:m:typA::resA: (read)
+<{%fg 14%}>    foo: <{%reset%}><{%fg 14%}>"bar"<{%reset%}><{%fg 14%}>
+<{%reset%}><{%reset%}><{%fg 14%}>    --outputs:--<{%reset%}>
+<{%fg 14%}>    out: <{%reset%}><{%fg 14%}>41<{%reset%}><{%fg 14%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

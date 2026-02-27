@@ -7,7 +7,8 @@
 <{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>    input: <{%reset%}><{%reset%}>"value-2"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>  ~ input : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>value-2<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}><FRESH-INPUT-3><{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>  ~ result: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>value-2<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}><FRESH-RESULT-3><{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>
     1 unchanged

@@ -94,3 +94,4 @@ yarn-error.log
 # Local environment settings
 .env
 .claude/settings.local.json
+pkg/pulumi

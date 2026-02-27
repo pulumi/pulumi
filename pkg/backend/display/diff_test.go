@@ -152,6 +152,68 @@ func TestDiffEvents(t *testing.T) {
 	}
 }
 
+func testDiffEventsWithURNs(t *testing.T, path string, accept bool) {
+	events, err := loadEvents(path)
+	require.NoError(t, err)
+
+	var expectedStdout []byte
+	if !accept {
+		expectedStdout, err = os.ReadFile(path + ".urns.stdout.txt")
+		require.NoError(t, err)
+	}
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	go ShowDiffEvents("test", eventChannel, doneChannel, Options{
+		Color:                colors.Raw,
+		ShowConfig:           true,
+		ShowReplacementSteps: true,
+		ShowSameResources:    true,
+		ShowReads:            true,
+		ShowURNs:             true,
+		Stdout:               &stdout,
+		Stderr:               &stderr,
+	})
+
+	for _, e := range events {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	if !accept {
+		assert.Equal(t, string(expectedStdout), stdout.String())
+	} else {
+		err = os.WriteFile(path+".urns.stdout.txt", stdout.Bytes(), 0o600)
+		require.NoError(t, err)
+	}
+}
+
+// TestDiffEventsWithURNs tests that ShowDiffEvents renders full URNs when ShowURNs is set,
+// collapsing the type and name into a single URN per resource line.
+func TestDiffEventsWithURNs(t *testing.T) {
+	t.Parallel()
+
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+
+	entries, err := os.ReadDir("testdata/not-truncated")
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/not-truncated", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			t.Parallel()
+			testDiffEventsWithURNs(t, path, accept)
+		})
+	}
+}
+
 func TestJsonYamlDiff(t *testing.T) {
 	t.Parallel()
 

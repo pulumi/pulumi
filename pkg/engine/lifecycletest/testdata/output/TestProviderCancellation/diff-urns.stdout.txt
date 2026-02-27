@@ -1,0 +1,9 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::res1: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::res2: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::res3: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::res0: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

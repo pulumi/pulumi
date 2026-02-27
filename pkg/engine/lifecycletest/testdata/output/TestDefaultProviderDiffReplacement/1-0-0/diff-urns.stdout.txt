@@ -1,0 +1,22 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10: (create)
+<{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"0.17.10"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::resA: (create-replacement)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::4<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10::2<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::resA: (replace)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::4<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_10::2<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_11: (create)
+<{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"0.17.11"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resB: (same)
+<{%reset%}>    [id=7]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::default::4<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::default_0_17_11::6<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:m:typA::resA: (delete-replaced)
+<{%fg 9%}>    [id=3]
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pulumi:providers:pkgA::default: (delete)
+<{%fg 1%}>    [id=4]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 replaced<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

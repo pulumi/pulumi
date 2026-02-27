@@ -1,0 +1,6 @@
+<{%reset%}>  urn:pulumi:stack::stack::pulumi:pulumi:Stack::foo: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

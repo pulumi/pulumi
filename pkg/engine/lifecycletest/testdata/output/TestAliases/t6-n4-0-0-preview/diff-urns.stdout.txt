@@ -1,0 +1,15 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:index:t6::n4: (create-replacement)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 2%}>  + forcesReplacement: <{%reset%}><{%fg 2%}>1000<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 1%}>  - x                : <{%reset%}><{%fg 1%}>1000<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:index:t6::n4: (replace)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 2%}>  + forcesReplacement: <{%reset%}><{%fg 2%}>1000<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 1%}>  - x                : <{%reset%}><{%fg 1%}>1000<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:index:t5::n3: (delete-replaced)
+<{%fg 9%}>    [id=3]
+<{%reset%}><{%fg 9%}>    x: <{%reset%}><{%fg 9%}>1000<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 to replace<{%reset%}>

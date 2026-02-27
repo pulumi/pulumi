@@ -1,0 +1,56 @@
+<{%fg 3%}>~ urn:pulumi:test::test::pulumi:providers:pkgA::A: (update)
+<{%reset%}>    [id=1]
+<{%reset%}><{%fg 2%}>  + A: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::B: (create-replacement)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::A::0]
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::B: (replace)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::A::0]
+<{%reset%}><{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pulumi:providers:pkgA::C: (update)
+<{%reset%}>    [id=5]
+<{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pulumi:providers:pkgA::D: (update)
+<{%reset%}>    [id=6]
+<{%reset%}><{%fg 1%}>  - B: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::E: (same)
+<{%reset%}>    [id=7]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::C::2]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=8]
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::F: (create-replacement)
+<{%reset%}>    [id=9]
+<{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::F: (replace)
+<{%reset%}>    [id=9]
+<{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::G: (create-replacement)
+<{%reset%}>    [id=10]
+<{%reset%}><{%fg 1%}>  - B: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::G: (replace)
+<{%reset%}>    [id=10]
+<{%reset%}><{%fg 1%}>  - B: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::H: (same)
+<{%reset%}>    [id=7]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::D::3]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::I: (same)
+<{%reset%}>    [id=9]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::J: (same)
+<{%reset%}>    [id=10]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::K: (same)
+<{%reset%}>    [id=11]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::L: (same)
+<{%reset%}>    [id=12]
+<{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:m:typA::G: (delete-replaced)
+<{%fg 9%}>    [id=10]
+<{%reset%}><{%fg 9%}>    B: <{%reset%}><{%fg 9%}>"foo"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:m:typA::B: (delete-replaced)
+<{%fg 9%}>    [id=3]
+<{%reset%}><{%fg 9%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::A::0]
+<{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:m:typA::F: (delete-replaced)
+<{%fg 9%}>    [id=9]
+<{%reset%}><{%fg 9%}>    A: <{%reset%}><{%fg 9%}>"foo"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 3 to update<{%reset%}>
+    <{%fg 13%}>+-3 to replace<{%reset%}>
+    <{%bold%}>6 changes<{%reset%}>. 6 unchanged

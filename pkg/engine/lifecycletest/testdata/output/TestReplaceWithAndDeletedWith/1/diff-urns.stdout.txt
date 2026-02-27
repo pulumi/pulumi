@@ -1,0 +1,27 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::resC: (create-replacement)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::resC: (replace)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::resA: (create-replacement)
+<{%reset%}>    [id=5]
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::resA: (replace)
+<{%reset%}>    [id=5]
+<{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:m:typA::resA: (delete-replaced)
+<{%fg 9%}>    [id=5]
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pkgA:m:typA::resB: (delete)
+<{%fg 1%}>    [id=4]
+<{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:m:typA::resC: (delete-replaced)
+<{%fg 9%}>    [id=3]
+<{%reset%}><{%fg 9%}>    foo: <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 9%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+    <{%fg 13%}>+-2 replaced<{%reset%}>
+    <{%bold%}>3 changes<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
