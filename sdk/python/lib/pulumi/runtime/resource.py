@@ -577,7 +577,7 @@ def get_resource(
         try:
             resolver = await prepare_resource(res, ty, custom, False, props, None, typ)
 
-            monitor = settings.get_monitor()
+            monitor = settings._get_async_monitor()
             inputs = await rpc.serialize_properties({"urn": urn}, {})
 
             accept_resources = os.getenv(
@@ -591,13 +591,10 @@ def get_resource(
                 acceptResources=accept_resources,
             )
 
-            def do_invoke():
-                try:
-                    return monitor.Invoke(req)
-                except grpc.RpcError as exn:
-                    handle_grpc_error(exn)
-
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+            try:
+                resp = await monitor.Invoke(req)
+            except grpc.RpcError as exn:
+                handle_grpc_error(exn)
 
             # If the invoke failed, raise an error.
             if resp.failures:
@@ -780,7 +777,7 @@ def read_resource(
         raise Exception("Cannot read resource whose options are lacking an ID value")
 
     log.debug(f"reading resource: ty={ty}, name={name}, id={_safe_str(opts.id)}")
-    monitor = settings.get_monitor()
+    monitor = settings._get_async_monitor()
 
     # If we have type information, we'll use its and the resource's type/name metadata
     # for name translations rather than using the resource's translation methods.
@@ -865,20 +862,17 @@ def read_resource(
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
-            def do_rpc_call():
-                if monitor is None:
-                    # If no monitor is available, we'll need to fake up a response, for testing.
-                    return RegisterResponse(
-                        mock_urn or "", None, resolver.serialized_props, None, None
-                    )
-
+            if monitor is None:
+                # If no monitor is available, we'll need to fake up a response, for testing.
+                resp = RegisterResponse(
+                    mock_urn or "", None, resolver.serialized_props, None, None
+                )
+            else:
                 # If there is a monitor available, make the true RPC request to the engine.
                 try:
-                    return monitor.ReadResource(req)
+                    resp = await monitor.ReadResource(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
 
         except Exception as exn:
             log.debug(
@@ -977,7 +971,7 @@ def register_resource(
     log.debug(
         f"registering resource: ty={ty}, name={name}, custom={custom}, remote={remote}"
     )
-    monitor = settings.get_monitor()
+    monitor = settings._get_async_monitor()
 
     # If we have type information, we'll use its and the resource's type/name metadata
     # for name translations rather than using the resource's translation methods.
@@ -1152,22 +1146,19 @@ def register_resource(
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
-            def do_rpc_call() -> Optional[
-                Union[RegisterResponse, resource_pb2.RegisterResourceResponse]
-            ]:
-                if monitor is None:
-                    # If no monitor is available, we'll need to fake up a response, for testing.
-                    return RegisterResponse(
-                        mock_urn or "", None, resolver.serialized_props, None, None
-                    )
-
+            if monitor is None:
+                # If no monitor is available, we'll need to fake up a response, for testing.
+                resp: Optional[
+                    Union[RegisterResponse, resource_pb2.RegisterResourceResponse]
+                ] = RegisterResponse(
+                    mock_urn or "", None, resolver.serialized_props, None, None
+                )
+            else:
                 # If there is a monitor available, make the true RPC request to the engine.
                 try:
-                    return monitor.RegisterResource(req)
+                    resp = await monitor.RegisterResource(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
-
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         except Exception as exn:
             log.debug(
                 f"exception when preparing or executing rpc for {ty=} {name=}: {traceback.format_exc()}"
@@ -1256,22 +1247,16 @@ def register_resource_outputs(
         log.debug(
             f"register resource outputs prepared: urn={urn}, props={serialized_props}"
         )
-        monitor = settings.get_monitor()
+        monitor = settings._get_async_monitor()
         req = resource_pb2.RegisterResourceOutputsRequest(
             urn=urn, outputs=serialized_props
         )
 
-        def do_rpc_call():
-            if monitor is None:
-                # If there's no engine attached, simply ignore it.
-                return None
-
+        if monitor is not None:
             try:
-                return monitor.RegisterResourceOutputs(req)
+                await monitor.RegisterResourceOutputs(req)
             except grpc.RpcError as exn:
                 handle_grpc_error(exn)
-
-        await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(
             f"resource registration successful: urn={urn}, props={serialized_props}"
         )
@@ -1410,7 +1395,7 @@ def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
         callbacks = await _get_callbacks()
         if callbacks is None:
             raise Exception("No callback server registered.")
-        return callbacks.register_resource_hook(hook)
+        return await callbacks.register_resource_hook(hook)
 
     async def wrapper() -> None:
         if not await monitor_supports_resource_hooks():
@@ -1433,7 +1418,7 @@ def register_error_hook(hook: "ErrorHook") -> asyncio.Future[None]:
         callbacks = await _get_callbacks()
         if callbacks is None:
             raise Exception("No callback server registered.")
-        return callbacks.register_error_hook(hook)
+        return await callbacks.register_error_hook(hook)
 
     async def wrapper() -> None:
         if not await monitor_supports_error_hooks():
