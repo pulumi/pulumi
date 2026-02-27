@@ -15,6 +15,8 @@
 package tests
 
 import (
+	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -51,14 +53,99 @@ func init() {
 				},
 			},
 			{
-				AssertPreview: func(_ *L, _ AssertPreviewArgs) {},
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					var schemaOp, optionOp, bothValueOp, bothPropOp, regularOp, noChangeOp,
+						wrongPropOp, multipleOp display.StepOp
+
+					for _, evt := range res.Events {
+						switch e := evt.Payload().(type) {
+						case engine.ResourcePreEventPayload:
+							switch e.Metadata.URN.Name() {
+							case "schemaReplace":
+								schemaOp = e.Metadata.Op
+							case "optionReplace":
+								optionOp = e.Metadata.Op
+							case "bothReplaceValue":
+								bothValueOp = e.Metadata.Op
+							case "bothReplaceProp":
+								bothPropOp = e.Metadata.Op
+							case "regularUpdate":
+								regularOp = e.Metadata.Op
+							case "noChange":
+								noChangeOp = e.Metadata.Op
+							case "wrongPropChange":
+								wrongPropOp = e.Metadata.Op
+							case "multiplePropReplace":
+								multipleOp = e.Metadata.Op
+							}
+						}
+					}
+
+					require.Contains(l, schemaOp, deploy.OpReplace,
+						"schemaReplace: replaceProp change should trigger replacement")
+					require.Contains(l, optionOp, deploy.OpReplace,
+						"optionReplace: value change should trigger replacement")
+					require.Contains(l, bothValueOp, deploy.OpReplace,
+						"bothReplaceValue: value change should trigger replacement")
+					require.Contains(l, bothPropOp, deploy.OpReplace,
+						"bothReplaceProp: replaceProp change should trigger replacement")
+					require.Equal(l, regularOp, deploy.OpUpdate,
+						"regularUpdate: value change should update, not replace")
+					require.Equal(l, noChangeOp, deploy.OpSame,
+						"noChange: no property change should result in no operation")
+					require.Contains(l, wrongPropOp, deploy.OpReplace,
+						"wrongPropChange: replaceProp has schema-based replaceOnChanges, should trigger replacement")
+					require.Contains(l, multipleOp, deploy.OpReplace,
+						"multiplePropReplace: change to any marked property should trigger replacement")
+				},
 				Assert: func(l *L, res AssertArgs) {
-					require.GreaterOrEqual(l, len(res.Snap.Resources), 15, "expected at least 15 resources in snapshot")
-					require.NoError(l, res.Err, "expected no error")
-					require.GreaterOrEqual(l, res.Changes[deploy.OpReplace], 4, "expected several replacements")
-					require.GreaterOrEqual(l, res.Changes[deploy.OpUpdate], 1, "expected at least one update")
+					require.Len(l, res.Snap.Resources, 15, "expected 15 resources in snapshot")
 					RequireSingleNamedResource(l, res.Snap.Resources, "remoteWithReplace")
 					RequireSingleNamedResource(l, res.Snap.Resources, "simpleResource")
+
+					var schemaOp, optionOp, bothValueOp, bothPropOp, regularOp, noChangeOp,
+						wrongPropOp, multipleOp display.StepOp
+
+					for _, evt := range res.Events {
+						switch e := evt.Payload().(type) {
+						case engine.ResourcePreEventPayload:
+							switch e.Metadata.URN.Name() {
+							case "schemaReplace":
+								schemaOp = e.Metadata.Op
+							case "optionReplace":
+								optionOp = e.Metadata.Op
+							case "bothReplaceValue":
+								bothValueOp = e.Metadata.Op
+							case "bothReplaceProp":
+								bothPropOp = e.Metadata.Op
+							case "regularUpdate":
+								regularOp = e.Metadata.Op
+							case "noChange":
+								noChangeOp = e.Metadata.Op
+							case "wrongPropChange":
+								wrongPropOp = e.Metadata.Op
+							case "multiplePropReplace":
+								multipleOp = e.Metadata.Op
+							}
+						}
+					}
+
+					require.Contains(l, schemaOp, deploy.OpReplace,
+						"schemaReplace: should have been replaced")
+					require.Contains(l, optionOp, deploy.OpReplace,
+						"optionReplace: should have been replaced")
+					require.Contains(l, bothValueOp, deploy.OpReplace,
+						"bothReplaceValue: should have been replaced")
+					require.Contains(l, bothPropOp, deploy.OpReplace,
+						"bothReplaceProp: should have been replaced")
+					require.Equal(l, regularOp, deploy.OpUpdate,
+						"regularUpdate: should have been updated, not replaced")
+					require.Equal(l, noChangeOp, deploy.OpSame,
+						"noChange: should have no operation")
+					require.Contains(l, wrongPropOp, deploy.OpReplace,
+						"wrongPropChange: should have been replaced (schema-based replaceOnChanges on replaceProp)")
+					require.Contains(l, multipleOp, deploy.OpReplace,
+						"multiplePropReplace: should have been replaced")
 				},
 			},
 		},
