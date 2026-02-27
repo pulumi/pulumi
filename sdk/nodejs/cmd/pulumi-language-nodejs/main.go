@@ -1026,7 +1026,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 	defer tracingSpan.Finish()
 
 	tracer := otel.Tracer("pulumi-language-nodejs")
-	ctx, otelSpan := tracer.Start(ctx, "npm-install",
+	ctx, otelSpan := tracer.Start(ctx, "InstallDependencies",
 		trace.WithAttributes(append(programInfoAttributes(req.Info),
 			attribute.Bool("useLanguageVersionTools", req.UseLanguageVersionTools),
 			attribute.Bool("isPlugin", req.IsPlugin),
