@@ -111,7 +111,9 @@ func renderBoldMarkdown(summary string, opts Options) string {
 }
 
 // RenderNeoTaskCreated renders a message after a Neo task has been created.
-func RenderNeoTaskCreated(taskResult *client.NeoTaskResponse, err error, cloudConsoleURL, orgName string, opts Options) {
+func RenderNeoTaskCreated(
+	taskResult *client.NeoTaskResponse, err error, cloudConsoleURL, orgName string, opts Options,
+) {
 	out := opts.Stderr
 	if out == nil {
 		out = os.Stderr

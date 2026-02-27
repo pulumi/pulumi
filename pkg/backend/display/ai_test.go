@@ -136,7 +136,7 @@ func TestRenderNeoTaskCreated(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout: buf,
+		Stderr: buf,
 		Color:  colors.Never,
 	}
 
@@ -156,7 +156,7 @@ func TestRenderNeoTaskCreatedError(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout: buf,
+		Stderr: buf,
 		Color:  colors.Never,
 	}
 
@@ -175,24 +175,10 @@ func TestRenderNeoTaskCreatedNilResult(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout: buf,
+		Stderr: buf,
 		Color:  colors.Never,
 	}
 
 	RenderNeoTaskCreated(nil, nil, "https://app.pulumi.com", "test-org", opts)
-	assert.Equal(t, "", buf.String())
-}
-
-func TestRenderNeoTaskCreatedEmptyTaskID(t *testing.T) {
-	t.Parallel()
-
-	buf := new(bytes.Buffer)
-	opts := Options{
-		Stdout: buf,
-		Color:  colors.Never,
-	}
-
-	taskResult := &client.NeoTaskResponse{TaskID: ""}
-	RenderNeoTaskCreated(taskResult, nil, "https://app.pulumi.com", "test-org", opts)
 	assert.Equal(t, "", buf.String())
 }

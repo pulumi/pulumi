@@ -1521,7 +1521,9 @@ func (b *cloudBackend) createNeoTaskOnError(
 		return nil, err
 	}
 
-	content := fmt.Sprintf("Help me debug the following Pulumi error for project %s and stack %s:\n\n%s", stackID.Project, stackID.Stack.String(), pulumiOutput)
+	content := fmt.Sprintf(
+		"Help me debug the following Pulumi error for project %s and stack %s:\n\n%s",
+		stackID.Project, stackID.Stack.String(), pulumiOutput)
 
 	return b.client.CreateNeoTask(ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project)
 }

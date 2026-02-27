@@ -721,7 +721,9 @@ func NewPreviewCmd() *cobra.Command {
 		&neoTaskOnFailure, "neo-task-on-failure", false,
 		"Start a Neo task to help debug errors that occur during the operation")
 	if !env.Experimental.Value() {
-		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("neo-task-on-failure"), `Could not mark "neo-task-on-failure" as hidden`)
+		contract.AssertNoErrorf(
+			cmd.PersistentFlags().MarkHidden("neo-task-on-failure"),
+			`Could not mark "neo-task-on-failure" as hidden`)
 	}
 
 	// Keep --copilot flag for backwards compatibility, but hide it
