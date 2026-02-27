@@ -17,7 +17,10 @@ export interface Flag {
     // The canonical flag name (for example, "stack").
     name: string;
 
-    // A primitive logical type: "string", "boolean", "int", etc.
+    /** True if this flag is required. */
+    required?: boolean;
+
+    /** A primitive logical type: "string", "boolean", "int", etc. */
     type: string;
 
     // The user-facing description of the flag.

@@ -160,6 +160,8 @@ function generateBody(structure: Structure, breadcrumbs: string[]): WriterFuncti
                 writer.writeLine(`if (${name}) {`);
                 writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}');`));
                 writer.writeLine(`}`);
+            } else if (flag.required === true) {
+                writer.writeLine(`__flags.push('--${flag.name}', '' + ${name});`);
             } else {
                 writer.writeLine(`if (${name} != null) {`);
                 writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}', '' + ${name});`));
@@ -277,7 +279,7 @@ function flagToPropertySignature(flag: Flag): PropertySignatureStructure {
         name: sanitiseValueName(flag.name),
         kind: StructureKind.PropertySignature,
         type: convertType(flag.type, flag.repeatable ?? false),
-        hasQuestionToken: true,
+        hasQuestionToken: flag.required === true ? false : true,
         docs: flag.description ? [flag.description] : undefined,
     };
 }

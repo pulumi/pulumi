@@ -30,6 +30,9 @@ type Flag struct {
 	// The canonical flag name.
 	Name string `json:"name"`
 
+	// If true, this flag is required.
+	Required bool `json:"required,omitempty"`
+
 	// The primitive type of the flag ("string", "boolean", "int", ...).
 	Type string `json:"type"`
 
@@ -44,6 +47,9 @@ type Flag struct {
 type Menu struct {
 	// Always "menu".
 	Type string `json:"type"`
+
+	// True if this menu is also directly executable as a command.
+	Executable bool `json:"executable,omitempty"`
 
 	// Flags specific to this menu (not including inherited flags).
 	Flags map[string]Flag `json:"flags,omitempty"`
@@ -93,8 +99,9 @@ func buildStructure(cmd *cobra.Command) any {
 	subcommands := cmd.Commands()
 	if len(subcommands) > 0 {
 		menu := Menu{
-			Type:  "menu",
-			Flags: collectFlags(cmd),
+			Type:       "menu",
+			Executable: isExecutable(cmd),
+			Flags:      collectFlags(cmd),
 		}
 
 		if len(subcommands) > 0 {
@@ -132,6 +139,7 @@ func collectFlags(cmd *cobra.Command) map[string]Flag {
 		flag := Flag{
 			Name:        f.Name,
 			Description: f.Usage,
+			Required:    isFlagRequired(f),
 		}
 
 		switch f.Value.Type() {
@@ -154,6 +162,27 @@ func collectFlags(cmd *cobra.Command) map[string]Flag {
 	}
 
 	return flags
+}
+
+func isFlagRequired(flag *pflag.Flag) bool {
+	if flag == nil {
+		return false
+	}
+
+	if flag.Annotations == nil {
+		return false
+	}
+
+	_, required := flag.Annotations[cobra.BashCompOneRequiredFlag]
+	return required
+}
+
+func isExecutable(cmd *cobra.Command) bool {
+	if cmd == nil {
+		return false
+	}
+
+	return cmd.RunE != nil || cmd.Run != nil
 }
 
 func extractArguments(cmd *cobra.Command) *constrictor.Arguments {
