@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,13 @@ func Force() Option {
 	})
 }
 
+// RemoveBackups indicates whether to remove backups of the stack, if using the DIY backend.
+func RemoveBackups() Option {
+	return optionFunc(func(opts *Options) {
+		opts.RemoveBackups = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Remove() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -34,6 +41,9 @@ type Option interface {
 type Options struct {
 	// forces a stack to be deleted
 	Force bool
+
+	// RemoveBackups indicates whether to remove backups of the stack, if using the DIY backend.
+	RemoveBackups bool
 }
 
 type optionFunc func(*Options)

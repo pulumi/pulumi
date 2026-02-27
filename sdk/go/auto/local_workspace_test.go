@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -245,6 +245,29 @@ func TestRemoveWithForce(t *testing.T) {
 	}
 
 	// to make sure stack was removed
+	err = s.Workspace().SelectStack(ctx, s.Name())
+	assert.ErrorContains(t, err, "no stack named")
+}
+
+func TestRemoveWithRemoveBackups(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		return nil
+	})
+	require.NoError(t, err, "failed to initialize stack")
+
+	_, err = s.Up(ctx)
+	require.NoError(t, err, "up failed")
+
+	err = s.Workspace().RemoveStack(ctx, stackName, optremove.RemoveBackups())
+	require.NoError(t, err, "remove stack with remove backups failed")
+
+	// make sure stack was removed
 	err = s.Workspace().SelectStack(ctx, s.Name())
 	assert.ErrorContains(t, err, "no stack named")
 }
