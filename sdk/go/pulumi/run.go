@@ -91,19 +91,22 @@ func runErrInner(body RunFunc, logError func(*Context, error), opts ...RunOption
 		return errors.New("missing engine RPC address")
 	}
 
+	ctx := initTracing(context.TODO())
+	defer shutdownTracing()
+
 	// Create a fresh context.
-	ctx, err := NewContext(context.TODO(), info)
+	pctx, err := NewContext(ctx, info)
 	if err != nil {
 		return err
 	}
-	defer contract.IgnoreClose(ctx)
+	defer contract.IgnoreClose(pctx)
 
-	err = RunWithContext(ctx, body)
+	err = RunWithContext(pctx, body)
 	// Log the error message
 	if err != nil {
-		logError(ctx, err)
+		logError(pctx, err)
 	} else {
-		if _, signalErr := ctx.state.monitor.SignalAndWaitForShutdown(ctx.ctx, &pbempty.Empty{}); signalErr != nil {
+		if _, signalErr := pctx.state.monitor.SignalAndWaitForShutdown(pctx.ctx, &pbempty.Empty{}); signalErr != nil {
 			status, ok := status.FromError(signalErr)
 			if ok && status.Code() != codes.Unimplemented {
 				// If we are running against an older version of the CLI,
@@ -113,7 +116,7 @@ func runErrInner(body RunFunc, logError func(*Context, error), opts ...RunOption
 				// registering hooks, it's fine to ignore the `UNIMPLEMENTED`
 				// error here.
 				err := fmt.Errorf("error waiting for shutdown: %v", signalErr)
-				logError(ctx, err)
+				logError(pctx, err)
 				return err
 			}
 		}
