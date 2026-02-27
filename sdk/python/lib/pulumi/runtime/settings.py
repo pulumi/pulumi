@@ -436,7 +436,9 @@ async def _monitor_supports_feature(
                 handle_grpc_error(exn)
             return False
 
-    return await asyncio.get_event_loop().run_in_executor(None, wrap_with_context(do_rpc_call))
+    return await asyncio.get_event_loop().run_in_executor(
+        None, wrap_with_context(do_rpc_call)
+    )
 
 
 async def _load_monitor_feature_support():

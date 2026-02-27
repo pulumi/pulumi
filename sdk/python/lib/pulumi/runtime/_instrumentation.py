@@ -34,24 +34,23 @@ from opentelemetry import context as otel_context
 from opentelemetry import propagate
 from opentelemetry import trace
 from opentelemetry.context import Context
+from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 
 _root_context: Optional[Context] = None
-_tracer_provider: Optional[trace.TracerProvider] = None
+_tracer_provider: Optional[SdkTracerProvider] = None
 
 
 def _capture_stack_trace() -> str:
     """Capture the current stack trace, excluding instrumentation frames."""
-    stack = traceback.extract_stack()
-    stack = stack[:-4]
+    frames = traceback.extract_stack()[:-4]
     return "\n".join(
-        f"{frame.filename}:{frame.lineno} in {frame.name}"
-        for frame in stack
+        f"{frame.filename}:{frame.lineno} in {frame.name}" for frame in frames
     )
 
 
 def _initialize_tracing() -> None:
     """Initialize OpenTelemetry tracing if TRACEPARENT is present."""
-    global _root_context, _tracer_provider
+    global _root_context, _tracer_provider  # noqa: PLW0603
 
     traceparent = os.environ.get("TRACEPARENT")
     otlp_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -72,11 +71,10 @@ def _initialize_tracing() -> None:
         grpc_client_instrumentor.instrument(request_hook=client_request_hook)
 
     from opentelemetry.sdk.resources import Resource, SERVICE_NAME
-    from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
     resource = Resource.create({SERVICE_NAME: "pulumi-sdk-python"})
-    provider = TracerProvider(resource=resource)
+    provider = SdkTracerProvider(resource=resource)
 
     if otlp_endpoint:
         from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
