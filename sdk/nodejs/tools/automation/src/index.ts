@@ -61,9 +61,11 @@ const reservedWords: string[] = ["options", "package"];
     project.saveSync();
 })();
 
-// Every command and menu may add some flags to the pool of available flags. This means that, as we
-// descend the command tree, we need to collect all the flags that have been defined and add them to
-// an options object.
+/**
+ * Every command and menu may add some flags to the pool of available flags.
+ * This means that, as we descend the command tree, we need to collect all the
+ * flags that have been defined and add them to an options object.
+ */
 function generateOptionsTypes(
     structure: Structure,
     source: SourceFile,
@@ -88,8 +90,10 @@ function generateOptionsTypes(
     }
 }
 
-// Generate the commands. This creates the CLI invocation by combining all the
-// flags and arguments into a shell command.
+/**
+ * Generate the commands.
+ * This creates the CLI invocation by combining all the flags and arguments into a shell command.
+ */
 function generateCommands(structure: Structure, container: ClassDeclaration, breadcrumbs: string[] = []): void {
     if (structure.type === "menu") {
         if (structure.commands) {
@@ -137,7 +141,7 @@ function generateCommands(structure: Structure, container: ClassDeclaration, bre
     });
 }
 
-// Generate the body of the commands. For now, just the string representation of the command.
+/** Generate the body of the commands. For now, just the string representation of the command. */
 function generateBody(structure: Structure, breadcrumbs: string[]): WriterFunction {
     return (writer) => {
         writer.writeLine("const __final: string[] = ['pulumi'];");
@@ -146,9 +150,11 @@ function generateBody(structure: Structure, breadcrumbs: string[]): WriterFuncti
         }
         writer.blankLine();
 
-        // Flags can be repeatable or unique, and boolean or not boolean. If they're
-        // repeatable, we need to loop through the array to add them to the command.
-        // If they're boolean, we don't need to add a value after the flag.
+        /**
+         * Flags can be repeatable or unique, and boolean or not boolean.
+         * If they're repeatable, we need to loop through the array to add them to the command.
+         * If they're boolean, we don't need to add a value after the flag.
+         */
         function option(flag: Flag, override: string = ""): void {
             const name: string = override ? override : "options." + sanitiseValueName(flag.name);
 
@@ -171,10 +177,11 @@ function generateBody(structure: Structure, breadcrumbs: string[]): WriterFuncti
             writer.blankLine();
         }
 
-        // Arguments can be repeatable or unique, and optional or required. If
-        // they're repeatable, we need to loop through the array to add them to the
-        // command. If they're variadic, we need to concatenate the variadic
-        // arguments to the final array.
+        /**
+         * Arguments can be repeatable or unique, and optional or required.
+         * If they're repeatable, we need to loop through the array to add them to the command.
+         * If they're variadic, we need to concatenate the variadic arguments to the final array.
+         */
         function argument(specification: Argument, variadic: boolean, optional: boolean, override: string = ""): void {
             const name: string = override ? override : sanitiseValueName(specification.name);
 
@@ -231,8 +238,10 @@ function generateBody(structure: Structure, breadcrumbs: string[]): WriterFuncti
     };
 }
 
-// The type system of flags is effectively just the type system of Go, so we need to find appropriate
-// approximations of the types for TypeScript.
+/**
+ * The type system of flags is effectively just the type system of Go,
+ * so we need to find appropriate approximations of the types for TypeScript.
+ */
 function convertType(type: string, repeatable: boolean): string {
     let base: string = "";
 
@@ -256,24 +265,24 @@ function convertType(type: string, repeatable: boolean): string {
     return repeatable ? base + "[]" : base;
 }
 
-// Convert a list of subcommand breadcrumbs into the unconfigured CLI command.
+/** Convert a list of subcommand breadcrumbs into the unconfigured CLI command. */
 function createCommandName(breadcrumbs: string[]): string {
     return "pulumi " + breadcrumbs.join(" ");
 }
 
-// Convert a flag or argument name into a valid TypeScript property name.
+/** Convert a flag or argument name into a valid TypeScript property name. */
 function sanitiseValueName(name: string): string {
     const suffix: string = reservedWords.includes(name) ? "_" : "";
     return camelCase(name) + suffix;
 }
 
-// Convert a list of subcommand breadcrumbs into the options type name.
+/** Convert a list of subcommand breadcrumbs into the options type name. */
 function createOptionsTypeName(breadcrumbs: string[]): string {
     const command: string = "pulumi " + breadcrumbs.join(" ");
     return pascalise(command) + "Options";
 }
 
-// Convert a flag into a property signature for the options type.
+/** Convert a flag into a property signature for the options type. */
 function flagToPropertySignature(flag: Flag): PropertySignatureStructure {
     return {
         name: sanitiseValueName(flag.name),
