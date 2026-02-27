@@ -38,20 +38,14 @@ describe("Command examples", () => {
             ".", // Required flags
         );
 
-        assert.strictEqual(
-            command,
-            "pulumi template publish --name test --version 1.0.0 -- .",
-        );
+        assert.strictEqual(command, "pulumi template publish --name test --version 1.0.0 -- .");
     });
 
     it("import", () => {
         const options: PulumiImportOptions = {};
 
         const command = api.import(options, "'aws:iam/user:User'", "name", "id");
-        assert.strictEqual(
-            command,
-            "pulumi import -- 'aws:iam/user:User' name id",
-        );
+        assert.strictEqual(command, "pulumi import -- 'aws:iam/user:User' name id");
     });
 
     it("up", () => {
@@ -60,10 +54,6 @@ describe("Command examples", () => {
         };
 
         const command = api.up(options, "https://pulumi.com");
-        assert.strictEqual(
-            command,
-            "pulumi up --target urnA --target urnB -- https://pulumi.com",
-        );
+        assert.strictEqual(command, "pulumi up --target urnA --target urnB -- https://pulumi.com");
     });
 });
-
