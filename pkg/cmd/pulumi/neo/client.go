@@ -22,6 +22,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
+	"path"
 	"strings"
 	"time"
 )
@@ -260,10 +263,14 @@ func (c *NeoClient) streamOnce(
 			if len(dataLines) > 0 {
 				currentEvent.Data = json.RawMessage(strings.Join(dataLines, "\n"))
 			}
+			// Always update the last event ID when present, even for
+			// id-only messages with no data. The server uses id-only
+			// messages to communicate the pagination cursor for
+			// reconnection via Last-Event-ID.
+			if currentEvent.ID != "" {
+				*lastID = currentEvent.ID
+			}
 			if currentEvent.Data != nil {
-				if currentEvent.ID != "" {
-					*lastID = currentEvent.ID
-				}
 				select {
 				case eventCh <- currentEvent:
 				case <-ctx.Done():
@@ -319,6 +326,33 @@ func (c *NeoClient) PostUserInput(ctx context.Context, taskID string, event inte
 	}
 	req := RespondToTaskRequest{Event: eventBytes}
 	return c.doJSON(ctx, "POST", c.taskURL(taskID), req, nil)
+}
+
+// ConsoleTaskURL returns the Pulumi Cloud console URL for a task, or "" if the
+// console domain cannot be determined from the API URL.
+func (c *NeoClient) ConsoleTaskURL(taskID string) string {
+	u, err := url.Parse(c.apiURL)
+	if err != nil {
+		return ""
+	}
+
+	switch {
+	case os.Getenv("PULUMI_CONSOLE_DOMAIN") != "":
+		u.Host = os.Getenv("PULUMI_CONSOLE_DOMAIN")
+	case strings.HasPrefix(u.Host, "api."):
+		// api.pulumi.com → app.pulumi.com, api.pulumi-dev.io → app.pulumi-dev.io, etc.
+		u.Host = "app." + u.Host[len("api."):]
+	case strings.HasPrefix(u.Host, "api-"):
+		// api-joeduffy.review-stacks.pulumi-dev.io → app-joeduffy.review-stacks.pulumi-dev.io
+		u.Host = "app-" + u.Host[len("api-"):]
+	case u.Host == "localhost:8080":
+		u.Host = "localhost:3000"
+	default:
+		return ""
+	}
+
+	u.Path = path.Join(c.org, "neo", "tasks", taskID)
+	return u.String()
 }
 
 func (c *NeoClient) tasksURL() string {

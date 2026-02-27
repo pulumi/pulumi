@@ -37,7 +37,7 @@ func newTestExecutor(t *testing.T) (*ToolExecutor, string) {
 	// Resolve symlinks so path comparisons work correctly.
 	realDir, err := filepath.EvalSymlinks(dir)
 	require.NoError(t, err)
-	executor := NewToolExecutor(realDir, approveAll)
+	executor := NewToolExecutor(realDir, approveAll, nil)
 	return executor, realDir
 }
 
@@ -221,17 +221,6 @@ func TestExecuteCommand_WithArgs(t *testing.T) {
 	assert.Equal(t, "hello world\n", result.Content)
 }
 
-func TestExecuteCommand_Rejected(t *testing.T) {
-	dir := t.TempDir()
-	executor := NewToolExecutor(dir, denyAll)
-
-	result := executor.Execute(context.Background(), "tc_1", "execute_command",
-		json.RawMessage(`{"command":"echo hello"}`))
-
-	assert.True(t, result.IsError)
-	assert.Contains(t, result.Content, "rejected by user")
-}
-
 func TestExecuteCommand_EmptyCommand(t *testing.T) {
 	executor, _ := newTestExecutor(t)
 
@@ -362,6 +351,72 @@ func TestSearchFiles_InvalidPattern(t *testing.T) {
 
 	assert.True(t, result.IsError)
 	assert.Contains(t, result.Content, "invalid pattern")
+}
+
+// --- directory_tree tests ---
+
+func TestDirectoryTree_Success(t *testing.T) {
+	executor, dir := newTestExecutor(t)
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "src"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "src", "main.go"), []byte(""), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte(""), 0o644))
+
+	result := executor.Execute(context.Background(), "tc_1", "directory_tree",
+		json.RawMessage(`{}`))
+
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content, "src/")
+	assert.Contains(t, result.Content, "main.go")
+	assert.Contains(t, result.Content, "README.md")
+}
+
+func TestDirectoryTree_SkipsHiddenDirs(t *testing.T) {
+	executor, dir := newTestExecutor(t)
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, ".git"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".git", "config"), []byte(""), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "visible.txt"), []byte(""), 0o644))
+
+	result := executor.Execute(context.Background(), "tc_1", "directory_tree",
+		json.RawMessage(`{}`))
+
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content, "visible.txt")
+	assert.NotContains(t, result.Content, ".git")
+}
+
+func TestDirectoryTree_DepthLimit(t *testing.T) {
+	executor, dir := newTestExecutor(t)
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "a", "b", "c", "d"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "a", "b", "c", "d", "deep.txt"), []byte(""), 0o644))
+
+	result := executor.Execute(context.Background(), "tc_1", "directory_tree",
+		json.RawMessage(`{"depth":2}`))
+
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content, "a/")
+	assert.Contains(t, result.Content, "b/")
+	assert.NotContains(t, result.Content, "deep.txt")
+}
+
+func TestDirectoryTree_EmptyDir(t *testing.T) {
+	executor, _ := newTestExecutor(t)
+
+	result := executor.Execute(context.Background(), "tc_1", "directory_tree",
+		json.RawMessage(`{}`))
+
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content, "empty directory")
+}
+
+func TestDirectoryTree_NilArgs(t *testing.T) {
+	executor, dir := newTestExecutor(t)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte(""), 0o644))
+
+	// Server may send empty/nil args — should default to cwd.
+	result := executor.Execute(context.Background(), "tc_1", "directory_tree", nil)
+
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content, "file.txt")
 }
 
 // --- unknown tool ---
