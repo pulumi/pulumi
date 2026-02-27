@@ -2636,3 +2636,27 @@ func TestBindParameterizedExternals(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 }
+
+func TestMissingRefErrors(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name:        "test",
+		Description: "{{% ref #/resources/test:index:Missing %}}",
+		Resources: map[string]ResourceSpec{
+			"test:index:SomeResource": {},
+		},
+	}
+
+	// Try to bind the spec
+	_, diags, err := BindSpec(spec, nil, ValidationOptions{})
+
+	require.NoError(t, err)
+	expectedWarning := hcl.Diagnostics{
+		{
+			Severity: hcl.DiagWarning,
+			Summary:  "#/description: reference to resource '/resources/test:index:Missing' not found in package test",
+		},
+	}
+	assert.Equal(t, expectedWarning, diags)
+}

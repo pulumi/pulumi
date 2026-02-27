@@ -77,6 +77,9 @@ type PackageReference interface {
 
 	// Definition fully loads the referenced package and returns the result.
 	Definition() (*Package, error)
+
+	// InterpretPulumiRefs returns the result of interpreting any references in the given string.
+	InterpretPulumiRefs(string, PulumiRefResolver) (string, error)
 }
 
 // PackageTypes provides random and sequential access to a package's types.
@@ -237,6 +240,10 @@ func (p packageDefRef) TokenToModule(token string) string {
 
 func (p packageDefRef) Definition() (*Package, error) {
 	return p.pkg, nil
+}
+
+func (p packageDefRef) InterpretPulumiRefs(description string, resolver PulumiRefResolver) (string, error) {
+	return p.pkg.InterpretPulumiRefs(description, resolver)
 }
 
 type packageDefTypes struct {
@@ -731,6 +738,27 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	}
 
 	return pkg, nil
+}
+
+func (p *PartialPackage) InterpretPulumiRefs(description string, resolver PulumiRefResolver) (string, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.InterpretPulumiRefs(description, resolver)
+	}
+
+	if description == "" {
+		return "", nil
+	}
+
+	source := []byte(description)
+	parsed := ParseDocs(source)
+	err := interpretPulumiRefs(p.types, parsed, resolver)
+	if err != nil {
+		return "", err
+	}
+	return RenderDocsToString(source, parsed), nil
 }
 
 type partialPackageTypes struct {
