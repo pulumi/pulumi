@@ -16,12 +16,13 @@ package encoding
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
 
+	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/compress/zstd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/yamlutil"
 	yaml "gopkg.in/yaml.v3"
 )
@@ -30,6 +31,7 @@ var (
 	JSONExt = ".json"
 	YAMLExt = ".yaml"
 	GZIPExt = ".gz"
+	ZSTDExt = ".zst"
 )
 
 // Exts contains a list of all the valid marshalable extension types.
@@ -162,10 +164,94 @@ func (m *gzipMarshaller) Unmarshal(data []byte, v any) error {
 	return m.inner.Unmarshal(inflated, v)
 }
 
-// IsCompressed returns if data is zip compressed.
+type zstdMarshaller struct {
+	inner Marshaler
+}
+
+var (
+	zstdEncoder = newZstdEncoder()
+	zstdDecoder = newZstdDecoder()
+)
+
+func newZstdEncoder() *zstd.Encoder {
+	enc, err := zstd.NewWriter(nil, zstd.WithZeroFrames(true))
+	if err != nil {
+		panic(fmt.Sprintf("creating zstd encoder: %v", err))
+	}
+	return enc
+}
+
+func newZstdDecoder() *zstd.Decoder {
+	dec, err := zstd.NewReader(nil)
+	if err != nil {
+		panic(fmt.Sprintf("creating zstd decoder: %v", err))
+	}
+	return dec
+}
+
+func (m *zstdMarshaller) Marshal(v any) ([]byte, error) {
+	b, err := m.inner.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return zstdEncoder.EncodeAll(b, nil), nil
+}
+
+func (m *zstdMarshaller) Unmarshal(data []byte, v any) error {
+	inflated, err := zstdDecoder.DecodeAll(data, nil)
+	if err != nil {
+		return err
+	}
+	return m.inner.Unmarshal(inflated, v)
+}
+
+// Compression represents a compression format.
+type Compression string
+
+const (
+	CompressionNone Compression = ""
+	CompressionGzip Compression = "gzip"
+	CompressionZstd Compression = "zstd"
+)
+
+// Ext returns the extension for this compression format.
+func (c Compression) Ext() string {
+	switch c {
+	case CompressionNone:
+		return ""
+	case CompressionGzip:
+		return GZIPExt
+	case CompressionZstd:
+		return ZSTDExt
+	default:
+		return ""
+	}
+}
+
+// IsCompressed returns if data is gzip compressed.
+// Deprecated: use DetectCompression instead.
 func IsCompressed(buf []byte) bool {
+	return isGzipCompressed(buf)
+}
+
+func isGzipCompressed(buf []byte) bool {
 	// Taken from compress/gzip/gunzip.go
 	return len(buf) >= 3 && buf[0] == 31 && buf[1] == 139 && buf[2] == 8
+}
+
+func isZstdCompressed(buf []byte) bool {
+	return len(buf) >= 4 && buf[0] == 0x28 && buf[1] == 0xB5 && buf[2] == 0x2F && buf[3] == 0xFD
+}
+
+// DetectCompression returns the compression format of the provided data.
+func DetectCompression(buf []byte) Compression {
+	if isGzipCompressed(buf) {
+		return CompressionGzip
+	}
+	if isZstdCompressed(buf) {
+		return CompressionZstd
+	}
+	return CompressionNone
 }
 
 func Gzip(m Marshaler) Marshaler {
@@ -174,4 +260,27 @@ func Gzip(m Marshaler) Marshaler {
 		return m
 	}
 	return &gzipMarshaller{m}
+}
+
+// Zstd wraps a marshaler to compress/decompress with zstd.
+func Zstd(m Marshaler) Marshaler {
+	_, alreadyZSTD := m.(*zstdMarshaller)
+	if alreadyZSTD {
+		return m
+	}
+	return &zstdMarshaller{m}
+}
+
+// Compress wraps a marshaler with the selected compression.
+func Compress(m Marshaler, c Compression) Marshaler {
+	switch c {
+	case CompressionNone:
+		return m
+	case CompressionGzip:
+		return Gzip(m)
+	case CompressionZstd:
+		return Zstd(m)
+	default:
+		return m
+	}
 }

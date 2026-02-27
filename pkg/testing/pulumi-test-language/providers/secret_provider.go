@@ -227,7 +227,11 @@ func (p *SecretProvider) Check(
 	}
 
 	publicData := req.News["publicData"].ObjectValue()
-	check = assertField(publicData, "private", "secret string", resource.PropertyValue.IsString)
+	check = assertField(publicData, "private", "string or secret string", func(v resource.PropertyValue) bool {
+		// TODO[https://github.com/pulumi/pulumi/issues/10319] publicData.private should be a secret string, but
+		// we tolerate a plain string here. Most SDKs do not correctly send a secret string on nested inputs.
+		return v.IsString() || (v.IsSecret() && v.SecretValue().Element.IsString())
+	})
 	if check != nil {
 		return *check, nil
 	}

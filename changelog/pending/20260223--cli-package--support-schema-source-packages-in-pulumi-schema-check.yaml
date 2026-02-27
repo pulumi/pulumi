@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Support source-based packages in `pulumi schema check`, not just schema files

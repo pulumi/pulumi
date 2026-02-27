@@ -5,7 +5,7 @@ module.exports = {
     },
     parser: "@typescript-eslint/parser",
     parserOptions: {
-        project: "tsconfig.json",
+        project: ["tsconfig.json", "tools/automation/tsconfig.json"],
         tsconfigRootDir: __dirname,
         sourceType: "module",
     },
@@ -19,6 +19,7 @@ module.exports = {
         "tests/runtime/testdata/closure-tests/**/*.ts",
         "tests/runtime/testdata/closure-tests/**/*.js",
         "tests/provider/experimental/testdata/**/*.ts",
+        "tools/automation/output/**/*.ts",
         "vendor/",
     ],
     rules: {

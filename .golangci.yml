@@ -25,7 +25,50 @@ linters:
     - wastedassign
     - whitespace
     - copyloopvar
+    - gocritic
   settings:
+    gocritic:
+      disabled-checks:
+        - appendAssign
+        - argOrder
+        - badCall
+        - badCond
+        - caseOrder
+        - codegenComment
+        - deprecatedComment
+        - dupArg
+        - dupBranchBody
+        - dupCase
+        - dupSubExpr
+        - exitAfterDefer
+        - flagDeref
+        - flagName
+        - mapKey
+        - offBy1
+        - sloppyLen
+        - sloppyTypeAssert
+        - assignOp
+        - captLocal
+        - commentFormatting
+        - defaultCaseOrder
+        - elseif
+        - ifElseChain
+        - newDeref
+        - regexpMust
+        - singleCaseSwitch
+        - switchTrue
+        - typeSwitchVar
+        - underef
+        - unlambda
+        - unslice
+        - valSwap
+        - wrapperFunc
+      enabled-checks:
+        - ruleguard
+      settings:
+        ruleguard:
+          rules: '${config-path}/.golangci/rules.go'
+          failOn: dsl,import
     depguard:
       rules:
         protobuf:

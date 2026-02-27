@@ -122,7 +122,7 @@ GO_TEST_FAST = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 GOPROXY = https://proxy.golang.org
 export GOPROXY
 
-.PHONY: default all only_build only_test lint install test_all core build
+.PHONY: default all only_build only_test lint install test_all core build clean
 
 # ensure that `default` is the target that is run when no arguments are passed to make
 default::
@@ -140,6 +140,7 @@ install:: $(SUB_PROJECTS:%=%_install)
 test_all:: $(SUB_PROJECTS:%=%_test_all)
 dist:: $(SUB_PROJECTS:%=%_dist)
 brew:: $(SUB_PROJECTS:%=%_brew)
+clean:: $(SUB_PROJECTS:%=%_clean)
 endif
 
 # `core` is like `default` except it does not build sub projects.
@@ -183,6 +184,9 @@ dist::
 brew::
 	$(call STEP_MESSAGE)
 
+clean::
+	$(call STEP_MESSAGE)
+
 test_all::
 	$(call STEP_MESSAGE)
 
@@ -209,31 +213,46 @@ only_test_fast:: lint test_fast
 # invoking make from the command line
 ifneq ($(SUB_PROJECTS),)
 $(SUB_PROJECTS:%=%_default):
+	@printf "\033[1;37m=== $(@:%_default=%) (default) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_default=%) default
 $(SUB_PROJECTS:%=%_all):
+	@printf "\033[1;37m=== $(@:%_all=%) (all) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_all=%) all
 $(SUB_PROJECTS:%=%_ensure):
+	@printf "\033[1;37m=== $(@:%_ensure=%) (ensure) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_ensure=%) ensure
 $(SUB_PROJECTS:%=%_build):
+	@printf "\033[1;37m=== $(@:%_build=%) (build) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_build=%) build
 $(SUB_PROJECTS:%=%_lint):
+	@printf "\033[1;37m=== $(@:%_lint=%) (lint) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_lint=%) lint
 $(SUB_PROJECTS:%=%_test_fast):
+	@printf "\033[1;37m=== $(@:%_test_fast=%) (test_fast) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_test_fast=%) test_fast
 $(SUB_PROJECTS:%=%_test_all):
+	@printf "\033[1;37m=== $(@:%_test_all=%) (test_all) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_test_all=%) test_all
 $(SUB_PROJECTS:%=%_install):
+	@printf "\033[1;37m=== $(@:%_install=%) (install) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_install=%) install
 $(SUB_PROJECTS:%=%_only_build):
+	@printf "\033[1;37m=== $(@:%_only_build=%) (only_build) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_only_build=%) only_build
 $(SUB_PROJECTS:%=%_only_test):
+	@printf "\033[1;37m=== $(@:%_only_test=%) (only_test) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_only_test=%) only_test
 $(SUB_PROJECTS:%=%_only_test_fast):
+	@printf "\033[1;37m=== $(@:%_only_test_fast=%) (only_test_fast) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_only_test_fast=%) only_test_fast
 $(SUB_PROJECTS:%=%_dist):
+	@printf "\033[1;37m=== $(@:%_dist=%) (dist) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_dist=%) dist
 $(SUB_PROJECTS:%=%_brew):
+	@printf "\033[1;37m=== $(@:%_brew=%) (brew) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_brew=%) brew
+$(SUB_PROJECTS:%=%_clean):
+	@$(MAKE) -C ./$(@:%_clean=%) clean
 endif
 
 # As a convenience, we provide a format target that folks can build to run go fmt over all

@@ -355,7 +355,7 @@ func handshake(
 
 func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []grpc.DialOption {
 	dialOpts := append(
-		rpcutil.OpenTracingInterceptorDialOptions(otgrpc.SpanDecorator(decorateProviderSpans)),
+		rpcutil.TracingInterceptorDialOptions(otgrpc.SpanDecorator(decorateProviderSpans)),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
@@ -2079,6 +2079,15 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+	}
+
+	if req.Args.ContainsSecrets() && !protocol.acceptSecrets {
+		for k, v := range ret {
+			if v.IsSecret() || (v.IsOutput() && v.OutputValue().Secret) {
+				continue
+			}
+			ret[k] = resource.MakeSecret(v)
+		}
 	}
 
 	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))

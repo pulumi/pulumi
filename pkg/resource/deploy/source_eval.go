@@ -883,7 +883,7 @@ func (rm *resmon) Cancel(ctx context.Context) error {
 }
 
 func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, logFile string) []grpc.ServerOption {
-	serveOpts := rpcutil.OpenTracingServerInterceptorOptions(
+	serveOpts := rpcutil.TracingServerInterceptorOptions(
 		tracingSpan,
 		otgrpc.SpanDecorator(decorateResourceSpans),
 	)

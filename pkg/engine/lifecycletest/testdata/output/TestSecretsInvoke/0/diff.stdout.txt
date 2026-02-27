@@ -1,0 +1,3 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

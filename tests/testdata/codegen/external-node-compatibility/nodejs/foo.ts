@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as pulumiGoogleNative from "@pulumi/google-native";
+import * as pulumiNodecompat from "@pulumi/nodecompat";
 
 export class Foo extends pulumi.CustomResource {
     /**
@@ -60,5 +60,5 @@ export class Foo extends pulumi.CustomResource {
  * The set of arguments for constructing a Foo resource.
  */
 export interface FooArgs {
-    auditConfig: pulumi.Input<pulumiGoogleNative.types.input.iam.v1.AuditConfigArgs>;
+    auditConfig: pulumi.Input<pulumiNodecompat.types.input.MyConfigArgs>;
 }

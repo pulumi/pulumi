@@ -77,7 +77,7 @@ unit_tests:: $(TEST_ALL_DEPS)
 	yarn run nyc --no-clean -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
-	yarn run nyc --no-clean -s mocha --timeout 300000 'bin/tests/automation/**/*.spec.js'
+	yarn run nyc --no-clean -s mocha --timeout 300000 --parallel 'bin/tests/automation/**/*.spec.js'
 
 test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
@@ -139,6 +139,12 @@ brew::
 	go install -C cmd/pulumi-language-nodejs \
 	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
+
+clean::
+	rm -rf bin
+	rm -rf build
+	rm -rf .make
+	rm -rf .nyc_output
 
 publish::
 	bash -c ../../scripts/publish_npm.sh

@@ -241,7 +241,7 @@ func (cmd *mainCmd) Run(p *runParams) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return fmt.Errorf("could not start language host RPC server: %w", err)

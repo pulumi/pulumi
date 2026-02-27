@@ -180,7 +180,7 @@ func main() {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
@@ -929,9 +929,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		contract.IgnoreClose(closer)
-	}()
+	defer contract.IgnoreClose(closer)
 
 	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {

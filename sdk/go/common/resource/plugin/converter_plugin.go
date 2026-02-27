@@ -76,7 +76,7 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 
 func converterPluginDialOptions(ctx *Context, name string, path string) []grpc.DialOption {
 	dialOpts := append(
-		rpcutil.OpenTracingInterceptorDialOptions(otgrpc.SpanDecorator(decorateProviderSpans)),
+		rpcutil.TracingInterceptorDialOptions(otgrpc.SpanDecorator(decorateProviderSpans)),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)

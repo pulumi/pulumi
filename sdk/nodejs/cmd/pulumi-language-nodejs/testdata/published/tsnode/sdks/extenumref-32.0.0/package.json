@@ -1,0 +1,20 @@
+{
+    "name": "@pulumi/extenumref",
+    "version": "32.0.0",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/enum": "ROOT/artifacts/pulumi-enum-30.0.0.tgz",
+        "@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz"
+    },
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^4.3.5"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "extenumref",
+        "version": "32.0.0"
+    }
+}

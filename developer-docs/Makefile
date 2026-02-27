@@ -43,3 +43,4 @@ architecture/deployment-schema.md: utils/jsonschema2md.go ../sdk/go/common/apity
 
 clean:
 	rm -rf $(BUILDDIR)/*
+	rm -f .ensure-python.phony .ensure-proto.phony
