@@ -17,6 +17,7 @@ package rpcutil
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strings"
@@ -389,7 +390,7 @@ type trackedClientStream struct {
 
 func (s *trackedClientStream) RecvMsg(m any) error {
 	err := s.ClientStream.RecvMsg(m)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		setSpanStatus(s.span, err)
 		s.span.End()
 	}
