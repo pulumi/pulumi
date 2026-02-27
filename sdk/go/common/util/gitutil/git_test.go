@@ -129,7 +129,20 @@ func TestParseGitRepoURL(t *testing.T) {
 	pre = "https://user1:12345@gitlab.com/proj/finally"
 	exp = pre + ".git"
 	test(exp, "", pre)
-	test(exp, "foobar", pre+"/foobar")
+	// With 3 path components on a GitLab host (without .git), the last component is the repo
+	// name and all preceding components form the group path (subgroup support).
+	// To use a subdirectory within a GitLab repo, use .git to mark the repo boundary, e.g.:
+	// https://gitlab.com/proj/finally.git/foobar
+	test("https://user1:12345@gitlab.com/proj/finally/foobar.git", "", pre+"/foobar")
+	// GitLab subgroup URLs (without .git): the last component is the repo,
+	// all preceding components form the group/subgroup owner path.
+	pre = "https://gitlab.com/group/subgroup/project"
+	exp = "https://gitlab.com/group/subgroup/project.git"
+	test(exp, "", pre)
+	test(exp, "", pre+"/")
+	pre = "https://gitlab.com/group/subgroup/subgroup2/project"
+	exp = "https://gitlab.com/group/subgroup/subgroup2/project.git"
+	test(exp, "", pre)
 
 	// SSH URLs.
 	pre = "git@github.com:acmecorp/templates"
