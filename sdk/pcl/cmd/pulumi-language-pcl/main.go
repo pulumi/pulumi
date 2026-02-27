@@ -33,7 +33,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -47,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	aferoutil "github.com/pulumi/pulumi/pkg/v3/util/afero"
 	pclruntime "github.com/pulumi/pulumi/sdk/pcl/v3/runtime"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	pulumiencoding "github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -188,20 +188,6 @@ func newLanguageHost(engineAddress, cwd, tracing string) pulumirpc.LanguageRunti
 	}
 }
 
-func (host *pclLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
-	conn, err := grpc.NewClient(
-		host.engineAddress,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		rpcutil.GrpcChannelOptions(),
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("language host could not make connection to engine: %w", err)
-	}
-
-	engineClient := pulumirpc.NewEngineClient(conn)
-	return engineClient, conn, nil
-}
-
 func (host *pclLanguageHost) Handshake(
 	ctx context.Context,
 	req *pulumirpc.LanguageHandshakeRequest,
@@ -232,20 +218,6 @@ func (host *pclLanguageHost) GetPluginInfo(
 	return &pulumirpc.PluginInfo{Version: version.Version}, nil
 }
 
-func (host *pclLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string, error) {
-	configMap := req.GetConfig()
-	if configMap == nil {
-		return "", nil
-	}
-
-	configJSON, err := json.Marshal(configMap)
-	if err != nil {
-		return "", err
-	}
-
-	return string(configJSON), nil
-}
-
 func (host *pclLanguageHost) bindProgramFromDirectory(
 	directory string,
 	loaderTarget string,
@@ -256,9 +228,7 @@ func (host *pclLanguageHost) bindProgramFromDirectory(
 		return nil, nil, err
 	}
 	loader := schema.NewCachedLoader(client)
-	defer func() {
-		contract.IgnoreError(client.Close())
-	}()
+	defer contract.IgnoreClose(client)
 
 	options := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
 	if !strict {
@@ -383,7 +353,7 @@ func (host *pclLanguageHost) GetRequiredPackages(
 	for _, descriptor := range deps {
 		pkg := &pulumirpc.PackageDependency{
 			Name:    descriptor.Name,
-			Kind:    string(workspace.ResourcePlugin),
+			Kind:    string(apitype.ResourcePlugin),
 			Server:  descriptor.DownloadURL,
 			Version: "",
 		}
@@ -677,8 +647,8 @@ func (host *pclLanguageHost) GeneratePackage(
 	// and any parameterization data needed to rehydrate the package descriptor.
 
 	var parameterization *schema.ParameterizationDescriptor
-	baseProviderName := ""
-	baseProviderVersion := ""
+	var baseProviderName string
+	var baseProviderVersion string
 	baseProviderDownloadURL := pkg.PluginDownloadURL
 
 	if pkg.Parameterization == nil {
@@ -701,7 +671,7 @@ func (host *pclLanguageHost) GeneratePackage(
 
 	var version string
 	if pkg.Version != nil {
-		version = fmt.Sprintf("-%s", pkg.Version.String())
+		version = "-" + pkg.Version.String()
 	}
 	dest := filepath.Join(req.Directory, fmt.Sprintf("%s%s.pp", pkg.Name, version))
 
@@ -775,7 +745,9 @@ func (host *pclLanguageHost) Pack(
 	var single string
 	for _, file := range files {
 		if single != "" {
-			return nil, fmt.Errorf("multiple files in package directory %s: %s and %s", req.PackageDirectory, single, file.Name())
+			return nil, fmt.Errorf(
+				"multiple files in package directory %s: %s and %s",
+				req.PackageDirectory, single, file.Name())
 		}
 		single = file.Name()
 	}

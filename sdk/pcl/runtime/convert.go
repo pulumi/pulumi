@@ -16,6 +16,7 @@ package runtime
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -208,7 +209,7 @@ func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 			if err != nil {
 				return resource.PropertyValue{}, err
 			}
-			return resource.NewOutputProperty(resource.Output{
+			return resource.NewProperty(resource.Output{
 				Element:      pv,
 				Known:        true,
 				Dependencies: dependencies,
@@ -225,7 +226,7 @@ func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 		if value.Type().Equals(assetType) {
 			assetValue, ok := value.EncapsulatedValue().(*asset.Asset)
 			if !ok {
-				return resource.PropertyValue{}, fmt.Errorf("unexpected non-asset capsule value")
+				return resource.PropertyValue{}, errors.New("unexpected non-asset capsule value")
 			}
 			return resource.NewProperty(assetValue), nil
 		}
@@ -233,7 +234,7 @@ func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 		if value.Type().Equals(archiveType) {
 			archiveValue, ok := value.EncapsulatedValue().(*archive.Archive)
 			if !ok {
-				return resource.PropertyValue{}, fmt.Errorf("unexpected non-archive capsule value")
+				return resource.PropertyValue{}, errors.New("unexpected non-archive capsule value")
 			}
 			return resource.NewProperty(archiveValue), nil
 		}
@@ -369,8 +370,7 @@ func propertyValueToCty(value resource.PropertyValue) (cty.Value, error) {
 		}
 		return cty.ObjectVal(vals), nil
 	case value.IsResourceReference():
-
 	}
 
-	return cty.NilVal, fmt.Errorf("unsupported property value")
+	return cty.NilVal, errors.New("unsupported property value")
 }

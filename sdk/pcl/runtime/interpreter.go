@@ -85,8 +85,6 @@ func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
 	return &Interpreter{program: program, info: info}
 }
 
-type node struct{}
-
 func (i *Interpreter) Run(ctx context.Context) error {
 	if i.info.MonitorAddress == "" {
 		return errors.New("missing monitor address")
@@ -153,7 +151,10 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		for _, dep := range node.GetDependencies() {
 			dagNodeB, ok := nodes[dep]
 			contract.Assertf(ok, "missing node for dependency %s", dep.Name())
-			dag.NewEdge(dagNodeB, dagNodeA)
+			err = dag.NewEdge(dagNodeB, dagNodeA)
+			if err != nil {
+				return fmt.Errorf("failed to create edge from %s to %s: %w", dep.Name(), node.Name(), err)
+			}
 		}
 	}
 
@@ -242,8 +243,8 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
 	}
 	if !ok {
-		// Didn't find the resource via a direct lookup, we now need to iterate _all_ the resources and use TokenToModule to see if any of the match the
-		// token we have.
+		// Didn't find the resource via a direct lookup, we now need to iterate _all_ the resources and use
+		// TokenToModule to see if any of the match the token we have.
 		iter := resources.Range()
 		for iter.Next() {
 			resToken := iter.Token()
@@ -356,10 +357,10 @@ func (i *Interpreter) enforceRequiredVersion(ctx context.Context) error {
 		return diags
 	}
 	if !value.IsString() {
-		return fmt.Errorf("requiredVersion must be a string")
+		return errors.New("requiredVersion must be a string")
 	}
 	if i.engine == nil {
-		return fmt.Errorf("engine client not available to validate requiredVersion")
+		return errors.New("engine client not available to validate requiredVersion")
 	}
 
 	_, err := i.engine.RequirePulumiVersion(ctx, &pulumirpc.RequirePulumiVersionRequest{
@@ -444,15 +445,15 @@ func unwrapResource(value resource.PropertyValue) (string, resource.PropertyValu
 	obj := value.ObjectValue()
 	urnVal, ok := obj["urn"]
 	if !ok || urnVal.IsNull() || urnVal.IsComputed() || !urnVal.IsString() {
-		return "", resource.PropertyValue{}, fmt.Errorf("expected resource object with known urn property")
+		return "", resource.PropertyValue{}, errors.New("expected resource object with known urn property")
 	}
 	idVal, ok := obj["id"]
 	if !ok || idVal.IsNull() {
-		return "", resource.PropertyValue{}, fmt.Errorf("expected resource object with id property of type string")
+		return "", resource.PropertyValue{}, errors.New("expected resource object with id property of type string")
 	}
 
 	if !idVal.IsComputed() && !idVal.IsString() {
-		return "", resource.PropertyValue{}, fmt.Errorf("expected resource object with id property of type string")
+		return "", resource.PropertyValue{}, errors.New("expected resource object with id property of type string")
 	}
 
 	return urnVal.StringValue(), idVal, nil
@@ -523,7 +524,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 			if !additionalSecretOutputs.IsNull() && !additionalSecretOutputs.IsComputed() {
 				if !additionalSecretOutputs.IsArray() {
-					return fmt.Errorf("additionalSecretOutputs must be an array of strings")
+					return errors.New("additionalSecretOutputs must be an array of strings")
 				}
 				var additionalSecretOutputKeys []string
 				for _, v := range additionalSecretOutputs.ArrayValue() {
@@ -531,7 +532,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						continue
 					}
 					if !v.IsString() {
-						return fmt.Errorf("additionalSecretOutputs must be an array of strings")
+						return errors.New("additionalSecretOutputs must be an array of strings")
 					}
 					additionalSecretOutputKeys = append(additionalSecretOutputKeys, v.StringValue())
 				}
@@ -545,7 +546,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 			if !aliases.IsNull() && !aliases.IsComputed() {
 				if !aliases.IsArray() {
-					return fmt.Errorf("aliases must be an array of strings or alias objects")
+					return errors.New("aliases must be an array of strings or alias objects")
 				}
 				var aliasOpts []*pulumirpc.Alias
 				// Translate each alias expression (either string or object) into an rpc alias object
@@ -583,7 +584,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						noParent, ok := obj["noParent"]
 						if ok && !noParent.IsNull() && !noParent.IsComputed() {
 							if !noParent.IsBool() {
-								return fmt.Errorf("noParent must be a boolean")
+								return errors.New("noParent must be a boolean")
 							}
 							aliasOpt.Parent = &pulumirpc.Alias_Spec_NoParent{
 								NoParent: noParent.BoolValue(),
@@ -607,7 +608,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 							},
 						})
 					} else {
-						return fmt.Errorf("aliases must be an array of strings or alias objects")
+						return errors.New("aliases must be an array of strings or alias objects")
 					}
 				}
 				request.Aliases = aliasOpts
@@ -620,7 +621,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 			if !dependsOn.IsNull() && !dependsOn.IsComputed() {
 				if !dependsOn.IsArray() {
-					return fmt.Errorf("dependsOn must be an array of resource objects")
+					return errors.New("dependsOn must be an array of resource objects")
 				}
 				var dependsOnUrns []string
 				for _, v := range dependsOn.ArrayValue() {
@@ -643,7 +644,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 			if !importID.IsNull() && !importID.IsComputed() {
 				if !importID.IsString() {
-					return fmt.Errorf("import must be a string")
+					return errors.New("import must be a string")
 				}
 				request.ImportId = importID.StringValue()
 			}
@@ -655,7 +656,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 			if !ignoreChanges.IsNull() && !ignoreChanges.IsComputed() {
 				if !ignoreChanges.IsArray() {
-					return fmt.Errorf("ignoreChanges must be an array of strings")
+					return errors.New("ignoreChanges must be an array of strings")
 				}
 				icopt := []string{}
 				for _, v := range ignoreChanges.ArrayValue() {
@@ -663,7 +664,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						continue
 					}
 					if !v.IsString() {
-						return fmt.Errorf("ignoreChanges must be an array of strings")
+						return errors.New("ignoreChanges must be an array of strings")
 					}
 					icopt = append(icopt, v.StringValue())
 				}
@@ -681,7 +682,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 					b := protect.BoolValue()
 					popt = &b
 				} else if !protect.IsNull() {
-					return fmt.Errorf("protect must be a boolean or null")
+					return errors.New("protect must be a boolean or null")
 				}
 				request.Protect = popt
 			}
@@ -693,7 +694,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 			if !replaceWith.IsNull() && !replaceWith.IsComputed() {
 				if !replaceWith.IsArray() {
-					return fmt.Errorf("replaceWith must be an array of resources")
+					return errors.New("replaceWith must be an array of resources")
 				}
 				var rwopt []string
 				for _, v := range replaceWith.ArrayValue() {
@@ -716,7 +717,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 			if !replaceOnChanges.IsNull() && !replaceOnChanges.IsComputed() {
 				if !replaceOnChanges.IsArray() {
-					return fmt.Errorf("replaceOnChanges must be an array of strings")
+					return errors.New("replaceOnChanges must be an array of strings")
 				}
 				rocopt := []string{}
 				for _, v := range replaceOnChanges.ArrayValue() {
@@ -724,7 +725,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						continue
 					}
 					if !v.IsString() {
-						return fmt.Errorf("replaceOnChanges must be an array of strings")
+						return errors.New("replaceOnChanges must be an array of strings")
 					}
 					rocopt = append(rocopt, v.StringValue())
 				}
@@ -753,7 +754,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 					b := retain.BoolValue()
 					retainOnDelete = &b
 				} else {
-					return fmt.Errorf("retainOnDelete must be a boolean or null")
+					return errors.New("retainOnDelete must be a boolean or null")
 				}
 				request.RetainOnDelete = retainOnDelete
 			}
@@ -765,7 +766,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 			if !version.IsNull() && !version.IsComputed() {
 				if !version.IsString() {
-					return fmt.Errorf("version must be a string")
+					return errors.New("version must be a string")
 				}
 				request.Version = version.StringValue()
 			}
@@ -780,7 +781,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 					request.DeleteBeforeReplace = dbr.BoolValue()
 					request.DeleteBeforeReplaceDefined = true
 				} else if !dbr.IsNull() {
-					return fmt.Errorf("deleteBeforeReplace must be a boolean or null")
+					return errors.New("deleteBeforeReplace must be a boolean or null")
 				}
 			}
 		}
@@ -794,7 +795,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 				if err != nil {
 					return fmt.Errorf("deletedWith: %w", err)
 				}
-				request.DeletedWith = string(urn)
+				request.DeletedWith = urn
 			}
 		}
 		if res.Options.PluginDownloadURL != nil {
@@ -804,7 +805,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 			if !downloadURL.IsNull() && !downloadURL.IsComputed() {
 				if !downloadURL.IsString() {
-					return fmt.Errorf("pluginDownloadURL must be a string")
+					return errors.New("pluginDownloadURL must be a string")
 				}
 				request.PluginDownloadURL = downloadURL.StringValue()
 			}
@@ -819,7 +820,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 				if err != nil {
 					return fmt.Errorf("parent: %w", err)
 				}
-				request.Parent = string(urn)
+				request.Parent = urn
 			}
 		}
 		if res.Options.Provider != nil {
@@ -847,7 +848,8 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 				return diags
 			}
 			if !providers.IsNull() && !providers.IsComputed() {
-				// Providers is either a list of provider objects or a map of provider name to provider objects. We need to support both forms and translate the list into the map form expected by the RPC.
+				// Providers is either a list of provider objects or a map of provider name to provider objects. We need
+				// to support both forms and translate the list into the map form expected by the RPC.
 				psopt := map[string]string{}
 				if providers.IsObject() {
 					for k, v := range providers.ObjectValue() {
@@ -879,10 +881,10 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						} else {
 							idstr = plugin.UnknownStringValue
 						}
-						psopt[string(pkg)] = fmt.Sprintf("%s::%s", urn, idstr)
+						psopt[pkg] = fmt.Sprintf("%s::%s", urn, idstr)
 					}
 				} else {
-					return fmt.Errorf("providers must be an array of provider objects or a map of provider name to provider objects")
+					return errors.New("providers must be an array of provider objects or a map of provider name to provider objects")
 				}
 				request.Providers = psopt
 			}
@@ -894,7 +896,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 			if !hideDiffs.IsNull() && !hideDiffs.IsComputed() {
 				if !hideDiffs.IsArray() {
-					return fmt.Errorf("hideDiffs must be an array of strings")
+					return errors.New("hideDiffs must be an array of strings")
 				}
 				hdopt := []string{}
 				for _, v := range hideDiffs.ArrayValue() {
@@ -902,7 +904,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						continue
 					}
 					if !v.IsString() {
-						return fmt.Errorf("hideDiffs must be an array of strings")
+						return errors.New("hideDiffs must be an array of strings")
 					}
 					hdopt = append(hdopt, v.StringValue())
 				}
@@ -934,7 +936,8 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	outputs["__name"] = resource.NewProperty(request.Name)
 	outputs["__type"] = resource.NewProperty(request.Type)
 
-	// We need to ensure _all_ resource outputs exist in the output object so any the provider didn't send back we default to unknown here.
+	// We need to ensure _all_ resource outputs exist in the output object so any the provider didn't send back we
+	// default to unknown here.
 	if schemaResource != nil {
 		for _, prop := range schemaResource.Properties {
 			key := resource.PropertyKey(prop.Name)
@@ -944,7 +947,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		}
 	}
 
-	result := resource.NewOutputProperty(resource.Output{
+	result := resource.NewProperty(resource.Output{
 		Element:      resource.NewProperty(outputs),
 		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
 		Known:        true,

@@ -60,7 +60,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) == 0 {
-				return cty.NilVal, fmt.Errorf("secret requires a value")
+				return cty.NilVal, errors.New("secret requires a value")
 			}
 			return args[0].Mark(secretMark{}), nil
 		},
@@ -82,7 +82,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) == 0 {
-				return cty.NilVal, fmt.Errorf("unsecret requires a value")
+				return cty.NilVal, errors.New("unsecret requires a value")
 			}
 			val, _ := unmark[secretMark](args[0])
 			return val, nil
@@ -116,7 +116,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(cty.Bool),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) == 0 {
-				return cty.NilVal, fmt.Errorf("can requires an expression")
+				return cty.NilVal, errors.New("can requires an expression")
 			}
 			closure := customdecode.ExpressionClosureFromVal(args[0])
 			value, diags := closure.Value()
@@ -151,7 +151,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 2 {
-				return cty.NilVal, fmt.Errorf("getOutput requires a stack reference and output name")
+				return cty.NilVal, errors.New("getOutput requires a stack reference and output name")
 			}
 
 			stackRefPV, err := ctyToPropertyValue(args[0])
@@ -193,13 +193,13 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) < 2 {
-				return cty.NilVal, fmt.Errorf("invoke requires a token and arguments")
+				return cty.NilVal, errors.New("invoke requires a token and arguments")
 			}
 			if len(args) > 3 {
-				return cty.NilVal, fmt.Errorf("invoke accepts at most three arguments: token, arguments, and options")
+				return cty.NilVal, errors.New("invoke accepts at most three arguments: token, arguments, and options")
 			}
 			if args[0].Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("invoke token must be a string")
+				return cty.NilVal, errors.New("invoke token must be a string")
 			}
 			token := args[0].AsString()
 			components := strings.Split(token, ":")
@@ -223,8 +223,8 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, fmt.Errorf("get function from package for token %s: %w", token, err)
 			}
 			if !ok {
-				// Didn't find the function via a direct lookup, we now need to iterate _all_ the functions and use TokenToModule to see if any of the match the
-				// token we have.
+				// Didn't find the function via a direct lookup, we now need to iterate _all_ the functions and use
+				// TokenToModule to see if any of the match the token we have.
 				iter := functions.Range()
 				for iter.Next() {
 					fnToken := iter.Token()
@@ -270,7 +270,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				deps := options.GetAttr("dependsOn")
 				if !deps.IsNull() && deps.IsKnown() {
 					if !deps.Type().IsListType() {
-						return cty.NilVal, fmt.Errorf("invoke options dependsOn must be a list of strings")
+						return cty.NilVal, errors.New("invoke options dependsOn must be a list of strings")
 					}
 					for it := deps.ElementIterator(); it.Next(); {
 						_, dep := it.Element()
@@ -279,11 +279,12 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 						}
 						// dependencies should be resource objects that will have a urn property
 						if !dep.Type().IsObjectType() {
-							return cty.NilVal, fmt.Errorf("invoke options dependsOn must be a list of resource objects")
+							return cty.NilVal, errors.New("invoke options dependsOn must be a list of resource objects")
 						}
 						urnAttr := dep.GetAttr("urn")
 						if urnAttr.IsNull() || !urnAttr.IsKnown() || urnAttr.Type() != cty.String {
-							return cty.NilVal, fmt.Errorf("invoke options dependsOn must be a list of resource objects with known urn properties")
+							return cty.NilVal, errors.New(
+								"invoke options dependsOn must be a list of resource objects with known urn properties")
 						}
 						dependsOn = append(dependsOn, resource.URN(urnAttr.AsString()))
 					}
@@ -292,15 +293,15 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				provider := options.GetAttr("provider")
 				if !provider.IsNull() && provider.IsKnown() {
 					if !provider.Type().IsObjectType() {
-						return cty.NilVal, fmt.Errorf("invoke options provider must be a resource object")
+						return cty.NilVal, errors.New("invoke options provider must be a resource object")
 					}
 					urnAttr := provider.GetAttr("urn")
 					if urnAttr.IsNull() || !urnAttr.IsKnown() || urnAttr.Type() != cty.String {
-						return cty.NilVal, fmt.Errorf("invoke options provider must be a resource object with known urn property")
+						return cty.NilVal, errors.New("invoke options provider must be a resource object with known urn property")
 					}
 					idAttr := provider.GetAttr("id")
 					if idAttr.IsNull() || !idAttr.IsKnown() || idAttr.Type() != cty.String {
-						return cty.NilVal, fmt.Errorf("invoke options provider must be a resource object with known id property")
+						return cty.NilVal, errors.New("invoke options provider must be a resource object with known id property")
 					}
 					request.Provider = fmt.Sprintf("%s::%s", urnAttr.AsString(), idAttr.AsString())
 				}
@@ -336,7 +337,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				}
 			}
 			if len(dependsOn) > 0 {
-				resultPV = resource.NewOutputProperty(resource.Output{
+				resultPV = resource.NewProperty(resource.Output{
 					Element:      resultPV,
 					Known:        true,
 					Dependencies: dependsOn,
@@ -364,13 +365,13 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) < 3 {
-				return cty.NilVal, fmt.Errorf("call requires a self, token, and arguments")
+				return cty.NilVal, errors.New("call requires a self, token, and arguments")
 			}
 			if len(args) > 4 {
-				return cty.NilVal, fmt.Errorf("call accepts at most three arguments: self, token, arguments, and options")
+				return cty.NilVal, errors.New("call accepts at most three arguments: self, token, arguments, and options")
 			}
 			if args[1].Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("call token must be a string")
+				return cty.NilVal, errors.New("call token must be a string")
 			}
 			method := args[1].AsString()
 
@@ -379,13 +380,13 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			// function object.
 
 			if args[0].IsNull() || !args[0].IsKnown() || !args[0].Type().IsObjectType() {
-				return cty.NilVal, fmt.Errorf("call self must be a known resource type")
+				return cty.NilVal, errors.New("call self must be a known resource type")
 			}
 			self := args[0].AsValueMap()
 
 			typ, has := self["__type"]
 			if !has || typ.IsNull() || !typ.IsKnown() || typ.Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("call self must have a known __type property of type string")
+				return cty.NilVal, errors.New("call self must have a known __type property of type string")
 			}
 
 			typeStr := typ.AsString()
@@ -413,11 +414,11 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 
 			urnVal, ok := self["urn"]
 			if !ok || urnVal.IsNull() || !urnVal.IsKnown() || urnVal.Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("call self must have a known urn property of type string")
+				return cty.NilVal, errors.New("call self must have a known urn property of type string")
 			}
 			id, ok := self["id"]
 			if !ok {
-				return cty.NilVal, fmt.Errorf("call self must have an id property of type string")
+				return cty.NilVal, errors.New("call self must have an id property of type string")
 			}
 
 			urn := urnVal.AsString()
@@ -449,7 +450,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				deps := options.GetAttr("dependsOn")
 				if !deps.IsNull() && deps.IsKnown() {
 					if !deps.Type().IsListType() {
-						return cty.NilVal, fmt.Errorf("invoke options dependsOn must be a list of strings")
+						return cty.NilVal, errors.New("invoke options dependsOn must be a list of strings")
 					}
 					for it := deps.ElementIterator(); it.Next(); {
 						_, dep := it.Element()
@@ -458,11 +459,12 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 						}
 						// dependencies should be resource objects that will have a urn property
 						if !dep.Type().IsObjectType() {
-							return cty.NilVal, fmt.Errorf("invoke options dependsOn must be a list of resource objects")
+							return cty.NilVal, errors.New("invoke options dependsOn must be a list of resource objects")
 						}
 						urnAttr := dep.GetAttr("urn")
 						if urnAttr.IsNull() || !urnAttr.IsKnown() || urnAttr.Type() != cty.String {
-							return cty.NilVal, fmt.Errorf("invoke options dependsOn must be a list of resource objects with known urn properties")
+							return cty.NilVal, errors.New(
+								"invoke options dependsOn must be a list of resource objects with known urn properties")
 						}
 						dependsOn = append(dependsOn, resource.URN(urnAttr.AsString()))
 					}
@@ -488,7 +490,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			}
 			resultPV := resource.NewProperty(resultPM)
 			if len(dependsOn) > 0 {
-				resultPV = resource.NewOutputProperty(resource.Output{
+				resultPV = resource.NewProperty(resource.Output{
 					Element:      resultPV,
 					Known:        true,
 					Dependencies: dependsOn,
@@ -508,10 +510,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(assetType),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("fileAsset requires a path argument")
+				return cty.NilVal, errors.New("fileAsset requires a path argument")
 			}
 			if args[0].Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("fileAsset path must be a string")
+				return cty.NilVal, errors.New("fileAsset path must be a string")
 			}
 			path := args[0].AsString()
 			a, err := asset.FromPathWithWD(path, i.info.WorkingDir)
@@ -532,10 +534,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(archiveType),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("fileArchive requires a path argument")
+				return cty.NilVal, errors.New("fileArchive requires a path argument")
 			}
 			if args[0].Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("fileArchive path must be a string")
+				return cty.NilVal, errors.New("fileArchive path must be a string")
 			}
 			path := args[0].AsString()
 			a, err := archive.FromPathWithWD(path, i.info.WorkingDir)
@@ -556,10 +558,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(archiveType),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("assertArchive requires an assets argument")
+				return cty.NilVal, errors.New("assertArchive requires an assets argument")
 			}
 			if !args[0].Type().IsMapType() && !args[0].Type().IsObjectType() {
-				return cty.NilVal, fmt.Errorf("assetArchive assets must be a map or object")
+				return cty.NilVal, errors.New("assetArchive assets must be a map or object")
 			}
 
 			assets := map[string]any{}
@@ -585,10 +587,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(assetType),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("stringAsset requires a text argument")
+				return cty.NilVal, errors.New("stringAsset requires a text argument")
 			}
 			if args[0].Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("text must be a string")
+				return cty.NilVal, errors.New("text must be a string")
 			}
 			text := args[0].AsString()
 			a, err := asset.FromText(text)
@@ -609,10 +611,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(assetType),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("remoteAsset requires a uri argument")
+				return cty.NilVal, errors.New("remoteAsset requires a uri argument")
 			}
 			if args[0].Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("remoteAsset uri must be a string")
+				return cty.NilVal, errors.New("remoteAsset uri must be a string")
 			}
 			uri := args[0].AsString()
 			a, err := asset.FromURI(uri)
@@ -634,7 +636,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("convert requires a value argument")
+				return cty.NilVal, errors.New("convert requires a value argument")
 			}
 			return args[0], nil
 		},
@@ -650,10 +652,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("pulumiResourceType requires a resource argument")
+				return cty.NilVal, errors.New("pulumiResourceType requires a resource argument")
 			}
 			if !args[0].Type().IsObjectType() {
-				return cty.NilVal, fmt.Errorf("pulumiResourceType argument must be an object")
+				return cty.NilVal, errors.New("pulumiResourceType argument must be an object")
 			}
 			res := args[0]
 			name := res.GetAttr("__type")
@@ -671,10 +673,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("pulumiResourceName requires a resource argument")
+				return cty.NilVal, errors.New("pulumiResourceName requires a resource argument")
 			}
 			if !args[0].Type().IsObjectType() {
-				return cty.NilVal, fmt.Errorf("pulumiResourceName argument must be an object")
+				return cty.NilVal, errors.New("pulumiResourceName argument must be an object")
 			}
 			res := args[0]
 			name := res.GetAttr("__name")
@@ -696,10 +698,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(cty.List(cty.String)),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 2 {
-				return cty.NilVal, fmt.Errorf("split requires a separator and string argument")
+				return cty.NilVal, errors.New("split requires a separator and string argument")
 			}
 			if args[0].Type() != cty.String || args[1].Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("split arguments must be strings")
+				return cty.NilVal, errors.New("split arguments must be strings")
 			}
 			sep := args[0].AsString()
 			str := args[1].AsString()
@@ -728,7 +730,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 2 {
-				return cty.NilVal, fmt.Errorf("element requires a list and index argument")
+				return cty.NilVal, errors.New("element requires a list and index argument")
 			}
 			return args[0].Index(args[1]), nil
 		},
@@ -806,7 +808,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		}))),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("entries requires a collection argument")
+				return cty.NilVal, errors.New("entries requires a collection argument")
 			}
 			if !args[0].Type().IsMapType() && !args[0].Type().IsObjectType() {
 				return cty.NilVal, fmt.Errorf("entries argument must be a collection, was %s", args[0].Type().FriendlyName())
@@ -844,10 +846,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 3 {
-				return cty.NilVal, fmt.Errorf("lookup requires a collection, key, and default argument")
+				return cty.NilVal, errors.New("lookup requires a collection, key, and default argument")
 			}
 			if args[1].Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("lookup key argument must be a string")
+				return cty.NilVal, errors.New("lookup key argument must be a string")
 			}
 			collection := args[0]
 			key := args[1].AsString()
@@ -862,7 +864,9 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				}
 			}
 
-			return cty.NilVal, fmt.Errorf("lookup collection argument must be a map or object, was %s", collection.Type().FriendlyName())
+			return cty.NilVal, fmt.Errorf(
+				"lookup collection argument must be a map or object, was %s",
+				collection.Type().FriendlyName())
 		},
 	})
 
@@ -876,10 +880,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("toBase64 requires a data argument")
+				return cty.NilVal, errors.New("toBase64 requires a data argument")
 			}
 			if args[0].Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("toBase64 data argument must be a string")
+				return cty.NilVal, errors.New("toBase64 data argument must be a string")
 			}
 			data := args[0].AsString()
 			encoded := base64.StdEncoding.EncodeToString([]byte(data))
@@ -897,10 +901,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		Type: function.StaticReturnType(cty.String),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			if len(args) != 1 {
-				return cty.NilVal, fmt.Errorf("fromBase64 requires a data argument")
+				return cty.NilVal, errors.New("fromBase64 requires a data argument")
 			}
 			if args[0].Type() != cty.String {
-				return cty.NilVal, fmt.Errorf("fromBase64 data argument must be a string")
+				return cty.NilVal, errors.New("fromBase64 data argument must be a string")
 			}
 			data := args[0].AsString()
 			decodedBytes, err := base64.StdEncoding.DecodeString(data)
