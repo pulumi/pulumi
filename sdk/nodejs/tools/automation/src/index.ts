@@ -62,6 +62,7 @@ function generateOptionsTypes(
         isExported: true,
         properties: Object.entries(flags).map(([name, flag]) => ({
             name: camelCase(flag.name),
+            hasQuestionToken: flag.required === true ? false : true,
             type: convertType(flag.type, flag.repeatable ?? false),
             docs: flag.description ? [flag.description] : undefined,
         })),
