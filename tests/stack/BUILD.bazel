@@ -6,6 +6,15 @@ go_test(
         "main_test.go",
         "stack_test.go",
     ],
+    data = [
+        "//pkg/cmd/pulumi",
+        "//tests/testprovider",
+    ] + glob(["testdata/**"]),
+    tags = [
+        "integration",
+        "manual",
+    ],
+    timeout = "long",
     deps = [
         "//pkg/backend/secrets",
         "//pkg/resource/stack",

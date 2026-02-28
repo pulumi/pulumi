@@ -6,6 +6,12 @@ go_test(
         "login_test.go",
         "oidc_login_test.go",
     ],
+    data = ["//pkg/cmd/pulumi"],
+    tags = [
+        "integration",
+        "manual",
+    ],
+    timeout = "long",
     deps = [
         "//pkg/testing/integration",
         "//sdk/go/common/apitype",

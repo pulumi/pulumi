@@ -1,0 +1,82 @@
+load("@rules_python//python:py_library.bzl", "py_library")
+load("@rules_python//python:py_test.bzl", "py_test")
+
+# gazelle:exclude .venv
+# gazelle:exclude build
+# gazelle:exclude testdata
+# gazelle:exclude **/testdata
+# gazelle:exclude dist
+
+exports_files([
+    "requirements.txt",
+])
+
+# ─── SDK Library ─────────────────────────────────────────────────────────────
+
+py_library(
+    name = "pulumi_sdk",
+    srcs = glob(["lib/pulumi/**/*.py"]),
+    imports = ["lib"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@pypi//debugpy",
+        "@pypi//dill",
+        "@pypi//grpcio",
+        "@pypi//packaging",
+        "@pypi//pip",
+        "@pypi//protobuf",
+        "@pypi//pyyaml",
+        "@pypi//semver",
+    ],
+)
+
+# ─── Scripts ─────────────────────────────────────────────────────────────────
+
+sh_binary(
+    name = "pulumi-language-python-exec",
+    srcs = ["cmd/pulumi-language-python-exec"],
+    visibility = ["//visibility:public"],
+)
+
+sh_binary(
+    name = "pulumi-resource-pulumi-python",
+    srcs = ["dist/pulumi-resource-pulumi-python"],
+    visibility = ["//visibility:public"],
+)
+
+# ─── Tests ───────────────────────────────────────────────────────────────────
+
+py_library(
+    name = "test_helpers",
+    srcs = glob(["lib/test/**/*.py"]),
+    imports = ["lib"],
+    deps = [
+        ":pulumi_sdk",
+        "@pypi//pytest",
+        "@pypi//protobuf",
+        "@pypi//grpcio",
+    ],
+)
+
+# Test targets using pytest runner to handle relative imports properly.
+[py_test(
+    name = src.replace("lib/test/", "").replace(".py", ""),
+    srcs = ["run_pytest.py"] + glob(["lib/test/**/*.py"]),
+    args = ["-xvs", "sdk/python/" + src],
+    imports = ["lib"],
+    main = "run_pytest.py",
+    deps = [
+        ":pulumi_sdk",
+        "@pypi//pytest",
+        "@pypi//pytest_asyncio",
+        "@pypi//protobuf",
+        "@pypi//grpcio",
+        "@pypi//pyyaml",
+    ],
+    tags = ["python"],
+) for src in glob(
+    ["lib/test/test_*.py"],
+    exclude = [
+        "lib/test/test_monitor_termination.py",
+    ],
+)]

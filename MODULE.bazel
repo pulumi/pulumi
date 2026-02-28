@@ -49,6 +49,47 @@ use_repo(go_deps, "com_github_acarl005_stripansi", "com_github_alecaivazis_surve
 bazel_dep(name = "rules_proto", version = "7.1.0")
 bazel_dep(name = "protobuf", version = "29.3")
 
+# ─── Node.js / TypeScript ────────────────────────────────────────────────────
+
+bazel_dep(name = "aspect_bazel_lib", version = "2.19.2")
+bazel_dep(name = "aspect_rules_js", version = "2.9.2")
+bazel_dep(name = "aspect_rules_ts", version = "3.8.5")
+bazel_dep(name = "rules_nodejs", version = "6.3.4")
+
+node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
+node.toolchain(node_version = "20.18.3")
+
+npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm")
+npm.npm_translate_lock(
+    name = "npm",
+    pnpm_lock = "//sdk/nodejs:pnpm-lock.yaml",
+)
+use_repo(npm, "npm")
+
+rules_ts_ext = use_extension(
+    "@aspect_rules_ts//ts:extensions.bzl",
+    "ext",
+)
+rules_ts_ext.deps(
+    ts_version_from = "//sdk/nodejs:package.json",
+)
+use_repo(rules_ts_ext, "npm_typescript")
+
+# ─── Python ──────────────────────────────────────────────────────────────────
+
+bazel_dep(name = "rules_python", version = "1.8.5")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(python_version = "3.12")
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "pypi",
+    python_version = "3.12",
+    requirements_lock = "//sdk/python:requirements.txt",
+)
+use_repo(pip, "pypi")
+
 # ─── Toolchains (platforms / CC) ─────────────────────────────────────────────
 
 bazel_dep(name = "platforms", version = "1.0.0")

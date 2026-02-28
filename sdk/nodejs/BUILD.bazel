@@ -1,0 +1,129 @@
+load("@aspect_bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+load("@npm//sdk/nodejs:mocha/package_json.bzl", mocha_bin = "bin")
+
+# gazelle:exclude node_modules
+# gazelle:exclude bin
+# gazelle:exclude vendor
+# gazelle:exclude testdata
+# gazelle:exclude **/testdata
+# gazelle:exclude tests
+# gazelle:exclude tests_with_mocks
+# gazelle:exclude dist
+# gazelle:exclude proto
+
+npm_link_all_packages(name = "node_modules")
+
+# All TypeScript source files: library + tests (compiled together because tests
+# use relative imports into library sources).
+_ALL_TS_SRCS = glob(
+    [
+        "*.ts",
+        "asset/**/*.ts",
+        "automation/**/*.ts",
+        "cmd/dynamic-provider/**/*.ts",
+        "cmd/run/**/*.ts",
+        "cmd/run-plugin/**/*.ts",
+        "cmd/run-policy-pack/**/*.ts",
+        "dynamic/**/*.ts",
+        "iterable/**/*.ts",
+        "log/**/*.ts",
+        "provider/**/*.ts",
+        "queryable/**/*.ts",
+        "runtime/**/*.ts",
+        "tests/**/*.ts",
+        "tests_with_mocks/**/*.ts",
+    ],
+    exclude = [
+        "**/testdata/**",
+        "tests/runtime/langhost/cases/**",
+        "tests/runtime/closure-integration-tests.ts",
+        "tests/runtime/install-package-tests.ts",
+        # These files import @pulumi/pulumi (published) or ../../bin, not local sources.
+        "tests/automation/data/**",
+        "tests/sxs_ts_test/**",
+    ],
+)
+
+# Proto-generated JS/TS files (pre-generated, checked into source).
+_PROTO_SRCS = glob([
+    "proto/**/*.js",
+    "proto/**/*.d.ts",
+])
+
+# Custom type declarations.
+_TYPE_SRCS = glob(["types/**/*.d.ts"])
+
+# Proto-generated .d.ts and .js files treated as js_library so tsc can
+# resolve imports like "../proto/engine_grpc_pb".
+js_library(
+    name = "proto_lib",
+    srcs = _PROTO_SRCS,
+)
+
+ts_project(
+    name = "sdk_ts",
+    srcs = _ALL_TS_SRCS + _TYPE_SRCS + ["package.json"],
+    declaration = True,
+    out_dir = "bin",
+    resolve_json_module = True,
+    source_map = True,
+    transpiler = "tsc",
+    tsconfig = "tsconfig.bazel.json",
+    deps = [
+        ":node_modules",
+        ":proto_lib",
+    ],
+)
+
+# Copy proto files to bin/proto/ so compiled JS can resolve "../proto/" imports.
+copy_to_directory(
+    name = "proto_in_bin",
+    srcs = _PROTO_SRCS,
+    out = "bin/proto",
+    replace_prefixes = {"proto/": ""},
+)
+
+# The full SDK package including compiled JS, proto stubs, and vendor.
+js_library(
+    name = "sdk",
+    srcs = [
+        "package.json",
+    ] + _PROTO_SRCS + glob(["vendor/**"]),
+    deps = [
+        ":sdk_ts",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# ─── Tests ───────────────────────────────────────────────────────────────────
+
+mocha_bin.mocha_test(
+    name = "unit_test",
+    args = [
+        "--timeout",
+        "120000",
+        "--require",
+        "source-map-support/register",
+    ] + ["sdk/nodejs/bin/%s" % f.replace(".ts", ".js") for f in [
+        "tests/config.spec.ts",
+        "tests/init.spec.ts",
+        "tests/iterable.spec.ts",
+        "tests/options.spec.ts",
+        "tests/output.spec.ts",
+        "tests/resource.spec.ts",
+        "tests/stackReference.spec.ts",
+        "tests/provider.spec.ts",
+        "tests/unwrap.spec.ts",
+        "tests/proto/proto.spec.ts",
+    ]],
+    copy_data_to_bin = False,
+    data = [
+        ":sdk",
+        ":node_modules",
+        ":proto_in_bin",
+    ],
+    tags = ["nodejs"],
+)

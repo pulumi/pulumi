@@ -3,6 +3,12 @@ load("@rules_go//go:def.bzl", "go_test")
 go_test(
     name = "history_test",
     srcs = ["history_test.go"],
+    data = ["//pkg/cmd/pulumi"],
+    tags = [
+        "integration",
+        "manual",
+    ],
+    timeout = "long",
     deps = [
         "//pkg/testing/integration",
         "//sdk/go/common/testing",
