@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Fixed a bug where publish command wasn't working if the gitlab repo has subgroupgs

@@ -169,7 +169,12 @@ func naiveResolution(
 	spec workspace.PackageSpec, desc workspace.UnresolvedPackageDescriptor, installed bool,
 ) Resolution {
 	if desc.IsGitPlugin() && spec.PluginDownloadURL == "" {
-		spec.Source = strings.TrimPrefix(desc.PluginDownloadURL, "git://")
+		// Store the source as an https:// URL rather than stripping the git:// scheme.
+		// pluginProvider.GetSchema re-parses this to inject version/URL into the schema, and
+		// parseGitRepoURLParts only accepts https:// or ssh:// (not git:// or scheme-less).
+		// Using https:// here also prevents registry-resolved sources (which are scheme-less)
+		// from being mistakenly treated as git URLs in pluginProvider.GetSchema.
+		spec.Source = "https://" + strings.TrimPrefix(desc.PluginDownloadURL, "git://")
 		if v := desc.Version; v != nil && v.Major == 0 && v.Minor == 0 && v.Patch == 0 &&
 			len(v.Build) == 0 && len(v.Pre) == 1 && !v.Pre[0].IsNum &&
 			strings.HasPrefix(v.Pre[0].VersionStr, "x") {

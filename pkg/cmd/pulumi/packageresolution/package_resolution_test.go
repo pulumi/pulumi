@@ -151,7 +151,7 @@ func TestResolvePackage(t *testing.T) {
 			workspace:  pluginstorage.MockContext{},
 			expected: PackageResolution{
 				Spec: workspace.PackageSpec{
-					Source:  "github.com/pulumi/component-test-providers/test-provider",
+					Source:  "https://github.com/pulumi/component-test-providers/test-provider",
 					Version: "52a8a71555d964542b308da197755c64dbe63352",
 				},
 				Pkg: workspace.PackageDescriptor{PluginDescriptor: workspace.PluginDescriptor{
