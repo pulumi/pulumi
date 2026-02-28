@@ -38,13 +38,13 @@ from ..invoke import (
 )
 from .settings import (
     SETTINGS,
+    _get_async_monitor,
     _get_callbacks,
     _get_rpc_manager,
     _load_monitor_feature_support,
     _shutdown_callbacks,
     _sync_monitor_supports_transforms,
     _sync_monitor_supports_invoke_transforms,
-    get_monitor,
     get_project,
     get_root_resource,
     get_stack,
@@ -56,12 +56,10 @@ from .sync_await import _sync_await
 
 async def _wait_for_shutdown() -> None:
     try:
-        monitor = get_monitor()
+        monitor = _get_async_monitor()
         if monitor is None:
             return
-        await asyncio.get_event_loop().run_in_executor(
-            None, lambda: monitor.SignalAndWaitForShutdown(empty_pb2.Empty())
-        )
+        await monitor.SignalAndWaitForShutdown(empty_pb2.Empty())
     except grpc.RpcError as exn:
         # If we are running against an older version of the CLI,
         # SignalAndWaitForShutdown might not be implemented. This is mostly
@@ -72,11 +70,13 @@ async def _wait_for_shutdown() -> None:
             log.debug("Monitor does not implement `SignalAndWaitForShutdown`")
 
 
-async def run_pulumi_func(func: Callable[[], None]):
+async def run_pulumi_func(func: Callable[[], Optional[Awaitable[None]]]):
     # Run the function and grab any exception it generates
     ex = None
     try:
-        func()
+        awaitable = func()
+        if isawaitable(awaitable):
+            await awaitable
     except Exception as e:  # noqa # We re-raise this below
         ex = e
 
@@ -364,7 +364,7 @@ def register_resource_transform(t: ResourceTransform) -> None:
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
         raise Exception("No callback server registered.")
-    callbacks.register_stack_transform(t)
+    _sync_await(callbacks.register_stack_transform(t))
 
 
 def register_stack_transform(t: ResourceTransform):
@@ -396,4 +396,4 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
         raise Exception("No callback server registered.")
-    callbacks.register_invoke_transform(t)
+    _sync_await(callbacks.register_invoke_transform(t))

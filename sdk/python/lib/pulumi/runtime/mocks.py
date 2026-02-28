@@ -16,16 +16,20 @@
 Mocks for testing.
 """
 
+from __future__ import annotations
+
 import functools
+import inspect
 import logging
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Optional
+from typing import TYPE_CHECKING, Union, NamedTuple, Optional, cast
 
 from google.protobuf import empty_pb2
 
-from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
+from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2, resource_pb2_grpc
 from ..runtime.stack import Stack, run_pulumi_func
 from . import rpc, rpc_manager
+from ._monitor import _ProvidesAsyncMonitor, _sync_to_async_monitor
 from .settings import (
     Settings,
     configure,
@@ -34,7 +38,13 @@ from .settings import (
     get_stack,
     SETTINGS,
 )
-from .sync_await import _ensure_event_loop, _sync_await
+from .sync_await import _sync_await
+
+
+if TYPE_CHECKING:
+    from .proto.resource_pb2_grpc import ResourceMonitorAsyncStub
+else:
+    ResourceMonitorAsyncStub = object  # make cast work at runtime
 
 
 def test(fn):
@@ -42,6 +52,24 @@ def test(fn):
     Decorates a test function to make sure that a returned Future
     or Output is awaited as part of the test.
     """
+
+    has_asyncio_mark = any(
+        getattr(m, "name", None) == "asyncio" for m in getattr(fn, "pytestmark", [])
+    )
+    if inspect.iscoroutinefunction(fn) and has_asyncio_mark:
+
+        @functools.wraps(fn)
+        async def async_wrapper(*args, **kwargs):
+            from .. import Output
+
+            SETTINGS.rpc_manager.clear()
+            SETTINGS.outputs.clear()
+
+            await run_pulumi_func(
+                lambda: Output.from_input(fn(*args, **kwargs)).future()
+            )
+
+        return async_wrapper
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
@@ -51,9 +79,7 @@ def test(fn):
         SETTINGS.outputs.clear()
 
         _sync_await(
-            run_pulumi_func(
-                lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())
-            )
+            run_pulumi_func(lambda: Output.from_input(fn(*args, **kwargs)).future())
         )
 
     return wrapper
@@ -153,12 +179,73 @@ class MockMonitor:
         id: str
         state: dict
 
+    _monitor: AsyncMockMonitor
     mocks: Mocks
     resources: dict[str, ResourceRegistration]
 
-    def __init__(self, mocks: Mocks):
+    def __init__(self, mocks: Mocks, monitor: Optional[AsyncMockMonitor] = None):
+        assert isinstance(self, _ProvidesAsyncMonitor)
+        if monitor is not None and not isinstance(monitor, AsyncMockMonitor):
+            raise TypeError("monitor must be an instance of AsyncMockMonitor")
+
         self.mocks = mocks
-        self.resources = {}
+        self._monitor = AsyncMockMonitor(mocks) if monitor is None else monitor
+        self.resources = self._monitor._resources
+
+    def async_monitor(self) -> ResourceMonitorAsyncStub:
+        # If self is MockMonitor (and not a subclass!) we can return the underlying
+        # async monitor directly.
+        if type(self) is MockMonitor:
+            return cast(ResourceMonitorAsyncStub, self._monitor)
+
+        # Otherwise, the subclass may have overridden some of the monitor methods,
+        # so wrap the monitor in an async wrapper so that the subclass's overrides
+        # are used.
+        return _sync_to_async_monitor(cast(resource_pb2_grpc.ResourceMonitorStub, self))
+
+    def make_urn(self, parent: str, type_: str, name: str) -> str:
+        return self._monitor.make_urn(parent, type_, name)
+
+    def get_registered_resources(self) -> dict[str, MockMonitor.ResourceRegistration]:
+        """
+        get_registered_resources returns a copy of the resources dictionary that can be used for test assertions.
+        """
+
+        return self._monitor.get_registered_resources()
+
+    def Invoke(self, request):
+        return _sync_await(self._monitor.Invoke(request))
+
+    def ReadResource(self, request):
+        return _sync_await(self._monitor.ReadResource(request))
+
+    def RegisterResource(self, request):
+        return _sync_await(self._monitor.RegisterResource(request))
+
+    def RegisterResourceOutputs(self, request):
+        return _sync_await(self._monitor.RegisterResourceOutputs(request))
+
+    def SupportsFeature(self, request):
+        return _sync_await(self._monitor.SupportsFeature(request))
+
+    def RegisterPackage(self, request):
+        return _sync_await(self._monitor.RegisterPackage(request))
+
+    def SignalAndWaitForShutdown(self, request):
+        return _sync_await(self._monitor.SignalAndWaitForShutdown(request))
+
+
+class AsyncMockMonitor:
+    _mocks: Mocks
+    _resources: dict[str, MockMonitor.ResourceRegistration]
+
+    def __init__(self, mocks: Mocks):
+        assert isinstance(self, _ProvidesAsyncMonitor)
+        self._mocks = mocks
+        self._resources = {}
+
+    def async_monitor(self) -> ResourceMonitorAsyncStub:
+        return cast(ResourceMonitorAsyncStub, self)
 
     def make_urn(self, parent: str, type_: str, name: str) -> str:
         if parent != "":
@@ -168,25 +255,22 @@ class MockMonitor:
 
         return "urn:pulumi:" + "::".join([get_stack(), get_project(), type_, name])
 
-    def get_registered_resources(self) -> dict[str, ResourceRegistration]:
+    def get_registered_resources(self) -> dict[str, MockMonitor.ResourceRegistration]:
         """
         get_registered_resources returns a copy of the resources dictionary that can be used for test assertions.
         """
 
-        return dict(self.resources)
+        return dict(self._resources)
 
-    def Invoke(self, request):
-        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
-        _ensure_event_loop()
-
+    async def Invoke(self, request):
         args = rpc.deserialize_properties(request.args)
 
         if request.tok == "pulumi:pulumi:getResource":
-            registered_resource = self.resources.get(args["urn"])
+            registered_resource = self._resources.get(args["urn"])
             if registered_resource is None:
                 raise Exception(f"unknown resource {args['urn']}")
-            ret_proto = _sync_await(
-                rpc.serialize_properties(registered_resource._asdict(), {})
+            ret_proto = await rpc.serialize_properties(
+                registered_resource._asdict(), {}
             )
             fields = {"failures": None, "return": ret_proto}
             return provider_pb2.InvokeResponse(**fields)
@@ -194,7 +278,7 @@ class MockMonitor:
         call_args = MockCallArgs(
             token=request.tok, args=args, provider=request.provider
         )
-        tup = self.mocks.call(call_args)
+        tup = self._mocks.call(call_args)
         if isinstance(tup, dict):
             (ret, failures) = (tup, None)
         else:
@@ -206,15 +290,12 @@ class MockMonitor:
                 ],
             )
 
-        ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
+        ret_proto = await rpc.serialize_properties(ret, {})
 
         fields = {"failures": failures, "return": ret_proto}
         return provider_pb2.InvokeResponse(**fields)
 
-    def ReadResource(self, request):
-        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
-        _ensure_event_loop()
-
+    async def ReadResource(self, request):
         state = rpc.deserialize_properties(request.properties)
 
         resource_args = MockResourceArgs(
@@ -224,24 +305,21 @@ class MockMonitor:
             provider=request.provider,
             resource_id=request.id,
         )
-        id_, state = self.mocks.new_resource(resource_args)
+        id_, state = self._mocks.new_resource(resource_args)
 
-        props_proto = _sync_await(rpc.serialize_properties(state, {}))
+        props_proto = await rpc.serialize_properties(state, {})
 
         urn = self.make_urn(request.parent, request.type, request.name)
 
-        self.resources[urn] = MockMonitor.ResourceRegistration(urn, id_, state)
+        self._resources[urn] = MockMonitor.ResourceRegistration(urn, id_, state)
 
         return resource_pb2.ReadResourceResponse(urn=urn, properties=props_proto)
 
-    def RegisterResource(self, request):
+    async def RegisterResource(self, request):
         urn = self.make_urn(request.parent, request.type, request.name)
 
         if request.type == "pulumi:pulumi:Stack":
             return resource_pb2.RegisterResourceResponse(urn=urn)
-
-        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
-        _ensure_event_loop()
 
         inputs = rpc.deserialize_properties(request.object)
 
@@ -253,28 +331,28 @@ class MockMonitor:
             resource_id=request.importId,
             custom=request.custom or False,
         )
-        id_, state = self.mocks.new_resource(resource_args)
+        id_, state = self._mocks.new_resource(resource_args)
 
-        obj_proto = _sync_await(rpc.serialize_properties(state, {}))
+        obj_proto = await rpc.serialize_properties(state, {})
 
-        self.resources[urn] = MockMonitor.ResourceRegistration(urn, id_, state)
+        self._resources[urn] = MockMonitor.ResourceRegistration(urn, id_, state)
 
         return resource_pb2.RegisterResourceResponse(urn=urn, id=id_, object=obj_proto)
 
-    def RegisterResourceOutputs(self, request):
+    async def RegisterResourceOutputs(self, request):
         return empty_pb2.Empty()
 
-    def SupportsFeature(self, request):
+    async def SupportsFeature(self, request):
         # Support for "outputValues" is deliberately disabled for the mock monitor so
         # instances of `Output` don't show up in `MockResourceArgs` inputs.
         has_support = request.id != "outputValues"
         return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
-    def RegisterPackage(self, request):
+    async def RegisterPackage(self, request):
         # Mocks don't _really_ support packages, so we just return a fake package ref.
         return resource_pb2.RegisterPackageResponse(ref="mock-uuid")
 
-    def SignalAndWaitForShutdown(self, request):
+    async def SignalAndWaitForShutdown(self, request):
         return empty_pb2.Empty()
 
 
@@ -313,12 +391,15 @@ def set_mocks(
     stack: Optional[str] = None,
     preview: Optional[bool] = None,
     logger: Optional[logging.Logger] = None,
-    monitor: Optional[MockMonitor] = None,
+    monitor: Optional[Union[AsyncMockMonitor, MockMonitor]] = None,
     organization: Optional[str] = None,
 ):
     """
     set_mocks configures the Pulumi runtime to use the given mocks for testing.
     """
+    if isinstance(monitor, AsyncMockMonitor):
+        monitor = MockMonitor(mocks, monitor)
+
     settings = MockSettings(
         monitor=MockMonitor(mocks) if not monitor else monitor,
         engine=MockEngine(logger),
