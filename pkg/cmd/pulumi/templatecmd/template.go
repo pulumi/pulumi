@@ -32,6 +32,8 @@ Publish and manage Pulumi templates.`,
 
 	cmd.AddCommand(
 		newTemplatePublishCmd(),
+		newTemplateLsCmd(),
+		newTemplateInfoCmd(),
 	)
 	return cmd
 }
