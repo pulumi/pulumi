@@ -1,21 +1,35 @@
-<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%fg 3%}>~ pulumi:providers:pkgA: (update)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov]
+<{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
 <{%reset%}>    [id=1]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:index:Resource: (same)
 <{%reset%}>    [id=2]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pkgA:index:Resource::resA]
 <{%reset%}><{%reset%}>    [provider=urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov::id-prov-a]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pulumi:providers:pkgB: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::prov]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgB: (same)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::prov]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pkgB:index:Component: (update)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pkgB:index:Component::compA]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::prov::id-prov-b]
 <{%reset%}><{%reset%}><{%fg 10%}>++pkgB:index:Component: (create-replacement)
 <{%reset%}>    [id=2]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pkgB:index:Component::compA]
 <{%reset%}><{%reset%}><{%fg 13%}>+-pkgB:index:Component: (replace)
 <{%reset%}>    [id=2]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test-stack::test-project::pkgB:index:Component::compA]
+<{%reset%}><{%reset%}>    <{%fg 3%}>~ pulumi:providers:pkgC: (update)
+<{%reset%}>        [id=4]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test-stack::test-project::pkgB:index:Component$pulumi:providers:pkgC::provC]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 4 updated<{%reset%}>
     <{%fg 13%}>+-1 replaced<{%reset%}>
-    3 unchanged
+    <{%bold%}>5 changes<{%reset%}>. 3 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
