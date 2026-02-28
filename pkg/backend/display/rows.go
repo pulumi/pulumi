@@ -320,11 +320,12 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	if data.display.opts.ShowURNs {
 		// When showing URNs, collapse Type and Name into a single URN column.
 		// The URN already contains the type, so showing both would be redundant.
+		// Name column is dropped so Status and Info each shift left by one.
 		columns := make([]string, 4)
-		columns[0] = data.display.getStepOpLabel(step, done)
-		columns[1] = escapeURN(string(urn))
-		columns[2] = data.display.getStepStatus(step, done, failed)
-		columns[3] = data.getInfoColumn()
+		columns[opColumn] = data.display.getStepOpLabel(step, done)
+		columns[typeColumn] = escapeURN(string(urn))
+		columns[statusColumn-1] = data.display.getStepStatus(step, done, failed)
+		columns[infoColumn-1] = data.getInfoColumn()
 		return columns
 	}
 

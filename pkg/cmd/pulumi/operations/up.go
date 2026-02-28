@@ -606,7 +606,6 @@ func NewUpCmd() *cobra.Command {
 				ShowReplacementSteps:   showReplacementSteps,
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
-				ShowSecrets:            showSecrets,
 				ShowURNs:               showURNs,
 				SuppressOutputs:        suppressOutputs,
 				SuppressProgress:       suppressProgress,
@@ -616,6 +615,7 @@ func NewUpCmd() *cobra.Command {
 				EventLogPath:           eventLogPath,
 				Debug:                  debug,
 				JSONDisplay:            jsonDisplay,
+				ShowSecrets:            showSecrets,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string

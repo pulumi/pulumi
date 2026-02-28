@@ -258,10 +258,6 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		renderer = newNonInteractiveRenderer(stdout, op, opts)
 	}
 
-	suffixCol := int(statusColumn)
-	if opts.ShowURNs {
-		suffixCol = 2 // status column is at index 2 in the 4-column URN layout
-	}
 	display := &ProgressDisplay{
 		action:                action,
 		isPreview:             isPreview,
@@ -272,7 +268,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          suffixCol,
+		suffixColumn:          suffixColumnIndex(opts),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -326,10 +322,6 @@ func RenderProgressEvents(
 
 	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
-	suffixCol := int(statusColumn)
-	if o.ShowURNs {
-		suffixCol = 2 // status column is at index 2 in the 4-column URN layout
-	}
 	display := &ProgressDisplay{
 		action:                action,
 		isPreview:             isPreview,
@@ -340,7 +332,7 @@ func RenderProgressEvents(
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          suffixCol,
+		suffixColumn:          suffixColumnIndex(o),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -389,10 +381,6 @@ func NewCaptureProgressEvents(
 
 	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
-	suffixCol := int(statusColumn)
-	if o.ShowURNs {
-		suffixCol = 2 // status column is at index 2 in the 4-column URN layout
-	}
 	display := &ProgressDisplay{
 		action:                action,
 		isPreview:             isPreview,
@@ -403,7 +391,7 @@ func NewCaptureProgressEvents(
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          suffixCol,
+		suffixColumn:          suffixColumnIndex(o),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -466,12 +454,21 @@ func (display *ProgressDisplay) println(line string) {
 	display.renderer.println(line)
 }
 
+// suffixColumnIndex returns the column index where the progress suffix (ellipsis)
+// should be appended. In URN mode the Name column is dropped, so Status shifts
+// left by one.
+func suffixColumnIndex(opts Options) int {
+	if opts.ShowURNs {
+		return int(statusColumn) - 1
+	}
+	return int(statusColumn)
+}
+
 // resourceHeader formats a resource header for diagnostics/changes sections.
-// In URN mode the columns have 4 entries [op, URN, status, info], so the URN
-// is at index 1. In normal mode they have 5 entries with type at 1 and name at 2.
+// In both modes the URN or type lives at typeColumn (index 1).
 func (display *ProgressDisplay) resourceHeader(columns []string) string {
 	if display.opts.ShowURNs {
-		return "  " + colors.BrightBlue + columns[1] + ":" + colors.Reset
+		return "  " + colors.BrightBlue + columns[typeColumn] + ":" + colors.Reset
 	}
 	return "  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset
 }

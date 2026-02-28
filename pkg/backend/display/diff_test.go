@@ -134,6 +134,10 @@ func TestDiffEvents(t *testing.T) {
 			t.Parallel()
 			testDiffEvents(t, path, accept, false /* truncateOutput */)
 		})
+		t.Run(entry.Name()+"/urns", func(t *testing.T) {
+			t.Parallel()
+			testDiffEventsURNs(t, path, accept)
+		})
 	}
 
 	entries, err = os.ReadDir("testdata/truncated")
@@ -152,7 +156,7 @@ func TestDiffEvents(t *testing.T) {
 	}
 }
 
-func testDiffEventsWithURNs(t *testing.T, path string, accept bool) {
+func testDiffEventsURNs(t *testing.T, path string, accept bool) {
 	events, err := loadEvents(path)
 	require.NoError(t, err)
 
@@ -188,29 +192,6 @@ func testDiffEventsWithURNs(t *testing.T, path string, accept bool) {
 	} else {
 		err = os.WriteFile(path+".urns.stdout.txt", stdout.Bytes(), 0o600)
 		require.NoError(t, err)
-	}
-}
-
-// TestDiffEventsWithURNs tests that ShowDiffEvents renders full URNs when ShowURNs is set,
-// collapsing the type and name into a single URN per resource line.
-func TestDiffEventsWithURNs(t *testing.T) {
-	t.Parallel()
-
-	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
-
-	entries, err := os.ReadDir("testdata/not-truncated")
-	require.NoError(t, err)
-
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
-			continue
-		}
-
-		path := filepath.Join("testdata/not-truncated", entry.Name())
-		t.Run(entry.Name(), func(t *testing.T) {
-			t.Parallel()
-			testDiffEventsWithURNs(t, path, accept)
-		})
 	}
 }
 
