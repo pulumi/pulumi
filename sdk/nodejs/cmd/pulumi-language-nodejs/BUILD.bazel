@@ -13,7 +13,10 @@ go_library(
         "proxy_windows.go",
     ],
     importpath = "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3",
-    visibility = ["//visibility:private"],
+    visibility = [
+        "//build/release:__pkg__",
+        "//visibility:private",
+    ],
     deps = [
         "//pkg/codegen/cgstrings",
         "//pkg/codegen/hcl2/syntax",
@@ -65,7 +68,8 @@ go_library(
 go_binary(
     name = "pulumi-language-nodejs",
     embed = [":pulumi-language-nodejs_lib"],
-    gotags = ["grpcnotrace"],
+    gc_linkopts = ["-w", "-s"],
+    gotags = ["osusergo", "grpcnotrace"],
     visibility = ["//visibility:public"],
     x_defs = {
         "github.com/pulumi/pulumi/sdk/v3/go/common/version.Version": "{STABLE_PULUMI_VERSION}",

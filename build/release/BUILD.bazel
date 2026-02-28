@@ -1,0 +1,40 @@
+"""Release targets for cross-compiled Pulumi binaries and archives."""
+
+load(":defs.bzl", "pulumi_release_binary")
+load(":packaging.bzl", "pulumi_release_archives")
+
+_VERSION_X_DEFS = {
+    "github.com/pulumi/pulumi/sdk/v3/go/common/version.Version": "{STABLE_PULUMI_VERSION}",
+}
+
+pulumi_release_binary(
+    name = "pulumi",
+    embed = ["//pkg/cmd/pulumi:pulumi_lib"],
+    gotags = ["osusergo"],
+    x_defs = _VERSION_X_DEFS,
+)
+
+pulumi_release_binary(
+    name = "pulumi-language-go",
+    embed = ["//sdk/go/pulumi-language-go:pulumi-language-go_lib"],
+    gotags = ["osusergo", "grpcnotrace"],
+    x_defs = _VERSION_X_DEFS,
+)
+
+pulumi_release_binary(
+    name = "pulumi-language-nodejs",
+    embed = ["//sdk/nodejs/cmd/pulumi-language-nodejs:pulumi-language-nodejs_lib"],
+    gotags = ["osusergo", "grpcnotrace"],
+    x_defs = _VERSION_X_DEFS,
+)
+
+pulumi_release_binary(
+    name = "pulumi-language-python",
+    embed = ["//sdk/python/cmd/pulumi-language-python:pulumi-language-python_lib"],
+    gotags = ["osusergo", "grpcnotrace"],
+    x_defs = _VERSION_X_DEFS,
+)
+
+# ── Release archives ─────────────────────────────────────────────────────────
+
+pulumi_release_archives(name = "archives")

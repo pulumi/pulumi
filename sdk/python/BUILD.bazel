@@ -1,3 +1,4 @@
+load("@rules_python//python:packaging.bzl", "py_wheel")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
@@ -9,6 +10,9 @@ load("@rules_python//python:py_test.bzl", "py_test")
 
 exports_files([
     "requirements.txt",
+    "dist/pulumi-resource-pulumi-python",
+    "dist/pulumi-resource-pulumi-python.cmd",
+    "cmd/pulumi-language-python-exec",
 ])
 
 # ─── SDK Library ─────────────────────────────────────────────────────────────
@@ -16,6 +20,10 @@ exports_files([
 py_library(
     name = "pulumi_sdk",
     srcs = glob(["lib/pulumi/**/*.py"]),
+    data = glob([
+        "lib/pulumi/**/*.pyi",
+        "lib/pulumi/py.typed",
+    ]),
     imports = ["lib"],
     visibility = ["//visibility:public"],
     deps = [
@@ -28,6 +36,61 @@ py_library(
         "@pypi//pyyaml",
         "@pypi//semver",
     ],
+)
+
+# ─── Wheel ───────────────────────────────────────────────────────────────
+
+py_wheel(
+    name = "_wheel_base",
+    distribution = "pulumi",
+    python_tag = "py3",
+    # Version is set via --define PYPI_VERSION=x.y.z (supports PEP 440 alpha format).
+    version = "$(PYPI_VERSION)",
+    stamp = 1,
+    requires = [
+        'protobuf>=3.20.3,<7',
+        'grpcio>=1.68.1,<2; python_version < "3.14"',
+        'grpcio>=1.75.1,<2; python_version >= "3.14"',
+        'dill~=0.4',
+        'semver~=3.0',
+        'pyyaml~=6.0',
+        'debugpy~=1.8.7',
+        'pip>=24.3.1',
+        'packaging>=26.0',
+    ],
+    python_requires = ">=3.10",
+    classifiers = [
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
+        "Typing :: Typed",
+    ],
+    homepage = "https://github.com/pulumi/pulumi",
+    license = "Apache-2.0",
+    summary = "Pulumi's Python SDK",
+    strip_path_prefixes = ["sdk/python/lib/"],
+    deps = [":pulumi_sdk"],
+)
+
+# Add .pyi type stubs and py.typed marker to the wheel.
+# py_wheel only includes .py files from deps; we add .pyi and py.typed via zip.
+genrule(
+    name = "wheel",
+    srcs = [":_wheel_base"] + glob([
+        "lib/pulumi/**/*.pyi",
+        "lib/pulumi/py.typed",
+    ]),
+    outs = ["pulumi.whl"],
+    cmd = """\
+        set -e
+        cp "$(location :_wheel_base)" "$@"
+        chmod u+w "$@"
+        cd sdk/python/lib
+        find pulumi -name '*.pyi' -o -name 'py.typed' | zip -q "$$OLDPWD/$@" -@
+    """,
+    visibility = ["//visibility:public"],
 )
 
 # ─── Scripts ─────────────────────────────────────────────────────────────────

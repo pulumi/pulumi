@@ -8,7 +8,10 @@ go_library(
     name = "pulumi-language-python_lib",
     srcs = ["main.go"],
     importpath = "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3",
-    visibility = ["//visibility:private"],
+    visibility = [
+        "//build/release:__pkg__",
+        "//visibility:private",
+    ],
     deps = [
         "//pkg/codegen/hcl2/syntax",
         "//pkg/codegen/pcl",
@@ -42,7 +45,8 @@ go_library(
 go_binary(
     name = "pulumi-language-python",
     embed = [":pulumi-language-python_lib"],
-    gotags = ["grpcnotrace"],
+    gc_linkopts = ["-w", "-s"],
+    gotags = ["osusergo", "grpcnotrace"],
     visibility = ["//visibility:public"],
     x_defs = {
         "github.com/pulumi/pulumi/sdk/v3/go/common/version.Version": "{STABLE_PULUMI_VERSION}",

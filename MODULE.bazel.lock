@@ -203,6 +203,190 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
+    "//build/release:external_deps.bzl%release_deps": {
+      "general": {
+        "bzlTransitiveDigest": "pDXkD3RmvHPXum1VIbv4gZ6bk8oWBhL4rn8Oi4jmhrk=",
+        "usagesDigest": "+84i5vVROMk9wIzL8rTyAd2zRSgGrpaMx4oMplD/8T8=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "pulumi_watch_linux_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/watchutil-rs/releases/download/v0.1.4/pulumi-watch-v0.1.4-x86_64-unknown-linux-gnu.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-watch\"])",
+              "strip_prefix": "pulumi-watch-v0.1.4-x86_64-unknown-linux-gnu"
+            }
+          },
+          "pulumi_watch_linux_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/watchutil-rs/releases/download/v0.1.4/pulumi-watch-v0.1.4-aarch64-unknown-linux-gnu.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-watch\"])",
+              "strip_prefix": "pulumi-watch-v0.1.4-aarch64-unknown-linux-gnu"
+            }
+          },
+          "pulumi_watch_darwin_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/watchutil-rs/releases/download/v0.1.4/pulumi-watch-v0.1.4-x86_64-apple-darwin.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-watch\"])",
+              "strip_prefix": "pulumi-watch-v0.1.4-x86_64-apple-darwin"
+            }
+          },
+          "pulumi_watch_darwin_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/watchutil-rs/releases/download/v0.1.4/pulumi-watch-v0.1.4-aarch64-apple-darwin.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-watch\"])",
+              "strip_prefix": "pulumi-watch-v0.1.4-aarch64-apple-darwin"
+            }
+          },
+          "pulumi_watch_windows_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/watchutil-rs/releases/download/v0.1.4/pulumi-watch-v0.1.4-x86_64-pc-windows-msvc.zip",
+              "build_file_content": "exports_files([\"pulumi-watch.exe\"])",
+              "strip_prefix": "pulumi-watch-v0.1.4-x86_64-pc-windows-msvc"
+            }
+          },
+          "pulumi_language_dotnet_linux_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-dotnet/releases/download/v3.101.2/pulumi-language-dotnet-v3.101.2-linux-amd64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-dotnet\"])"
+            }
+          },
+          "pulumi_language_dotnet_linux_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-dotnet/releases/download/v3.101.2/pulumi-language-dotnet-v3.101.2-linux-arm64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-dotnet\"])"
+            }
+          },
+          "pulumi_language_dotnet_darwin_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-dotnet/releases/download/v3.101.2/pulumi-language-dotnet-v3.101.2-darwin-amd64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-dotnet\"])"
+            }
+          },
+          "pulumi_language_dotnet_darwin_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-dotnet/releases/download/v3.101.2/pulumi-language-dotnet-v3.101.2-darwin-arm64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-dotnet\"])"
+            }
+          },
+          "pulumi_language_dotnet_windows_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-dotnet/releases/download/v3.101.2/pulumi-language-dotnet-v3.101.2-windows-amd64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-dotnet.exe\"])"
+            }
+          },
+          "pulumi_language_dotnet_windows_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-dotnet/releases/download/v3.101.2/pulumi-language-dotnet-v3.101.2-windows-arm64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-dotnet.exe\"])"
+            }
+          },
+          "pulumi_language_java_linux_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-java/releases/download/v1.21.2/pulumi-language-java-v1.21.2-linux-amd64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-java\"])"
+            }
+          },
+          "pulumi_language_java_linux_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-java/releases/download/v1.21.2/pulumi-language-java-v1.21.2-linux-arm64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-java\"])"
+            }
+          },
+          "pulumi_language_java_darwin_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-java/releases/download/v1.21.2/pulumi-language-java-v1.21.2-darwin-amd64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-java\"])"
+            }
+          },
+          "pulumi_language_java_darwin_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-java/releases/download/v1.21.2/pulumi-language-java-v1.21.2-darwin-arm64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-java\"])"
+            }
+          },
+          "pulumi_language_java_windows_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-java/releases/download/v1.21.2/pulumi-language-java-v1.21.2-windows-amd64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-java.exe\"])"
+            }
+          },
+          "pulumi_language_java_windows_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-java/releases/download/v1.21.2/pulumi-language-java-v1.21.2-windows-arm64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-java.exe\"])"
+            }
+          },
+          "pulumi_language_yaml_linux_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-yaml/releases/download/v1.29.1/pulumi-language-yaml-v1.29.1-linux-amd64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-yaml\"])"
+            }
+          },
+          "pulumi_language_yaml_linux_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-yaml/releases/download/v1.29.1/pulumi-language-yaml-v1.29.1-linux-arm64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-yaml\"])"
+            }
+          },
+          "pulumi_language_yaml_darwin_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-yaml/releases/download/v1.29.1/pulumi-language-yaml-v1.29.1-darwin-amd64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-yaml\"])"
+            }
+          },
+          "pulumi_language_yaml_darwin_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-yaml/releases/download/v1.29.1/pulumi-language-yaml-v1.29.1-darwin-arm64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-yaml\"])"
+            }
+          },
+          "pulumi_language_yaml_windows_amd64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-yaml/releases/download/v1.29.1/pulumi-language-yaml-v1.29.1-windows-amd64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-yaml.exe\"])"
+            }
+          },
+          "pulumi_language_yaml_windows_arm64": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "url": "https://github.com/pulumi/pulumi-yaml/releases/download/v1.29.1/pulumi-language-yaml-v1.29.1-windows-arm64.tar.gz",
+              "build_file_content": "exports_files([\"pulumi-language-yaml.exe\"])"
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "",
+            "bazel_tools",
+            "bazel_tools"
+          ]
+        ]
+      }
+    },
     "@@aspect_rules_ts+//ts:extensions.bzl%ext": {
       "general": {
         "bzlTransitiveDigest": "ru+g9qz3bprSrLP39570IqoFt9WwsxXtzZoKxTvZUyc=",

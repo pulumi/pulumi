@@ -90,6 +90,42 @@ pip.parse(
 )
 use_repo(pip, "pypi")
 
+# ─── Release packaging ──────────────────────────────────────────────────────
+
+bazel_dep(name = "rules_pkg", version = "1.0.1")
+
+release_deps = use_extension("//build/release:external_deps.bzl", "release_deps")
+use_repo(
+    release_deps,
+    # pulumi-watch
+    "pulumi_watch_linux_amd64",
+    "pulumi_watch_linux_arm64",
+    "pulumi_watch_darwin_amd64",
+    "pulumi_watch_darwin_arm64",
+    "pulumi_watch_windows_amd64",
+    # pulumi-language-dotnet
+    "pulumi_language_dotnet_linux_amd64",
+    "pulumi_language_dotnet_linux_arm64",
+    "pulumi_language_dotnet_darwin_amd64",
+    "pulumi_language_dotnet_darwin_arm64",
+    "pulumi_language_dotnet_windows_amd64",
+    "pulumi_language_dotnet_windows_arm64",
+    # pulumi-language-java
+    "pulumi_language_java_linux_amd64",
+    "pulumi_language_java_linux_arm64",
+    "pulumi_language_java_darwin_amd64",
+    "pulumi_language_java_darwin_arm64",
+    "pulumi_language_java_windows_amd64",
+    "pulumi_language_java_windows_arm64",
+    # pulumi-language-yaml
+    "pulumi_language_yaml_linux_amd64",
+    "pulumi_language_yaml_linux_arm64",
+    "pulumi_language_yaml_darwin_amd64",
+    "pulumi_language_yaml_darwin_arm64",
+    "pulumi_language_yaml_windows_amd64",
+    "pulumi_language_yaml_windows_arm64",
+)
+
 # ─── Toolchains (platforms / CC) ─────────────────────────────────────────────
 
 bazel_dep(name = "platforms", version = "1.0.0")

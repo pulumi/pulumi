@@ -3,6 +3,7 @@ load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 load("@npm//sdk/nodejs:mocha/package_json.bzl", mocha_bin = "bin")
+load("//build/release:npm.bzl", "npm_tarball")
 
 # gazelle:exclude node_modules
 # gazelle:exclude bin
@@ -13,6 +14,11 @@ load("@npm//sdk/nodejs:mocha/package_json.bzl", mocha_bin = "bin")
 # gazelle:exclude tests_with_mocks
 # gazelle:exclude dist
 # gazelle:exclude proto
+
+exports_files([
+    "dist/pulumi-resource-pulumi-nodejs",
+    "dist/pulumi-resource-pulumi-nodejs.cmd",
+])
 
 npm_link_all_packages(name = "node_modules")
 
@@ -95,6 +101,27 @@ js_library(
     deps = [
         ":sdk_ts",
     ],
+    visibility = ["//visibility:public"],
+)
+
+# ─── Tests ───────────────────────────────────────────────────────────────────
+
+# ─── npm tarball for release ──────────────────────────────────────────────
+
+npm_tarball(
+    name = "npm_tarball",
+    compiled_js = ":sdk_ts",
+    extra_srcs = [
+        ".npmignore",
+        "README.md",
+        "//:LICENSE",
+        "dist/pulumi-resource-pulumi-nodejs",
+        "dist/pulumi-resource-pulumi-nodejs.cmd",
+    ],
+    package_json = ["package.json"],
+    proto_srcs = _PROTO_SRCS,
+    vendor = glob(["vendor/**"]),
+    version_placeholder = "3.225.0",
     visibility = ["//visibility:public"],
 )
 
