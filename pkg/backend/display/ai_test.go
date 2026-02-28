@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
 )
@@ -128,4 +129,56 @@ Resource has been created`
 	expectedSummary := "This is a test summary\nResource has been created"
 	formattedSummary := renderBoldMarkdown(summary, Options{Color: colors.Never})
 	assert.Equal(t, expectedSummary, formattedSummary)
+}
+
+func TestRenderNeoTaskCreated(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stderr: buf,
+		Color:  colors.Never,
+	}
+
+	RenderNeoTaskCreated(&client.NeoTaskResponse{TaskID: "task_abc123"}, nil, "https://app.pulumi.com", "test-org", opts)
+
+	expected := fmt.Sprintf(`
+Neo Task Created%s
+  A Neo task has been started to help debug this error.
+  https://app.pulumi.com/test-org/neo/tasks/task_abc123
+
+`, neoDelimiterEmoji())
+	assert.Equal(t, expected, buf.String())
+}
+
+func TestRenderNeoTaskCreatedError(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stderr: buf,
+		Color:  colors.Never,
+	}
+
+	RenderNeoTaskCreated(nil, errors.New("failed to create task"), "https://app.pulumi.com", "test-org", opts)
+
+	expected := fmt.Sprintf(`
+Neo Task%s
+  error creating Neo task: failed to create task
+
+`, neoDelimiterEmoji())
+	assert.Equal(t, expected, buf.String())
+}
+
+func TestRenderNeoTaskCreatedNilResult(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stderr: buf,
+		Color:  colors.Never,
+	}
+
+	RenderNeoTaskCreated(nil, nil, "https://app.pulumi.com", "test-org", opts)
+	assert.Equal(t, "", buf.String())
 }

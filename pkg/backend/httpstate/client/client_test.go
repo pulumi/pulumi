@@ -855,3 +855,48 @@ func TestCallCopilot(t *testing.T) {
 		require.Empty(t, response)
 	})
 }
+
+func TestCreateNeoTask(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Success", func(t *testing.T) {
+		t.Parallel()
+
+		successServer := newMockServer(http.StatusCreated, `{"taskId": "task_abc123"}`)
+		defer successServer.Close()
+
+		client := newMockClient(successServer)
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, "task_abc123", resp.TaskID)
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		t.Parallel()
+
+		errorServer := newMockServer(http.StatusBadRequest, `{"message": "Bad request"}`)
+		defer errorServer.Close()
+
+		client := newMockClient(errorServer)
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+
+		require.Error(t, err)
+		require.Nil(t, resp)
+		assert.Contains(t, err.Error(), "creating Neo task")
+	})
+
+	t.Run("Unauthorized", func(t *testing.T) {
+		t.Parallel()
+
+		unauthorizedServer := newMockServer(http.StatusUnauthorized, "401: Unauthorized")
+		defer unauthorizedServer.Close()
+
+		client := newMockClient(unauthorizedServer)
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+
+		require.Error(t, err)
+		require.Nil(t, resp)
+	})
+}
