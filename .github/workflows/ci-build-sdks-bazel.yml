@@ -1,0 +1,109 @@
+name: Build SDKs (Bazel)
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      artifact-suffix:
+        required: false
+        description: "Suffix to append to artifact names"
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build_node_sdk:
+    name: nodejs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Mount bazel cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bazel
+          key: bazel-build-nodejs-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'sdk/nodejs/pnpm-lock.yaml') }}
+          restore-keys: |
+            bazel-build-nodejs-${{ runner.os }}-
+
+      - name: Build Node.js SDK tarball
+        env:
+          PULUMI_VERSION: ${{ inputs.version }}
+        run: |
+          bazel build //sdk/nodejs:npm_tarball \
+            --define PULUMI_VERSION="${PULUMI_VERSION}"
+
+      - name: Copy tarball to output
+        run: |
+          mkdir -p dist
+          cp bazel-bin/sdk/nodejs/npm_tarball.tgz dist/
+          ls -la dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-nodejs-sdk${{ inputs.artifact-suffix || '' }}
+          path: dist/*.tgz
+          retention-days: 1
+          if-no-files-found: error
+
+  build_python_sdk:
+    name: python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Mount bazel cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bazel
+          key: bazel-build-python-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'sdk/python/requirements.txt') }}
+          restore-keys: |
+            bazel-build-python-${{ runner.os }}-
+
+      - name: Compute PyPI version
+        id: pypi-version
+        env:
+          PULUMI_VERSION: ${{ inputs.version }}
+        run: |
+          # Convert alpha versions to PEP 440 format.
+          PYPI_VERSION=$(echo -n "${PULUMI_VERSION}" | sed "s/-alpha.*/a$(date +%s)/")
+          echo "version=${PYPI_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Python SDK wheel
+        env:
+          PYPI_VERSION: ${{ steps.pypi-version.outputs.version }}
+        run: |
+          bazel build //sdk/python:wheel \
+            --define PYPI_VERSION="${PYPI_VERSION}"
+
+      - name: Copy wheel to output
+        run: |
+          mkdir -p dist
+          cp bazel-bin/sdk/python/pulumi.whl dist/
+          ls -la dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-python-sdk${{ inputs.artifact-suffix || '' }}
+          path: dist/*.whl
+          retention-days: 1
+          if-no-files-found: error

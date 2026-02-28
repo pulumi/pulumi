@@ -1,0 +1,144 @@
+name: Verify Bazel Artifacts
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      version-set:
+        required: false
+        description: "Set of language versions to use for builds"
+        type: string
+        default: |
+          {
+            "dotnet": "8.0.x",
+            "go": "1.24.x",
+            "nodejs": "20.x",
+            "python": "3.12.x"
+          }
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "GitHub ref to use"
+        default: pgavlin/bazel
+        type: string
+      version:
+        description: "Version to produce"
+        default: "3.225.0-alpha.0"
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  # ── GoReleaser builds ─────────────────────────────────────────────────────
+  goreleaser-binaries:
+    name: GoReleaser binaries (linux-amd64)
+    uses: ./.github/workflows/ci-build-binaries.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      os: linux
+      arch: amd64
+      build-platform: ubuntu-latest
+      version-set: ${{ inputs.version-set || '{"dotnet":"8.0.x","go":"1.24.x","nodejs":"20.x","python":"3.12.x"}' }}
+      artifact-suffix: "-verify-gr"
+    secrets: inherit
+
+  goreleaser-sdks:
+    name: GoReleaser SDKs
+    uses: ./.github/workflows/ci-build-sdks.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      version-set: ${{ inputs.version-set || '{"dotnet":"8.0.x","go":"1.24.x","nodejs":"20.x","python":"3.12.x"}' }}
+    secrets: inherit
+
+  # ── Bazel builds ──────────────────────────────────────────────────────────
+  bazel-binaries:
+    name: Bazel binaries
+    uses: ./.github/workflows/ci-build-binaries-bazel.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      artifact-suffix: "-verify-bz"
+    secrets: inherit
+
+  bazel-sdks:
+    name: Bazel SDKs
+    uses: ./.github/workflows/ci-build-sdks-bazel.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      artifact-suffix: "-verify-bz"
+    secrets: inherit
+
+  # ── Comparison ────────────────────────────────────────────────────────────
+  verify:
+    name: Compare artifacts
+    needs: [goreleaser-binaries, goreleaser-sdks, bazel-binaries, bazel-sdks]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      # Download GoReleaser artifacts.
+      - uses: actions/download-artifact@v4
+        with:
+          name: artifacts-cli-linux-amd64-verify-gr
+          path: verify/goreleaser/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: artifacts-nodejs-sdk
+          path: verify/goreleaser/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: artifacts-python-sdk
+          path: verify/goreleaser/
+
+      # Download Bazel artifacts.
+      - uses: actions/download-artifact@v4
+        with:
+          name: artifacts-cli-linux-amd64-verify-bz
+          path: verify/bazel/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: artifacts-nodejs-sdk-verify-bz
+          path: verify/bazel/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: artifacts-python-sdk-verify-bz
+          path: verify/bazel/
+
+      - name: List downloaded artifacts
+        run: |
+          echo "=== GoReleaser ==="
+          find verify/goreleaser -type f | sort
+          echo ""
+          echo "=== Bazel ==="
+          find verify/bazel -type f | sort
+
+      - name: Run verification
+        run: |
+          scripts/verify-bazel-artifacts.sh \
+            verify/goreleaser \
+            verify/bazel \
+            --version "${{ inputs.version }}"

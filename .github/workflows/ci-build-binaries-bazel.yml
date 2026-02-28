@@ -1,0 +1,98 @@
+name: Build Binaries (Bazel)
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      artifact-suffix:
+        required: false
+        description: "Suffix to append to artifact names"
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    name: All platforms
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Mount bazel cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bazel
+          key: bazel-build-binaries-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'go.work.sum') }}
+          restore-keys: |
+            bazel-build-binaries-${{ runner.os }}-
+
+      - name: Build all release archives
+        env:
+          PULUMI_VERSION: ${{ inputs.version }}
+        run: |
+          bazel build //build/release:all_archives \
+            --stamp \
+            --define PULUMI_VERSION="${PULUMI_VERSION}"
+
+      - name: Copy archives to output directory
+        run: |
+          mkdir -p dist
+          cp bazel-bin/build/release/pulumi-*.tar.gz dist/ 2>/dev/null || true
+          cp bazel-bin/build/release/pulumi-*.zip dist/ 2>/dev/null || true
+          ls -la dist/
+
+      # Upload per-platform artifacts matching the naming convention expected
+      # by downstream workflows (sign.yml, ci-prepare-release.yml).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-cli-linux-amd64${{ inputs.artifact-suffix || '' }}
+          retention-days: 7
+          path: dist/pulumi-*-linux-x64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-cli-linux-arm64${{ inputs.artifact-suffix || '' }}
+          retention-days: 7
+          path: dist/pulumi-*-linux-arm64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-cli-darwin-amd64${{ inputs.artifact-suffix || '' }}
+          retention-days: 7
+          path: dist/pulumi-*-darwin-x64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-cli-darwin-arm64${{ inputs.artifact-suffix || '' }}
+          retention-days: 7
+          path: dist/pulumi-*-darwin-arm64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-cli-windows-amd64${{ inputs.artifact-suffix || '' }}
+          retention-days: 7
+          path: dist/pulumi-*-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-cli-windows-arm64${{ inputs.artifact-suffix || '' }}
+          retention-days: 7
+          path: dist/pulumi-*-windows-arm64.zip
