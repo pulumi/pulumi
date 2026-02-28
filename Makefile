@@ -79,7 +79,11 @@ generate::
 
 .PHONY: generate-cli-spec
 generate-cli-spec::
-	go run -C pkg ./cmd/pulumi generate-cli-spec
+	go run -C pkg ./cmd/pulumi generate-cli-spec > specification.json
+
+.PHONY: generate-nodejs-automation-api
+generate-nodejs-automation-api:: generate-cli-spec
+	cd sdk/nodejs/tools/automation && npm start ../../../../specification.json
 
 # For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
 # dead code elimation due to the usage of certain reflection methods.
