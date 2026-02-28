@@ -411,7 +411,7 @@ func TestPluginsAndDependencies_subdir(t *testing.T) {
 }
 
 func testPluginsAndDependencies(t *testing.T, progDir string) {
-	host := newLanguageHost("0.0.0.0:0", progDir, "")
+	host := newLanguageHost("0.0.0.0:0", progDir, "", "")
 	ctx := t.Context()
 
 	t.Run("GetRequiredPackages", func(t *testing.T) {
