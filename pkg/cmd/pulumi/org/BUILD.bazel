@@ -1,0 +1,49 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "org",
+    srcs = [
+        "org.go",
+        "org_search.go",
+        "org_search_ai.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//pkg/backend/httpstate",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/env",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/workspace",
+        "@com_github_pkg_browser//:browser",
+        "@com_github_spf13_cobra//:cobra",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+        "@tech_pennock_go_tabular//auto",
+    ],
+)
+
+go_test(
+    name = "org_test",
+    srcs = [
+        "org_search_ai_test.go",
+        "org_search_test.go",
+    ],
+    embed = [":org"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//pkg/backend/httpstate",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/workspace",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,51 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "workspace",
+    srcs = [
+        "context.go",
+        "creds.go",
+        "mock.go",
+        "plugin.go",
+        "settings.go",
+        "templates.go",
+        "workspace.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/workspace",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/pluginstorage",
+        "//pkg/util",
+        "//pkg/util/cmdutil",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/env",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+go_test(
+    name = "workspace_test",
+    srcs = [
+        "creds_test.go",
+        "plugin_test.go",
+        "plugins_install_test.go",
+        "templates_test.go",
+    ],
+    embed = [":workspace"],
+    deps = [
+        "//pkg/pluginstorage",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/env",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

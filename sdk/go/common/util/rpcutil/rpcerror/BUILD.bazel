@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "rpcerror",
+    srcs = ["rpcerror.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/util/contract",
+        "//sdk/go/pulumi/errors",
+        "//sdk/proto/go",
+        "@com_github_pkg_errors//:errors",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//runtime/protoiface",
+    ],
+)
+
+go_test(
+    name = "rpcerror_test",
+    srcs = ["rpcerror_test.go"],
+    embed = [":rpcerror"],
+    deps = [
+        "@com_github_pkg_errors//:errors",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)

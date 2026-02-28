@@ -1,0 +1,42 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "property",
+    srcs = [
+        "array.go",
+        "equal.go",
+        "fmt.go",
+        "map.go",
+        "path.go",
+        "reference.go",
+        "type.go",
+        "values.go",
+        "visit.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/property",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/resource/archive",
+        "//sdk/go/common/resource/asset",
+        "//sdk/go/common/resource/urn",
+    ],
+)
+
+go_test(
+    name = "property_test",
+    srcs = [
+        "array_test.go",
+        "fmt_test.go",
+        "map_test.go",
+        "path_test.go",
+        "values_test.go",
+    ],
+    embed = [":property"],
+    deps = [
+        "//sdk/go/common/resource/archive",
+        "//sdk/go/common/resource/asset",
+        "//sdk/go/common/resource/urn",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

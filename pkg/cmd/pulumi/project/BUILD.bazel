@@ -1,0 +1,31 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "project",
+    srcs = [
+        "project.go",
+        "project_ls.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/workspace",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/workspace",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)
+
+go_test(
+    name = "project_test",
+    srcs = ["project_test.go"],
+    embed = [":project"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "backenderr",
+    srcs = ["backenderr.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/backenderr",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/registry",
+        "//sdk/go/common/util/env",
+    ],
+)
+
+go_test(
+    name = "backenderr_test",
+    srcs = ["backenderr_test.go"],
+    embed = [":backenderr"],
+    deps = [
+        "//sdk/go/common/registry",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

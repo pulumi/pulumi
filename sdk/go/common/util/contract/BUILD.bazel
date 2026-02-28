@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "contract",
+    srcs = [
+        "assert.go",
+        "fail.go",
+        "failfast.go",
+        "ignore.go",
+        "require.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/contract",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/util/logging"],
+)

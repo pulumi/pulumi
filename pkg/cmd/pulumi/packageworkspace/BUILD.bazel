@@ -1,0 +1,37 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "packageworkspace",
+    srcs = ["packageworkspace.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen/schema",
+        "//pkg/pluginstorage",
+        "//pkg/util",
+        "//pkg/util/cmdutil",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/fsutil",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/workspace",
+        "@com_github_opentracing_opentracing_go//:opentracing-go",
+        "@io_opentelemetry_go_otel//:otel",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel_trace//:trace",
+    ],
+)
+
+go_test(
+    name = "packageworkspace_test",
+    srcs = ["packageworkspace_test.go"],
+    deps = [
+        ":packageworkspace",
+        "//pkg/cmd/pulumi/packageinstallation",
+    ],
+)

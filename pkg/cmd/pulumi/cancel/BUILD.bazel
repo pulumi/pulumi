@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "cancel",
+    srcs = ["cancel.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend/display",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/cmd/pulumi/stack",
+        "//pkg/cmd/pulumi/ui",
+        "//pkg/workspace",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/result",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

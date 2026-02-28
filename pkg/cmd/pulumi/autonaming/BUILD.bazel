@@ -1,0 +1,32 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "autonaming",
+    srcs = [
+        "config.go",
+        "json.go",
+        "pattern.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/resource/autonaming",
+        "//sdk/go/common/resource/config",
+    ],
+)
+
+go_test(
+    name = "autonaming_test",
+    srcs = [
+        "config_test.go",
+        "pattern_test.go",
+    ],
+    embed = [":autonaming"],
+    deps = [
+        "//pkg/resource/autonaming",
+        "//sdk/go/common/resource/config",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)

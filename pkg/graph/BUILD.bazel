@@ -1,0 +1,11 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "graph",
+    srcs = [
+        "graph.go",
+        "toposort.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/graph",
+    visibility = ["//visibility:public"],
+)

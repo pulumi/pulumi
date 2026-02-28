@@ -1,0 +1,46 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "templates",
+    srcs = [
+        "cloud.go",
+        "templates.go",
+        "workspace.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/backenderr",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/cmd",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/env",
+        "//sdk/go/common/registry",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/workspace",
+    ],
+)
+
+go_test(
+    name = "templates_test",
+    srcs = ["templates_test.go"],
+    embed = [":templates"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/util/testutil",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/env",
+        "//sdk/go/common/registry",
+        "//sdk/go/common/workspace",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

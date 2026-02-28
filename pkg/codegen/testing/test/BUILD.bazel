@@ -1,0 +1,46 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "test",
+    srcs = [
+        "generate.go",
+        "go.go",
+        "helpers.go",
+        "nodejs.go",
+        "program_driver.go",
+        "python.go",
+        "sdk_driver.go",
+        "type_driver.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen",
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/pcl",
+        "//pkg/codegen/schema",
+        "//pkg/codegen/testing/utils",
+        "//pkg/testing/integration",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/executable",
+        "//sdk/go/common/workspace",
+        "//sdk/python/toolchain",
+        "@com_github_blang_semver//:semver",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+go_test(
+    name = "test_test",
+    srcs = ["program_driver_test.go"],
+    embed = [":test"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "rpcdebug",
+    srcs = [
+        "interceptors.go",
+        "logformat.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi-internal/gsync",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//metadata",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_test(
+    name = "rpcdebug_test",
+    srcs = ["interceptors_test.go"],
+    embed = [":rpcdebug"],
+    deps = [
+        "//sdk/proto/go",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//:grpc",
+    ],
+)

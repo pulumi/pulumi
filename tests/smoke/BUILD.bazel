@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "smoke_test",
+    srcs = [
+        "main_test.go",
+        "smoke_test.go",
+    ],
+    deps = [
+        "//pkg/codegen/schema",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/env",
+        "//sdk/go/common/testing",
+        "//sdk/go/common/workspace",
+        "//tests/testutil",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@in_gopkg_yaml_v2//:yaml_v2",
+    ],
+)

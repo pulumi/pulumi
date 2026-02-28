@@ -1,0 +1,11 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "preview_only_test",
+    srcs = ["preview_only_test.go"],
+    deps = [
+        "//pkg/testing/integration",
+        "//sdk/go/common/testing",
+        "@com_github_stretchr_testify//assert",
+    ],
+)

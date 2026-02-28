@@ -1,0 +1,37 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "logs",
+    srcs = ["logs.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//pkg/backend/secrets",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/cmd",
+        "//pkg/cmd/pulumi/config",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/cmd/pulumi/stack",
+        "//pkg/cmd/pulumi/ui",
+        "//pkg/operations",
+        "//pkg/workspace",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/workspace",
+        "@com_github_moby_moby//api/types/time",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)
+
+go_test(
+    name = "logs_test",
+    srcs = ["logs_test.go"],
+    embed = [":logs"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

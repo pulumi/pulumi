@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "provider",
+    srcs = [
+        "empty.s",
+        "provider.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/proto/go",
+        "@org_golang_google_grpc//:grpc",
+    ],
+)

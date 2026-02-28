@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "events",
+    srcs = ["events.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto/events",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/apitype"],
+)

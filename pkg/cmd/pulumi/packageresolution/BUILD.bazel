@@ -1,0 +1,33 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "packageresolution",
+    srcs = ["package_resolution.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/pluginstorage",
+        "//pkg/util",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/registry",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+go_test(
+    name = "packageresolution_test",
+    srcs = ["package_resolution_test.go"],
+    embed = [":packageresolution"],
+    deps = [
+        "//pkg/pluginstorage",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/registry",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

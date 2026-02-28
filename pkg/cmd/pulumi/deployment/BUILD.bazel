@@ -1,0 +1,56 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "deployment",
+    srcs = [
+        "deployment.go",
+        "deployment_run.go",
+        "deployment_settings_config.go",
+        "deployment_settings_ops.go",
+        "deployment_settings_utils.go",
+        "remote.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//pkg/backend/httpstate",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/cmd/pulumi/stack",
+        "//pkg/cmd/pulumi/ui",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/env",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/gitutil",
+        "//sdk/go/common/workspace",
+        "@com_github_go_git_go_git_v5//:go-git",
+        "@com_github_go_git_go_git_v5//plumbing",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)
+
+go_test(
+    name = "deployment_test",
+    srcs = [
+        "deployment_settings_config_test.go",
+        "deployment_settings_utils_test.go",
+        "remote_test.go",
+    ],
+    embed = [":deployment"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/workspace",
+        "@com_github_go_git_go_git_v5//:go-git",
+        "@com_github_go_git_go_git_v5//plumbing",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

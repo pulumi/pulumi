@@ -1,0 +1,17 @@
+# Pulumi Bazel configuration
+
+# Stamp binaries with version information.
+build --stamp
+build --workspace_status_command=scripts/bazel-workspace-status.sh
+
+# Show test errors inline.
+test --test_output=errors
+
+# Use the new CC toolchain resolution.
+build --incompatible_enable_cc_toolchain_resolution
+
+# Allow Bazel to read the PATH for CC toolchain detection.
+build --action_env=PATH
+
+# Performance: prefer persistent workers for Go compilation, fall back to sandbox.
+build --strategy=GoCompilePkg=worker,sandboxed

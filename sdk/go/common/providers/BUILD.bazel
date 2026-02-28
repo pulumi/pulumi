@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "providers",
+    srcs = ["reference.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/providers",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/resource",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+    ],
+)
+
+go_test(
+    name = "providers_test",
+    srcs = ["reference_test.go"],
+    embed = [":providers"],
+    deps = [
+        "//sdk/go/common/resource",
+        "//sdk/go/common/tokens",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

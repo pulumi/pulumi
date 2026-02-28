@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "slice",
+    srcs = ["slice.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/slice",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "slice_test",
+    srcs = ["slice_test.go"],
+    embed = [":slice"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

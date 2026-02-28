@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "pdag",
+    srcs = ["pdag.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/pdag",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/slice",
+        "@org_golang_x_sync//errgroup",
+    ],
+)
+
+go_test(
+    name = "pdag_test",
+    srcs = ["pdag_test.go"],
+    deps = [
+        ":pdag",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

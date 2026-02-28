@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "optpreview",
+    srcs = ["optpreview.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/auto/debug",
+        "//sdk/go/auto/events",
+    ],
+)

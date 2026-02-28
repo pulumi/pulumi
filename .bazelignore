@@ -1,0 +1,6 @@
+.git
+node_modules
+.venv
+sdk/nodejs/bin
+sdk/python/build
+vendor

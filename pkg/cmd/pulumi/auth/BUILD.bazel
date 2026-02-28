@@ -1,0 +1,46 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "auth",
+    srcs = [
+        "login.go",
+        "logout.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//pkg/backend/diy",
+        "//pkg/backend/httpstate",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/cmd",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/cmd/pulumi/ui",
+        "//pkg/workspace",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/env",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/workspace",
+        "@com_github_alecaivazis_survey_v2//:survey",
+        "@com_github_alecaivazis_survey_v2//core",
+        "@com_github_golang_jwt_jwt_v5//:jwt",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)
+
+go_test(
+    name = "auth_test",
+    srcs = ["login_test.go"],
+    embed = [":auth"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/workspace",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/workspace",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "optrename",
+    srcs = ["optrename.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto/optrename",
+    visibility = ["//visibility:public"],
+)

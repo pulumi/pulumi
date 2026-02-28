@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "console",
+    srcs = ["console.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//pkg/backend/httpstate",
+        "//pkg/backend/state",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/workspace",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/workspace",
+        "@com_github_pkg_browser//:browser",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

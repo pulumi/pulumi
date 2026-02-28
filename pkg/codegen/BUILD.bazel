@@ -1,0 +1,38 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "codegen",
+    srcs = [
+        "docs.go",
+        "utilities.go",
+        "utilities_types.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/codegen/schema",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
+        "@com_github_pgavlin_goldmark//ast",
+    ],
+)
+
+go_test(
+    name = "codegen_test",
+    srcs = [
+        "docs_integration_test.go",
+        "docs_test.go",
+        "utilities_test.go",
+    ],
+    embed = [":codegen"],
+    deps = [
+        "//pkg/codegen/go",
+        "//pkg/codegen/nodejs",
+        "//pkg/codegen/python",
+        "//pkg/codegen/schema",
+        "//pkg/codegen/testing/utils",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)

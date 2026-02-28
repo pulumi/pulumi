@@ -1,0 +1,73 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+# gazelle:prefix github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3
+# gazelle:exclude testdata
+# gazelle:exclude **/testdata
+
+go_library(
+    name = "pulumi-language-python_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/codegen/hcl2/syntax",
+        "//pkg/codegen/pcl",
+        "//pkg/codegen/python",
+        "//pkg/codegen/schema",
+        "//sdk",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tail",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/fsutil",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/util/rpcutil",
+        "//sdk/go/common/version",
+        "//sdk/go/common/workspace",
+        "//sdk/go/pulumi-internal/netutil",
+        "//sdk/proto/go",
+        "//sdk/python/toolchain",
+        "@com_github_blang_semver//:semver",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//types/known/emptypb",
+        "@org_golang_google_protobuf//types/known/structpb",
+    ],
+)
+
+go_binary(
+    name = "pulumi-language-python",
+    embed = [":pulumi-language-python_lib"],
+    gotags = ["grpcnotrace"],
+    visibility = ["//visibility:public"],
+    x_defs = {
+        "github.com/pulumi/pulumi/sdk/v3/go/common/version.Version": "{STABLE_PULUMI_VERSION}",
+    },
+)
+
+go_test(
+    name = "pulumi-language-python_test",
+    srcs = [
+        "language_test.go",
+        "main_test.go",
+    ],
+    embed = [":pulumi-language-python_lib"],
+    deps = [
+        "//pkg/codegen/python",
+        "//sdk",
+        "//sdk/go/common/testing",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/rpcutil",
+        "//sdk/proto/go",
+        "//sdk/proto/go/testing",
+        "//sdk/python/toolchain",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials/insecure",
+    ],
+)

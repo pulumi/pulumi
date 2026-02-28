@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "events",
+    srcs = ["replay.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend/display",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/engine",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/env",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

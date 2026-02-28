@@ -1,0 +1,37 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "analyzer",
+    srcs = [
+        "config.go",
+        "summary.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/analyzer",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/maputil",
+        "@com_github_xeipuuv_gojsonschema//:gojsonschema",
+    ],
+)
+
+go_test(
+    name = "analyzer_test",
+    srcs = [
+        "config_test.go",
+        "summary_test.go",
+    ],
+    embed = [":analyzer"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

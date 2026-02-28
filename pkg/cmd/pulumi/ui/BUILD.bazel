@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "ui",
+    srcs = [
+        "json.go",
+        "print.go",
+        "survey.go",
+        "table.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend/display",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "@com_github_alecaivazis_survey_v2//:survey",
+        "@com_github_alecaivazis_survey_v2//core",
+        "@com_github_alecaivazis_survey_v2//terminal",
+    ],
+)
+
+go_test(
+    name = "ui_test",
+    srcs = ["json_test.go"],
+    embed = [":ui"],
+)

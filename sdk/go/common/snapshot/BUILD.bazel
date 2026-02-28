@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "snapshot",
+    srcs = [
+        "equal.go",
+        "integrity.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/snapshot",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/providers",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/util/logging",
+        "@com_github_go_test_deep//:deep",
+    ],
+)

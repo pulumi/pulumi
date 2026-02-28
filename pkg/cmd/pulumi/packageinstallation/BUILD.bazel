@@ -1,0 +1,44 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "packageinstallation",
+    srcs = ["packageinstallation.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/cmd/pulumi/packageresolution",
+        "//pkg/pluginstorage",
+        "//pkg/util/pdag",
+        "//pkg/workspace",
+        "//sdk/go/common/registry",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/workspace",
+    ],
+)
+
+go_test(
+    name = "packageinstallation_test",
+    srcs = [
+        "invariant_test.go",
+        "packageinstallation_test.go",
+        "record_test.go",
+    ],
+    deps = [
+        ":packageinstallation",
+        "//pkg/cmd/pulumi/packageresolution",
+        "//pkg/cmd/pulumi/packageworkspace",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/registry",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

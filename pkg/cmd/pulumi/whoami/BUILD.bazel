@@ -1,0 +1,34 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "whoami",
+    srcs = ["whoami.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend/display",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/cmd/pulumi/ui",
+        "//pkg/workspace",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/workspace",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)
+
+go_test(
+    name = "whoami_test",
+    srcs = ["whoami_test.go"],
+    embed = [":whoami"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/workspace",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/workspace",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,10 @@
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -21,6 +21,7 @@
+         "stream.go",
+         "stream_interfaces.go",
+         "trace.go",
++        "trace_notrace.go",
+         "trace_withtrace.go",
+         "version.go",
+     ],

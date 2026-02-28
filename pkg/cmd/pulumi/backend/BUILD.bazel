@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "backend",
+    srcs = [
+        "backend.go",
+        "login_manager.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//pkg/backend/diy",
+        "//pkg/backend/httpstate",
+        "//pkg/workspace",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/env",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/workspace",
+    ],
+)

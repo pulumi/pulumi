@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "schema",
+    srcs = [
+        "schema.go",
+        "schema_check.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/cmd/pulumi/cmd",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/cmd/pulumi/packages",
+        "//pkg/codegen/schema",
+        "//pkg/workspace",
+        "//sdk/go/common/env",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_spf13_cobra//:cobra",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+go_test(
+    name = "schema_test",
+    srcs = ["schema_check_test.go"],
+    embed = [":schema"],
+    deps = [
+        "//pkg/codegen/schema",
+        "@com_github_stretchr_testify//require",
+    ],
+)

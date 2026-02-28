@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "testutil",
+    srcs = ["mockbackend.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/testutil",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/cmd/pulumi/backend",
+    ],
+)

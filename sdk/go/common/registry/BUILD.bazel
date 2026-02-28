@@ -1,0 +1,36 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "registry",
+    srcs = [
+        "errors.go",
+        "mock.go",
+        "preregistry.go",
+        "registry.go",
+        "resolve.go",
+        "urls.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/registry",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+go_test(
+    name = "registry_test",
+    srcs = [
+        "preregistry_test.go",
+        "registry_test.go",
+        "resolve_test.go",
+        "urls_test.go",
+    ],
+    embed = [":registry"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "@com_github_blang_semver//:semver",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

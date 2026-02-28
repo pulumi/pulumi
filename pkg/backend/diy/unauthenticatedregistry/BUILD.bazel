@@ -1,0 +1,34 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "unauthenticatedregistry",
+    srcs = ["package_registry.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend/backenderr",
+        "//pkg/backend/httpstate/client",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/env",
+        "//sdk/go/common/registry",
+        "@com_github_blang_semver//:semver",
+    ],
+)
+
+go_test(
+    name = "unauthenticatedregistry_test",
+    srcs = ["package_registry_test.go"],
+    embed = [":unauthenticatedregistry"],
+    deps = [
+        "//pkg/backend/backenderr",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/env",
+        "//sdk/go/common/registry",
+        "//sdk/go/common/testing/diagtest",
+        "//sdk/go/common/util/env",
+        "@com_github_blang_semver//:semver",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

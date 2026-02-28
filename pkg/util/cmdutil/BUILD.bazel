@@ -1,0 +1,9 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "cmdutil",
+    srcs = ["install_dependencies.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/cmdutil",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/resource/plugin"],
+)

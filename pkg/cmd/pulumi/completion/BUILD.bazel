@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "completion",
+    srcs = ["gen.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/cmd/pulumi/constrictor",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

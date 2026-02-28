@@ -1,0 +1,50 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "packages",
+    srcs = ["packages.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/cmd/pulumi/packageinstallation",
+        "//pkg/cmd/pulumi/packageresolution",
+        "//pkg/cmd/pulumi/packageworkspace",
+        "//pkg/codegen/schema",
+        "//pkg/pluginstorage",
+        "//pkg/util/cmdutil",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/env",
+        "//sdk/go/common/registry",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/errutil",
+        "//sdk/go/common/util/fsutil",
+        "//sdk/go/common/workspace",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@in_gopkg_yaml_v2//:yaml_v2",
+        "@io_opentelemetry_go_otel//:otel",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel_trace//:trace",
+    ],
+)
+
+go_test(
+    name = "packages_test",
+    srcs = ["packages_test.go"],
+    embed = [":packages"],
+    deps = [
+        "//pkg/codegen/schema",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/env",
+        "//sdk/go/common/registry",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "constrictor",
+    srcs = ["constrictor.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

@@ -1,0 +1,44 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+# gazelle:prefix github.com/pulumi/pulumi/sdk/v3
+# gazelle:exclude testdata
+# gazelle:exclude **/testdata
+
+go_library(
+    name = "sdk",
+    srcs = [
+        "policy_proxy.go",
+        "version.go",
+    ],
+    embedsrcs = [".version"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/promise",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/util/rpcutil",
+        "//sdk/proto/go",
+        "@com_github_blang_semver//:semver",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//types/known/emptypb",
+    ],
+)
+
+go_test(
+    name = "sdk_test",
+    srcs = ["policy_proxy_test.go"],
+    embed = [":sdk"],
+    deps = [
+        "//sdk/proto/go",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//types/known/emptypb",
+    ],
+)

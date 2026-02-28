@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "version",
+    srcs = ["version.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/cmd/pulumi/constrictor",
+        "//sdk/go/common/version",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

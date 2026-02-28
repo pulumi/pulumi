@@ -20,9 +20,9 @@ venv/
 /pulumi.sln
 .mono
 
-# Ignore user-provided go.work files.
-/go.work
-/go.work.sum
+# go.work and go.work.sum are checked in for Bazel.
+# /go.work
+# /go.work.sum
 
 **/.idea/
 *.iml
@@ -85,6 +85,10 @@ __pycache__
 # File targets for make
 .make
 .*.phony
+
+# Bazel
+/bazel-*
+/.bazel-*
 
 # Temporary files
 *.tmp

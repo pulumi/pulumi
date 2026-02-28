@@ -1,0 +1,43 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "otelreceiver",
+    srcs = [
+        "exporter.go",
+        "file_exporter.go",
+        "grpc_exporter.go",
+        "receiver.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/util/logging",
+        "@io_opentelemetry_go_collector_pdata//ptrace",
+        "@io_opentelemetry_go_proto_otlp//collector/trace/v1:trace",
+        "@io_opentelemetry_go_proto_otlp//trace/v1:trace",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
+
+go_test(
+    name = "otelreceiver_test",
+    srcs = [
+        "file_exporter_test.go",
+        "receiver_test.go",
+    ],
+    embed = [":otelreceiver"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@io_opentelemetry_go_proto_otlp//collector/trace/v1:trace",
+        "@io_opentelemetry_go_proto_otlp//common/v1:common",
+        "@io_opentelemetry_go_proto_otlp//resource/v1:resource",
+        "@io_opentelemetry_go_proto_otlp//trace/v1:trace",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials/insecure",
+    ],
+)

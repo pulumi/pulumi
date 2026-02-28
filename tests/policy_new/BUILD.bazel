@@ -1,0 +1,7 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "policy_new_test",
+    srcs = ["policy_new_test.go"],
+    deps = ["//sdk/go/common/testing"],
+)

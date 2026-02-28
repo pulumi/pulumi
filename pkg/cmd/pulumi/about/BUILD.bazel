@@ -1,0 +1,44 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "about",
+    srcs = [
+        "about.go",
+        "about_env.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/secrets",
+        "//pkg/backend/state",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/cmd/pulumi/ui",
+        "//pkg/engine",
+        "//pkg/resource/deploy",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/slice",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/env",
+        "//sdk/go/common/version",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_shirou_gopsutil_v3//host",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)
+
+go_test(
+    name = "about_test",
+    srcs = ["about_test.go"],
+    embed = [":about"],
+    deps = [
+        "@com_github_shirou_gopsutil_v3//host",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

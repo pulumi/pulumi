@@ -1,0 +1,23 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "wasm_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/display/wasm",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/backend/display",
+    ],
+)
+
+go_binary(
+    name = "wasm",
+    embed = [":wasm_lib"],
+    goarch = "wasm",
+    goos = "js",
+    gc_linkopts = [
+        "-w",
+        "-s",
+    ],
+    visibility = ["//visibility:public"],
+)

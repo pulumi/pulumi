@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "postgres",
+    srcs = [
+        "backend.go",
+        "bucket.go",
+        "doc.go",
+    ],
+    embedsrcs = ["schema.sql"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_lib_pq//:pq",
+        "@dev_gocloud//blob",
+        "@dev_gocloud//blob/driver",
+        "@dev_gocloud//gcerrors",
+    ],
+)

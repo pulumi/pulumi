@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "opthistory",
+    srcs = ["opthistory.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto/opthistory",
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,54 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "nosleep",
+    srcs = [
+        "darwin.go",
+        "nosleep.go",
+        "unix.go",
+        "windows.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/nosleep",
+    visibility = ["//visibility:public"],
+    deps = select({
+        "@rules_go//go/platform:android": [
+            "//sdk/go/common/util/logging",
+            "@com_github_godbus_dbus_v5//:dbus",
+        ],
+        "@rules_go//go/platform:darwin": [
+            "//sdk/go/common/util/logging",
+        ],
+        "@rules_go//go/platform:dragonfly": [
+            "//sdk/go/common/util/logging",
+            "@com_github_godbus_dbus_v5//:dbus",
+        ],
+        "@rules_go//go/platform:freebsd": [
+            "//sdk/go/common/util/logging",
+            "@com_github_godbus_dbus_v5//:dbus",
+        ],
+        "@rules_go//go/platform:ios": [
+            "//sdk/go/common/util/logging",
+        ],
+        "@rules_go//go/platform:linux": [
+            "//sdk/go/common/util/logging",
+            "@com_github_godbus_dbus_v5//:dbus",
+        ],
+        "@rules_go//go/platform:netbsd": [
+            "//sdk/go/common/util/logging",
+            "@com_github_godbus_dbus_v5//:dbus",
+        ],
+        "@rules_go//go/platform:openbsd": [
+            "//sdk/go/common/util/logging",
+            "@com_github_godbus_dbus_v5//:dbus",
+        ],
+        "@rules_go//go/platform:solaris": [
+            "//sdk/go/common/util/logging",
+            "@com_github_godbus_dbus_v5//:dbus",
+        ],
+        "@rules_go//go/platform:windows": [
+            "//sdk/go/common/util/logging",
+            "@org_golang_x_sys//windows",
+        ],
+        "//conditions:default": [],
+    }),
+)

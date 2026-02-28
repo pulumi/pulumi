@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "netutil",
+    srcs = ["netutil.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "netutil_test",
+    srcs = ["netutil_test.go"],
+    embed = [":netutil"],
+    deps = ["@com_github_stretchr_testify//require"],
+)

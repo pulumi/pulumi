@@ -1,0 +1,31 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "trace",
+    srcs = [
+        "convert.go",
+        "io.go",
+        "view.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/cmd/pulumi/constrictor",
+        "//sdk/go/common/env",
+        "//sdk/go/common/providers",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/util/contract",
+        "@com_github_google_pprof//profile",
+        "@com_github_pgavlin_fx//:fx",
+        "@com_github_pulumi_appdash//:appdash",
+        "@com_github_pulumi_appdash//traceapp",
+        "@com_github_spf13_cobra//:cobra",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel//codes",
+        "@io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc//:otlptracegrpc",
+        "@io_opentelemetry_go_otel_sdk//instrumentation",
+        "@io_opentelemetry_go_otel_sdk//resource",
+        "@io_opentelemetry_go_otel_sdk//trace",
+        "@io_opentelemetry_go_otel_trace//:trace",
+    ],
+)

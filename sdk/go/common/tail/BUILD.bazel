@@ -1,0 +1,34 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "tail",
+    srcs = [
+        "tail.go",
+        "tail_posix.go",
+        "tail_windows.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/tail",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/util/contract",
+        "@com_github_nxadm_tail//util",
+        "@com_github_nxadm_tail//watch",
+        "@in_gopkg_tomb_v1//:tomb_v1",
+    ] + select({
+        "@rules_go//go/platform:windows": [
+            "@com_github_nxadm_tail//winfile",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+go_test(
+    name = "tail_test",
+    srcs = ["tail_test.go"],
+    embed = [":tail"],
+    deps = [
+        "//sdk/go/common/util/contract",
+        "@com_github_nxadm_tail//watch",
+        "@com_github_stretchr_testify//require",
+    ],
+)

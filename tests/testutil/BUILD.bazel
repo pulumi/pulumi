@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "testutil",
+    srcs = ["test_main_util.go"],
+    importpath = "github.com/pulumi/pulumi/tests/testutil",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/testing/integration",
+        "@com_github_stretchr_testify//require",
+    ],
+)

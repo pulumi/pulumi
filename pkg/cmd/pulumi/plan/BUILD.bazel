@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "plan",
+    srcs = ["plan.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/resource/deploy",
+        "//pkg/resource/stack",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/util/contract",
+    ],
+)

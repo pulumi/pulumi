@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "lazy",
+    srcs = ["lazy.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/lazy",
+    visibility = ["//visibility:public"],
+)

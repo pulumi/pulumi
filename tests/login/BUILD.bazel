@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "login_test",
+    srcs = [
+        "login_test.go",
+        "oidc_login_test.go",
+    ],
+    deps = [
+        "//pkg/testing/integration",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/testing",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,42 @@
+load("@gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix github.com/pulumi/pulumi
+# gazelle:exclude bazel-*
+# gazelle:exclude node_modules
+# gazelle:exclude .venv
+# gazelle:exclude vendor
+# gazelle:exclude proto
+# gazelle:exclude developer-docs
+# gazelle:exclude docker
+# gazelle:exclude .devcontainer
+# gazelle:exclude .github
+# gazelle:exclude coverage
+
+gazelle(name = "gazelle")
+
+# ─── Top-level aliases ───────────────────────────────────────────────────────
+
+alias(
+    name = "pulumi",
+    actual = "//pkg/cmd/pulumi",
+)
+
+alias(
+    name = "pulumi-display.wasm",
+    actual = "//pkg/backend/display/wasm",
+)
+
+alias(
+    name = "pulumi-language-go",
+    actual = "//sdk/go/pulumi-language-go",
+)
+
+alias(
+    name = "pulumi-language-nodejs",
+    actual = "//sdk/nodejs/cmd/pulumi-language-nodejs",
+)
+
+alias(
+    name = "pulumi-language-python",
+    actual = "//sdk/python/cmd/pulumi-language-python",
+)

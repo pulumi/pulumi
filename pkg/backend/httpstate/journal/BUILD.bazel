@@ -1,0 +1,37 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "journal",
+    srcs = ["snapshot.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/httpstate/client",
+        "//pkg/engine",
+        "//pkg/resource/stack",
+        "//pkg/secrets",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/env",
+        "//sdk/go/common/promise",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/util/logging",
+    ],
+)
+
+go_test(
+    name = "journal_test",
+    srcs = ["snapshot_test.go"],
+    embed = [":journal"],
+    deps = [
+        "//pkg/backend/httpstate/client",
+        "//pkg/engine",
+        "//pkg/secrets/b64",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/tokens",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

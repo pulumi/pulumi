@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "state",
+    srcs = ["stacks.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/backend/state",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/workspace",
+    ],
+)
+
+go_test(
+    name = "state_test",
+    srcs = ["stacks_test.go"],
+    embed = [":state"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/workspace",
+        "//sdk/go/common/workspace",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "pluginstorage",
+    srcs = [
+        "content.go",
+        "download.go",
+        "pluginstorage.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/pluginstorage",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/util/archive",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/fsutil",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+    ],
+)

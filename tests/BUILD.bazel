@@ -1,0 +1,5 @@
+# gazelle:prefix github.com/pulumi/pulumi/tests
+# gazelle:exclude testdata
+# gazelle:exclude **/testdata
+# gazelle:exclude integration
+# gazelle:exclude benchmarks

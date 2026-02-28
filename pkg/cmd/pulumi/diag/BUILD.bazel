@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "diag",
+    srcs = ["diag.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/cmd/pulumi/packageinstallation",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/resource/plugin",
+        "@com_github_hashicorp_hcl_v2//:hcl",
+    ],
+)

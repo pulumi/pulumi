@@ -1,0 +1,39 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cmd",
+    srcs = [
+        "cmd.go",
+        "registry.go",
+        "terminal.go",
+        "time.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend/backenderr",
+        "//pkg/backend/diy/unauthenticatedregistry",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/ui",
+        "//pkg/engine",
+        "//pkg/workspace",
+        "//sdk/go/common/diag",
+        "//sdk/go/common/env",
+        "//sdk/go/common/registry",
+        "//sdk/go/common/snapshot",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/env",
+        "//sdk/go/common/util/result",
+        "//sdk/go/common/version",
+        "//sdk/go/common/workspace",
+        "@org_golang_x_term//:term",
+    ],
+)
+
+go_test(
+    name = "cmd_test",
+    srcs = ["terminal_test.go"],
+    embed = [":cmd"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

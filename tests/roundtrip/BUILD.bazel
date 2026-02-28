@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "roundtrip_test",
+    srcs = ["roundtrip_test.go"],
+    deps = [
+        "//pkg/testing/integration",
+        "//sdk/go/common/testing",
+        "//sdk/go/common/workspace",
+        "@com_github_hexops_autogold//:autogold",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,45 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "toolchain",
+    srcs = [
+        "pip.go",
+        "poetry.go",
+        "pyproject.go",
+        "toolchain.go",
+        "uv.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/python/toolchain",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/slice",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/errutil",
+        "//sdk/go/common/util/fsutil",
+        "//sdk/go/common/util/logging",
+        "@com_github_blang_semver//:semver",
+        "@com_github_burntsushi_toml//:toml",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+        "@org_golang_x_sync//errgroup",
+    ],
+)
+
+go_test(
+    name = "toolchain_test",
+    srcs = [
+        "pip_test.go",
+        "poetry_test.go",
+        "pyproject_test.go",
+        "toolchain_test.go",
+        "uv_linux_test.go",
+        "uv_test.go",
+    ],
+    embed = [":toolchain"],
+    deps = [
+        "//sdk/go/common/util/errutil",
+        "@com_github_blang_semver//:semver",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

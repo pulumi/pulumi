@@ -1,0 +1,55 @@
+"""Pulumi CLI and SDK monorepo."""
+
+module(
+    name = "pulumi",
+    version = "0.0.0",
+)
+
+# ─── Go ──────────────────────────────────────────────────────────────────────
+
+bazel_dep(name = "rules_go", version = "0.60.0")
+bazel_dep(name = "gazelle", version = "0.47.0")
+
+go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(version = "1.25.0")
+
+go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_work = "//:go.work")
+
+# Patch the grpc BUILD file to include trace_notrace.go (build tag: grpcnotrace)
+# alongside trace_withtrace.go. Gazelle omits files gated by custom build tags,
+# but rules_go needs them in srcs to respect gotags propagation.
+go_deps.module_override(
+    patch_strip = 1,
+    patches = ["//build/patches:grpc-grpcnotrace.patch"],
+    path = "google.golang.org/grpc",
+)
+
+# The pulumi/esc module depends on our local sdk/v3 and pkg/v3 modules.
+# Redirect those imports to local Bazel targets instead of fetching external repos.
+go_deps.gazelle_override(
+    directives = [
+        "gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/apitype @@//sdk/go/common/apitype",
+        "gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors @@//sdk/go/common/diag/colors",
+        "gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/resource @@//sdk/go/common/resource",
+        "gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil @@//sdk/go/common/util/cmdutil",
+        "gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/util/contract @@//sdk/go/common/util/contract",
+        "gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil @@//sdk/go/common/util/httputil",
+        "gazelle:resolve go github.com/pulumi/pulumi/sdk/v3/go/common/workspace @@//sdk/go/common/workspace",
+        "gazelle:resolve go github.com/pulumi/pulumi/pkg/v3/backend/display @@//pkg/backend/display",
+        "gazelle:resolve go github.com/pulumi/pulumi/pkg/v3/backend/diy @@//pkg/backend/diy",
+        "gazelle:resolve go github.com/pulumi/pulumi/pkg/v3/backend/httpstate @@//pkg/backend/httpstate",
+    ],
+    path = "github.com/pulumi/esc",
+)
+use_repo(go_deps, "com_github_acarl005_stripansi", "com_github_alecaivazis_survey_v2", "com_github_aws_aws_sdk_go", "com_github_aws_aws_sdk_go_v2", "com_github_aws_aws_sdk_go_v2_config", "com_github_aws_aws_sdk_go_v2_service_iam", "com_github_aws_aws_sdk_go_v2_service_kms", "com_github_aws_aws_sdk_go_v2_service_sts", "com_github_azure_azure_sdk_for_go_sdk_azcore", "com_github_azure_azure_sdk_for_go_sdk_azidentity", "com_github_azure_azure_sdk_for_go_sdk_keyvault_azkeys", "com_github_blang_semver", "com_github_burntsushi_toml", "com_github_charmbracelet_bubbles", "com_github_charmbracelet_bubbletea", "com_github_charmbracelet_glamour", "com_github_charmbracelet_lipgloss", "com_github_cheggaaa_pb", "com_github_creack_pty", "com_github_davecgh_go_spew", "com_github_deckarep_golang_set_v2", "com_github_djherbis_times", "com_github_dustin_go_humanize", "com_github_edsrzf_mmap_go", "com_github_fatih_color", "com_github_go_git_go_git_v5", "com_github_go_test_deep", "com_github_godbus_dbus_v5", "com_github_gofrs_uuid", "com_github_golang_glog", "com_github_golang_jwt_jwt_v5", "com_github_golang_protobuf", "com_github_google_go_dap", "com_github_google_go_github_v55", "com_github_google_go_querystring", "com_github_google_pprof", "com_github_google_shlex", "com_github_google_uuid", "com_github_gorilla_mux", "com_github_grapl_security_pulumi_hcp_sdk", "com_github_grpc_ecosystem_grpc_opentracing", "com_github_hashicorp_go_multierror", "com_github_hashicorp_go_version", "com_github_hashicorp_hcl_v2", "com_github_hexops_autogold", "com_github_hexops_gotextdiff", "com_github_hinshun_vt10x", "com_github_iancoleman_strcase", "com_github_iwahbe_helpmakego", "com_github_iwdgo_sigintwindows", "com_github_jackc_pgx_v5", "com_github_jonboulle_clockwork", "com_github_kballard_go_shellquote", "com_github_kevinburke_ssh_config", "com_github_klauspost_compress", "com_github_lib_pq", "com_github_microsoft_go_winio", "com_github_mitchellh_copystructure", "com_github_mitchellh_go_ps", "com_github_moby_moby", "com_github_moby_term", "com_github_muesli_cancelreader", "com_github_mxschmitt_golang_combinations", "com_github_natefinch_atomic", "com_github_nbutton23_zxcvbn_go", "com_github_netflix_go_expect", "com_github_nxadm_tail", "com_github_opentracing_opentracing_go", "com_github_pgavlin_diff", "com_github_pgavlin_fx", "com_github_pgavlin_fx_v2", "com_github_pgavlin_goldmark", "com_github_pkg_browser", "com_github_pkg_errors", "com_github_pkg_term", "com_github_pulumi_appdash", "com_github_pulumi_esc", "com_github_pulumi_inflector", "com_github_pulumi_pulumi_pkg_v3", "com_github_pulumi_pulumi_sdk_v3", "com_github_quasilyte_go_ruleguard_dsl", "com_github_rivo_uniseg", "com_github_rogpeppe_go_internal", "com_github_sabhiram_go_gitignore", "com_github_santhosh_tekuri_jsonschema_v5", "com_github_segmentio_encoding", "com_github_sergi_go_diff", "com_github_shirou_gopsutil_v3", "com_github_spf13_afero", "com_github_spf13_cast", "com_github_spf13_cobra", "com_github_spf13_pflag", "com_github_stretchr_testify", "com_github_testcontainers_testcontainers_go", "com_github_testcontainers_testcontainers_go_modules_postgres", "com_github_texttheater_golang_levenshtein", "com_github_uber_jaeger_client_go", "com_github_xeipuuv_gojsonschema", "com_github_xo_terminfo", "com_github_zclconf_go_cty", "com_google_cloud_go_kms", "com_google_cloud_go_logging", "com_google_cloud_go_storage", "com_lukechampine_frand", "dev_gocloud", "dev_gocloud_secrets_hashivault", "in_gopkg_tomb_v1", "in_gopkg_yaml_v2", "in_gopkg_yaml_v3", "io_opentelemetry_go_collector_pdata", "io_opentelemetry_go_otel", "io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc", "io_opentelemetry_go_otel_sdk", "io_opentelemetry_go_otel_trace", "io_opentelemetry_go_proto_otlp", "net_pgregory_rapid", "org_golang_google_api", "org_golang_google_genproto", "org_golang_google_grpc", "org_golang_google_protobuf", "org_golang_x_crypto", "org_golang_x_mod", "org_golang_x_net", "org_golang_x_oauth2", "org_golang_x_sync", "org_golang_x_sys", "org_golang_x_term", "org_golang_x_text", "org_uber_go_automaxprocs", "tech_pennock_go_tabular")
+
+# ─── Proto ───────────────────────────────────────────────────────────────────
+
+bazel_dep(name = "rules_proto", version = "7.1.0")
+bazel_dep(name = "protobuf", version = "29.3")
+
+# ─── Toolchains (platforms / CC) ─────────────────────────────────────────────
+
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "rules_cc", version = "0.1.5")

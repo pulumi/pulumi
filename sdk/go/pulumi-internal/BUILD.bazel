@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "pulumi-internal",
+    srcs = ["doc.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal",
+    visibility = ["//visibility:public"],
+)

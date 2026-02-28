@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "ai",
+    srcs = [
+        "ai.go",
+        "ai_web.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/workspace",
+        "//sdk/go/common/env",
+        "//sdk/go/common/workspace",
+        "@com_github_pkg_browser//:browser",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

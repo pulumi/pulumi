@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "env",
+    srcs = ["env.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend/httpstate",
+        "//pkg/backend/httpstate/client",
+        "//sdk/go/common/util/cmdutil",
+        "@com_github_pulumi_esc//cmd/esc/cli",
+        "@com_github_pulumi_esc//cmd/esc/cli/workspace",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cgstrings",
+    srcs = ["cgstrings.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/slice"],
+)
+
+go_test(
+    name = "cgstrings_test",
+    srcs = ["cgstrings_test.go"],
+    embed = [":cgstrings"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

@@ -1,0 +1,43 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "templatecmd",
+    srcs = [
+        "template.go",
+        "template_publish.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templatecmd",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/backend/display",
+        "//pkg/cmd/pulumi/backend",
+        "//pkg/cmd/pulumi/constrictor",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/archive",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)
+
+go_test(
+    name = "templatecmd_test",
+    srcs = ["template_publish_test.go"],
+    embed = [":templatecmd"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/util/testutil",
+        "//pkg/workspace",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/workspace",
+        "@com_github_blang_semver//:semver",
+        "@com_github_spf13_cobra//:cobra",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

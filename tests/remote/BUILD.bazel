@@ -1,0 +1,11 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "remote_test",
+    srcs = ["remote_test.go"],
+    deps = [
+        "//sdk/go/common/testing",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,56 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "apitype",
+    srcs = [
+        "ai.go",
+        "cli.go",
+        "core.go",
+        "deployments.go",
+        "environments.go",
+        "errors.go",
+        "events.go",
+        "history.go",
+        "journal.go",
+        "logs.go",
+        "oauth.go",
+        "organizations.go",
+        "package.go",
+        "plan.go",
+        "plugins.go",
+        "policy.go",
+        "search.go",
+        "service.go",
+        "stacks.go",
+        "templates.go",
+        "updates.go",
+    ],
+    embedsrcs = [
+        "deployments.json",
+        "property-values.json",
+        "resources.json",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/apitype",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/diag/colors",
+        "//sdk/go/common/providers",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/config",
+        "//sdk/go/common/tokens",
+        "//sdk/go/common/util/contract",
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_esc//:esc",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+go_test(
+    name = "apitype_test",
+    srcs = ["service_test.go"],
+    embed = [":apitype"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

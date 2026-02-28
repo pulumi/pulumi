@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "result",
+    srcs = ["result.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/result",
+    visibility = ["//visibility:public"],
+    deps = ["//sdk/go/common/util/contract"],
+)
+
+go_test(
+    name = "result_test",
+    srcs = ["result_test.go"],
+    embed = [":result"],
+    deps = ["@com_github_stretchr_testify//assert"],
+)

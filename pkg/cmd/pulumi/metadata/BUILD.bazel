@@ -1,0 +1,40 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "metadata",
+    srcs = ["metadata.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/backend",
+        "//pkg/engine",
+        "//sdk/go/common/apitype",
+        "//sdk/go/common/constant",
+        "//sdk/go/common/promise",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/util/ciutil",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/env",
+        "//sdk/go/common/util/gitutil",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/version",
+        "//sdk/go/common/workspace",
+        "@com_github_go_git_go_git_v5//:go-git",
+        "@com_github_hashicorp_go_multierror//:go-multierror",
+        "@com_github_spf13_pflag//:pflag",
+    ],
+)
+
+go_test(
+    name = "metadata_test",
+    srcs = ["metadata_test.go"],
+    embed = [":metadata"],
+    deps = [
+        "//pkg/backend",
+        "//sdk/go/common/testing",
+        "//sdk/go/common/util/gitutil",
+        "@com_github_spf13_cobra//:cobra",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

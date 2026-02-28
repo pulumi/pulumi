@@ -1,0 +1,39 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "provider",
+    srcs = [
+        "component_provider.go",
+        "doc.go",
+        "host.go",
+        "main.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/resource/provider",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/go/common/diag",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/contract",
+        "//sdk/go/common/util/logging",
+        "//sdk/go/common/util/rpcutil",
+        "//sdk/go/pulumi/provider",
+        "//sdk/proto/go",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//credentials/insecure",
+        "@org_golang_google_grpc//grpclog",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//types/known/emptypb",
+    ],
+)
+
+go_test(
+    name = "provider_test",
+    srcs = ["main_test.go"],
+    embed = [":provider"],
+    deps = [
+        "//sdk/proto/go",
+        "@com_github_stretchr_testify//require",
+    ],
+)
