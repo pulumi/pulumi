@@ -158,10 +158,11 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		require.NoError(t, addGitMetadata(e.RootPath, test))
-		assert.Contains(t, test.Environment, backend.GitHeadName, "Expected 'git.headName' key, from CI util.")
-		// TODO: https://github.com/pulumi/pulumi/issues/5303
-		// assert.Equal(t, "branch-from-ci", test.Environment[backend.GitHeadName])
+		require.NoError(t, addGitMetadata("/", test))
+		name, ok := test.Environment[backend.GitHeadName]
+		t.Log(name)
+		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
+		assert.Equal(t, "branch-from-ci", name)
 	}
 }
 
