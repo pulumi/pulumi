@@ -1,6 +1,7 @@
 """Release targets for cross-compiled Pulumi binaries and archives."""
 
 load(":defs.bzl", "pulumi_release_binary")
+load(":install.bzl", "pulumi_install")
 load(":packaging.bzl", "pulumi_release_archives")
 
 _VERSION_X_DEFS = {
@@ -38,3 +39,10 @@ pulumi_release_binary(
 # ── Release archives ─────────────────────────────────────────────────────────
 
 pulumi_release_archives(name = "archives")
+
+# ── Local install directory ──────────────────────────────────────────────────
+
+pulumi_install(
+    name = "install",
+    visibility = ["//visibility:public"],
+)
