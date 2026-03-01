@@ -127,6 +127,40 @@ func TestImporter(t *testing.T) {
 			_, err := i.registerProviders(context.Background())
 			assert.ErrorIs(t, err, expectedErr)
 		})
+		t.Run("explicit provider not in state is created (#15453)", func(t *testing.T) {
+			t.Parallel()
+
+			version := semver.MustParse("1.0.0")
+			providerURN := resource.URN("urn:pulumi:stack-name::project-name::pulumi:providers:foo::my-provider")
+
+			expectedErr := errors.New("expected error loading provider")
+			i := &importer{
+				deployment: &Deployment{
+					goals:  &gsync.Map[urn.URN, *resource.Goal]{},
+					ctx:    &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{Name: tokens.MustParseStackName("stack-name")},
+					source: &nullSource{},
+					providers: providers.NewRegistry(&plugin.MockHost{
+						ProviderF: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+							assert.Equal(t, "my-provider", descriptor.Name, "should load provider for explicit provider URN not in state")
+							return nil, expectedErr
+						},
+					}, true, nil),
+					imports: []Import{
+						{
+							Type:              "foo:bar:Bar",
+							Name:              "res",
+							ID:                "some-id",
+							Provider:          providerURN,
+							Version:           &version,
+							PluginDownloadURL: "download-url",
+						},
+					},
+				},
+			}
+			_, err := i.registerProviders(context.Background())
+			assert.ErrorIs(t, err, expectedErr)
+		})
 	})
 	t.Run("importResources", func(t *testing.T) {
 		t.Parallel()

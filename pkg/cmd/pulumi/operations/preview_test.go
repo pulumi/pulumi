@@ -348,8 +348,8 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 	assert.Equal(t, expected, importFile.Resources[0])
 }
 
-// TestBuildImportFile_NewProvider test that if we try to import a resource that has an explicit provider
-// that we haven't created yet that we error. We can't handle this case yet in the import system.
+// TestBuildImportFile_NewProvider tests that we can generate an import file for a resource that uses
+// an explicit provider that is also being created in the same deployment (#15453).
 func TestBuildImportFile_NewProvider(t *testing.T) {
 	t.Parallel()
 
@@ -361,8 +361,12 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 		Metadata: makeRootStackMetadata(deploy.OpSame),
 	})
 
-	// And then create a provider resource
-	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{})
+	// Create a provider resource (new in this deployment)
+	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+			"version": "1.2.3",
+		}),
+	})
 	providerState.ID = providers.UnknownID
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeMetadata(deploy.OpCreate, providerState),
@@ -381,12 +385,23 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 	// Finally, close the events channel to signal that we're done
 	close(events)
 
-	// This should error because we can't yet handle importing an explicit provider
-	_, err = importFilePromise.Result(context.Background())
-	assert.ErrorContains(
-		t, err,
-		"cannot import resource \"urn:pulumi:stack::project::pkg:mod:typ::res\" "+
-			"with a new explicit provider \"urn:pulumi:stack::project::pulumi:providers:pkg::prov\"")
+	importFile, err := importFilePromise.Result(context.Background())
+	require.NoError(t, err)
+
+	// NameTable should include the provider so the resource can reference it
+	require.Len(t, importFile.NameTable, 1)
+	assert.Equal(t, providerState.URN, importFile.NameTable["prov"])
+
+	// Resource should be in the import file with the provider reference (provider itself is not imported)
+	require.Len(t, importFile.Resources, 1)
+	expected := importSpec{
+		ID:       "<PLACEHOLDER>",
+		Type:     "pkg:mod:typ",
+		Name:     "res",
+		Provider: "prov",
+		Version:  "1.2.3",
+	}
+	assert.Equal(t, expected, importFile.Resources[0])
 }
 
 // TestBuildImportFile_DuplicateNames test that if we try to import resources with the same name we add a
@@ -561,7 +576,11 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 	})
 
 	// And then create a provider resource
-	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{})
+	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+			"version": "1.2.3",
+		}),
+	})
 	providerState.ID = providers.UnknownID
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeMetadata(deploy.OpCreate, providerState),
@@ -586,10 +605,23 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 	// Finally, close the events channel to signal that we're done
 	close(events)
 
-	// This should error because we can't yet handle importing an explicit provider
-	_, err = importFilePromise.Result(context.Background())
-	assert.ErrorContains(
-		t, err,
-		"cannot import resource \"urn:pulumi:stack::project::pkg:mod:typ::res\" "+
-			"with a new explicit provider \"urn:pulumi:stack::project::pulumi:providers:pkg::prov\"")
+	importFile, err := importFilePromise.Result(context.Background())
+	require.NoError(t, err)
+
+	// NameTable has the explicit provider; res uses it, res2 uses default (no provider in spec)
+	require.Len(t, importFile.NameTable, 1)
+	assert.Equal(t, providerState.URN, importFile.NameTable["prov"])
+
+	// Two resources: res with provider "prov", res2 with default provider (no Provider field)
+	require.Len(t, importFile.Resources, 2)
+	assert.Equal(t, importSpec{
+		ID:       "<PLACEHOLDER>",
+		Type:     "pkg:mod:typ",
+		Name:     "res",
+		Provider: "prov",
+		Version:  "1.2.3",
+	}, importFile.Resources[0])
+	// res2 has no Provider set (default provider); version may come from default provider if present
+	assert.Equal(t, "res2", importFile.Resources[1].Name)
+	assert.Equal(t, tokens.Type("pkg:mod:typ"), importFile.Resources[1].Type)
 }
