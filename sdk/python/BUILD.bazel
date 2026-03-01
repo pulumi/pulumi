@@ -1,6 +1,7 @@
 load("@rules_python//python:packaging.bzl", "py_wheel")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
+load("//build/release:wheel.bzl", "stamped_wheel")
 
 # gazelle:exclude .venv
 # gazelle:exclude build
@@ -44,9 +45,10 @@ py_wheel(
     name = "_wheel_base",
     distribution = "pulumi",
     python_tag = "py3",
-    # Version is set via --define PYPI_VERSION=x.y.z (supports PEP 440 alpha format).
-    version = "$(PYPI_VERSION)",
-    stamp = 1,
+    # Placeholder version — stamped_wheel patches this at build time via
+    # --define PYPI_VERSION=x.y.z, avoiding py_wheel's analysis-time PEP 440
+    # validation that breaks `bazel test //...` without --define.
+    version = "0.0.0",
     requires = [
         'protobuf>=3.20.3,<7',
         'grpcio>=1.68.1,<2; python_version < "3.14"',
@@ -74,22 +76,16 @@ py_wheel(
     deps = [":pulumi_sdk"],
 )
 
-# Add .pyi type stubs and py.typed marker to the wheel.
-# py_wheel only includes .py files from deps; we add .pyi and py.typed via zip.
-genrule(
+# Stamp the wheel with the real version and inject .pyi type stubs.
+# py_wheel only includes .py files; stamped_wheel adds .pyi and py.typed.
+stamped_wheel(
     name = "wheel",
-    srcs = [":_wheel_base"] + glob([
+    wheel = ":_wheel_base",
+    type_stubs = glob([
         "lib/pulumi/**/*.pyi",
         "lib/pulumi/py.typed",
     ]),
-    outs = ["pulumi.whl"],
-    cmd = """\
-        set -e
-        cp "$(location :_wheel_base)" "$@"
-        chmod u+w "$@"
-        cd sdk/python/lib
-        find pulumi -name '*.pyi' -o -name 'py.typed' | zip -q "$$OLDPWD/$@" -@
-    """,
+    version_placeholder = "0.0.0",
     visibility = ["//visibility:public"],
 )
 

@@ -126,12 +126,15 @@ def _pulumi_release_archive(goos, goarch):
         ":_files_external_%s_%s" % (goos, goarch),
     ]
 
+    # Note: package_file_name is intentionally omitted. Using it with
+    # {PULUMI_VERSION} requires --define PULUMI_VERSION=... which breaks
+    # `bazel test //...`. The CI workflow renames the default output files
+    # (archive_{os}_{arch}.tar.gz / .zip) to the versioned names
+    # (pulumi-v{version}-{os}-{arch}.tar.gz / .zip) at upload time.
     if goos == "windows":
         pkg_zip(
             name = "archive_%s_%s" % (goos, goarch),
             srcs = all_file_groups,
-            package_file_name = "pulumi-v{PULUMI_VERSION}-%s-%s.zip" % (goos, arch_label),
-            stamp = 1,
             visibility = ["//visibility:public"],
         )
     else:
@@ -139,7 +142,5 @@ def _pulumi_release_archive(goos, goarch):
             name = "archive_%s_%s" % (goos, goarch),
             srcs = all_file_groups,
             extension = "tar.gz",
-            package_file_name = "pulumi-v{PULUMI_VERSION}-%s-%s.tar.gz" % (goos, arch_label),
-            stamp = 1,
             visibility = ["//visibility:public"],
         )

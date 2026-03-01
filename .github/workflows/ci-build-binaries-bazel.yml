@@ -52,11 +52,18 @@ jobs:
             --stamp \
             --define PULUMI_VERSION="${PULUMI_VERSION}"
 
-      - name: Copy archives to output directory
+      - name: Copy and rename archives to output directory
+        env:
+          PULUMI_VERSION: ${{ inputs.version }}
         run: |
           mkdir -p dist
-          cp bazel-bin/build/release/pulumi-*.tar.gz dist/ 2>/dev/null || true
-          cp bazel-bin/build/release/pulumi-*.zip dist/ 2>/dev/null || true
+          # Rename from default Bazel output names to versioned release names.
+          cp bazel-bin/build/release/archive_linux_amd64.tar.gz   "dist/pulumi-v${PULUMI_VERSION}-linux-x64.tar.gz"
+          cp bazel-bin/build/release/archive_linux_arm64.tar.gz   "dist/pulumi-v${PULUMI_VERSION}-linux-arm64.tar.gz"
+          cp bazel-bin/build/release/archive_darwin_amd64.tar.gz  "dist/pulumi-v${PULUMI_VERSION}-darwin-x64.tar.gz"
+          cp bazel-bin/build/release/archive_darwin_arm64.tar.gz  "dist/pulumi-v${PULUMI_VERSION}-darwin-arm64.tar.gz"
+          cp bazel-bin/build/release/archive_windows_amd64.zip    "dist/pulumi-v${PULUMI_VERSION}-windows-x64.zip"
+          cp bazel-bin/build/release/archive_windows_arm64.zip    "dist/pulumi-v${PULUMI_VERSION}-windows-arm64.zip"
           ls -la dist/
 
       # Upload per-platform artifacts matching the naming convention expected
