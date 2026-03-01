@@ -269,6 +269,11 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prompt for the project name, if it wasn't already specified.
 	if args.name == "" {
+		if !args.yes {
+			fmt.Println("A Pulumi project is a container for your infrastructure code and configuration.")
+			fmt.Println("It contains the Pulumi.yaml file that defines your project's metadata and settings.")
+			fmt.Println()
+		}
 		defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
 		err := validateProjectName(
 			ctx, b, orgName, defaultValue, args.generateOnly, opts.WithIsInteractive(false))
