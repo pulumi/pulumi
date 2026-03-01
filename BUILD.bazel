@@ -42,3 +42,11 @@ alias(
     name = "pulumi-language-python",
     actual = "//sdk/python/cmd/pulumi-language-python",
 )
+
+# ─── Help ────────────────────────────────────────────────────────────────────
+
+sh_binary(
+    name = "help",
+    srcs = ["scripts/bazel-help.sh"],
+)
+
