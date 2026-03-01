@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -1013,7 +1014,7 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			if err == context.Canceled {
-				return errors.New("import cancelled")
+				return backenderr.CancelledError{Operation: "import"}
 			}
 
 			// If we did a conversion import (i.e. from!="") then we'll write the file we've built out to the local

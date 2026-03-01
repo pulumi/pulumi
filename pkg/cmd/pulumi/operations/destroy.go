@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -358,7 +359,7 @@ func NewDestroyCmd() *cobra.Command {
 					}
 				}
 			} else if destroyErr == context.Canceled {
-				return errors.New("destroy cancelled")
+				return backenderr.CancelledError{Operation: "destroy"}
 			}
 			return destroyErr
 		},
