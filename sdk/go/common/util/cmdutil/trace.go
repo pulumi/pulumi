@@ -24,6 +24,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -59,6 +60,9 @@ var TracingToFile bool
 var TracingRootSpan opentracing.Span
 
 var traceCloser io.Closer
+
+// otelMu protects otelEndpoint, otelReceiver, and otelTracerProvider from concurrent access.
+var otelMu sync.RWMutex
 
 // otelEndpoint is the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
 var otelEndpoint string
@@ -196,11 +200,15 @@ func CloseTracing() {
 
 // IsOTelEnabled returns true if OTEL is enabled via environment variable or endpoint is set.
 func IsOTelEnabled() bool {
+	otelMu.RLock()
+	defer otelMu.RUnlock()
 	return otelEndpoint != ""
 }
 
 // OTelEndpoint returns the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
 func OTelEndpoint() string {
+	otelMu.RLock()
+	defer otelMu.RUnlock()
 	return otelEndpoint
 }
 
@@ -215,18 +223,24 @@ func InitOtelReceiver(endpoint string) error {
 		return fmt.Errorf("failed to create OTLP exporter: %w", err)
 	}
 
-	otelReceiver, err = otelreceiver.Start(exporter)
+	receiver, err := otelreceiver.Start(exporter)
 	if err != nil {
 		_ = exporter.Shutdown(context.Background())
 		return fmt.Errorf("failed to start OTLP receiver: %w", err)
 	}
 
-	otelEndpoint = otelReceiver.Endpoint()
-	logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", otelEndpoint, endpoint)
+	ep := receiver.Endpoint()
+
+	otelMu.Lock()
+	otelReceiver = receiver
+	otelEndpoint = ep
+	otelMu.Unlock()
+
+	logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", ep, endpoint)
 
 	// Set up Otel TracerProvider for CLI's own spans
 	// The CLI sends its spans to the local receiver, which forwards to the configured exporter
-	if err := InitOtelTracing("pulumi-cli", otelEndpoint); err != nil {
+	if err := InitOtelTracing("pulumi-cli", ep); err != nil {
 		logging.V(3).Infof("failed to initialize OTel tracer provider: %v", err)
 	}
 
@@ -257,12 +271,16 @@ func InitOtelTracing(serviceName, endpoint string) error {
 		semconv.ServiceName(serviceName),
 	)
 
-	otelTracerProvider = sdktrace.NewTracerProvider(
+	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithResource(res),
 	)
 
-	otel.SetTracerProvider(otelTracerProvider)
+	otelMu.Lock()
+	otelTracerProvider = tp
+	otelMu.Unlock()
+
+	otel.SetTracerProvider(tp)
 
 	// Set up W3C Trace Context propagator for context propagation across process boundaries
 	otel.SetTextMapPropagator(propagation.TraceContext{})
@@ -274,21 +292,25 @@ func CloseOtelTracing() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if otelTracerProvider != nil {
-		if err := otelTracerProvider.Shutdown(ctx); err != nil {
+	otelMu.Lock()
+	tp := otelTracerProvider
+	otelTracerProvider = nil
+	recv := otelReceiver
+	otelReceiver = nil
+	otelEndpoint = ""
+	otelMu.Unlock()
+
+	if tp != nil {
+		if err := tp.Shutdown(ctx); err != nil {
 			logging.V(3).Infof("error closing OTel tracer provider: %v", err)
 		}
-		otelTracerProvider = nil
 	}
 
-	if otelReceiver != nil {
-		if err := otelReceiver.Shutdown(ctx); err != nil {
+	if recv != nil {
+		if err := recv.Shutdown(ctx); err != nil {
 			logging.V(3).Infof("error closing OTLP receiver: %v", err)
 		}
-		otelReceiver = nil
 	}
-
-	otelEndpoint = ""
 }
 
 // StartSpan starts a new OTel span with a stack trace attribute.
