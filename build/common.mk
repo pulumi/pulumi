@@ -108,6 +108,10 @@ GO_TEST_SHUFFLE         ?= off  # -shuffle flag, randomizes order of tests withi
 GO_TEST_TAGS            ?= all
 GO_TEST_RACE            ?= true
 
+# google.golang.org/grpc has a build tag `grpcnotrace` which builds the package without x/net/trace. This avoids
+# dead code elimation from being disabled by the compiler, see https://github.com/pulumi/pulumi/pull/22012.
+GO_BUILD_TAGS           ?= grpcnotrace
+
 GO_TEST_FLAGS = -count=1 -cover -tags="${GO_TEST_TAGS}" -timeout 1h \
 	-parallel=${GO_TEST_PARALLELISM} \
 	-shuffle=${GO_TEST_SHUFFLE} \

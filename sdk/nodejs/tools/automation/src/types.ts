@@ -17,6 +17,9 @@ export interface Flag {
     /** The canonical flag name (for example, "stack"). */
     name: string;
 
+    /** True if this flag is required. */
+    required?: boolean;
+
     /** A primitive logical type: "string", "boolean", "int", etc. */
     type: string;
 
@@ -69,6 +72,9 @@ interface NodeBase {
 // A menu is a command that groups other commands.
 export interface Menu extends NodeBase {
     type: "menu";
+
+    /** True if this menu can also be executed directly as a command. */
+    executable?: boolean;
 
     /** Subcommands in this menu. */
     commands?: Record<string, Structure>;

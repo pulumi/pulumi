@@ -1022,11 +1022,16 @@ func (host *nodeLanguageHost) InstallDependencies(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	tracingSpan, ctx := opentracing.StartSpanFromContext(server.Context(), "npm-install")
+	tracingSpan, ctx := opentracing.StartSpanFromContext(server.Context(), "InstallDependencies")
 	defer tracingSpan.Finish()
 
 	tracer := otel.Tracer("pulumi-language-nodejs")
-	ctx, otelSpan := tracer.Start(ctx, "npm-install")
+	ctx, otelSpan := tracer.Start(ctx, "InstallDependencies",
+		trace.WithAttributes(append(programInfoAttributes(req.Info),
+			attribute.Bool("useLanguageVersionTools", req.UseLanguageVersionTools),
+			attribute.Bool("isPlugin", req.IsPlugin),
+		)...),
+	)
 	defer otelSpan.End()
 
 	if req.UseLanguageVersionTools {
@@ -1059,6 +1064,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 	if err != nil {
 		return fmt.Errorf("failed to parse options: %w", err)
 	}
+	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
 	_, err = npm.Install(ctx, opts.packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
 	if err != nil {
@@ -2241,4 +2247,21 @@ func getNodeJSPkgName(pkg *schema.Package) (string, error) {
 	}
 
 	return "@pulumi/" + pkg.Name, nil
+}
+
+func setOptionsAttributes(opts nodeOptions) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.Bool("nodeOptions.typeScript", opts.typescript),
+		attribute.String("nodeOptions.packageManager", string(opts.packagemanager)),
+		attribute.String("nodeOptions.tsConfigPath", opts.tsconfigpath),
+		attribute.String("nodeOptions.nodeArgs", opts.nodeargs),
+	}
+}
+
+func programInfoAttributes(info *pulumirpc.ProgramInfo) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.String("programInfo.entryPoint", info.EntryPoint),
+		attribute.String("programInfo.programDirectory", info.ProgramDirectory),
+		attribute.String("programInfo.rootDirectory", info.RootDirectory),
+	}
 }

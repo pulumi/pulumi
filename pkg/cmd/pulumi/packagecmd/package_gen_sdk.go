@@ -96,7 +96,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					diags, err := packages.GenSDK(lang, out, pkg, overlays, local)
+					diags, err := packages.GenSDK(cmd.Context(), lang, out, pkg, overlays, local)
 					cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 					if err != nil {
 						return err
@@ -105,7 +105,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				fmt.Fprintf(os.Stderr, "SDKs have been written to %s\n", out)
 				return nil
 			}
-			diags, err := packages.GenSDK(language, out, pkg, overlays, local)
+			diags, err := packages.GenSDK(cmd.Context(), language, out, pkg, overlays, local)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				return err

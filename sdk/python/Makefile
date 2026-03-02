@@ -41,6 +41,7 @@ build_plugin: ../../bin/pulumi-language-python  \
 ../../bin/pulumi-language-python: $(shell build/helpmakego cmd/pulumi-language-python)
 	go build -C cmd/pulumi-language-python \
 		-o ../../$@ \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		${LANGHOST_PKG}
 
@@ -67,6 +68,7 @@ install_package:: build_package
 
 install_plugin:: build_plugin
 	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-python \
+		  -tags="${GO_BUILD_TAGS}" \
 		  -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
@@ -96,6 +98,7 @@ PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::
 	go install -C cmd/pulumi-language-python \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "${GOBIN}"
 	cp ./dist/pulumi-resource-pulumi-python "${GOBIN}"
@@ -103,6 +106,7 @@ dist::
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -C cmd/pulumi-language-python \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/

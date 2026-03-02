@@ -55,6 +55,7 @@ build_plugin: ../../bin/pulumi-language-nodejs
 ../../bin/pulumi-language-nodejs:
 	go build -C cmd/pulumi-language-nodejs \
 	-o ../../$@ \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		${LANGHOST_PKG}
 
@@ -65,6 +66,7 @@ install_package:: build
 
 install_plugin:: build
 	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-nodejs \
+	   -tags="${GO_BUILD_TAGS}" \
 	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
@@ -131,12 +133,14 @@ test_watch::
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::
 	go install -C cmd/pulumi-language-nodejs \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "${GOBIN}"
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -C cmd/pulumi-language-nodejs \
+	   -tags="${GO_BUILD_TAGS}" \
 	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 
