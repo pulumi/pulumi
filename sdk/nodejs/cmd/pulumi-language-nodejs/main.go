@@ -117,6 +117,9 @@ func main() {
 	var tracing string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
+	var runtimeName string
+	flag.StringVar(&runtimeName, "runtime", "nodejs",
+		"Specify the runtime to use for running TypeScript programs, defaults to `nodejs`")
 	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 	flag.Parse()
 
@@ -141,6 +144,10 @@ func main() {
 		engineAddress = args[0]
 	}
 
+	if runtimeName != "nodejs" && runtimeName != "bun" {
+		cmdutil.Exit(fmt.Errorf("unsupported runtime: %s", runtimeName))
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	// map the context Done channel to the rpcutil boolean cancel channel
 	cancelChannel := make(chan bool)
@@ -161,7 +168,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing, otelEndpoint, false /* forceTsc */)
+			host := newLanguageHost(engineAddress, runtimeName, tracing, otelEndpoint, false /* forceTsc */)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -239,6 +246,7 @@ type nodeLanguageHost struct {
 	pulumirpc.UnsafeLanguageRuntimeServer
 
 	engineAddress string
+	runtime       string
 	tracing       string
 	otelEndpoint  string
 
@@ -258,7 +266,7 @@ type nodeOptions struct {
 	packagemanager npm.PackageManagerType
 }
 
-func parseOptions(options map[string]any) (nodeOptions, error) {
+func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 	// typescript defaults to true
 	nodeOptions := nodeOptions{
 		typescript: true,
@@ -311,17 +319,41 @@ func parseOptions(options map[string]any) (nodeOptions, error) {
 		nodeOptions.packagemanager = npm.AutoPackageManager
 	}
 
+	if runtime == "bun" {
+		// Bun handles TypeScript natively; ts-node is not used, so PULUMI_NODEJS_TYPESCRIPT must not be set.
+		if nodeOptions.typescript {
+			logging.V(6).Info("bun runtime: ignoring 'typescript' option (bun handles TypeScript natively)")
+		}
+		nodeOptions.typescript = false
+		// Bun resolves tsconfig itself; PULUMI_NODEJS_TSCONFIG_PATH must not be set.
+		if nodeOptions.tsconfigpath != "" {
+			logging.V(6).Infof("bun runtime: ignoring 'tsconfig' option %q (bun resolves tsconfig itself)",
+				nodeOptions.tsconfigpath)
+		}
+		nodeOptions.tsconfigpath = ""
+		if nodeOptions.nodeargs != "" {
+			logging.V(6).Infof("bun runtime: ignoring 'nodeargs' option %q (not supported for bun)",
+				nodeOptions.nodeargs)
+		}
+		nodeOptions.nodeargs = ""
+		if nodeOptions.packagemanager != npm.BunPackageManager {
+			logging.V(6).Info("bun runtime: ignoring 'packagemanager' option (bun always uses bun as package manager)")
+		}
+		nodeOptions.packagemanager = npm.BunPackageManager
+	}
+
 	return nodeOptions, nil
 }
 
 func newLanguageHost(
-	engineAddress, tracing, otelEndpoint string, forceTsc bool,
+	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		otelEndpoint:  otelEndpoint,
 		forceTsc:      forceTsc,
+		runtime:       runtime,
 	}
 }
 
@@ -715,9 +747,15 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 	defer pipes.shutdown()
 
-	nodeBin, err := exec.LookPath("node")
+	runtimeExec := host.runtime
+	if runtimeExec == "nodejs" {
+		runtimeExec = "node"
+	}
+	runtimeBin, err := exec.LookPath(runtimeExec)
 	if err != nil {
-		return &pulumirpc.RunResponse{Error: "could not find node on the $PATH: " + err.Error()}, nil
+		return &pulumirpc.RunResponse{
+			Error: fmt.Sprintf("could not find %s on the $PATH: %s", runtimeExec, err.Error()),
+		}, nil
 	}
 
 	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
@@ -725,13 +763,13 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	// If we're forcing tsc the program directory for running is actually ./bin, we fixup EntryPoint here so execNodejs
+	// If we're forcing tsc the program directory for running is actually ./bin, we fixup EntryPoint here so execRuntime
 	// passes it to nodejs to run.
 	if host.forceTsc {
 		req.Info.EntryPoint = "bin"
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, false)
+	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, false)
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}, nil
 	}
@@ -742,8 +780,8 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	// now, launch the nodejs process and actually run the user code in it.
 	go func() {
 		defer close(responseChannel)
-		responseChannel <- host.execNodejs(
-			ctx, req, engineClient, nodeBin, runPath,
+		responseChannel <- host.execRuntime(
+			ctx, req, engineClient, runtimeBin, runPath,
 			fmt.Sprintf("127.0.0.1:%d", handle.Port), pipes.directory())
 	}()
 
@@ -766,12 +804,12 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 }
 
-// Launch the nodejs process and wait for it to complete.  Report success or any errors using the
+// Launch the runtime process and wait for it to complete.  Report success or any errors using the
 // `responseChannel` arg.
-func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.RunRequest,
-	engineClient pulumirpc.EngineClient, nodeBin, runPath, address, pipesDirectory string,
+func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.RunRequest,
+	engineClient pulumirpc.EngineClient, runtimeBin, runPath, address, pipesDirectory string,
 ) *pulumirpc.RunResponse {
-	// Actually launch nodejs and process the result of it into an appropriate response object.
+	// Actually launch nodejs or bun and process the result of it into an appropriate response object.
 	args := host.constructArguments(req, runPath, address, pipesDirectory)
 	config, err := host.constructConfig(req)
 	if err != nil {
@@ -788,7 +826,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	env = append(env, pulumiConfigVar+"="+config)
 	env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 
-	opts, err := parseOptions(req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
@@ -800,10 +838,15 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+opts.tsconfigpath)
 	}
 
-	nodeargs, err := shlex.Split(opts.nodeargs)
+	var runtimeArgs []string
+	runtimeArgs, err = shlex.Split(opts.nodeargs)
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
+	if host.runtime == "bun" {
+		runtimeArgs = append([]string{"run"}, runtimeArgs...)
+	}
+
 	var port int
 	if req.GetAttachDebugger() {
 		var debugArgs []string
@@ -811,28 +854,29 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		if err != nil {
 			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
-		nodeargs = append(nodeargs, debugArgs...)
+		runtimeArgs = append(runtimeArgs, debugArgs...)
 	}
-	nodeargs = append(nodeargs, args...)
+
+	runtimeArgs = append(runtimeArgs, args...)
 
 	if logging.V(5) {
-		commandStr := strings.Join(nodeargs, " ")
-		logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
+		commandStr := strings.Join(runtimeArgs, " ")
+		logging.V(5).Infoln("Language host launching process: ", runtimeBin, commandStr)
 	}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
-		"execNodejs",
+		"execRuntime",
 		opentracing.Tag{Key: "component", Value: "exec.Command"},
-		opentracing.Tag{Key: "command", Value: nodeBin},
-		opentracing.Tag{Key: "args", Value: nodeargs})
+		opentracing.Tag{Key: "command", Value: runtimeBin},
+		opentracing.Tag{Key: "args", Value: runtimeArgs})
 	defer tracingSpan.Finish()
 
 	tracer := otel.Tracer("pulumi-language-nodejs")
-	ctx, otelSpan := tracer.Start(ctx, "execNodejs",
+	ctx, otelSpan := tracer.Start(ctx, "execRuntime",
 		trace.WithAttributes(
 			attribute.String("component", "exec.Command"),
-			attribute.String("command", nodeBin),
-			attribute.StringSlice("args", nodeargs),
+			attribute.String("command", runtimeBin),
+			attribute.StringSlice("args", runtimeArgs),
 		))
 	defer otelSpan.End()
 
@@ -849,7 +893,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
 	// #nosec G204
-	cmd := exec.CommandContext(ctx, nodeBin, nodeargs...)
+	cmd := exec.CommandContext(ctx, runtimeBin, runtimeArgs...)
 
 	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
 
@@ -1060,7 +1104,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 		workspaceRoot = newWorkspaceRoot
 	}
 
-	opts, err := parseOptions(req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
 	if err != nil {
 		return fmt.Errorf("failed to parse options: %w", err)
 	}
@@ -1181,19 +1225,22 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	req *pulumirpc.RuntimeOptionsRequest,
 ) (*pulumirpc.RuntimeOptionsResponse, error) {
 	var prompts []*pulumirpc.RuntimeOptionPrompt
-	rawOpts := req.Info.Options.AsMap()
 
-	if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
-		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
-			Key:         "packagemanager",
-			Description: "The package manager to use for installing dependencies",
-			PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-			Choices:     plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun"),
-			Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+	// When using bun the package manager is always bun; no prompt is needed.
+	if host.runtime != "bun" {
+		rawOpts := req.Info.Options.AsMap()
+		if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
+			prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
+				Key:         "packagemanager",
+				Description: "The package manager to use for installing dependencies",
 				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-				StringValue: "npm",
-			},
-		})
+				Choices:     plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun"),
+				Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+					PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+					StringValue: "npm",
+				},
+			})
+		}
 	}
 
 	return &pulumirpc.RuntimeOptionsResponse{
@@ -1210,7 +1257,7 @@ func (host *nodeLanguageHost) Template(ctx context.Context,
 func (host *nodeLanguageHost) About(ctx context.Context,
 	req *pulumirpc.AboutRequest,
 ) (*pulumirpc.AboutResponse, error) {
-	opts, err := parseOptions(req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse options: %w", err)
 	}
@@ -1385,7 +1432,7 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	opts, err := parseOptions(req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
 	if err != nil {
 		return err
 	}
@@ -1571,7 +1618,8 @@ func (host *nodeLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies, host.forceTsc)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies, host.forceTsc,
+		host.runtime)
 	if err != nil {
 		return nil, err
 	}
@@ -1630,7 +1678,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 		return nil, errors.New("internal error program was nil")
 	}
 
-	files, diags, err := codegen.GenerateProgram(program)
+	files, diags, err := codegen.GenerateProgramWithOptions(program, codegen.ProgramOptions{Runtime: host.runtime})
 	if err != nil {
 		return nil, err
 	}
@@ -1927,7 +1975,7 @@ func (host *nodeLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
 	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
-	opts, err := parseOptions(req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
 	if err != nil {
 		return nil, err
 	}
