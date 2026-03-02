@@ -116,6 +116,10 @@ jobs:
     timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
+      - name: Collect Workflow Telemetry
+        uses: catchpoint/workflow-telemetry-action@v2
+        with:
+          comment_on_pr: false
       - if: contains(inputs.platform, 'ubuntu')
         name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
