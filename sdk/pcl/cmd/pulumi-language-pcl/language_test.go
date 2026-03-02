@@ -94,7 +94,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-resource-option-env-var-mappings":    "TODO",
 	"l2-provider-grpc-config-schema-secret":  "TODO",
 	"l2-resource-option-replacement-trigger": "TODO",
 	"l2-provider-call-explicit":              "TODO",

@@ -683,6 +683,25 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 				request.Dependencies = append(request.Dependencies, dependsOnUrns...)
 			}
 		}
+		if res.Options.EnvVarMappings != nil {
+			envVars, diags := i.evalExpression(res.Options.EnvVarMappings)
+			if diags.HasErrors() {
+				return diags
+			}
+			if !envVars.IsNull() && !envVars.IsComputed() {
+				if !envVars.IsObject() {
+					return errors.New("envVarMappings must be an object mapping environment variable names to input property keys")
+				}
+				envVarMappings := map[string]string{}
+				for envVar, propKey := range envVars.ObjectValue() {
+					if propKey.IsNull() || propKey.IsComputed() || !propKey.IsString() {
+						return errors.New("envVarMappings must be an object mapping environment variable names to input property keys")
+					}
+					envVarMappings[string(envVar)] = propKey.StringValue()
+				}
+				request.EnvVarMappings = envVarMappings
+			}
+		}
 		if res.Options.ImportID != nil {
 			importID, diags := i.evalExpression(res.Options.ImportID)
 			if diags.HasErrors() {
