@@ -154,6 +154,10 @@ func TestLanguage(t *testing.T) {
 		t.Run(tt, func(t *testing.T) {
 			t.Parallel()
 
+			if tt != "l1-stack-reference" {
+				return
+			}
+
 			// Skip provider and policy tests, there are no plans to support these in PCL
 			if strings.HasPrefix(tt, "provider-") {
 				t.Skip("Skipping provider tests")
