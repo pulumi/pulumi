@@ -11,7 +11,9 @@
         "noImplicitReturns": true,
         "forceConsistentCasingInFileNames": true,
         "esModuleInterop": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "types": ["node"],
+        "typeRoots": ["../node_modules/@types"]
     },
-    "include": ["src/**/*.ts"]
+    "include": ["src/**/*.ts", "tests/**/*.ts"]
 }
