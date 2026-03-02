@@ -45,6 +45,7 @@ require (
 	github.com/go-test/deep v1.1.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.22.0
+	github.com/iancoleman/strcase v0.2.0
 	github.com/iwdgo/sigintwindows v0.2.2
 	github.com/klauspost/compress v1.18.0
 	github.com/pgavlin/fx v0.1.6
@@ -85,7 +86,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.7 // indirect
 	github.com/hashicorp/go-version v1.8.0 // indirect
-	github.com/iancoleman/strcase v0.2.0 // indirect
 	github.com/iwahbe/helpmakego v0.4.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
