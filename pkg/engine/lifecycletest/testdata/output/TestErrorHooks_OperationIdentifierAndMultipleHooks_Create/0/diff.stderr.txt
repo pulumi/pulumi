@@ -1,1 +1,1 @@
-<{%reset%}>retrying create due to on-error hook request (1/100)<{%reset%}>
+<{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying create due to on-error hook request (1/100)<{%reset%}>

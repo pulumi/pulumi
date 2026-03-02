@@ -713,6 +713,42 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 		err = os.WriteFile(filepath.Join(path, "progress.stderr.txt"), stderr.Bytes(), 0o600)
 		require.NoError(t, err)
 	}
+
+	// ShowDiffEvents with --urns to capture URN display snapshots.
+	var expectedUrnsStdout []byte
+	if !accept {
+		var err error
+		expectedUrnsStdout, err = os.ReadFile(filepath.Join(path, "diff-urns.stdout.txt"))
+		require.NoError(t, err)
+	}
+
+	eventChannel, doneChannel = make(chan engine.Event), make(chan bool)
+	stdout.Reset()
+	stderr.Reset()
+
+	go bdisplay.ShowDiffEvents("test", eventChannel, doneChannel, bdisplay.Options{
+		Color:                colors.Raw,
+		ShowSameResources:    true,
+		ShowReplacementSteps: true,
+		ShowReads:            true,
+		ShowURNs:             true,
+		Stdout:               &stdout,
+		Stderr:               &stderr,
+		DeterministicOutput:  true,
+		ShowLinkToNeo:        false,
+	})
+
+	for _, e := range expectedEvents {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	if !accept {
+		assert.Equal(t, string(expectedUrnsStdout), stdout.String())
+	} else {
+		err := os.WriteFile(filepath.Join(path, "diff-urns.stdout.txt"), stdout.Bytes(), 0o600)
+		require.NoError(t, err)
+	}
 }
 
 type TestStep struct {

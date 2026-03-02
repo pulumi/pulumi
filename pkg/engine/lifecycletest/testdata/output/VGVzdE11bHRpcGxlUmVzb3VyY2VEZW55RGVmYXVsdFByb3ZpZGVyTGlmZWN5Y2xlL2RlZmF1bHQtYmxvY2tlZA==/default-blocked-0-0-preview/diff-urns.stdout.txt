@@ -1,0 +1,4 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgB::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgB:m:typB::resB: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>

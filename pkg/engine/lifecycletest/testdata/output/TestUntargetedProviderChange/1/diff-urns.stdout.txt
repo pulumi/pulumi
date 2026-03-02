@@ -1,0 +1,13 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:pulumi:Stack::test: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pkgA:index:typA::target: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 2%}>  + foo: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgB::default: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

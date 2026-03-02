@@ -1,0 +1,8 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:index:parent::parent: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    <{%reset%}>  urn:pulumi:test::test::pkgA:index:parent$pkgA:index:child2::childnew: (same)
+<{%reset%}>        [id=4]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged

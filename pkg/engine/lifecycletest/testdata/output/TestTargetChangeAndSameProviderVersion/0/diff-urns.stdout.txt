@@ -1,0 +1,13 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:pulumi:Stack::test: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:typA::target: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0: (create)
+<{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.0.0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgB:index:typA::unrelated1: (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::4]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgB:index:typA::unrelated2: (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgB::default_1_0_0::4]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

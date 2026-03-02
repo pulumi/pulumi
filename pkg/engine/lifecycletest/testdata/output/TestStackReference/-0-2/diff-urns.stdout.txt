@@ -1,0 +1,7 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pulumi::default: (create)
+<{%reset%}><{%fg 14%}>> urn:pulumi:test::test::pulumi:pulumi:StackReference::other: (read)
+<{%fg 14%}>    name: <{%reset%}><{%fg 14%}>"rehto"<{%reset%}><{%fg 14%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>1 errored<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

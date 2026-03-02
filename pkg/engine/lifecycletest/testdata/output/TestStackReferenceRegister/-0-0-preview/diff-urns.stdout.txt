@@ -1,0 +1,5 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pulumi::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:pulumi:StackReference::other: (create)
+<{%fg 2%}>    name: <{%reset%}><{%fg 2%}>"other"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>

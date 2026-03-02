@@ -1,0 +1,25 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:pulumi:Stack::test-test: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgB::prov3: (create)
+<{%fg 2%}>        bang: <{%reset%}><{%fg 2%}>"3"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        bar : <{%reset%}><{%fg 2%}>""<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgB::prov2: (create)
+<{%fg 2%}>        bang: <{%reset%}><{%fg 2%}>""<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        bar : <{%reset%}><{%fg 2%}>"2"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::prov1: (create)
+<{%fg 2%}>        foo: <{%reset%}><{%fg 2%}>"1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::resA: (create)
+<{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::prov1::4]
+<{%reset%}><{%reset%}>    <{%fg 14%}>> urn:pulumi:test::test::pkgA:m:typA::readResA: (read)
+<{%reset%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::prov1::4]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA$pkgB:m:typB::resBChild: (create)
+<{%fg 2%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov2::3]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA$pkgB:m:typB::resBChildOverride: (create)
+<{%fg 2%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov3::2]
+<{%reset%}><{%reset%}>        <{%fg 14%}>> urn:pulumi:test::test::pkgA:m:typA$pkgB:m:typB::readResBChild: (read)
+<{%reset%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov2::3]
+<{%reset%}><{%reset%}>        <{%fg 14%}>> urn:pulumi:test::test::pkgA:m:typA$pkgB:m:typB::readResBChildOverride: (read)
+<{%reset%}>            [provider=urn:pulumi:test::test::pulumi:providers:pkgB::prov3::2]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 7 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -1,0 +1,16 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:index:typ::resB: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:index:typ::resA: (delete-replaced)
+<{%fg 9%}>    [id=3]
+<{%reset%}><{%fg 9%}>    A: <{%reset%}><{%fg 9%}>"foo"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:index:typ::resA: (replace)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ A: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>foo<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>bar<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:index:typ::resA: (create-replacement)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ A: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>foo<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>bar<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 to replace<{%reset%}>
+    1 unchanged

@@ -63,6 +63,9 @@ pkg/engine/lifecycletest/testdata/rapid/
 # Turning on MyPy in VSCode creates this workspace local folder
 .mypy_cache
 
+# Compiled binary
+pkg/pulumi
+
 # for goreleaser
 **/*.exe
 goreleaser

@@ -1,0 +1,5 @@
+<{%fg 1%}>- urn:pulumi:test::test::pulumi:providers:pkgA::default: (delete)
+<{%fg 1%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

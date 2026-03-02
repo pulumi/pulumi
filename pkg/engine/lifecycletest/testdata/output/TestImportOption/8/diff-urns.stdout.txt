@@ -1,0 +1,21 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 13%}>=>urn:pulumi:test::test::pkgA:m:typA::resA: (import-replacement)
+<{%fg 13%}>    foo: <{%reset%}><{%fg 13%}>"bar"<{%reset%}><{%fg 13%}>
+<{%reset%}><{%reset%}><{%fg 13%}>    --outputs:--<{%reset%}>
+<{%fg 13%}>    out: <{%reset%}><{%fg 13%}>41<{%reset%}><{%fg 13%}>
+<{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::resA: (replace)
+<{%reset%}>    [id=4]
+<{%reset%}><{%reset%}>    foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 2%}>  + out: <{%reset%}><{%fg 2%}>41<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}>    --outputs:--<{%reset%}>
+<{%fg 2%}>  + out: <{%reset%}><{%fg 2%}>41<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:m:typA::resA: (delete-replaced)
+<{%fg 9%}>    [id=4]
+<{%reset%}><{%fg 9%}>    foo: <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 9%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 replaced<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

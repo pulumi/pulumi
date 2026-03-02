@@ -1,13 +1,13 @@
-<{%fg 1%}>- pkgExt:m:typA: (delete)
-<{%fg 1%}>    [id=1]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
-<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::2]
-<{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
+<{%fg 1%}>- pkgA:m:typA: (delete)
 <{%fg 1%}>    [id=1]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com::3]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com::2]
+<{%reset%}><{%reset%}><{%fg 1%}>- pkgExt:m:typA: (delete)
+<{%fg 1%}>    [id=1]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::3]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgExt: (delete)
-<{%fg 1%}>    [id=2]
+<{%fg 1%}>    [id=3]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
 <{%reset%}><{%fg 1%}>    name      : <{%reset%}><{%fg 1%}>"testingExt"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>    version   : <{%reset%}><{%fg 1%}>"0.5.0"<{%reset%}><{%fg 1%}>
@@ -15,7 +15,7 @@
 <{%fg 1%}>  - name   : <{%reset%}><{%fg 1%}>"testingExt"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>  - version: <{%reset%}><{%fg 1%}>"0.5.0"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=3]
+<{%fg 1%}>    [id=2]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com]
 <{%reset%}><{%fg 1%}>    name      : <{%reset%}><{%fg 1%}>"testingBase"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>    version   : <{%reset%}><{%fg 1%}>"1.0.0"<{%reset%}><{%fg 1%}>

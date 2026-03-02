@@ -101,7 +101,11 @@ func (data *headerRowData) ColorizedColumns() []string {
 		} else {
 			statusColumn = header("Status")
 		}
-		data.columns = []string{"", header("Type"), header("Name"), statusColumn, header("Info")}
+		if data.display.opts.ShowURNs {
+			data.columns = []string{"", header("URN"), statusColumn, header("Info")}
+		} else {
+			data.columns = []string{"", header("Type"), header("Name"), statusColumn, header("Info")}
+		}
 	}
 
 	return data.columns
@@ -308,20 +312,27 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
-	name := escapeURN(urn.Name())
-	typ := urn.Type().DisplayName()
-
 	done := data.IsDone()
+
+	diagInfo := data.diagInfo
+	failed := data.failed || diagInfo.ErrorCount > 0
+
+	if data.display.opts.ShowURNs {
+		// When showing URNs, collapse Type and Name into a single URN column.
+		// The URN already contains the type, so showing both would be redundant.
+		// Name column is dropped so Status and Info each shift left by one.
+		columns := make([]string, 4)
+		columns[opColumn] = data.display.getStepOpLabel(step, done)
+		columns[typeColumn] = escapeURN(string(urn))
+		columns[statusColumn-1] = data.display.getStepStatus(step, done, failed)
+		columns[infoColumn-1] = data.getInfoColumn()
+		return columns
+	}
 
 	columns := make([]string, 5)
 	columns[opColumn] = data.display.getStepOpLabel(step, done)
-	columns[typeColumn] = typ
-	columns[nameColumn] = name
-
-	diagInfo := data.diagInfo
-
-	failed := data.failed || diagInfo.ErrorCount > 0
-
+	columns[typeColumn] = urn.Type().DisplayName()
+	columns[nameColumn] = escapeURN(urn.Name())
 	columns[statusColumn] = data.display.getStepStatus(step, done, failed)
 	columns[infoColumn] = data.getInfoColumn()
 	return columns

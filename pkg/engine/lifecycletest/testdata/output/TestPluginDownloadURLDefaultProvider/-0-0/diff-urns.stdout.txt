@@ -1,0 +1,7 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default_get.pulumi.com: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA::Foo::foo: (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_get.pulumi.com::2]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

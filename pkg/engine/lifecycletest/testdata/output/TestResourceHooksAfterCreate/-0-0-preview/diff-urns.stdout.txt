@@ -1,0 +1,6 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::resA: (create)
+<{%fg 2%}>    a: <{%reset%}><{%fg 2%}>"A"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    c: <{%reset%}><{%fg 2%}>"C"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>

@@ -1,1 +1,1 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: properties changed: ++name[{resAf35d5ca0}!={resA9d338075}]<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: properties changed: ++name[{resA32f0a8c8}!={resA3945231b}]<{%reset%}>

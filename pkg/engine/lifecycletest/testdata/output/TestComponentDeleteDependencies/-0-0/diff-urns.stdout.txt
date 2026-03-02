@@ -1,0 +1,11 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgB::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgB:m:first::first: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pkgB:m:first$nested::nested: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}>        <{%fg 2%}>+ urn:pulumi:test::test::pkgB:m:first$nested$pkgA:m:sg::sg: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgB:m:second::second: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pkgB:m:second$pkgA:m:rule::rule: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 5 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
