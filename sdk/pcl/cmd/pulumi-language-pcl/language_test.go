@@ -100,7 +100,6 @@ var expectedFailures = map[string]string{
 	"l2-explicit-provider":                   "TODO",
 	"l2-namespaced-provider":                 "TODO",
 	"l2-explicit-providers":                  "TODO",
-	"l2-provider-grpc-config":                "TODO",
 	"l2-provider-grpc-config-secret":         "TODO",
 	"l2-resource-option-custom-timeouts":     "TODO",
 	"l2-component-component-resource-ref":    "TODO",
