@@ -18,6 +18,10 @@ Runtime settings and configuration.
 
 from __future__ import annotations
 
+# IMPORTANT: Import _instrumentation BEFORE grpc to enable OTel instrumentation.
+# The instrumentation works by monkey-patching grpc, which must happen before it's loaded.
+from ._instrumentation import wrap_with_context  # noqa: F401 - also imported for side effects
+
 import asyncio
 import os
 import threading
@@ -432,7 +436,9 @@ async def _monitor_supports_feature(
                 handle_grpc_error(exn)
             return False
 
-    return await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+    return await asyncio.get_event_loop().run_in_executor(
+        None, wrap_with_context(do_rpc_call)
+    )
 
 
 async def _load_monitor_feature_support():

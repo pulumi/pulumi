@@ -26,6 +26,8 @@ from collections.abc import Callable
 from collections.abc import Awaitable, Mapping, Sequence
 
 import grpc
+
+from ._instrumentation import wrap_with_context
 from google.protobuf import struct_pb2
 
 from .. import _types, log
@@ -597,7 +599,9 @@ def get_resource(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, wrap_with_context(do_invoke)
+            )
 
             # If the invoke failed, raise an error.
             if resp.failures:
@@ -878,7 +882,9 @@ def read_resource(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, wrap_with_context(do_rpc_call)
+            )
 
         except Exception as exn:
             log.debug(
@@ -1167,7 +1173,9 @@ def register_resource(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, wrap_with_context(do_rpc_call)
+            )
         except Exception as exn:
             log.debug(
                 f"exception when preparing or executing rpc for {ty=} {name=}: {traceback.format_exc()}"
@@ -1271,7 +1279,9 @@ def register_resource_outputs(
             except grpc.RpcError as exn:
                 handle_grpc_error(exn)
 
-        await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+        await asyncio.get_event_loop().run_in_executor(
+            None, wrap_with_context(do_rpc_call)
+        )
         log.debug(
             f"resource registration successful: urn={urn}, props={serialized_props}"
         )

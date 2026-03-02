@@ -31,6 +31,11 @@ dependencies = [
     'debugpy~=1.8.7',
     'pip>=24.3.1',
     "packaging>=26.0",
+    # OpenTelemetry dependencies for tracing
+    'opentelemetry-api>=1.20.0',
+    'opentelemetry-sdk>=1.20.0',
+    'opentelemetry-exporter-otlp-proto-grpc>=1.20.0',
+    'opentelemetry-instrumentation-grpc>=0.41b0',
 ]
 
 [dependency-groups]
@@ -139,6 +144,7 @@ module = [
     "grpc.experimental.aio",
     "google.protobuf.pyext",
     "pulumi.runtime.proto.*",
+    "opentelemetry.*",
 ]
 ignore_missing_imports = true
 
