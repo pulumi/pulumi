@@ -1745,7 +1745,7 @@ func (b *cloudBackend) runEngineAction(
 		// we can send a newer version than 1, and switch out the API completely on the server side, while the client
 		// will continue working with the non-journaling snapshotter. This will be slower but won't be a breaking change
 		// for older clients.
-		if journalVersion == 1 && env.EnableJournaling.Value() {
+		if journalVersion == 1 && !env.DisableJournaling.Value() {
 			snapshotJournaler := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
 			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
 			if err != nil {

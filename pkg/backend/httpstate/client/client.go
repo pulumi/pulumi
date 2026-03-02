@@ -899,7 +899,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 		Tags: tags,
 	}
 
-	if env.EnableJournaling.Value() {
+	if !env.DisableJournaling.Value() {
 		req.JournalVersion = 1
 	}
 
