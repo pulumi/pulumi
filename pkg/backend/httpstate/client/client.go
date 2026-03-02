@@ -34,6 +34,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
@@ -43,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -759,6 +761,10 @@ func (pc *Client) ExportStackDeployment(
 ) (apitype.UntypedDeployment, error) {
 	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "ExportStackDeployment")
 	defer tracingSpan.Finish()
+
+	tracer := otel.Tracer("pulumi-cli")
+	childCtx, otelSpan := cmdutil.StartSpan(childCtx, tracer, "ExportStackDeployment")
+	defer otelSpan.End()
 
 	path := getStackPath(stack, "export")
 
