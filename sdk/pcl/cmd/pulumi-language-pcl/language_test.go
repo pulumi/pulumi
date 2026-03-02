@@ -94,7 +94,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-component-property-dep":              "TODO",
+	"l2-invoke-dependencies":                 "TODO",
 	"l2-component-call-simple":               "TODO",
 	"l2-resource-option-env-var-mappings":    "TODO",
 	"l2-provider-grpc-config-schema-secret":  "TODO",
@@ -153,10 +153,6 @@ func TestLanguage(t *testing.T) {
 	for _, tt := range tests.Tests {
 		t.Run(tt, func(t *testing.T) {
 			t.Parallel()
-
-			if tt != "l1-stack-reference" {
-				return
-			}
 
 			// Skip provider and policy tests, there are no plans to support these in PCL
 			if strings.HasPrefix(tt, "provider-") {

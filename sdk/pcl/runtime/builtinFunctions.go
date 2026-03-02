@@ -140,8 +140,9 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 	getOutputFn := function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
-				Name: "stackReference",
-				Type: cty.DynamicPseudoType,
+				Name:        "stackReference",
+				Type:        cty.DynamicPseudoType,
+				AllowMarked: true,
 			},
 			{
 				Name: "outputName",
@@ -158,6 +159,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.DynamicVal, nil
 			}
+			stackRefPV = unwrap(stackRefPV)
 			if stackRefPV.IsNull() {
 				return cty.DynamicVal, nil
 			}
@@ -181,8 +183,9 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				Type: cty.String,
 			},
 			{
-				Name: "args",
-				Type: cty.DynamicPseudoType,
+				Name:        "args",
+				Type:        cty.DynamicPseudoType,
+				AllowMarked: true,
 			},
 		},
 		VarParam: &function.Parameter{
@@ -247,6 +250,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
+			argsPV = unwrap(argsPV)
 
 			marshalOpts := plugin.MarshalOptions{
 				KeepUnknowns:  true,
@@ -358,8 +362,9 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				Type: cty.String,
 			},
 			{
-				Name: "args",
-				Type: cty.DynamicPseudoType,
+				Name:        "args",
+				Type:        cty.DynamicPseudoType,
+				AllowMarked: true,
 			},
 		},
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
@@ -410,6 +415,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
+			argsPV = unwrap(argsPV)
 			argsPM := argsPV.ObjectValue()
 
 			urnVal, ok := self["urn"]
