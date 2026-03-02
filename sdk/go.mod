@@ -85,6 +85,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.7 // indirect
 	github.com/hashicorp/go-version v1.8.0 // indirect
+	github.com/iancoleman/strcase v0.2.0 // indirect
 	github.com/iwahbe/helpmakego v0.4.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
