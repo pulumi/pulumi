@@ -100,10 +100,14 @@ func ShowEvents(
 		stampedEvents, done = startEventLogger(stampedEvents, done, opts)
 	}
 
-	// Need to filter the engine events here to exclude any internal events.
-	stampedEvents = channel.FilterRead(stampedEvents, func(e engine.StampedEvent) bool {
-		return !e.Internal()
-	})
+	// Filter internal events for non-JSON display modes only.
+	// JSON output should include internal events (e.g., default providers) so that
+	// programmatic consumers can access full provider version/parameterization info.
+	if !opts.JSONDisplay {
+		stampedEvents = channel.FilterRead(stampedEvents, func(e engine.StampedEvent) bool {
+			return !e.Internal()
+		})
+	}
 
 	streamPreview := env.EnableStreamingJSONPreview.Value()
 
