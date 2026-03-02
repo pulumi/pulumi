@@ -31,6 +31,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
+	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
 func (i *Interpreter) builtinFunctions() map[string]function.Function {
@@ -689,93 +690,6 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 	})
 
-	splitFn := function.New(&function.Spec{
-		Params: []function.Parameter{
-			{
-				Name: "separator",
-				Type: cty.String,
-			},
-			{
-				Name: "string",
-				Type: cty.String,
-			},
-		},
-		Type: function.StaticReturnType(cty.List(cty.String)),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			if len(args) != 2 {
-				return cty.NilVal, errors.New("split requires a separator and string argument")
-			}
-			if args[0].Type() != cty.String || args[1].Type() != cty.String {
-				return cty.NilVal, errors.New("split arguments must be strings")
-			}
-			sep := args[0].AsString()
-			str := args[1].AsString()
-			parts := strings.Split(str, sep)
-			ctyParts := make([]cty.Value, len(parts))
-			for i, part := range parts {
-				ctyParts[i] = cty.StringVal(part)
-			}
-			return cty.ListVal(ctyParts), nil
-		},
-	})
-
-	elementFn := function.New(&function.Spec{
-		Params: []function.Parameter{
-			{
-				Name: "list",
-				Type: cty.List(cty.DynamicPseudoType),
-			},
-			{
-				Name: "index",
-				Type: cty.Number,
-			},
-		},
-		Type: func(args []cty.Value) (cty.Type, error) {
-			return args[0].Index(args[1]).Type(), nil
-		},
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			if len(args) != 2 {
-				return cty.NilVal, errors.New("element requires a list and index argument")
-			}
-			return args[0].Index(args[1]), nil
-		},
-	})
-
-	joinFn := function.New(&function.Spec{
-		Params: []function.Parameter{
-			{
-				Name: "separator",
-				Type: cty.String,
-			},
-			{
-				Name: "strings",
-				Type: cty.List(cty.String),
-			},
-		},
-		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			parts := make([]string, 0, args[1].LengthInt())
-			for _, part := range args[1].AsValueSlice() {
-				parts = append(parts, part.AsString())
-			}
-			sep := args[0].AsString()
-			return cty.StringVal(strings.Join(parts, sep)), nil
-		},
-	})
-
-	lengthFn := function.New(&function.Spec{
-		Params: []function.Parameter{
-			{
-				Name: "list",
-				Type: cty.List(cty.DynamicPseudoType),
-			},
-		},
-		Type: function.StaticReturnType(cty.Number),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			return cty.NumberIntVal(int64(args[0].LengthInt())), nil
-		},
-	})
-
 	singleOrNoneFn := function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -828,50 +742,6 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				entries = append(entries, entry)
 			}
 			return cty.ListVal(entries), nil
-		},
-	})
-
-	lookupFn := function.New(&function.Spec{
-		Params: []function.Parameter{
-			{
-				Name: "collection",
-				Type: cty.DynamicPseudoType,
-			},
-			{
-				Name: "key",
-				Type: cty.String,
-			},
-			{
-				Name: "default",
-				Type: cty.DynamicPseudoType,
-			},
-		},
-		Type: func(args []cty.Value) (cty.Type, error) {
-			return args[2].Type(), nil
-		},
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			if len(args) != 3 {
-				return cty.NilVal, errors.New("lookup requires a collection, key, and default argument")
-			}
-			if args[1].Type() != cty.String {
-				return cty.NilVal, errors.New("lookup key argument must be a string")
-			}
-			collection := args[0]
-			key := args[1].AsString()
-			defaultVal := args[2]
-
-			if collection.Type().IsMapType() || collection.Type().IsObjectType() {
-				val := collection.AsValueMap()
-				if elem, ok := val[key]; ok {
-					return elem, nil
-				} else {
-					return defaultVal, nil
-				}
-			}
-
-			return cty.NilVal, fmt.Errorf(
-				"lookup collection argument must be a map or object, was %s",
-				collection.Type().FriendlyName())
 		},
 	})
 
@@ -941,13 +811,13 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		"__convert":          convertFn,
 		"pulumiResourceType": pulumiResourceTypeFn,
 		"pulumiResourceName": pulumiResourceNameFn,
-		"split":              splitFn,
-		"element":            elementFn,
-		"join":               joinFn,
-		"length":             lengthFn,
+		"split":              stdlib.SplitFunc,
+		"element":            stdlib.ElementFunc,
+		"join":               stdlib.JoinFunc,
+		"length":             stdlib.LengthFunc,
 		"singleOrNone":       singleOrNoneFn,
 		"entries":            entriesFn,
-		"lookup":             lookupFn,
+		"lookup":             stdlib.LookupFunc,
 		"toBase64":           toBase64Fn,
 		"fromBase64":         fromBase64Fn,
 	}
