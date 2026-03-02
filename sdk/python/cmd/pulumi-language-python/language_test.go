@@ -141,7 +141,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					if err != nil {
 						return err
 					}
-					host := newLanguageHost(pythonExec, engineAddress, "", config.typechecker, config.toolchain)
+					host := newLanguageHost(pythonExec, engineAddress, "", "", config.typechecker, config.toolchain)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
