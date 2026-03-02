@@ -34,7 +34,7 @@ import (
 )
 
 func (i *Interpreter) builtinFunctions() map[string]function.Function {
-	stringFn := func(value string) function.Function {
+	literalStringFn := func(value string) function.Function {
 		return function.New(&function.Spec{
 			Params: []function.Parameter{},
 			Type:   function.StaticReturnType(cty.String),
@@ -921,11 +921,11 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 	})
 
 	return map[string]function.Function{
-		"cwd":                stringFn(i.info.WorkingDir),
-		"rootDirectory":      stringFn(i.info.RootDirectory),
-		"project":            stringFn(i.info.Project),
-		"stack":              stringFn(i.info.Stack),
-		"organization":       stringFn(i.info.Organization),
+		"cwd":                literalStringFn(i.info.WorkingDir),
+		"rootDirectory":      literalStringFn(i.info.RootDirectory),
+		"project":            literalStringFn(i.info.Project),
+		"stack":              literalStringFn(i.info.Stack),
+		"organization":       literalStringFn(i.info.Organization),
 		"secret":             secretFn,
 		"unsecret":           unsecretFn,
 		"try":                tryFn,
