@@ -98,7 +98,6 @@ var expectedFailures = map[string]string{
 	"l2-resource-option-replacement-trigger": "TODO",
 	"l2-provider-call-explicit":              "TODO",
 	"l2-explicit-provider":                   "TODO",
-	"l2-resource-parent-inheritance":         "TODO",
 	"l2-namespaced-provider":                 "TODO",
 	"l2-explicit-providers":                  "TODO",
 	"l2-provider-grpc-config":                "TODO",
