@@ -1,5 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as component from "@pulumi/component";
 import * as replaceonchanges from "@pulumi/replaceonchanges";
+import * as simple from "@pulumi/simple";
 
 // Stage 0: Initial resource creation
 // Scenario 1: Schema-based replaceOnChanges on replaceProp
@@ -48,3 +50,9 @@ const multiplePropReplace = new replaceonchanges.ResourceA("multiplePropReplace"
         "replaceProp",
     ],
 });
+// Remote component with replaceOnChanges
+const remoteWithReplace = new component.ComponentCallable("remoteWithReplace", {value: "one"}, {
+    replaceOnChanges: ["value"],
+});
+// Keep a simple resource so all expected plugins are required.
+const simpleResource = new simple.Resource("simpleResource", {value: false});

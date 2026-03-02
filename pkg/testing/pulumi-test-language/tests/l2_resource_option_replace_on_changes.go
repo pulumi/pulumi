@@ -27,6 +27,8 @@ func init() {
 	LanguageTests["l2-resource-option-replace-on-changes"] = LanguageTest{
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.ReplaceOnChangesProvider{} },
+			func() plugin.Provider { return &providers.SimpleProvider{} },
+			func() plugin.Provider { return &providers.ComponentProvider{} },
 		},
 		Runs: []TestRun{
 			{
@@ -35,7 +37,8 @@ func init() {
 
 					RequireStackResource(l, res.Err, res.Changes)
 
-					require.Len(l, snap.Resources, 10, "expected 10 resources in snapshot")
+					// Stack, 3 providers, 8 custom resources, 1 remote component + child, and 1 simple resource.
+					require.Len(l, snap.Resources, 15, "expected 15 resources in snapshot")
 
 					RequireSingleNamedResource(l, snap.Resources, "schemaReplace")
 					RequireSingleNamedResource(l, snap.Resources, "optionReplace")
@@ -45,6 +48,8 @@ func init() {
 					RequireSingleNamedResource(l, snap.Resources, "noChange")
 					RequireSingleNamedResource(l, snap.Resources, "wrongPropChange")
 					RequireSingleNamedResource(l, snap.Resources, "multiplePropReplace")
+					RequireSingleNamedResource(l, snap.Resources, "remoteWithReplace")
+					RequireSingleNamedResource(l, snap.Resources, "simpleResource")
 				},
 			},
 			{
@@ -94,7 +99,9 @@ func init() {
 						"multiplePropReplace: change to any marked property should trigger replacement")
 				},
 				Assert: func(l *L, res AssertArgs) {
-					require.Len(l, res.Snap.Resources, 10, "expected 10 resources in snapshot")
+					require.Len(l, res.Snap.Resources, 15, "expected 15 resources in snapshot")
+					RequireSingleNamedResource(l, res.Snap.Resources, "remoteWithReplace")
+					RequireSingleNamedResource(l, res.Snap.Resources, "simpleResource")
 
 					var schemaOp, optionOp, bothValueOp, bothPropOp, regularOp, noChangeOp,
 						wrongPropOp, multipleOp display.StepOp

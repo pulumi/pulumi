@@ -1,7 +1,9 @@
 package main
 
 import (
+	"example.com/pulumi-component/sdk/go/v13/component"
 	"example.com/pulumi-replaceonchanges/sdk/go/v25/replaceonchanges"
+	"example.com/pulumi-simple/sdk/go/v2/simple"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -79,6 +81,22 @@ func main() {
 			"value",
 			"replaceProp",
 		}))
+		if err != nil {
+			return err
+		}
+		// Remote component with replaceOnChanges
+		_, err = component.NewComponentCallable(ctx, "remoteWithReplace", &component.ComponentCallableArgs{
+			Value: pulumi.String("one"),
+		}, pulumi.ReplaceOnChanges([]string{
+			"value",
+		}))
+		if err != nil {
+			return err
+		}
+		// Keep a simple resource so all expected plugins are required.
+		_, err = simple.NewResource(ctx, "simpleResource", &simple.ResourceArgs{
+			Value: pulumi.Bool(false),
+		})
 		if err != nil {
 			return err
 		}

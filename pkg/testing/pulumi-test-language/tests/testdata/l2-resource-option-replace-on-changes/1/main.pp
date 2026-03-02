@@ -62,3 +62,16 @@ resource "multiplePropReplace" "replaceonchanges:index:ResourceA" {
         replaceOnChanges = [value, replaceProp]
     }
 }
+
+// Remote component from built-in provider.
+resource "remoteWithReplace" "component:index:ComponentCallable" {
+    value = "one"  // Unchanged to avoid unsupported update path
+    options {
+        replaceOnChanges = [value]
+    }
+}
+
+// Keep a simple resource so all expected plugins are required.
+resource "simpleResource" "simple:index:Resource" {
+    value = false
+}

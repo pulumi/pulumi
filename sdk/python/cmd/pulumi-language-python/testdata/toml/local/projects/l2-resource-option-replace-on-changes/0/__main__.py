@@ -1,5 +1,7 @@
 import pulumi
+import pulumi_component as component
 import pulumi_replaceonchanges as replaceonchanges
+import pulumi_simple as simple
 
 # Stage 0: Initial resource creation
 # Scenario 1: Schema-based replaceOnChanges on replaceProp
@@ -37,3 +39,8 @@ multiple_prop_replace = replaceonchanges.ResourceA("multiplePropReplace",
             "value",
             "replaceProp",
         ]))
+# Remote component with replaceOnChanges
+remote_with_replace = component.ComponentCallable("remoteWithReplace", value="one",
+opts = pulumi.ResourceOptions(replace_on_changes=["value"]))
+# Keep a simple resource so all expected plugins are required.
+simple_resource = simple.Resource("simpleResource", value=False)
