@@ -1345,7 +1345,10 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 		require.NotNil(t, resp)
 		assert.Equal(t, "task_abc123", resp.TaskID)
 
-		assert.Contains(t, string(capturedBody), "Help me debug the following Pulumi error for project my-project and stack my-stack")
+		assert.Contains(
+			t, string(capturedBody),
+			"Help me debug the following Pulumi error for project my-project and stack my-stack",
+		)
 		assert.Contains(t, string(capturedBody), "resource failed to create")
 	})
 

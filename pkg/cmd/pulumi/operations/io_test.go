@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigureNeoTaskOption(t *testing.T) {
@@ -61,10 +62,7 @@ func TestConfigureNeoTaskOption(t *testing.T) {
 
 			opts := display.Options{}
 			configureNeoTaskOption(tt.neoTaskOnFailureFlag, nil, &opts, tt.isDIYBackend)
-			if opts.StartNeoTaskOnError != tt.expectedStartNeoTaskErr {
-				t.Errorf("StartNeoTaskOnError got = %t, expected %t",
-					opts.StartNeoTaskOnError, tt.expectedStartNeoTaskErr)
-			}
+			require.Equal(t, tt.expectedStartNeoTaskErr, opts.StartNeoTaskOnError)
 		})
 	}
 }
