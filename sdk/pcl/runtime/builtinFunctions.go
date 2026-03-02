@@ -159,7 +159,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.DynamicVal, nil
 			}
-			stackRefPV = unwrap(stackRefPV)
+			stackRefPV, _ = unwrapOutputs(stackRefPV)
 			if stackRefPV.IsNull() {
 				return cty.DynamicVal, nil
 			}
@@ -231,7 +231,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				iter := functions.Range()
 				for iter.Next() {
 					fnToken := iter.Token()
-					// Canoncalise the functions token via TokenToModule
+					// Canonicalize the functions token via TokenToModule
 					mod := pkg.TokenToModule(fnToken)
 					components := strings.Split(fnToken, ":")
 					fnToken = fmt.Sprintf("%s:%s:%s", components[0], mod, components[2])
@@ -250,7 +250,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
-			argsPV = unwrap(argsPV)
+			argsPV, dependsOn := unwrapOutputs(argsPV)
 
 			marshalOpts := plugin.MarshalOptions{
 				KeepUnknowns:  true,
@@ -267,7 +267,6 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				Args: obj,
 			}
 
-			var dependsOn []resource.URN
 			if len(args) == 3 && !args[2].IsNull() {
 				options := args[2]
 
@@ -415,7 +414,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
-			argsPV = unwrap(argsPV)
+			argsPV, _ = unwrapOutputs(argsPV)
 			argsPM := argsPV.ObjectValue()
 
 			urnVal, ok := self["urn"]

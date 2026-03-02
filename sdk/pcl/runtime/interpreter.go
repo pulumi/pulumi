@@ -432,18 +432,44 @@ func getAllDependencies(value resource.PropertyValue) []string {
 	return nil
 }
 
-func unwrap(value resource.PropertyValue) resource.PropertyValue {
+func unwrapOutputs(value resource.PropertyValue) (resource.PropertyValue, []resource.URN) {
 	if value.IsOutput() {
-		return unwrap(value.OutputValue().Element)
+		o := value.OutputValue()
+		val, deps := unwrapOutputs(o.Element)
+		if o.Secret {
+			val = resource.MakeSecret(val)
+		}
+		return val, append(o.Dependencies, deps...)
 	}
 	if value.IsSecret() {
-		return unwrap(value.SecretValue().Element)
+		val, deps := unwrapOutputs(value.SecretValue().Element)
+		return resource.MakeSecret(val), deps
 	}
-	return value
+	if value.IsArray() {
+		var arr []resource.PropertyValue
+		var deps []resource.URN
+		for _, v := range value.ArrayValue() {
+			val, d := unwrapOutputs(v)
+			arr = append(arr, val)
+			deps = append(deps, d...)
+		}
+		return resource.NewArrayProperty(arr), deps
+	}
+	if value.IsObject() {
+		obj := map[resource.PropertyKey]resource.PropertyValue{}
+		var deps []resource.URN
+		for k, v := range value.ObjectValue() {
+			val, d := unwrapOutputs(v)
+			obj[k] = val
+			deps = append(deps, d...)
+		}
+		return resource.NewObjectProperty(obj), deps
+	}
+	return value, nil
 }
 
 func unwrapResource(value resource.PropertyValue) (string, resource.PropertyValue, error) {
-	value = unwrap(value)
+	value, _ = unwrapOutputs(value)
 	if !value.IsObject() {
 		return "", resource.PropertyValue{}, fmt.Errorf("expected resource object, got %s", value.TypeString())
 	}
