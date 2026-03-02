@@ -469,6 +469,27 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		inputs[resource.PropertyKey(attr.Name)] = val
 	}
 
+	schemaResource, err := i.lookupResource(ctx, res.Token)
+	if err != nil {
+		return fmt.Errorf("lookup resource schema for token %s: %w", res.Token, err)
+	}
+	token := res.Token
+	if schemaResource != nil {
+		token = schemaResource.Token
+	}
+
+	if schemaResource != nil {
+		for _, input := range schemaResource.InputProperties {
+			if input.Secret {
+				key := resource.PropertyKey(input.Name)
+				attr, ok := inputs[key]
+				if ok {
+					inputs[key] = resource.MakeSecret(attr)
+				}
+			}
+		}
+	}
+
 	marshalOpts := plugin.MarshalOptions{
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
@@ -484,15 +505,6 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	custom := true
 	if res.Schema != nil {
 		custom = !res.Schema.IsComponent
-	}
-
-	schemaResource, err := i.lookupResource(ctx, res.Token)
-	if err != nil {
-		return fmt.Errorf("lookup resource schema for token %s: %w", res.Token, err)
-	}
-	token := res.Token
-	if schemaResource != nil {
-		token = schemaResource.Token
 	}
 
 	dependencies := []string{}
