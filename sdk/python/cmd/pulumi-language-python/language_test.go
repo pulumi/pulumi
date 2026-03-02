@@ -106,6 +106,7 @@ var expectedFailures = map[string]string{
 	"l1-builtin-list":   "singleOrNone throws for empty list instead of returning null",
 	"l1-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
 	"l2-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
+	"l3-range":          "enumerate(map) gives (index, key) pairs instead of (key, value); map range generates wrong resource names", //nolint:lll
 }
 
 type languageTestConfig struct {
