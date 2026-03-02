@@ -499,7 +499,8 @@ languageInfo: jspb.Message.getFieldWithDefault(msg, 8, ""),
 programOverridesMap: (f = msg.getProgramOverridesMap()) ? f.toObject(includeInstance, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.toObject) : [],
 policyPackDirectory: jspb.Message.getFieldWithDefault(msg, 10, ""),
 local: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
-providersDirectory: jspb.Message.getFieldWithDefault(msg, 12, "")
+providersDirectory: jspb.Message.getFieldWithDefault(msg, 12, ""),
+converterPluginTarget: jspb.Message.getFieldWithDefault(msg, 13, "")
   };
 
   if (includeInstance) {
@@ -586,6 +587,10 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.deserializeBinaryFromReader 
     case 12:
       var value = /** @type {string} */ (reader.readString());
       msg.setProvidersDirectory(value);
+      break;
+    case 13:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setConverterPluginTarget(value);
       break;
     default:
       reader.skipField();
@@ -695,6 +700,13 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.serializeBinaryToWriter = fu
   if (f.length > 0) {
     writer.writeString(
       12,
+      f
+    );
+  }
+  f = message.getConverterPluginTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      13,
       f
     );
   }
@@ -1288,6 +1300,24 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setProvidersDirect
 };
 
 
+/**
+ * optional string converter_plugin_target = 13;
+ * @return {string}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getConverterPluginTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setConverterPluginTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 13, value);
+};
+
+
 
 
 
@@ -1451,7 +1481,8 @@ proto.pulumirpc.testing.RunLanguageTestRequest.prototype.toObject = function(opt
 proto.pulumirpc.testing.RunLanguageTestRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-test: jspb.Message.getFieldWithDefault(msg, 2, "")
+test: jspb.Message.getFieldWithDefault(msg, 2, ""),
+skipConvertTest: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -1496,6 +1527,10 @@ proto.pulumirpc.testing.RunLanguageTestRequest.deserializeBinaryFromReader = fun
       var value = /** @type {string} */ (reader.readString());
       msg.setTest(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSkipConvertTest(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1539,6 +1574,13 @@ proto.pulumirpc.testing.RunLanguageTestRequest.serializeBinaryToWriter = functio
       f
     );
   }
+  f = message.getSkipConvertTest();
+  if (f) {
+    writer.writeBool(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -1575,6 +1617,24 @@ proto.pulumirpc.testing.RunLanguageTestRequest.prototype.getTest = function() {
  */
 proto.pulumirpc.testing.RunLanguageTestRequest.prototype.setTest = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional bool skip_convert_test = 3;
+ * @return {boolean}
+ */
+proto.pulumirpc.testing.RunLanguageTestRequest.prototype.getSkipConvertTest = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.testing.RunLanguageTestRequest} returns this
+ */
+proto.pulumirpc.testing.RunLanguageTestRequest.prototype.setSkipConvertTest = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 
@@ -1620,7 +1680,9 @@ proto.pulumirpc.testing.RunLanguageTestResponse.toObject = function(includeInsta
 success: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
 messagesList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
 stdout: jspb.Message.getFieldWithDefault(msg, 3, ""),
-stderr: jspb.Message.getFieldWithDefault(msg, 4, "")
+stderr: jspb.Message.getFieldWithDefault(msg, 4, ""),
+convertTestSuccess: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
+languageTestSuccess: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
   };
 
   if (includeInstance) {
@@ -1672,6 +1734,14 @@ proto.pulumirpc.testing.RunLanguageTestResponse.deserializeBinaryFromReader = fu
     case 4:
       var value = /** @type {string} */ (reader.readString());
       msg.setStderr(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setConvertTestSuccess(value);
+      break;
+    case 6:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setLanguageTestSuccess(value);
       break;
     default:
       reader.skipField();
@@ -1727,6 +1797,20 @@ proto.pulumirpc.testing.RunLanguageTestResponse.serializeBinaryToWriter = functi
   if (f.length > 0) {
     writer.writeString(
       4,
+      f
+    );
+  }
+  f = message.getConvertTestSuccess();
+  if (f) {
+    writer.writeBool(
+      5,
+      f
+    );
+  }
+  f = message.getLanguageTestSuccess();
+  if (f) {
+    writer.writeBool(
+      6,
       f
     );
   }
@@ -1821,6 +1905,42 @@ proto.pulumirpc.testing.RunLanguageTestResponse.prototype.getStderr = function()
  */
 proto.pulumirpc.testing.RunLanguageTestResponse.prototype.setStderr = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional bool convert_test_success = 5;
+ * @return {boolean}
+ */
+proto.pulumirpc.testing.RunLanguageTestResponse.prototype.getConvertTestSuccess = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.testing.RunLanguageTestResponse} returns this
+ */
+proto.pulumirpc.testing.RunLanguageTestResponse.prototype.setConvertTestSuccess = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 5, value);
+};
+
+
+/**
+ * optional bool language_test_success = 6;
+ * @return {boolean}
+ */
+proto.pulumirpc.testing.RunLanguageTestResponse.prototype.getLanguageTestSuccess = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 6, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.testing.RunLanguageTestResponse} returns this
+ */
+proto.pulumirpc.testing.RunLanguageTestResponse.prototype.setLanguageTestSuccess = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 6, value);
 };
 
 

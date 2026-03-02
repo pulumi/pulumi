@@ -87,6 +87,12 @@ message PrepareLanguageTestsRequest {
 
     // The path to a directory containing provider plugins to be used for the "provider-" tests.
     string providers_directory = 12;
+
+    // The address of the converter plugin associated with the language. If set, passing tests will check eject by round
+    // tripping through PCL after a successful test.
+    //
+    // To skip an individual test, pass skip_convert to RunLanguageTestRequest.
+    string converter_plugin_target = 13;
 }
 
 message PrepareLanguageTestsResponse {
@@ -96,11 +102,18 @@ message PrepareLanguageTestsResponse {
 message RunLanguageTestRequest {
     string token = 1;
     string test = 2;
+    bool skip_convert_test = 3;
 }
 
 message RunLanguageTestResponse {
+    // If all tests passed.
     bool success = 1;
     repeated string messages = 2;
     string stdout = 3;
     string stderr = 4;
+
+    // If the convert test passed.
+    bool convert_test_success = 5;
+    // If the language test passed.
+    bool language_test_success = 6;
 }

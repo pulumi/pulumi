@@ -73,6 +73,8 @@ export class PrepareLanguageTestsRequest extends jspb.Message {
     setLocal(value: boolean): PrepareLanguageTestsRequest;
     getProvidersDirectory(): string;
     setProvidersDirectory(value: string): PrepareLanguageTestsRequest;
+    getConverterPluginTarget(): string;
+    setConverterPluginTarget(value: string): PrepareLanguageTestsRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PrepareLanguageTestsRequest.AsObject;
@@ -99,6 +101,7 @@ export namespace PrepareLanguageTestsRequest {
         policyPackDirectory: string,
         local: boolean,
         providersDirectory: string,
+        converterPluginTarget: string,
     }
 
 
@@ -177,6 +180,8 @@ export class RunLanguageTestRequest extends jspb.Message {
     setToken(value: string): RunLanguageTestRequest;
     getTest(): string;
     setTest(value: string): RunLanguageTestRequest;
+    getSkipConvertTest(): boolean;
+    setSkipConvertTest(value: boolean): RunLanguageTestRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunLanguageTestRequest.AsObject;
@@ -192,6 +197,7 @@ export namespace RunLanguageTestRequest {
     export type AsObject = {
         token: string,
         test: string,
+        skipConvertTest: boolean,
     }
 }
 
@@ -206,6 +212,10 @@ export class RunLanguageTestResponse extends jspb.Message {
     setStdout(value: string): RunLanguageTestResponse;
     getStderr(): string;
     setStderr(value: string): RunLanguageTestResponse;
+    getConvertTestSuccess(): boolean;
+    setConvertTestSuccess(value: boolean): RunLanguageTestResponse;
+    getLanguageTestSuccess(): boolean;
+    setLanguageTestSuccess(value: boolean): RunLanguageTestResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunLanguageTestResponse.AsObject;
@@ -223,5 +233,7 @@ export namespace RunLanguageTestResponse {
         messagesList: Array<string>,
         stdout: string,
         stderr: string,
+        convertTestSuccess: boolean,
+        languageTestSuccess: boolean,
     }
 }

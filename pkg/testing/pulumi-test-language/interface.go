@@ -53,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
@@ -446,18 +447,19 @@ type programOverride struct {
 }
 
 type testToken struct {
-	LanguagePluginName   string
-	LanguagePluginTarget string
-	TemporaryDirectory   string
-	SnapshotDirectory    string
-	CoreArtifact         string
-	CoreVersion          string
-	SnapshotEdits        []replacement
-	LanguageInfo         string
-	ProgramOverrides     map[string]programOverride
-	PolicyPackDirectory  string
-	Local                bool
-	ProvidersDirectory   string
+	LanguagePluginName    string
+	LanguagePluginTarget  string
+	TemporaryDirectory    string
+	SnapshotDirectory     string
+	CoreArtifact          string
+	CoreVersion           string
+	SnapshotEdits         []replacement
+	LanguageInfo          string
+	ProgramOverrides      map[string]programOverride
+	PolicyPackDirectory   string
+	Local                 bool
+	ProvidersDirectory    string
+	ConverterPluginTarget string
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -579,18 +581,19 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	}
 
 	tokenBytes, err := json.Marshal(&testToken{
-		LanguagePluginName:   req.LanguagePluginName,
-		LanguagePluginTarget: req.LanguagePluginTarget,
-		TemporaryDirectory:   req.TemporaryDirectory,
-		SnapshotDirectory:    req.SnapshotDirectory,
-		CoreArtifact:         coreArtifact,
-		CoreVersion:          req.CoreSdkVersion,
-		SnapshotEdits:        edits,
-		LanguageInfo:         req.LanguageInfo,
-		ProgramOverrides:     programOverrides,
-		PolicyPackDirectory:  policyPackDirectory,
-		Local:                req.Local,
-		ProvidersDirectory:   providersDirectory,
+		LanguagePluginName:    req.LanguagePluginName,
+		LanguagePluginTarget:  req.LanguagePluginTarget,
+		TemporaryDirectory:    req.TemporaryDirectory,
+		SnapshotDirectory:     req.SnapshotDirectory,
+		CoreArtifact:          coreArtifact,
+		CoreVersion:           req.CoreSdkVersion,
+		SnapshotEdits:         edits,
+		LanguageInfo:          req.LanguageInfo,
+		ProgramOverrides:      programOverrides,
+		PolicyPackDirectory:   policyPackDirectory,
+		Local:                 req.Local,
+		ProvidersDirectory:    providersDirectory,
+		ConverterPluginTarget: req.ConverterPluginTarget,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -1047,6 +1050,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
+	projectDirs := make([]string, len(test.Runs))
 	var result tests.LResult
 	for i, run := range test.Runs {
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
@@ -1178,6 +1182,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				}
 			}
 		}
+		projectDirs[i] = projectDir
 
 		project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
 		if err != nil {
@@ -1498,106 +1503,327 @@ func (eng *languageTestServer) RunLanguageTest(
 			Scopes:             backend.CancellationScopes,
 		}
 
-		assertPreview := run.AssertPreview
-		if assertPreview == nil {
-			// if no assertPreview is provided for the test run, we create a default implementation
-			// where we simply assert that the preview changes did not error
-			assertPreview = func(
-				l *tests.L, args tests.AssertPreviewArgs,
-			) {
-				require.NoErrorf(l, err, "expected no error in preview")
-			}
-		}
-
-		// Perform a preview on the stack
-		eventsCts := &promise.CompletionSource[[]engine.Event]{}
-		eventSink := make(chan engine.Event, 1)
-		go func() {
-			events := []engine.Event{}
-			for event := range eventSink {
-				events = append(events, event)
-			}
-			eventsCts.Fulfill(events)
-		}()
-
-		plan, previewChanges, res := backend.PreviewStack(ctx, s, updateOperation, eventSink)
-		close(eventSink)
-		events, err := eventsCts.Promise().Result(ctx)
+		var earlyFail *testingrpc.RunLanguageTestResponse
+		result, earlyFail, err = runPreviewAndUpdate(
+			ctx, s, testBackend, stackReference, run, updateOperation, projectDir, sdks, stdout, stderr)
 		if err != nil {
-			return nil, fmt.Errorf("preview events: %w", err)
+			return nil, err
 		}
-
-		// assert preview results
-		previewResult := tests.WithL(func(l *tests.L) {
-			assertPreview(l, tests.AssertPreviewArgs{
-				ProjectDirectory: projectDir,
-				Err:              res,
-				Plan:             plan,
-				Changes:          previewChanges,
-				Events:           events,
-				SDKs:             sdks,
-			})
-		})
-
-		if previewResult.Failed {
-			return &testingrpc.RunLanguageTestResponse{
-				Success:  !previewResult.Failed,
-				Messages: previewResult.Messages,
-				Stdout:   stdout.String(),
-				Stderr:   stderr.String(),
-			}, nil
+		if earlyFail != nil {
+			return earlyFail, nil
 		}
-
-		eventsCts = &promise.CompletionSource[[]engine.Event]{}
-		eventSink = make(chan engine.Event, 1)
-		go func() {
-			events := []engine.Event{}
-			for event := range eventSink {
-				events = append(events, event)
-			}
-			eventsCts.Fulfill(events)
-		}()
-		changes, res := backend.UpdateStack(ctx, s, updateOperation, eventSink)
-		close(eventSink)
-		events, err = eventsCts.Promise().Result(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("preview events: %w", err)
-		}
-
-		var snap *deploy.Snapshot
-		if res == nil {
-			// Refetch the stack so we can get the snapshot
-			s, err = testBackend.GetStack(ctx, stackReference)
-			if err != nil {
-				return nil, fmt.Errorf("get stack: %w", err)
-			}
-
-			snap, err = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
-			if err != nil {
-				return nil, fmt.Errorf("snapshot: %w", err)
-			}
-		} else {
-			// We still want to try to get a snapshot, but won't error out
-			// if we can't.
-			s, err = testBackend.GetStack(ctx, stackReference)
-			if err == nil {
-				snap, _ = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
-			}
-		}
-
-		result = tests.WithL(func(l *tests.L) {
-			run.Assert(l, tests.AssertArgs{
-				ProjectDirectory: projectDir,
-				Err:              res,
-				Snap:             snap,
-				Changes:          changes,
-				Events:           events,
-				SDKs:             sdks,
-			})
-		})
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{
-				Success:  !result.Failed,
+				Success:             false,
+				LanguageTestSuccess: false,
+				Messages:            result.Messages,
+				Stdout:              stdout.String(),
+				Stderr:              stderr.String(),
+			}, nil
+		}
+	}
+
+	if token.ConverterPluginTarget != "" && !req.SkipConvertTest {
+		convertResp, err := eng.runConverterTest(
+			ctx, token, req, test, projectDirs,
+			languageClient, grpcServer, localDependencies, sdks, stdout, stderr, host)
+		if err != nil {
+			return nil, err
+		}
+		if !convertResp.Success {
+			convertResp.LanguageTestSuccess = true
+			return convertResp, nil
+		}
+		return &testingrpc.RunLanguageTestResponse{
+			Success:             true,
+			LanguageTestSuccess: true,
+			ConvertTestSuccess:  true,
+			Messages:            result.Messages,
+			Stdout:              stdout.String(),
+			Stderr:              stderr.String(),
+		}, nil
+	}
+
+	return &testingrpc.RunLanguageTestResponse{
+		Success:             true,
+		LanguageTestSuccess: true,
+		Messages:            result.Messages,
+		Stdout:              stdout.String(),
+		Stderr:              stderr.String(),
+	}, nil
+}
+
+// runPreviewAndUpdate runs a preview and update on a stack and asserts the results.
+// Returns the update result, a non-nil early failure response if preview failed,
+// and any infrastructure error.
+func runPreviewAndUpdate(
+	ctx context.Context,
+	s backend.Stack,
+	tb backend.Backend,
+	stackRef backend.StackReference,
+	run tests.TestRun,
+	updateOperation backend.UpdateOperation,
+	projectDir string,
+	sdks map[string]string,
+	stdout, stderr *bytes.Buffer,
+) (tests.LResult, *testingrpc.RunLanguageTestResponse, error) {
+	assertPreview := run.AssertPreview
+	var err error
+
+	if assertPreview == nil {
+		assertPreview = func(l *tests.L, args tests.AssertPreviewArgs) {
+			require.NoError(l, err)
+		}
+	}
+
+	previewEventsCts := &promise.CompletionSource[[]engine.Event]{}
+	previewEventSink := make(chan engine.Event, 1)
+	go func() {
+		events := []engine.Event{}
+		for event := range previewEventSink {
+			events = append(events, event)
+		}
+		previewEventsCts.Fulfill(events)
+	}()
+
+	plan, previewChanges, previewRes := backend.PreviewStack(ctx, s, updateOperation, previewEventSink)
+	close(previewEventSink)
+	previewEvents, err := previewEventsCts.Promise().Result(ctx)
+	if err != nil {
+		return tests.LResult{}, nil, fmt.Errorf("preview events: %w", err)
+	}
+
+	previewResult := tests.WithL(func(l *tests.L) {
+		assertPreview(l, tests.AssertPreviewArgs{
+			ProjectDirectory: projectDir,
+			Err:              previewRes,
+			Plan:             plan,
+			Changes:          previewChanges,
+			Events:           previewEvents,
+			SDKs:             sdks,
+		})
+	})
+
+	if previewResult.Failed {
+		return previewResult, &testingrpc.RunLanguageTestResponse{
+			Success:  false,
+			Messages: previewResult.Messages,
+			Stdout:   stdout.String(),
+			Stderr:   stderr.String(),
+		}, nil
+	}
+
+	updateEventsCts := &promise.CompletionSource[[]engine.Event]{}
+	updateEventSink := make(chan engine.Event, 1)
+	go func() {
+		events := []engine.Event{}
+		for event := range updateEventSink {
+			events = append(events, event)
+		}
+		updateEventsCts.Fulfill(events)
+	}()
+	changes, updateRes := backend.UpdateStack(ctx, s, updateOperation, updateEventSink)
+	close(updateEventSink)
+	updateEvents, err := updateEventsCts.Promise().Result(ctx)
+	if err != nil {
+		return tests.LResult{}, nil, fmt.Errorf("update events: %w", err)
+	}
+
+	var snap *deploy.Snapshot
+	if updateRes == nil {
+		s, err = tb.GetStack(ctx, stackRef)
+		if err != nil {
+			return tests.LResult{}, nil, fmt.Errorf("get stack: %w", err)
+		}
+		snap, err = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
+		if err != nil {
+			return tests.LResult{}, nil, fmt.Errorf("snapshot: %w", err)
+		}
+	} else {
+		s, err = tb.GetStack(ctx, stackRef)
+		if err == nil {
+			snap, _ = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
+		}
+	}
+
+	result := tests.WithL(func(l *tests.L) {
+		run.Assert(l, tests.AssertArgs{
+			ProjectDirectory: projectDir,
+			Err:              updateRes,
+			Snap:             snap,
+			Changes:          changes,
+			Events:           updateEvents,
+			SDKs:             sdks,
+		})
+	})
+	return result, nil, nil
+}
+
+// runConverterTest round-trips each run through the converter: $LANG → PCL → $LANG, then
+// runs the same assertions as the language test to validate semantic preservation.
+func (eng *languageTestServer) runConverterTest(
+	ctx context.Context,
+	token testToken,
+	req *testingrpc.RunLanguageTestRequest,
+	test tests.LanguageTest,
+	projectDirs []string,
+	languageClient plugin.LanguageRuntime,
+	grpcServer *plugin.GrpcServer,
+	localDependencies map[string]string,
+	sdks map[string]string,
+	stdout, stderr *bytes.Buffer,
+	host *testHost,
+) (*testingrpc.RunLanguageTestResponse, error) {
+	conn, err := grpc.NewClient(
+		token.ConverterPluginTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("dial converter plugin: %w", err)
+	}
+	defer conn.Close()
+	converterClient := pulumirpc.NewConverterClient(conn)
+
+	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test+"-convert")
+	err = os.MkdirAll(backendDir, 0o755)
+	if err != nil {
+		return nil, fmt.Errorf("create converter backend dir: %w", err)
+	}
+	snk := diag.DefaultSink(stdout, stderr, diag.FormatOptions{Color: colors.Never})
+	convertBackend, err := diy.New(ctx, snk, "file://"+backendDir, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create converter diy backend: %w", err)
+	}
+
+	sm := b64secrets.NewBase64SecretsManager()
+	dec := sm.Decrypter()
+
+	var newProjectDir string
+	var result tests.LResult
+	for i, run := range test.Runs {
+		if i == 0 || !test.RunsShareSource {
+			convertedPCLDir := filepath.Join(token.TemporaryDirectory, "convert-source", req.Test)
+			if len(test.Runs) > 1 && !test.RunsShareSource {
+				convertedPCLDir = filepath.Join(convertedPCLDir, strconv.Itoa(i))
+			}
+			err = os.MkdirAll(convertedPCLDir, 0o755)
+			if err != nil {
+				return nil, fmt.Errorf("create converted PCL dir: %w", err)
+			}
+
+			convertResp, err := converterClient.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
+				SourceDirectory: projectDirs[i],
+				TargetDirectory: convertedPCLDir,
+				LoaderTarget:    grpcServer.Addr(),
+			})
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("convert program: %v", err)), nil
+			}
+			for _, d := range convertResp.Diagnostics {
+				if d.Severity == codegenrpc.DiagnosticSeverity_DIAG_ERROR {
+					return makeTestResponse(fmt.Sprintf("convert program: %s: %s", d.Summary, d.Detail)), nil
+				}
+			}
+
+			newProjectDir = filepath.Join(token.TemporaryDirectory, "convert-projects", req.Test)
+			if len(test.Runs) > 1 && !test.RunsShareSource {
+				newProjectDir = filepath.Join(newProjectDir, strconv.Itoa(i))
+			}
+			err = os.MkdirAll(newProjectDir, 0o755)
+			if err != nil {
+				return nil, fmt.Errorf("create convert project dir: %w", err)
+			}
+
+			sourceDirForGenerate := convertedPCLDir
+			projectJSON := fmt.Sprintf(`{"name": "%s"}`, req.Test)
+			if run.Main != "" {
+				sourceDirForGenerate = filepath.Join(convertedPCLDir, run.Main)
+				projectJSON = fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.Main)
+			}
+
+			_, err = languageClient.GenerateProject(
+				sourceDirForGenerate, newProjectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("generate convert project: %v", err)), nil
+			}
+		}
+
+		project, err := workspace.LoadProject(filepath.Join(newProjectDir, "Pulumi.yaml"))
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("load convert project: %v", err)), nil
+		}
+
+		info := &engine.Projinfo{Proj: project, Root: newProjectDir}
+		pwd, main, err := info.GetPwdMain()
+		if err != nil {
+			return makeTestResponse(fmt.Sprintf("get pwd main: %v", err)), nil
+		}
+		programInfo := plugin.NewProgramInfo(newProjectDir, pwd, main, project.Runtime.Options())
+		if resp := installDependencies(languageClient, programInfo, false); resp != nil {
+			return resp, nil
+		}
+
+		convertBackend.SetCurrentProject(project)
+		stackRef, err := convertBackend.ParseStackReference("test")
+		if err != nil {
+			return nil, fmt.Errorf("parse convert stack reference: %w", err)
+		}
+
+		var s backend.Stack
+		if i == 0 {
+			s, err = convertBackend.CreateStack(ctx, stackRef, newProjectDir, nil, nil)
+		} else {
+			s, err = convertBackend.GetStack(ctx, stackRef)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("create/get convert stack: %w", err)
+		}
+
+		tags := run.StackTags
+		if tags == nil {
+			tags = map[string]string{}
+		}
+		err = convertBackend.UpdateStackTags(ctx, s, tags)
+		if err != nil {
+			return nil, fmt.Errorf("update convert stack tags: %w", err)
+		}
+
+		updateOptions := engine.UpdateOptions{Host: host}
+		opts := backend.UpdateOptions{
+			AutoApprove: true,
+			SkipPreview: true,
+			Display: backendDisplay.Options{
+				Color:  colors.Never,
+				Stdout: stdout,
+				Stderr: stderr,
+			},
+			Engine: updateOptions,
+		}
+		cfg := backend.StackConfiguration{
+			Config:    run.Config,
+			Decrypter: dec,
+		}
+		updateOperation := backend.UpdateOperation{
+			Proj:               project,
+			Root:               newProjectDir,
+			Opts:               opts,
+			M:                  &backend.UpdateMetadata{},
+			StackConfiguration: cfg,
+			SecretsManager:     sm,
+			SecretsProvider:    b64secrets.Base64SecretsProvider,
+			Scopes:             backend.CancellationScopes,
+		}
+
+		var earlyFail *testingrpc.RunLanguageTestResponse
+		result, earlyFail, err = runPreviewAndUpdate(
+			ctx, s, convertBackend, stackRef, run, updateOperation, newProjectDir, sdks, stdout, stderr)
+		if err != nil {
+			return nil, err
+		}
+		if earlyFail != nil {
+			return earlyFail, nil
+		}
+		if result.Failed {
+			return &testingrpc.RunLanguageTestResponse{
+				Success:  false,
 				Messages: result.Messages,
 				Stdout:   stdout.String(),
 				Stderr:   stderr.String(),
@@ -1605,10 +1831,5 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
-	return &testingrpc.RunLanguageTestResponse{
-		Success:  !result.Failed,
-		Messages: result.Messages,
-		Stdout:   stdout.String(),
-		Stderr:   stderr.String(),
-	}, nil
+	return &testingrpc.RunLanguageTestResponse{Success: true}, nil
 }
