@@ -296,20 +296,6 @@ func (host *pythonLanguageHost) GetRequiredPackages(ctx context.Context,
 		return nil, err
 	}
 
-	tc, err := toolchain.ResolveToolchain(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	stdout, stderr, err := host.createEngineWriters(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if err := tc.EnsureVenv(ctx, req.Info.ProgramDirectory, false, /*useLanguageVersionTools */
-		true /* showOutput */, stdout, stderr); err != nil {
-		return nil, err
-	}
-
 	validateVersion(ctx, opts)
 
 	// Now, determine which Pulumi packages are installed.
