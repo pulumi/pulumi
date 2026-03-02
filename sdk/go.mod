@@ -14,7 +14,6 @@ require (
 	github.com/golang/glog v1.2.5
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/iancoleman/strcase v0.2.0
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/nxadm/tail v1.4.11
 	github.com/opentracing/opentracing-go v1.2.0
