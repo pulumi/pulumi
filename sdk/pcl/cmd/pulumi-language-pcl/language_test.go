@@ -99,7 +99,6 @@ var expectedFailures = map[string]string{
 	"l2-resource-option-env-var-mappings":    "TODO",
 	"l2-provider-grpc-config-schema-secret":  "TODO",
 	"l2-resource-option-replacement-trigger": "TODO",
-	"l2-component-program-resource-ref":      "TODO",
 	"l2-provider-call-explicit":              "TODO",
 	"l2-explicit-provider":                   "TODO",
 	"l2-resource-parent-inheritance":         "TODO",

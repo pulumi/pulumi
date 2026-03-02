@@ -39,7 +39,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			Params: []function.Parameter{},
 			Type:   function.StaticReturnType(cty.String),
 			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-				return propertyValueToCty(resource.NewProperty(value))
+				return cty.StringVal(value), nil
 			},
 		})
 	}
@@ -95,14 +95,14 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			Type: customdecode.ExpressionClosureType,
 		},
 		Type: func(args []cty.Value) (cty.Type, error) {
-			v, err := tryExpressions(args)
+			v, err := i.tryExpressions(args)
 			if err != nil {
 				return cty.NilType, err
 			}
 			return v.Type(), nil
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			return tryExpressions(args)
+			return i.tryExpressions(args)
 		},
 	})
 
@@ -131,7 +131,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.False, nil
 			}
 			if pv.IsSecret() {
-				return propertyValueToCty(resource.MakeSecret(resource.NewProperty(true)))
+				return propertyValueToCty(context.TODO(), i.monitor, resource.MakeSecret(resource.NewProperty(true)))
 			}
 			return cty.True, nil
 		},
@@ -170,7 +170,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, err
 			}
-			return propertyValueToCty(outputPV)
+			return propertyValueToCty(context.TODO(), i.monitor, outputPV)
 		},
 	})
 
@@ -343,7 +343,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 					Dependencies: dependsOn,
 				})
 			}
-			return propertyValueToCty(resultPV)
+			return propertyValueToCty(context.TODO(), i.monitor, resultPV)
 		},
 	})
 
@@ -496,7 +496,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 					Dependencies: dependsOn,
 				})
 			}
-			return propertyValueToCty(resultPV)
+			return propertyValueToCty(context.TODO(), i.monitor, resultPV)
 		},
 	})
 
@@ -520,7 +520,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating file asset: %w", err)
 			}
-			return propertyValueToCty(resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
 		},
 	})
 
@@ -544,7 +544,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating file archive: %w", err)
 			}
-			return propertyValueToCty(resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
 		},
 	})
 
@@ -573,7 +573,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating archive from assets: %w", err)
 			}
-			return propertyValueToCty(resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
 		},
 	})
 
@@ -597,7 +597,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating string asset: %w", err)
 			}
-			return propertyValueToCty(resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
 		},
 	})
 
@@ -621,7 +621,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating remote asset: %w", err)
 			}
-			return propertyValueToCty(resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
 		},
 	})
 

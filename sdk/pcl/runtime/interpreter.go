@@ -125,7 +125,7 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		Functions: i.builtinFunctions(),
 	}
 
-	if diags := i.bindConfigVariables(); diags.HasErrors() {
+	if diags := i.bindConfigVariables(ctx); diags.HasErrors() {
 		return diags
 	}
 
@@ -173,7 +173,7 @@ func (i *Interpreter) Run(ctx context.Context) error {
 			if diags.HasErrors() {
 				return diags
 			}
-			if err := i.setVariable(node.Name(), value); err != nil {
+			if err := i.setVariable(ctx, node.Name(), value); err != nil {
 				return fmt.Errorf("failed to set variable %s: %w", node.Name(), err)
 			}
 		case *pcl.Resource:
@@ -286,7 +286,7 @@ func (i *Interpreter) evalExpression(expr model.Expression) (resource.PropertyVa
 	return pv, diags
 }
 
-func (i *Interpreter) bindConfigVariables() hcl.Diagnostics {
+func (i *Interpreter) bindConfigVariables(ctx context.Context) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 	secretKeys := map[string]struct{}{}
 	for _, key := range i.info.ConfigSecrets {
@@ -303,7 +303,7 @@ func (i *Interpreter) bindConfigVariables() hcl.Diagnostics {
 					value = resource.MakeSecret(value)
 				}
 				if !diags.HasErrors() {
-					if err := i.setVariable(cfg.Name(), value); err != nil {
+					if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
 						diagnostics = append(diagnostics, &hcl.Diagnostic{
 							Severity: hcl.DiagError,
 							Summary:  err.Error(),
@@ -329,7 +329,7 @@ func (i *Interpreter) bindConfigVariables() hcl.Diagnostics {
 			if _, isSecret := secretKeys[key]; isSecret {
 				value = resource.MakeSecret(value)
 			}
-			if err := i.setVariable(cfg.Name(), value); err != nil {
+			if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
 				diagnostics = append(diagnostics, &hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  err.Error(),
@@ -392,8 +392,13 @@ func (i *Interpreter) registerStack(ctx context.Context) error {
 			KeepResources: true,
 		}
 		objectValue, err := plugin.UnmarshalProperties(resp.Object, marshalOpts)
-		if err == nil {
-			contract.IgnoreError(i.setVariable("pulumi", resource.NewProperty(objectValue)))
+		if err != nil {
+			return fmt.Errorf("unmarshal stack outputs: %w", err)
+		}
+
+		err = i.setVariable(ctx, "pulumi", resource.NewProperty(objectValue))
+		if err != nil {
+			return fmt.Errorf("set pulumi variable: %w", err)
 		}
 	}
 	i.stackURN = resp.GetUrn()
@@ -483,7 +488,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			if input.Secret {
 				key := resource.PropertyKey(input.Name)
 				attr, ok := inputs[key]
-				if ok {
+				if ok && !attr.IsSecret() {
 					inputs[key] = resource.MakeSecret(attr)
 				}
 			}
@@ -503,8 +508,8 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	marshalOpts.KeepOutputValues = true
 
 	custom := true
-	if res.Schema != nil {
-		custom = !res.Schema.IsComponent
+	if schemaResource != nil {
+		custom = !schemaResource.IsComponent
 	}
 
 	dependencies := []string{}
@@ -523,9 +528,12 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		Type:                 token,
 		Name:                 res.LogicalName(),
 		Custom:               custom,
+		Remote:               !custom,
 		Object:               obj,
 		PropertyDependencies: propertyDependencies,
 		Dependencies:         dependencies,
+		AcceptSecrets:        true,
+		AcceptResources:      true,
 	}
 
 	if res.Options != nil {
@@ -965,7 +973,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		Known:        true,
 	})
 
-	if err := i.setVariable(res.Name(), result); err != nil {
+	if err := i.setVariable(ctx, res.Name(), result); err != nil {
 		return err
 	}
 	return nil
@@ -991,8 +999,8 @@ func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs resource
 	return err
 }
 
-func (i *Interpreter) setVariable(name string, value resource.PropertyValue) error {
-	ctyValue, err := propertyValueToCty(value)
+func (i *Interpreter) setVariable(ctx context.Context, name string, value resource.PropertyValue) error {
+	ctyValue, err := propertyValueToCty(ctx, i.monitor, value)
 	if err != nil {
 		return err
 	}
@@ -1017,7 +1025,7 @@ func parseConfigPropertyValue(raw string, typ model.Type) (resource.PropertyValu
 	return pv, diags
 }
 
-func tryExpressions(args []cty.Value) (cty.Value, error) {
+func (i *Interpreter) tryExpressions(args []cty.Value) (cty.Value, error) {
 	if len(args) == 0 {
 		return cty.NilVal, errors.New("at least one argument is required")
 	}
@@ -1045,7 +1053,7 @@ func tryExpressions(args []cty.Value) (cty.Value, error) {
 			})
 			continue
 		}
-		return propertyValueToCty(pv)
+		return propertyValueToCty(context.TODO(), i.monitor, pv)
 	}
 
 	var buf strings.Builder
