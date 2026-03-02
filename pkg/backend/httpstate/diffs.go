@@ -28,9 +28,13 @@ import (
 	"github.com/hexops/gotextdiff/span"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pgavlin/diff/lcs"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	segmentio_json "github.com/segmentio/encoding/json"
 )
 
@@ -85,6 +89,10 @@ func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment)
 	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "Diff")
 	defer tracingSpan.Finish()
 
+	tracer := otel.Tracer("pulumi-cli")
+	childCtx, otelSpan := cmdutil.StartSpan(childCtx, tracer, "Diff")
+	defer otelSpan.End()
+
 	before := dds.lastSavedDeployment.raw
 	after := deployment.raw
 
@@ -107,6 +115,14 @@ func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment)
 	tracingSpan.SetTag("diff", len(delta))
 	tracingSpan.SetTag("compression", 100.0*float64(len(delta))/float64(len(after)))
 	tracingSpan.SetTag("hash", checkpointHash)
+
+	otelSpan.SetAttributes(
+		attribute.Int("before", len(before)),
+		attribute.Int("after", len(after)),
+		attribute.Int("diff", len(delta)),
+		attribute.Float64("compression", 100.0*float64(len(delta))/float64(len(after))),
+		attribute.String("hash", checkpointHash),
+	)
 
 	diff := deploymentDiff{
 		checkpointHash:  checkpointHash,
@@ -132,6 +148,11 @@ func (dds *deploymentDiffState) Saved(ctx context.Context, deployment deployment
 func (*deploymentDiffState) computeHash(ctx context.Context, deployment json.RawMessage) string {
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx, "computeHash")
 	defer tracingSpan.Finish()
+
+	tracer := otel.Tracer("pulumi-cli")
+	_, otelSpan := cmdutil.StartSpan(ctx, tracer, "computeHash")
+	defer otelSpan.End()
+
 	hash := sha256.Sum256(deployment)
 	return hex.EncodeToString(hash[:])
 }
@@ -275,6 +296,10 @@ func (dds *deploymentDiffState) MarshalDeployment(
 func (*deploymentDiffState) computeEdits(ctx context.Context, before, after deployment) (json.RawMessage, error) {
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx, "computeEdits")
 	defer tracingSpan.Finish()
+
+	tracer := otel.Tracer("pulumi-cli")
+	_, otelSpan := cmdutil.StartSpan(ctx, tracer, "computeEdits")
+	defer otelSpan.End()
 
 	diffs := lcs.DiffLines(before.spans.spans, after.spans.spans)
 

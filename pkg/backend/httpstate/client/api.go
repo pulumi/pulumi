@@ -225,6 +225,16 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 	)
 	defer requestSpan.Finish()
 
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, "HTTP request",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("http.method", req.Method),
+			attribute.String("http.url", req.URL.String()),
+			attribute.String("http.retry", policy.String()),
+		))
+	defer otelSpan.End()
+
 	req = req.WithContext(ctx)
 
 	// Add a User-Agent header to distinguish the pulumi CLI from other clients.

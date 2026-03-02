@@ -38,7 +38,7 @@ func Refresh(
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "refresh", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -140,7 +140,7 @@ func RefreshV2(
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "refresh", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}
