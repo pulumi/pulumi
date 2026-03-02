@@ -102,6 +102,9 @@ func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, 
 		// If we don't have a valid type token, return the invalid token as the type name.
 		return "", "", tok, hcl.Diagnostics{malformedToken(tok, sourceRange)}
 	}
+	if components[1] == "" {
+		components[1] = "index"
+	}
 	return components[0], components[1], components[2], nil
 }
 
