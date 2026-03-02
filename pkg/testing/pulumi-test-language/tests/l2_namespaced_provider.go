@@ -36,7 +36,7 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					require.Len(l, snap.Resources, 7, "expected 5 resources in snapshot")
+					require.Len(l, snap.Resources, 7)
 
 					provider := RequireSingleResource(l, snap.Resources, "pulumi:providers:namespaced")
 					require.Equal(l, "pulumi:providers:namespaced", provider.Type.String(), "expected namespaced provider")
