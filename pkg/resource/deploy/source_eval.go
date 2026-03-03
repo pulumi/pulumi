@@ -2604,7 +2604,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// Unknowns in replacement triggers are fine during preview, but they should raise an error during the actual
 		// operation.
 		if !rm.opts.DryRun && replacementTrigger.ContainsUnknowns() {
-			return nil, fmt.Errorf("replacement trigger contains unknowns")
+			return nil, errors.New("replacement trigger contains unknowns")
 		}
 	}
 

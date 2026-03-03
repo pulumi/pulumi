@@ -323,7 +323,8 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 
 	// Unknown output values during non-preview runs should trigger an error.
 	expectedError = errors.New("replacement trigger contains unknowns")
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	require.ErrorContains(t, err, expectedError.Error())
 
 	assert.Equal(t, 2, len(snap.Resources))
@@ -394,7 +395,8 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 
 	// Unknown values during non-preview runs should trigger an error.
 	expectedError = errors.New("replacement trigger contains unknowns")
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
 	require.ErrorContains(t, err, expectedError.Error())
 
 	assert.Equal(t, 2, len(snap.Resources))
