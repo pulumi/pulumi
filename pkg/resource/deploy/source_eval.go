@@ -2600,6 +2600,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
 		}
 		replacementTrigger = *t
+
+		// Unknowns in replacement triggers are fine during preview, but they should raise an error during the actual
+		// operation.
+		if !rm.opts.DryRun && replacementTrigger.ContainsUnknowns() {
+			return nil, fmt.Errorf("replacement trigger contains unknowns")
+		}
 	}
 
 	retainOnDelete := opts.RetainOnDelete

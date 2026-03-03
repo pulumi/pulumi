@@ -16,7 +16,7 @@ package lifecycletest
 
 import (
 	"context"
-	"strings"
+	"errors"
 	"testing"
 
 	"github.com/blang/semver"
@@ -258,13 +258,18 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 	})
 	initialValue := value
 
+	var expectedError error
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
 			ReplacementTrigger: value,
 		})
-		require.NoError(t, err)
-		return nil
+		if expectedError != nil {
+			require.ErrorContains(t, err, expectedError.Error())
+		} else {
+			require.NoError(t, err)
+		}
+		return err
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -317,22 +322,9 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	// Unknown output values during non-preview runs should trigger an error.
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
-			for _, e := range events {
-				if e.Type == DiagEvent {
-					diag := e.Payload().(DiagEventPayload).Message
-
-					if strings.Contains(diag, "replacement trigger contains unknowns for urn:pulumi:test::test::pkgA:m:typA::resA") {
-						return nil
-					}
-				}
-			}
-
-			assert.Fail(t, "expected matching diag event")
-			return nil
-		}, "2")
-	require.NoError(t, err)
+	expectedError = errors.New("replacement trigger contains unknowns")
+	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	require.ErrorContains(t, err, expectedError.Error())
 
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
@@ -356,14 +348,19 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 		}),
 	}
 
-	value := resource.MakeComputed(resource.NewPropertyValue("first"))
+	value := resource.NewPropertyValue("first")
+	var expectedError error
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
 			ReplacementTrigger: value,
 		})
-		require.NoError(t, err)
-		return nil
+		if expectedError != nil {
+			require.ErrorContains(t, err, expectedError.Error())
+		} else {
+			require.NoError(t, err)
+		}
+		return err
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -375,9 +372,10 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
-	assert.Equal(t, resource.MakeComputed(resource.NewPropertyValue("")), snap.Resources[1].ReplacementTrigger)
+	assert.Equal(t, resource.NewPropertyValue("first"), snap.Resources[1].ReplacementTrigger)
 
 	// Unknown values during preview runs should trigger a replace.
+	value = resource.MakeComputed(resource.NewPropertyValue("first"))
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			operations := []display.StepOp{}
@@ -394,27 +392,12 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 
 	require.NoError(t, err)
 
-	value = resource.MakeComputed(resource.NewPropertyValue("first"))
-
 	// Unknown values during non-preview runs should trigger an error.
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
-			for _, e := range events {
-				if e.Type == DiagEvent {
-					diag := e.Payload().(DiagEventPayload).Message
-
-					if strings.Contains(diag, "replacement trigger contains unknowns for urn:pulumi:test::test::pkgA:m:typA::resA") {
-						return nil
-					}
-				}
-			}
-
-			assert.Fail(t, "expected matching diag event")
-			return nil
-		}, "2")
-	require.NoError(t, err)
+	expectedError = errors.New("replacement trigger contains unknowns")
+	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	require.ErrorContains(t, err, expectedError.Error())
 
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
-	assert.Equal(t, resource.MakeComputed(resource.NewPropertyValue("")), snap.Resources[1].ReplacementTrigger)
+	assert.Equal(t, resource.NewPropertyValue("first"), snap.Resources[1].ReplacementTrigger)
 }
