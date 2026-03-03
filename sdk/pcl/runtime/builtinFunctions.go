@@ -634,9 +634,12 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 	convertFn := function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
-				Name:      "value",
-				Type:      cty.DynamicPseudoType,
-				AllowNull: true,
+				Name:             "value",
+				Type:             cty.DynamicPseudoType,
+				AllowNull:        true,
+				AllowMarked:      true,
+				AllowUnknown:     true,
+				AllowDynamicType: true,
 			},
 		},
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
