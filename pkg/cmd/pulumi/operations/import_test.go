@@ -194,7 +194,7 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"resource 'res_2' of type 'foo:bar:a' has an ambiguous parent",
+				"resource 'res-2' of type 'foo:bar:a' has an ambiguous parent",
 			},
 		},
 		{
@@ -226,7 +226,7 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"resource 'res_2' of type 'foo:bar:a' has an ambiguous provider",
+				"resource 'res-2' of type 'foo:bar:a' has an ambiguous provider",
 			},
 		},
 		{

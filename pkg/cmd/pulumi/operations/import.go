@@ -182,13 +182,13 @@ func isValidIdentifier(name string) bool {
 
 	for i, r := range name {
 		if i == 0 {
-			if r == '_' || unicode.IsLetter(r) {
+			if r == '_' || r == '-' || unicode.IsLetter(r) {
 				continue
 			}
 			return false
 		}
 
-		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+		if r == '_' || r == '-' || unicode.IsLetter(r) || unicode.IsDigit(r) {
 			continue
 		}
 		return false
@@ -205,7 +205,7 @@ func sanitizeIdentifier(name string) string {
 	var b strings.Builder
 	for i, r := range name {
 		isStart := i == 0
-		valid := r == '_' || unicode.IsLetter(r) || (!isStart && unicode.IsDigit(r))
+		valid := r == '_' || r == '-' || unicode.IsLetter(r) || (!isStart && unicode.IsDigit(r))
 		if valid {
 			b.WriteRune(r)
 			continue
