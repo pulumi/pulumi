@@ -10,15 +10,15 @@
 <{%reset%}><{%reset%}><{%fg 1%}>- nested: (delete)
 <{%fg 1%}>    [id=3]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgB:m:first$nested::nested]
-<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=2]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgB: (delete)
 <{%fg 1%}>    [id=5]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::default]
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgB:m:first: (delete)
 <{%fg 1%}>    [id=3]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgB:m:first::first]
+<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
+<{%fg 1%}>    [id=2]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 5 deleted<{%reset%}>
 
