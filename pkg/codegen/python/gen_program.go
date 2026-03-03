@@ -1266,8 +1266,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		g.configCreated = true
 	}
 
+	configType := model.ResolveOutputs(v.Type())
+
 	getType := "_object"
-	switch v.Type() {
+	switch configType {
 	case model.StringType:
 		getType = ""
 	case model.NumberType:
@@ -1281,6 +1283,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	getOrRequire := "get"
 	if v.DefaultValue == nil {
 		getOrRequire = "require"
+	}
+	if v.Secret {
+		getOrRequire += "_secret"
 	}
 
 	var defaultValue model.Expression

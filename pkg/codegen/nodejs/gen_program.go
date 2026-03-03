@@ -1424,8 +1424,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		g.configCreated = true
 	}
 
+	configType := pcl.UnwrapOption(model.ResolveOutputs(v.Type()))
+
 	getType := "Object"
-	switch pcl.UnwrapOption(v.Type()) {
+	switch configType {
 	case model.StringType:
 		getType = ""
 	case model.NumberType, model.IntType:
@@ -1445,6 +1447,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if v.DefaultValue == nil && !model.IsOptionalType(v.Type()) {
 		getOrRequire = "require"
 	}
+	if v.Secret {
+		getOrRequire += "Secret"
+	}
 
 	if v.Description != "" {
 		for _, line := range strings.Split(v.Description, "\n") {
@@ -1456,7 +1461,11 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s%[5]s(\"%[6]s\")",
 		g.Indent, name, getOrRequire, getType, typeParam, v.LogicalName())
 	if v.DefaultValue != nil && !model.IsOptionalType(v.Type()) {
-		g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+		if v.Secret {
+			g.Fgenf(w, " || pulumi.secret(%.v)", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+		} else {
+			g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+		}
 	}
 	g.Fgenf(w, ";\n")
 }

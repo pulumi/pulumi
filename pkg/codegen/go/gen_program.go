@@ -2014,8 +2014,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		g.configCreated = true
 	}
 
+	configType := model.ResolveOutputs(v.Type())
+
 	getType := ""
-	switch v.Type() {
+	switch configType {
 	case model.StringType: // Already default
 	case model.NumberType:
 		getType = "Float64"
@@ -2030,6 +2032,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	getOrRequire := "Get"
 	if v.DefaultValue == nil {
 		getOrRequire = "Require"
+	}
+	if v.Secret {
+		getOrRequire += "Secret"
 	}
 
 	if v.Description != "" {
@@ -2055,7 +2060,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 				g.Fgenf(w, "}\n")
 			}
 		default:
-			switch v.Type() {
+			switch configType {
 			// Go will default to interpreting integers (i.e. 3) as ints, even if the config is Number
 			case model.NumberType:
 				g.Fgenf(w, "%s := float64(%.3v);\n", name, expr)
@@ -2063,7 +2068,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 				g.Fgenf(w, "%s := %.3v;\n", name, expr)
 			}
 		}
-		switch v.Type() {
+		switch configType {
 		case model.StringType:
 			g.Fgenf(w, "if param := cfg.Get(\"%s\"); param != \"\"{\n", v.LogicalName())
 		case model.NumberType:
