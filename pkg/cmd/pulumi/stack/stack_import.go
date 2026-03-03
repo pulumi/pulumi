@@ -115,11 +115,12 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 				snapshot.SecretsManager = sm
 
 				// Handle if the configuration changed any of EncryptedKey, etc
-				if loadErr == nil {
-					if needsSaveProjectStackAfterSecretManger(oldConfig, ps) {
-						if err = SaveProjectStack(ctx, s, ps); err != nil {
-							return fmt.Errorf("saving stack config: %w", err)
-						}
+				if needsSaveProjectStackAfterSecretManger(oldConfig, ps) {
+					if loadErr != nil {
+						return fmt.Errorf("could not load existing project stack to update secrets manager configuration: %w", loadErr)
+					}
+					if err = SaveProjectStack(ctx, s, ps); err != nil {
+						return fmt.Errorf("saving stack config: %w", err)
 					}
 				}
 			}
