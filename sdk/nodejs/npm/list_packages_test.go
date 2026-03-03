@@ -41,6 +41,7 @@ func TestListPackages(t *testing.T) {
 			assert.Greater(t, len(got), 2)
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "@pulumi/pulumi", Version: "3.224.0"})
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "typescript", Version: "5.9.3"})
+			assert.Contains(t, got, plugin.DependencyInfo{Name: "@grpc/grpc-js", Version: "1.14.3"})
 		})
 
 		t.Run("direct", func(t *testing.T) {
@@ -67,6 +68,7 @@ func TestListPackages(t *testing.T) {
 			assert.Greater(t, len(got), 2)
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "@pulumi/pulumi", Version: "3.224.0"})
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "typescript", Version: "5.9.3"})
+			assert.Contains(t, got, plugin.DependencyInfo{Name: "@grpc/grpc-js", Version: "1.14.3"})
 		})
 
 		t.Run("direct", func(t *testing.T) {
@@ -96,6 +98,7 @@ func TestListPackages(t *testing.T) {
 			assert.Greater(t, len(got), 2)
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "@pulumi/pulumi", Version: pulumiVersion})
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "typescript", Version: "5.9.3"})
+			assert.Contains(t, got, plugin.DependencyInfo{Name: "@grpc/grpc-js", Version: "1.14.3"})
 		})
 
 		t.Run("direct", func(t *testing.T) {
@@ -104,6 +107,33 @@ func TestListPackages(t *testing.T) {
 			require.NoError(t, err)
 			assert.ElementsMatch(t, []plugin.DependencyInfo{
 				{Name: "@pulumi/pulumi", Version: pulumiVersion},
+				{Name: "typescript", Version: "5.9.3"},
+			}, got)
+		})
+	})
+
+	t.Run("pnpm-v9", func(t *testing.T) {
+		t.Parallel()
+		dir := "testdata/list-packages/pnpm-v9"
+		pnpm, err := newPnpm()
+		require.NoError(t, err)
+
+		t.Run("transitive", func(t *testing.T) {
+			t.Parallel()
+			got, err := pnpm.ListPackages(ctx, dir, true)
+			require.NoError(t, err)
+			assert.Greater(t, len(got), 2)
+			assert.Contains(t, got, plugin.DependencyInfo{Name: "@pulumi/pulumi", Version: "3.224.0"})
+			assert.Contains(t, got, plugin.DependencyInfo{Name: "typescript", Version: "5.9.3"})
+			assert.Contains(t, got, plugin.DependencyInfo{Name: "@grpc/grpc-js", Version: "1.14.3"})
+		})
+
+		t.Run("direct", func(t *testing.T) {
+			t.Parallel()
+			got, err := pnpm.ListPackages(ctx, dir, false)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, []plugin.DependencyInfo{
+				{Name: "@pulumi/pulumi", Version: "3.224.0"},
 				{Name: "typescript", Version: "5.9.3"},
 			}, got)
 		})
@@ -122,6 +152,7 @@ func TestListPackages(t *testing.T) {
 			assert.Greater(t, len(got), 2)
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "@pulumi/pulumi", Version: "3.224.0"})
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "typescript", Version: "5.9.3"})
+			assert.Contains(t, got, plugin.DependencyInfo{Name: "@grpc/grpc-js", Version: "1.14.3"})
 		})
 
 		t.Run("direct", func(t *testing.T) {
