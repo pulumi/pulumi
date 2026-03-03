@@ -992,7 +992,6 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// Just use base64 "secrets" for these tests
 	sm := b64secrets.NewBase64SecretsManager()
-	dec := sm.Decrypter()
 
 	// Create a temp dir for the a diy backend to run in for the test
 	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
@@ -1047,27 +1046,44 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
+	return runLanguageTests(ctx, token, req.Test, test, loader, packages,
+		sdks, localDependencies, languageClient, grpcServer,
+		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx)
+}
+
+func runLanguageTests(
+	ctx context.Context, token testToken, testName string, test tests.LanguageTest,
+	loader schema.ReferenceLoader, packages []*schema.Package, sdks, localDependencies map[string]string,
+	languageClient plugin.LanguageRuntime, grpcServer *plugin.GrpcServer,
+	disableSnapshotWriting bool, snapshotEdits []compiledReplacement,
+	testBackend diy.Backend,
+	stdout, stderr *bytes.Buffer,
+	pctx *plugin.Context,
+) (*testingrpc.RunLanguageTestResponse, error) {
+	sm := b64secrets.NewBase64SecretsManager()
+	dec := sm.Decrypter()
+
 	var result tests.LResult
 	for i, run := range test.Runs {
-		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
+		sourceDir := filepath.Join(token.TemporaryDirectory, "source", testName)
+		projectDir := filepath.Join(token.TemporaryDirectory, "projects", testName)
 		if i == 0 || !test.RunsShareSource {
 			// Create a source directory for the test
 			if len(test.Runs) > 1 && !test.RunsShareSource {
 				sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 			}
-			err = os.MkdirAll(sourceDir, 0o700)
-			if err != nil {
+
+			if err := os.MkdirAll(sourceDir, 0o700); err != nil {
 				return nil, fmt.Errorf("create source dir: %w", err)
 			}
 
 			// Find and copy the tests PCL code to the source dir
-			pclDir := filepath.Join("testdata", req.Test)
+			pclDir := filepath.Join("testdata", testName)
 			if len(test.Runs) > 1 && !test.RunsShareSource {
 				pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 			}
-			err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
-			if err != nil {
+
+			if err := copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil); err != nil {
 				return nil, fmt.Errorf("copy source test data: %w", err)
 			}
 
@@ -1075,8 +1091,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			if len(test.Runs) > 1 && !test.RunsShareSource {
 				projectDir = filepath.Join(projectDir, strconv.Itoa(i))
 			}
-			err = os.MkdirAll(projectDir, 0o755)
-			if err != nil {
+
+			if err := os.MkdirAll(projectDir, 0o755); err != nil {
 				return nil, fmt.Errorf("create project dir: %w", err)
 			}
 		}
@@ -1085,10 +1101,10 @@ func (eng *languageTestServer) RunLanguageTest(
 		rootDirectory := sourceDir
 		projectJSON := func() string {
 			if run.Main == "" {
-				return fmt.Sprintf(`{"name": "%s"}`, req.Test)
+				return fmt.Sprintf(`{"name": "%s"}`, testName)
 			}
 			sourceDir = filepath.Join(sourceDir, run.Main)
-			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.Main)
+			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, testName, run.Main)
 		}()
 
 		// Check the PCL is valid and get the list of packages it reports
@@ -1132,7 +1148,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 			// If an override has been supplied for the given test, we'll just copy that over as-is, instead of calling
 			// GenerateProject to generate a program for testing.
-			if programOverride, ok := token.ProgramOverrides[req.Test]; ok {
+			if programOverride, ok := token.ProgramOverrides[testName]; ok {
 				err = copyDirectory(os.DirFS(programOverride.Paths[i]), ".", projectDir, nil, nil)
 				if err != nil {
 					return nil, fmt.Errorf("copy override testdata: %w", err)
@@ -1154,7 +1170,7 @@ func (eng *languageTestServer) RunLanguageTest(
 					return nil, fmt.Errorf("copy testdata: %w", err)
 				}
 
-				snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
+				snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", testName)
 				if len(test.Runs) > 1 && !test.RunsShareSource {
 					snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 				}
@@ -1162,7 +1178,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				if err != nil {
 					return nil, fmt.Errorf("program snapshot creation: %w", err)
 				}
-				validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
+				validations, err := doSnapshot(disableSnapshotWriting, projectDirSnapshot, snapshotDir)
 				if err != nil {
 					return nil, fmt.Errorf("program snapshot validation: %w", err)
 				}
