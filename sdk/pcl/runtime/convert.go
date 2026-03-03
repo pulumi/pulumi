@@ -320,21 +320,21 @@ func propertyValueToCty(
 		return ctyVal.Mark(secretMark{}), nil
 	case value.IsOutput():
 		output := value.OutputValue()
-		ctyVal, err := propertyValueToCty(ctx, monitor, output.Element)
-		if err != nil {
-			return cty.NilVal, err
-		}
+		var ctyVal cty.Value
 		if !output.Known {
-			ctyVal = cty.DynamicVal
+			ctyVal = cty.UnknownVal(cty.DynamicPseudoType)
+		} else {
+			var err error
+			ctyVal, err = propertyValueToCty(ctx, monitor, output.Element)
+			if err != nil {
+				return cty.NilVal, err
+			}
 		}
 		if output.Secret {
 			ctyVal = ctyVal.Mark(secretMark{})
 		}
-		if len(output.Dependencies) > 0 {
-			for _, dep := range output.Dependencies {
-				ctyVal = ctyVal.Mark(dependencyMark{dependency: dep})
-			}
-			return ctyVal, nil
+		for _, dep := range output.Dependencies {
+			ctyVal = ctyVal.Mark(dependencyMark{dependency: dep})
 		}
 		return ctyVal, nil
 	case value.IsComputed():
