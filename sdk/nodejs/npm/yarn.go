@@ -22,7 +22,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -196,7 +196,6 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 // This function is used to indicate whether to prefer Yarn over
 // other package managers.
 func checkYarnLock(pwd string) bool {
-	yarnFile := filepath.Join(pwd, "yarn.lock")
-	_, err := os.Stat(yarnFile)
+	_, err := fsutil.Searchup(pwd, "yarn.lock")
 	return err == nil
 }

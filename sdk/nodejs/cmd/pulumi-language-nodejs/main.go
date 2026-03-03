@@ -1291,22 +1291,12 @@ func (host *nodeLanguageHost) Handshake(ctx context.Context,
 func (host *nodeLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	packageDir := req.Info.ProgramDirectory
-	workspaceRoot, err := npm.FindWorkspaceRoot(req.Info.ProgramDirectory)
-	if err != nil {
-		if !errors.Is(err, npm.ErrNotInWorkspace) {
-			return nil, fmt.Errorf("failed to find workspace root: %w", err)
-		}
-	} else {
-		packageDir = workspaceRoot
-	}
-
-	pkgManager, err := npm.ResolvePackageManager(npm.AutoPackageManager, packageDir)
+	pkgManager, err := npm.ResolvePackageManager(npm.AutoPackageManager, req.Info.ProgramDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine package manager: %w", err)
 	}
 
-	packages, err := pkgManager.ListPackages(ctx, packageDir, req.TransitiveDependencies)
+	packages, err := pkgManager.ListPackages(ctx, req.Info.ProgramDirectory, req.TransitiveDependencies)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node dependencies: %w", err)
 	}

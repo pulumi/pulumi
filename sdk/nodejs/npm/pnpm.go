@@ -31,6 +31,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
 // pnpm is an alternative package manager for Node.js.
@@ -180,7 +181,6 @@ func (pnpm *pnpmManager) Pack(ctx context.Context, dir string, stderr io.Writer)
 // This function is used to indicate whether to prefer pnpm over
 // other package managers.
 func checkPnpmLock(pwd string) bool {
-	pnpmFile := filepath.Join(pwd, "pnpm-lock.yaml")
-	_, err := os.Stat(pnpmFile)
+	_, err := fsutil.Searchup(pwd, "pnpm-lock.yaml")
 	return err == nil
 }

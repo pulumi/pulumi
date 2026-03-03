@@ -26,6 +26,7 @@ import (
 	"github.com/git-pkgs/manifests"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -39,7 +40,6 @@ const (
 	PnpmPackageManager PackageManagerType = "pnpm"
 	BunPackageManager  PackageManagerType = "bun"
 )
-
 
 // A `PackageManager` is responsible for installing dependencies,
 // packaging Pulumi programs, and executing Node in the context of
@@ -66,8 +66,13 @@ type PackageManager interface {
 
 // listPackagesFromLockFile parses a lock file and returns the installed packages. If transitive is false, the result is
 // filtered to direct dependencies only by cross-referencing with package.json.
-func listPackagesFromLockFile(dir, lockFileName string, transitive bool) ([]plugin.DependencyInfo, error) {
-	lockFilePath := filepath.Join(dir, lockFileName)
+func listPackagesFromLockFile(startDir, lockFileName string, transitive bool) ([]plugin.DependencyInfo, error) {
+	lockFilePath, err := fsutil.Searchup(startDir, lockFileName)
+	if err != nil {
+		return nil, fmt.Errorf("no %s found (searching upwards from %s)", lockFileName, startDir)
+	}
+	dir := filepath.Dir(lockFilePath)
+
 	content, err := os.ReadFile(lockFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("could not read %s: %w", lockFilePath, err)
