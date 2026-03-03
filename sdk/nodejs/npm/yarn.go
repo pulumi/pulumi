@@ -144,6 +144,10 @@ func (yarn *yarnClassic) Link(ctx context.Context, dir, packageName, path string
 	return nil
 }
 
+func (yarn *yarnClassic) ListPackages(ctx context.Context, dir string, transitive bool) ([]DependencyInfo, error) {
+	return listPackagesFromLockFile(dir, "yarn.lock", transitive)
+}
+
 // Pack runs `yarn pack` in the given directory, packaging the Node.js app located
 // there into a tarball an returning it as `[]byte`. `stdout` is ignored for this command,
 // as it does not produce useful data.

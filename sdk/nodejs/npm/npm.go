@@ -100,6 +100,10 @@ func (node *npmManager) Link(ctx context.Context, dir, packageName, path string)
 	return nil
 }
 
+func (node *npmManager) ListPackages(ctx context.Context, dir string, transitive bool) ([]DependencyInfo, error) {
+	return listPackagesFromLockFile(dir, "package-lock.json", transitive)
+}
+
 func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, node.executable, "pack", "--loglevel=error")

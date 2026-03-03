@@ -133,6 +133,17 @@ func (bun *bunManager) Link(ctx context.Context, dir, packageName, path string) 
 	return nil
 }
 
+func (bun *bunManager) ListPackages(ctx context.Context, dir string, transitive bool) ([]DependencyInfo, error) {
+	if _, err := os.Stat(filepath.Join(dir, "bun.lock")); err == nil {
+		return listPackagesFromLockFile(dir, "bun.lock", transitive)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "bun.lockb")); err == nil {
+		return nil, errors.New("binary bun lockfile (bun.lockb) is not supported for listing packages; " +
+			"please upgrade to bun >= 1.2, which uses a text-based lockfile (bun.lock)")
+	}
+	return nil, fmt.Errorf("no bun lock file found in %s", dir)
+}
+
 type packageDotJSON struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`

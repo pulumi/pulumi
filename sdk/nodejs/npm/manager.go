@@ -16,11 +16,14 @@ package npm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/blang/semver"
+	"github.com/git-pkgs/manifests"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -35,6 +38,12 @@ const (
 	PnpmPackageManager PackageManagerType = "pnpm"
 	BunPackageManager  PackageManagerType = "bun"
 )
+
+// DependencyInfo contains information about an installed package.
+type DependencyInfo struct {
+	Name    string
+	Version string
+}
 
 // A `PackageManager` is responsible for installing dependencies,
 // packaging Pulumi programs, and executing Node in the context of
@@ -54,6 +63,75 @@ type PackageManager interface {
 	Name() string
 	// Version returns the version of the package manager.
 	Version() (semver.Version, error)
+	// ListPackages returns the packages installed in dir.
+	// If transitive is false, only direct dependencies declared in package.json are returned.
+	ListPackages(ctx context.Context, dir string, transitive bool) ([]DependencyInfo, error)
+}
+
+// listPackagesFromLockFile parses a lock file and returns the installed packages. If transitive is false, the result is
+// filtered to direct dependencies only by cross-referencing with package.json.
+func listPackagesFromLockFile(dir, lockFileName string, transitive bool) ([]DependencyInfo, error) {
+	lockFilePath := filepath.Join(dir, lockFileName)
+	content, err := os.ReadFile(lockFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("could not read %s: %w", lockFilePath, err)
+	}
+
+	result, err := manifests.Parse(lockFileName, content)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse %s: %w", lockFilePath, err)
+	}
+
+	deps := make([]DependencyInfo, 0, len(result.Dependencies))
+	for _, dep := range result.Dependencies {
+		deps = append(deps, DependencyInfo{
+			Name:    dep.Name,
+			Version: dep.Version,
+		})
+	}
+
+	if transitive {
+		return deps, nil
+	}
+
+	return filterDirectDependencies(dir, deps)
+}
+
+// filterDirectDependencies filters deps to only include packages declared directly in the package.json found in dir.
+func filterDirectDependencies(dir string, deps []DependencyInfo) ([]DependencyInfo, error) {
+	packageJSONPath := filepath.Join(dir, "package.json")
+	content, err := os.ReadFile(packageJSONPath)
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("could not find %s", packageJSONPath)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("could not read %s: %w", packageJSONPath, err)
+	}
+
+	var pkg struct {
+		Dependencies    map[string]string `json:"dependencies"`
+		DevDependencies map[string]string `json:"devDependencies"`
+	}
+	if err := json.Unmarshal(content, &pkg); err != nil {
+		return nil, fmt.Errorf("could not parse %s: %w", packageJSONPath, err)
+	}
+
+	directDeps := make(map[string]bool, len(pkg.Dependencies)+len(pkg.DevDependencies))
+	for name := range pkg.Dependencies {
+		directDeps[name] = true
+	}
+	for name := range pkg.DevDependencies {
+		directDeps[name] = true
+	}
+
+	var result []DependencyInfo
+	for _, dep := range deps {
+		if directDeps[dep.Name] {
+			result = append(result, dep)
+			delete(directDeps, dep.Name) // avoid counting a package twice
+		}
+	}
+	return result, nil
 }
 
 // Pack runs `npm pack` in the given directory, packaging the Node.js app located there into a
