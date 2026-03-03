@@ -15,6 +15,7 @@
 package npm
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -77,6 +78,7 @@ func listPackagesFromLockFile(startDir, lockFileName string, transitive bool) ([
 	if err != nil {
 		return nil, fmt.Errorf("could not read %s: %w", lockFilePath, err)
 	}
+	content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
 
 	result, err := manifests.Parse(lockFileName, content)
 	if err != nil {
