@@ -7,7 +7,7 @@ import keyword
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Mapping
+from typing import Any, Mapping
 
 import stringcase
 
@@ -60,7 +60,7 @@ def _generate_options_types(
     structure: Mapping[str, Any],
     source: list[ast.stmt],
     breadcrumbs: list[str] | None = None,
-    inherited: Dict[str, Mapping[str, Any]] | None = None,
+    inherited: dict[str, Mapping[str, Any]] | None = None,
 ) -> None:
     """
     Collect all the flags for the current subcommand, including all the parent flags.
@@ -73,7 +73,7 @@ def _generate_options_types(
     command = _create_command_name(breadcrumbs)
     class_name = _create_options_type_name(breadcrumbs)
 
-    flags: Dict[str, Mapping[str, Any]] = {
+    flags: dict[str, Mapping[str, Any]] = {
         **inherited,
         **(structure.get("flags") or {}),
     }
@@ -140,7 +140,7 @@ def _generate_options_types(
 
     # Recurse into child commands if this node is a menu.
     if structure.get("type") == "menu":
-        commands = structure.get("commands") or {}
+        commands = structure.get("commands", {})
         for name, child in commands.items():
             _generate_options_types(
                 child,
@@ -192,10 +192,10 @@ def _generate_commands(
     if breadcrumbs is None:
         breadcrumbs = []
 
-    node_type = structure.get("type")
+    node_type = structure["type"]
 
     if node_type == "menu":
-        commands = structure.get("commands") or {}
+        commands = structure.get("commands", {})
         for name, child in commands.items():
             _generate_commands(
                 child,
@@ -213,8 +213,8 @@ def _generate_commands(
     method_name = _snake_case("_".join(breadcrumbs))
 
     # Argument specification for the CLI command.
-    argument_info: list[Dict[str, Any]] = []
-    variadic_info: Dict[str, Any] | None = None
+    argument_info: list[dict[str, Any]] = []
+    variadic_info: dict[str, Any] | None = None
 
     if node_type == "command":
         argument_spec = structure.get("arguments") or {}
@@ -233,9 +233,11 @@ def _generate_commands(
                 is_optional = index >= required and not is_variadic
 
                 arg_type = _convert_argument_type(str(argument.get("type") or "string"))
+                if is_optional:
+                    arg_type = f"{arg_type} | None"
                 annotation_expr = ast.parse(arg_type, mode="eval").body
 
-                info: Dict[str, Any] = {
+                info: dict[str, Any] = {
                     "name": identifier,
                     "optional": is_optional,
                     "variadic": is_variadic,
@@ -328,7 +330,7 @@ def _generate_commands(
     )
 
     # Flags: build __flags from __options.
-    flags: Dict[str, Mapping[str, Any]] = structure.get("flags") or {}
+    flags: dict[str, Mapping[str, Any]] = structure.get("flags") or {}
     for flag in flags.values():
         flag_name = str(flag.get("name", ""))
         if not flag_name:
