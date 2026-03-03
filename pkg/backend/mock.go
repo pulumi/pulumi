@@ -606,7 +606,7 @@ func (ms *MockStack) ConfigLocation() StackConfigLocation {
 	if ms.ConfigLocationF != nil {
 		return ms.ConfigLocationF()
 	}
-	panic("not implemented: MockStack.HasRemoteConfigF")
+	return StackConfigLocation{}
 }
 
 func (ms *MockStack) LoadRemoteConfig(ctx context.Context, project *workspace.Project,
