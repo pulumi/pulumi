@@ -203,6 +203,19 @@ func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
 		}
 	}
 
+	if secretAttr, ok := block.Body.Attribute("secret"); ok {
+		secret, diags := getBooleanAttributeValue(secretAttr)
+		if diags != nil {
+			diagnostics = diagnostics.Append(diags)
+		} else {
+			node.Secret = secret
+		}
+	}
+
+	if node.Secret {
+		node.typ = model.NewOutputType(node.typ)
+	}
+
 	node.Definition = block
 	return diagnostics
 }
