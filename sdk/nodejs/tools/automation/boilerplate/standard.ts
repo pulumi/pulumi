@@ -26,6 +26,10 @@ export interface BaseOptions {
 export class API {
   private _command: PulumiCommand;
 
+  constructor(command: PulumiCommand) {
+    this._command = command;
+  }
+
   private __run(options: BaseOptions, args: string[]): Promise<CommandResult> {
     return this._command.run(
       args,
