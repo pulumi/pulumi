@@ -12,6 +12,12 @@ from typing import Any, Mapping
 import stringcase
 
 
+_RESERVED_IDENTIFIERS: set[str] = {
+    # Avoid collisions with generated parameter names.
+    "options",
+}
+
+
 def _prepare_string(value: str) -> str:
     """
     Prepare a string for case conversion.
@@ -21,9 +27,9 @@ def _prepare_string(value: str) -> str:
 
 def _sanitise_keyword(value: str) -> str:
     """
-    Avoid conflicts with Python keywords.
+    Avoid conflicts with Python keywords and reserved identifiers.
     """
-    if keyword.iskeyword(value):
+    if keyword.iskeyword(value) or value in _RESERVED_IDENTIFIERS:
         return value + "_"
     return value
 
@@ -226,8 +232,10 @@ def _generate_commands(
             last_index = len(argument_items) - 1
 
             for index, argument in enumerate(argument_items):
-                raw_name = str(argument.get("name") or f"arg_{index + 1}")
-                identifier = _snake_case(raw_name) or f"arg_{index + 1}"
+                raw_name = str(argument.get("name", f"arg_{index + 1}"))
+                identifier = _snake_case(raw_name)
+                if not identifier:
+                    identifier = f"arg_{index + 1}"
 
                 is_variadic = variadic_flag and index == last_index
                 is_optional = index >= required and not is_variadic
@@ -249,10 +257,10 @@ def _generate_commands(
                 if is_variadic:
                     variadic_info = info
 
-    # Build the function signature: (self, __options: OptionsType, ...)
+    # Build the function signature: (self, options: OptionsType, ...)
     pos_args: list[ast.arg] = [
         ast.arg(arg="self"),
-        ast.arg(arg="__options", annotation=ast.Name(id=options_type, ctx=ast.Load())),
+        ast.arg(arg="options", annotation=ast.Name(id=options_type, ctx=ast.Load())),
     ]
     has_default: list[bool] = [False, False]
 
@@ -329,7 +337,7 @@ def _generate_commands(
         )
     )
 
-    # Flags: build __flags from __options.
+    # Flags: build __flags from options.
     flags: dict[str, Mapping[str, Any]] = structure.get("flags") or {}
     for flag in flags.values():
         flag_name = str(flag.get("name", ""))
@@ -345,9 +353,9 @@ def _generate_commands(
         required_flag = bool(flag.get("required", False))
 
         if repeatable:
-            # for __item in (__options.get('<attr>') or []):
+            # for __item in (options.get('<attr>') or []):
             source_call = _call(
-                _attr(_name("__options"), "get"),
+                _attr(_name("options"), "get"),
                 ast.Constant(value=attribute),
             )
             loop_iter = ast.BoolOp(
@@ -412,9 +420,9 @@ def _generate_commands(
                 )
             )
         else:
-            # value_expr = __options.get('<attr>')
+            # value_expr = options.get('<attr>')
             value_call = _call(
-                _attr(_name("__options"), "get"),
+                _attr(_name("options"), "get"),
                 ast.Constant(value=attribute),
             )
 
