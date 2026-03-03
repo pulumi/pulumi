@@ -34,8 +34,8 @@ from ..resource import CustomResource
 from . import rpc
 from ._depends_on import _resolve_depends_on_urns, _resolve_depends_on
 from .settings import (
+    _get_async_monitor,
     _get_rpc_manager,
-    get_monitor,
     grpc_error_to_exception,
     handle_grpc_error,
 )
@@ -260,7 +260,7 @@ def _invoke(
                 opts.version = None
                 log.debug(f"Invoke using package reference {package_ref_str}")
 
-        monitor = get_monitor()
+        monitor = _get_async_monitor()
         # keep track of the dependencies of the inputs
         property_dependencies: dict[str, list[Resource]] = {}
         inputs = await rpc.serialize_properties(props, property_dependencies)
@@ -321,13 +321,18 @@ def _invoke(
             packageRef=package_ref_str or "",
         )
 
-        def do_invoke():
-            try:
-                return monitor.Invoke(req), None
-            except grpc.RpcError as exn:
-                return None, grpc_error_to_exception(exn)
+        if monitor is None:
+            return (
+                InvokeResult(None, is_secret=False),
+                Exception("no monitor available to invoke function"),
+            )
 
-        resp, error = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+        try:
+            resp = await monitor.Invoke(req)
+            error = None
+        except grpc.RpcError as exn:
+            resp = None
+            error = grpc_error_to_exception(exn)
         log.debug(f"Invoking function completed: tok={tok}, error={error}")
 
         # If the invoke failed, raise an error.
@@ -439,7 +444,7 @@ def call(
                 version = res._version or ""
                 plugin_download_url = res._plugin_download_url or ""
 
-            monitor = get_monitor()
+            monitor = _get_async_monitor()
 
             # Serialize out all props to their final values. In doing so, we'll also collect all the Resources pointed to
             # by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
@@ -490,13 +495,13 @@ def call(
                 packageRef=package_ref_str or "",
             )
 
-            def do_rpc_call():
-                try:
-                    return monitor.Call(req)
-                except grpc.RpcError as exn:
-                    handle_grpc_error(exn)
+            if monitor is None:
+                raise Exception("no monitor available to call function")
 
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+            try:
+                resp = await monitor.Call(req)
+            except grpc.RpcError as exn:
+                handle_grpc_error(exn)
             if resp is None:
                 return
 

@@ -38,7 +38,6 @@ from .proto import (
     callback_pb2,
     callback_pb2_grpc,
     resource_pb2,
-    resource_pb2_grpc,
 )
 from .rpc import (
     deserialize_properties,
@@ -55,6 +54,7 @@ if TYPE_CHECKING:
         ResourceTransform,
     )
     from ..resource_hooks import ErrorHook, ResourceHook
+    from .proto.resource_pb2_grpc import ResourceMonitorAsyncStub
 
 
 _CallbackFunction = Callable[[bytes], Awaitable[Message]]
@@ -64,13 +64,13 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     _servicers: list[_CallbackServicer] = []
 
     _callbacks: dict[str, _CallbackFunction]
-    _monitor: resource_pb2_grpc.ResourceMonitorStub
+    _monitor: ResourceMonitorAsyncStub
     _server: aio.Server
     _target: str
 
     _transforms: dict[Union[ResourceTransform, InvokeTransform], str]
 
-    def __init__(self, monitor: resource_pb2_grpc.ResourceMonitorStub):
+    def __init__(self, monitor: ResourceMonitorAsyncStub):
         log.debug("Creating CallbackServicer")
         _CallbackServicer._servicers.append(self)
         self._callbacks = {}
@@ -208,10 +208,10 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             target=self._target,
         )
 
-    def register_stack_transform(self, transform: ResourceTransform):
+    async def register_stack_transform(self, transform: ResourceTransform):
         callback = self.register_transform(transform)
         try:
-            self._monitor.RegisterStackTransform(callback)
+            await self._monitor.RegisterStackTransform(callback)
         except:
             # Remove the transform since we didn't manage to actually register it.
             self._transforms.pop(transform)
@@ -276,10 +276,10 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             target=self._target,
         )
 
-    def register_invoke_transform(self, transform: InvokeTransform):
+    async def register_invoke_transform(self, transform: InvokeTransform):
         callback = self.do_register_invoke_transform(transform)
         try:
-            self._monitor.RegisterStackInvokeTransform(callback)
+            await self._monitor.RegisterStackInvokeTransform(callback)
         except:
             # Remove the transform since we didn't manage to actually register it.
             self._transforms.pop(transform)
@@ -468,19 +468,19 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             callback=callback,
         )
 
-    def register_resource_hook(self, hook: ResourceHook) -> None:
+    async def register_resource_hook(self, hook: ResourceHook) -> None:
         req = self.do_register_resource_hook(hook)
         try:
-            self._monitor.RegisterResourceHook(req)
+            await self._monitor.RegisterResourceHook(req)
         except:
             # Remove the hook since we didn't manage to actually register it.
             self._callbacks.pop(req.callback.token)
             raise
 
-    def register_error_hook(self, hook: ErrorHook) -> None:
+    async def register_error_hook(self, hook: ErrorHook) -> None:
         req = self.do_register_error_hook(hook)
         try:
-            self._monitor.RegisterErrorHook(req)
+            await self._monitor.RegisterErrorHook(req)
         except Exception:
             self._callbacks.pop(req.callback.token)
             raise

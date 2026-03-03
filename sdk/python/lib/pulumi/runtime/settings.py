@@ -32,6 +32,7 @@ from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc, engine_pb2
 from ._callbacks import _CallbackServicer
 from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
+from ._monitor import _get_async_monitor_method, _grpc_monitor, _sync_to_async_monitor
 from .rpc_manager import RPCManager
 
 if TYPE_CHECKING:
@@ -80,9 +81,7 @@ class Settings:
         # Actually connect to the monitor/engine over gRPC.
         if monitor is not None:
             if isinstance(monitor, str):
-                self.monitor = resource_pb2_grpc.ResourceMonitorStub(
-                    grpc.insecure_channel(monitor, options=_GRPC_CHANNEL_OPTIONS),
-                )
+                self.monitor = _grpc_monitor(monitor)
             else:
                 self.monitor = monitor
         else:
@@ -233,6 +232,27 @@ def _get_rpc_manager() -> RPCManager:
     return SETTINGS.rpc_manager
 
 
+def _get_async_monitor() -> Optional[resource_pb2_grpc.ResourceMonitorAsyncStub]:
+    """
+    Returns the current resource monitoring service client for RPC communications, as an async stub.
+    """
+    monitor = SETTINGS.monitor
+    if monitor is None:
+        return None
+
+    # First check if the monitor provides its own async interface, either directly or via a wrapper.
+    # This will be available for the default gRPC monitor, MockMonitor, AsyncMockMonitor, and other
+    # internal wrappers.
+    async_monitor = _get_async_monitor_method(monitor)
+    if async_monitor is not None:
+        return async_monitor()
+
+    # Otherwise, if someone provided their own object that isn't one of the built-in ones,
+    # such as a mock monitor that doesn't subclass MockMonitor or AsyncMockMonitor, we
+    # assume the object is using the sync monitor interface and wrap it in an async wrapper.
+    return _sync_to_async_monitor(monitor)
+
+
 def get_monitor() -> Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]:
     """
     Returns the current resource monitoring service client for RPC communications.
@@ -255,7 +275,7 @@ async def _get_callbacks() -> Optional[_CallbackServicer]:
     if callbacks is not None:
         return callbacks
 
-    monitor = SETTINGS.monitor
+    monitor = _get_async_monitor()
     if monitor is None or not isinstance(
         monitor, resource_pb2_grpc.ResourceMonitorStub
     ):
@@ -316,11 +336,21 @@ def require_pulumi_version(rg: str) -> None:
 
 async def monitor_supports_feature(feature: str) -> bool:
     if feature not in SETTINGS.feature_support:
-        monitor = SETTINGS.monitor
+        monitor = _get_async_monitor()
         if not monitor:
             return False
 
-        result = await _monitor_supports_feature(monitor, feature)
+        async def supports_feature() -> bool:
+            req = resource_pb2.SupportsFeatureRequest(id=feature)
+            try:
+                resp = await monitor.SupportsFeature(req)
+                return resp.hasSupport
+            except grpc.RpcError as exn:
+                if exn.code() != grpc.StatusCode.UNIMPLEMENTED:
+                    handle_grpc_error(exn)
+                return False
+
+        result = await supports_feature()
         SETTINGS.feature_support[feature] = result
 
     return SETTINGS.feature_support[feature]
@@ -416,23 +446,6 @@ def reset_options(
             organization=organization,
         )
     )
-
-
-async def _monitor_supports_feature(
-    monitor: resource_pb2_grpc.ResourceMonitorStub, feature: str
-) -> bool:
-    req = resource_pb2.SupportsFeatureRequest(id=feature)
-
-    def do_rpc_call():
-        try:
-            resp = monitor.SupportsFeature(req)
-            return resp.hasSupport
-        except grpc.RpcError as exn:
-            if exn.code() != grpc.StatusCode.UNIMPLEMENTED:
-                handle_grpc_error(exn)
-            return False
-
-    return await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
 
 
 async def _load_monitor_feature_support():

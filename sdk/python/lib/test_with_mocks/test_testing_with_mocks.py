@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-
 import grpc
 import pulumi
 import pytest
@@ -25,15 +22,13 @@ from pulumi.runtime.sync_await import _ensure_event_loop
 
 @pytest.fixture
 def my_resources():
-    loop = _ensure_event_loop()
-    loop.set_default_executor(ImmediateExecutor())
+    _ensure_event_loop()
     old_settings = pulumi.runtime.settings.SETTINGS
     try:
         pulumi.runtime.mocks.set_mocks(MyMocks())
         yield resources.define_resources()
     finally:
         pulumi.runtime.settings.configure(old_settings)
-        loop.set_default_executor(ThreadPoolExecutor())
 
 
 @pulumi.runtime.test
@@ -171,27 +166,3 @@ class MyMocks(pulumi.runtime.Mocks):
             return ['', {}]
 
 
-class ImmediateExecutor(ThreadPoolExecutor):
-    """This removes multithreading from current tests. Unfortunately in
-    presence of multithreading the tests are flaky. The proper fix is
-    postponed - see https://github.com/pulumi/pulumi/issues/7663
-
-    """
-
-    def __init__(self):
-        super()
-        self._default_executor = ThreadPoolExecutor()
-
-    def submit(self, fn, *args, **kwargs):
-        v = fn(*args, **kwargs)
-        return self._default_executor.submit(ImmediateExecutor._identity, v)
-
-    def map(self, func, *iterables, timeout=None, chunksize=1):
-        raise Exception('map not implemented')
-
-    def shutdown(self, wait=True, cancel_futures=False):
-        self._default_executor.shutdown(wait=wait, cancel_futures=cancel_futures)
-
-    @staticmethod
-    def _identity(x):
-        return x
