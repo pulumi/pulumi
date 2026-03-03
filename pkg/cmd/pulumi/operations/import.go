@@ -25,6 +25,7 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -180,20 +181,34 @@ func isValidIdentifier(name string) bool {
 		return false
 	}
 
-	for i, r := range name {
-		if i == 0 {
-			if r == '_' || r == '-' || unicode.IsLetter(r) {
-				continue
-			}
-			return false
-		}
+	isTR31Start := func(r rune) bool {
+		return r == '_' || unicode.In(r, unicode.L, unicode.Nl, unicode.Other_ID_Start)
+	}
+	isTR31Continue := func(r rune) bool {
+		return isTR31Start(r) || unicode.In(r, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc, unicode.Other_ID_Continue)
+	}
 
-		if r == '_' || r == '-' || unicode.IsLetter(r) || unicode.IsDigit(r) {
-			continue
-		}
+	// HCL-compatible extension: '-' is allowed in identifiers.
+	isStart := func(r rune) bool {
+		return r == '-' || isTR31Start(r)
+	}
+	isContinue := func(r rune) bool {
+		return r == '-' || isTR31Continue(r)
+	}
+
+	first, width := utf8.DecodeRuneInString(name)
+	if first == utf8.RuneError && width == 0 {
+		return false
+	}
+	if !isStart(first) {
 		return false
 	}
 
+	for _, r := range name[width:] {
+		if !isContinue(r) {
+			return false
+		}
+	}
 	return true
 }
 
@@ -202,10 +217,29 @@ func sanitizeIdentifier(name string) string {
 		return "resource"
 	}
 
+	isTR31Start := func(r rune) bool {
+		return r == '_' || unicode.In(r, unicode.L, unicode.Nl, unicode.Other_ID_Start)
+	}
+	isTR31Continue := func(r rune) bool {
+		return isTR31Start(r) || unicode.In(r, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc, unicode.Other_ID_Continue)
+	}
+
+	// HCL-compatible extension: '-' is allowed in identifiers.
+	isStart := func(r rune) bool {
+		return r == '-' || isTR31Start(r)
+	}
+	isContinue := func(r rune) bool {
+		return r == '-' || isTR31Continue(r)
+	}
+
 	var b strings.Builder
 	for i, r := range name {
-		isStart := i == 0
-		valid := r == '_' || r == '-' || unicode.IsLetter(r) || (!isStart && unicode.IsDigit(r))
+		valid := false
+		if i == 0 {
+			valid = isStart(r)
+		} else {
+			valid = isContinue(r)
+		}
 		if valid {
 			b.WriteRune(r)
 			continue
@@ -218,18 +252,11 @@ func sanitizeIdentifier(name string) string {
 		return "resource"
 	}
 
-	if first, _ := utf8DecodeRuneInString(sanitized); unicode.IsDigit(first) {
+	if first, _ := utf8.DecodeRuneInString(sanitized); unicode.IsDigit(first) {
 		return "_" + sanitized
 	}
 
 	return sanitized
-}
-
-func utf8DecodeRuneInString(s string) (rune, int) {
-	for _, r := range s {
-		return r, len(string(r))
-	}
-	return 0, 0
 }
 
 func uniqueSanitizedName(base string, taken map[string]struct{}) string {

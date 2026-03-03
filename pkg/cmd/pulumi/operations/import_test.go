@@ -485,6 +485,34 @@ func TestParseImportFileSanitizesNameTableAndReferences(t *testing.T) {
 	assert.Equal(t, "parent_name", names[imports[1].Parent])
 }
 
+func TestParseImportFileKeepsUnicodeAndHyphenIdentifiers(t *testing.T) {
+	t.Parallel()
+
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name: "München-Σervice",
+				ID:   "service-id",
+				Type: "pkg:index:Service",
+			},
+		},
+	}
+
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	require.NoError(t, err)
+
+	assert.Equal(t, []deploy.Import{
+		{
+			Type: "pkg:index:Service",
+			Name: "München-Σervice",
+			ID:   "service-id",
+		},
+	}, imports)
+	assert.Equal(t, importer.NameTable{
+		"urn:pulumi:stack::proj::pkg:index:Service::München-Σervice": "München-Σervice",
+	}, names)
+}
+
 // Small test to ensure that importFile is marshalled to JSON sensibly, mostly checking that optional fields
 // don't show up.
 func TestImportFileMarshal(t *testing.T) {
