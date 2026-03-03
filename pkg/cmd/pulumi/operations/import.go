@@ -22,7 +22,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -173,6 +175,148 @@ type importFile struct {
 	Resources []importSpec            `json:"resources,omitempty"`
 }
 
+func isValidIdentifier(name string) bool {
+	if name == "" {
+		return false
+	}
+
+	for i, r := range name {
+		if i == 0 {
+			if r == '_' || unicode.IsLetter(r) {
+				continue
+			}
+			return false
+		}
+
+		if r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) {
+			continue
+		}
+		return false
+	}
+
+	return true
+}
+
+func sanitizeIdentifier(name string) string {
+	if name == "" {
+		return "resource"
+	}
+
+	var b strings.Builder
+	for i, r := range name {
+		isStart := i == 0
+		valid := r == '_' || unicode.IsLetter(r) || (!isStart && unicode.IsDigit(r))
+		if valid {
+			b.WriteRune(r)
+			continue
+		}
+		b.WriteByte('_')
+	}
+
+	sanitized := b.String()
+	if sanitized == "" {
+		return "resource"
+	}
+
+	if first, _ := utf8DecodeRuneInString(sanitized); unicode.IsDigit(first) {
+		return "_" + sanitized
+	}
+
+	return sanitized
+}
+
+func utf8DecodeRuneInString(s string) (rune, int) {
+	for _, r := range s {
+		return r, len(string(r))
+	}
+	return 0, 0
+}
+
+func uniqueSanitizedName(base string, taken map[string]struct{}) string {
+	name := base
+	counter := 2
+	for {
+		if _, exists := taken[name]; !exists {
+			taken[name] = struct{}{}
+			return name
+		}
+		name = fmt.Sprintf("%s%d", base, counter)
+		counter++
+	}
+}
+
+func sanitizeImportFile(f importFile) importFile {
+	rewrites := map[string]string{}
+	taken := map[string]struct{}{}
+
+	lookupOrCreate := func(raw string) string {
+		if raw == "" {
+			return ""
+		}
+		if rewritten, ok := rewrites[raw]; ok {
+			return rewritten
+		}
+		sanitized := raw
+		if !isValidIdentifier(raw) {
+			sanitized = sanitizeIdentifier(raw)
+		}
+		unique := uniqueSanitizedName(sanitized, taken)
+		rewrites[raw] = unique
+		return unique
+	}
+
+	if len(f.NameTable) > 0 {
+		keys := make([]string, 0, len(f.NameTable))
+		for k := range f.NameTable {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			lookupOrCreate(k)
+		}
+	}
+
+	for _, spec := range f.Resources {
+		if spec.Name != "" {
+			lookupOrCreate(spec.Name)
+		}
+	}
+
+	if len(f.NameTable) > 0 {
+		newNameTable := make(map[string]resource.URN, len(f.NameTable))
+		keys := make([]string, 0, len(f.NameTable))
+		for k := range f.NameTable {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			newNameTable[rewrites[k]] = f.NameTable[k]
+		}
+		f.NameTable = newNameTable
+	}
+
+	for i, spec := range f.Resources {
+		originalName := spec.Name
+		if spec.Name != "" {
+			spec.Name = rewrites[spec.Name]
+			if spec.LogicalName == "" && spec.Name != originalName {
+				// Preserve user intent by keeping the original name as the Pulumi logical name.
+				spec.LogicalName = originalName
+			}
+		}
+		if rewrittenParent, ok := rewrites[spec.Parent]; ok {
+			spec.Parent = rewrittenParent
+		}
+		if rewrittenProvider, ok := rewrites[spec.Provider]; ok {
+			spec.Provider = rewrittenProvider
+		}
+
+		f.Resources[i] = spec
+	}
+
+	return f
+}
+
 func readImportFile(p string) (importFile, error) {
 	f, err := os.Open(p)
 	if err != nil {
@@ -235,6 +379,8 @@ func writeImportFileTo(v importFile, path string) (string, error) {
 func parseImportFile(
 	f importFile, stack tokens.StackName, proj tokens.PackageName, protectResources bool,
 ) ([]deploy.Import, importer.NameTable, error) {
+	f = sanitizeImportFile(f)
+
 	// First check for uniqueness and ambiguity, takenNames tracks both that a name is used (it's in the map) and if
 	// it's ambiguous (it's true).
 	takenNames := map[string]bool{}
