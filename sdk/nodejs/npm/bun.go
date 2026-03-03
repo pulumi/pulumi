@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
@@ -133,7 +134,7 @@ func (bun *bunManager) Link(ctx context.Context, dir, packageName, path string) 
 	return nil
 }
 
-func (bun *bunManager) ListPackages(ctx context.Context, dir string, transitive bool) ([]DependencyInfo, error) {
+func (bun *bunManager) ListPackages(ctx context.Context, dir string, transitive bool) ([]plugin.DependencyInfo, error) {
 	if _, err := os.Stat(filepath.Join(dir, "bun.lock")); err == nil {
 		return listPackagesFromLockFile(dir, "bun.lock", transitive)
 	}

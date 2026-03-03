@@ -24,6 +24,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/git-pkgs/manifests"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -39,11 +40,6 @@ const (
 	BunPackageManager  PackageManagerType = "bun"
 )
 
-// DependencyInfo contains information about an installed package.
-type DependencyInfo struct {
-	Name    string
-	Version string
-}
 
 // A `PackageManager` is responsible for installing dependencies,
 // packaging Pulumi programs, and executing Node in the context of
@@ -65,12 +61,12 @@ type PackageManager interface {
 	Version() (semver.Version, error)
 	// ListPackages returns the packages installed in dir.
 	// If transitive is false, only direct dependencies declared in package.json are returned.
-	ListPackages(ctx context.Context, dir string, transitive bool) ([]DependencyInfo, error)
+	ListPackages(ctx context.Context, dir string, transitive bool) ([]plugin.DependencyInfo, error)
 }
 
 // listPackagesFromLockFile parses a lock file and returns the installed packages. If transitive is false, the result is
 // filtered to direct dependencies only by cross-referencing with package.json.
-func listPackagesFromLockFile(dir, lockFileName string, transitive bool) ([]DependencyInfo, error) {
+func listPackagesFromLockFile(dir, lockFileName string, transitive bool) ([]plugin.DependencyInfo, error) {
 	lockFilePath := filepath.Join(dir, lockFileName)
 	content, err := os.ReadFile(lockFilePath)
 	if err != nil {
@@ -82,9 +78,9 @@ func listPackagesFromLockFile(dir, lockFileName string, transitive bool) ([]Depe
 		return nil, fmt.Errorf("could not parse %s: %w", lockFilePath, err)
 	}
 
-	deps := make([]DependencyInfo, 0, len(result.Dependencies))
+	deps := make([]plugin.DependencyInfo, 0, len(result.Dependencies))
 	for _, dep := range result.Dependencies {
-		deps = append(deps, DependencyInfo{
+		deps = append(deps, plugin.DependencyInfo{
 			Name:    dep.Name,
 			Version: dep.Version,
 		})
@@ -98,7 +94,7 @@ func listPackagesFromLockFile(dir, lockFileName string, transitive bool) ([]Depe
 }
 
 // filterDirectDependencies filters deps to only include packages declared directly in the package.json found in dir.
-func filterDirectDependencies(dir string, deps []DependencyInfo) ([]DependencyInfo, error) {
+func filterDirectDependencies(dir string, deps []plugin.DependencyInfo) ([]plugin.DependencyInfo, error) {
 	packageJSONPath := filepath.Join(dir, "package.json")
 	content, err := os.ReadFile(packageJSONPath)
 	if os.IsNotExist(err) {
@@ -124,7 +120,7 @@ func filterDirectDependencies(dir string, deps []DependencyInfo) ([]DependencyIn
 		directDeps[name] = true
 	}
 
-	var result []DependencyInfo
+	var result []plugin.DependencyInfo
 	for _, dep := range deps {
 		if directDeps[dep.Name] {
 			result = append(result, dep)
