@@ -59,12 +59,17 @@ def _create_options_type_name(breadcrumbs: list[str]) -> str:
 def _generate_options_types(
     structure: Mapping[str, Any],
     source: list[ast.stmt],
-    breadcrumbs: list[str] = [],
-    inherited: Dict[str, Mapping[str, Any]] = {},
+    breadcrumbs: list[str] | None = None,
+    inherited: Dict[str, Mapping[str, Any]] | None = None,
 ) -> None:
     """
     Collect all the flags for the current subcommand, including all the parent flags.
     """
+    if breadcrumbs is None:
+        breadcrumbs = []
+    if inherited is None:
+        inherited = {}
+
     command = _create_command_name(breadcrumbs)
     class_name = _create_options_type_name(breadcrumbs)
 
@@ -73,8 +78,8 @@ def _generate_options_types(
         **(structure.get("flags") or {}),
     }
 
-    # Flag identifier, type, and description.
-    flag_items: list[tuple[str, str, str]] = []
+    # Flag identifier, type, description, and whether it is required.
+    flag_items: list[tuple[str, str, str | None, bool]] = []
     for flag in flags.values():
         name = str(flag.get("name", ""))
         if not name:
@@ -88,15 +93,16 @@ def _generate_options_types(
         repeatable = bool(flag.get("repeatable", False))
         annotation = _convert_type(flag_type, repeatable)
         description = flag.get("description")
+        required = bool(flag.get("required", False))
 
-        flag_items.append((identifier, annotation, description))
+        flag_items.append((identifier, annotation, description, required))
 
     class_body: list[ast.stmt] = []
 
     doc_lines = [f"Options for the `{command}` command."]
     description_lines = [
         f"{identifier}: {description}"
-        for identifier, _, description in flag_items
+        for identifier, _, description, _ in flag_items
         if description
     ]
     if description_lines:
@@ -110,7 +116,8 @@ def _generate_options_types(
     if not flag_items:
         class_body.append(ast.Pass())
     else:
-        for identifier, annotation, _ in flag_items:
+        for identifier, base_annotation, _, required in flag_items:
+            annotation = base_annotation if required else f"NotRequired[{base_annotation}]"
             annotation_expr = ast.parse(annotation, mode="eval").body
             class_body.append(
                 ast.AnnAssign(
@@ -124,7 +131,7 @@ def _generate_options_types(
     source.append(
         ast.ClassDef(
             name=class_name,
-            bases=[],
+            bases=[ast.Name(id="TypedDict", ctx=ast.Load())],
             keywords=[],
             body=class_body,
             decorator_list=[],
@@ -333,14 +340,13 @@ def _generate_commands(
 
         repeatable = bool(flag.get("repeatable", False))
         flag_type = str(flag.get("type", "string"))
+        required_flag = bool(flag.get("required", False))
 
         if repeatable:
-            # for __item in (getattr(__options, '<attr>', []) or []):
+            # for __item in (__options.get('<attr>') or []):
             source_call = _call(
-                _name("getattr"),
-                _name("__options"),
+                _attr(_name("__options"), "get"),
                 ast.Constant(value=attribute),
-                ast.List(elts=[], ctx=ast.Load()),
             )
             loop_iter = ast.BoolOp(
                 op=ast.Or(),
@@ -404,12 +410,10 @@ def _generate_commands(
                 )
             )
         else:
-            # value_expr = getattr(__options, '<attr>', None)
+            # value_expr = __options.get('<attr>')
             value_call = _call(
-                _name("getattr"),
-                _name("__options"),
+                _attr(_name("__options"), "get"),
                 ast.Constant(value=attribute),
-                ast.Constant(value=None),
             )
 
             if flag_type == "boolean":
@@ -426,6 +430,22 @@ def _generate_commands(
                             )
                         ],
                         orelse=[],
+                    )
+                )
+            elif required_flag:
+                # __flags.extend(['--flag', str(value_expr)])
+                body.append(
+                    ast.Expr(
+                        value=_call(
+                            _attr(_name("__flags"), "extend"),
+                            ast.List(
+                                elts=[
+                                    ast.Constant(value=f"--{flag_name}"),
+                                    _call(_name("str"), value_call),
+                                ],
+                                ctx=ast.Load(),
+                            ),
+                        )
                     )
                 )
             else:
@@ -445,15 +465,7 @@ def _generate_commands(
                                     ast.List(
                                         elts=[
                                             ast.Constant(value=f"--{flag_name}"),
-                                            _call(
-                                                _name("str"),
-                                                _call(
-                                                    _name("getattr"),
-                                                    _name("__options"),
-                                                    ast.Constant(value=attribute),
-                                                    ast.Constant(value=None),
-                                                ),
-                                            ),
+                                            _call(_name("str"), value_call),
                                         ],
                                         ctx=ast.Load(),
                                     ),
@@ -631,6 +643,18 @@ def main(argv: list[str]) -> int:
     target = output_dir / "main.py"
 
     module_body: list[ast.stmt] = []
+
+    imports = ast.parse(
+        "import sys\n"
+        "\n"
+        "if sys.version_info >= (3, 11):\n"
+        "    from typing import NotRequired, TypedDict\n"
+        "else:\n"
+        "    from typing_extensions import NotRequired, TypedDict\n",
+        mode="exec",
+    ).body
+
+    module_body.extend(imports)
 
     _generate_options_types(structure, module_body)
     _generate_api(structure, module_body)
