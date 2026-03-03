@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export interface BaseOptions {
-    __brand?: never;
-}
+export type BaseOptions = {};
 
 export class API {
     private __run(options: BaseOptions, args: string[]): string {

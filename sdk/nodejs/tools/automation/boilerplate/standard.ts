@@ -16,13 +16,13 @@ import * as process from "process";
 import type { CommandResult } from "../../../automation/cmd";
 import { PulumiCommand } from "../../../automation/cmd";
 
-export interface BaseOptions {
+export type BaseOptions = {
     cwd?: string;
     additionalEnv?: { [key: string]: string };
     onOutput?: (data: string) => void;
     onError?: (data: string) => void;
     signal?: AbortSignal;
-}
+};
 
 export class API {
     private _command: PulumiCommand;
