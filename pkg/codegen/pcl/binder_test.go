@@ -316,9 +316,9 @@ func TestConfigNodeSecret(t *testing.T) {
 	require.NoError(t, err)
 	contract.Ignore(diags)
 	require.NotNil(t, program, "failed to parse and bind program")
-	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	require.Len(t, program.Nodes, 1, "there is one node")
 	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
-	assert.True(t, ok, "first node is a config variable")
+	require.True(t, ok, "first node is a config variable")
 	assert.True(t, config.Secret, "the config variable is marked as secret")
 	assert.Equal(t, model.NewOutputType(model.IntType), config.Type(), "the type is a secret output int")
 }
