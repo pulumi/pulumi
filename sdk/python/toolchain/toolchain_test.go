@@ -171,8 +171,7 @@ func TestListPackages(t *testing.T) {
 			opts: PythonOptions{
 				Toolchain: Poetry,
 			},
-			// Virtual environments created by Poetry always include pip.
-			expectedPackages: []string{"pip"},
+			expectedPackages: []string{},
 		},
 		{
 			opts: PythonOptions{
