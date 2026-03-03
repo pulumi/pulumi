@@ -94,21 +94,19 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-resource-option-replacement-trigger": "TODO",
-	"l2-provider-call-explicit":              "TODO",
-	"l2-explicit-provider":                   "TODO",
-	"l2-namespaced-provider":                 "TODO",
-	"l2-explicit-providers":                  "TODO",
-	"l2-resource-option-custom-timeouts":     "TODO",
-	"l2-component-component-resource-ref":    "TODO",
-	"l2-component-property-deps":             "TODO",
-	"l2-resource-option-replace-on-changes":  "TODO",
-	"l2-parameterized-resource-twice":        "TODO",
-	"l2-parameterized-invoke":                "TODO",
-	"l2-parameterized-resource":              "TODO",
-	"l2-explicit-parameterized-provider":     "TODO",
-	"l3-range-resource-output-traversal":     "TODO",
-	"l3-component-simple":                    "TODO",
+	"l2-resource-option-replacement-trigger": "replacement trigger value remains computed/unknown instead of resolved string on update",
+	"l2-provider-call-explicit":              "snapshot contains 5 resources while test expects 4",
+	"l2-namespaced-provider":                 "resourceRef output is a serialized object map instead of a ResourceReference",
+	"l2-resource-option-custom-timeouts":     "create custom timeout is not propagated (expected 300, got 0)",
+	"l2-component-component-resource-ref":    "component resourceRef is serialized as PropertyMap instead of ResourceReference, causing provider panic",
+	"l2-component-property-deps":             "unexpected property dependency on custom1 where dependency set should be empty",
+	"l2-resource-option-replace-on-changes":  "schema replaceProp change is treated as update instead of replacement",
+	"l2-parameterized-resource-twice":        "dependency loading reports duplicate package definition for hipackage",
+	"l2-parameterized-invoke":                "dependency loading reports duplicate package definition for subpackage",
+	"l2-parameterized-resource":              "dependency loading reports duplicate package definition for subpackage",
+	"l2-explicit-parameterized-provider":     "dependency loading reports duplicate package definition for goodbye",
+	"l3-range-resource-output-traversal":     "snapshot contains 4 resources while test expects 5",
+	"l3-component-simple":                    "runtime fails with unknown node type *pcl.Component",
 }
 
 func TestLanguage(t *testing.T) {
