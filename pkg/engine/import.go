@@ -27,7 +27,7 @@ func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Imp
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "import", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "import", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}

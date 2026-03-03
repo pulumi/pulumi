@@ -1,5 +1,42 @@
 # Changelog
 
+## 3.224.0 (2026-02-26)
+
+
+### Features
+
+- [backend/diy] Add zstd compression option for DIY backend state files
+  [#21877](https://github.com/pulumi/pulumi/pull/21877)
+
+
+### Bug Fixes
+
+- [cli/state] `state move` now correctly handles reparenting of resources
+
+- [pkg] Correct the schema for "pulumi:pulumi:StackReference"
+  [#21895](https://github.com/pulumi/pulumi/pull/21895)
+
+- [programgen/nodejs] Correct the semantics of singleOrNone in generated files
+  [#21947](https://github.com/pulumi/pulumi/pull/21947)
+
+- [sdk/python] Fix `StepEventMetadata.from_json` reading `detailed_diff` (snake_case) instead of `detailedDiff` (camelCase), and `PolicyEvent.from_json` reading `resource_urn` instead of `resourceUrn`, causing both fields to always be `None`
+  [#21714](https://github.com/pulumi/pulumi/pull/21714)
+
+- [sdk/python] Convert integer component inputs to `int`
+  [#21944](https://github.com/pulumi/pulumi/pull/21944)
+
+- [sdk/python] Fix crash in forked processes using automation API
+  [#21937](https://github.com/pulumi/pulumi/pull/21937)
+
+
+### Miscellaneous
+
+- [sdk] Update java, dotnet & yaml
+  [#21961](https://github.com/pulumi/pulumi/pull/21961)
+
+- [sdk/python] Improve the performance of `contains_unknowns` for large objects
+  [#21893](https://github.com/pulumi/pulumi/pull/21893)
+
 ## 3.223.0 (2026-02-19)
 
 

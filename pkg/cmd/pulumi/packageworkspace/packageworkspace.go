@@ -43,6 +43,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Options struct {
@@ -139,6 +142,11 @@ func (Workspace) IsExecutable(ctx context.Context, binaryPath string) (bool, err
 func (w Workspace) DownloadPlugin(
 	ctx context.Context, pluginSpec workspace.PluginDescriptor,
 ) (string, func(done bool), error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := diagutils.StartSpan(ctx, tracer, "download-plugin",
+		trace.WithAttributes(attribute.String("plugin", pluginSpec.Name)))
+	defer span.End()
+
 	util.SetKnownPluginDownloadURL(&pluginSpec)
 	util.SetKnownPluginVersion(&pluginSpec)
 	if pluginSpec.Version == nil {
@@ -186,7 +194,11 @@ func (w Workspace) GenerateLocalSDK(
 	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string,
 	provider plugin.Provider,
 ) (workspace.LinkablePackageDescriptor, error) {
+	tracer := otel.Tracer("pulumi-cli")
+
+	ctx, schemaSpan := diagutils.StartSpan(ctx, tracer, "get-schema")
 	schemaResponse, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{})
+	schemaSpan.End()
 	if err != nil {
 		return workspace.LinkablePackageDescriptor{}, err
 	}
@@ -313,7 +325,11 @@ func (w Workspace) servers(
 	ctx context.Context, language string, dir string,
 	packageRefs ...schema.PackageReference,
 ) (servers, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	_, langSpan := diagutils.StartSpan(ctx, tracer, "load-language-host",
+		trace.WithAttributes(attribute.String("language", language)))
 	languageRuntime, err := w.host.LanguageRuntime(language)
+	langSpan.End()
 	if err != nil {
 		return servers{}, err
 	}
@@ -342,6 +358,14 @@ func (w Workspace) servers(
 }
 
 func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Package) (string, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := diagutils.StartSpan(ctx, tracer, "generate-sdk",
+		trace.WithAttributes(
+			attribute.String("language", language),
+			attribute.String("package", pkg.Name),
+		))
+	defer span.End()
+
 	jsonBytes, err := pkg.MarshalJSON()
 	if err != nil {
 		return "", err
@@ -373,6 +397,14 @@ func (w Workspace) RunPackage(
 	ctx context.Context, rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
 	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := diagutils.StartSpan(ctx, tracer, "run-plugin",
+		trace.WithAttributes(
+			attribute.String("plugin", string(pkgName)),
+			attribute.String("path", pluginPath),
+		))
+	defer span.End()
+
 	d := diag.DefaultSink(w.stdout, w.stderr, diag.FormatOptions{
 		Color: diagutils.GetGlobalColorization(),
 	})

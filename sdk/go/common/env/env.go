@@ -238,8 +238,8 @@ var (
 	PolicyTemplateBranch = env.String("POLICY_TEMPLATE_BRANCH", "Branch name for Pulumi Policy Pack templates repository.")
 )
 
-var EnableJournaling = env.Bool("ENABLE_JOURNALING",
-	"Enable journaling of engine operations to the backend (if the backend supports it)")
+var DisableJournaling = env.Bool("DISABLE_JOURNALING",
+	"Disable journaling of engine operations to the backend")
 
 var JournalingBatchSize = env.Int("JOURNALING_BATCH_SIZE", "Maximum batch size for journal entries")
 

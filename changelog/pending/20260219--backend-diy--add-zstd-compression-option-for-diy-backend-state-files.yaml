@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/diy
-  description: Add zstd compression option for DIY backend state files

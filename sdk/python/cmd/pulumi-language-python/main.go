@@ -61,6 +61,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -128,6 +132,12 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
 
+	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if err := cmdutil.InitOtelTracing("pulumi-language-python", otelEndpoint); err != nil {
+		logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+	}
+	defer cmdutil.CloseOtelTracing()
+
 	var pythonExec string
 	if givenExecutor == "" {
 		// By default, the -exec script is installed next to the language host.
@@ -176,7 +186,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing, "", "")
+			host := newLanguageHost(pythonExec, engineAddress, tracing, otelEndpoint, "", "")
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -203,6 +213,7 @@ type pythonLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
+	otelEndpoint  string
 
 	// This is used by conformance testing to set the typechecker to use in ProgramGen.
 	typechecker string
@@ -259,12 +270,13 @@ func parseOptions(root string, programDir string, options map[string]any) (toolc
 	return pythonOptions, nil
 }
 
-func newLanguageHost(exec, engineAddress, tracing, typechecker, toolchain string,
+func newLanguageHost(exec, engineAddress, tracing, otelEndpoint, typechecker, toolchain string,
 ) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		otelEndpoint:  otelEndpoint,
 		typechecker:   typechecker,
 		toolchain:     toolchain,
 	}
@@ -983,19 +995,35 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	if config != "" || configSecretKeys != "" {
-		env := cmd.Env
-		if env == nil {
-			env = os.Environ()
-		}
-		if config != "" {
-			env = append(env, pulumiConfigVar+"="+config)
-		}
-		if configSecretKeys != "" {
-			env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
-		}
-		cmd.Env = env
+	env := cmd.Env
+	if env == nil {
+		env = os.Environ()
 	}
+	if config != "" {
+		env = append(env, pulumiConfigVar+"="+config)
+	}
+	if configSecretKeys != "" {
+		env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
+	}
+
+	tracer := otel.Tracer("pulumi-language-python")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, "execPython",
+		trace.WithAttributes(
+			attribute.String("component", "exec.Command"),
+			attribute.StringSlice("args", args),
+		))
+	defer otelSpan.End()
+
+	carrier := make(propagation.MapCarrier)
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	if traceparent := carrier.Get("traceparent"); traceparent != "" {
+		env = append(env, "TRACEPARENT="+traceparent)
+	}
+
+	if host.otelEndpoint != "" {
+		env = append(env, "OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
+	}
+	cmd.Env = env
 
 	// Before running the command, we might need to run typechecker first
 	var typechecker string
@@ -1232,6 +1260,10 @@ func (host *pythonLanguageHost) InstallDependencies(
 	}
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
+
+	tracer := otel.Tracer("pulumi-language-python")
+	_, otelSpan := cmdutil.StartSpan(server.Context(), tracer, "pip-install")
+	defer otelSpan.End()
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
