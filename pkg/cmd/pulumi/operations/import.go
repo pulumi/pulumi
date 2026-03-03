@@ -176,42 +176,6 @@ type importFile struct {
 	Resources []importSpec            `json:"resources,omitempty"`
 }
 
-func isValidIdentifier(name string) bool {
-	if name == "" {
-		return false
-	}
-
-	isTR31Start := func(r rune) bool {
-		return r == '_' || unicode.In(r, unicode.L, unicode.Nl, unicode.Other_ID_Start)
-	}
-	isTR31Continue := func(r rune) bool {
-		return isTR31Start(r) || unicode.In(r, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc, unicode.Other_ID_Continue)
-	}
-
-	// HCL-compatible extension: '-' is allowed in identifiers.
-	isStart := func(r rune) bool {
-		return r == '-' || isTR31Start(r)
-	}
-	isContinue := func(r rune) bool {
-		return r == '-' || isTR31Continue(r)
-	}
-
-	first, width := utf8.DecodeRuneInString(name)
-	if first == utf8.RuneError && width == 0 {
-		return false
-	}
-	if !isStart(first) {
-		return false
-	}
-
-	for _, r := range name[width:] {
-		if !isContinue(r) {
-			return false
-		}
-	}
-	return true
-}
-
 func sanitizeIdentifier(name string) string {
 	if name == "" {
 		return "resource"
@@ -283,10 +247,7 @@ func sanitizeImportFile(f importFile) importFile {
 		if rewritten, ok := rewrites[raw]; ok {
 			return rewritten
 		}
-		sanitized := raw
-		if !isValidIdentifier(raw) {
-			sanitized = sanitizeIdentifier(raw)
-		}
+		sanitized := sanitizeIdentifier(raw)
 		unique := uniqueSanitizedName(sanitized, taken)
 		rewrites[raw] = unique
 		return unique
