@@ -194,7 +194,7 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"resource 'res-2' of type 'foo:bar:a' has an ambiguous parent",
+				"resource 'res_2' of type 'foo:bar:a' has an ambiguous parent",
 			},
 		},
 		{
@@ -226,7 +226,7 @@ func TestParseImportFile_errors(t *testing.T) {
 				},
 			},
 			wantErrs: []string{
-				"resource 'res-2' of type 'foo:bar:a' has an ambiguous provider",
+				"resource 'res_2' of type 'foo:bar:a' has an ambiguous provider",
 			},
 		},
 		{
@@ -421,6 +421,68 @@ func TestParseImportFileAutoURN(t *testing.T) {
 	// Check the nameTable was filled in.
 	assert.Equal(t, "otherThing", nt[imports[0].Parent])
 	assert.Equal(t, "thing", nt[imports[2].Parent])
+}
+
+func TestParseImportFileSanitizesInvalidResourceName(t *testing.T) {
+	t.Parallel()
+
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name: "mydomain.net.",
+				ID:   "/hostedzone/Z23K1TY340BZZI",
+				Type: "aws:route53/zone:Zone",
+			},
+		},
+	}
+
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	require.NoError(t, err)
+
+	assert.Equal(t, []deploy.Import{
+		{
+			Type: "aws:route53/zone:Zone",
+			Name: "mydomain.net.",
+			ID:   "/hostedzone/Z23K1TY340BZZI",
+		},
+	}, imports)
+	assert.Equal(t, importer.NameTable{
+		"urn:pulumi:stack::proj::aws:route53/zone:Zone::mydomain.net.": "mydomain_net_",
+	}, names)
+}
+
+func TestParseImportFileSanitizesNameTableAndReferences(t *testing.T) {
+	t.Parallel()
+
+	f := importFile{
+		NameTable: map[string]resource.URN{
+			"provider.name": "urn:pulumi:stack::proj::pulumi:providers:aws::provider",
+		},
+		Resources: []importSpec{
+			{
+				Name:      "parent.name",
+				Type:      "pkg:index:Parent",
+				Component: true,
+			},
+			{
+				Name:     "child.name",
+				ID:       "child-id",
+				Type:     "pkg:index:Child",
+				Parent:   "parent.name",
+				Provider: "provider.name",
+			},
+		},
+	}
+
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	require.NoError(t, err)
+	require.Len(t, imports, 2)
+
+	assert.Equal(t, "parent.name", imports[0].Name)
+	assert.Equal(t, "child.name", imports[1].Name)
+	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::pkg:index:Parent::parent.name"), imports[1].Parent)
+	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::provider"), imports[1].Provider)
+	assert.Equal(t, "parent_name", names[imports[1].Parent])
 }
 
 // Small test to ensure that importFile is marshalled to JSON sensibly, mostly checking that optional fields
