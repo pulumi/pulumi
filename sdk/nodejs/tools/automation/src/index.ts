@@ -52,11 +52,10 @@ const reservedWords: string[] = ["options", "package"];
         overwrite: true,
     });
 
-    const baseOptionsInterface = source.getInterface("BaseOptions");
     const baseOptionsType = source.getTypeAlias("BaseOptions");
 
-    if (!baseOptionsInterface && !baseOptionsType) {
-        throw new Error("Boilerplate must define a `BaseOptions` interface or type.");
+    if (!baseOptionsType) {
+        throw new Error("Boilerplate must define a `BaseOptions` type.");
     }
 
     const container: ClassDeclaration | undefined = source.getClass("API");
