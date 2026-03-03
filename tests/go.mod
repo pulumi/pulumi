@@ -124,7 +124,7 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/git-pkgs/manifests v0.4.0 // indirect
+	github.com/git-pkgs/manifests v0.4.1 // indirect
 	github.com/git-pkgs/packageurl-go v0.2.1 // indirect
 	github.com/git-pkgs/purl v0.1.8 // indirect
 	github.com/git-pkgs/vers v0.2.2 // indirect
