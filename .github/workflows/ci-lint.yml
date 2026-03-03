@@ -96,9 +96,11 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ inputs.ref }}
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
       - name: Check Protobufs
-        run: |
-          make check_proto
+        run: make check_proto
 
   sdk-lint:
     name: Lint SDKs
