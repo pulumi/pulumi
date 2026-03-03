@@ -141,7 +141,15 @@ func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 		}
 		return newPoetry(dir)
 	case Uv:
-		return newUv(options.Root, options.Virtualenv)
+		dir := options.ProgramDir
+		if dir == "" {
+			dir = options.Root
+		}
+		virtualenv := options.Virtualenv
+		if virtualenv != "" && !filepath.IsAbs(virtualenv) && options.Root != "" {
+			virtualenv = filepath.Join(options.Root, virtualenv)
+		}
+		return newUv(dir, virtualenv)
 	}
 	return newPip(options.Root, options.Virtualenv)
 }
