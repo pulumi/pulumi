@@ -145,7 +145,9 @@ func (yarn *yarnClassic) Link(ctx context.Context, dir, packageName, path string
 	return nil
 }
 
-func (yarn *yarnClassic) ListPackages(ctx context.Context, dir string, transitive bool) ([]plugin.DependencyInfo, error) {
+func (yarn *yarnClassic) ListPackages(
+	ctx context.Context, dir string, transitive bool,
+) ([]plugin.DependencyInfo, error) {
 	return listPackagesFromLockFile(dir, "yarn.lock", transitive)
 }
 

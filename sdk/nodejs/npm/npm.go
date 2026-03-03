@@ -101,7 +101,9 @@ func (node *npmManager) Link(ctx context.Context, dir, packageName, path string)
 	return nil
 }
 
-func (node *npmManager) ListPackages(ctx context.Context, dir string, transitive bool) ([]plugin.DependencyInfo, error) {
+func (node *npmManager) ListPackages(
+	ctx context.Context, dir string, transitive bool,
+) ([]plugin.DependencyInfo, error) {
 	return listPackagesFromLockFile(dir, "package-lock.json", transitive)
 }
 
