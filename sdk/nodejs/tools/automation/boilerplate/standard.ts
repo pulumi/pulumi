@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as process from "process";
 import type { CommandResult } from "../../../automation/cmd";
 import { PulumiCommand } from "../../../automation/cmd";
 
