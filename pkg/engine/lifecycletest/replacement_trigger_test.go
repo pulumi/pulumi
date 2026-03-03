@@ -71,6 +71,7 @@ func TestReplacementTrigger(t *testing.T) {
 
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, value, snap.Resources[1].ReplacementTrigger)
 
 	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
@@ -87,6 +88,7 @@ func TestReplacementTrigger(t *testing.T) {
 
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, value, snap.Resources[1].ReplacementTrigger)
 
 	value = resource.NewPropertyValue("second")
 
@@ -109,6 +111,7 @@ func TestReplacementTrigger(t *testing.T) {
 
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, value, snap.Resources[1].ReplacementTrigger)
 }
 
 func TestReplacementTriggerWithSecret(t *testing.T) {
@@ -148,6 +151,7 @@ func TestReplacementTriggerWithSecret(t *testing.T) {
 
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, value, snap.Resources[1].ReplacementTrigger)
 
 	// Making this value secret should not trigger a replace, as the underlying value is still the same.
 	value = resource.MakeSecret(value)
@@ -167,6 +171,7 @@ func TestReplacementTriggerWithSecret(t *testing.T) {
 
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, value, snap.Resources[1].ReplacementTrigger)
 }
 
 func TestReplacementTriggerWithDeepSecret(t *testing.T) {
@@ -206,6 +211,7 @@ func TestReplacementTriggerWithDeepSecret(t *testing.T) {
 
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, value, snap.Resources[1].ReplacementTrigger)
 
 	// Making the inner value secret should not trigger a replace, as the underlying value is still the same.
 	value = resource.NewPropertyValue([]resource.PropertyValue{resource.MakeSecret(resource.NewPropertyValue("first"))})
@@ -225,6 +231,7 @@ func TestReplacementTriggerWithDeepSecret(t *testing.T) {
 
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, value, snap.Resources[1].ReplacementTrigger)
 }
 
 func TestReplacementTriggerWithOutput(t *testing.T) {
@@ -246,11 +253,10 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 
 	// A known output should not trigger a replace.
 	value := resource.NewProperty(resource.Output{
-		Element:      resource.NewPropertyValue("first"),
-		Known:        true,
-		Secret:       false,
-		Dependencies: []resource.URN{},
+		Element: resource.NewPropertyValue("first"),
+		Known:   true,
 	})
+	initialValue := value
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -270,6 +276,7 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, value, snap.Resources[1].ReplacementTrigger)
 
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
@@ -285,13 +292,12 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, value, snap.Resources[1].ReplacementTrigger)
 
 	// Now we make it unknown...
 	value = resource.NewProperty(resource.Output{
-		Element:      resource.NewPropertyValue("first"),
-		Known:        false,
-		Secret:       false,
-		Dependencies: []resource.URN{},
+		Element: resource.NewPropertyValue("first"),
+		Known:   false,
 	})
 
 	// Unknown output values during preview runs should trigger a replace.
@@ -330,6 +336,7 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, initialValue, snap.Resources[1].ReplacementTrigger)
 }
 
 func TestReplacementTriggerWithComputed(t *testing.T) {
@@ -368,6 +375,7 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, resource.MakeComputed(resource.NewPropertyValue("")), snap.Resources[1].ReplacementTrigger)
 
 	// Unknown values during preview runs should trigger a replace.
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
@@ -408,4 +416,5 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, resource.MakeComputed(resource.NewPropertyValue("")), snap.Resources[1].ReplacementTrigger)
 }
