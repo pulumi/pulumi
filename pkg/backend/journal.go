@@ -376,12 +376,16 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	}
 	manifest.Magic = manifest.NewMagic()
 
-	deployment := &apitype.DeploymentV3{}
-	deployment.SecretsProviders = r.base.SecretsProviders
-	deployment.Resources = resources
-	deployment.PendingOperations = operations
-	deployment.Metadata = r.base.Metadata
-	deployment.Manifest = manifest.Serialize()
+	deployment := &apitype.DeploymentV3{
+		Resources:         resources,
+		PendingOperations: operations,
+		Manifest:          manifest.Serialize(),
+	}
+	// base may be nil for brand-new stacks that have never been persisted.
+	if r.base != nil {
+		deployment.SecretsProviders = r.base.SecretsProviders
+		deployment.Metadata = r.base.Metadata
+	}
 
 	version := apitype.DeploymentSchemaVersionCurrent
 	if len(features) > 0 {

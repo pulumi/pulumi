@@ -46,6 +46,12 @@ var (
 	// BackupsDir is a path under the state's root directory
 	// where the diy backend stores backups of stacks.
 	BackupsDir = filepath.Join(workspace.BookkeepingDir, workspace.BackupDir)
+
+	// JournalsDir is a path under the state's root directory
+	// where the diy backend stores incremental journal entries during updates.
+	// Journal files are transient: they are cleaned up after a successful operation
+	// or replayed during crash recovery at the start of the next operation.
+	JournalsDir = filepath.Join(workspace.BookkeepingDir, "journal")
 )
 
 // referenceStore stores and provides access to stack information.
@@ -75,6 +81,12 @@ type referenceStore interface {
 	//
 	// This must be under BackupsDir.
 	BackupDir(*diyBackendReference) string
+
+	// JournalDir returns the path to the directory where incremental journal
+	// entries for this stack are stored during an active update operation.
+	//
+	// This must be under JournalsDir.
+	JournalDir(*diyBackendReference) string
 
 	// ListReferences lists all stack references in the store.
 	ListReferences(context.Context) ([]*diyBackendReference, error)
@@ -132,6 +144,11 @@ func (p *projectReferenceStore) HistoryDir(stack *diyBackendReference) string {
 func (p *projectReferenceStore) BackupDir(stack *diyBackendReference) string {
 	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
 	return filepath.Join(BackupsDir, fsutil.NamePath(stack.project), stack.name.String())
+}
+
+func (p *projectReferenceStore) JournalDir(stack *diyBackendReference) string {
+	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
+	return filepath.Join(JournalsDir, fsutil.NamePath(stack.project), stack.name.String())
 }
 
 func (p *projectReferenceStore) ParseReference(stackRef string) (*diyBackendReference, error) {
@@ -355,6 +372,11 @@ func (p *legacyReferenceStore) HistoryDir(stack *diyBackendReference) string {
 func (p *legacyReferenceStore) BackupDir(stack *diyBackendReference) string {
 	contract.Requiref(stack.project == "", "ref.project", "must be empty")
 	return filepath.Join(BackupsDir, stack.name.String())
+}
+
+func (p *legacyReferenceStore) JournalDir(stack *diyBackendReference) string {
+	contract.Requiref(stack.project == "", "ref.project", "must be empty")
+	return filepath.Join(JournalsDir, stack.name.String())
 }
 
 func (p *legacyReferenceStore) ParseReference(stackRef string) (*diyBackendReference, error) {
