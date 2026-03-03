@@ -35,10 +35,14 @@ const reservedWords: string[] = ["options", "package"];
 
 (function main(): void {
     if (!process.argv[2]) {
-        throw new Error("Usage: npm start <path-to-specification.json>");
+        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts]");
     }
 
     const specification: string = path.resolve(process.cwd(), process.argv[2]);
+    const boilerplate: string = path.resolve(
+        process.cwd(),
+        process.argv[3] ?? path.join("boilerplate", "testing.ts"),
+    );
     const output: string = path.join(process.cwd(), "output");
 
     const spec: Structure = JSON.parse(fs.readFileSync(specification, "utf-8")) as Structure;
@@ -47,17 +51,24 @@ const reservedWords: string[] = ["options", "package"];
     const index: string = path.join(output, "index.ts");
     const project: Project = new Project({});
 
-    const source: SourceFile = project.createSourceFile(index, "", { overwrite: true });
+    const source: SourceFile = project.createSourceFile(
+        index,
+        fs.readFileSync(boilerplate, "utf-8"),
+        { overwrite: true },
+    );
+
+    if (!source.getInterface("BaseOptions")) {
+        throw new Error("Boilerplate must define a `BaseOptions` interface.");
+    }
+
+    const container: ClassDeclaration | undefined = source.getClass("API");
+
+    if (!container) {
+        throw new Error("Boilerplate must define an `API` class.");
+    }
+
     generateOptionsTypes(spec, source);
-
-    const container: ClassDeclaration = source.addClass({
-        kind: StructureKind.Class,
-        name: "API",
-        isExported: true,
-        docs: ["The low-level Automation API"],
-    });
-
-    generateCommands(spec, container);
+    generateCommands(spec, container, "ReturnType<API['__run']>");
     project.saveSync();
 })();
 
@@ -78,6 +89,7 @@ function generateOptionsTypes(
     source.addInterface({
         kind: StructureKind.Interface,
         name: createOptionsTypeName(breadcrumbs),
+        extends: ["BaseOptions"],
         docs: ["Options for the `" + command + "` command."],
         isExported: true,
         properties: Object.values(flags).map(flagToPropertySignature),
@@ -94,11 +106,16 @@ function generateOptionsTypes(
  * Generate the commands.
  * This creates the CLI invocation by combining all the flags and arguments into a shell command.
  */
-function generateCommands(structure: Structure, container: ClassDeclaration, breadcrumbs: string[] = []): void {
+function generateCommands(
+    structure: Structure,
+    container: ClassDeclaration,
+    returnType: string,
+    breadcrumbs: string[] = [],
+): void {
     if (structure.type === "menu") {
         if (structure.commands) {
             for (const [name, child] of Object.entries(structure.commands)) {
-                generateCommands(child, container, [...breadcrumbs, name]);
+                generateCommands(child, container, returnType, [...breadcrumbs, name]);
             }
         }
 
@@ -137,14 +154,14 @@ function generateCommands(structure: Structure, container: ClassDeclaration, bre
         name: sanitiseValueName(breadcrumbs.join("_")),
         parameters,
         statements: generateBody(structure, breadcrumbs),
-        returnType: "string",
+        returnType,
     });
 }
 
-/** Generate the body of the commands. For now, just the string representation of the command. */
+/** Generate the body of the commands. */
 function generateBody(structure: Structure, breadcrumbs: string[]): WriterFunction {
     return (writer) => {
-        writer.writeLine("const __final: string[] = ['pulumi'];");
+        writer.writeLine("const __final: string[] = [];");
         for (const breadcrumb of breadcrumbs) {
             writer.writeLine(`__final.push('${breadcrumb}');`);
         }
@@ -234,7 +251,7 @@ function generateBody(structure: Structure, breadcrumbs: string[]): WriterFuncti
         writer.writeLine("}");
         writer.blankLine();
 
-        writer.writeLine("return __final.join(' ');");
+        writer.writeLine("return this.__run(options, __final);");
     };
 }
 
