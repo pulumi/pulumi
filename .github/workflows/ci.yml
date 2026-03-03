@@ -112,6 +112,9 @@ jobs:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
