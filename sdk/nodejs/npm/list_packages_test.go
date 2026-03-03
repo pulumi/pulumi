@@ -15,7 +15,6 @@
 package npm
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -26,8 +25,6 @@ import (
 func TestListPackages(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-
 	t.Run("npm", func(t *testing.T) {
 		t.Parallel()
 		dir := "testdata/list-packages/npm"
@@ -36,7 +33,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("transitive", func(t *testing.T) {
 			t.Parallel()
-			got, err := npm.ListPackages(ctx, dir, true)
+			got, err := npm.ListPackages(t.Context(), dir, true)
 			require.NoError(t, err)
 			assert.Greater(t, len(got), 2)
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "@pulumi/pulumi", Version: "3.224.0"})
@@ -46,7 +43,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("direct", func(t *testing.T) {
 			t.Parallel()
-			got, err := npm.ListPackages(ctx, dir, false)
+			got, err := npm.ListPackages(t.Context(), dir, false)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, []plugin.DependencyInfo{
 				{Name: "@pulumi/pulumi", Version: "3.224.0"},
@@ -63,7 +60,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("transitive", func(t *testing.T) {
 			t.Parallel()
-			got, err := yarn.ListPackages(ctx, dir, true)
+			got, err := yarn.ListPackages(t.Context(), dir, true)
 			require.NoError(t, err)
 			assert.Greater(t, len(got), 2)
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "@pulumi/pulumi", Version: "3.224.0"})
@@ -73,7 +70,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("direct", func(t *testing.T) {
 			t.Parallel()
-			got, err := yarn.ListPackages(ctx, dir, false)
+			got, err := yarn.ListPackages(t.Context(), dir, false)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, []plugin.DependencyInfo{
 				{Name: "@pulumi/pulumi", Version: "3.224.0"},
@@ -93,7 +90,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("transitive", func(t *testing.T) {
 			t.Parallel()
-			got, err := pnpm.ListPackages(ctx, dir, true)
+			got, err := pnpm.ListPackages(t.Context(), dir, true)
 			require.NoError(t, err)
 			assert.Greater(t, len(got), 2)
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "@pulumi/pulumi", Version: pulumiVersion})
@@ -103,7 +100,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("direct", func(t *testing.T) {
 			t.Parallel()
-			got, err := pnpm.ListPackages(ctx, dir, false)
+			got, err := pnpm.ListPackages(t.Context(), dir, false)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, []plugin.DependencyInfo{
 				{Name: "@pulumi/pulumi", Version: pulumiVersion},
@@ -120,7 +117,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("transitive", func(t *testing.T) {
 			t.Parallel()
-			got, err := pnpm.ListPackages(ctx, dir, true)
+			got, err := pnpm.ListPackages(t.Context(), dir, true)
 			require.NoError(t, err)
 			assert.Greater(t, len(got), 2)
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "@pulumi/pulumi", Version: "3.224.0"})
@@ -130,7 +127,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("direct", func(t *testing.T) {
 			t.Parallel()
-			got, err := pnpm.ListPackages(ctx, dir, false)
+			got, err := pnpm.ListPackages(t.Context(), dir, false)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, []plugin.DependencyInfo{
 				{Name: "@pulumi/pulumi", Version: "3.224.0"},
@@ -147,7 +144,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("transitive", func(t *testing.T) {
 			t.Parallel()
-			got, err := bun.ListPackages(ctx, dir, true)
+			got, err := bun.ListPackages(t.Context(), dir, true)
 			require.NoError(t, err)
 			assert.Greater(t, len(got), 2)
 			assert.Contains(t, got, plugin.DependencyInfo{Name: "@pulumi/pulumi", Version: "3.224.0"})
@@ -157,7 +154,7 @@ func TestListPackages(t *testing.T) {
 
 		t.Run("direct", func(t *testing.T) {
 			t.Parallel()
-			got, err := bun.ListPackages(ctx, dir, false)
+			got, err := bun.ListPackages(t.Context(), dir, false)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, []plugin.DependencyInfo{
 				{Name: "@pulumi/pulumi", Version: "3.224.0"},
@@ -176,7 +173,7 @@ func TestListPackagesBunLockb(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir+"/bun.lockb", "")
 
-	_, err = bun.ListPackages(context.Background(), dir, true)
+	_, err = bun.ListPackages(t.Context(), dir, true)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "bun.lockb")
 	assert.Contains(t, err.Error(), "upgrade to bun >= 1.2")
