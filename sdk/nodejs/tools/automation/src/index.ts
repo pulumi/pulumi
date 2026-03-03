@@ -39,10 +39,7 @@ const reservedWords: string[] = ["options", "package"];
     }
 
     const specification: string = path.resolve(process.cwd(), process.argv[2]);
-    const boilerplate: string = path.resolve(
-        process.cwd(),
-        process.argv[3] ?? path.join("boilerplate", "testing.ts"),
-    );
+    const boilerplate: string = path.resolve(process.cwd(), process.argv[3] ?? path.join("boilerplate", "testing.ts"));
     const output: string = path.join(process.cwd(), "output");
 
     const spec: Structure = JSON.parse(fs.readFileSync(specification, "utf-8")) as Structure;
@@ -51,11 +48,9 @@ const reservedWords: string[] = ["options", "package"];
     const index: string = path.join(output, "index.ts");
     const project: Project = new Project({});
 
-    const source: SourceFile = project.createSourceFile(
-        index,
-        fs.readFileSync(boilerplate, "utf-8"),
-        { overwrite: true },
-    );
+    const source: SourceFile = project.createSourceFile(index, fs.readFileSync(boilerplate, "utf-8"), {
+        overwrite: true,
+    });
 
     if (!source.getInterface("BaseOptions")) {
         throw new Error("Boilerplate must define a `BaseOptions` interface.");
