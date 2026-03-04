@@ -17,6 +17,8 @@ package backenderr
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -124,6 +126,45 @@ func (ForbiddenError) Is(other error) bool {
 	default:
 		return false
 	}
+}
+
+// SAMLReauthorizationError is returned when a SAML SSO session has expired
+// and the user must re-authenticate via the Pulumi Cloud console.
+type SAMLReauthorizationError struct {
+	Err    error
+	APIURL string // The Pulumi Cloud API URL (e.g., https://api.pulumi.com)
+}
+
+func (err SAMLReauthorizationError) Error() string {
+	return err.Err.Error()
+}
+
+func (err SAMLReauthorizationError) Unwrap() error { return err.Err }
+
+// ConsoleURL returns the Pulumi Cloud console URL where the user can re-authenticate.
+// Returns "" if the console URL cannot be determined from the API URL.
+func (err SAMLReauthorizationError) ConsoleURL() string {
+	u, parseErr := url.Parse(err.APIURL)
+	if parseErr != nil {
+		return ""
+	}
+
+	const defaultAPIDomainPrefix = "api."
+	const defaultConsoleDomainPrefix = "app."
+
+	switch {
+	case os.Getenv("PULUMI_CONSOLE_DOMAIN") != "":
+		u.Host = os.Getenv("PULUMI_CONSOLE_DOMAIN")
+	case strings.HasPrefix(u.Host, defaultAPIDomainPrefix):
+		u.Host = defaultConsoleDomainPrefix + u.Host[len(defaultAPIDomainPrefix):]
+	case u.Host == "localhost:8080":
+		u.Host = "localhost:3000"
+	default:
+		return ""
+	}
+
+	u.Path = ""
+	return u.String()
 }
 
 type LoginRequiredError struct{}
