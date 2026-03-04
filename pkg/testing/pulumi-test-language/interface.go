@@ -1089,8 +1089,9 @@ func createStackReferences(
 			SecretsManager: sm,
 			Resources: []*resource.State{
 				{
-					Type:    resource.RootStackType,
-					URN:     resource.CreateURN(resourceName, string(resource.RootStackType), "", string(projectName), stackName.String()),
+					Type: resource.RootStackType,
+					URN: resource.CreateURN(resourceName, string(resource.RootStackType), "",
+						string(projectName), stackName.String()),
 					Outputs: outputs,
 				},
 			},
