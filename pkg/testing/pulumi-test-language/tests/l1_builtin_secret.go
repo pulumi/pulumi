@@ -39,7 +39,7 @@ func init() {
 
 					outputs := stack.Outputs
 
-					require.Len(l, outputs, 4)
+					require.Len(l, outputs, 5)
 					AssertPropertyMapMember(l, outputs,
 						"roundtripSecret", resource.MakeSecret(resource.NewProperty("this is a secret")))
 					AssertPropertyMapMember(l, outputs,
@@ -48,6 +48,8 @@ func init() {
 						"open", resource.NewProperty("this is a secret"))
 					AssertPropertyMapMember(l, outputs,
 						"close", resource.MakeSecret(resource.NewProperty("this is plaintext")))
+					AssertPropertyMapMember(l, outputs,
+						"double", resource.MakeSecret(resource.NewProperty("this is a secret")))
 				},
 			},
 		},

@@ -14,6 +14,10 @@ output "roundtripNotSecret" {
   value = notSecret
 }
 
+output "double" {
+  value = secret(aSecret)
+}
+
 output "open" {
   value = unsecret(aSecret)
 }

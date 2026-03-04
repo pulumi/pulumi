@@ -12,6 +12,7 @@ func main() {
 		notSecret := cfg.Require("notSecret")
 		ctx.Export("roundtripSecret", aSecret)
 		ctx.Export("roundtripNotSecret", pulumi.String(notSecret))
+		ctx.Export("double", pulumi.ToSecret(aSecret).(pulumi.StringOutput))
 		ctx.Export("open", pulumi.Unsecret(aSecret).(pulumi.StringOutput))
 		ctx.Export("close", pulumi.ToSecret(notSecret).(pulumi.StringOutput))
 		return nil
