@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
@@ -813,6 +814,31 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 			},
 		))
 	assert.Truef(t, called, "expected resolution to be called with duplicate name")
+}
+
+func TestValidateProjectName_ForbiddenError(t *testing.T) {
+	t.Parallel()
+
+	// Simulate the scenario where DoesProjectExist returns a ForbiddenError,
+	// which happens when the user has set an invalid default organization
+	// via `pulumi org set-default`.
+	b := &backend.MockBackend{
+		DoesProjectExistF: func(ctx context.Context, orgName string, projectName string) (bool, error) {
+			return false, backenderr.ForbiddenError{Err: fmt.Errorf("[403] Forbidden")}
+		},
+	}
+
+	err := validateProjectNameInternal(
+		context.Background(), b, "invalid-org", "my-project", false /* generateOnly */, display.Options{},
+		func(s string) error {
+			assert.Fail(t, "this should not be called when DoesProjectExist returns an error")
+			return nil
+		},
+	)
+	require.Error(t, err)
+	// The error should be a ForbiddenError that propagates from the backend.
+	assert.True(t, errors.Is(err, backenderr.ErrForbidden),
+		"expected a ForbiddenError, got: %v", err)
 }
 
 //nolint:paralleltest // changes directory for process

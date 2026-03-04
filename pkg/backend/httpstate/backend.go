@@ -1004,8 +1004,15 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 		return b.client.DoesProjectExist(ctx, orgName, projectName)
 	}
 
+	// Track whether the org was resolved from a user-configured default org,
+	// so we can provide a better error message if the API returns 403.
+	var defaultOrg string
 	getDefaultOrg := func() (string, error) {
-		return backend.GetDefaultOrg(ctx, b, nil)
+		org, err := backend.GetDefaultOrg(ctx, b, nil)
+		if err == nil && org != "" {
+			defaultOrg = org
+		}
+		return org, err
 	}
 	getUserOrg := func() (string, error) {
 		orgName, _, _, err := b.currentUser(ctx)
@@ -1016,7 +1023,16 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 		return false, err
 	}
 
-	return b.client.DoesProjectExist(ctx, orgName, projectName)
+	exists, err := b.client.DoesProjectExist(ctx, orgName, projectName)
+	if err != nil && defaultOrg != "" && errors.Is(err, backenderr.ErrForbidden) {
+		return false, fmt.Errorf(
+			"could not access the default organization '%s': %w\n\n"+
+				"The default organization may not exist, or you may not have access to it.\n"+
+				"You can change or remove your default organization with:\n"+
+				"  pulumi org set-default <org-name>",
+			defaultOrg, err)
+	}
+	return exists, err
 }
 
 func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {

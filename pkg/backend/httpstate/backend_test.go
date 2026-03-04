@@ -272,6 +272,59 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 	}
 }
 
+func TestDoesProjectExist_ForbiddenWithDefaultOrg(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			resp := apitype.CapabilitiesResponse{}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/user":
+			resp := map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/user/organizations/default":
+			// Return "invalid-org" as the default org, simulating a user-configured default
+			// org that is inaccessible or non-existent.
+			resp := apitype.GetDefaultOrganizationResponse{
+				GitHubLogin: "invalid-org",
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/stacks/invalid-org/my-project":
+			// Return 403 Forbidden - the org doesn't exist or user doesn't have access.
+			rw.WriteHeader(http.StatusForbidden)
+			resp := apitype.ErrorResponse{
+				Code:    http.StatusForbidden,
+				Message: "Forbidden",
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	b, err := New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	// Call DoesProjectExist with an empty orgName so it infers the org from the default.
+	_, err = b.DoesProjectExist(ctx, "", "my-project")
+	require.Error(t, err)
+
+	// The error should mention the default org and provide guidance.
+	assert.Contains(t, err.Error(), "invalid-org")
+	assert.Contains(t, err.Error(), "default organization")
+	assert.Contains(t, err.Error(), "pulumi org set-default")
+}
+
 //nolint:paralleltest // mutates global state
 func TestDisableIntegrityChecking(t *testing.T) {
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
