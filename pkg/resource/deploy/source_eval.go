@@ -733,7 +733,7 @@ type resmon struct {
 	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
 	grpcDialOptions           DialOptions
 
-	packageRefLock sync.Mutex
+	packageRefLock sync.RWMutex
 	// A map of UUIDs to the description of a provider package they correspond to
 	packageRefMap map[string]providers.ProviderRequest
 }
@@ -1030,6 +1030,15 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 	return &pulumirpc.RegisterPackageResponse{Ref: uuid}, nil
 }
 
+// lookupPackageRef returns the provider request for the given package ref,
+// holding the read lock for thread safety.
+func (rm *resmon) lookupPackageRef(ref string) (providers.ProviderRequest, bool) {
+	rm.packageRefLock.RLock()
+	defer rm.packageRefLock.RUnlock()
+	req, has := rm.packageRefMap[ref]
+	return req, has
+}
+
 func (rm *resmon) SupportsFeature(ctx context.Context,
 	req *pulumirpc.SupportsFeatureRequest,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
@@ -1137,7 +1146,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	packageRef := req.GetPackageRef()
 	if packageRef != "" {
 		var has bool
-		providerReq, has = rm.packageRefMap[packageRef]
+		providerReq, has = rm.lookupPackageRef(packageRef)
 		if !has {
 			return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 		}
@@ -1249,7 +1258,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	packageRef := req.GetPackageRef()
 	if packageRef != "" {
 		var has bool
-		providerReq, has = rm.packageRefMap[packageRef]
+		providerReq, has = rm.lookupPackageRef(packageRef)
 		if !has {
 			return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 		}
@@ -1399,7 +1408,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		packageRef := req.GetPackageRef()
 		if packageRef != "" {
 			var has bool
-			providerReq, has = rm.packageRefMap[packageRef]
+			providerReq, has = rm.lookupPackageRef(packageRef)
 			if !has {
 				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 			}
@@ -2427,7 +2436,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		packageRef := req.GetPackageRef()
 		if packageRef != "" {
 			var has bool
-			providerReq, has = rm.packageRefMap[packageRef]
+			providerReq, has = rm.lookupPackageRef(packageRef)
 			if !has {
 				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 			}
@@ -2539,7 +2548,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			// If the provider resource has a package ref then we need to set all it's input fields as in
 			// newRegisterDefaultProviderEvent.
 			packageRef := req.GetPackageRef()
-			providerReq, has := rm.packageRefMap[packageRef]
+			providerReq, has := rm.lookupPackageRef(packageRef)
 			if !has {
 				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 			}
