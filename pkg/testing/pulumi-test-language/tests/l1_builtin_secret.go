@@ -25,6 +25,7 @@ func init() {
 		Runs: []TestRun{
 			{
 				Config: config.Map{
+					//nolint:lll
 					config.MustMakeKey("l1-builtin-secret", "aSecret"):   config.NewSecureValue("dGhpcyBpcyBhIHNlY3JldA=="), // "this is a secret" in base64
 					config.MustMakeKey("l1-builtin-secret", "notSecret"): config.NewValue("this is plaintext"),
 				},
