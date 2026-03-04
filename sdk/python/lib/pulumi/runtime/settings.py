@@ -18,9 +18,7 @@ Runtime settings and configuration.
 
 from __future__ import annotations
 
-# IMPORTANT: Import _instrumentation BEFORE grpc to enable OTel instrumentation.
-# The instrumentation works by monkey-patching grpc, which must happen before it's loaded.
-from ._instrumentation import wrap_with_context  # noqa: F401 - also imported for side effects
+from ._instrumentation import wrap_with_context
 
 import asyncio
 import os
