@@ -198,7 +198,11 @@ func walkStructure(node Structure, breadcrumbs []string, inherited map[string]Fl
 		return nil, err
 	}
 
-	var decls []ast.Decl
+	// Ergonomic functional-style helpers for configuring this command's options.
+	optionDecls := buildOptionHelpers(typeName, command, fields)
+
+	// We always emit a single struct declaration followed by the helpers.
+	decls := make([]ast.Decl, 0, 1+len(optionDecls))
 
 	// The primary options struct for this command.
 	decls = append(decls, &ast.GenDecl{
@@ -209,8 +213,6 @@ func walkStructure(node Structure, breadcrumbs []string, inherited map[string]Fl
 		Specs: []ast.Spec{spec},
 	})
 
-	// Ergonomic functional-style helpers for configuring this command's options.
-	optionDecls := buildOptionHelpers(typeName, command, fields)
 	decls = append(decls, optionDecls...)
 
 	files := []optionsFile{{
