@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Enable journaling by default. It can still be turned off using the PULUMI_DISABLE_JOURNALING env variable
