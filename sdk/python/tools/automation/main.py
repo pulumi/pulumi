@@ -65,10 +65,8 @@ def _generate_options_types(
     """
     Collect all the flags for the current subcommand, including all the parent flags.
     """
-    if breadcrumbs is None:
-        breadcrumbs = []
-    if inherited is None:
-        inherited = {}
+    breadcrumbs = breadcrumbs or []
+    inherited = inherited or {}
 
     command = _create_command_name(breadcrumbs)
     class_name = _create_options_type_name(breadcrumbs)
