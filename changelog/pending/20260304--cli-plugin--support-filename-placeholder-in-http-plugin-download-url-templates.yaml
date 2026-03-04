@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/plugin
+  description: Support `${FILENAME}` placeholder in HTTP plugin download URL templates
