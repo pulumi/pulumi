@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -1008,45 +1009,8 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	// Create any stack references needed for the test
-	for name, outputs := range test.StackReferences {
-		ref, err := testBackend.ParseStackReference(name)
-		if err != nil {
-			return nil, fmt.Errorf("parse test stack reference: %w", err)
-		}
-
-		s, err := testBackend.CreateStack(ctx, ref, "", nil, nil)
-		if err != nil {
-			return nil, fmt.Errorf("create test stack reference: %w", err)
-		}
-
-		stackName := ref.Name()
-		projectName, has := ref.Project()
-		if !has {
-			return nil, fmt.Errorf("stack reference %s has no project", ref)
-		}
-		name := fmt.Sprintf("%s-%s", projectName, stackName)
-
-		// Import the deployment for the stack reference
-		snap := &deploy.Snapshot{
-			SecretsManager: sm,
-			Resources: []*resource.State{
-				{
-					Type:    resource.RootStackType,
-					URN:     resource.CreateURN(name, string(resource.RootStackType), "", string(projectName), stackName.String()),
-					Outputs: outputs,
-				},
-			},
-		}
-
-		untypedDeployment, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
-		if err != nil {
-			return nil, fmt.Errorf("serialize deployment: %w", err)
-		}
-
-		err = backend.ImportStackDeployment(ctx, s, untypedDeployment)
-		if err != nil {
-			return nil, fmt.Errorf("import deployment: %w", err)
-		}
+	if err := createStackReferences(ctx, sm, testBackend, test.StackReferences); err != nil {
+		return nil, err
 	}
 
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
@@ -1091,10 +1055,57 @@ func (eng *languageTestServer) RunLanguageTest(
 	if err != nil {
 		return nil, fmt.Errorf("create eject diy backend: %w", err)
 	}
+	if err := createStackReferences(ctx, sm, ejectTestBackend, test.StackReferences); err != nil {
+		return nil, err
+	}
 
 	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
 		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
+}
+
+func createStackReferences(
+	ctx context.Context, sm secrets.Manager, b diy.Backend, stackRefs map[string]resource.PropertyMap,
+) error {
+	for name, outputs := range stackRefs {
+		ref, err := b.ParseStackReference(name)
+		if err != nil {
+			return fmt.Errorf("parse test stack reference: %w", err)
+		}
+
+		s, err := b.CreateStack(ctx, ref, "", nil, nil)
+		if err != nil {
+			return fmt.Errorf("create test stack reference: %w", err)
+		}
+
+		stackName := ref.Name()
+		projectName, has := ref.Project()
+		if !has {
+			return fmt.Errorf("stack reference %s has no project", ref)
+		}
+		resourceName := fmt.Sprintf("%s-%s", projectName, stackName)
+
+		snap := &deploy.Snapshot{
+			SecretsManager: sm,
+			Resources: []*resource.State{
+				{
+					Type:    resource.RootStackType,
+					URN:     resource.CreateURN(resourceName, string(resource.RootStackType), "", string(projectName), stackName.String()),
+					Outputs: outputs,
+				},
+			},
+		}
+
+		untypedDeployment, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
+		if err != nil {
+			return fmt.Errorf("serialize deployment: %w", err)
+		}
+
+		if err := backend.ImportStackDeployment(ctx, s, untypedDeployment); err != nil {
+			return fmt.Errorf("import deployment: %w", err)
+		}
+	}
+	return nil
 }
 
 func runLanguageTests(
