@@ -261,7 +261,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				}
 				switch scalarType {
 				case model.StringType, model.IntType, model.NumberType, model.BoolType, model.DynamicType:
-					if typeName := g.argumentTypeName(to, isOutput); typeName != "" && !isReadFileLocalTraversal(arg) {
+					if typeName := g.argumentTypeName(to, isOutput); typeName != "" {
 						g.Fgenf(w, "%s(", typeName)
 						g.genScopeTraversalExpression(w, arg, expr.Type())
 						g.Fgenf(w, ")")
@@ -461,20 +461,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// TODO: implement "element", "entries", "lookup", "split" and "range"
 		g.genNYI(w, "call %v", expr.Name)
 	}
-}
-
-func isReadFileLocalTraversal(expr *model.ScopeTraversalExpression) bool {
-	if len(expr.Parts) == 0 {
-		return false
-	}
-
-	local, ok := expr.Parts[0].(*pcl.LocalVariable)
-	if !ok || local.Definition == nil {
-		return false
-	}
-
-	call, ok := local.Definition.Value.(*model.FunctionCallExpression)
-	return ok && call.Name == "readFile"
 }
 
 // genMethodCall generates Go code for a `call(self, method, args)` PCL expression.
