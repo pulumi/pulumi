@@ -888,17 +888,17 @@ wheels = [
 
 [[package]]
 name = "pulumi"
-version = "3.225.0"
+version = "3.226.0"
 source = { editable = "." }
 dependencies = [
     { name = "debugpy" },
     { name = "dill" },
     { name = "grpcio" },
-    { name = "packaging" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-grpc" },
     { name = "opentelemetry-instrumentation-grpc" },
     { name = "opentelemetry-sdk" },
+    { name = "packaging" },
     { name = "pip" },
     { name = "protobuf" },
     { name = "pyyaml" },
@@ -930,11 +930,11 @@ requires-dist = [
     { name = "dill", specifier = "~=0.4" },
     { name = "grpcio", marker = "python_full_version < '3.14'", specifier = ">=1.68.1,<2" },
     { name = "grpcio", marker = "python_full_version >= '3.14'", specifier = ">=1.75.1,<2" },
-    { name = "packaging", specifier = ">=26.0" },
     { name = "opentelemetry-api", specifier = ">=1.20.0" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.20.0" },
     { name = "opentelemetry-instrumentation-grpc", specifier = ">=0.41b0" },
     { name = "opentelemetry-sdk", specifier = ">=1.20.0" },
+    { name = "packaging", specifier = ">=26.0" },
     { name = "pip", specifier = ">=24.3.1" },
     { name = "protobuf", specifier = ">=3.20.3,<7" },
     { name = "pyyaml", specifier = "~=6.0" },
