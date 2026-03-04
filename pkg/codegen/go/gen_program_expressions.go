@@ -251,6 +251,24 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		case *model.TemplateExpression:
 			g.genTemplateExpression(w, arg, expr.Type())
 		case *model.ScopeTraversalExpression:
+			// When converting a plain traversal to Output<T>, emit an explicit Pulumi input cast
+			// for scalar types (e.g. pulumi.String(x)) so calls like ctx.Export compile.
+			// readFile locals are already emitted as pulumi.StringPtrInput and must not be wrapped.
+			if isOutput && !isFromOutput {
+				scalarType := to
+				if cns, ok := scalarType.(*model.ConstType); ok {
+					scalarType = cns.Type
+				}
+				switch scalarType {
+				case model.StringType, model.IntType, model.NumberType, model.BoolType, model.DynamicType:
+					if typeName := g.argumentTypeName(to, isOutput); typeName != "" && !isReadFileLocalTraversal(arg) {
+						g.Fgenf(w, "%s(", typeName)
+						g.genScopeTraversalExpression(w, arg, expr.Type())
+						g.Fgenf(w, ")")
+						return
+					}
+				}
+			}
 			g.genScopeTraversalExpression(w, arg, expr.Type())
 		default:
 			// Add a cast to the type we expect if needed
@@ -443,6 +461,20 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// TODO: implement "element", "entries", "lookup", "split" and "range"
 		g.genNYI(w, "call %v", expr.Name)
 	}
+}
+
+func isReadFileLocalTraversal(expr *model.ScopeTraversalExpression) bool {
+	if len(expr.Parts) == 0 {
+		return false
+	}
+
+	local, ok := expr.Parts[0].(*pcl.LocalVariable)
+	if !ok || local.Definition == nil {
+		return false
+	}
+
+	call, ok := local.Definition.Value.(*model.FunctionCallExpression)
+	return ok && call.Name == "readFile"
 }
 
 // genMethodCall generates Go code for a `call(self, method, args)` PCL expression.

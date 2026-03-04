@@ -11,7 +11,7 @@ func main() {
 		cfg := config.New(ctx, "")
 		configLexicalName := cfg.Require("cC-Charlie_charlie.😃⁉️")
 		resourceLexicalName, err := random.NewRandomPet(ctx, "aA-Alpha_alpha.🤯⁉️", &random.RandomPetArgs{
-			Prefix: pulumi.String(configLexicalName),
+			Prefix: pulumi.String(pulumi.String(configLexicalName)),
 		})
 		if err != nil {
 			return err
