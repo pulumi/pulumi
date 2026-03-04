@@ -288,7 +288,7 @@ func buildOptionHelpers(typeName, command string, fields []optionField) []ast.De
 	// All helpers in a package share the simple names Option / With<Field>.
 	optionTypeName := "Option"
 
-	var decls []ast.Decl
+	decls := make([]ast.Decl, 0, 1+len(fields))
 
 	// type Option func(*Options)
 	optionType := &ast.TypeSpec{
@@ -420,17 +420,6 @@ func astTypeFor(typ string, repeatable bool) (ast.Expr, error) {
 		return &ast.ArrayType{Elt: base}, nil
 	}
 	return base, nil
-}
-
-func toPascal(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-	s = strings.ReplaceAll(s, " ", "_")
-	s = strings.ReplaceAll(s, "-", "_")
-	s = strings.ReplaceAll(s, "/", "_")
-	return strcase.ToCamel(s)
 }
 
 // packageNameFor converts a list of CLI subcommand breadcrumbs into the Go
