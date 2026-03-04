@@ -1051,7 +1051,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
 		sdks, localDependencies, languageClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx)
+		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
 	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
 		return languageTestResult, err
 	}
@@ -1064,12 +1064,21 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, fmt.Errorf("dial converter plugin: %w", err)
 	}
 
+	// Use isolated temp and snapshot directories for the eject run so it doesn't overwrite the
+	// normal project dir or project snapshots.
+
+	ejectToken := token
+	ejectToken.TemporaryDirectory = filepath.Join(token.TemporaryDirectory, "eject")
+	if err := os.MkdirAll(ejectToken.TemporaryDirectory, 0o755); err != nil {
+		return nil, fmt.Errorf("create eject temporary dir: %w", err)
+	}
+
 	ejectTestingClient := roundTripClient{
 		LanguageRuntime:        languageClient,
 		converter:              pulumirpc.NewConverterClient(converterConn),
 		disableSnapshotWriting: eng.DisableSnapshotWriting,
 		snapshotEdits:          snapshotEdits,
-		projectsBaseDir:        filepath.Join(token.TemporaryDirectory, "projects"),
+		projectsBaseDir:        filepath.Join(ejectToken.TemporaryDirectory, "round-tripped-project"),
 		ejectSnapshotBaseDir:   filepath.Join(token.SnapshotDirectory, "eject-pcl"),
 	}
 
@@ -1083,9 +1092,9 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, fmt.Errorf("create eject diy backend: %w", err)
 	}
 
-	return runLanguageTests(ctx, token, req.Test, test, loader, packages,
+	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx)
+		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
 }
 
 func runLanguageTests(
@@ -1096,6 +1105,7 @@ func runLanguageTests(
 	testBackend diy.Backend,
 	stdout, stderr *bytes.Buffer,
 	pctx *plugin.Context,
+	projectDir string,
 ) (*testingrpc.RunLanguageTestResponse, error) {
 	sm := b64secrets.NewBase64SecretsManager()
 	dec := sm.Decrypter()
@@ -1103,7 +1113,8 @@ func runLanguageTests(
 	var result tests.LResult
 	for i, run := range test.Runs {
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", testName)
-		projectDir := filepath.Join(token.TemporaryDirectory, "projects", testName)
+		projectSubDir := projectDir
+		projectDir := filepath.Join(token.TemporaryDirectory, projectDir, testName)
 		if i == 0 || !test.RunsShareSource {
 			// Create a source directory for the test
 			if len(test.Runs) > 1 && !test.RunsShareSource {
@@ -1207,7 +1218,7 @@ func runLanguageTests(
 					return nil, fmt.Errorf("copy testdata: %w", err)
 				}
 
-				snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", testName)
+				snapshotDir := filepath.Join(token.SnapshotDirectory, projectSubDir, testName)
 				if len(test.Runs) > 1 && !test.RunsShareSource {
 					snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 				}
@@ -1795,7 +1806,7 @@ func (rtc roundTripClient) roundTrip(
 	// If GenerateProgram didn't produce one, write a minimal placeholder.
 	projFile := filepath.Join(tmpDir, "Pulumi.yaml")
 	if _, statErr := os.Stat(projFile); os.IsNotExist(statErr) {
-		if err := os.WriteFile(projFile, []byte("name: roundtrip\nruntime: yaml\n"), 0o600); err != nil {
+		if err := os.WriteFile(projFile, []byte("name: roundtrip\nruntime: pcl\n"), 0o600); err != nil {
 			return "", diags, err
 		}
 	}
