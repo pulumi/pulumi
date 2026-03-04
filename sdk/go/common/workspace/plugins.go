@@ -737,14 +737,19 @@ func (source *httpSource) GetLatestVersion(
 	return nil, ErrGetLatestVersionNotSupported
 }
 
-func interpolateURL(serverURL string, name string, version semver.Version, os, arch string) string {
+func interpolateURL(serverURL string, name string, version semver.Version, os, arch, filename string) string {
 	// Expectation is the URL is already escaped, so we need to escape the {}'s in the replacement strings.
 	replacer := strings.NewReplacer(
 		"$%7BNAME%7D", url.QueryEscape(name),
 		"$%7BVERSION%7D", url.QueryEscape(version.String()),
 		"$%7BOS%7D", url.QueryEscape(os),
-		"$%7BARCH%7D", url.QueryEscape(arch))
+		"$%7BARCH%7D", url.QueryEscape(arch),
+		"$%7BFILENAME%7D", url.QueryEscape(filename))
 	return replacer.Replace(serverURL)
+}
+
+func hasFilenamePlaceholder(serverURL string) bool {
+	return strings.Contains(serverURL, "${FILENAME}") || strings.Contains(serverURL, "$%7BFILENAME%7D")
 }
 
 func (source *httpSource) Download(
@@ -752,13 +757,19 @@ func (source *httpSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
-	serverURL := interpolateURL(source.url, source.name, version, opSy, arch)
-	serverURL = strings.TrimSuffix(serverURL, "/")
-	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
+	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
+	templateHasFilename := hasFilenamePlaceholder(source.url)
+	serverURL := interpolateURL(source.url, source.name, version, opSy, arch, assetName)
 
-	endpoint := fmt.Sprintf("%s/%s",
-		serverURL,
-		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)))
+	var endpoint string
+	if templateHasFilename {
+		endpoint = serverURL
+	} else {
+		serverURL = strings.TrimSuffix(serverURL, "/")
+		endpoint = fmt.Sprintf("%s/%s", serverURL, url.QueryEscape(assetName))
+	}
+
+	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 
 	req, err := buildHTTPRequest(ctx, endpoint, "")
 	if err != nil {

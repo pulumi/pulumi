@@ -489,6 +489,55 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
+	t.Run("Custom https URL with filename placeholder in path", func(t *testing.T) {
+		version := semver.MustParse("4.32.0")
+		spec := PluginDescriptor{
+			PluginDownloadURL: "https://artifactregistry.googleapis.com/download/v1/projects/p/locations/l/" +
+				"repositories/r/files/${FILENAME}:download?alt=media",
+			Name:    "mockdl",
+			Version: &version,
+			Kind:    apitype.PluginKind("resource"),
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			assert.Equal(t,
+				"https://artifactregistry.googleapis.com/download/v1/projects/p/locations/l/repositories/r/"+
+					"files/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz:download?alt=media",
+				req.URL.String())
+			return newMockReadCloser(expectedBytes)
+		}
+		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		readBytes, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, int(l), len(readBytes))
+		assert.Equal(t, expectedBytes, readBytes)
+	})
+	t.Run("Custom https URL with filename placeholder in query", func(t *testing.T) {
+		version := semver.MustParse("4.32.0")
+		spec := PluginDescriptor{
+			PluginDownloadURL: "https://example.internal/plugins/download?archive=${FILENAME}&os=${OS}&arch=${ARCH}",
+			Name:              "mockdl",
+			Version:           &version,
+			Kind:              apitype.PluginKind("resource"),
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			assert.Equal(t,
+				"https://example.internal/plugins/download?"+
+					"archive=pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz&os=darwin&arch=amd64",
+				req.URL.String())
+			return newMockReadCloser(expectedBytes)
+		}
+		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		readBytes, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, int(l), len(readBytes))
+		assert.Equal(t, expectedBytes, readBytes)
+	})
 	t.Run("Private Pulumi GitHub Releases", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", token)
 		version := semver.MustParse("4.32.0")
