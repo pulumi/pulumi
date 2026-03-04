@@ -252,6 +252,7 @@ func newDeployment(
 		DisableOutputValues:       opts.DisableOutputValues,
 		GeneratePlan:              opts.GeneratePlan,
 		ContinueOnError:           opts.ContinueOnError,
+		DeleteBeforeCreate:        opts.DeleteBeforeCreate,
 		Autonamer:                 opts.Autonamer,
 	}
 
