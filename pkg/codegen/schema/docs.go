@@ -15,39 +15,79 @@
 package schema
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type PulumiRefResolver func(ref DocRef) (string, bool)
 
-func interpretPulumiRefs(types *types, node ast.Node, resolveRefToName PulumiRefResolver) error {
+func interpretPulumiRefs(path string, types *types, options ValidationOptions, node ast.Node, resolveRefToName PulumiRefResolver) hcl.Diagnostics {
+	var diags hcl.Diagnostics
+
 	var c, next ast.Node
 	for c = node.FirstChild(); c != nil; c = next {
-		err := interpretPulumiRefs(types, c, resolveRefToName)
-		if err != nil {
-			return err
-		}
+		subdiags := interpretPulumiRefs(path, types, options, c, resolveRefToName)
+		diags = append(diags, subdiags...)
 
 		next = c.NextSibling()
 		switch c := c.(type) {
 		case *Ref:
-			ref := parseDocRef(c.Destination)
-			if ref.Type == DocRefTypeUnknown {
-				return fmt.Errorf("invalid doc ref: %s", c.Destination)
+			var subdiags hcl.Diagnostics
+			var ref DocRef
+
+			iref := parseDocRef(c.Destination)
+			if iref.Kind == DocRefKindUnknown {
+				subdiags = hcl.Diagnostics{errorf(path, "invalid doc ref: %s", c.Destination)}
+			} else {
+				// This could be function or type
+				ref = DocRef{Ref: iref.Ref, Kind: iref.Kind}
+				if iref.Kind == DocRefKindResource || iref.Kind == DocRefKindType ||
+					iref.Kind == DocRefKindResourceProperty || iref.Kind == DocRefKindResourceInputProperty || iref.Kind == DocRefKindTypeProperty {
+					spec := TypeSpec{Ref: string(iref.Token)}
+					var bound Type
+					var err error
+					bound, subdiags, err = types.bindTypeSpecRef(path, spec, false, options)
+					if err != nil {
+						subdiags = append(subdiags, errorf(path, "%s", err.Error()))
+					}
+					// bindTypeSpecRef returns diagnostics with "/$ref" added to the path, that's not appropriate
+					// here since the ref isn't a JSON child, its just part of the doc comment text. So we rewrite
+					// them.
+					refPrefix := path + "/$ref: "
+					pathPrefix := path + ": "
+					for _, d := range subdiags {
+						if d != nil && strings.HasPrefix(d.Summary, refPrefix) {
+							d.Summary = pathPrefix + d.Summary[len(refPrefix):]
+						}
+					}
+					ref.Type = bound
+				} else {
+					fun, has := types.functionDefs[string(iref.Token)]
+					if !has {
+						subdiags = hcl.Diagnostics{errorf(path, "function %s not found", iref.Token)}
+					}
+					ref.Function = fun
+				}
 			}
 
-			name, ok := resolveRefToName(ref)
+			var name string
+			var ok bool
+			if !subdiags.HasErrors() {
+				name, ok = resolveRefToName(ref)
+			}
+			diags = append(diags, subdiags...)
+
 			if !ok {
 				if ref.Property != "" {
 					name = ref.Property
-				} else if ref.Token != "" {
-					name = ref.Token.DisplayName()
+				} else if ref.Type != nil {
+					name = ref.Type.String()
+				} else if ref.Function != nil {
+					name = ref.Function.Token
 				} else {
 					name = ref.Ref
 				}
@@ -58,98 +98,45 @@ func interpretPulumiRefs(types *types, node ast.Node, resolveRefToName PulumiRef
 			node.RemoveChild(node, c)
 		}
 	}
-	return nil
+	return diags
 }
 
-type DocRefType string
+type DocRefKind string
 
 const (
-	DocRefTypeUnknown                DocRefType = ""
-	DocRefTypeResource               DocRefType = "resource"
-	DocRefTypeFunction               DocRefType = "function"
-	DocRefTypeType                   DocRefType = "type"
-	DocRefTypeResourceProperty       DocRefType = "resourceProperty"
-	DocRefTypeResourceInputProperty  DocRefType = "resourceInputProperty"
-	DocRefTypeFunctionInputProperty  DocRefType = "functionInputProperty"
-	DocRefTypeFunctionOutputProperty DocRefType = "functionOutputProperty"
-	DocRefTypeTypeProperty           DocRefType = "typeProperty"
+	DocRefKindUnknown                DocRefKind = ""
+	DocRefKindResource               DocRefKind = "resource"
+	DocRefKindFunction               DocRefKind = "function"
+	DocRefKindType                   DocRefKind = "type"
+	DocRefKindResourceProperty       DocRefKind = "resourceProperty"
+	DocRefKindResourceInputProperty  DocRefKind = "resourceInputProperty"
+	DocRefKindFunctionInputProperty  DocRefKind = "functionInputProperty"
+	DocRefKindFunctionOutputProperty DocRefKind = "functionOutputProperty"
+	DocRefKindTypeProperty           DocRefKind = "typeProperty"
 )
 
 type DocRef struct {
 	// Original parsed ref
 	Ref string
 	// The type of the parsed ref
-	Type DocRefType
-	// The token of the resource, function, or type, or empty if not applicable.
-	Token tokens.Type
+	Kind DocRefKind
+	// If a ref for a resource or type, the bound type.
+	Type Type
+	// If a ref for a function, the bound function.
+	Function *Function
 	// The referenced property name, or empty if not applicable.
 	Property string
 }
 
-// Returns true is the current reference is a property within the other reference.
-func (r DocRef) IsWithin(other DocRef) bool {
-	switch r.Type {
-	case DocRefTypeResourceProperty, DocRefTypeResourceInputProperty:
-		return other.Type == DocRefTypeResource && r.Token == other.Token
-	case DocRefTypeFunctionInputProperty, DocRefTypeFunctionOutputProperty:
-		return other.Type == DocRefTypeFunction && r.Token == other.Token
-	case DocRefTypeTypeProperty:
-		return other.Type == DocRefTypeType && r.Token == other.Token
-	case DocRefTypeResource, DocRefTypeFunction, DocRefTypeType, DocRefTypeUnknown:
-		return false
-	}
-	return false
-}
-
-// NewDocRef constructs a validated DocRef from the given type, token, and property.
-// `token` is required for all types except `DocRefTypeUnknown`.
-// `property` is required for property types.
-func NewDocRef(docRefType DocRefType, token string, property string) DocRef {
-	var ref string
-	switch docRefType {
-	case DocRefTypeResource:
-		contract.Assertf(token != "", "resource token must be provided")
-		contract.Assertf(property == "", "property name must not be set for resource")
-		ref = "#/resources/" + url.PathEscape(token)
-	case DocRefTypeFunction:
-		contract.Assertf(token != "", "function token must be provided")
-		contract.Assertf(property == "", "property name must not be set for function")
-		ref = "#/functions/" + url.PathEscape(token)
-	case DocRefTypeType:
-		contract.Assertf(token != "", "type token must be provided")
-		contract.Assertf(property == "", "property name must not be set for type")
-		ref = "#/types/" + url.PathEscape(token)
-	case DocRefTypeResourceProperty:
-		contract.Assertf(token != "", "resource token must be provided")
-		contract.Assertf(property != "", "property name must be provided")
-		ref = fmt.Sprintf("#/resources/%s/properties/%s", url.PathEscape(token), url.PathEscape(property))
-	case DocRefTypeResourceInputProperty:
-		contract.Assertf(token != "", "resource token must be provided")
-		contract.Assertf(property != "", "property name must be provided")
-		ref = fmt.Sprintf("#/resources/%s/inputProperties/%s", url.PathEscape(token), url.PathEscape(property))
-	case DocRefTypeFunctionInputProperty:
-		contract.Assertf(token != "", "function token must be provided")
-		contract.Assertf(property != "", "property name must be provided")
-		ref = fmt.Sprintf("#/functions/%s/inputs/properties/%s", url.PathEscape(token), url.PathEscape(property))
-	case DocRefTypeFunctionOutputProperty:
-		contract.Assertf(token != "", "function token must be provided")
-		contract.Assertf(property != "", "property name must be provided")
-		ref = fmt.Sprintf("#/functions/%s/outputs/properties/%s", url.PathEscape(token), url.PathEscape(property))
-	case DocRefTypeTypeProperty:
-		contract.Assertf(token != "", "type token must be provided")
-		contract.Assertf(property != "", "property name must be provided")
-		ref = fmt.Sprintf("#/types/%s/properties/%s", url.PathEscape(token), url.PathEscape(property))
-	case DocRefTypeUnknown:
-		return DocRef{Type: DocRefTypeUnknown}
-	default:
-		contract.Failf("unsupported doc ref type %s", docRefType)
-	}
-	return DocRef{
-		Ref:      ref,
-		Type:     docRefType,
-		Token:    tokens.Type(token),
-		Property: property,
-	}
+type internalDocRef struct {
+	// Original parsed ref
+	Ref string
+	// The type of the parsed ref
+	Kind DocRefKind
+	// The token of the resource, function, or type, or empty if not applicable.
+	Token tokens.Type
+	// The referenced property name, or empty if not applicable.
+	Property string
 }
 
 // Parses a doc reference string into a DocRef struct.
@@ -165,8 +152,8 @@ func NewDocRef(docRefType DocRefType, token string, property string) DocRef {
 //	#/types/{token}/properties/{property}
 //
 // Note: Tokens containing a slash ("/") must be encoded as "%2F".
-func parseDocRef(ref string) DocRef {
-	docRefUnknown := DocRef{Ref: ref, Type: DocRefTypeUnknown}
+func parseDocRef(ref string) internalDocRef {
+	docRefUnknown := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
 	parts := strings.Split(ref, "/")
 	if len(parts) < 3 || parts[0] != "#" {
 		return docRefUnknown
@@ -190,7 +177,7 @@ func parseDocRef(ref string) DocRef {
 	}
 
 	if len(parts) == 3 {
-		return DocRef{Ref: ref, Type: DocRefType(topLevelType), Token: token}
+		return internalDocRef{Ref: ref, Kind: DocRefKind(topLevelType), Token: token}
 	}
 
 	if len(parts) < 5 {
@@ -208,7 +195,7 @@ func parseDocRef(ref string) DocRef {
 		switch topLevelType {
 		case "resource", "type":
 			if len(parts) == 5 {
-				return DocRef{Ref: ref, Type: DocRefType(topLevelType + "Property"), Token: token, Property: property}
+				return internalDocRef{Ref: ref, Kind: DocRefKind(topLevelType + "Property"), Token: token, Property: property}
 			}
 			return docRefUnknown
 		default:
@@ -218,7 +205,7 @@ func parseDocRef(ref string) DocRef {
 	case "inputProperties":
 		switch {
 		case topLevelType == "resource" && len(parts) == 5:
-			return DocRef{Ref: ref, Type: DocRefType(topLevelType + "InputProperty"), Token: token, Property: property}
+			return internalDocRef{Ref: ref, Kind: DocRefKind(topLevelType + "InputProperty"), Token: token, Property: property}
 		default:
 			// Properties isn't a valid ref
 			return docRefUnknown
@@ -230,7 +217,7 @@ func parseDocRef(ref string) DocRef {
 			if err != nil || property == "" {
 				return docRefUnknown
 			}
-			return DocRef{Ref: ref, Type: DocRefTypeFunctionInputProperty, Token: token, Property: property}
+			return internalDocRef{Ref: ref, Kind: DocRefKindFunctionInputProperty, Token: token, Property: property}
 		default:
 			// Inputs isn't a valid ref
 			return docRefUnknown
@@ -242,7 +229,7 @@ func parseDocRef(ref string) DocRef {
 			if err != nil || property == "" {
 				return docRefUnknown
 			}
-			return DocRef{Ref: ref, Type: DocRefTypeFunctionOutputProperty, Token: token, Property: property}
+			return internalDocRef{Ref: ref, Kind: DocRefKindFunctionOutputProperty, Token: token, Property: property}
 		default:
 			// Outputs isn't a valid ref
 			return docRefUnknown

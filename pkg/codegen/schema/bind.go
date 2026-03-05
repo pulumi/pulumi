@@ -195,6 +195,9 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 
 	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions))
 
+	// Now we've bound everything we can do a pass over the Descriptions and Comments to check they have valid doc refs.
+	diags = diags.Extend(checkDocRefs(types, spec, options))
+
 	pkg := types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
@@ -1415,6 +1418,20 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 	})
 
 	return typeList, diags, nil
+}
+
+func checkDocRefs(types *types, spec PackageSpec, options ValidationOptions) hcl.Diagnostics {
+	diags := hcl.Diagnostics{}
+
+	resolver := func(ref DocRef) (string, bool) { return "", false }
+
+	if spec.Description != "" {
+		source := []byte(spec.Description)
+		parsed := ParseDocs(source)
+		diags.Extend(interpretPulumiRefs("#/description", types, options, parsed, resolver))
+	}
+
+	return diags
 }
 
 func checkDuplicates(
