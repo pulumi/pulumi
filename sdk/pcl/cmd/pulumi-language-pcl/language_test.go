@@ -95,7 +95,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
 	"l2-resource-option-replacement-trigger": "replacement trigger value remains computed/unknown instead of resolved string on update",
-	"l2-namespaced-provider":                 "resourceRef output is a serialized object map instead of a ResourceReference",
 	"l2-component-component-resource-ref":    "component resourceRef is serialized as PropertyMap instead of ResourceReference, causing provider panic",
 	"l2-component-property-deps":             "unexpected property dependency on custom1 where dependency set should be empty",
 	"l2-resource-option-replace-on-changes":  "schema replaceProp change is treated as update instead of replacement",

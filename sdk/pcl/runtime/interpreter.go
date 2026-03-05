@@ -503,6 +503,47 @@ func unwrapResource(value resource.PropertyValue) (string, resource.PropertyValu
 	return urnVal.StringValue(), idVal, nil
 }
 
+func collapseResourceReferences(value resource.PropertyValue) resource.PropertyValue {
+	switch {
+	case value.IsOutput():
+		output := value.OutputValue()
+		output.Element = collapseResourceReferences(output.Element)
+		return resource.NewProperty(output)
+	case value.IsSecret():
+		secret := value.SecretValue()
+		secret.Element = collapseResourceReferences(secret.Element)
+		return resource.NewProperty(secret)
+	case value.IsArray():
+		array := value.ArrayValue()
+		collapsed := make([]resource.PropertyValue, len(array))
+		for i, elem := range array {
+			collapsed[i] = collapseResourceReferences(elem)
+		}
+		return resource.NewArrayProperty(collapsed)
+	case value.IsObject():
+		obj := value.ObjectValue()
+		collapsed := make(resource.PropertyMap, len(obj))
+		for key, elem := range obj {
+			collapsed[key] = collapseResourceReferences(elem)
+		}
+
+		// Resource references are expanded into resource-shaped objects for evaluation.
+		// Collapse these back before marshaling register requests.
+		urn, hasURN := collapsed["urn"]
+		id, hasID := collapsed["id"]
+		typ, hasType := collapsed["__type"]
+		if hasURN && hasID && hasType && urn.IsString() && typ.IsString() {
+			return resource.NewProperty(resource.ResourceReference{
+				URN: resource.URN(urn.StringValue()),
+				ID:  id,
+			})
+		}
+		return resource.NewObjectProperty(collapsed)
+	default:
+		return value
+	}
+}
+
 func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) error {
 	inputs := resource.PropertyMap{}
 	for _, attr := range res.Inputs {
@@ -510,7 +551,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		if diags.HasErrors() {
 			return diags
 		}
-		inputs[resource.PropertyKey(attr.Name)] = val
+		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
 	}
 
 	schemaResource, err := i.lookupResource(ctx, res.Token)
@@ -1070,7 +1111,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		if diags.HasErrors() {
 			return diags
 		}
-		inputs[resource.PropertyKey(attr.Name)] = val
+		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
 	}
 
 	marshalOpts := plugin.MarshalOptions{
@@ -1138,6 +1179,9 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	if err != nil {
 		return err
 	}
+	for key, val := range componentOutputs {
+		componentOutputs[key] = collapseResourceReferences(val)
+	}
 
 	outObj, err := plugin.MarshalProperties(componentOutputs, marshalOpts)
 	if err != nil {
@@ -1173,6 +1217,9 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs resource.PropertyMap) error {
 	if i.stackURN == "" {
 		return errors.New("missing stack URN")
+	}
+	for key, val := range outputs {
+		outputs[key] = collapseResourceReferences(val)
 	}
 	marshalOpts := plugin.MarshalOptions{
 		KeepUnknowns:  true,
