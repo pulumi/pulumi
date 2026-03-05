@@ -6,18 +6,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func readFileOrPanic(path string) pulumi.StringPtrInput {
+func readFileOrPanic(path string) string {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		panic(err.Error())
 	}
-	return pulumi.String(string(data))
+	return string(data)
 }
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		key := readFileOrPanic("key.pub")
-		ctx.Export("result", key)
+		ctx.Export("result", pulumi.String(key))
 		return nil
 	})
 }
