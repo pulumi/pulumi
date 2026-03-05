@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.225.1 (2026-03-05)
+
+
+### Bug Fixes
+
+- [engine] Fix inheritence of default providers across resources of different packages
+  [#22101](https://github.com/pulumi/pulumi/pull/22101)
+
+- [programgen/go] Fix panic on digit-prefixed schema properties in Go code generation
+  [#21917](https://github.com/pulumi/pulumi/pull/21917)
+
+- [programgen/go] Fix plain values not always being lifted to input/output values when needed
+  [#22084](https://github.com/pulumi/pulumi/pull/22084)
+
+- [programgen/python] Fix generation of `entries` and `lookup` calls
+  [#22086](https://github.com/pulumi/pulumi/pull/22086)
+
 ## 3.225.0 (2026-03-04)
 
 
