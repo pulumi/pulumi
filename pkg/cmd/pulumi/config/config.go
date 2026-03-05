@@ -149,7 +149,7 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.AddCommand(newConfigSetCmd(ws, &stack))
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &ssml))
-	cmd.AddCommand(newConfigRefreshCmd(ws, &stack))
+	cmd.AddCommand(newConfigRefreshCmd(ws, &stack, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newConfigCopyCmd(ws, &stack))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack))
 
@@ -502,7 +502,7 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 	return rmAllCmd
 }
 
-func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
+func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string, lm cmdBackend.LoginManager) *cobra.Command {
 	var force bool
 	refreshCmd := &cobra.Command{
 		Use:   "refresh",
@@ -523,7 +523,7 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				*stk,
 				cmdStack.LoadOnly,
 				opts,
