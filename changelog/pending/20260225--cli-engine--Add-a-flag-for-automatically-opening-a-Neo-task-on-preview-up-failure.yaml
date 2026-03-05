@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/engine
-  description: Add a flag for automatically opening a Neo task on preview/up failure
