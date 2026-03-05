@@ -130,6 +130,7 @@ func NewUpCmd() *cobra.Command {
 
 	// Flags for Neo.
 	var neoEnabled bool
+	var neoTaskOnFailure bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -662,6 +663,7 @@ func NewUpCmd() *cobra.Command {
 			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
+			configureNeoTaskOption(neoTaskOnFailure, cmd, &opts.Display, isDIYBackend)
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
@@ -843,6 +845,15 @@ func NewUpCmd() *cobra.Command {
 		&neoEnabled, "neo", false,
 		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_NEO environment variable)")
+
+	cmd.PersistentFlags().BoolVar(
+		&neoTaskOnFailure, "neo-task-on-failure", false,
+		"Start a Neo task to help debug errors that occur during the operation")
+	if !env.Experimental.Value() {
+		contract.AssertNoErrorf(
+			cmd.PersistentFlags().MarkHidden("neo-task-on-failure"),
+			`Could not mark "neo-task-on-failure" as hidden`)
+	}
 
 	// Keep --copilot flag for backwards compatibility, but hide it
 	cmd.PersistentFlags().BoolVar(

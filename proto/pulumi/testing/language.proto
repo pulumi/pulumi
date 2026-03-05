@@ -87,6 +87,11 @@ message PrepareLanguageTestsRequest {
 
     // The path to a directory containing provider plugins to be used for the "provider-" tests.
     string providers_directory = 12;
+
+    // If set, the address of the converter plugin.
+    //
+    // Convert will be tested if and only if this is set.
+    string converter_plugin_target = 13;
 }
 
 message PrepareLanguageTestsResponse {
@@ -96,6 +101,9 @@ message PrepareLanguageTestsResponse {
 message RunLanguageTestRequest {
     string token = 1;
     string test = 2;
+
+    // Skip a convert test if applicable.
+    bool skip_convert_tests = 3;
 }
 
 message RunLanguageTestResponse {

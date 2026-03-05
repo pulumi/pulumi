@@ -129,6 +129,7 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     POLICY_PACK_DIRECTORY_FIELD_NUMBER: builtins.int
     LOCAL_FIELD_NUMBER: builtins.int
     PROVIDERS_DIRECTORY_FIELD_NUMBER: builtins.int
+    CONVERTER_PLUGIN_TARGET_FIELD_NUMBER: builtins.int
     language_plugin_name: builtins.str
     language_plugin_target: builtins.str
     snapshot_directory: builtins.str
@@ -148,6 +149,11 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     """If true, tests will be run in "local" mode, meaning all SDKs will be generated with the `--local` flag and not packed."""
     providers_directory: builtins.str
     """The path to a directory containing provider plugins to be used for the "provider-" tests."""
+    converter_plugin_target: builtins.str
+    """If set, the address of the converter plugin.
+
+    Convert will be tested if and only if this is set.
+    """
     @property
     def snapshot_edits(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PrepareLanguageTestsRequest.Replacement]: ...
     @property
@@ -174,8 +180,9 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
         policy_pack_directory: builtins.str = ...,
         local: builtins.bool = ...,
         providers_directory: builtins.str = ...,
+        converter_plugin_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_info", b"language_info", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "local", b"local", "policy_pack_directory", b"policy_pack_directory", "program_overrides", b"program_overrides", "providers_directory", b"providers_directory", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["converter_plugin_target", b"converter_plugin_target", "core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_info", b"language_info", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "local", b"local", "policy_pack_directory", b"policy_pack_directory", "program_overrides", b"program_overrides", "providers_directory", b"providers_directory", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
 
 global___PrepareLanguageTestsRequest = PrepareLanguageTestsRequest
 
@@ -200,15 +207,19 @@ class RunLanguageTestRequest(google.protobuf.message.Message):
 
     TOKEN_FIELD_NUMBER: builtins.int
     TEST_FIELD_NUMBER: builtins.int
+    SKIP_CONVERT_TESTS_FIELD_NUMBER: builtins.int
     token: builtins.str
     test: builtins.str
+    skip_convert_tests: builtins.bool
+    """Skip a convert test if applicable."""
     def __init__(
         self,
         *,
         token: builtins.str = ...,
         test: builtins.str = ...,
+        skip_convert_tests: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["test", b"test", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["skip_convert_tests", b"skip_convert_tests", "test", b"test", "token", b"token"]) -> None: ...
 
 global___RunLanguageTestRequest = RunLanguageTestRequest
 

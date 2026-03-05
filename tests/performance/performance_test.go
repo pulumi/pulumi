@@ -165,15 +165,12 @@ func TestPerfManyResourcesWithJournaling(t *testing.T) {
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		NoParallel:     true,
-		Dir:            filepath.Join("typescript", "many_resources"),
-		Dependencies:   []string{"@pulumi/pulumi"},
-		RequireService: true,
-		ReportStats:    initialBenchmark,
-		SkipPreview:    true,
-		Env: []string{
-			"PULUMI_ENABLE_JOURNALING=true",
-		},
+		NoParallel:       true,
+		Dir:              filepath.Join("typescript", "many_resources"),
+		Dependencies:     []string{"@pulumi/pulumi"},
+		RequireService:   true,
+		ReportStats:      initialBenchmark,
+		SkipPreview:      true,
 		DestroyOnCleanup: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.Greater(t, len(stack.Deployment.Resources), 2000)

@@ -21,8 +21,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // NeoErrorSummaryMetadata contains metadata about a Neo error summary.
@@ -106,4 +108,40 @@ func FormatNeoSummary(summary string, opts Options) string {
 func renderBoldMarkdown(summary string, opts Options) string {
 	summary = regexp.MustCompile(`\*\*(.*?)\*\*`).ReplaceAllString(summary, colors.BrightBlue+"$1"+colors.Reset)
 	return summary
+}
+
+// RenderNeoTaskCreated renders a message after a Neo task has been created.
+func RenderNeoTaskCreated(
+	taskResult *client.NeoTaskResponse, err error, cloudConsoleURL, orgName string, opts Options,
+) {
+	out := opts.Stderr
+	if out == nil {
+		out = os.Stderr
+	}
+
+	if err != nil {
+		fmt.Fprintf(out, "\n")
+		header := opts.Color.Colorize(
+			colors.SpecHeadline + "Neo Task" + neoDelimiterEmoji() + colors.Reset)
+		fmt.Fprintln(out, header)
+		fmt.Fprintf(out, "  error creating Neo task: %s\n", err)
+		fmt.Fprintln(out)
+		return
+	}
+
+	if taskResult == nil {
+		return
+	}
+
+	taskID := taskResult.TaskID
+	contract.Assertf(taskID != "", "taskID is empty")
+	fmt.Fprintf(out, "\n")
+	header := opts.Color.Colorize(
+		colors.SpecHeadline + "Neo Task Created" + neoDelimiterEmoji() + colors.Reset)
+	fmt.Fprintln(out, header)
+	fmt.Fprintln(out, "  A Neo task has been started to help debug this error.")
+
+	taskURL := fmt.Sprintf("%s/%s/neo/tasks/%s", cloudConsoleURL, orgName, taskID)
+	fmt.Fprintln(out, "  "+opts.Color.Colorize(colors.Underline+colors.BrightBlue+taskURL+colors.Reset))
+	fmt.Fprintln(out)
 }

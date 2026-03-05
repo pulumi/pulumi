@@ -129,7 +129,7 @@ func TestSourceFuncCancellation(t *testing.T) {
 	ctx := makeTestContext(t, cancelCtx)
 	defer ctx.Close()
 
-	info, err := newDeploymentContext(makeUpdateInfo(), "test", nil)
+	info, err := newDeploymentContext(t.Context(), makeUpdateInfo(), "test", nil)
 	require.NoError(t, err)
 	defer info.Close()
 

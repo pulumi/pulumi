@@ -28,7 +28,9 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
 type bunManager struct {
@@ -133,6 +135,17 @@ func (bun *bunManager) Link(ctx context.Context, dir, packageName, path string) 
 	return nil
 }
 
+func (bun *bunManager) ListPackages(ctx context.Context, dir string, transitive bool) ([]plugin.DependencyInfo, error) {
+	if _, err := fsutil.Searchup(dir, "bun.lock"); err == nil {
+		return listPackagesFromLockFile(dir, "bun.lock", transitive)
+	}
+	if _, err := fsutil.Searchup(dir, "bun.lockb"); err == nil {
+		return nil, errors.New("binary bun lockfile (bun.lockb) is not supported for listing packages; " +
+			"please upgrade to bun >= 1.2, which uses a text-based lockfile (bun.lock)")
+	}
+	return nil, fmt.Errorf("no bun lock file found (searching upwards from %s)", dir)
+}
+
 type packageDotJSON struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
@@ -187,14 +200,10 @@ func (bun *bunManager) Pack(ctx context.Context, dir string, stderr io.Writer) (
 // This function is used to indicate whether to prefer bun over
 // other package managers.
 func checkBunLock(pwd string) bool {
-	bunLockFile := filepath.Join(pwd, "bun.lock")
-	bunLockBinaryFile := filepath.Join(pwd, "bun.lockb")
-	_, err := os.Stat(bunLockFile) // check this first as since 1.2 this is the default lockfile
-	if err == nil {
+	// check bun.lock first as since bun 1.2 this is the default lockfile
+	if _, err := fsutil.Searchup(pwd, "bun.lock"); err == nil {
 		return true
 	}
-
-	_, err = os.Stat(bunLockBinaryFile)
-
+	_, err := fsutil.Searchup(pwd, "bun.lockb")
 	return err == nil
 }

@@ -26,6 +26,8 @@ import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 
+import * as opentelemetry from "@opentelemetry/api";
+
 /*
   Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
  */
@@ -38,11 +40,50 @@ const maxRPCMessageSize: number = 1024 * 1024 * 400;
 */
 const serverMaxUnrequestedTimeInServer = 30 * 60; // half an hour in seconds
 /**
+ * Create a gRPC interceptor that injects OpenTelemetry trace context into outgoing calls.
+ * This is needed because the automatic instrumentation doesn't work with generated gRPC clients
+ * that capture prototype method references at module load time.
+ */
+function createTraceContextInterceptor(): grpc.Interceptor {
+    return (opts, nextCall) => {
+        return new grpc.InterceptingCall(nextCall(opts), {
+            start: (metadata, listener, next) => {
+                const carrier = {
+                    get(key: string): string | undefined {
+                        return metadata.get(key)?.[0]?.toString();
+                    },
+                    set(key: string, value: string): void {
+                        metadata.set(key, value);
+                    },
+                    keys(): string[] {
+                        return metadata.getMap() ? Object.keys(metadata.getMap()) : [];
+                    },
+                };
+
+                opentelemetry.propagation.inject(opentelemetry.context.active(), carrier);
+
+                next(metadata, listener);
+            },
+        });
+    };
+}
+
+/**
+ * Base gRPC channel options used for both clients and servers.
  * @internal
  */
-export const grpcChannelOptions = {
+export const grpcChannelOptions: grpc.ChannelOptions = {
     "grpc.max_receive_message_length": maxRPCMessageSize,
     "grpc.server_max_unrequested_time_in_server": serverMaxUnrequestedTimeInServer,
+};
+
+/**
+ * gRPC client options with trace context propagation interceptor.
+ * @internal
+ */
+export const grpcClientOptions: grpc.ClientOptions = {
+    ...grpcChannelOptions,
+    interceptors: [createTraceContextInterceptor()],
 };
 
 /**
@@ -447,7 +488,7 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
         if (monitor === undefined) {
             if (addr) {
                 // Lazily initialize the RPC connection to the monitor.
-                monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
+                monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure(), grpcClientOptions);
                 settings.options.monitorAddr = addr;
             }
         }
@@ -459,7 +500,7 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
                 settings.monitor = new resrpc.ResourceMonitorClient(
                     addr,
                     grpc.credentials.createInsecure(),
-                    grpcChannelOptions,
+                    grpcClientOptions,
                 );
                 settings.options.monitorAddr = addr;
             }
@@ -542,7 +583,7 @@ export function getEngine(): engrpc.IEngineClient | undefined {
             const addr = options().engineAddr;
             if (addr) {
                 // Lazily initialize the RPC connection to the engine.
-                engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
+                engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcClientOptions);
             }
         }
         return engine;
@@ -551,7 +592,7 @@ export function getEngine(): engrpc.IEngineClient | undefined {
             const addr = options().engineAddr;
             if (addr) {
                 // Lazily initialize the RPC connection to the engine.
-                settings.engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
+                settings.engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcClientOptions);
             }
         }
         return settings.engine;
