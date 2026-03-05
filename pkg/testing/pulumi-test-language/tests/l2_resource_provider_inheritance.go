@@ -40,11 +40,13 @@ func init() {
 
 					parent1 := RequireSingleNamedResource(l, snap.Resources, "parent1")
 					child1 := RequireSingleNamedResource(l, snap.Resources, "child1")
-					require.Equal(l, parent1.Provider, child1.Provider, "expected parent1 and child1 to have the same provider reference")
+					require.Equal(l, parent1.Provider, child1.Provider,
+						"expected parent1 and child1 to have the same provider reference")
 
 					parent2 := RequireSingleNamedResource(l, snap.Resources, "parent2")
 					child2 := RequireSingleNamedResource(l, snap.Resources, "child2")
-					require.NotEqual(l, parent2.Provider, child2.Provider, "expected parent2 and child2 to have different provider references")
+					require.NotEqual(l, parent2.Provider, child2.Provider,
+						"expected parent2 and child2 to have different provider references")
 
 					getPackage := func(providerRef string) string {
 						ref, err := sdkProviders.ParseReference(providerRef)
