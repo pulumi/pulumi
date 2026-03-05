@@ -253,7 +253,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		case *model.ScopeTraversalExpression:
 			// When converting a plain traversal to Output<T>, emit an explicit Pulumi input cast
 			// for scalar types (e.g. pulumi.String(x)) so calls like ctx.Export compile.
-			// readFile locals are already emitted as pulumi.StringPtrInput and must not be wrapped.
 			if isOutput && !isFromOutput {
 				scalarType := to
 				if cns, ok := scalarType.(*model.ConstType); ok {
