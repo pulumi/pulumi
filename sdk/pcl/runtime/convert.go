@@ -403,7 +403,7 @@ func propertyValueToCty(
 		}
 		outputs = outputs["state"].ObjectValue()
 
-		outputs["id"] = outputs["id"]
+		outputs["id"] = ref.ID
 		outputs["urn"] = resource.NewProperty(string(ref.URN))
 		outputs["__name"] = resource.NewProperty(string(ref.URN.Name()))
 		outputs["__type"] = resource.NewProperty(string(ref.URN.Type()))
