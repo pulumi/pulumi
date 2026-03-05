@@ -26,6 +26,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -41,6 +42,7 @@ func newPackageInfoCmd() *cobra.Command {
 	var module string
 	var resource string
 	var function string
+	var jsonOut bool
 	cmd := &cobra.Command{
 		Use:   "info",
 		Short: "Show information about a package",
@@ -78,13 +80,13 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			stdout := cmd.OutOrStdout()
 
 			if function != "" {
-				return showFunctionInfo(spec, module, function, stdout)
+				return showFunctionInfo(spec, module, function, stdout, jsonOut)
 			} else if resource != "" {
-				return showResourceInfo(spec, module, resource, stdout)
+				return showResourceInfo(spec, module, resource, stdout, jsonOut)
 			} else if module != "" {
-				return showModuleInfo(spec, module, stdout)
+				return showModuleInfo(spec, module, stdout, jsonOut)
 			}
-			return showProviderInfo(spec, args, stdout)
+			return showProviderInfo(spec, args, stdout, jsonOut)
 		},
 	}
 
@@ -104,11 +106,12 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 	cmd.Flags().StringVarP(&module, "module", "m", "", "Module name")
 	cmd.Flags().StringVarP(&resource, "resource", "r", "", "Resource name")
 	cmd.Flags().StringVarP(&function, "function", "f", "", "Function name")
+	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "Emit output as JSON")
 
 	return cmd
 }
 
-func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer) error {
+func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer, jsonOut bool) error {
 	contract.Requiref(len(args) > 0, "args", "should be non-empty")
 
 	modules := make(map[string]struct{})
@@ -131,7 +134,7 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 			if len(nameSplit) < 3 {
 				return fmt.Errorf("invalid function name %q", name)
 			}
-			return showFunctionInfo(spec, "", nameSplit[2], stdout)
+			return showFunctionInfo(spec, "", nameSplit[2], stdout, jsonOut)
 		}
 	}
 
@@ -141,14 +144,25 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 			if len(nameSplit) < 3 {
 				return fmt.Errorf("invalid resource name %q", name)
 			}
-			return showResourceInfo(spec, "", nameSplit[2], stdout)
+			return showResourceInfo(spec, "", nameSplit[2], stdout, jsonOut)
 		}
 	}
 
 	if len(modules) == 1 {
 		for name := range modules {
-			return showModuleInfo(spec, name, stdout)
+			return showModuleInfo(spec, name, stdout, jsonOut)
 		}
+	}
+
+	if jsonOut {
+		return ui.FprintJSON(stdout, providerInfoJSON{
+			Name:           spec.Name,
+			Version:        spec.Version,
+			Description:    summaryFromDescription(spec.Description),
+			TotalResources: len(spec.Resources),
+			TotalFunctions: len(spec.Functions),
+			Modules:        maputil.SortedKeys(modules),
+		})
 	}
 
 	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
@@ -205,12 +219,7 @@ func simplifyModuleName(typ string, name string) (string, error) {
 	return split[0] + ":" + moduleSplit[0] + ":" + split[2], nil
 }
 
-func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Writer) error {
-	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
-	fmt.Fprintf(stdout, bold("Module")+": %s\n", moduleName)
-	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
-
+func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Writer, jsonOut bool) error {
 	resources := make(map[string]schema.ResourceSpec)
 	for res, spec := range spec.Resources {
 		simplifiedName, err := simplifyModuleName("resource", res)
@@ -248,6 +257,36 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 		return fmt.Errorf("module %q not found", moduleName)
 	}
 
+	if jsonOut {
+		jsonResources := make(map[string]moduleMemberJSON, len(resources))
+		for name, res := range resources {
+			jsonResources[name] = moduleMemberJSON{
+				Description:        summaryFromDescription(res.Description),
+				DeprecationMessage: res.DeprecationMessage,
+			}
+		}
+		jsonFunctions := make(map[string]moduleMemberJSON, len(functions))
+		for name, fun := range functions {
+			jsonFunctions[name] = moduleMemberJSON{
+				Description:        summaryFromDescription(fun.Description),
+				DeprecationMessage: fun.DeprecationMessage,
+			}
+		}
+		return ui.FprintJSON(stdout, moduleInfoJSON{
+			Name:        spec.Name,
+			Module:      moduleName,
+			Version:     spec.Version,
+			Description: summaryFromDescription(spec.Description),
+			Resources:   jsonResources,
+			Functions:   jsonFunctions,
+		})
+	}
+
+	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
+	fmt.Fprintf(stdout, bold("Module")+": %s\n", moduleName)
+	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
+	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
+
 	fmt.Fprintf(stdout, bold("Resources")+": %d\n", len(resources))
 
 	fmt.Fprintln(stdout)
@@ -273,7 +312,9 @@ func underline(s string) string {
 	return colors.Always.Colorize(colors.Underline + s + colors.Reset)
 }
 
-func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string, stdout io.Writer) error {
+func showFunctionInfo(
+	spec *schema.PackageSpec, moduleName, functionName string, stdout io.Writer, jsonOut bool,
+) error {
 	var fun schema.FunctionSpec
 	var specFunName string
 	if moduleName != "" {
@@ -319,6 +360,10 @@ func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string,
 		if !found {
 			return fmt.Errorf("function %q not found", functionName)
 		}
+	}
+
+	if jsonOut {
+		return showFunctionInfoJSON(spec, &fun, specFunName, stdout)
 	}
 
 	fmt.Fprintf(stdout, bold("Function")+": %s\n", specFunName)
@@ -391,7 +436,52 @@ func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string,
 	return nil
 }
 
-func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string, stdout io.Writer) error {
+func showFunctionInfoJSON(
+	spec *schema.PackageSpec, fun *schema.FunctionSpec, specFunName string, stdout io.Writer,
+) error {
+	inputs, err := buildPropertyInfoMap(spec, fun.Inputs.Properties, fun.Inputs.Required)
+	if err != nil {
+		return err
+	}
+
+	result := functionInfoJSON{
+		Function:           specFunName,
+		Description:        summaryFromDescription(fun.Description),
+		DeprecationMessage: fun.DeprecationMessage,
+		Inputs:             inputs,
+	}
+
+	var returnType *schema.ReturnTypeSpec
+	if fun.ReturnType != nil {
+		returnType = fun.ReturnType
+	} else if fun.Outputs != nil {
+		returnType = &schema.ReturnTypeSpec{
+			ObjectTypeSpec: fun.Outputs,
+		}
+	}
+	if returnType != nil {
+		if returnType.ObjectTypeSpec != nil {
+			outputs, err := buildPropertyInfoMap(
+				spec, returnType.ObjectTypeSpec.Properties, returnType.ObjectTypeSpec.Required)
+			if err != nil {
+				return err
+			}
+			result.Outputs = &functionOutputJSON{Properties: outputs}
+		} else if returnType.TypeSpec != nil {
+			typ, err := getType(spec, *returnType.TypeSpec)
+			if err != nil {
+				return err
+			}
+			result.Outputs = &functionOutputJSON{Type: typ}
+		}
+	}
+
+	return ui.FprintJSON(stdout, result)
+}
+
+func showResourceInfo(
+	spec *schema.PackageSpec, moduleName, resourceName string, stdout io.Writer, jsonOut bool,
+) error {
 	var res schema.ResourceSpec
 	var specResName string
 	if moduleName != "" {
@@ -437,6 +527,24 @@ func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string,
 		if !found {
 			return fmt.Errorf("resource %q not found", resourceName)
 		}
+	}
+
+	if jsonOut {
+		inputs, err := buildPropertyInfoMap(spec, res.InputProperties, res.RequiredInputs)
+		if err != nil {
+			return err
+		}
+		outputs, err := buildPropertyInfoMap(spec, res.Properties, res.Required)
+		if err != nil {
+			return err
+		}
+		return ui.FprintJSON(stdout, resourceInfoJSON{
+			Resource:           specResName,
+			Description:        summaryFromDescription(res.Description),
+			DeprecationMessage: res.DeprecationMessage,
+			Inputs:             inputs,
+			Outputs:            outputs,
+		})
 	}
 
 	fmt.Fprintf(stdout, bold("Resource")+": %s\n", specResName)
@@ -546,4 +654,78 @@ func formatEnumValues(enum []schema.EnumValueSpec) string {
 		}
 	}
 	return strings.Join(values, ", ")
+}
+
+// JSON output types.
+
+type providerInfoJSON struct {
+	Name           string   `json:"name"`
+	Version        string   `json:"version"`
+	Description    string   `json:"description"`
+	TotalResources int      `json:"totalResources"`
+	TotalFunctions int      `json:"totalFunctions"`
+	Modules        []string `json:"modules"`
+}
+
+type moduleInfoJSON struct {
+	Name        string                       `json:"name"`
+	Module      string                       `json:"module"`
+	Version     string                       `json:"version"`
+	Description string                       `json:"description"`
+	Resources   map[string]moduleMemberJSON  `json:"resources"`
+	Functions   map[string]moduleMemberJSON  `json:"functions"`
+}
+
+type moduleMemberJSON struct {
+	Description        string `json:"description"`
+	DeprecationMessage string `json:"deprecationMessage,omitempty"`
+}
+
+type resourceInfoJSON struct {
+	Resource           string                      `json:"resource"`
+	Description        string                      `json:"description"`
+	DeprecationMessage string                      `json:"deprecationMessage,omitempty"`
+	Inputs             map[string]propertyInfoJSON `json:"inputs"`
+	Outputs            map[string]propertyInfoJSON `json:"outputs"`
+}
+
+type functionInfoJSON struct {
+	Function           string                      `json:"function"`
+	Description        string                      `json:"description"`
+	DeprecationMessage string                      `json:"deprecationMessage,omitempty"`
+	Inputs             map[string]propertyInfoJSON `json:"inputs"`
+	Outputs            *functionOutputJSON         `json:"outputs,omitempty"`
+}
+
+type functionOutputJSON struct {
+	Type       string                      `json:"type,omitempty"`
+	Properties map[string]propertyInfoJSON `json:"properties,omitempty"`
+}
+
+type propertyInfoJSON struct {
+	Type               string `json:"type"`
+	Description        string `json:"description"`
+	Required           bool   `json:"required"`
+	DeprecationMessage string `json:"deprecationMessage,omitempty"`
+}
+
+func buildPropertyInfoMap(
+	spec *schema.PackageSpec,
+	properties map[string]schema.PropertySpec,
+	required []string,
+) (map[string]propertyInfoJSON, error) {
+	result := make(map[string]propertyInfoJSON, len(properties))
+	for name, prop := range properties {
+		typ, err := getType(spec, prop.TypeSpec)
+		if err != nil {
+			return nil, err
+		}
+		result[name] = propertyInfoJSON{
+			Type:               typ,
+			Description:        summaryFromDescription(prop.Description),
+			Required:           slices.Contains(required, name),
+			DeprecationMessage: prop.DeprecationMessage,
+		}
+	}
+	return result, nil
 }
