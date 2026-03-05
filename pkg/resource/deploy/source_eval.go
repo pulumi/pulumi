@@ -1905,7 +1905,8 @@ func inheritFromParent(child *pulumirpc.RegisterResourceRequest, parent resource
 	if child.Provider == "" {
 		// We only inherit the provider if it matches our package, or we're a non-remote component resource.
 		ref, err := sdkproviders.ParseReference(parent.Provider)
-		inherit := (!child.Remote && !child.Custom) || (err == nil && ref.URN().Type().Name() == tokens.TypeName(tokens.Type(child.Type).Package()))
+		inherit := (!child.Remote && !child.Custom) ||
+			(err == nil && ref.URN().Type().Name() == tokens.TypeName(tokens.Type(child.Type).Package()))
 
 		if inherit {
 			child.Provider = parent.Provider
