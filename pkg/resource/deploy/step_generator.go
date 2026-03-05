@@ -3422,9 +3422,8 @@ func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue
 	return !new.DeepEquals(old)
 }
 
-// unwrapSecretsAndOutputs strips Secret and known Output wrappers from a replacement trigger value
-// so that the underlying values can be compared regardless of how they were wrapped. Unknown
-// outputs are left in place so that ContainsUnknowns can detect them.
+// unwrapSecretsAndOutputs strips Secret and Output wrappers from a value so that the underlying values can be compared
+// regardless of how they were wrapped.
 func unwrapSecretsAndOutputs(value resource.PropertyValue) resource.PropertyValue {
 	if value.IsSecret() {
 		return unwrapSecretsAndOutputs(value.SecretValue().Element)
@@ -3433,8 +3432,7 @@ func unwrapSecretsAndOutputs(value resource.PropertyValue) resource.PropertyValu
 	if value.IsOutput() {
 		output := value.OutputValue()
 		if !output.Known {
-			// Leave unknown outputs intact so ContainsUnknowns catches them.
-			return value
+			return resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
 		}
 		return unwrapSecretsAndOutputs(output.Element)
 	}
