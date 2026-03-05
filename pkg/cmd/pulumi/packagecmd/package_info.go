@@ -128,29 +128,34 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer,
 		modules[moduleSplit[0]] = struct{}{}
 	}
 
-	if len(spec.Functions) == 1 {
-		for name := range spec.Functions {
-			nameSplit := strings.Split(name, ":")
-			if len(nameSplit) < 3 {
-				return fmt.Errorf("invalid function name %q", name)
+	// For text output, automatically drill down when there's only one
+	// function/resource/module. For JSON output, always return the
+	// provider-level shape so consumers get a predictable schema.
+	if !jsonOut {
+		if len(spec.Functions) == 1 {
+			for name := range spec.Functions {
+				nameSplit := strings.Split(name, ":")
+				if len(nameSplit) < 3 {
+					return fmt.Errorf("invalid function name %q", name)
+				}
+				return showFunctionInfo(spec, "", nameSplit[2], stdout, jsonOut)
 			}
-			return showFunctionInfo(spec, "", nameSplit[2], stdout, jsonOut)
 		}
-	}
 
-	if len(spec.Resources) == 1 {
-		for name := range spec.Resources {
-			nameSplit := strings.Split(name, ":")
-			if len(nameSplit) < 3 {
-				return fmt.Errorf("invalid resource name %q", name)
+		if len(spec.Resources) == 1 {
+			for name := range spec.Resources {
+				nameSplit := strings.Split(name, ":")
+				if len(nameSplit) < 3 {
+					return fmt.Errorf("invalid resource name %q", name)
+				}
+				return showResourceInfo(spec, "", nameSplit[2], stdout, jsonOut)
 			}
-			return showResourceInfo(spec, "", nameSplit[2], stdout, jsonOut)
 		}
-	}
 
-	if len(modules) == 1 {
-		for name := range modules {
-			return showModuleInfo(spec, name, stdout, jsonOut)
+		if len(modules) == 1 {
+			for name := range modules {
+				return showModuleInfo(spec, name, stdout, jsonOut)
+			}
 		}
 	}
 
