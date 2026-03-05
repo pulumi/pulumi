@@ -1247,7 +1247,12 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		rawProviderRef = req.GetProvider()
 	} else {
 		// Use the provider information from __self__
-		self, ok := req.GetArgs().Fields["__self__"]
+		args := req.GetArgs()
+		if args == nil {
+			args = &structpb.Struct{}
+		}
+
+		self, ok := args.Fields["__self__"]
 		if ok {
 			selfFields := self.GetStructValue().Fields
 			if selfFields == nil {
