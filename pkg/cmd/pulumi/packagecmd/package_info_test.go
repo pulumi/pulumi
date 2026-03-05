@@ -345,7 +345,7 @@ func TestPackageInfoJSON(t *testing.T) {
 	err = cmd.Execute()
 	require.NoError(t, err)
 
-	var result providerInfoJSON
+	var result providerInfo
 	err = json.Unmarshal(output.Bytes(), &result)
 	require.NoError(t, err)
 	assert.Equal(t, "test", result.Name)
@@ -374,7 +374,7 @@ func TestModuleInfoJSON(t *testing.T) {
 	err = cmd.Execute()
 	require.NoError(t, err)
 
-	var result moduleInfoJSON
+	var result moduleInfo
 	err = json.Unmarshal(output.Bytes(), &result)
 	require.NoError(t, err)
 	assert.Equal(t, "test", result.Name)
@@ -404,7 +404,7 @@ func TestResourceInfoJSON(t *testing.T) {
 	err = cmd.Execute()
 	require.NoError(t, err)
 
-	var result resourceInfoJSON
+	var result resourceInfo
 	err = json.Unmarshal(output.Bytes(), &result)
 	require.NoError(t, err)
 	assert.Equal(t, "test:index:Test", result.Resource)
@@ -436,7 +436,7 @@ func TestFunctionInfoJSON(t *testing.T) {
 	err = cmd.Execute()
 	require.NoError(t, err)
 
-	var result functionInfoJSON
+	var result functionInfo
 	err = json.Unmarshal(output.Bytes(), &result)
 	require.NoError(t, err)
 	assert.Equal(t, "test:funs:TestFunction", result.Function)
@@ -457,7 +457,7 @@ func TestFunctionInfoJSON(t *testing.T) {
 	err = cmd.Execute()
 	require.NoError(t, err)
 
-	var result2 functionInfoJSON
+	var result2 functionInfo
 	err = json.Unmarshal(output.Bytes(), &result2)
 	require.NoError(t, err)
 	assert.Equal(t, "test:funs:TestFunction2", result2.Function)

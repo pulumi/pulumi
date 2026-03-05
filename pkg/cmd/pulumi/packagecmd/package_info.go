@@ -111,6 +111,162 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 	return cmd
 }
 
+// Data types used for both JSON serialization and text rendering.
+
+type providerInfo struct {
+	Name           string   `json:"name"`
+	Version        string   `json:"version"`
+	Description    string   `json:"description"`
+	TotalResources int      `json:"totalResources"`
+	TotalFunctions int      `json:"totalFunctions"`
+	Modules        []string `json:"modules"`
+}
+
+func (p *providerInfo) writeText(w io.Writer, args []string) {
+	fmt.Fprintf(w, bold("Name")+": %s\n", p.Name)
+	fmt.Fprintf(w, bold("Version")+": %s\n", p.Version)
+	fmt.Fprintf(w, bold("Description")+": %s\n", p.Description)
+	fmt.Fprintf(w, bold("Total resources")+" %d\n", p.TotalResources)
+	fmt.Fprintf(w, bold("Total functions")+" %d\n", p.TotalFunctions)
+	fmt.Fprintf(w, bold("Total modules")+": %d\n", len(p.Modules))
+
+	fmt.Fprintln(w)
+
+	fmt.Fprintf(w, bold("Modules")+": %s\n", strings.Join(p.Modules, ", "))
+
+	fmt.Fprintln(w)
+	strArgs := strings.Join(args, " ")
+	moduleString := ""
+	if len(p.Modules) > 1 {
+		moduleString = "--module <module>"
+		fmt.Fprintf(w,
+			"Use 'pulumi package info %s %s' to list resources in a module\n",
+			strArgs, moduleString)
+	}
+	fmt.Fprintf(w,
+		"Use 'pulumi package info %s %s --resource <resource>' for detailed resource info\n",
+		strArgs, moduleString)
+}
+
+type moduleInfo struct {
+	Name        string                  `json:"name"`
+	Module      string                  `json:"module"`
+	Version     string                  `json:"version"`
+	Description string                  `json:"description"`
+	Resources   map[string]moduleMember `json:"resources"`
+	Functions   map[string]moduleMember `json:"functions"`
+}
+
+type moduleMember struct {
+	Description        string `json:"description"`
+	DeprecationMessage string `json:"deprecationMessage,omitempty"`
+}
+
+func (m *moduleInfo) writeText(w io.Writer) {
+	fmt.Fprintf(w, bold("Name")+": %s\n", m.Name)
+	fmt.Fprintf(w, bold("Module")+": %s\n", m.Module)
+	fmt.Fprintf(w, bold("Version")+": %s\n", m.Version)
+	fmt.Fprintf(w, bold("Description")+": %s\n", m.Description)
+
+	fmt.Fprintf(w, bold("Resources")+": %d\n", len(m.Resources))
+	fmt.Fprintln(w)
+	for _, name := range maputil.SortedKeys(m.Resources) {
+		fmt.Fprintf(w, " - %s: %s\n", bold(name), m.Resources[name].Description)
+	}
+	fmt.Fprintln(w)
+
+	fmt.Fprintf(w, bold("Functions")+": %d\n", len(m.Functions))
+	fmt.Fprintln(w)
+	for _, name := range maputil.SortedKeys(m.Functions) {
+		fmt.Fprintf(w, " - %s: %s\n", bold(name), m.Functions[name].Description)
+	}
+}
+
+type resourceInfo struct {
+	Resource           string                  `json:"resource"`
+	Description        string                  `json:"description"`
+	DeprecationMessage string                  `json:"deprecationMessage,omitempty"`
+	Inputs             map[string]propertyInfo `json:"inputs"`
+	Outputs            map[string]propertyInfo `json:"outputs"`
+}
+
+func (r *resourceInfo) writeText(w io.Writer) {
+	fmt.Fprintf(w, bold("Resource")+": %s\n", r.Resource)
+	fmt.Fprintf(w, bold("Description")+": %s\n", r.Description)
+
+	fmt.Fprintln(w)
+	writePropertyMap(w, "Inputs", "required", r.Inputs)
+	fmt.Fprintln(w)
+	writePropertyMap(w, "Outputs", "always present", r.Outputs)
+}
+
+type functionInfo struct {
+	Function           string                  `json:"function"`
+	Description        string                  `json:"description"`
+	DeprecationMessage string                  `json:"deprecationMessage,omitempty"`
+	Inputs             map[string]propertyInfo `json:"inputs"`
+	Outputs            *functionOutput         `json:"outputs,omitempty"`
+}
+
+type functionOutput struct {
+	Type       string                  `json:"type,omitempty"`
+	Properties map[string]propertyInfo `json:"properties,omitempty"`
+}
+
+func (f *functionInfo) writeText(w io.Writer) {
+	fmt.Fprintf(w, bold("Function")+": %s\n", f.Function)
+	fmt.Fprintf(w, bold("Description")+": %s\n", f.Description)
+
+	fmt.Fprintln(w)
+	writePropertyMap(w, "Inputs", "required", f.Inputs)
+
+	if f.Outputs != nil {
+		fmt.Fprintln(w)
+		fmt.Fprint(w, bold("Outputs")+":")
+		if len(f.Outputs.Properties) > 0 {
+			fmt.Fprintln(w)
+			writePropertyMapBody(w, "Outputs", "always present", f.Outputs.Properties)
+		} else if f.Outputs.Type != "" {
+			fmt.Fprintf(w, " %s\n", underline(f.Outputs.Type))
+		}
+	}
+}
+
+type propertyInfo struct {
+	Type               string `json:"type"`
+	Description        string `json:"description"`
+	Required           bool   `json:"required"`
+	DeprecationMessage string `json:"deprecationMessage,omitempty"`
+}
+
+// writePropertyMap writes a labeled property list (e.g. "Inputs:" or "Outputs:") with
+// a legend for the required marker.
+func writePropertyMap(w io.Writer, label, requiredLegend string, props map[string]propertyInfo) {
+	fmt.Fprintln(w, bold(label)+":")
+	writePropertyMapBody(w, label, requiredLegend, props)
+}
+
+// writePropertyMapBody writes the property list body without the header label.
+func writePropertyMapBody(w io.Writer, label, requiredLegend string, props map[string]propertyInfo) {
+	hasRequired := false
+	for _, name := range maputil.SortedKeys(props) {
+		prop := props[name]
+		requiredStr := ""
+		if prop.Required {
+			hasRequired = true
+			requiredStr = "*"
+		}
+		fmt.Fprintf(w, " - %s (%s%s): %s\n",
+			bold(name), underline(prop.Type), underline(requiredStr),
+			prop.Description)
+	}
+	if hasRequired {
+		fmt.Fprintf(w, "%s marked with '*' are %s\n", label, requiredLegend)
+	}
+}
+
+// Show functions: lookup → build struct → JSON or text output.
+
 func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer, jsonOut bool) error {
 	contract.Requiref(len(args) > 0, "args", "should be non-empty")
 
@@ -159,69 +315,20 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer,
 		}
 	}
 
+	info := providerInfo{
+		Name:           spec.Name,
+		Version:        spec.Version,
+		Description:    summaryFromDescription(spec.Description),
+		TotalResources: len(spec.Resources),
+		TotalFunctions: len(spec.Functions),
+		Modules:        maputil.SortedKeys(modules),
+	}
+
 	if jsonOut {
-		return ui.FprintJSON(stdout, providerInfoJSON{
-			Name:           spec.Name,
-			Version:        spec.Version,
-			Description:    summaryFromDescription(spec.Description),
-			TotalResources: len(spec.Resources),
-			TotalFunctions: len(spec.Functions),
-			Modules:        maputil.SortedKeys(modules),
-		})
+		return ui.FprintJSON(stdout, info)
 	}
-
-	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
-	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
-	fmt.Fprintf(stdout, bold("Total resources")+" %d\n", len(spec.Resources))
-	fmt.Fprintf(stdout, bold("Total functions")+" %d\n", len(spec.Functions))
-	fmt.Fprintf(stdout, bold("Total modules")+": %d\n", len(modules))
-
-	fmt.Fprintln(stdout)
-
-	fmt.Fprintf(stdout, bold("Modules")+": %s\n", strings.Join(maputil.SortedKeys(modules), ", "))
-
-	fmt.Fprintln(stdout)
-	strArgs := strings.Join(args, " ")
-	moduleString := ""
-	if len(modules) > 1 {
-		moduleString = "--module <module>"
-		fmt.Fprintf(
-			stdout,
-			"Use 'pulumi package info %s %s' to list resources in a module\n",
-			strArgs, moduleString)
-	}
-	fmt.Fprintf(
-		stdout,
-		"Use 'pulumi package info %s %s --resource <resource>' for detailed resource info\n",
-		strArgs, moduleString)
+	info.writeText(stdout, args)
 	return nil
-}
-
-func summaryFromDescription(description string) string {
-	// The description of a resource is markdown formatted.  We only want to provide a
-	// short summary of the description, so we will only show the first paragraph. Note
-	// that an empty newline denotes the end of the paragraph, but a regular newline might
-	// still be part of the first paragraph, and may be in the middle of a sentence.
-	// Therefore we split the description into lines, and join the first paragraph, replacing
-	// newlines with spaces.
-	var summary strings.Builder
-	for _, line := range strings.Split(description, "\n") {
-		if strings.TrimSpace(line) == "" {
-			break
-		}
-		summary.WriteString(line + " ")
-	}
-	return strings.TrimSpace(summary.String())
-}
-
-func simplifyModuleName(typ string, name string) (string, error) {
-	split := strings.Split(name, ":")
-	if len(split) < 3 {
-		return "", fmt.Errorf("invalid %s name %q", typ, name)
-	}
-	moduleSplit := strings.Split(split[1], "/")
-	return split[0] + ":" + moduleSplit[0] + ":" + split[2], nil
 }
 
 func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Writer, jsonOut bool) error {
@@ -262,59 +369,35 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 		return fmt.Errorf("module %q not found", moduleName)
 	}
 
+	infoResources := make(map[string]moduleMember, len(resources))
+	for name, res := range resources {
+		infoResources[name] = moduleMember{
+			Description:        summaryFromDescription(res.Description),
+			DeprecationMessage: res.DeprecationMessage,
+		}
+	}
+	infoFunctions := make(map[string]moduleMember, len(functions))
+	for name, fun := range functions {
+		infoFunctions[name] = moduleMember{
+			Description:        summaryFromDescription(fun.Description),
+			DeprecationMessage: fun.DeprecationMessage,
+		}
+	}
+
+	info := moduleInfo{
+		Name:        spec.Name,
+		Module:      moduleName,
+		Version:     spec.Version,
+		Description: summaryFromDescription(spec.Description),
+		Resources:   infoResources,
+		Functions:   infoFunctions,
+	}
+
 	if jsonOut {
-		jsonResources := make(map[string]moduleMemberJSON, len(resources))
-		for name, res := range resources {
-			jsonResources[name] = moduleMemberJSON{
-				Description:        summaryFromDescription(res.Description),
-				DeprecationMessage: res.DeprecationMessage,
-			}
-		}
-		jsonFunctions := make(map[string]moduleMemberJSON, len(functions))
-		for name, fun := range functions {
-			jsonFunctions[name] = moduleMemberJSON{
-				Description:        summaryFromDescription(fun.Description),
-				DeprecationMessage: fun.DeprecationMessage,
-			}
-		}
-		return ui.FprintJSON(stdout, moduleInfoJSON{
-			Name:        spec.Name,
-			Module:      moduleName,
-			Version:     spec.Version,
-			Description: summaryFromDescription(spec.Description),
-			Resources:   jsonResources,
-			Functions:   jsonFunctions,
-		})
+		return ui.FprintJSON(stdout, info)
 	}
-
-	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
-	fmt.Fprintf(stdout, bold("Module")+": %s\n", moduleName)
-	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
-
-	fmt.Fprintf(stdout, bold("Resources")+": %d\n", len(resources))
-
-	fmt.Fprintln(stdout)
-	for _, name := range maputil.SortedKeys(resources) {
-		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(resources[name].Description))
-	}
-	fmt.Fprintln(stdout)
-
-	fmt.Fprintf(stdout, bold("Functions")+": %d\n", len(functions))
-
-	fmt.Fprintln(stdout)
-	for _, name := range maputil.SortedKeys(functions) {
-		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(functions[name].Description))
-	}
+	info.writeText(stdout)
 	return nil
-}
-
-func bold(s string) string {
-	return colors.Always.Colorize(colors.Bold + s + colors.Reset)
-}
-
-func underline(s string) string {
-	return colors.Always.Colorize(colors.Underline + s + colors.Reset)
 }
 
 func showFunctionInfo(
@@ -367,89 +450,26 @@ func showFunctionInfo(
 		}
 	}
 
-	if jsonOut {
-		return showFunctionInfoJSON(spec, &fun, specFunName, stdout)
-	}
-
-	fmt.Fprintf(stdout, bold("Function")+": %s\n", specFunName)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(fun.Description))
-
-	fmt.Fprintln(stdout)
-	fmt.Fprintln(stdout, bold("Inputs")+":")
-	hasRequired := false
-	for _, name := range maputil.SortedKeys(fun.Inputs.Properties) {
-		prop := fun.Inputs.Properties[name]
-		requiredStr := ""
-		if slices.Contains(fun.Inputs.Required, name) {
-			hasRequired = true
-			requiredStr = "*"
-		}
-		typ, err := getType(spec, prop.TypeSpec)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			bold(name), underline(typ), underline(requiredStr),
-			summaryFromDescription(prop.Description))
-	}
-	if hasRequired {
-		fmt.Fprintf(stdout, "Inputs marked with '*' are required\n")
-	}
-
-	var returnType *schema.ReturnTypeSpec
-	if fun.ReturnType != nil {
-		returnType = fun.ReturnType
-	} else if fun.Outputs != nil {
-		returnType = &schema.ReturnTypeSpec{
-			ObjectTypeSpec: fun.Outputs,
-		}
-	}
-	if returnType != nil {
-		fmt.Fprintln(stdout)
-		fmt.Fprint(stdout, bold("Outputs")+":")
-		if returnType.ObjectTypeSpec != nil {
-			fmt.Fprintln(stdout)
-			obj := returnType.ObjectTypeSpec
-			hasPresent := false
-			for _, name := range maputil.SortedKeys(obj.Properties) {
-				prop := obj.Properties[name]
-				presentStr := ""
-				if slices.Contains(obj.Required, name) {
-					hasPresent = true
-					presentStr = "*"
-				}
-				typ, err := getType(spec, prop.TypeSpec)
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-					bold(name), underline(typ), underline(presentStr),
-					summaryFromDescription(prop.Description))
-			}
-			if hasPresent {
-				fmt.Fprintf(stdout, "Outputs marked with '*' are always present\n")
-			}
-		} else if returnType.TypeSpec != nil {
-			typ, err := getType(spec, *returnType.TypeSpec)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(stdout, " %s\n", underline(typ))
-		}
-	}
-
-	return nil
-}
-
-func showFunctionInfoJSON(
-	spec *schema.PackageSpec, fun *schema.FunctionSpec, specFunName string, stdout io.Writer,
-) error {
-	inputs, err := buildPropertyInfoMap(spec, fun.Inputs.Properties, fun.Inputs.Required)
+	info, err := buildFunctionInfo(spec, &fun, specFunName)
 	if err != nil {
 		return err
 	}
+	if jsonOut {
+		return ui.FprintJSON(stdout, info)
+	}
+	info.writeText(stdout)
+	return nil
+}
 
-	result := functionInfoJSON{
+func buildFunctionInfo(
+	spec *schema.PackageSpec, fun *schema.FunctionSpec, specFunName string,
+) (*functionInfo, error) {
+	inputs, err := buildPropertyInfoMap(spec, fun.Inputs.Properties, fun.Inputs.Required)
+	if err != nil {
+		return nil, err
+	}
+
+	info := &functionInfo{
 		Function:           specFunName,
 		Description:        summaryFromDescription(fun.Description),
 		DeprecationMessage: fun.DeprecationMessage,
@@ -469,19 +489,19 @@ func showFunctionInfoJSON(
 			outputs, err := buildPropertyInfoMap(
 				spec, returnType.ObjectTypeSpec.Properties, returnType.ObjectTypeSpec.Required)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			result.Outputs = &functionOutputJSON{Properties: outputs}
+			info.Outputs = &functionOutput{Properties: outputs}
 		} else if returnType.TypeSpec != nil {
 			typ, err := getType(spec, *returnType.TypeSpec)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			result.Outputs = &functionOutputJSON{Type: typ}
+			info.Outputs = &functionOutput{Type: typ}
 		}
 	}
 
-	return ui.FprintJSON(stdout, result)
+	return info, nil
 }
 
 func showResourceInfo(
@@ -534,72 +554,92 @@ func showResourceInfo(
 		}
 	}
 
+	info, err := buildResourceInfo(spec, &res, specResName)
+	if err != nil {
+		return err
+	}
 	if jsonOut {
-		inputs, err := buildPropertyInfoMap(spec, res.InputProperties, res.RequiredInputs)
-		if err != nil {
-			return err
-		}
-		outputs, err := buildPropertyInfoMap(spec, res.Properties, res.Required)
-		if err != nil {
-			return err
-		}
-		return ui.FprintJSON(stdout, resourceInfoJSON{
-			Resource:           specResName,
-			Description:        summaryFromDescription(res.Description),
-			DeprecationMessage: res.DeprecationMessage,
-			Inputs:             inputs,
-			Outputs:            outputs,
-		})
+		return ui.FprintJSON(stdout, info)
 	}
-
-	fmt.Fprintf(stdout, bold("Resource")+": %s\n", specResName)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(res.Description))
-
-	fmt.Fprintln(stdout)
-	fmt.Fprintln(stdout, bold("Inputs")+":")
-	hasRequired := false
-	for _, name := range maputil.SortedKeys(res.InputProperties) {
-		prop := res.InputProperties[name]
-		requiredStr := ""
-		if slices.Contains(res.RequiredInputs, name) {
-			hasRequired = true
-			requiredStr = "*"
-		}
-		typ, err := getType(spec, prop.TypeSpec)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			bold(name), underline(typ), underline(requiredStr),
-			summaryFromDescription(prop.Description))
-	}
-	if hasRequired {
-		fmt.Fprintf(stdout, "Inputs marked with '*' are required\n")
-	}
-
-	fmt.Fprintln(stdout)
-
-	fmt.Fprintln(stdout, bold("Outputs")+":")
-	hasPresent := false
-	for _, name := range maputil.SortedKeys(res.Properties) {
-		prop := res.Properties[name]
-		presentStr := ""
-		if slices.Contains(res.Required, name) {
-			hasPresent = true
-			presentStr = "*"
-		}
-		typ, err := getType(spec, prop.TypeSpec)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			bold(name), underline(typ), underline(presentStr),
-			summaryFromDescription(prop.Description))
-	}
-	if hasPresent {
-		fmt.Fprintf(stdout, "Outputs marked with '*' are always present\n")
-	}
+	info.writeText(stdout)
 	return nil
+}
+
+func buildResourceInfo(
+	spec *schema.PackageSpec, res *schema.ResourceSpec, specResName string,
+) (*resourceInfo, error) {
+	inputs, err := buildPropertyInfoMap(spec, res.InputProperties, res.RequiredInputs)
+	if err != nil {
+		return nil, err
+	}
+	outputs, err := buildPropertyInfoMap(spec, res.Properties, res.Required)
+	if err != nil {
+		return nil, err
+	}
+	return &resourceInfo{
+		Resource:           specResName,
+		Description:        summaryFromDescription(res.Description),
+		DeprecationMessage: res.DeprecationMessage,
+		Inputs:             inputs,
+		Outputs:            outputs,
+	}, nil
+}
+
+// Helpers.
+
+func buildPropertyInfoMap(
+	spec *schema.PackageSpec,
+	properties map[string]schema.PropertySpec,
+	required []string,
+) (map[string]propertyInfo, error) {
+	result := make(map[string]propertyInfo, len(properties))
+	for name, prop := range properties {
+		typ, err := getType(spec, prop.TypeSpec)
+		if err != nil {
+			return nil, err
+		}
+		result[name] = propertyInfo{
+			Type:               typ,
+			Description:        summaryFromDescription(prop.Description),
+			Required:           slices.Contains(required, name),
+			DeprecationMessage: prop.DeprecationMessage,
+		}
+	}
+	return result, nil
+}
+
+func summaryFromDescription(description string) string {
+	// The description of a resource is markdown formatted.  We only want to provide a
+	// short summary of the description, so we will only show the first paragraph. Note
+	// that an empty newline denotes the end of the paragraph, but a regular newline might
+	// still be part of the first paragraph, and may be in the middle of a sentence.
+	// Therefore we split the description into lines, and join the first paragraph, replacing
+	// newlines with spaces.
+	var summary strings.Builder
+	for _, line := range strings.Split(description, "\n") {
+		if strings.TrimSpace(line) == "" {
+			break
+		}
+		summary.WriteString(line + " ")
+	}
+	return strings.TrimSpace(summary.String())
+}
+
+func simplifyModuleName(typ string, name string) (string, error) {
+	split := strings.Split(name, ":")
+	if len(split) < 3 {
+		return "", fmt.Errorf("invalid %s name %q", typ, name)
+	}
+	moduleSplit := strings.Split(split[1], "/")
+	return split[0] + ":" + moduleSplit[0] + ":" + split[2], nil
+}
+
+func bold(s string) string {
+	return colors.Always.Colorize(colors.Bold + s + colors.Reset)
+}
+
+func underline(s string) string {
+	return colors.Always.Colorize(colors.Underline + s + colors.Reset)
 }
 
 func getType(spec *schema.PackageSpec, prop schema.TypeSpec) (string, error) {
@@ -659,78 +699,4 @@ func formatEnumValues(enum []schema.EnumValueSpec) string {
 		}
 	}
 	return strings.Join(values, ", ")
-}
-
-// JSON output types.
-
-type providerInfoJSON struct {
-	Name           string   `json:"name"`
-	Version        string   `json:"version"`
-	Description    string   `json:"description"`
-	TotalResources int      `json:"totalResources"`
-	TotalFunctions int      `json:"totalFunctions"`
-	Modules        []string `json:"modules"`
-}
-
-type moduleInfoJSON struct {
-	Name        string                       `json:"name"`
-	Module      string                       `json:"module"`
-	Version     string                       `json:"version"`
-	Description string                       `json:"description"`
-	Resources   map[string]moduleMemberJSON  `json:"resources"`
-	Functions   map[string]moduleMemberJSON  `json:"functions"`
-}
-
-type moduleMemberJSON struct {
-	Description        string `json:"description"`
-	DeprecationMessage string `json:"deprecationMessage,omitempty"`
-}
-
-type resourceInfoJSON struct {
-	Resource           string                      `json:"resource"`
-	Description        string                      `json:"description"`
-	DeprecationMessage string                      `json:"deprecationMessage,omitempty"`
-	Inputs             map[string]propertyInfoJSON `json:"inputs"`
-	Outputs            map[string]propertyInfoJSON `json:"outputs"`
-}
-
-type functionInfoJSON struct {
-	Function           string                      `json:"function"`
-	Description        string                      `json:"description"`
-	DeprecationMessage string                      `json:"deprecationMessage,omitempty"`
-	Inputs             map[string]propertyInfoJSON `json:"inputs"`
-	Outputs            *functionOutputJSON         `json:"outputs,omitempty"`
-}
-
-type functionOutputJSON struct {
-	Type       string                      `json:"type,omitempty"`
-	Properties map[string]propertyInfoJSON `json:"properties,omitempty"`
-}
-
-type propertyInfoJSON struct {
-	Type               string `json:"type"`
-	Description        string `json:"description"`
-	Required           bool   `json:"required"`
-	DeprecationMessage string `json:"deprecationMessage,omitempty"`
-}
-
-func buildPropertyInfoMap(
-	spec *schema.PackageSpec,
-	properties map[string]schema.PropertySpec,
-	required []string,
-) (map[string]propertyInfoJSON, error) {
-	result := make(map[string]propertyInfoJSON, len(properties))
-	for name, prop := range properties {
-		typ, err := getType(spec, prop.TypeSpec)
-		if err != nil {
-			return nil, err
-		}
-		result[name] = propertyInfoJSON{
-			Type:               typ,
-			Description:        summaryFromDescription(prop.Description),
-			Required:           slices.Contains(required, name),
-			DeprecationMessage: prop.DeprecationMessage,
-		}
-	}
-	return result, nil
 }
