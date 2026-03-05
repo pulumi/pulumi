@@ -299,10 +299,10 @@ func (i *Interpreter) bindConfigVariables(ctx context.Context) hcl.Diagnostics {
 			if cfg.DefaultValue != nil {
 				value, diags := i.evalExpression(cfg.DefaultValue)
 				diagnostics = append(diagnostics, diags...)
-				if _, isSecret := secretKeys[key]; isSecret {
+				if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
 					value = resource.MakeSecret(value)
 				}
-				if !diags.HasErrors() {
+				if diags.HasErrors() {
 					if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
 						diagnostics = append(diagnostics, &hcl.Diagnostic{
 							Severity: hcl.DiagError,
@@ -326,7 +326,7 @@ func (i *Interpreter) bindConfigVariables(ctx context.Context) hcl.Diagnostics {
 		value, diags := parseConfigPropertyValue(raw, cfg.Type())
 		diagnostics = append(diagnostics, diags...)
 		if !diags.HasErrors() {
-			if _, isSecret := secretKeys[key]; isSecret {
+			if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
 				value = resource.MakeSecret(value)
 			}
 			if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
