@@ -15,7 +15,6 @@
 package schema
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 
@@ -23,7 +22,6 @@ import (
 	"github.com/pgavlin/goldmark/renderer"
 	"github.com/pgavlin/goldmark/renderer/markdown"
 	"github.com/pgavlin/goldmark/util"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // A RendererOption controls the behavior of a Renderer.
@@ -71,9 +69,9 @@ func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, en
 	return r.md.RenderLink(w, source, node, enter)
 }
 
-// RenderDocs renders parsed documentation to the given Writer. The source that was used to parse the documentation
+// renderDocs renders parsed documentation to the given Writer. The source that was used to parse the documentation
 // must be provided.
-func RenderDocs(w io.Writer, source []byte, node ast.Node, options ...RendererOption) error {
+func renderDocs(w io.Writer, source []byte, node ast.Node, options ...RendererOption) error {
 	md := &markdown.Renderer{}
 	dr := &Renderer{md: md}
 	for _, o := range options {
@@ -86,12 +84,4 @@ func RenderDocs(w io.Writer, source []byte, node ast.Node, options ...RendererOp
 	}
 	r := renderer.NewRenderer(renderer.WithNodeRenderers(nodeRenderers...))
 	return r.Render(w, source, node)
-}
-
-// RenderDocsToString is like RenderDocs, but renders to a string instead of a Writer.
-func RenderDocsToString(source []byte, node ast.Node, options ...RendererOption) string {
-	var buf bytes.Buffer
-	err := RenderDocs(&buf, source, node, options...)
-	contract.AssertNoErrorf(err, "error rendering docs")
-	return buf.String()
 }

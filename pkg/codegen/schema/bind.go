@@ -273,7 +273,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		Name:                info.Name,
 		DisplayName:         info.DisplayName,
 		Version:             version,
-		Description:         info.Description,
+		Description:         ParseDocumentation(info.Description),
 		Keywords:            info.Keywords,
 		Homepage:            info.Homepage,
 		License:             info.License,
@@ -1231,11 +1231,11 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 
 		p := &Property{
 			Name:                 name,
-			Comment:              spec.Description,
+			Comment:              ParseDocumentation(spec.Description),
 			Type:                 t.newOptionalType(typ),
 			ConstValue:           cv,
 			DefaultValue:         dv,
-			DeprecationMessage:   spec.DeprecationMessage,
+			DeprecationMessage:   ParseDocumentation(spec.DeprecationMessage),
 			Language:             makeLanguageMap(spec.Language),
 			Secret:               spec.Secret,
 			ReplaceOnChanges:     spec.ReplaceOnChanges,
@@ -1294,7 +1294,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 
 	obj.PackageReference = t.externalPackage()
 	obj.Token = token
-	obj.Comment = spec.Description
+	obj.Comment = ParseDocumentation(spec.Description)
 	obj.Language = language
 	obj.Properties = properties
 	obj.properties = propertyMap
@@ -1303,7 +1303,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 
 	obj.InputShape.PackageReference = t.externalPackage()
 	obj.InputShape.Token = token
-	obj.InputShape.Comment = spec.Description
+	obj.InputShape.Comment = ParseDocumentation(spec.Description)
 	obj.InputShape.Language = language
 	obj.InputShape.Properties = inputProperties
 	obj.InputShape.properties = inputPropertyMap
@@ -1357,9 +1357,9 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 
 		values[i] = &Enum{
 			Value:              value,
-			Comment:            spec.Description,
+			Comment:            ParseDocumentation(spec.Description),
 			Name:               spec.Name,
-			DeprecationMessage: spec.DeprecationMessage,
+			DeprecationMessage: ParseDocumentation(spec.DeprecationMessage),
 		}
 	}
 
@@ -1368,7 +1368,7 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 		Token:            token,
 		Elements:         values,
 		ElementType:      typ,
-		Comment:          spec.Description,
+		Comment:          ParseDocumentation(spec.Description),
 		IsOverlay:        spec.IsOverlay,
 	}, diags
 }
@@ -1666,12 +1666,12 @@ func (t *types) bindResourceDetails(
 	*decl = Resource{
 		PackageReference:          t.externalPackage(),
 		Token:                     token,
-		Comment:                   spec.Description,
+		Comment:                   ParseDocumentation(spec.Description),
 		InputProperties:           inputProperties,
 		Properties:                properties,
 		StateInputs:               stateInputs,
 		Aliases:                   aliases,
-		DeprecationMessage:        spec.DeprecationMessage,
+		DeprecationMessage:        ParseDocumentation(spec.DeprecationMessage),
 		Language:                  makeLanguageMap(spec.Language),
 		IsComponent:               spec.IsComponent,
 		Methods:                   methods,
@@ -1911,14 +1911,14 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	fn := &Function{
 		PackageReference:          t.externalPackage(),
 		Token:                     token,
-		Comment:                   spec.Description,
+		Comment:                   ParseDocumentation(spec.Description),
 		Inputs:                    inputs,
 		MultiArgumentInputs:       len(spec.MultiArgumentInputs) > 0,
 		InlineObjectAsReturnType:  inlineObjectAsReturnType,
 		Outputs:                   outputs,
 		ReturnType:                returnType,
 		ReturnTypePlain:           returnTypePlain,
-		DeprecationMessage:        spec.DeprecationMessage,
+		DeprecationMessage:        ParseDocumentation(spec.DeprecationMessage),
 		Language:                  makeLanguageMap(spec.Language),
 		IsOverlay:                 spec.IsOverlay,
 		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,

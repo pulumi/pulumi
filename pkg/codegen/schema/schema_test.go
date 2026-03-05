@@ -326,12 +326,12 @@ var enumTests = []struct {
 	{"good-enum-4.json", false, &EnumType{
 		Token:       "fake-provider:module1:Number2",
 		ElementType: numberType,
-		Comment:     "what a great description",
+		Comment:     ParseDocumentation("what a great description"),
 		Elements: []*Enum{
-			{Value: float64(1), Comment: "one", Name: "One"},
-			{Value: float64(2), Comment: "two", Name: "Two"},
-			{Value: 3.4, Comment: "3.4", Name: "ThreePointFour"},
-			{Value: float64(6), Comment: "six", Name: "Six"},
+			{Value: float64(1), Comment: ParseDocumentation("one"), Name: "One"},
+			{Value: float64(2), Comment: ParseDocumentation("two"), Name: "Two"},
+			{Value: 3.4, Comment:ParseDocumentation( "3.4"), Name: "ThreePointFour"},
+			{Value: float64(6), Comment:ParseDocumentation( "six"), Name: "Six"},
 		},
 	}},
 }

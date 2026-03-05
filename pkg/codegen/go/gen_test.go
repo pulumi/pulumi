@@ -59,7 +59,7 @@ func TestInputUsage(t *testing.T) {
 	assert.Equal(
 		t,
 		"FooPtrInput is an input type that accepts FooArgs, FooPtr and FooPtrOutput values.\nYou can construct a "+
-			"concrete instance of `FooPtrInput` via:\n\n\t\t FooArgs{...}\n\n or:\n\n\t\t nil\n ",
+			"concrete instance of `FooPtrInput` via:\n\n\t        FooArgs{...}\n\n\tor:\n\n\t        nil\n ",
 		ptrUsage)
 
 	usage := pkg.getInputUsage("Foo")

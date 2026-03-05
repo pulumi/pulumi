@@ -184,9 +184,16 @@ func (shortcodeParser) CanAcceptIndentedLine() bool {
 	return false
 }
 
-// ParseDocs parses the given documentation text as Markdown with shortcodes and returns the AST.
-func ParseDocs(docs []byte) ast.Node {
+// ParseDocumentation parses the given documentation text as Markdown with shortcodes and returns the parsed
+// Documentation object.
+func ParseDocumentation(source string) Documentation {
+	if source == "" {
+		return Documentation{}
+	}
+
 	p := goldmark.DefaultParser()
 	p.AddOptions(parser.WithBlockParsers(util.Prioritized(shortcodeParser(0), 50)))
-	return p.Parse(text.NewReader(docs))
+	src := []byte(source)
+	ast := p.Parse(text.NewReader(src))
+	return Documentation{source: src, node: ast}
 }

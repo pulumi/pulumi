@@ -26,6 +26,7 @@ import (
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/stretchr/testify/assert"
 )
 
 // Note to future engineers: keep each file tested as a single test, do not use `t.Run` in the inner
@@ -52,82 +53,80 @@ type doc struct {
 	content string
 }
 
-func getDocsForProperty(parent string, p *Property) []doc {
-	entity := path.Join(parent, p.Name)
+func getDocsForProperty(parent string, name string, p PropertySpec) []doc {
+	entity := path.Join(parent, name)
 	return []doc{
-		{entity: entity + "/description", content: p.Comment},
+		{entity: entity + "/description", content: p.Description},
 		{entity: entity + "/deprecationMessage", content: p.DeprecationMessage},
 	}
 }
 
-func getDocsForObjectType(path string, t *ObjectType) []doc {
+func getDocsForObjectType(path string, t *ObjectTypeSpec) []doc {
 	if t == nil {
 		return nil
 	}
 
-	docs := []doc{{entity: path + "/description", content: t.Comment}}
-	for _, p := range t.Properties {
-		docs = append(docs, getDocsForProperty(path+"/properties", p)...)
+	docs := []doc{{entity: path + "/description", content: t.Description}}
+	for name, p := range t.Properties {
+		docs = append(docs, getDocsForProperty(path+"/properties", name, p)...)
 	}
 	return docs
 }
 
-func getDocsForFunction(f *Function) []doc {
-	entity := "#/functions/" + url.PathEscape(f.Token)
+func getDocsForFunction(token string, f FunctionSpec) []doc {
+	entity := "#/functions/" + url.PathEscape(token)
 	docs := []doc{
-		{entity: entity + "/description", content: f.Comment},
+		{entity: entity + "/description", content: f.Description},
 		{entity: entity + "/deprecationMessage", content: f.DeprecationMessage},
 	}
 	docs = append(docs, getDocsForObjectType(entity+"/inputs/properties", f.Inputs)...)
 
 	if f.ReturnType != nil {
-		if objectType, ok := f.ReturnType.(*ObjectType); ok && objectType != nil {
-			docs = append(docs, getDocsForObjectType(entity+"/outputs/properties", objectType)...)
+		if f.ReturnType.ObjectTypeSpec != nil {
+			docs = append(docs, getDocsForObjectType(entity+"/outputs/properties", f.ReturnType.ObjectTypeSpec)...)
 		}
 	}
 
 	return docs
 }
 
-func getDocsForResource(r *Resource, isProvider bool) []doc {
+func getDocsForResource(token string, r ResourceSpec, isProvider bool) []doc {
 	var entity string
 	if isProvider {
 		entity = "#/provider"
 	} else {
-		entity = "#/resources/" + url.PathEscape(r.Token)
+		entity = "#/resources/" + url.PathEscape(token)
 	}
 
 	docs := slice.Prealloc[doc](2 + len(r.InputProperties) + len(r.Properties))
 	docs = append(docs,
-		doc{entity: entity + "/description", content: r.Comment},
+		doc{entity: entity + "/description", content: r.Description},
 		doc{entity: entity + "/deprecationMessage", content: r.DeprecationMessage},
 	)
-	for _, p := range r.InputProperties {
-		docs = append(docs, getDocsForProperty(entity+"/inputProperties", p)...)
+	for name, p := range r.InputProperties {
+		docs = append(docs, getDocsForProperty(entity+"/inputProperties", name, p)...)
 	}
-	for _, p := range r.Properties {
-		docs = append(docs, getDocsForProperty(entity+"/properties", p)...)
+	for name, p := range r.Properties {
+		docs = append(docs, getDocsForProperty(entity+"/properties", name, p)...)
 	}
 	docs = append(docs, getDocsForObjectType(entity+"/stateInputs", r.StateInputs)...)
 	return docs
 }
 
-func getDocsForPackage(pkg *Package) []doc {
+func getDocsForPackage(pkg PackageSpec) []doc {
 	var allDocs []doc
-	for _, p := range pkg.Config {
-		allDocs = append(allDocs, getDocsForProperty("#/config/variables", p)...)
+	for name, p := range pkg.Config.Variables {
+		allDocs = append(allDocs, getDocsForProperty("#/config/variables", name, p)...)
 	}
-	for _, f := range pkg.Functions {
-		allDocs = append(allDocs, getDocsForFunction(f)...)
+	for token, f := range pkg.Functions {
+		allDocs = append(allDocs, getDocsForFunction(token, f)...)
 	}
-	allDocs = append(allDocs, getDocsForResource(pkg.Provider, true)...)
-	for _, r := range pkg.Resources {
-		allDocs = append(allDocs, getDocsForResource(r, false)...)
+	allDocs = append(allDocs, getDocsForResource("", pkg.Provider, true)...)
+	for token, r := range pkg.Resources {
+		allDocs = append(allDocs, getDocsForResource(token, r, false)...)
 	}
 	for _, t := range pkg.Types {
-		if obj, ok := t.(*ObjectType); ok {
-			allDocs = append(allDocs, getDocsForObjectType("#/types", obj)...)
-		}
+		allDocs = append(allDocs, getDocsForObjectType("#/types", &t.ObjectTypeSpec)...)
 	}
 	return allDocs
 }
@@ -156,24 +155,130 @@ func TestParseAndRenderDocs(t *testing.T) {
 			if err = json.Unmarshal(contents, &spec); err != nil {
 				t.Fatalf("could not unmarshal package spec: %v", err)
 			}
-			pkg, err := ImportSpec(spec, nil, ValidationOptions{
-				AllowDanglingReferences: true,
-			})
-			if err != nil {
-				t.Fatalf("could not import package: %v", err)
-			}
 
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
-			for _, doc := range getDocsForPackage(pkg) {
+			for _, doc := range getDocsForPackage(spec) {
+				if doc.content == "" {
+					continue
+				}
+
 				original := []byte(doc.content)
-				expected := ParseDocs(original)
-				rendered := []byte(RenderDocsToString(original, expected))
-				actual := ParseDocs(rendered)
-				if !testutil.AssertSameStructure(t, original, rendered, expected, actual, nodeAssertions) {
+				expected := ParseDocumentation(string(original))
+				rendered := []byte(expected.Render())
+				actual := ParseDocumentation(string(rendered))
+				if !testutil.AssertSameStructure(t, original, rendered, expected.node, actual.node, nodeAssertions) {
 					t.Logf("original: %v", doc.content)
 					t.Logf("rendered: %v", string(rendered))
 				}
 			}
 		})
 	}
+}
+
+const codeFence = "```"
+
+func TestFilterExamples(t *testing.T) {
+	t.Parallel()
+
+	tsCodeSnippet := `### Example 1
+` + codeFence + `typescript
+import * as path from path;
+
+console.log("I am a console log statement in ts.");
+` + codeFence
+
+	goCodeSnippet := `\n` + codeFence + `go
+import (
+	"fmt"
+	"strings"
+)
+
+func fakeFunc() {
+	fmt.Print("Hi, I am a fake func!")
+}
+` + codeFence
+
+	leadingDescription := "This is a leading description for this resource."
+	exampleShortCode := `{{% example %}}` + tsCodeSnippet + "\n" + goCodeSnippet + `{{% /example %}}`
+	description := leadingDescription + `
+{{% examples %}}` + exampleShortCode + `
+{{% /examples %}}`
+
+	t.Run("ContainsRelevantCodeSnippet", func(t *testing.T) {
+		t.Parallel()
+
+		docs := ParseDocumentation(description)
+		docs.FilterExamples("typescript")
+		strippedDescription := docs.Render()
+		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
+		assert.Contains(t, strippedDescription, leadingDescription, "expected to at least find the leading description")
+	})
+
+	// The above description does not contain a Python code snippet and because
+	// the description contains only one Example without any Python code snippet,
+	// we should expect an empty string in this test.
+	t.Run("DoesNotContainRelevantSnippet", func(t *testing.T) {
+		t.Parallel()
+
+		docs := ParseDocumentation(description)
+		docs.FilterExamples("python")
+		strippedDescription := docs.Render()
+		assert.Contains(t, strippedDescription, leadingDescription, "expected to at least find the leading description")
+		// Should not contain any examples sections.
+		assert.NotContains(t, strippedDescription, "### ", "expected to not have any examples but found at least one")
+	})
+}
+
+func TestTestFilterExamplesFromMultipleExampleSections(t *testing.T) {
+	t.Parallel()
+
+	tsCodeSnippet := codeFence + `typescript
+import * as path from path;
+
+console.log("I am a console log statement in ts.");
+` + codeFence
+
+	goCodeSnippet := codeFence + `go
+import (
+	"fmt"
+	"strings"
+)
+
+func fakeFunc() {
+	fmt.Print("Hi, I am a fake func!")
+}
+` + codeFence
+
+	example1 := `### Example 1
+` + tsCodeSnippet + "\n" + goCodeSnippet
+
+	example2 := `### Example 2
+` + tsCodeSnippet
+
+	example1ShortCode := `{{% example %}}` + "\n" + example1 + "\n" + `{{% /example %}}`
+	example2ShortCode := `{{% example %}}` + "\n" + example2 + "\n" + `{{% /example %}}`
+	description := `{{% examples %}}` + "\n" + example1ShortCode + "\n" + example2ShortCode + "\n" + `{{% /examples %}}`
+
+	t.Run("EveryExampleHasRelevantCodeSnippet", func(t *testing.T) {
+		t.Parallel()
+
+		docs := ParseDocumentation(description)
+		docs.FilterExamples("typescript")
+		strippedDescription := docs.Render()
+		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
+		assert.Contains(t, strippedDescription, "Example 1", "expected Example 1 section")
+		assert.Contains(t, strippedDescription, "Example 2", "expected Example 2 section")
+	})
+
+	t.Run("SomeExamplesHaveRelevantCodeSnippet", func(t *testing.T) {
+		t.Parallel()
+
+		docs := ParseDocumentation(description)
+		docs.FilterExamples("go")
+		strippedDescription := docs.Render()
+		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
+		assert.Contains(t, strippedDescription, "Example 1", "expected Example 1 section")
+		assert.NotContains(t, strippedDescription, "Example 2",
+			"unexpected Example 2 section. section should have been excluded")
+	})
 }

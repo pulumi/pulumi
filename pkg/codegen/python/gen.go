@@ -418,6 +418,30 @@ func printComment(w io.Writer, comment string, indent string) {
 	fmt.Fprintf(w, "%s\"\"\"\n", indent)
 }
 
+func printDocumentation(w io.Writer, comment schema.Documentation, indent string) {
+	comment.FilterExamples("python")
+	printComment(w, comment.Render(), indent)
+}
+
+func printDocumentationWithDeprecationMessage(w io.Writer, comment, deprecationMessage schema.Documentation, indent string) {
+	comment.FilterExamples("python")
+	text := comment.Render()
+	if !deprecationMessage.Empty() {
+		deprecationMessage.FilterExamples("python")
+		deprecationText := deprecationMessage.Render()
+		if deprecationText != "" {
+			if text != "" && text[len(text)-1] != '\n' {
+				text += "\n"
+			}
+			if text != "" {
+				text += "\n"
+			}
+			text += "Deprecated: " + deprecationText
+		}
+	}
+	printComment(w, text, indent)
+}
+
 func genStandardHeader(w io.Writer, tool string) {
 	// Set the encoding to UTF-8, in case the comments contain non-ASCII characters.
 	fmt.Fprintf(w, "# coding=utf-8\n")
@@ -631,7 +655,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		}
 
 		if readme == "" {
-			readme = mod.pkg.Description()
+			readme := mod.pkg.Description().Render()
 			if readme != "" && readme[len(readme)-1] != '\n' {
 				readme += "\n"
 			}
@@ -1035,7 +1059,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), typeString)
 		dblIndent := strings.Repeat(indent, 2)
 
-		printComment(w, p.Comment, dblIndent)
+		printDocumentation(w, p.Comment, dblIndent)
 		fmt.Fprintf(w, "%sreturn %s\n", dblIndent, configFetch)
 		fmt.Fprintf(w, "\n")
 	}
@@ -1101,7 +1125,7 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 	for _, p := range variables {
 		typeString := genConfigVarType(p)
 		fmt.Fprintf(w, "%s: %s\n", p.Name, typeString)
-		printComment(w, p.Comment, "")
+		printDocumentation(w, p.Comment, "")
 		fmt.Fprintf(w, "\n")
 	}
 
@@ -1218,7 +1242,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	// Produce a class definition with optional """ comment.
 	fmt.Fprint(w, "@pulumi.output_type\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
-	printComment(w, obj.Comment, "    ")
+	printDocumentation(w, obj.Comment, "    ")
 
 	// Now generate an initializer with properties for all inputs.
 	fmt.Fprintf(w, "    def __init__(__self__")
@@ -1372,16 +1396,16 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		baseType = "pulumi.CustomResource"
 	}
 
-	if !res.IsProvider && res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
+	if !res.DeprecationMessage.Empty() && mod.compatibility != kubernetes20 {
+		escaped := strings.ReplaceAll(res.DeprecationMessage.Render(), `"`, `\"`)
 		fmt.Fprintf(w, "warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n\n", escaped)
 	}
 
 	// Produce a class definition with optional """ comment.
 	fmt.Fprintf(w, "@pulumi.type_token(\"%s\")\n", res.Token)
 	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
-	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
+	if !res.DeprecationMessage.Empty() && mod.compatibility != kubernetes20 {
+		escaped := strings.ReplaceAll(res.DeprecationMessage.Render(), `"`, `\"`)
 		fmt.Fprintf(w, "    warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
 	}
 
@@ -1439,8 +1463,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// Emit the _internal_init helper method which provides the bulk of the __init__ implementation.
 	emitInitMethodSignature("_internal_init")
-	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-		fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, res.DeprecationMessage)
+	if !res.DeprecationMessage.Empty() && mod.compatibility != kubernetes20 {
+		fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name,
+			res.DeprecationMessage.Render())
 	}
 	fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)\n")
 	fmt.Fprintf(w, "        if not isinstance(opts, pulumi.ResourceOptions):\n")
@@ -1649,13 +1674,13 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 		} else {
 			fmt.Fprintf(w, "%s    @pulumi.getter(name=%q)\n", indent, prop.Name)
 		}
-		if prop.DeprecationMessage != "" {
-			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
+		if !prop.DeprecationMessage.Empty() {
+			escaped := strings.ReplaceAll(prop.DeprecationMessage.Render(), `"`, `\"`)
 			fmt.Fprintf(w, "%s    @_utilities.deprecated(\"\"\"%s\"\"\")\n", indent, escaped)
 		}
 		fmt.Fprintf(w, "%s    def %s(self) -> %s:\n", indent, pname, ty)
-		if prop.Comment != "" {
-			printComment(w, prop.Comment, indent+"        ")
+		if !prop.Comment.Empty() {
+			printDocumentation(w, prop.Comment, indent+"        ")
 		}
 		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, pname)
 
@@ -1669,13 +1694,9 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 
 func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) string {
 	var properties []*schema.Property
-	var comment string
-
 	if obj := returnTypeObject(method.Function); obj != nil {
 		properties = obj.Properties
-		comment = obj.Comment
 	} else if method.Function.ReturnTypePlain {
-		comment = ""
 		properties = []*schema.Property{
 			{
 				Name:  "res",
@@ -1690,7 +1711,9 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) s
 	// Produce a class definition with optional """ comment.
 	fmt.Fprintf(w, "    @pulumi.output_type\n")
 	fmt.Fprintf(w, "    class %s:\n", name)
-	printComment(w, comment, "        ")
+	if obj := returnTypeObject(method.Function); obj != nil {
+		printDocumentation(w, obj.Comment, "        ")
+	}
 
 	// Now generate an initializer with properties for all inputs.
 	fmt.Fprintf(w, "        def __init__(__self__")
@@ -1797,8 +1820,10 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 
 		// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 		docs := &bytes.Buffer{}
-		if fun.Comment != "" {
-			fmt.Fprintln(docs, codegen.FilterExamples(fun.Comment, "python"))
+		if !fun.Comment.Empty() {
+			comment := fun.Comment
+			comment.FilterExamples("python")
+			fmt.Fprintln(docs, comment.Render())
 		}
 		if len(args) > 0 {
 			fmt.Fprintln(docs, "")
@@ -1808,9 +1833,9 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		}
 		printComment(w, docs.String(), "        ")
 
-		if fun.DeprecationMessage != "" {
+		if !fun.DeprecationMessage.Empty() {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", methodName,
-				fun.DeprecationMessage)
+				fun.DeprecationMessage.Render())
 		}
 
 		// Copy the function arguments into a dictionary.
@@ -1900,8 +1925,8 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 	fmt.Fprintf(w, "]\n\n")
 
-	if fun.DeprecationMessage != "" {
-		escaped := strings.ReplaceAll(fun.DeprecationMessage, `"`, `\"`)
+	if !fun.DeprecationMessage.Empty() {
+		escaped := strings.ReplaceAll(fun.DeprecationMessage.Render(), `"`, `\"`)
 		fmt.Fprintf(w, "warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
 	}
 
@@ -2051,8 +2076,10 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) {
 
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
-	if fun.Comment != "" {
-		fmt.Fprintln(docs, codegen.FilterExamples(fun.Comment, "python"))
+	if !fun.Comment.Empty() {
+		comment := fun.Comment
+		comment.FilterExamples("python")
+		fmt.Fprintln(docs, comment.Render())
 	} else {
 		fmt.Fprintln(docs, "Use this data source to access information about an existing resource.")
 	}
@@ -2066,11 +2093,11 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) {
 }
 
 func (mod *modContext) genFunDeprecationMessage(w io.Writer, fun *schema.Function) {
-	if fun.DeprecationMessage == "" {
+	if fun.DeprecationMessage.Empty() {
 		return
 	}
 	name := PyName(tokenToName(fun.Token))
-	fmt.Fprintf(w, "    pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, fun.DeprecationMessage)
+	fmt.Fprintf(w, "    pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, fun.DeprecationMessage.Render())
 }
 
 // Generates the function signature line `def fn(...):` without the body.
@@ -2158,7 +2185,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	case schema.StringType, schema.IntType, schema.NumberType:
 		fmt.Fprintf(w, "@pulumi.type_token(\"%s\")\n", enum.Token)
 		fmt.Fprintf(w, "class %s(%s, Enum):\n", enumName, underlyingType)
-		printComment(w, enum.Comment, indent)
+		printDocumentation(w, enum.Comment, indent)
 		for _, e := range enum.Elements {
 			// If the enum doesn't have a name, set the value as the name.
 			if e.Name == "" {
@@ -2177,8 +2204,8 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			} else {
 				fmt.Fprintf(w, "%v\n", e.Value)
 			}
-			if e.Comment != "" {
-				printComment(w, e.Comment, indent)
+			if !e.Comment.Empty() {
+				printDocumentation(w, e.Comment, indent)
 			}
 		}
 	default:
@@ -2304,8 +2331,9 @@ func genPackageMetadata(
 	}
 	fmt.Fprintf(w, "      python_requires='%s',\n", pythonVersion)
 	fmt.Fprintf(w, "      version=VERSION,\n")
-	if pkg.Description != "" {
-		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))
+	description := pkg.Description.Render()
+	if description != "" {
+		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(description))
 	}
 	fmt.Fprintf(w, "      long_description=readme(),\n")
 	fmt.Fprintf(w, "      long_description_content_type='text/markdown',\n")
@@ -2404,8 +2432,10 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	b := &bytes.Buffer{}
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
-	if res.Comment != "" {
-		fmt.Fprintln(b, codegen.FilterExamples(res.Comment, "python"))
+	if !res.Comment.Empty() {
+		comment := res.Comment
+		comment.FilterExamples("python")
+		fmt.Fprintln(b, comment.Render())
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
 	}
@@ -2468,7 +2498,11 @@ func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties 
 }
 
 func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.Property, acceptMapping bool) {
-	if prop.Comment == "" {
+	comment := prop.Comment
+	comment.FilterExamples("python")
+
+	text := comment.Render()
+	if text == "" {
 		return
 	}
 
@@ -2476,7 +2510,7 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 
 	// If this property has some documentation associated with it, we need to split it so that it is indented
 	// in a way that Sphinx can understand.
-	lines := strings.Split(prop.Comment, "\n")
+	lines := strings.Split(text, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
@@ -2697,11 +2731,15 @@ func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input 
 	name := mod.unqualifiedObjectTypeName(obj, input)
 	resourceOutputType := !input && mod.details(obj).resourceOutputType
 	if input && typedDictEnabled(mod.inputTypes) {
-		if err := mod.genDictType(w, name, obj.Comment, obj.Properties); err != nil {
+		comment := obj.Comment
+		comment.FilterExamples("python")
+		if err := mod.genDictType(w, name, comment.Render(), obj.Properties); err != nil {
 			return err
 		}
 	}
-	return mod.genType(w, name, obj.Comment, obj.Properties, input, resourceOutputType)
+	comment := obj.Comment
+	comment.FilterExamples("python")
+	return mod.genType(w, name, comment.Render(), obj.Properties, input, resourceOutputType)
 }
 
 func (mod *modContext) genType(w io.Writer, name, comment string, properties []*schema.Property, input, resourceOutput bool) error {
@@ -2805,8 +2843,8 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		var err error
 
 		// Check that the property isn't deprecated.
-		if input && prop.DeprecationMessage != "" {
-			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
+		if input && !prop.DeprecationMessage.Empty() {
+			escaped := strings.ReplaceAll(prop.DeprecationMessage.Render(), `"`, `\"`)
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
 			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
 			fmt.Fprintf(w, "            pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", pname, escaped)
@@ -2879,9 +2917,7 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 		pname := PyName(prop.Name)
 		ty := mod.typeString(prop.Type, typeStringOpts{input: true, forDict: true})
 		fmt.Fprintf(w, "%s%s: %s\n", indent, pname, ty)
-		if prop.Comment != "" {
-			printComment(w, prop.Comment, indent)
-		}
+		printDocumentation(w, prop.Comment, indent)
 	}
 
 	if len(props) == 0 {
@@ -3319,7 +3355,7 @@ func genPyprojectTOML(tool string,
 
 	// • Description and License: These fields are populated the same
 	//   way as in setup.py.
-	description := sanitizePackageDescription(pkg.Description)
+	description := sanitizePackageDescription(pkg.Description.Render())
 	if description != "" {
 		schema.Project.Description = &description
 	}

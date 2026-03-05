@@ -1126,12 +1126,10 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 	return "To" + outputTypeName
 }
 
-// printComment filters examples for the Go languages and prepends double forward slash to each line in the given
-// comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
-// resulting comment. It guarantees that each line is terminated with newline character.
+// printComment prepends double forward slash to each line in the given comment. If indent is true, each line
+// is indented with tab character. It returns the number of lines in the resulting comment. It guarantees that
+// each line is terminated with newline character.
 func printComment(w io.Writer, comment string, indent bool) int {
-	comment = codegen.FilterExamples(comment, "go")
-
 	lines := strings.Split(comment, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
@@ -1149,13 +1147,21 @@ func printComment(w io.Writer, comment string, indent bool) int {
 	return len(lines)
 }
 
-func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage string, indent bool) {
-	lines := printComment(w, comment, indent)
-	if deprecationMessage != "" {
+// printDocumentation filters examples for the Go languages and then prints the documentation as a Go comment.
+func printDocumentation(w io.Writer, comment schema.Documentation, indent bool) {
+	comment.FilterExamples("go")
+	printComment(w, comment.Render(), indent)
+}
+
+func printDocumentationWithDeprecationMessage(w io.Writer, comment, deprecationMessage schema.Documentation, indent bool) {
+	comment.FilterExamples("go")
+	lines := printComment(w, comment.Render(), indent)
+	if !deprecationMessage.Empty() {
 		if lines > 0 {
 			fmt.Fprintf(w, "//\n")
 		}
-		printComment(w, "Deprecated: "+deprecationMessage, indent)
+		deprecationMessage.FilterExamples("go")
+		printComment(w, "Deprecated: "+deprecationMessage.Render(), indent)
 	}
 }
 
@@ -1171,7 +1177,7 @@ func (pkg *pkgContext) genInputInterface(w io.Writer, name string) {
 func (pkg *pkgContext) genEnumInputInterface(w io.Writer, name string, enumType *schema.EnumType) {
 	enumCases := []string{}
 	for _, enumCase := range enumType.Elements {
-		if enumCase.DeprecationMessage != "" {
+		if !enumCase.DeprecationMessage.Empty() {
 			// skip deprecated enum cases
 			continue
 		}
@@ -1258,11 +1264,11 @@ func (pkg *pkgContext) getInputUsage(name string) string {
 			fmt.Sprintf("%sInput is an input type that accepts %sArgs, %s and %sOutput values.", name, baseTypeName, name, name),
 			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 			"",
-			fmt.Sprintf("\t\t %sArgs{...}", baseTypeName),
+			fmt.Sprintf("\t        %sArgs{...}", baseTypeName),
 			"",
-			" or:",
+			"\tor:",
 			"",
-			"\t\t nil",
+			"\t        nil",
 			" ",
 		}, "\n")
 	}
@@ -1451,7 +1457,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType, usingGene
 	modPkg, ok := pkg.packages[mod]
 	contract.Assertf(ok, "Context for module %q not found", mod)
 
-	printCommentWithDeprecationMessage(w, enumType.Comment, "", false)
+	printDocumentation(w, enumType.Comment, false)
 
 	elementArgsType := pkg.argsTypeImpl(enumType.ElementType)
 	elementGoType := pkg.typeString(enumType.ElementType)
@@ -1461,7 +1467,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType, usingGene
 
 	fmt.Fprintln(w, "const (")
 	for _, e := range enumType.Elements {
-		printCommentWithDeprecationMessage(w, e.Comment, e.DeprecationMessage, true)
+		printDocumentationWithDeprecationMessage(w, e.Comment, e.DeprecationMessage, true)
 
 		elementName := e.Name
 		if e.Name == "" {
@@ -1722,13 +1728,13 @@ func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) str
 	return res
 }
 
-func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
+func (pkg *pkgContext) genPlainType(w io.Writer, name string, comment schema.Documentation,
 	properties []*schema.Property,
 ) {
-	printCommentWithDeprecationMessage(w, comment, deprecationMessage, false)
+	printDocumentation(w, comment, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 	for _, p := range properties {
-		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(nil, p), pkg.typeString(codegen.ResolvedType(p.Type)), p.Name)
 	}
 	fmt.Fprintf(w, "}\n\n")
@@ -1736,13 +1742,13 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 
 // genGenericPlainType is the same as genPlainType, but used for generic variant SDKs
 // where it maintains optionalness of property types
-func (pkg *pkgContext) genGenericPlainType(w io.Writer, name, comment, deprecationMessage string,
+func (pkg *pkgContext) genGenericPlainType(w io.Writer, name string, comment schema.Documentation,
 	properties []*schema.Property,
 ) {
-	printCommentWithDeprecationMessage(w, comment, deprecationMessage, false)
+	printDocumentation(w, comment, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 	for _, p := range properties {
-		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(nil, p), pkg.plainGenericInputType(p.Type), p.Name)
 	}
 	fmt.Fprintf(w, "}\n\n")
@@ -1886,10 +1892,10 @@ func (pkg *pkgContext) genInputArgsStruct(
 ) {
 	contract.Assertf(t.IsInputShape(), "Object type must have input shape")
 
-	printComment(w, t.Comment, false)
+	printDocumentation(w, t.Comment, false)
 	fmt.Fprintf(w, "type %s struct {\n", typeName)
 	for _, p := range t.Properties {
-		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		inputType := pkg.typeString(p.Type)
 		if useGenericTypes {
 			if p.Plain {
@@ -1924,7 +1930,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 	}
 
 	if details.output || genArgs.output {
-		printComment(w, t.Comment, false)
+		printDocumentation(w, t.Comment, false)
 		pkg.genOutputType(w,
 			name,                      /* baseName */
 			name,                      /* elementType */
@@ -1933,7 +1939,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 		)
 
 		for _, p := range t.Properties {
-			printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
+			printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 			outputType, applyType := pkg.outputType(p.Type), pkg.typeString(p.Type)
 			if genArgs.usingGenericTypes {
 				outputType = pkg.genericOutputType(p.Type)
@@ -1968,7 +1974,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 		pkg.genPtrOutput(w, name, name)
 
 		for _, p := range t.Properties {
-			printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
+			printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 			optionalType := codegen.OptionalType(p)
 			outputType, applyType := pkg.outputType(optionalType), pkg.typeString(optionalType)
 			deref := ""
@@ -2144,7 +2150,7 @@ func (pkg *pkgContext) genResource(
 	useGenericVariant bool,
 ) error {
 	name := disambiguatedResourceName(r, pkg)
-	printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, false)
+	printDocumentationWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 
 	switch {
@@ -2160,7 +2166,7 @@ func (pkg *pkgContext) genResource(
 	var secretInputProps []*schema.Property
 
 	for _, p := range r.Properties {
-		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		outputType := pkg.outputType(p.Type)
 		if useGenericVariant {
 			outputType = pkg.genericOutputType(p.Type)
@@ -2432,7 +2438,7 @@ func (pkg *pkgContext) genResource(
 		fmt.Fprintf(w, "type %sState struct {\n", cgstrings.Camel(name))
 		if r.StateInputs != nil {
 			for _, p := range r.StateInputs.Properties {
-				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+				printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 				fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(r, p), pkg.typeString(codegen.ResolvedType(codegen.OptionalType(p))), p.Name)
 			}
 		}
@@ -2441,7 +2447,7 @@ func (pkg *pkgContext) genResource(
 		fmt.Fprintf(w, "type %sState struct {\n", name)
 		if r.StateInputs != nil {
 			for _, p := range r.StateInputs.Properties {
-				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+				printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 				inputType := pkg.inputType(p.Type)
 				if useGenericVariant {
 					inputType = pkg.genericInputType(codegen.OptionalType(p))
@@ -2459,7 +2465,7 @@ func (pkg *pkgContext) genResource(
 	// Emit the args types.
 	fmt.Fprintf(w, "type %sArgs struct {\n", cgstrings.Camel(name))
 	for _, p := range r.InputProperties {
-		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		inputTypeName := pkg.typeString(codegen.ResolvedType(p.Type))
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(r, p), inputTypeName, p.Name)
 	}
@@ -2491,7 +2497,7 @@ func (pkg *pkgContext) genResource(
 			}
 		}
 
-		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		fmt.Fprintf(w, "\t%s %s\n", pkg.fieldName(r, p), inputTypeName)
 	}
 	fmt.Fprintf(w, "}\n\n")
@@ -2549,7 +2555,7 @@ func (pkg *pkgContext) genResource(
 			retty = fmt.Sprintf("(%s%sResultOutput, error)", name, methodName)
 		}
 		fmt.Fprintf(w, "\n")
-		printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
+		printDocumentationWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 		fmt.Fprintf(w, "func (r *%s) %s(%s) %s {\n", name, methodName, argsig, retty)
 
 		resultVar := "_"
@@ -2638,7 +2644,7 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "type %s%sArgs struct {\n", cgstrings.Camel(name), methodName)
 			for _, p := range args {
-				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+				printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 				inputTypeName := pkg.typeString(codegen.ResolvedType(p.Type))
 				if useGenericVariant {
 					inputTypeName = pkg.genericInputType(codegen.ResolvedType(p.Type))
@@ -2650,7 +2656,7 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "// The set of arguments for the %s method of the %s resource.\n", methodName, name)
 			fmt.Fprintf(w, "type %s%sArgs struct {\n", name, methodName)
 			for _, p := range args {
-				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+				printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 				inputTypeName := pkg.typeString(p.Type)
 				if useGenericVariant {
 					inputTypeName = pkg.genericInputType(codegen.ResolvedType(p.Type))
@@ -2666,7 +2672,7 @@ func (pkg *pkgContext) genResource(
 		if objectReturnType != nil || f.ReturnTypePlain {
 			outputStructName := name
 
-			var comment string
+			var comment schema.Documentation
 			var properties []*schema.Property
 			if f.ReturnTypePlain && objectReturnType == nil {
 				properties = []*schema.Property{
@@ -2687,7 +2693,7 @@ func (pkg *pkgContext) genResource(
 			}
 
 			fmt.Fprintf(w, "\n")
-			pkg.genPlainType(w, fmt.Sprintf("%s%sResult", outputStructName, methodName), comment, "", properties)
+			pkg.genPlainType(w, fmt.Sprintf("%s%sResult", outputStructName, methodName), comment, properties)
 
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "type %s%sResultOutput struct{ *pulumi.OutputState }\n\n", outputStructName, methodName)
@@ -2702,7 +2708,7 @@ func (pkg *pkgContext) genResource(
 				if useGenericVariant {
 					outputTypeName = pkg.genericOutputType(p.Type)
 				}
-				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
+				printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 				fmt.Fprintf(w, "func (o %s%sResultOutput) %s() %s {\n", outputStructName, methodName, Title(p.Name),
 					outputTypeName)
 				if !useGenericVariant {
@@ -2750,7 +2756,7 @@ func (pkg *pkgContext) genResource(
 
 	// Emit chaining methods for the resource output type.
 	for _, p := range r.Properties {
-		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
+		printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 		outputType := pkg.outputType(p.Type)
 		if useGenericVariant {
 			outputType = pkg.genericOutputType(p.Type)
@@ -2907,7 +2913,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	objectReturnType, _ := returnType.(*schema.ObjectType)
 
 	if f.Plain {
-		printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
+		printDocumentationWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 
 		// Now, emit the function signature.
 		argsig := "ctx *pulumi.Context"
@@ -3008,7 +3014,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	if f.Inputs != nil {
 		fmt.Fprintf(w, "\n")
 		fnInputsName := pkg.functionArgsTypeName(f)
-		pkg.genPlainType(w, fnInputsName, f.Inputs.Comment, "", f.Inputs.Properties)
+		pkg.genPlainType(w, fnInputsName, f.Inputs.Comment, f.Inputs.Properties)
 		if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
 			if err := pkg.genObjectDefaultFunc(w, fnInputsName, f.Inputs.Properties, useGenericTypes); err != nil {
 				return err
@@ -3018,7 +3024,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	if objectReturnType != nil {
 		fmt.Fprintf(w, "\n")
 		fnOutputsName := pkg.functionResultTypeName(f)
-		pkg.genPlainType(w, fnOutputsName, objectReturnType.Comment, "", objectReturnType.Properties)
+		pkg.genPlainType(w, fnOutputsName, objectReturnType.Comment, objectReturnType.Properties)
 		if codegen.IsProvideDefaultsFuncRequired(objectReturnType) && !pkg.disableObjectDefaults {
 			if err := pkg.genObjectDefaultFunc(w, fnOutputsName, objectReturnType.Properties, useGenericTypes); err != nil {
 				return err
@@ -3439,9 +3445,9 @@ func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType, usingGeneric
 
 	plainName := pkg.tokenToType(obj.Token)
 	if !usingGenericTypes {
-		pkg.genPlainType(w, plainName, obj.Comment, "", obj.Properties)
+		pkg.genPlainType(w, plainName, obj.Comment, obj.Properties)
 	} else {
-		pkg.genGenericPlainType(w, plainName, obj.Comment, "", obj.Properties)
+		pkg.genGenericPlainType(w, plainName, obj.Comment, obj.Properties)
 	}
 
 	if !pkg.disableObjectDefaults {
@@ -4067,7 +4073,7 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 			getType, funcType = "string", ""
 		}
 
-		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
+		printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 		configKey := fmt.Sprintf("\"%s:%s\"", pkg.pkg.Name(), cgstrings.Camel(p.Name))
 
 		fmt.Fprintf(w, "func Get%s(ctx *pulumi.Context) %s {\n", Title(p.Name), getType)
@@ -4899,8 +4905,9 @@ func GeneratePackage(tool string,
 		switch mod {
 		case "":
 			buffer := &bytes.Buffer{}
-			if pkg.pkg.Description() != "" {
-				printComment(buffer, pkg.pkg.Description(), false)
+			desc := pkg.pkg.Description()
+			if !desc.Empty() {
+				printDocumentation(buffer, desc, false)
 			} else {
 				fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.\n", name)
 			}

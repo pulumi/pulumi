@@ -428,7 +428,11 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 
 	fmt.Fprintf(w, "%sexport interface %s {\n", indent, name)
 	for _, p := range properties {
-		printComment(w, p.Comment, p.DeprecationMessage, indent+"    ")
+		comment := p.Comment
+		comment.FilterExamples("typescript")
+		deprecationMessage := p.DeprecationMessage
+		deprecationMessage.FilterExamples("typescript")
+		printComment(w, comment.Render(), deprecationMessage.Render(), indent+"    ")
 
 		prefix := ""
 		if readonly {
@@ -610,7 +614,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	info.resourceClassName = name
 
 	// Write the TypeDoc/JSDoc for the resource class
-	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
+	deprecatedMessage := r.DeprecationMessage
+	deprecatedMessage.FilterExamples("typescript")
+	comment := r.Comment
+	comment.FilterExamples("typescript")
+	printComment(w, comment.Render(), deprecatedMessage.Render(), "")
 
 	var baseType, optionsType string
 	switch {
@@ -648,8 +656,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.%s): %s {\n",
 			stateParam, optionsType, name)
-		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(r.DeprecationMessage))
+		if !r.DeprecationMessage.Empty() && mod.compatibility != kubernetes20 {
+			deprecatedMessage := r.DeprecationMessage
+			deprecatedMessage.FilterExamples("typescript")
+			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name,
+				escape(deprecatedMessage.Render()))
 		}
 		fmt.Fprintf(w, "        return new %s(name, %s{ ...opts, id: id });\n", name, stateRef)
 		fmt.Fprintf(w, "    }\n")
@@ -695,7 +706,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		allOptionalInputs = allOptionalInputs && !prop.IsRequired()
 	}
 	for _, prop := range r.Properties {
-		printComment(w, prop.Comment, prop.DeprecationMessage, "    ")
+		comment := prop.Comment
+		comment.FilterExamples("typescript")
+		deprecationMessage := prop.DeprecationMessage
+		deprecationMessage.FilterExamples("typescript")
+		printComment(w,
+			comment.Render(),
+			deprecationMessage.Render(), "    ")
 
 		// Make a little comment in the code so it's easy to pick out output properties.
 		var outcomment string
@@ -742,8 +759,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		trailingBrace = ""
 	}
 
-	if r.DeprecationMessage != "" {
-		fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
+	if !r.DeprecationMessage.Empty() {
+		deprecatedMessage := r.DeprecationMessage
+		deprecatedMessage.FilterExamples("typescript")
+		fmt.Fprintf(w, "    /** @deprecated %s */\n", deprecatedMessage.Render())
 	}
 	fmt.Fprintf(w, "    constructor(name: string, args%s: %s, opts?: pulumi.%s)%s\n", argsFlags, argsType,
 		optionsType, trailingBrace)
@@ -820,8 +839,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 	if !r.IsProvider {
 		if r.StateInputs != nil {
-			if r.DeprecationMessage != "" {
-				fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
+			if !r.DeprecationMessage.Empty() {
+				deprecatedMessage := r.DeprecationMessage
+				deprecatedMessage.FilterExamples("typescript")
+				fmt.Fprintf(w, "    /** @deprecated %s */\n",
+					deprecatedMessage.Render())
 			}
 
 			// Now write out a general purpose constructor implementation that can handle the public signature as well as the
@@ -830,8 +852,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.%s) {\n",
 				argsType, stateType, optionsType)
 		}
-		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(r.DeprecationMessage))
+		if !r.DeprecationMessage.Empty() && mod.compatibility != kubernetes20 {
+			deprecatedMessage := r.DeprecationMessage
+			deprecatedMessage.FilterExamples("typescript")
+			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name,
+				escape(deprecatedMessage.Render()))
 		}
 		fmt.Fprintf(w, "        let resourceInputs: pulumi.Inputs = {};\n")
 		fmt.Fprintf(w, "        opts = opts || {};\n")
@@ -956,7 +981,17 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 		// Write the TypeDoc/JSDoc for the data source function.
 		fmt.Fprint(w, "\n")
-		printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), fun.DeprecationMessage, "    ")
+		printComment(w,
+			func() string {
+				comment := fun.Comment
+				comment.FilterExamples("typescript")
+				return comment.Render()
+			}(),
+			func() string {
+				deprecationMessage := fun.DeprecationMessage
+				deprecationMessage.FilterExamples("typescript")
+				return deprecationMessage.Render()
+			}(), "    ")
 
 		// Now, emit the method signature.
 		var args []*schema.Property
@@ -1000,9 +1035,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			retty = fmt.Sprintf("pulumi.Output<%s.%sResult>", name, title(method.Name))
 		}
 		fmt.Fprintf(w, "    %s(%s): %s {\n", methodName, argsig, retty)
-		if fun.DeprecationMessage != "" {
+		if !fun.DeprecationMessage.Empty() {
+			deprecatedMessage := fun.DeprecationMessage
+			deprecatedMessage.FilterExamples("typescript")
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s.%s is deprecated: %s\")\n", name, methodName,
-				escape(fun.DeprecationMessage))
+				escape(deprecatedMessage.Render()))
 		}
 
 		// Zero initialize the args if empty and necessary.
@@ -1072,7 +1109,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	// Emit the state type for get methods.
 	if r.StateInputs != nil {
 		fmt.Fprintf(w, "\n")
-		if err := mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, false, 0); err != nil {
+		stateComment := r.StateInputs.Comment
+		stateComment.FilterExamples("typescript")
+		if err := mod.genPlainType(w, stateType, stateComment.Render(), r.StateInputs.Properties, true, false, 0); err != nil {
 			return resourceFileInfo{}, err
 		}
 		info.stateInterfaceName = stateType
@@ -1101,10 +1140,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			}
 			if len(args) > 0 {
 				comment := fun.Inputs.Comment
-				if comment == "" {
-					comment = fmt.Sprintf("The set of arguments for the %s.%s method.", name, method.Name)
+				comment.FilterExamples("typescript")
+				commentText := comment.Render()
+				if commentText == "" {
+					commentText = fmt.Sprintf("The set of arguments for the %s.%s method.", name, method.Name)
 				}
-				if err := mod.genPlainType(w, methodName+"Args", comment, args, true, false, 1); err != nil {
+				if err := mod.genPlainType(w, methodName+"Args", commentText, args, true, false, 1); err != nil {
 					return err
 				}
 				fmt.Fprintf(w, "\n")
@@ -1114,10 +1155,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if fun.ReturnType != nil {
 			genReturnType := func(properties []*schema.Property) error {
 				comment := fun.Inputs.Comment
-				if comment == "" {
-					comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
+				comment.FilterExamples("typescript")
+				commentText := comment.Render()
+				if commentText == "" {
+					commentText = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
 				}
-				if err := mod.genPlainType(w, methodName+"Result", comment, properties, false, true, 1); err != nil {
+				if err := mod.genPlainType(w, methodName+"Result", commentText, properties, false, true, 1); err != nil {
 					return err
 				}
 				fmt.Fprintf(w, "\n")
@@ -1196,10 +1239,16 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 	info := functionFileInfo{}
 
 	// Write the TypeDoc/JSDoc for the data source function.
-	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
+	printComment(w, func() string {
+		comment := fun.Comment
+		comment.FilterExamples("typescript")
+		return comment.Render()
+	}(), "", "")
 
-	if fun.DeprecationMessage != "" {
-		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
+	if !fun.DeprecationMessage.Empty() {
+		deprecatedMessage := fun.DeprecationMessage
+		deprecatedMessage.FilterExamples("typescript")
+		fmt.Fprintf(w, "/** @deprecated %s */\n", deprecatedMessage.Render())
 	}
 
 	// Now, emit the function signature.
@@ -1267,8 +1316,11 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 			invokeOptionsType = "pulumi.InvokeOutputOptions"
 		}
 		fmt.Fprintf(w, "opts?: %s): %s {\n", invokeOptionsType, returnType)
-		if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-			fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
+		if !fun.DeprecationMessage.Empty() && mod.compatibility != kubernetes20 {
+			deprecatedMessage := fun.DeprecationMessage
+			deprecatedMessage.FilterExamples("typescript")
+			fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name,
+				escape(deprecatedMessage.Render()))
 		}
 
 		// Zero initialize the args if empty and necessary.
@@ -1334,7 +1386,9 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 			if plain {
 				// if there are no properties, generate an empty interface for plain invokes
 				// we would like to remove this, but it would be a breaking change
-				if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, properties, true, false, 0); err != nil {
+				argsComment := fun.Inputs.Comment
+				argsComment.FilterExamples("typescript")
+				if err := mod.genPlainType(w, argsInterfaceName, argsComment.Render(), properties, true, false, 0); err != nil {
 					return info, err
 				}
 			}
@@ -1342,7 +1396,9 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 			// this avoids generating an export for the interface that doesn't exist
 			info.functionOutputVersionArgsInterfaceName = ""
 		} else {
-			if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, properties, true, false, 0); err != nil {
+			argsComment := fun.Inputs.Comment
+			argsComment.FilterExamples("typescript")
+			if err := mod.genPlainType(w, argsInterfaceName, argsComment.Render(), properties, true, false, 0); err != nil {
 				return info, err
 			}
 		}
@@ -1356,7 +1412,11 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 			if plain {
 				fmt.Fprintf(w, "\n")
 				if err := mod.genPlainType(w, resultInterfaceName,
-					objectType.Comment, objectType.Properties, false, true, 0); err != nil {
+					(func() string {
+						resultComment := objectType.Comment
+						resultComment.FilterExamples("typescript")
+						return resultComment.Render()
+					}()), objectType.Properties, false, true, 0); err != nil {
 					return info, err
 				}
 			}
@@ -1433,7 +1493,9 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	}
 
 	name := mod.getObjectName(obj, input)
-	err := mod.genPlainType(w, name, obj.Comment, properties, input, false, level)
+	comment := obj.Comment
+	comment.FilterExamples("typescript")
+	err := mod.genPlainType(w, name, comment.Render(), properties, input, false, level)
 	if err != nil {
 		return err
 	}
@@ -1705,7 +1767,9 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	for _, p := range variables {
 		getfunc, cast := mod.configGetter(p)
 
-		printComment(w, p.Comment, "", "")
+		comment := p.Comment
+		comment.FilterExamples("typescript")
+		printComment(w, comment.Render(), "", "")
 
 		configFetch := fmt.Sprintf("%s__config.%s(\"%s\")", cast, getfunc, p.Name)
 		// TODO: handle ConstValues https://github.com/pulumi/pulumi/issues/4755
@@ -1922,7 +1986,17 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		}
 		e.Name = safeName
 
-		printComment(w, e.Comment, e.DeprecationMessage, indent)
+		printComment(w,
+			func() string {
+				comment := e.Comment
+				comment.FilterExamples("typescript")
+				return comment.Render()
+			}(),
+			func() string {
+				deprecationMessage := e.DeprecationMessage
+				deprecationMessage.FilterExamples("typescript")
+				return deprecationMessage.Render()
+			}(), indent)
 		fmt.Fprintf(w, "%s%s: ", indent, e.Name)
 		if val, ok := e.Value.(string); ok {
 			fmt.Fprintf(w, "%q,\n", val)
@@ -1933,7 +2007,9 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	fmt.Fprintf(w, "} as const;\n")
 	fmt.Fprintf(w, "\n")
 
-	printComment(w, enum.Comment, "", "")
+		comment := enum.Comment
+		comment.FilterExamples("typescript")
+		printComment(w, comment.Render(), "", "")
 	fmt.Fprintf(w, "export type %[1]s = (typeof %[1]s)[keyof typeof %[1]s];\n", enumName)
 	return nil
 }
@@ -2012,9 +2088,9 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		fs.Add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
-		readme := def.Language["nodejs"].(NodePackageInfo).Readme
+			readme := def.Language["nodejs"].(NodePackageInfo).Readme
 		if readme == "" {
-			readme = def.Description
+			readme = def.Description.Render()
 			if readme != "" && readme[len(readme)-1] != '\n' {
 				readme += "\n"
 			}
@@ -2206,7 +2282,6 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 	// If there are submodules, export them.
 	if len(children) > 0 {
 		if len(exports) > 0 {
-			fmt.Fprintf(w, "\n")
 		}
 		fmt.Fprintf(w, "// Export sub-modules:\n")
 

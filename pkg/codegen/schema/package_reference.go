@@ -42,7 +42,7 @@ type PackageReference interface {
 	Identity() string
 
 	// Description returns the packages description.
-	Description() string
+	Description() Documentation
 
 	// Publisher returns the package publisher.
 	Publisher() string
@@ -187,7 +187,7 @@ func (p packageDefRef) Identity() string {
 	return packageIdentity(p.Name(), p.Version())
 }
 
-func (p packageDefRef) Description() string {
+func (p packageDefRef) Description() Documentation {
 	return p.pkg.Description
 }
 
@@ -405,7 +405,7 @@ func (p *PartialPackage) Identity() string {
 	return packageIdentity(p.Name(), p.Version())
 }
 
-func (p *PartialPackage) Description() string {
+func (p *PartialPackage) Description() Documentation {
 	p.m.Lock()
 	defer p.m.Unlock()
 

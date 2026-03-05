@@ -26,8 +26,10 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pgavlin/goldmark/ast"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"gopkg.in/yaml.v3"
@@ -160,7 +162,7 @@ type EnumType struct {
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
-	Comment string
+	Comment Documentation
 	// Elements are the predefined enum values.
 	Elements []*Enum
 	// ElementType is the underlying type for the enum.
@@ -176,11 +178,11 @@ type Enum struct {
 	// Value is the value of the enum.
 	Value any
 	// Comment is the description for the enum value.
-	Comment string
+	Comment Documentation
 	// Name for the enum.
 	Name string
 	// DeprecationMessage indicates whether or not the value is deprecated.
-	DeprecationMessage string
+	DeprecationMessage Documentation
 }
 
 func (t *EnumType) String() string {
@@ -224,7 +226,7 @@ type ObjectType struct {
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
-	Comment string
+	Comment Documentation
 	// Properties is the list of the type's properties.
 	Properties []*Property
 	// Language specifies additional language-specific data about the object type.
@@ -347,7 +349,7 @@ type Property struct {
 	// Name is the name of the property.
 	Name string
 	// Comment is the description of the property, if any.
-	Comment string
+	Comment Documentation
 	// Type is the type of the property.
 	Type Type
 	// ConstValue is the constant value for the property, if any.
@@ -355,7 +357,7 @@ type Property struct {
 	// DefaultValue is the default value for the property, if any.
 	DefaultValue *DefaultValue
 	// DeprecationMessage indicates whether or not the property is deprecated.
-	DeprecationMessage string
+	DeprecationMessage Documentation
 	// Language specifies additional language-specific data about the property.
 	Language map[string]any
 	// Secret is true if the property is secret (default false).
@@ -390,7 +392,7 @@ type Resource struct {
 	// Token is the resource's Pulumi type token.
 	Token string
 	// Comment is the description of the resource, if any.
-	Comment string
+	Comment Documentation
 	// IsProvider is true if the resource is a provider resource.
 	IsProvider bool
 	// InputProperties is the list of the resource's input properties.
@@ -402,7 +404,7 @@ type Resource struct {
 	// Aliases is the list of aliases for the resource.
 	Aliases []*Alias
 	// DeprecationMessage indicates whether or not the resource is deprecated.
-	DeprecationMessage string
+	DeprecationMessage Documentation
 	// Language specifies additional language-specific data about the resource.
 	Language map[string]any
 	// IsComponent indicates whether the resource is a ComponentResource.
@@ -541,7 +543,7 @@ type Function struct {
 	// Token is the function's Pulumi type token.
 	Token string
 	// Comment is the description of the function, if any.
-	Comment string
+	Comment Documentation
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectType
 	// Determines whether the input bag should be treated as a single argument or as multiple arguments.
@@ -557,7 +559,7 @@ type Function struct {
 	// a reference to a existing type in the schema.
 	InlineObjectAsReturnType bool
 	// DeprecationMessage indicates whether or not the function is deprecated.
-	DeprecationMessage string
+	DeprecationMessage Documentation
 	// Language specifies additional language-specific data about the function.
 	Language map[string]any
 	// IsMethod indicates whether the function is a method of a resource.
@@ -599,6 +601,82 @@ type Parameterization struct {
 	Parameter []byte
 }
 
+// Documentation is used for descriptions and comments in schema. It contains the source markdown and the
+// parsed AST, downstream languages can run functions across the AST to edit it, and then render back to a
+// string for use in the generated code.
+type Documentation struct {
+	source []byte
+	node   ast.Node
+}
+
+func (d Documentation) Empty() bool {
+	return len(d.source) == 0
+}
+
+func (d *Documentation) Render(options ...RendererOption) string {
+	if d.Empty() {
+		return ""
+	}
+	var buf bytes.Buffer
+	err := renderDocs(&buf, d.source, d.node, options...)
+	contract.AssertNoErrorf(err, "error rendering docs")
+	return buf.String()
+}
+
+func filterExamples(source []byte, node ast.Node, lang string) {
+	var c, next ast.Node
+	for c = node.FirstChild(); c != nil; c = next {
+		filterExamples(source, c, lang)
+
+		next = c.NextSibling()
+		switch c := c.(type) {
+		case *ast.FencedCodeBlock:
+			sourceLang := string(c.Language(source))
+			if sourceLang != lang && sourceLang != "sh" {
+				node.RemoveChild(node, c)
+			}
+		case *Shortcode:
+			switch string(c.Name) {
+			case ExampleShortcode:
+				hasCode := false
+				for gc := c.FirstChild(); gc != nil; gc = gc.NextSibling() {
+					if gc.Kind() == ast.KindFencedCodeBlock {
+						hasCode = true
+						break
+					}
+				}
+				if hasCode {
+					var grandchild, nextGrandchild ast.Node
+					for grandchild = c.FirstChild(); grandchild != nil; grandchild = nextGrandchild {
+						nextGrandchild = grandchild.NextSibling()
+						node.InsertBefore(node, c, grandchild)
+					}
+				}
+				node.RemoveChild(node, c)
+			case ExamplesShortcode:
+				if first := c.FirstChild(); first != nil {
+					first.SetBlankPreviousLines(c.HasBlankPreviousLines())
+				}
+
+				var grandchild, nextGrandchild ast.Node
+				for grandchild = c.FirstChild(); grandchild != nil; grandchild = nextGrandchild {
+					nextGrandchild = grandchild.NextSibling()
+					node.InsertBefore(node, c, grandchild)
+				}
+				node.RemoveChild(node, c)
+			}
+		}
+	}
+}
+
+// FilterExamples filters the code snippets in a schema docstring to include only those that target the given language.
+func (d *Documentation) FilterExamples(lang string) {
+	if d == nil || d.node == nil {
+		return
+	}
+	filterExamples(d.source, d.node, lang)
+}
+
 // Package describes a Pulumi package.
 type Package struct {
 	// True if this package should be written in the new style to support pack and conformance testing.
@@ -613,7 +691,7 @@ type Package struct {
 	// Version is the version of the package.
 	Version *semver.Version
 	// Description is the description of the package.
-	Description string
+	Description Documentation
 	// Keywords is the list of keywords that are associated with the package, if any.
 	// Some reserved keywords can be specified as well that help with categorizing the
 	// package in the Pulumi registry. `category/<name>` and `kind/<type>` are the only
@@ -1030,7 +1108,7 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		DisplayName:         pkg.DisplayName,
 		Publisher:           pkg.Publisher,
 		Namespace:           pkg.Namespace,
-		Description:         pkg.Description,
+		Description:         pkg.Description.Render(),
 		Keywords:            pkg.Keywords,
 		Homepage:            pkg.Homepage,
 		License:             pkg.License,
@@ -1123,7 +1201,7 @@ func (pkg *Package) MarshalYAML() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (pkg *Package) marshalObjectData(comment string, properties []*Property, language map[string]any,
+func (pkg *Package) marshalObjectData(comment Documentation, properties []*Property, language map[string]any,
 	plain, isOverlay bool, overlaySupportedLanguages []string,
 ) (ObjectTypeSpec, error) {
 	required, props, err := pkg.marshalProperties(properties, plain)
@@ -1137,7 +1215,7 @@ func (pkg *Package) marshalObjectData(comment string, properties []*Property, la
 	}
 
 	return ObjectTypeSpec{
-		Description:               comment,
+		Description:               comment.Render(),
 		Properties:                props,
 		Type:                      "object",
 		Required:                  required,
@@ -1160,15 +1238,15 @@ func (pkg *Package) marshalEnum(t *EnumType) ComplexTypeSpec {
 	for i, el := range t.Elements {
 		values[i] = EnumValueSpec{
 			Name:               el.Name,
-			Description:        el.Comment,
+			Description:        el.Comment.Render(),
 			Value:              el.Value,
-			DeprecationMessage: el.DeprecationMessage,
+			DeprecationMessage: el.DeprecationMessage.Render(),
 		}
 	}
 
 	return ComplexTypeSpec{
 		ObjectTypeSpec: ObjectTypeSpec{
-			Description: t.Comment,
+			Description: t.Comment.Render(),
 			Type:        pkg.marshalType(t.ElementType, false).Type,
 			IsOverlay:   t.IsOverlay,
 		},
@@ -1219,7 +1297,7 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		RequiredInputs:     requiredInputs,
 		StateInputs:        stateInputs,
 		Aliases:            aliases,
-		DeprecationMessage: r.DeprecationMessage,
+		DeprecationMessage: r.DeprecationMessage.Render(),
 		IsComponent:        r.IsComponent,
 		Methods:            methods,
 	}, nil
@@ -1283,8 +1361,8 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 	}
 
 	return FunctionSpec{
-		Description:               f.Comment,
-		DeprecationMessage:        f.DeprecationMessage,
+		Description:               f.Comment.Render(),
+		DeprecationMessage:        f.DeprecationMessage.Render(),
 		IsOverlay:                 f.IsOverlay,
 		OverlaySupportedLanguages: f.OverlaySupportedLanguages,
 		Inputs:                    inputs,
@@ -1338,11 +1416,11 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 		propertyType.Plain = p.Plain
 		specs[p.Name] = PropertySpec{
 			TypeSpec:             propertyType,
-			Description:          p.Comment,
+			Description:          p.Comment.Render(),
 			Const:                p.ConstValue,
 			Default:              defaultValue,
 			DefaultInfo:          defaultSpec,
-			DeprecationMessage:   p.DeprecationMessage,
+			DeprecationMessage:   p.DeprecationMessage.Render(),
 			Language:             lang,
 			Secret:               p.Secret,
 			ReplaceOnChanges:     p.ReplaceOnChanges,
