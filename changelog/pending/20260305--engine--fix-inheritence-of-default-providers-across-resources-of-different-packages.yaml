@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix inheritence of default providers across resources of different packages
