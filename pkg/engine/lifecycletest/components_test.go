@@ -1714,7 +1714,7 @@ func TestCallSelfProvider(t *testing.T) {
 			id = resource.NewProperty(string(res.ID))
 		}
 		args := resource.PropertyMap{
-			"__self__": resource.NewResourceReferenceProperty(resource.ResourceReference{
+			"__self__": resource.NewProperty(resource.ResourceReference{
 				URN: res.URN,
 				ID:  id,
 			}),
