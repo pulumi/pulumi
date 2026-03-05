@@ -18,3 +18,12 @@ parent2 = primitive.Resource("parent2",
 # This _should not_ inherit the provider from parent2 as it is a default provider.
 child2 = simple.Resource("child2", value=True,
 opts = pulumi.ResourceOptions(parent=parent2))
+# This _should not_ inherit the provider from parent1 as its from the wrong package.
+child3 = primitive.Resource("child3",
+    boolean=False,
+    float=0,
+    integer=0,
+    string="",
+    number_array=[],
+    boolean_map={},
+    opts = pulumi.ResourceOptions(parent=parent1))

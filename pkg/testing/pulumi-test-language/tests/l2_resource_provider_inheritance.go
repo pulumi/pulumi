@@ -54,10 +54,13 @@ func init() {
 						return string(ref.URN().Type().Name())
 					}
 
+					child3 := RequireSingleNamedResource(l, snap.Resources, "child3")
+
 					assert.Equal(l, "simple", getPackage(parent1.Provider), "expected parent1 to use the simple provider")
 					assert.Equal(l, "simple", getPackage(child1.Provider), "expected child1 to use the simple provider")
 					assert.Equal(l, "primitive", getPackage(parent2.Provider), "expected parent2 to use the primitive provider")
 					assert.Equal(l, "simple", getPackage(child2.Provider), "expected child2 to use the simple provider")
+					assert.Equal(l, "primitive", getPackage(child3.Provider), "expected child3 to use the primitive provider")
 				},
 			},
 		},

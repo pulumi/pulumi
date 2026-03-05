@@ -43,6 +43,18 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// This _should not_ inherit the provider from parent1 as its from the wrong package.
+		_, err = primitive.NewResource(ctx, "child3", &primitive.ResourceArgs{
+			Boolean:     pulumi.Bool(false),
+			Float:       pulumi.Float64(0),
+			Integer:     pulumi.Int(0),
+			String:      pulumi.String(""),
+			NumberArray: pulumi.Float64Array{},
+			BooleanMap:  pulumi.BoolMap{},
+		}, pulumi.Parent(parent1))
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }

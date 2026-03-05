@@ -32,3 +32,16 @@ resource "child2" "simple:index:Resource" {
         parent = parent2
     }
 }
+
+// This _should not_ inherit the provider from parent1 as its from the wrong package.
+resource "child3" "primitive:index:Resource" {
+    boolean = false
+    float = 0
+    integer = 0
+    string = ""
+    numberArray = []
+    booleanMap = {}
+    options {
+        parent = parent1
+    }
+}

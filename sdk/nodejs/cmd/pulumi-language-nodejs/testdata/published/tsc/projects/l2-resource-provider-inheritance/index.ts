@@ -22,3 +22,14 @@ const parent2 = new primitive.Resource("parent2", {
 const child2 = new simple.Resource("child2", {value: true}, {
     parent: parent2,
 });
+// This _should not_ inherit the provider from parent1 as its from the wrong package.
+const child3 = new primitive.Resource("child3", {
+    boolean: false,
+    float: 0,
+    integer: 0,
+    string: "",
+    numberArray: [],
+    booleanMap: {},
+}, {
+    parent: parent1,
+});
