@@ -1,0 +1,6 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Add `--json` flag to `pulumi package info` for structured JSON output
+  prs:
+  - 22109
