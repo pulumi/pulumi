@@ -3406,8 +3406,8 @@ func newStepGenerator(
 
 // Should we trigger a replace for the given new and old property values?
 func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue) bool {
-	new = unwrapSecrets(new)
-	old = unwrapSecrets(old)
+	new = unwrapSecretsAndOutputs(new)
+	old = unwrapSecretsAndOutputs(old)
 
 	// Unknowns are always considered to be changed.
 	if old.ContainsUnknowns() || new.ContainsUnknowns() {
@@ -3422,16 +3422,27 @@ func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue
 	return !new.DeepEquals(old)
 }
 
-// Strip all `Secret` wrappers from the given property value.
-func unwrapSecrets(value resource.PropertyValue) resource.PropertyValue {
+// unwrapSecretsAndOutputs strips Secret and known Output wrappers from a replacement trigger value
+// so that the underlying values can be compared regardless of how they were wrapped. Unknown
+// outputs are left in place so that ContainsUnknowns can detect them.
+func unwrapSecretsAndOutputs(value resource.PropertyValue) resource.PropertyValue {
 	if value.IsSecret() {
-		return unwrapSecrets(value.SecretValue().Element)
+		return unwrapSecretsAndOutputs(value.SecretValue().Element)
+	}
+
+	if value.IsOutput() {
+		output := value.OutputValue()
+		if !output.Known {
+			// Leave unknown outputs intact so ContainsUnknowns catches them.
+			return value
+		}
+		return unwrapSecretsAndOutputs(output.Element)
 	}
 
 	if value.IsArray() {
 		arr := []resource.PropertyValue{}
 		for _, e := range value.ArrayValue() {
-			arr = append(arr, unwrapSecrets(e))
+			arr = append(arr, unwrapSecretsAndOutputs(e))
 		}
 		return resource.NewProperty(arr)
 	}
@@ -3439,7 +3450,7 @@ func unwrapSecrets(value resource.PropertyValue) resource.PropertyValue {
 	if value.IsObject() {
 		obj := resource.PropertyMap{}
 		for key, e := range value.ObjectValue() {
-			obj[key] = unwrapSecrets(e)
+			obj[key] = unwrapSecretsAndOutputs(e)
 		}
 		return resource.NewProperty(obj)
 	}
