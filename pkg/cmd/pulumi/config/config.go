@@ -547,7 +547,7 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 				configPath = path
 			}
 
-			c, err := backend.GetLatestConfiguration(ctx, s)
+			latest, err := backend.GetLatestConfiguration(ctx, s)
 			if err != nil {
 				return fmt.Errorf("getting latest configuration: %w", err)
 			}
@@ -557,7 +557,16 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 				return err
 			}
 
-			ps.Config = c
+			ps.Config = latest.Config
+
+			// If the backend is returning envs, then we want to use them.
+			//
+			// We don't overwrite unconditionally because we don't want to to remove environments from users
+			// that are using a non-cloud backend.
+			if len(latest.Environments) > 0 {
+				ps.Environment = workspace.NewEnvironment(latest.Environments)
+			}
+
 			// Also restore the secrets provider from state
 			untypedDeployment, err := backend.ExportStackDeployment(ctx, s)
 			if err != nil {
