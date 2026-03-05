@@ -1661,3 +1661,81 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 }
+
+// Test that if a resource is passed as __self__ the engine uses it's provider for the call.
+func TestCallSelfProvider(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			var state string
+			return &deploytest.Provider{
+				ConfigureF: func(ctx context.Context, cr plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					if in, ok := cr.Inputs["state"]; ok {
+						state = in.StringValue()
+					}
+					return plugin.ConfigureResponse{}, nil
+				},
+				CallF: func(
+					_ context.Context,
+					req plugin.CallRequest,
+					_ *deploytest.ResourceMonitor,
+				) (plugin.CallResponse, error) {
+					return plugin.CallResponse{
+						Return: resource.PropertyMap{
+							"state": resource.NewProperty(state),
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		inputs := resource.PropertyMap{
+			"state": resource.NewProperty("foo"),
+		}
+
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		res, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		id := resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+		if res.ID != "" {
+			id = resource.NewProperty(string(res.ID))
+		}
+		args := resource.PropertyMap{
+			"__self__": resource.NewResourceReferenceProperty(resource.ResourceReference{
+				URN: res.URN,
+				ID:  id,
+			}),
+		}
+
+		resp, _, _, err := monitor.Call("pkgA:m:typA/method", args, nil, "", "", "", "", nil, "")
+		require.NoError(t, err)
+
+		assert.Equal(t, resource.PropertyMap{
+			"state": resource.NewProperty("foo"),
+		}, resp)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(engine.Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+}
