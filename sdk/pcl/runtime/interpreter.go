@@ -137,62 +137,7 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		return err
 	}
 
-	dag := pdag.New[pcl.Node]()
-	nodes := map[pcl.Node]pdag.Node{}
-
-	for _, node := range i.program.Nodes {
-		dagNode, done := dag.NewNode(node)
-		done()
-		nodes[node] = dagNode
-	}
-
-	for _, node := range i.program.Nodes {
-		dagNodeA := nodes[node]
-		for _, dep := range node.GetDependencies() {
-			dagNodeB, ok := nodes[dep]
-			contract.Assertf(ok, "missing node for dependency %s", dep.Name())
-			err = dag.NewEdge(dagNodeB, dagNodeA)
-			if err != nil {
-				return fmt.Errorf("failed to create edge from %s to %s: %w", dep.Name(), node.Name(), err)
-			}
-		}
-	}
-
-	var outputsLock sync.Mutex
-	outputs := resource.PropertyMap{}
-	err = dag.Walk(ctx, func(ctx context.Context, node pcl.Node) error {
-		switch node := node.(type) {
-		case *pcl.ConfigVariable:
-			// handled above
-			return nil
-		case *pcl.PulumiBlock:
-			// handled above
-			return nil
-		case *pcl.LocalVariable:
-			value, diags := i.evalExpression(node.Definition.Value)
-			if diags.HasErrors() {
-				return diags
-			}
-			if err := i.setVariable(ctx, node.Name(), value); err != nil {
-				return fmt.Errorf("failed to set variable %s: %w", node.Name(), err)
-			}
-		case *pcl.Resource:
-			if err := i.registerResource(ctx, node); err != nil {
-				return fmt.Errorf("failed to register resource %s: %w", node.Name(), err)
-			}
-		case *pcl.OutputVariable:
-			value, diags := i.evalExpression(node.Value)
-			if diags.HasErrors() {
-				return diags
-			}
-			outputsLock.Lock()
-			defer outputsLock.Unlock()
-			outputs[resource.PropertyKey(node.LogicalName())] = value
-		default:
-			return fmt.Errorf("unknown node type: %T", node)
-		}
-		return nil
-	}, pdag.MaxProcs(int(i.info.Parallel)))
+	outputs, err := i.executeProgramNodes(ctx)
 	if err != nil {
 		return err
 	}
@@ -212,6 +157,74 @@ func (i *Interpreter) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.PropertyMap, error) {
+	dag := pdag.New[pcl.Node]()
+	nodes := map[pcl.Node]pdag.Node{}
+
+	for _, node := range i.program.Nodes {
+		dagNode, done := dag.NewNode(node)
+		done()
+		nodes[node] = dagNode
+	}
+
+	for _, node := range i.program.Nodes {
+		dagNodeA := nodes[node]
+		for _, dep := range node.GetDependencies() {
+			dagNodeB, ok := nodes[dep]
+			contract.Assertf(ok, "missing node for dependency %s", dep.Name())
+			err := dag.NewEdge(dagNodeB, dagNodeA)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create edge from %s to %s: %w", dep.Name(), node.Name(), err)
+			}
+		}
+	}
+
+	var outputsLock sync.Mutex
+	outputs := resource.PropertyMap{}
+	err := dag.Walk(ctx, func(ctx context.Context, node pcl.Node) error {
+		switch node := node.(type) {
+		case *pcl.ConfigVariable:
+			// handled before node execution
+			return nil
+		case *pcl.PulumiBlock:
+			// handled before node execution
+			return nil
+		case *pcl.LocalVariable:
+			value, diags := i.evalExpression(node.Definition.Value)
+			if diags.HasErrors() {
+				return diags
+			}
+			if err := i.setVariable(ctx, node.Name(), value); err != nil {
+				return fmt.Errorf("failed to set variable %s: %w", node.Name(), err)
+			}
+		case *pcl.Resource:
+			if err := i.registerResource(ctx, node); err != nil {
+				return fmt.Errorf("failed to register resource %s: %w", node.Name(), err)
+			}
+		case *pcl.Component:
+			if err := i.registerComponent(ctx, node); err != nil {
+				return fmt.Errorf("failed to register component %s: %w", node.Name(), err)
+			}
+		case *pcl.OutputVariable:
+			value, diags := i.evalExpression(node.Value)
+			if diags.HasErrors() {
+				return diags
+			}
+			outputsLock.Lock()
+			outputs[resource.PropertyKey(node.LogicalName())] = value
+			outputsLock.Unlock()
+		default:
+			return fmt.Errorf("unknown node type: %T", node)
+		}
+		return nil
+	}, pdag.MaxProcs(int(i.info.Parallel)))
+	if err != nil {
+		return nil, err
+	}
+
+	return outputs, nil
 }
 
 func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema.Resource, error) {
@@ -836,6 +849,32 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 				request.Version = version.StringValue()
 			}
 		}
+		if res.Options.CustomTimeouts != nil {
+			timeouts, diags := i.evalExpression(res.Options.CustomTimeouts)
+			if diags.HasErrors() {
+				return diags
+			}
+			if !timeouts.IsNull() && !timeouts.IsComputed() {
+				if !timeouts.IsObject() {
+					return errors.New("customTimeouts must be an object")
+				}
+				timeoutValues := map[string]string{}
+				for k, v := range timeouts.ObjectValue() {
+					if v.IsNull() || v.IsComputed() {
+						continue
+					}
+					if !v.IsString() {
+						return fmt.Errorf("customTimeouts.%s must be a string", k)
+					}
+					timeoutValues[string(k)] = v.StringValue()
+				}
+				request.CustomTimeouts = &pulumirpc.RegisterResourceRequest_CustomTimeouts{
+					Create: timeoutValues["create"],
+					Update: timeoutValues["update"],
+					Delete: timeoutValues["delete"],
+				}
+			}
+		}
 		if res.Options.DeleteBeforeReplace != nil {
 			dbr, diags := i.evalExpression(res.Options.DeleteBeforeReplace)
 			if diags.HasErrors() {
@@ -1019,6 +1058,113 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	})
 
 	if err := i.setVariable(ctx, res.Name(), result); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) error {
+	inputs := resource.PropertyMap{}
+	for _, attr := range component.Inputs {
+		val, diags := i.evalExpression(attr.Value)
+		if diags.HasErrors() {
+			return diags
+		}
+		inputs[resource.PropertyKey(attr.Name)] = val
+	}
+
+	marshalOpts := plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	}
+	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
+	if err != nil {
+		return err
+	}
+	marshalOpts.KeepOutputValues = true
+
+	request := &pulumirpc.RegisterResourceRequest{
+		Type:            "components:index:" + component.DeclarationName(),
+		Name:            component.LogicalName(),
+		Custom:          false,
+		Object:          obj,
+		AcceptSecrets:   true,
+		AcceptResources: true,
+		Parent:          i.stackURN,
+	}
+	if component.Options != nil && component.Options.Parent != nil {
+		parent, diags := i.evalExpression(component.Options.Parent)
+		if diags.HasErrors() {
+			return diags
+		}
+		if !parent.IsNull() && !parent.IsComputed() {
+			urn, _, err := unwrapResource(parent)
+			if err != nil {
+				return fmt.Errorf("parent: %w", err)
+			}
+			request.Parent = urn
+		}
+	}
+
+	resp, err := i.monitor.RegisterResource(ctx, request)
+	if err != nil {
+		return err
+	}
+	if resp.GetResult() != pulumirpc.Result_SUCCESS {
+		return fmt.Errorf("component registration failed: %s", resp.GetResult())
+	}
+
+	componentEval := &hcl.EvalContext{}
+	componentEval.Functions = i.evalContext.Functions
+	componentEval.Variables = map[string]cty.Value{}
+	componentInterpreter := &Interpreter{
+		program:     component.Program,
+		info:        i.info,
+		monitor:     i.monitor,
+		engine:      i.engine,
+		loader:      i.loader,
+		evalContext: componentEval,
+		stackURN:    resp.GetUrn(),
+	}
+
+	for k, v := range inputs {
+		if err := componentInterpreter.setVariable(ctx, string(k), v); err != nil {
+			return fmt.Errorf("set component input %s: %w", k, err)
+		}
+	}
+
+	componentOutputs, err := componentInterpreter.executeProgramNodes(ctx)
+	if err != nil {
+		return err
+	}
+
+	outObj, err := plugin.MarshalProperties(componentOutputs, marshalOpts)
+	if err != nil {
+		return err
+	}
+	_, err = i.monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
+		Urn:     resp.GetUrn(),
+		Outputs: outObj,
+	})
+	if err != nil {
+		return err
+	}
+
+	componentObject := resource.PropertyMap{
+		"id":  resource.NewProperty(resp.GetId()),
+		"urn": resource.NewProperty(resp.GetUrn()),
+	}
+	for k, v := range componentOutputs {
+		componentObject[k] = v
+	}
+
+	result := resource.NewProperty(resource.Output{
+		Element:      resource.NewObjectProperty(componentObject),
+		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
+		Known:        true,
+	})
+	if err := i.setVariable(ctx, component.Name(), result); err != nil {
 		return err
 	}
 	return nil
