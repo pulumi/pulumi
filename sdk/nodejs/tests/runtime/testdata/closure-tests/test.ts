@@ -23,6 +23,8 @@ import * as typescript from "typescript";
 import { runtime } from "@pulumi/pulumi";
 // @ts-ignore: The test installs @pulumi/pulumi
 import * as pkg from "@pulumi/pulumi/runtime/closure/package";
+import * as v8 from "v8";
+v8.setFlagsFromString("--allow-natives-syntax");
 
 
 const platformIndependentEOL = /\r\n|\r|\n/g;

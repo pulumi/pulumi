@@ -204,7 +204,8 @@ install::
 	cd "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" && \
 	yarn install --prefer-offline --production && \
 	(yarn unlink > /dev/null 2>&1 || true) && \
-	yarn link
+	yarn link && \
+	bun link
 endif
 
 only_build:: build install

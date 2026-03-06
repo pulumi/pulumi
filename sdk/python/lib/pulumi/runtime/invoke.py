@@ -23,6 +23,8 @@ from typing import (
 from collections.abc import Awaitable
 
 import grpc
+
+from ._instrumentation import wrap_with_context
 from google.protobuf import struct_pb2
 
 from semver import VersionInfo
@@ -327,7 +329,9 @@ def _invoke(
             except grpc.RpcError as exn:
                 return None, grpc_error_to_exception(exn)
 
-        resp, error = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+        resp, error = await asyncio.get_event_loop().run_in_executor(
+            None, wrap_with_context(do_invoke)
+        )
         log.debug(f"Invoking function completed: tok={tok}, error={error}")
 
         # If the invoke failed, raise an error.
@@ -496,7 +500,9 @@ def call(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, wrap_with_context(do_rpc_call)
+            )
             if resp is None:
                 return
 

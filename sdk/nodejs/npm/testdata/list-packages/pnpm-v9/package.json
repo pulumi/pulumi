@@ -1,0 +1,10 @@
+{
+    "name": "test-project",
+    "version": "1.0.0",
+    "dependencies": {
+        "@pulumi/pulumi": "3.224.0"
+    },
+    "devDependencies": {
+        "typescript": "5.9.3"
+    }
+}

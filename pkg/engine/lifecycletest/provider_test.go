@@ -2560,3 +2560,68 @@ func TestInternalKey(t *testing.T) {
 		warns[0].Diag.URN)
 	assert.Equal(t, "provider attempted to use __internal key that is reserved by the engine", warns[0].Diag.Message)
 }
+
+// TestDefaultProviderInheritance reproduces the type-not-found schema regression from
+// https://github.com/pulumi/pulumi/issues/22096 by having two different packages using default providers and
+// one resource being the child of the other.
+func TestDefaultProviderInheritance(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(ctx context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if cr.Type.Package() != "pkgA" {
+						return plugin.CreateResponse{}, fmt.Errorf("unexpected package %s", cr.Type.Package())
+					}
+
+					return plugin.CreateResponse{
+						Status:     resource.StatusOK,
+						ID:         resource.ID(uuid.Must(uuid.NewV4()).String()),
+						Properties: cr.Properties,
+					}, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(ctx context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if cr.Type.Package() != "pkgB" {
+						return plugin.CreateResponse{}, fmt.Errorf("unexpected package %s", cr.Type.Package())
+					}
+
+					return plugin.CreateResponse{
+						Status:     resource.StatusOK,
+						ID:         resource.ID(uuid.Must(uuid.NewV4()).String()),
+						Properties: cr.Properties,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		parent, err := monitor.RegisterResource("pkgB:m:typA", "resA", true, deploytest.ResourceOptions{})
+		if err != nil {
+			return err
+		}
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: parent.URN,
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+}

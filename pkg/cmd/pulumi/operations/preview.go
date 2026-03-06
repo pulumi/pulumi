@@ -296,6 +296,7 @@ func NewPreviewCmd() *cobra.Command {
 
 	// Flags for Neo.
 	var neoEnabled bool
+	var neoTaskOnFailure bool
 
 	cmd := &cobra.Command{
 		Use:        "preview",
@@ -398,6 +399,7 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
+			configureNeoTaskOption(neoTaskOnFailure, cmd, &displayOpts, isDIYBackend)
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
@@ -719,6 +721,15 @@ func NewPreviewCmd() *cobra.Command {
 		&neoEnabled, "neo", false,
 		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_NEO environment variable)")
+
+	cmd.PersistentFlags().BoolVar(
+		&neoTaskOnFailure, "neo-task-on-failure", false,
+		"Start a Neo task to help debug errors that occur during the operation")
+	if !env.Experimental.Value() {
+		contract.AssertNoErrorf(
+			cmd.PersistentFlags().MarkHidden("neo-task-on-failure"),
+			`Could not mark "neo-task-on-failure" as hidden`)
+	}
 
 	// Keep --copilot flag for backwards compatibility, but hide it
 	cmd.PersistentFlags().BoolVar(

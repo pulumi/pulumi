@@ -309,6 +309,20 @@ func TestConfigNodeTypedAnyMap(t *testing.T) {
 	assert.Equal(t, mapType.ElementType, model.DynamicType, "the element type is a dynamic")
 }
 
+func TestConfigNodeSecret(t *testing.T) {
+	t.Parallel()
+	source := "config count int { secret = true }"
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	contract.Ignore(diags)
+	require.NotNil(t, program, "failed to parse and bind program")
+	require.Len(t, program.Nodes, 1, "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	require.True(t, ok, "first node is a config variable")
+	assert.True(t, config.Secret, "the config variable is marked as secret")
+	assert.Equal(t, model.NewOutputType(model.IntType), config.Type(), "the type is a secret output int")
+}
+
 func TestOutputsCanHaveSameNameAsOtherNodes(t *testing.T) {
 	t.Parallel()
 	// here we have an output with the same name as a config variable

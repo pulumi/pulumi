@@ -1274,7 +1274,7 @@ func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display
 
 func (b *cloudBackend) isNeoFeaturesEnabled(opts display.Options) bool {
 	// Have Neo features been requested by specifying the --neo flag to the cli
-	if !opts.ShowNeoFeatures {
+	if !opts.ShowNeoFeatures && !opts.StartNeoTaskOnError {
 		return false
 	}
 
@@ -1457,12 +1457,23 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 	)
 	renderer.ProcessEventSlice(events)
 
-	permalink := b.getPermalink(update, updateMeta.version, dryRun)
 	if renderer.OutputIncludesFailure() {
-		summary, err := b.summarizeErrorWithNeo(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
-		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
-		// if we can't generate a summary.
-		display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink)
+		if op.Opts.Display.StartNeoTaskOnError {
+			taskResp, taskErr := b.createNeoTaskOnError(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+			stackID, err := b.getCloudStackIdentifier(stack.Ref())
+			if err != nil {
+				return
+			}
+			display.RenderNeoTaskCreated(taskResp, taskErr, b.CloudConsoleURL(), stackID.Owner, op.Opts.Display)
+		}
+
+		if op.Opts.Display.ShowNeoFeatures {
+			permalink := b.getPermalink(update, updateMeta.version, dryRun)
+			summary, err := b.summarizeErrorWithNeo(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+			// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
+			// if we can't generate a summary.
+			display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink)
+		}
 	}
 }
 
@@ -1495,6 +1506,26 @@ func (b *cloudBackend) summarizeErrorWithNeo(
 	return &display.NeoErrorSummaryMetadata{
 		Summary: summary,
 	}, nil
+}
+
+// createNeoTaskOnError creates a Neo agent task to help debug errors that occurred during an operation.
+func (b *cloudBackend) createNeoTaskOnError(
+	ctx context.Context, pulumiOutput string, stackRef backend.StackReference, opts display.Options,
+) (*client.NeoTaskResponse, error) {
+	if len(pulumiOutput) == 0 {
+		return nil, nil
+	}
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	content := fmt.Sprintf(
+		"Help me debug the following Pulumi error for project %s and stack %s:\n\n%s",
+		stackID.Project, stackID.Stack.String(), pulumiOutput)
+
+	return b.client.CreateNeoTask(ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project)
 }
 
 type updateMetadata struct {
