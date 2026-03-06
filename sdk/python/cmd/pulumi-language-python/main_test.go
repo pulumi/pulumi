@@ -248,7 +248,7 @@ func pulumiWheel(t *testing.T) string {
 	return ""
 }
 
-func TestDeterminePulumiPackages(t *testing.T) {
+func TestListPulumiPackageInfos(t *testing.T) {
 	t.Parallel()
 
 	for _, toolchainName := range []string{"pip", "poetry", "uv"} {
@@ -257,11 +257,13 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			cwd := t.TempDir()
 			opts := getOptions(t, toolchainName, cwd)
 			createVenv(t, cwd, toolchainName, opts)
+			tc, err := toolchain.ResolveToolchain(opts)
+			require.NoError(t, err)
 
-			packages, err := determinePulumiPackages(t.Context(), opts)
+			infos, err := listPulumiPackageInfos(t.Context(), tc)
 
 			require.NoError(t, err)
-			require.Empty(t, packages)
+			require.Empty(t, infos)
 		})
 
 		t.Run(toolchainName+"/non-empty", func(t *testing.T) {
@@ -270,15 +272,14 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			opts := getOptions(t, toolchainName, cwd)
 
 			createVenv(t, cwd, toolchainName, opts, pulumiWheel(t), "pulumi-random", "pip-install-test")
+			tc, err := toolchain.ResolveToolchain(opts)
+			require.NoError(t, err)
 
-			packages, err := determinePulumiPackages(t.Context(), opts)
+			infos, err := listPulumiPackageInfos(t.Context(), tc)
 
 			require.NoError(t, err)
-			require.NotEmpty(t, packages)
-			require.Len(t, packages, 1)
-			random := packages[0]
-			require.Equal(t, "pulumi_random", random.Name)
-			require.NotEmpty(t, random.Location)
+			require.Len(t, infos, 1)
+			require.Equal(t, "pulumi-random", infos[0].DependencyInfo.Name)
 		})
 
 		t.Run(toolchainName+"/pulumiplugin", func(t *testing.T) {
@@ -317,15 +318,14 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			require.NoError(t, err)
 			t.Logf("Wrote pulumi-plugin.json file: %s", path)
 
-			packages, err := determinePulumiPackages(t.Context(), opts)
+			infos, err := listPulumiPackageInfos(t.Context(), tc)
 
 			require.NoError(t, err)
-			require.Len(t, packages, 1)
-			pipInstallTest := packages[0]
-			assert.Equal(t, "pip-install-test", pipInstallTest.Name)
-			assert.NotEmpty(t, pipInstallTest.Location)
+			require.Len(t, infos, 1)
+			pipInstallTest := infos[0]
+			assert.Equal(t, "pip-install-test", pipInstallTest.DependencyInfo.Name)
 
-			plugin, err := determinePackageDependency(pipInstallTest)
+			plugin, err := packageDependencyFromPluginJSON(pipInstallTest.DependencyInfo, pipInstallTest.PluginJSON)
 			require.NoError(t, err)
 			require.NotNil(t, plugin)
 			assert.Equal(t, "thing1", plugin.Name)
@@ -346,15 +346,17 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			require.NoError(t, err)
 			addPackage(t, opts, fooSdkDir)
 
-			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
-			packages, err := determinePulumiPackages(t.Context(), opts)
+			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
-			require.Len(t, packages, 1)
-			assert.Equal(t, "pulumi_foo", packages[0].Name)
-			assert.NotEmpty(t, packages[0].Location)
+
+			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
+			infos, err := listPulumiPackageInfos(t.Context(), tc)
+			require.NoError(t, err)
+			require.Len(t, infos, 1)
+			assert.Equal(t, "pulumi-foo", infos[0].DependencyInfo.Name)
 
 			// There should be no associated plugin since its `resource` field is set to `false`.
-			plugin, err := determinePackageDependency(packages[0])
+			plugin, err := packageDependencyFromPluginJSON(infos[0].DependencyInfo, infos[0].PluginJSON)
 			require.NoError(t, err)
 			assert.Nil(t, plugin)
 		})
@@ -371,14 +373,14 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			require.NoError(t, err)
 			addPackage(t, opts, oldSdkDir)
 
-			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
-			packages, err := determinePulumiPackages(t.Context(), opts)
+			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
-			assert.NotEmpty(t, packages)
-			require.Len(t, packages, 1)
-			old := packages[0]
-			assert.Equal(t, "pulumi_old", old.Name)
-			assert.NotEmpty(t, old.Location)
+
+			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
+			infos, err := listPulumiPackageInfos(t.Context(), tc)
+			require.NoError(t, err)
+			require.Len(t, infos, 1)
+			assert.Equal(t, "pulumi-old", infos[0].DependencyInfo.Name)
 		})
 
 		t.Run(toolchainName+"/pulumi-policy", func(t *testing.T) {
@@ -388,11 +390,14 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			opts := getOptions(t, toolchainName, cwd)
 			createVenv(t, cwd, toolchainName, opts, pulumiWheel(t), "pulumi-policy")
 
+			tc, err := toolchain.ResolveToolchain(opts)
+			require.NoError(t, err)
+
 			// The package should not be considered a Pulumi package since it is hardcoded not to be,
 			// since it does not have an associated plugin.
-			packages, err := determinePulumiPackages(t.Context(), opts)
+			infos, err := listPulumiPackageInfos(t.Context(), tc)
 			require.NoError(t, err)
-			assert.Empty(t, packages)
+			assert.Empty(t, infos)
 		})
 	}
 }
