@@ -82,11 +82,11 @@ func main() {
 		_, err = s3.NewBucketObject(ctx, "first", &s3.BucketObjectArgs{
 			Bucket:      bucket.ID(),
 			Source:      pulumi.NewStringAsset(filebase64OrPanic("./base64.txt")),
-			ContentType: pulumi.String(fileMimeType),
+			ContentType: pulumi.String(pulumi.String(fileMimeType)),
 			Tags: pulumi.StringMap{
-				"stack":   pulumi.String(currentStack),
-				"project": pulumi.String(currentProject),
-				"cwd":     pulumi.String(workingDirectory),
+				"stack":   pulumi.String(pulumi.String(currentStack)),
+				"project": pulumi.String(pulumi.String(currentProject)),
+				"cwd":     pulumi.String(pulumi.String(workingDirectory)),
 			},
 		})
 		if err != nil {

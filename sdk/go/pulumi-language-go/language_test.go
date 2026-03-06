@@ -159,13 +159,6 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 			filepath.Join("testdata", "overrides", "l2-resource-elide-unknowns"),
 		},
 	},
-
-	// TODO: cannot use notSecret (variable of type string) as pulumi.Input value in argument to ctx.Export
-	"l1-builtin-secret": {
-		Paths: []string{
-			filepath.Join("testdata", "overrides", "l1-builtin-secret"),
-		},
-	},
 }
 
 func TestLanguage(t *testing.T) {

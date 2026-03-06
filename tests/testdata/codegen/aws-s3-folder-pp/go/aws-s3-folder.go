@@ -35,9 +35,9 @@ func main() {
 		for key0, val0 := range fileNames0 {
 			__res, err := s3.NewBucketObject(ctx, fmt.Sprintf("files-%v", key0), &s3.BucketObjectArgs{
 				Bucket:      siteBucket.ID(),
-				Key:         pulumi.String(val0),
+				Key:         pulumi.String(pulumi.String(val0)),
 				Source:      pulumi.NewFileAsset(fmt.Sprintf("%v/%v", siteDir, val0)),
-				ContentType: pulumi.String(val0),
+				ContentType: pulumi.String(pulumi.String(val0)),
 			}, pulumi.DeletedWith(siteBucket))
 			if err != nil {
 				return err

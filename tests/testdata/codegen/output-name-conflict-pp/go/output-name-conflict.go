@@ -12,7 +12,7 @@ func main() {
 		if param := cfg.Get("cidrBlock"); param != "" {
 			cidrBlock = param
 		}
-		ctx.Export("cidrBlock", cidrBlock)
+		ctx.Export("cidrBlock", pulumi.String(cidrBlock))
 		return nil
 	})
 }

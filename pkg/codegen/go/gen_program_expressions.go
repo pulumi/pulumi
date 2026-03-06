@@ -251,6 +251,23 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		case *model.TemplateExpression:
 			g.genTemplateExpression(w, arg, expr.Type())
 		case *model.ScopeTraversalExpression:
+			// When converting a plain traversal to Output<T>, emit an explicit Pulumi input cast
+			// for scalar types (e.g. pulumi.String(x)) so calls like ctx.Export compile.
+			if isOutput && !isFromOutput {
+				scalarType := to
+				if cns, ok := scalarType.(*model.ConstType); ok {
+					scalarType = cns.Type
+				}
+				switch scalarType {
+				case model.StringType, model.IntType, model.NumberType, model.BoolType, model.DynamicType:
+					if typeName := g.argumentTypeName(to, isOutput); typeName != "" {
+						g.Fgenf(w, "%s(", typeName)
+						g.genScopeTraversalExpression(w, arg, expr.Type())
+						g.Fgenf(w, ")")
+						return
+					}
+				}
+			}
 			g.genScopeTraversalExpression(w, arg, expr.Type())
 		default:
 			// Add a cast to the type we expect if needed
