@@ -753,24 +753,33 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 func TestInstallPluginWithBinaryPaths(t *testing.T) {
 	t.Parallel()
 
-	ws := newInvariantWorkspace(t, nil, []string{
-		"/path/to/binary/pulumi-resource-test-provider",
-	}, []invariantPlugin{})
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{name: "absolute", source: "/path/to/binary/pulumi-resource-test-provider"},
+		{name: "relative", source: "./pulumi-resource-test-provider"},
+	}
 
-	rws := &recordingWorkspace{ws, nil}
-	defer rws.save(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	runPlugin, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
-		Source: "/path/to/binary/pulumi-resource-test-provider",
-	}, nil, "", packageinstallation.Options{
-		Concurrency: 1,
-	}, nil, rws)
-	require.NoError(t, err)
-	assert.Equal(t, workspace.PackageSpec{
-		Source: "/path/to/binary/pulumi-resource-test-provider",
-	}, spec)
-	_, err = runPlugin(t.Context(), "/tmp")
-	require.NoError(t, err)
+			ws := newInvariantWorkspace(t, nil, []string{tt.source}, []invariantPlugin{})
+			rws := &recordingWorkspace{ws, nil}
+			defer rws.save(t)
+
+			runPlugin, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+				Source: tt.source,
+			}, nil, "", packageinstallation.Options{
+				Concurrency: 1,
+			}, nil, rws)
+			require.NoError(t, err)
+			assert.Equal(t, workspace.PackageSpec{Source: tt.source}, spec)
+			_, err = runPlugin(t.Context(), "/tmp")
+			require.NoError(t, err)
+		})
+	}
 }
 
 // TestInstallPluginWithMultipleVersions tests that when two dependencies require
