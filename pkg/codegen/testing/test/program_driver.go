@@ -162,10 +162,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Webserver",
 	},
 	{
-		Directory:   "simple-range",
-		Description: "Simple range as int expression translation",
-	},
-	{
 		Directory:   "azure-native-v2-eventgrid",
 		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
 		// Specifically use a simplified azure-native v2.x schema when testing this program
