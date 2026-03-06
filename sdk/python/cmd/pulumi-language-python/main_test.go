@@ -277,7 +277,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			require.NotEmpty(t, packages)
 			require.Len(t, packages, 1)
 			random := packages[0]
-			require.Equal(t, "pulumi_random", random.Name)
+			require.Equal(t, "pulumi-random", random.Name)
 			require.NotEmpty(t, random.Location)
 		})
 
@@ -350,7 +350,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			packages, err := determinePulumiPackages(t.Context(), opts)
 			require.NoError(t, err)
 			require.Len(t, packages, 1)
-			assert.Equal(t, "pulumi_foo", packages[0].Name)
+			assert.Equal(t, "pulumi-foo", packages[0].Name)
 			assert.NotEmpty(t, packages[0].Location)
 
 			// There should be no associated plugin since its `resource` field is set to `false`.
@@ -377,7 +377,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			assert.NotEmpty(t, packages)
 			require.Len(t, packages, 1)
 			old := packages[0]
-			assert.Equal(t, "pulumi_old", old.Name)
+			assert.Equal(t, "pulumi-old", old.Name)
 			assert.NotEmpty(t, old.Location)
 		})
 

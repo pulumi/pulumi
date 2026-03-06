@@ -272,6 +272,9 @@ func (p *poetry) ListPackages(ctx context.Context, transitive bool) ([]PythonPac
 		return nil, fmt.Errorf("parsing `python %s` output: %w", strings.Join(cmd.Args, " "), err)
 	}
 
+	for i := range packages {
+		packages[i].Name = normalizePythonPackageName(packages[i].Name)
+	}
 	return packages, nil
 }
 

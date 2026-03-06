@@ -338,3 +338,13 @@ func getPythonVersion(ctx context.Context,
 	}
 	return pythonVersion, nil
 }
+
+// pythonNormRe matches runs of PEP 503 separator characters.
+var pythonNormRe = regexp.MustCompile(`[-_.]+`)
+
+// normalizePythonPackageName normalizes a Python package name to its canonical form per PEP 503:
+// lowercase, with runs of '-', '_', and '.' replaced by a single '-'.
+// https://peps.python.org/pep-0503/
+func normalizePythonPackageName(name string) string {
+	return pythonNormRe.ReplaceAllString(strings.ToLower(name), "-")
+}
