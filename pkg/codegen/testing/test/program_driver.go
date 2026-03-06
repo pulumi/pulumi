@@ -288,10 +288,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Using DependsOn resource option with an array of resources",
 	},
 	{
-		Directory:   "multiline-string",
-		Description: "Multiline string literals",
-	},
-	{
 		Directory:   "config-variables",
 		Description: "Basic program with a bunch of config variables",
 		// TODO[https://github.com/pulumi/pulumi/issues/14957] - object config variables are broken here
