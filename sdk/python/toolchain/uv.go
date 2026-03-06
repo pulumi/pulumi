@@ -331,6 +331,9 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 		return nil, fmt.Errorf("parsing package list: %w", err)
 	}
 
+	for i := range packages {
+		packages[i].Name = normalizePythonPackageName(packages[i].Name)
+	}
 	return packages, nil
 }
 
