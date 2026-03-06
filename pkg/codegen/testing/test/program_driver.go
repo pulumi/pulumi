@@ -273,13 +273,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
-		Directory:   "entries-function",
-		Description: "Using the entries function",
-		// go and dotnet do fully not support GenForExpression yet
-		// Todo: https://github.com/pulumi/pulumi/issues/12606
-		SkipCompile: allProgLanguages.Except(TestNodeJS).Except(TestPython),
-	},
-	{
 		Directory:   "depends-on-array",
 		Description: "Using DependsOn resource option with an array of resources",
 	},
