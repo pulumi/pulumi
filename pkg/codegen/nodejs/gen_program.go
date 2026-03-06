@@ -48,8 +48,9 @@ type generator struct {
 
 	program     *pcl.Program
 	diagnostics hcl.Diagnostics
-	esm         bool
 
+	// Generate ESM (ECMAScript modules) output instead of CJS (CommonJS), see https://nodejs.org/api/esm.html
+	esm                     bool
 	asyncMain               bool
 	configCreated           bool
 	isComponent             bool
