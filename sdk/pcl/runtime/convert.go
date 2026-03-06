@@ -392,6 +392,10 @@ func propertyValueToCty(
 			Args:            args,
 			AcceptResources: true,
 		})
+		if err != nil {
+			return cty.NilVal, fmt.Errorf("invoke getResource for %s: %w", ref.URN, err)
+		}
+
 		marshalOpts := plugin.MarshalOptions{
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
@@ -405,7 +409,7 @@ func propertyValueToCty(
 
 		outputs["id"] = ref.ID
 		outputs["urn"] = resource.NewProperty(string(ref.URN))
-		outputs["__name"] = resource.NewProperty(string(ref.URN.Name()))
+		outputs["__name"] = resource.NewProperty(ref.URN.Name())
 		outputs["__type"] = resource.NewProperty(string(ref.URN.Type()))
 
 		return propertyValueToCty(ctx, monitor, resource.NewProperty(outputs))

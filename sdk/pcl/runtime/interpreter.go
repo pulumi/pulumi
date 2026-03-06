@@ -466,17 +466,17 @@ func unwrapOutputs(value resource.PropertyValue) (resource.PropertyValue, []reso
 			arr = append(arr, val)
 			deps = append(deps, d...)
 		}
-		return resource.NewArrayProperty(arr), deps
+		return resource.NewProperty(arr), deps
 	}
 	if value.IsObject() {
-		obj := map[resource.PropertyKey]resource.PropertyValue{}
+		obj := resource.PropertyMap{}
 		var deps []resource.URN
 		for k, v := range value.ObjectValue() {
 			val, d := unwrapOutputs(v)
 			obj[k] = val
 			deps = append(deps, d...)
 		}
-		return resource.NewObjectProperty(obj), deps
+		return resource.NewProperty(obj), deps
 	}
 	return value, nil
 }
@@ -519,7 +519,7 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 		for i, elem := range array {
 			collapsed[i] = collapseResourceReferences(elem)
 		}
-		return resource.NewArrayProperty(collapsed)
+		return resource.NewProperty(collapsed)
 	case value.IsObject():
 		obj := value.ObjectValue()
 		collapsed := make(resource.PropertyMap, len(obj))
@@ -538,7 +538,7 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 				ID:  id,
 			})
 		}
-		return resource.NewObjectProperty(collapsed)
+		return resource.NewProperty(collapsed)
 	default:
 		return value
 	}
@@ -1061,9 +1061,9 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	// Add schema-based replaceOnChanges paths.
 	if schemaResource != nil {
 		schemaReplaceOnChanges, _ := schemaResource.ReplaceOnChanges()
-		for _, path := range schema.PropertyListJoinToString(schemaReplaceOnChanges, func(s string) string { return s }) {
-			request.ReplaceOnChanges = append(request.ReplaceOnChanges, path)
-		}
+		request.ReplaceOnChanges = append(
+			request.ReplaceOnChanges,
+			schema.PropertyListJoinToString(schemaReplaceOnChanges, func(s string) string { return s })...)
 	}
 
 	// Default parent to the stack if not specified
@@ -1212,7 +1212,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 
 	result := resource.NewProperty(resource.Output{
-		Element:      resource.NewObjectProperty(componentObject),
+		Element:      resource.NewProperty(componentObject),
 		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
 		Known:        true,
 	})
