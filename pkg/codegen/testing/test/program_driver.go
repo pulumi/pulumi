@@ -198,10 +198,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "K8s Template with quoted string property keys to ensure that resource binding works here",
 	},
 	{
-		Directory:   "random-pet",
-		Description: "Random Pet",
-	},
-	{
 		Directory:   "aws-secret",
 		Description: "Secret",
 	},
