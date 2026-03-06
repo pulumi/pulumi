@@ -35,12 +35,12 @@ const reservedWords: string[] = ["options", "package"];
 
 (function main(): void {
     if (!process.argv[2]) {
-        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts]");
+        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts] [output-dir]");
     }
 
     const specification: string = path.resolve(process.cwd(), process.argv[2]);
     const boilerplate: string = path.resolve(process.cwd(), process.argv[3] ?? path.join("boilerplate", "testing.ts"));
-    const output: string = path.join(process.cwd(), "output");
+    const output: string = path.resolve(process.cwd(), process.argv[4] ?? "output");
 
     const spec: Structure = JSON.parse(fs.readFileSync(specification, "utf-8")) as Structure;
     fs.mkdirSync(output, { recursive: true });
@@ -51,6 +51,16 @@ const reservedWords: string[] = ["options", "package"];
     const source: SourceFile = project.createSourceFile(index, fs.readFileSync(boilerplate, "utf-8"), {
         overwrite: true,
     });
+
+    // When emitting into the main automation package (via an explicit output directory),
+    // rewrite boilerplate imports so they are correct relative to the new location.
+    if (process.argv[4]) {
+        for (const declaration of source.getImportDeclarations()) {
+            if (declaration.getModuleSpecifierValue() === "../../../automation/cmd") {
+                declaration.setModuleSpecifier("../cmd");
+            }
+        }
+    }
 
     const baseOptionsType = source.getTypeAlias("BaseOptions");
 

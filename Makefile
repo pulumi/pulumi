@@ -77,7 +77,7 @@ generate-cli-spec::
 
 .PHONY: generate-nodejs-automation-api
 generate-nodejs-automation-api:: generate-cli-spec
-	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../specification.json boilerplate/standard.ts
+	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../specification.json boilerplate/standard.ts ../../automation/interface
 
 .PHONY: test-nodejs-automation-api
 test-nodejs-automation-api:: generate-cli-spec
