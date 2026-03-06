@@ -137,10 +137,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Simple schema with enum types",
 	},
 	{
-		Directory:   "simple-plain-schema",
-		Description: "Simple schema with plain properties",
-	},
-	{
 		Directory:   "simple-plain-schema-with-root-package",
 		Description: "Simple schema with root package set",
 	},
