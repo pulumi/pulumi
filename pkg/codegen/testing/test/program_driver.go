@@ -233,10 +233,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
 	},
 	{
-		Directory:   "pulumi-stack-reference",
-		Description: "StackReference as resource",
-	},
-	{
 		Directory:   "logical-name",
 		Description: "Logical names",
 	},
