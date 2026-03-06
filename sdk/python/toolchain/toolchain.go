@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -65,12 +66,6 @@ type PythonOptions struct {
 	Toolchain toolchain
 }
 
-type PythonPackage struct {
-	Name     string `json:"name"`
-	Version  string `json:"version"`
-	Location string `json:"location"`
-}
-
 type Info struct {
 	// The path to the python executable that's being used
 	PythonExecutable string
@@ -94,7 +89,7 @@ type Toolchain interface {
 	// ValidateVenv checks if the virtual environment of the toolchain is valid.
 	ValidateVenv(ctx context.Context) error
 	// ListPackages returns a list of Python packages installed in the toolchain.
-	ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error)
+	ListPackages(ctx context.Context, transitive bool) ([]plugin.DependencyInfo, error)
 	// Command returns an *exec.Cmd for running `python` using the configured toolchain.
 	Command(ctx context.Context, args ...string) (*exec.Cmd, error)
 	// ModuleCommand returns an *exec.Cmd for running an installed python module using the configured toolchain.

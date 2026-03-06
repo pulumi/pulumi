@@ -32,6 +32,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -143,8 +144,8 @@ func (p *pip) LinkPackages(ctx context.Context, packages map[string]string) erro
 	return nil
 }
 
-func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
-	args := []string{"list", "-v", "--format", "json"}
+func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
+	args := []string{"list", "--format", "json"}
 	if !transitive {
 		args = append(args, "--not-required")
 	}
@@ -159,14 +160,18 @@ func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]PythonPackag
 		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(cmd.Args, " "), err)
 	}
 
-	var packages []PythonPackage
+	var raw []struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
 	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
-	if err := jsonDecoder.Decode(&packages); err != nil {
+	if err := jsonDecoder.Decode(&raw); err != nil {
 		return nil, fmt.Errorf("parsing `python %s` output: %w", strings.Join(cmd.Args, " "), err)
 	}
 
-	for i := range packages {
-		packages[i].Name = normalizePythonPackageName(packages[i].Name)
+	packages := make([]plugin.DependencyInfo, len(raw))
+	for i, r := range raw {
+		packages[i] = plugin.DependencyInfo{Name: normalizePythonPackageName(r.Name), Version: r.Version}
 	}
 	return packages, nil
 }
