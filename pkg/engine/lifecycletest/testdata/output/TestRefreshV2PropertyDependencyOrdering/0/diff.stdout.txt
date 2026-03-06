@@ -1,6 +1,4 @@
-<{%fg 2%}>+ pulumi:providers:pkg: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkg::default]
-<{%reset%}><{%reset%}><{%reset%}>  pkg:m:t: (same)
+<{%reset%}>  pkg:m:t: (same)
 <{%reset%}>    [id=1]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkg:m:t::new]
 <{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkg: (same)
