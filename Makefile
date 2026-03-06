@@ -292,5 +292,6 @@ work:
 		sdk \
 		sdk/go/pulumi-language-go \
 		sdk/nodejs/cmd/pulumi-language-nodejs \
+		sdk/nodejs/cmd/pulumi-language-bun \
 		sdk/python/cmd/pulumi-language-python \
 		tests

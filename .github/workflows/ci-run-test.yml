@@ -358,6 +358,7 @@ jobs:
           make build_package
           cd bin
           yarn link
+          bun link
       - name: Ensure dependencies for the Python SDK
         run: |
           cd sdk/python

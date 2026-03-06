@@ -25,7 +25,6 @@ import * as parseFunctionModule from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
 import { getModuleFromPath } from "./package";
 import * as utils from "./utils";
-import * as v8 from "./v8";
 
 /**
  * @internal
@@ -489,6 +488,10 @@ async function analyzeFunctionInfoAsync(
     serialize: (o: any) => boolean,
     logInfo?: boolean,
 ): Promise<FunctionInfo> {
+    if (process.versions.bun) {
+        throw new Error("Function serialization is not supported when using bun as a runtime.");
+    }
+    const v8 = await import("./v8");
     // logInfo = logInfo || func.name === "addHandler";
 
     const { file, line, column } = await v8.getFunctionLocationAsync(func);
