@@ -1,6 +1,6 @@
 module example.com/pulumi-secret/sdk/go/v14
 
-go 1.20
+go 1.25
 
 require github.com/pulumi/pulumi/sdk/v3 v3.30.0
 
