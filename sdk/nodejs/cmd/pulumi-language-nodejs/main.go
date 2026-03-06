@@ -1266,22 +1266,27 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		return nil, fmt.Errorf("could not resolve packagemanager: %w", err)
 	}
 
-	nodeExecutable, err := executable.FindExecutable("node")
-	if err != nil {
-		return nil, fmt.Errorf("could not find executable 'node': %w", err)
+	runtimeExec := host.runtime
+	if runtimeExec == "nodejs" {
+		runtimeExec = "node"
 	}
 
-	var nodeVersion, pmVersion string
+	runtimeExecutable, err := executable.FindExecutable(runtimeExec)
+	if err != nil {
+		return nil, fmt.Errorf("could not find executable %q: %w", runtimeExec, err)
+	}
+
+	var runtimeVersion, pmVersion string
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		cmd := exec.CommandContext(ctx, "node", "--version")
+		cmd := exec.CommandContext(ctx, runtimeExec, "--version")
 		var out []byte
 		if out, err = cmd.Output(); err != nil {
-			// Don't fail if we could not determine the node version
+			// Don't fail if we could not determine the runtime version
 			return nil
 		}
-		nodeVersion = strings.TrimSpace(string(out))
+		runtimeVersion = strings.TrimSpace(string(out))
 		return nil
 	})
 	g.Go(func() error {
@@ -1297,7 +1302,7 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 
 	if err := g.Wait(); err != nil {
 		return &pulumirpc.AboutResponse{
-			Executable: nodeExecutable,
+			Executable: runtimeExecutable,
 			Metadata: map[string]string{
 				"packagemanager": pm.Name(),
 			},
@@ -1305,8 +1310,8 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 	}
 
 	return &pulumirpc.AboutResponse{
-		Executable: nodeExecutable,
-		Version:    nodeVersion,
+		Executable: runtimeExecutable,
+		Version:    runtimeVersion,
 		Metadata: map[string]string{
 			"packagemanager":        pm.Name(),
 			"packagemanagerVersion": pmVersion,
@@ -1338,7 +1343,11 @@ func (host *nodeLanguageHost) Handshake(ctx context.Context,
 func (host *nodeLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	pkgManager, err := npm.ResolvePackageManager(npm.AutoPackageManager, req.Info.ProgramDirectory)
+	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse options: %w", err)
+	}
+	pkgManager, err := npm.ResolvePackageManager(opts.packagemanager, req.Info.ProgramDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine package manager: %w", err)
 	}
