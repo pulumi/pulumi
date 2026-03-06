@@ -5200,7 +5200,7 @@ func GeneratePackage(tool string,
 		var gomod modfile.File
 		err = gomod.AddModuleStmt(modulePath)
 		contract.AssertNoErrorf(err, "could not add module statement to go.mod")
-		err = gomod.AddGoStmt("1.20")
+		err = gomod.AddGoStmt("1.25")
 		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
 		pulumiVersion := "v3.30.0"
