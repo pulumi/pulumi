@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -42,6 +43,7 @@ import (
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -965,7 +967,8 @@ func NewImportCmd() *cobra.Command {
 				Experimental:         env.Experimental.Value(),
 			}
 
-			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
+			importStart := time.Now()
+			changes, err := backend.ImportStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -975,6 +978,15 @@ func NewImportCmd() *cobra.Command {
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			}, imports)
+			importDuration := time.Since(importStart)
+
+			if jsonDisplay {
+				result := "succeeded"
+				if err != nil {
+					result = "failed"
+				}
+				_ = ui.PrintOperationSummary(result, changes, importDuration, nil)
+			}
 
 			if generateCode {
 				deployment, err := getCurrentDeploymentForStack(ctx, s)
