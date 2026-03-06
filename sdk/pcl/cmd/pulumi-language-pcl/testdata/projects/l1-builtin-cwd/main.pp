@@ -1,0 +1,3 @@
+output "cwdOutput" {
+  value = cwd()
+}

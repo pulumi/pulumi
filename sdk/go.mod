@@ -33,7 +33,7 @@ require (
 	google.golang.org/grpc v1.78.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-	pgregory.net/rapid v0.5.5
+	pgregory.net/rapid v0.6.1
 )
 
 require (
@@ -81,6 +81,7 @@ require (
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
+	github.com/fatih/color v1.16.0 // indirect
 	github.com/git-pkgs/packageurl-go v0.2.1 // indirect
 	github.com/git-pkgs/purl v0.1.8 // indirect
 	github.com/git-pkgs/vers v0.2.2 // indirect
