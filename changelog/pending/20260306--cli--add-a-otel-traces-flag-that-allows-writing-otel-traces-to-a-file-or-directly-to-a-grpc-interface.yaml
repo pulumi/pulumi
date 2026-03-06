@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add a --otel-traces flag, that allows writing otel traces to a file, or directly to a grpc interface
