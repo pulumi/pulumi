@@ -1058,6 +1058,14 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		}
 	}
 
+	// Add schema-based replaceOnChanges paths.
+	if schemaResource != nil {
+		schemaReplaceOnChanges, _ := schemaResource.ReplaceOnChanges()
+		for _, path := range schema.PropertyListJoinToString(schemaReplaceOnChanges, func(s string) string { return s }) {
+			request.ReplaceOnChanges = append(request.ReplaceOnChanges, path)
+		}
+	}
+
 	// Default parent to the stack if not specified
 	if request.Parent == "" {
 		request.Parent = i.stackURN
