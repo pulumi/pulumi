@@ -2,8 +2,6 @@ module github.com/pulumi/pulumi/sdk/pcl/v3
 
 go 1.25.6
 
-replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
-
 require (
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/pulumi/pulumi/pkg/v3 v3.225.0
