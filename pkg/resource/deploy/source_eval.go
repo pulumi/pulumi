@@ -1243,12 +1243,45 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		}
 
 		rawProviderRef = fmt.Sprintf("%s::%s", provURN.GetStringValue(), provID.GetStringValue())
-	} else {
-		providerReq, err = parseProviderRequest(
-			tok.Package(), req.GetVersion(),
-			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
-
+	} else if req.Provider != "" {
 		rawProviderRef = req.GetProvider()
+	} else {
+		// Use the provider information from __self__
+		args := req.GetArgs()
+		if args == nil {
+			args = &structpb.Struct{}
+		}
+
+		self, ok := args.Fields["__self__"]
+		if ok {
+			selfFields := self.GetStructValue().Fields
+			if selfFields == nil {
+				return nil, errors.New("missing __self__ argument properties for method call")
+			}
+
+			urn, has := self.GetStructValue().Fields["urn"]
+			if !has {
+				return nil, errors.New("missing __self__.urn for method call")
+			}
+
+			goal, has := func() (resource.Goal, bool) {
+				rm.resGoalsLock.Lock()
+				defer rm.resGoalsLock.Unlock()
+				g, ok := rm.resGoals[resource.URN(urn.GetStringValue())]
+				return g, ok
+			}()
+			if !has {
+				return nil, fmt.Errorf("unknown resource %v", urn.GetStringValue())
+			}
+
+			rawProviderRef = goal.Provider
+		}
+
+		if rawProviderRef == "" {
+			providerReq, err = parseProviderRequest(
+				tok.Package(), req.GetVersion(),
+				req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+		}
 	}
 	if err != nil {
 		return nil, err
