@@ -186,8 +186,9 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	}
 
 	// Print the individual remediation's name and target resource type/name.
+	resText := resourceText(payload.ResourceURN, opts)
 	remediationLine := fmt.Sprintf("%s[remediate]  %s%s  (%s: %s)",
-		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), resourceText(payload.ResourceURN, opts))
+		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), resText)
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
