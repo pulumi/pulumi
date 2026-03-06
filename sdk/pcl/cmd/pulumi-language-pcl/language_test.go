@@ -94,15 +94,14 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-resource-option-replacement-trigger": "replacement trigger value remains computed/unknown instead of resolved string on update",
-	"l2-component-property-deps":             "unexpected property dependency on custom1 where dependency set should be empty",
-	"l2-resource-option-replace-on-changes":  "schema replaceProp change is treated as update instead of replacement",
-	"l2-parameterized-resource-twice":        "dependency loading reports duplicate package definition for hipackage",
-	"l2-parameterized-invoke":                "dependency loading reports duplicate package definition for subpackage",
-	"l2-parameterized-resource":              "dependency loading reports duplicate package definition for subpackage",
-	"l2-explicit-parameterized-provider":     "dependency loading reports duplicate package definition for goodbye",
-	"l3-range-resource-output-traversal":     "snapshot contains 4 resources while test expects 5",
-	"l3-range":                               "range not yet supported",
+	"l2-component-property-deps":            "unexpected property dependency on custom1 where dependency set should be empty",
+	"l2-resource-option-replace-on-changes": "schema replaceProp change is treated as update instead of replacement",
+	"l2-parameterized-resource-twice":       "dependency loading reports duplicate package definition for hipackage",
+	"l2-parameterized-invoke":               "dependency loading reports duplicate package definition for subpackage",
+	"l2-parameterized-resource":             "dependency loading reports duplicate package definition for subpackage",
+	"l2-explicit-parameterized-provider":    "dependency loading reports duplicate package definition for goodbye",
+	"l3-range-resource-output-traversal":    "snapshot contains 4 resources while test expects 5",
+	"l3-range":                              "range not yet supported",
 }
 
 func TestLanguage(t *testing.T) {
