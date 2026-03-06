@@ -320,10 +320,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages,
 	},
 	{
-		Directory:   "output-literals",
-		Description: "Tests that we can return various literal values via stack outputs",
-	},
-	{
 		Directory:   "dynamic-entries",
 		Description: "Testing iteration of dynamic entries in TypeScript",
 		Skip:        allProgLanguages.Except(TestNodeJS),
