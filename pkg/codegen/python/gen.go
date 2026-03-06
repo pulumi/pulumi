@@ -655,7 +655,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		}
 
 		if readme == "" {
-			readme := mod.pkg.Description().Render()
+			readme = mod.pkg.Description().Render()
 			if readme != "" && readme[len(readme)-1] != '\n' {
 				readme += "\n"
 			}
@@ -1694,8 +1694,11 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 
 func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) string {
 	var properties []*schema.Property
+	var comment schema.Documentation
+
 	if obj := returnTypeObject(method.Function); obj != nil {
 		properties = obj.Properties
+		comment = obj.Comment
 	} else if method.Function.ReturnTypePlain {
 		properties = []*schema.Property{
 			{
@@ -1711,9 +1714,7 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) s
 	// Produce a class definition with optional """ comment.
 	fmt.Fprintf(w, "    @pulumi.output_type\n")
 	fmt.Fprintf(w, "    class %s:\n", name)
-	if obj := returnTypeObject(method.Function); obj != nil {
-		printDocumentation(w, obj.Comment, "        ")
-	}
+	printDocumentation(w, comment, "        ")
 
 	// Now generate an initializer with properties for all inputs.
 	fmt.Fprintf(w, "        def __init__(__self__")

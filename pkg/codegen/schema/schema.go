@@ -613,7 +613,7 @@ func (d Documentation) Empty() bool {
 	return len(d.source) == 0
 }
 
-func (d *Documentation) Render(options ...RendererOption) string {
+func (d Documentation) Render(options ...RendererOption) string {
 	if d.Empty() {
 		return ""
 	}

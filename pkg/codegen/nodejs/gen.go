@@ -390,15 +390,15 @@ func sanitizeComment(str string) string {
 	return strings.ReplaceAll(str, "*/", "*&#47;")
 }
 
-func printComment(w io.Writer, comment, deprecationMessage, indent string) {
-	if comment == "" && deprecationMessage == "" {
-		return
-	}
-
+func printComment(w io.Writer, comment, indent string) int {
 	lines := strings.Split(sanitizeComment(comment), "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
+	if len(lines) == 0 {
+		return 0
+	}
+
 	fmt.Fprintf(w, "%s/**\n", indent)
 	for _, l := range lines {
 		if l == "" {
@@ -407,11 +407,43 @@ func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 			fmt.Fprintf(w, "%s * %s\n", indent, l)
 		}
 	}
-	if deprecationMessage != "" {
+	fmt.Fprintf(w, "%s */\n", indent)
+	return len(lines)
+}
+
+func printDocumentation(w io.Writer, comment schema.Documentation, indent string) {
+	comment.FilterExamples("typescript")
+	printComment(w, comment.Render(), indent)
+}
+
+func printDocumentationWithDeprecationMessage(w io.Writer, comment, deprecationMessage schema.Documentation, indent string) {
+	comment.FilterExamples("typescript")
+	deprecationMessage.FilterExamples("typescript")
+
+	commentText := comment.Render()
+	deprecationText := deprecationMessage.Render()
+	if commentText == "" && deprecationText == "" {
+		return
+	}
+
+	lines := strings.Split(sanitizeComment(commentText), "\n")
+	for len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+
+	fmt.Fprintf(w, "%s/**\n", indent)
+	for _, l := range lines {
+		if l == "" {
+			fmt.Fprintf(w, "%s *\n", indent)
+		} else {
+			fmt.Fprintf(w, "%s * %s\n", indent, l)
+		}
+	}
+	if deprecationText != "" {
 		if len(lines) > 0 {
 			fmt.Fprintf(w, "%s *\n", indent)
 		}
-		fmt.Fprintf(w, "%s * @deprecated %s\n", indent, deprecationMessage)
+		fmt.Fprintf(w, "%s * @deprecated %s\n", indent, sanitizeComment(deprecationText))
 	}
 	fmt.Fprintf(w, "%s */\n", indent)
 }
@@ -424,15 +456,11 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 ) error {
 	indent := strings.Repeat("    ", level)
 
-	printComment(w, comment, "", indent)
+	printComment(w, comment, indent)
 
 	fmt.Fprintf(w, "%sexport interface %s {\n", indent, name)
 	for _, p := range properties {
-		comment := p.Comment
-		comment.FilterExamples("typescript")
-		deprecationMessage := p.DeprecationMessage
-		deprecationMessage.FilterExamples("typescript")
-		printComment(w, comment.Render(), deprecationMessage.Render(), indent+"    ")
+		printDocumentationWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, indent+"    ")
 
 		prefix := ""
 		if readonly {
@@ -491,7 +519,7 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	//         ...val,
 	defaultProvderName := provideDefaultsFuncNameFromName(name)
 	printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
-		defaultProvderName, name), "", indent)
+		defaultProvderName, name), indent)
 	fmt.Fprintf(w, "%sexport function %s(val: %s): "+
 		"%s {\n", indent, defaultProvderName, name, name)
 	fmt.Fprintf(w, "%s    return {\n", indent)
@@ -614,11 +642,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	info.resourceClassName = name
 
 	// Write the TypeDoc/JSDoc for the resource class
-	deprecatedMessage := r.DeprecationMessage
-	deprecatedMessage.FilterExamples("typescript")
-	comment := r.Comment
-	comment.FilterExamples("typescript")
-	printComment(w, comment.Render(), deprecatedMessage.Render(), "")
+	printDocumentationWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, "")
 
 	var baseType, optionsType string
 	switch {
@@ -706,13 +730,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		allOptionalInputs = allOptionalInputs && !prop.IsRequired()
 	}
 	for _, prop := range r.Properties {
-		comment := prop.Comment
-		comment.FilterExamples("typescript")
-		deprecationMessage := prop.DeprecationMessage
-		deprecationMessage.FilterExamples("typescript")
-		printComment(w,
-			comment.Render(),
-			deprecationMessage.Render(), "    ")
+		printDocumentationWithDeprecationMessage(w, prop.Comment, prop.DeprecationMessage, "    ")
 
 		// Make a little comment in the code so it's easy to pick out output properties.
 		var outcomment string
@@ -981,17 +999,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 		// Write the TypeDoc/JSDoc for the data source function.
 		fmt.Fprint(w, "\n")
-		printComment(w,
-			func() string {
-				comment := fun.Comment
-				comment.FilterExamples("typescript")
-				return comment.Render()
-			}(),
-			func() string {
-				deprecationMessage := fun.DeprecationMessage
-				deprecationMessage.FilterExamples("typescript")
-				return deprecationMessage.Render()
-			}(), "    ")
+		printDocumentationWithDeprecationMessage(w, fun.Comment, fun.DeprecationMessage, "    ")
 
 		// Now, emit the method signature.
 		var args []*schema.Property
@@ -1239,11 +1247,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 	info := functionFileInfo{}
 
 	// Write the TypeDoc/JSDoc for the data source function.
-	printComment(w, func() string {
-		comment := fun.Comment
-		comment.FilterExamples("typescript")
-		return comment.Render()
-	}(), "", "")
+	printDocumentation(w, fun.Comment, "")
 
 	if !fun.DeprecationMessage.Empty() {
 		deprecatedMessage := fun.DeprecationMessage
@@ -1767,9 +1771,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	for _, p := range variables {
 		getfunc, cast := mod.configGetter(p)
 
-		comment := p.Comment
-		comment.FilterExamples("typescript")
-		printComment(w, comment.Render(), "", "")
+		printDocumentation(w, p.Comment, "")
 
 		configFetch := fmt.Sprintf("%s__config.%s(\"%s\")", cast, getfunc, p.Name)
 		// TODO: handle ConstValues https://github.com/pulumi/pulumi/issues/4755
@@ -1986,17 +1988,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		}
 		e.Name = safeName
 
-		printComment(w,
-			func() string {
-				comment := e.Comment
-				comment.FilterExamples("typescript")
-				return comment.Render()
-			}(),
-			func() string {
-				deprecationMessage := e.DeprecationMessage
-				deprecationMessage.FilterExamples("typescript")
-				return deprecationMessage.Render()
-			}(), indent)
+		printDocumentationWithDeprecationMessage(w, e.Comment, e.DeprecationMessage, indent)
 		fmt.Fprintf(w, "%s%s: ", indent, e.Name)
 		if val, ok := e.Value.(string); ok {
 			fmt.Fprintf(w, "%q,\n", val)
@@ -2007,9 +1999,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	fmt.Fprintf(w, "} as const;\n")
 	fmt.Fprintf(w, "\n")
 
-		comment := enum.Comment
-		comment.FilterExamples("typescript")
-		printComment(w, comment.Render(), "", "")
+	printDocumentation(w, enum.Comment, "")
 	fmt.Fprintf(w, "export type %[1]s = (typeof %[1]s)[keyof typeof %[1]s];\n", enumName)
 	return nil
 }
@@ -2088,7 +2078,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		fs.Add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
-			readme := def.Language["nodejs"].(NodePackageInfo).Readme
+		readme := def.Language["nodejs"].(NodePackageInfo).Readme
 		if readme == "" {
 			readme = def.Description.Render()
 			if readme != "" && readme[len(readme)-1] != '\n' {
