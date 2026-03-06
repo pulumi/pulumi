@@ -160,7 +160,7 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false)
 	}
 
-	return nil, fmt.Errorf("no stack named '%s' found", stackName)
+	return nil, backenderr.StackNotFoundError{StackName: stackName}
 }
 
 func requireCurrentStack(

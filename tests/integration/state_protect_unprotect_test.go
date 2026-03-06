@@ -16,7 +16,6 @@ package ints
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -122,11 +121,8 @@ description: A test for protecting and unprotecting resources
 	// Try to destroy - should fail because resources are now protected
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy after protect")
-	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 0xffffffff")
-	} else {
-		assert.ErrorContains(t, err, "exit status 255")
-	}
+	// Exit code 1 is consistent across platforms (unlike -1 which wraps differently).
+	assert.ErrorContains(t, err, "exit status 1")
 
 	// STEP 2: Unprotect a subset of resources to verify partial unprotect works
 	unprotectSubsetArgs := append([]string{"pulumi", "state", "unprotect", "--yes"}, urns[0])

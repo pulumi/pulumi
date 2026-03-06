@@ -21,6 +21,7 @@ import (
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
 	"go.uber.org/automaxprocs/maxprocs"
@@ -64,7 +65,7 @@ func main() {
 	if err := pulumiCmd.Execute(); err != nil {
 		cmd.DisplayErrorMessage(err)
 		cleanup()
-		os.Exit(-1)
+		os.Exit(cmdutil.ExitCodeFor(err))
 	}
 	*finished = true
 	cleanup()
