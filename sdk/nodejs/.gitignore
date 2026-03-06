@@ -1,4 +1,5 @@
 **/bin
+/build/
 /coverage/
 /prebuilt/
 /node_modules/
