@@ -757,8 +757,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	//
 	// Only need to do refresh steps here for resources that have an old state.
 	if old != nil &&
-		goal.Custom &&
-		!sdkproviders.IsProviderType(goal.Type) &&
 		sg.refresh {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
@@ -785,7 +783,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		})
 
 		oldViews := sg.deployment.GetOldViews(old.URN)
-		step := NewRefreshStep(sg.deployment, cts, old, oldViews, new)
+		var step Step
+		if !goal.Custom || sdkproviders.IsProviderType(goal.Type) {
+			step = NewInternalRefreshStep(sg.deployment, cts, old, oldViews, new)
+		} else {
+			step = NewRefreshStep(sg.deployment, cts, old, oldViews, new)
+		}
 		sg.refreshes[urn] = true
 		return []Step{step}, true, nil
 	}
@@ -871,16 +874,13 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 				sg.skippedCreates[urn] = true
 				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
 			}
-			if goal.Custom && !sdkproviders.IsProviderType(goal.Type) {
-				// We've already refreshed this resource, so we can just trigger the done event (refresh steps never do this
-				// alone) and return no further steps.
-				event.Done(&RegisterResult{
-					State:  event.Old(),
-					Result: ResultStateSuccess,
-				})
-				return []Step{}, false, nil
-			}
-			return []Step{NewSameStep(sg.deployment, event, old, new)}, false, nil
+			// We've already refreshed this resource, so we can just trigger the done event (refresh steps never do this
+			// alone) and return no further steps.
+			event.Done(&RegisterResult{
+				State:  event.Old(),
+				Result: ResultStateSuccess,
+			})
+			return []Step{}, false, nil
 		}
 	}
 	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for custom
