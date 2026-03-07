@@ -38,7 +38,6 @@ func run() int {
 		fmt.Fprintln(os.Stderr, "Usage: go run ./sdk/go/tools/automation <path-to-specification.json>")
 		return 1
 	}
-
 	specPath, err := filepath.Abs(os.Args[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to resolve specification path: %v\n", err)
@@ -57,45 +56,62 @@ func run() int {
 		return 1
 	}
 
-	outputDir := filepath.Join(".", "output")
+	// Always write generated code under tools/automation/output so it lives
+	// alongside this generator, regardless of the current working directory.
+	outputDir := filepath.Join("tools", "automation", "output")
+	// Best-effort removal of the legacy single-file output, if present.
+	_ = os.Remove(filepath.Join(outputDir, "main.go"))
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create output directory: %v\n", err)
 		return 1
 	}
 
-	decls, err := generateOptionsTypes(spec)
+	files, err := generateOptionsFiles(spec)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to generate options types: %v\n", err)
 		return 1
 	}
 
-	var buf bytes.Buffer
-	if err := astToBuffer(&buf, decls); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to write output: %v\n", err)
-		return 1
-	}
+	for _, file := range files {
+		var buf bytes.Buffer
+		if err := astToBuffer(&buf, file.Package, file.Decls); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to build AST for package %s: %v\n", file.Package, err)
+			return 1
+		}
 
-	formatted, err := format.Source(buf.Bytes())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: gofmt failed, writing unformatted code: %v\n", err)
-		formatted = buf.Bytes()
-	}
+		formatted, err := format.Source(buf.Bytes())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: gofmt failed for package %s, writing unformatted code: %v\n", file.Package, err)
+			formatted = buf.Bytes()
+		}
 
-	outputPath := filepath.Join(outputDir, "main.go")
-	if err := os.WriteFile(outputPath, formatted, 0o600); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to write output: %v\n", err)
-		return 1
+		pkgDir := filepath.Join(outputDir, file.Package)
+		if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create package directory %s: %v\n", pkgDir, err)
+			return 1
+		}
+
+		outputPath := filepath.Join(pkgDir, "options.go")
+		if err := os.WriteFile(outputPath, formatted, 0o600); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to write output %s: %v\n", outputPath, err)
+			return 1
+		}
 	}
 
 	return 0
 }
 
-func astToBuffer(w *bytes.Buffer, decls []ast.Decl) error {
+type optionsFile struct {
+	Package string
+	Decls   []ast.Decl
+}
+
+func astToBuffer(w *bytes.Buffer, pkg string, decls []ast.Decl) error {
 	fset := token.NewFileSet()
 	fixCommentPositions(fset, decls)
 
 	file := &ast.File{
-		Name:  ast.NewIdent("auto"),
+		Name:  ast.NewIdent(pkg),
 		Decls: decls,
 	}
 
@@ -151,27 +167,22 @@ func fixCommentPositions(fset *token.FileSet, decls []ast.Decl) {
 	}
 }
 
-// generateOptionsTypes walks the CLI specification tree and returns AST
-// declarations for a flattened "Options" struct for every command and menu.
-func generateOptionsTypes(root Structure) ([]ast.Decl, error) {
-	var decls []ast.Decl
-	err := walkStructure(&decls, root, nil, nil)
-	return decls, err
+// generateOptionsFiles walks the CLI specification tree and returns one
+// optionsFile per command/menu, each containing a single Options struct and its
+// ergonomic helpers. Each file will become its own Go package.
+func generateOptionsFiles(root Structure) ([]optionsFile, error) {
+	return walkStructure(root, nil, nil)
 }
 
 // walkStructure recursively descends the CLI tree, aggregating flags and
-// appending a Go struct per command/menu.
-func walkStructure(
-	decls *[]ast.Decl,
-	node Structure,
-	breadcrumbs []string,
-	inherited map[string]Flag,
-) error {
+// returning a Go file (package + declarations) per command/menu.
+func walkStructure(node Structure, breadcrumbs []string, inherited map[string]Flag) ([]optionsFile, error) {
 	command := "pulumi"
 	if len(breadcrumbs) > 0 {
 		command = command + " " + strings.Join(breadcrumbs, " ")
 	}
-	typeName := toPascal(command) + "Options"
+	// Each package has a single generic Options type for its command.
+	typeName := "Options"
 
 	// Merge inherited and local flags, with local flags winning on conflicts.
 	flags := make(map[string]Flag, len(inherited)+len(node.Flags))
@@ -182,17 +193,32 @@ func walkStructure(
 		flags[k] = v
 	}
 
-	spec, err := buildOptionsSpec(typeName, flags)
+	spec, fields, err := buildOptionsSpec(typeName, flags)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	*decls = append(*decls, &ast.GenDecl{
+
+	// Ergonomic functional-style helpers for configuring this command's options.
+	optionDecls := buildOptionHelpers(typeName, command, fields)
+
+	// We always emit a single struct declaration followed by the helpers.
+	decls := make([]ast.Decl, 0, 1+len(optionDecls))
+
+	// The primary options struct for this command.
+	decls = append(decls, &ast.GenDecl{
 		Doc: &ast.CommentGroup{
 			List: []*ast.Comment{{Text: fmt.Sprintf("// %s are options for the `%s` command.", typeName, command)}},
 		},
 		Tok:   token.TYPE,
 		Specs: []ast.Spec{spec},
 	})
+
+	decls = append(decls, optionDecls...)
+
+	files := []optionsFile{{
+		Package: packageNameFor(breadcrumbs),
+		Decls:   decls,
+	}}
 
 	if node.Type == "menu" && len(node.Commands) > 0 {
 		names := make([]string, 0, len(node.Commands))
@@ -203,16 +229,23 @@ func walkStructure(
 
 		for _, name := range names {
 			child := node.Commands[name]
-			if err := walkStructure(decls, child, append(breadcrumbs, name), flags); err != nil {
-				return err
+			childFiles, err := walkStructure(child, append(breadcrumbs, name), flags)
+			if err != nil {
+				return nil, err
 			}
+			files = append(files, childFiles...)
 		}
 	}
 
-	return nil
+	return files, nil
 }
 
-func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, error) {
+type optionField struct {
+	name string
+	typ  ast.Expr
+}
+
+func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, []optionField, error) {
 	names := make([]string, 0, len(flags))
 	for name := range flags {
 		names = append(names, name)
@@ -220,12 +253,13 @@ func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, er
 	sort.Strings(names)
 
 	fields := make([]*ast.Field, 0, len(names))
+	meta := make([]optionField, 0, len(names))
 	for _, name := range names {
 		flag := flags[name]
 
 		goType, err := astTypeFor(flag.Type, flag.Repeatable)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		fieldName := strcase.ToCamel(flag.Name)
@@ -237,6 +271,7 @@ func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, er
 			field.Doc = toComment(flag.Description)
 		}
 		fields = append(fields, field)
+		meta = append(meta, optionField{name: fieldName, typ: goType})
 	}
 
 	return &ast.TypeSpec{
@@ -244,7 +279,114 @@ func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, er
 		Type: &ast.StructType{
 			Fields: &ast.FieldList{List: fields},
 		},
-	}, nil
+	}, meta, nil
+}
+
+func buildOptionHelpers(typeName, command string, fields []optionField) []ast.Decl {
+	if len(fields) == 0 {
+		return nil
+	}
+
+	// All helpers in a package share the simple names Option / With<Field>.
+	optionTypeName := "Option"
+
+	decls := make([]ast.Decl, 0, 1+len(fields))
+
+	// type Option func(*Options)
+	optionType := &ast.TypeSpec{
+		Name: ast.NewIdent(optionTypeName),
+		Type: &ast.FuncType{
+			Params: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Type: &ast.StarExpr{X: ast.NewIdent(typeName)},
+					},
+				},
+			},
+		},
+	}
+
+	decls = append(decls, &ast.GenDecl{
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{{
+				Text: fmt.Sprintf("// %s configures %s when building CLI commands.", optionTypeName, command),
+			}},
+		},
+		Tok:   token.TYPE,
+		Specs: []ast.Spec{optionType},
+	})
+
+	// One With* helper per field.
+	for _, f := range fields {
+		funcName := "With" + f.name
+
+		// func With<Field>(v <T>) Option
+		fn := &ast.FuncDecl{
+			Doc: &ast.CommentGroup{
+				List: []*ast.Comment{{
+					Text: fmt.Sprintf("// %s returns an %s that sets %s.", funcName, optionTypeName, f.name),
+				}},
+			},
+			Name: ast.NewIdent(funcName),
+			Type: &ast.FuncType{
+				Params: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Names: []*ast.Ident{ast.NewIdent("v")},
+							Type:  f.typ,
+						},
+					},
+				},
+				Results: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Type: ast.NewIdent(optionTypeName),
+						},
+					},
+				},
+			},
+			Body: &ast.BlockStmt{
+				List: []ast.Stmt{
+					&ast.ReturnStmt{
+						Results: []ast.Expr{
+							&ast.FuncLit{
+								Type: &ast.FuncType{
+									Params: &ast.FieldList{
+										List: []*ast.Field{
+											{
+												Names: []*ast.Ident{ast.NewIdent("o")},
+												Type:  &ast.StarExpr{X: ast.NewIdent(typeName)},
+											},
+										},
+									},
+								},
+								Body: &ast.BlockStmt{
+									List: []ast.Stmt{
+										&ast.AssignStmt{
+											Lhs: []ast.Expr{
+												&ast.SelectorExpr{
+													X:   ast.NewIdent("o"),
+													Sel: ast.NewIdent(f.name),
+												},
+											},
+											Tok: token.ASSIGN,
+											Rhs: []ast.Expr{
+												ast.NewIdent("v"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		decls = append(decls, fn)
+	}
+
+	return decls
 }
 
 func toComment(desc string) *ast.CommentGroup {
@@ -282,13 +424,32 @@ func astTypeFor(typ string, repeatable bool) (ast.Expr, error) {
 	return base, nil
 }
 
-func toPascal(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
+// packageNameFor converts a list of CLI subcommand breadcrumbs into the Go
+// package name where that command's options will live. This follows the
+// existing Automation API convention of packages like "optup", "optpreview",
+// "optremoteup", etc.
+func packageNameFor(breadcrumbs []string) string {
+	if len(breadcrumbs) == 0 {
+		return "opt"
 	}
-	s = strings.ReplaceAll(s, " ", "_")
-	s = strings.ReplaceAll(s, "-", "_")
-	s = strings.ReplaceAll(s, "/", "_")
-	return strcase.ToCamel(s)
+
+	var b strings.Builder
+	b.WriteString("opt")
+
+	for _, part := range breadcrumbs {
+		for _, r := range part {
+			switch {
+			case r >= 'a' && r <= 'z',
+				r >= 'A' && r <= 'Z',
+				r >= '0' && r <= '9':
+				b.WriteRune(r)
+			}
+		}
+	}
+
+	name := strings.ToLower(b.String())
+	if name == "" {
+		return "opt"
+	}
+	return name
 }
