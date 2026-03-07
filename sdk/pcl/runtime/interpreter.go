@@ -282,8 +282,14 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 }
 
 func (i *Interpreter) evalExpression(expr model.Expression) (resource.PropertyValue, hcl.Diagnostics) {
+	return i.evalExpressionWith(expr, i.evalContext)
+}
+
+// evalExpressionWith evaluates an expression using the given eval context (which may be a child of
+// i.evalContext with additional variables, e.g. range.key/range.value for ranged resources).
+func (i *Interpreter) evalExpressionWith(expr model.Expression, evalCtx *hcl.EvalContext) (resource.PropertyValue, hcl.Diagnostics) {
 	i.evalLock.Lock()
-	value, diags := expr.Evaluate(i.evalContext)
+	value, diags := expr.Evaluate(evalCtx)
 	i.evalLock.Unlock()
 	if diags.HasErrors() {
 		return resource.PropertyValue{}, diags
