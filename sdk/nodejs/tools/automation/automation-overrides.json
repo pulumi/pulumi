@@ -11,6 +11,13 @@
       }
     },
     {
+      "path": ["about"],
+      "propagate": false,
+      "flags": {
+        "color": { "preset": "never", "omit": false }
+      }
+    },
+    {
       "path": ["up"],
       "propagate": false,
       "flags": {
