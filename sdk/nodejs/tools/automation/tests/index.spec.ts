@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { API, PulumiImportOptions, PulumiUpOptions } from "../output";
+import { API, PulumiImportOptions, PulumiStackLsOptions, PulumiUpOptions } from "../output";
 import { describe, it } from "mocha";
 import * as assert from "assert";
 
@@ -20,13 +20,34 @@ describe("Command examples", () => {
     const api = new API();
 
     it("about", () => {
-        const command = api.about({}); // An executable menu
-        assert.strictEqual(command, "pulumi about");
+        const command = api.about({}); // Global presets: --non-interactive, --yes; about also has color preset "never"
+        assert.strictEqual(
+            command,
+            "pulumi about --color never --non-interactive --yes",
+        );
+    });
+
+    it("about with user-provided color overrides preset", () => {
+        // Preset for a non-omitted flag is only used when the option is not provided.
+        const withoutColor = api.about({});
+        assert.ok(
+            withoutColor.includes("--color never"),
+            "without options.color we get preset --color never",
+        );
+        const withColor = api.about({ color: "always" });
+        assert.ok(
+            withColor.includes("--color always"),
+            "with options.color we get user value",
+        );
+        assert.ok(
+            !withColor.includes("--color never"),
+            "with options.color we do not get the preset",
+        );
     });
 
     it("config env add", () => {
         const command = api.configEnvAdd({});
-        assert.strictEqual(command, "pulumi config env add");
+        assert.strictEqual(command, "pulumi config env add --non-interactive --yes");
     });
 
     it("template publish", () => {
@@ -38,14 +59,20 @@ describe("Command examples", () => {
             ".", // Required flags
         );
 
-        assert.strictEqual(command, "pulumi template publish --name test --version 1.0.0 -- .");
+        assert.strictEqual(
+            command,
+            "pulumi template publish --non-interactive --yes --name test --version 1.0.0 -- .",
+        );
     });
 
     it("import", () => {
         const options: PulumiImportOptions = {};
 
         const command = api.import(options, "'aws:iam/user:User'", "name", "id");
-        assert.strictEqual(command, "pulumi import -- 'aws:iam/user:User' name id");
+        assert.strictEqual(
+            command,
+            "pulumi import --non-interactive --skip-preview --yes -- 'aws:iam/user:User' name id",
+        );
     });
 
     it("up", () => {
@@ -54,6 +81,15 @@ describe("Command examples", () => {
         };
 
         const command = api.up(options, "https://pulumi.com");
-        assert.strictEqual(command, "pulumi up --target urnA --target urnB -- https://pulumi.com");
+        assert.strictEqual(
+            command,
+            "pulumi up --non-interactive --skip-preview --yes --target urnA --target urnB -- https://pulumi.com",
+        );
+    });
+
+    it("stack ls (preset --json, --non-interactive, --yes; emoji and json omitted from options)", () => {
+        const options: PulumiStackLsOptions = {};
+        const command = api.stackLs(options);
+        assert.strictEqual(command, "pulumi stack ls --json --non-interactive --yes");
     });
 });
