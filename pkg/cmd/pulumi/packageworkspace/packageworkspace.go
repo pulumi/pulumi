@@ -481,6 +481,12 @@ func (p pluginProvider) GetSchema(
 	if p.originalSpec.Version != "" {
 		source += "@" + p.originalSpec.Version
 	}
+	// naiveResolution stores git plugin sources as https:// URLs (converted from git://)
+	// so that NewPluginDescriptor can parse them correctly. Registry-resolved sources remain
+	// scheme-less (e.g. "opentofu/aptible/aptible"), and parseGitRepoURLParts will fail for
+	// them because url.Parse treats scheme-less strings as relative paths with an empty Host,
+	// causing an "invalid URL scheme" error. That error means err != nil below, so the block
+	// is not entered and registry schemas are left unmodified.
 	pd, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
 	if err == nil && pd.IsGitPlugin() {
 		pkgSpec.PluginDownloadURL = pd.PluginDownloadURL
