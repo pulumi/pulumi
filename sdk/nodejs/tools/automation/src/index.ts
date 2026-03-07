@@ -219,28 +219,46 @@ function generateCommands(
     });
 }
 
-/** Emit code that pushes a preset flag value onto __flags. */
+/**
+ * Emit code that pushes a preset flag value onto __flags.
+ * When omitFromOptions is false, wrap in a condition so we only add the preset
+ * when the user did not provide the option (options.<optName> == null).
+ */
 function emitPresetFlag(
     writer: { writeLine: (s: string) => void; indent: (fn: () => void) => void },
     flagName: string,
     value: FlagRule["preset"],
+    omitFromOptions: boolean,
+    optName?: string,
 ): void {
     if (value === undefined) return;
-    if (typeof value === "boolean") {
-        if (value) {
-            writer.writeLine(`__flags.push('--${flagName}');`);
+    const wrapCondition = !omitFromOptions && optName != null;
+
+    function emit(): void {
+        if (typeof value === "boolean") {
+            if (value) {
+                writer.writeLine(`__flags.push('--${flagName}');`);
+            }
+            return;
         }
-        return;
+        if (typeof value === "string" || typeof value === "number") {
+            writer.writeLine(`__flags.push('--${flagName}', '' + ${JSON.stringify(value)});`);
+            return;
+        }
+        if (Array.isArray(value)) {
+            writer.writeLine(`for (const __preset of ${JSON.stringify(value)}) {`);
+            writer.indent(() => writer.writeLine(`__flags.push('--${flagName}', __preset);`));
+            writer.writeLine(`}`);
+            return;
+        }
     }
-    if (typeof value === "string" || typeof value === "number") {
-        writer.writeLine(`__flags.push('--${flagName}', '' + ${JSON.stringify(value)});`);
-        return;
-    }
-    if (Array.isArray(value)) {
-        writer.writeLine(`for (const __preset of ${JSON.stringify(value)}) {`);
-        writer.indent(() => writer.writeLine(`__flags.push('--${flagName}', __preset);`));
+
+    if (wrapCondition) {
+        writer.writeLine(`if (options.${optName} == null) {`);
+        writer.indent(emit);
         writer.writeLine(`}`);
-        return;
+    } else {
+        emit();
     }
 }
 
@@ -313,11 +331,14 @@ function generateBody(
         writer.writeLine("const __flags: string[] = [];");
         writer.blankLine();
 
-        /* Preset flags from overrides (e.g. --yes for non-interactive). */
+        /* Preset flags from overrides (e.g. --yes for non-interactive). Omitted flags always get the preset; non-omitted only when the user did not provide the option. */
         const presetFlagNames = Object.keys(mergedRules).filter((name) => mergedRules[name].preset !== undefined);
         presetFlagNames.sort();
         for (const name of presetFlagNames) {
-            emitPresetFlag(writer, name, mergedRules[name].preset);
+            const rule = mergedRules[name];
+            const omitted = rule.omit === true;
+            const optName = omitted ? undefined : sanitiseValueName(name);
+            emitPresetFlag(writer, name, rule.preset, omitted, optName);
         }
         if (presetFlagNames.length > 0) {
             writer.blankLine();
