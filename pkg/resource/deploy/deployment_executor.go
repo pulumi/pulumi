@@ -604,6 +604,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	}
 
 	if err != nil {
+		event.Reject(err)
 		return err
 	}
 	// Exclude the steps that depend on errored steps if ContinueOnError is set.
