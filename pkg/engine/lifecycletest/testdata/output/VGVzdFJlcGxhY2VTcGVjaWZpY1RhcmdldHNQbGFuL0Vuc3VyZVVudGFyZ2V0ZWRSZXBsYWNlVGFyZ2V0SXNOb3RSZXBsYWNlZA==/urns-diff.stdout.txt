@@ -1,0 +1,15 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:pulumi:Stack::test-test: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resA: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::resB: (create)
+<{%fg 2%}>    foo: <{%reset%}><{%fg 2%}>"changed-from-bar"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>bar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>changed-from-<{%reset%}><{%reset%}>bar<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>
+    2 unchanged

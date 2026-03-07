@@ -4,8 +4,8 @@
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>deleted<{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resC <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
- <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%reset%}>  <{%reset%}> pkgA:m:typA resC <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resC <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
  <{%reset%}>  <{%reset%}> pkgA:m:typA resC <{%reset%}><{%reset%}> 

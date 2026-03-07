@@ -1,0 +1,5 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+

@@ -1,0 +1,2 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>not implemented<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed: step application failed: not implemented<{%reset%}>

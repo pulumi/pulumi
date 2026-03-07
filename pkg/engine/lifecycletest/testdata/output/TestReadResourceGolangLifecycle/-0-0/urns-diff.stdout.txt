@@ -1,0 +1,7 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:pulumi:Stack::test-test: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}>    <{%fg 14%}>> urn:pulumi:test::test::pkgA:m:typA::resA: (read)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

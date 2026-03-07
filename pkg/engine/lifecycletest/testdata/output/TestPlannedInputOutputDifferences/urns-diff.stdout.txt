@@ -1,0 +1,7 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pkgA:m:typA::resA: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ frob: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>b<{%reset%}><{%reset%}>az<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>newB<{%reset%}><{%reset%}>az<{%reset%}><{%fg 2%}>zer<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 to update<{%reset%}>

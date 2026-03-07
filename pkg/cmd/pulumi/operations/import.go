@@ -603,6 +603,7 @@ func NewImportCmd() *cobra.Command {
 	var parallel int32
 	var previewOnly bool
 	var showConfig bool
+	var showURNs bool
 	var skipPreview bool
 	var suppressOutputs bool
 	var suppressProgress bool
@@ -846,6 +847,7 @@ func NewImportCmd() *cobra.Command {
 			opts.Display = display.Options{
 				Color:            cmdutil.GetGlobalColorization(),
 				ShowConfig:       showConfig,
+				ShowURNs:         showURNs,
 				SuppressOutputs:  suppressOutputs,
 				SuppressProgress: suppressProgress,
 				IsInteractive:    interactive,
@@ -1092,6 +1094,9 @@ func NewImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&showURNs, "urns", false,
+		"Display full URNs instead of short resource names")
 	cmd.PersistentFlags().BoolVar(
 		&suppressProgress, "suppress-progress", false,
 		"Suppress display of periodic progress dots")

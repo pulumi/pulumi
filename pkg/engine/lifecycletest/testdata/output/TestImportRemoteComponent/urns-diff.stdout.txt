@@ -1,0 +1,13 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:pulumi:Stack::test-test: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:mlc::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}>        <{%fg 2%}>= urn:pulumi:test::test::mlc:index:Component$pkgA:m:typA::resB: (import)
+<{%reset%}>            [id=4]
+<{%reset%}><{%reset%}>            foo : <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            frob: <{%reset%}><{%reset%}>1<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    <{%fg 2%}>= 2 imported<{%reset%}>
+    <{%bold%}>3 changes<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

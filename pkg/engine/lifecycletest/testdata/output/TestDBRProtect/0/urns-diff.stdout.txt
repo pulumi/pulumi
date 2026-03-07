@@ -1,0 +1,9 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:typ::resA: (create)
+<{%fg 2%}>    A: <{%reset%}><{%fg 2%}>"foo"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:typ::resB: (create) 🔒
+<{%fg 2%}>    A: <{%reset%}><{%fg 2%}>"foo"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

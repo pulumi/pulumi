@@ -1,0 +1,8 @@
+<{%fg 2%}>+ urn:pulumi:test::test::my_component::parent: (create) 🔒
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::my_component$pkgA:m:typA::resA: (create) 🔒
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::my_component$pkgA:m:typA::resB: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 3 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

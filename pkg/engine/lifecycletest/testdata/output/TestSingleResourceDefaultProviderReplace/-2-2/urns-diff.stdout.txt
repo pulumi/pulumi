@@ -1,0 +1,11 @@
+<{%fg 1%}>- urn:pulumi:test::test::pkgA:m:typA::resA: (delete)
+<{%fg 1%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pulumi:providers:pkgA::default: (delete)
+<{%fg 1%}>    [id=2]
+<{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

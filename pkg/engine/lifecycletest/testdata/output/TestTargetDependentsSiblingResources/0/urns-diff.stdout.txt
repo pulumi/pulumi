@@ -1,0 +1,20 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:pulumi:Stack::test: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::implicitX: (create)
+<{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::implicitY: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    <{%reset%}>  urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::implicitZ: (same)
+<{%reset%}>        [id=1]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::provider: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::explicitX: (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provider::4]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::explicitY: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provider::4]
+<{%reset%}><{%reset%}>    <{%reset%}>  urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::explicitZ: (same)
+<{%reset%}>        [id=1]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+    4 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

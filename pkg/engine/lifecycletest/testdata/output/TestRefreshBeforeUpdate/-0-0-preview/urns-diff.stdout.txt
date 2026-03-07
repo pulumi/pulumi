@@ -1,0 +1,6 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:pulumi:Stack::test: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::resA: (create)
+<{%fg 2%}>    input: <{%reset%}><{%fg 2%}>"value-1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 to create<{%reset%}>

@@ -1,0 +1,17 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pkgA:m:typA::resA: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ array (hidden)
+<{%reset%}><{%fg 3%}>  ~ map (hidden)
+<{%reset%}><{%fg 3%}>  ~ scalar (hidden)
+<{%reset%}><{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pkgA:m:typA::resB: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>  ~ array (hidden)
+<{%reset%}><{%fg 3%}>  ~ map (hidden)
+<{%reset%}><{%fg 3%}>  ~ scalar: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>a<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>b<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resC: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 2 to update<{%reset%}>
+    1 unchanged

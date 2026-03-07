@@ -268,7 +268,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixColumnIndex(opts),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -332,7 +332,7 @@ func RenderProgressEvents(
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixColumnIndex(o),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -391,7 +391,7 @@ func NewCaptureProgressEvents(
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixColumnIndex(o),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -452,6 +452,25 @@ func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
 
 func (display *ProgressDisplay) println(line string) {
 	display.renderer.println(line)
+}
+
+// suffixColumnIndex returns the column index where the progress suffix (ellipsis)
+// should be appended. In URN mode the Name column is dropped, so Status shifts
+// left by one.
+func suffixColumnIndex(opts Options) int {
+	if opts.ShowURNs {
+		return int(statusColumn) - 1
+	}
+	return int(statusColumn)
+}
+
+// resourceHeader formats a resource header for diagnostics/changes sections.
+// In both modes the URN or type lives at typeColumn (index 1).
+func (display *ProgressDisplay) resourceHeader(columns []string) string {
+	if display.opts.ShowURNs {
+		return "  " + colors.BrightBlue + columns[typeColumn] + ":" + colors.Reset
+	}
+	return "  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset
 }
 
 type treeNode struct {
@@ -740,8 +759,7 @@ func (display *ProgressDisplay) printResourceDiffs() {
 		}
 
 		columns := row.ColorizedColumns()
-		display.println(
-			"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+		display.println(display.resourceHeader(columns))
 
 		lines := splitIntoDisplayableLines(diff)
 		for _, line := range lines {
@@ -802,8 +820,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
 					columns := row.ColorizedColumns()
-					display.println(
-						"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+					display.println(display.resourceHeader(columns))
 				}
 
 				for _, line := range lines {

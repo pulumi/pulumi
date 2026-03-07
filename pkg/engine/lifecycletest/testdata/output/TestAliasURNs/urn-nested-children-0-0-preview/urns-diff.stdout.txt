@@ -1,0 +1,6 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:t1::parent: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t1::sub: (create)
+<{%reset%}>        <{%fg 2%}>+ urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t1$pkgA:index:t1::sub-sub: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 3 to create<{%reset%}>

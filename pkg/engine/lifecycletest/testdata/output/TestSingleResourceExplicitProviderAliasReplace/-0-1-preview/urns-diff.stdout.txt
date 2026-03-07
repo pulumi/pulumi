@@ -1,0 +1,7 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::provB: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resA: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::provA::1<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::provB::1<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged

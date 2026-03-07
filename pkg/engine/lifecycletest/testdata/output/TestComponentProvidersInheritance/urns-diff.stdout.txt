@@ -1,0 +1,10 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkg::provA: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::my_component::resA: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkg::default: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkg:index:component::resB: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkg:index:type::resC: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkg:index:component::resD: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 5 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

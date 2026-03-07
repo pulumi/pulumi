@@ -1,0 +1,10 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pulumi::default: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 14%}>> urn:pulumi:test::test::pulumi:pulumi:StackReference::other: (read)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    name: <{%reset%}><{%reset%}>"other"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%fg 14%}>    --outputs:--<{%reset%}>
+<{%fg 14%}>    outputs          : <{%reset%}><{%fg 14%}>{
+<{%reset%}><{%fg 14%}>        foo: <{%reset%}><{%fg 14%}>"bar"<{%reset%}><{%fg 14%}>
+<{%reset%}><{%fg 14%}>    }<{%reset%}><{%fg 14%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

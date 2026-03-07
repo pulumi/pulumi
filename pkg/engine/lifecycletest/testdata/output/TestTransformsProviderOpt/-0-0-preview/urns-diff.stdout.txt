@@ -1,0 +1,16 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::explicit: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::implicit: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::explicitProvider: (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::2]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::implicitProvider: (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::2]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::explicitProvidersMap: (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::2]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::xmy:component:resource::component: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::xmy:component:resource$pkgA:m:typA::parentedResource: (create)
+<{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::2]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::ymy:component:resource::another-component: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::ymy:component:resource$pkgA:m:typA::parentedResource: (create)
+<{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::implicit::2]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 9 to create<{%reset%}>
