@@ -26,6 +26,7 @@ import (
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/stretchr/testify/assert"
 )
 
 // Note to future engineers: keep each file tested as a single test, do not use `t.Run` in the inner
@@ -44,6 +45,10 @@ var nodeAssertions = testutil.DefaultNodeAssertions().Union(testutil.NodeAsserti
 	KindShortcode: func(t *testing.T, sourceExpected, sourceActual []byte, expected, actual ast.Node) bool {
 		shortcodeExpected, shortcodeActual := expected.(*Shortcode), actual.(*Shortcode)
 		return testutil.AssertEqualBytes(t, shortcodeExpected.Name, shortcodeActual.Name)
+	},
+	KindRef: func(t *testing.T, sourceExpected, sourceActual []byte, expected, actual ast.Node) bool {
+		refExpected, refActual := expected.(*Ref), actual.(*Ref)
+		return assert.Equal(t, refExpected.Destination, refActual.Destination)
 	},
 })
 
