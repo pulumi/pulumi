@@ -507,8 +507,24 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 	switch {
 	case value.IsOutput():
 		output := value.OutputValue()
-		output.Element = collapseResourceReferences(output.Element)
-		return resource.NewProperty(output)
+		newOutput := resource.Output{
+			Dependencies: output.Dependencies,
+			Secret:       output.Secret,
+			Known:        output.Known,
+			Element:      collapseResourceReferences(output.Element),
+		}
+		// If this is an output for a single URN and that URN is now the inner resource reference value then we can
+		// collapse this output into a resource reference directly.
+		if len(newOutput.Dependencies) == 1 &&
+			!output.Element.IsResourceReference() &&
+			newOutput.Element.IsResourceReference() &&
+			newOutput.Element.ResourceReferenceValue().URN == newOutput.Dependencies[0] {
+			if newOutput.Secret {
+				return resource.MakeSecret(newOutput.Element)
+			}
+			return newOutput.Element
+		}
+		return resource.NewProperty(newOutput)
 	case value.IsSecret():
 		secret := value.SecretValue()
 		secret.Element = collapseResourceReferences(secret.Element)
