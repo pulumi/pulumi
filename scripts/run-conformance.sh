@@ -13,6 +13,8 @@ export PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true
 
 # Run *all* language tests
 if [ "$1" = "" ]; then
+    cd "$ROOT/sdk/pcl/cmd/pulumi-language-pcl" && go test ./... -v -count=1 -run "TestLanguage"
+
     cd "$ROOT/sdk/go/pulumi-language-go" && go test ./... -v -count=1 -run "TestLanguage"
 
     cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test ./... -v -count=1 -run "TestLanguageTSC"
@@ -25,6 +27,9 @@ if [ "$1" = "" ]; then
 
     exit 0
 fi
+
+
+cd "$ROOT/sdk/pcl/cmd/pulumi-language-pcl" && go test ./... -v -count=1 -run "TestLanguage/.*/$1"
 
 cd "$ROOT/sdk/go/pulumi-language-go" && go test ./... -v -count=1 -run "TestLanguage/.*/$1"
 

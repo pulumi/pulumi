@@ -175,6 +175,8 @@ jobs:
             --partition-module pkg 1 \
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
+            --partition-package github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl \
+                sdk/pcl/cmd/pulumi-language-pcl 2 \
             --partition-package github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3 \
                 sdk/nodejs/cmd/pulumi-language-nodejs 2 \
             --partition-package github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 \
