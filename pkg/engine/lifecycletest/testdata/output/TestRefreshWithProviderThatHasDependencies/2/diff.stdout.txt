@@ -1,10 +1,17 @@
-<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%fg 3%}>~ pulumi:providers:pkgA: (update)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
 <{%reset%}>    [id=1]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}><{%fg 3%}>~ pulumi:providers:pkgA: (update)
+<{%reset%}>    [id=4]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::resX]
+<{%reset%}><{%reset%}>    foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
 <{%reset%}>    [id=4]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::resX]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typB: (same)
@@ -18,6 +25,7 @@
 <{%reset%}>    [id=6]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typC::resD]
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    5 unchanged
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    2 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
