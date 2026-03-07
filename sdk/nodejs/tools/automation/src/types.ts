@@ -96,3 +96,37 @@ export interface Command extends NodeBase {
 
 /** A node in the CLI tree. */
 export type Structure = Menu | Command;
+
+// ---------------------------------------------------------------------------
+// Automation overrides (preset and omitted flags)
+// ---------------------------------------------------------------------------
+
+/** Preset value for a flag when invoking the CLI. */
+export type PresetValue = boolean | string | number | string[];
+
+/** Per-flag rule: omit from options and/or use a preset value when invoking. */
+export interface FlagRule {
+    /** If true, exclude this flag from the generated options type. */
+    omit?: boolean;
+
+    /** If set, always add this flag with this value when invoking. */
+    preset?: PresetValue;
+}
+
+/** A scope applies to a command path; path is a list of subcommand names. */
+export interface AutomationOverridesScope {
+    /** Command path (e.g. [] for root, ["stack"] for pulumi stack). */
+    path: string[];
+
+    /** If true, apply to this command and all subcommands; if false, this command only. */
+    propagate: boolean;
+
+    /** Flag name (CLI spec) -> rule. */
+    flags: Record<string, FlagRule>;
+}
+
+/** Auxiliary spec for preset flags and option exclusions. */
+export interface AutomationOverrides {
+    version: number;
+    scopes: AutomationOverridesScope[];
+}
