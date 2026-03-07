@@ -62,16 +62,6 @@ function baseFlag(flag: Flag): Flag {
         overwrite: true,
     });
 
-    // When emitting into the main automation package (via an explicit output directory),
-    // rewrite boilerplate imports so they are correct relative to the new location.
-    if (process.argv[4]) {
-        for (const declaration of source.getImportDeclarations()) {
-            if (declaration.getModuleSpecifierValue() === "../../../automation/cmd") {
-                declaration.setModuleSpecifier("../cmd");
-            }
-        }
-    }
-
     const baseOptionsType = source.getTypeAlias("BaseOptions");
 
     if (!baseOptionsType) {
