@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -557,7 +558,36 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 				return err
 			}
 
+			envImports, err := getLatestUpdateStackEnvironmentImports(ctx, s)
+			if err != nil {
+				return fmt.Errorf("getting latest stack environments: %w", err)
+			}
+			if envImports != nil {
+				if len(envImports) == 0 {
+					ps.Environment = nil
+				} else {
+					ps.Environment = workspace.NewEnvironment(envImports)
+				}
+			}
+
 			ps.Config = c
+
+			env, diags, err := openStackEnv(ctx, s, ps)
+			if err != nil {
+				return fmt.Errorf("opening environment: %w", err)
+			}
+			if len(diags) != 0 {
+				printESCDiagnostics(os.Stderr, diags)
+				return errors.New("opening environment: too many errors")
+			}
+			if env != nil {
+				if err = omitEnvironmentConfigValues(
+					ctx, s.Ref().Name().String(), project.Name.String(), env.Properties["pulumiConfig"], ps.Config,
+				); err != nil {
+					return fmt.Errorf("omitting environment-derived configuration: %w", err)
+				}
+			}
+
 			// Also restore the secrets provider from state
 			untypedDeployment, err := backend.ExportStackDeployment(ctx, s)
 			if err != nil {
@@ -626,6 +656,74 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 		&force, "force", "f", false, "Overwrite configuration file, if it exists, without creating a backup")
 
 	return refreshCmd
+}
+
+func getLatestUpdateStackEnvironmentImports(ctx context.Context, s backend.Stack) ([]string, error) {
+	history, err := s.Backend().GetHistory(ctx, s.Ref(), 1, 1)
+	if err != nil {
+		return nil, err
+	}
+	if len(history) == 0 {
+		return nil, nil
+	}
+	return parseEnvironmentImportsMetadata(history[0].Environment)
+}
+
+func parseEnvironmentImportsMetadata(metadata map[string]string) ([]string, error) {
+	if len(metadata) == 0 {
+		return nil, nil
+	}
+
+	serialized, ok := metadata[backend.StackEnvironments]
+	if !ok {
+		return nil, nil
+	}
+
+	var escEnvironments []apitype.EscEnvironmentMetadata
+	if err := json.Unmarshal([]byte(serialized), &escEnvironments); err != nil {
+		return nil, fmt.Errorf("unmarshaling %q metadata: %w", backend.StackEnvironments, err)
+	}
+
+	imports := make([]string, 0, len(escEnvironments))
+	for _, env := range escEnvironments {
+		if env.ID != "" {
+			imports = append(imports, env.ID)
+		}
+	}
+
+	return imports, nil
+}
+
+func omitEnvironmentConfigValues(
+	ctx context.Context,
+	stackName string,
+	projectName string,
+	pulumiEnv esc.Value,
+	stackConfig config.Map,
+) error {
+	envConfig := config.Map{}
+	if err := workspace.ApplyProjectConfig(
+		ctx,
+		stackName,
+		&workspace.Project{Name: tokens.PackageName(projectName)},
+		pulumiEnv,
+		envConfig,
+		config.NopEncrypter,
+	); err != nil {
+		return err
+	}
+
+	for key, envValue := range envConfig {
+		stackValue, ok := stackConfig[key]
+		if !ok {
+			continue
+		}
+		if stackValue == envValue {
+			delete(stackConfig, key)
+		}
+	}
+
+	return nil
 }
 
 type configSetCmd struct {
