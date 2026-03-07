@@ -227,7 +227,7 @@ type Backend interface {
 	GetLogs(ctx context.Context, secretsProvider secrets.Provider, stack Stack, cfg StackConfiguration,
 		query operations.LogQuery) ([]operations.LogEntry, error)
 	// Get the configuration from the most recent deployment of the stack.
-	GetLatestConfiguration(ctx context.Context, stack Stack) (config.Map, error)
+	GetLatestConfiguration(ctx context.Context, stack Stack) (LatestConfiguration, error)
 
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
@@ -349,6 +349,12 @@ type StackConfiguration struct {
 	Decrypter   config.Decrypter
 }
 
+// LatestConfiguration holds the configuration retrieved from the most recent deployment.
+type LatestConfiguration struct {
+	Config       config.Map
+	Environments []string
+}
+
 // UpdateOptions is the full set of update options, including backend and engine options.
 type UpdateOptions struct {
 	// Engine contains all of the engine-specific options.
@@ -448,9 +454,9 @@ func (c *backendClient) GetStackResourceOutputs(
 	return property.NewMap(pm), nil
 }
 
-// ErrTeamsNotSupported is returned by backends
-// which do not support the teams feature.
 var (
+	// ErrTeamsNotSupported is returned by backends
+	// which do not support the teams feature.
 	ErrTeamsNotSupported  = errors.New("teams are not supported")
 	ErrConfigNotSupported = errors.New("remote config is not supported")
 )

@@ -68,7 +68,8 @@ func GetStackConfigurationOrLatest(
 			if errors.Is(err, workspace.ErrProjectNotFound) {
 				// This error indicates that we're not being run in a project directory.
 				// We should fallback on the backend.
-				return backend.GetLatestConfiguration(ctx, stack)
+				latest, err := backend.GetLatestConfiguration(ctx, stack)
+				return latest.Config, err
 			}
 			return nil, err
 		})
