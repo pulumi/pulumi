@@ -1456,25 +1456,26 @@ func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
 func TestMoveBreaksCopiedProviderDependenciesToRemainingSourceResources(t *testing.T) {
 	t.Parallel()
 
+	sourceRootURN := resource.DefaultRootStackURN("sourceStack", "test")
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	remainingURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "remaining")
 	moveURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "moveMe")
 
 	sourceResources := []*resource.State{
 		{
-			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
-			Type: "pulumi:pulumi:Stack",
+			URN:  sourceRootURN,
+			Type: sourceRootURN.Type(),
 		},
 		{
 			URN:    remainingURN,
-			Type:   "a:b:c",
-			Parent: resource.DefaultRootStackURN("sourceStack", "test"),
+			Type:   remainingURN.Type(),
+			Parent: sourceRootURN,
 		},
 		{
 			URN:          providerURN,
 			Type:         providerURN.Type(),
 			ID:           "provider_id",
-			Parent:       resource.DefaultRootStackURN("sourceStack", "test"),
+			Parent:       sourceRootURN,
 			Custom:       true,
 			Dependencies: []resource.URN{remainingURN},
 		},
@@ -1482,7 +1483,7 @@ func TestMoveBreaksCopiedProviderDependenciesToRemainingSourceResources(t *testi
 			URN:      moveURN,
 			Type:     moveURN.Type(),
 			Provider: string(providerURN) + "::provider_id",
-			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
+			Parent:   sourceRootURN,
 		},
 	}
 
