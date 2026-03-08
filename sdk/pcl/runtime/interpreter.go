@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -551,30 +552,149 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 }
 
 func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) error {
-	result, err := i.registerResourceWith(ctx, res, i.evalContext)
-	if err != nil {
-		return err
+	baseName := res.LogicalName()
+	if res.Options == nil || res.Options.Range == nil {
+		result, err := i.registerResourceWith(ctx, res, i.evalContext, baseName)
+		if err != nil {
+			return err
+		}
+		return i.setVariable(ctx, baseName, result)
 	}
 
-	if err := i.setVariable(ctx, res.Name(), result); err != nil {
-		return err
+	rangeValue, diags := i.evalExpression(res.Options.Range)
+	if diags.HasErrors() {
+		return diags
 	}
-	return nil
+
+	if rangeValue.IsBool() {
+		if !rangeValue.BoolValue() {
+			return i.setVariable(ctx, baseName, resource.NewNullProperty())
+		}
+		result, err := i.registerResourceWith(ctx, res, i.evalContext, baseName)
+		if err != nil {
+			return err
+		}
+		return i.setVariable(ctx, baseName, result)
+	}
+
+	makeRangeCtx := func(key cty.Value, value cty.Value) *hcl.EvalContext {
+		rangeCtx := i.evalContext.NewChild()
+		rangeVars := map[string]cty.Value{"value": value}
+		if key != cty.NilVal {
+			rangeVars["key"] = key
+		}
+		rangeCtx.Variables = map[string]cty.Value{
+			"range": cty.ObjectVal(rangeVars),
+		}
+		return rangeCtx
+	}
+
+	registerMany := func(items []struct {
+		suffix  string
+		evalCtx *hcl.EvalContext
+	},
+	) error {
+		results := make([]resource.PropertyValue, 0, len(items))
+		for _, item := range items {
+			name := fmt.Sprintf("%s-%s", baseName, item.suffix)
+			result, err := i.registerResourceWith(ctx, res, item.evalCtx, name)
+			if err != nil {
+				return err
+			}
+			results = append(results, result)
+		}
+		return i.setVariable(ctx, baseName, resource.NewProperty(results))
+	}
+
+	if rangeValue.IsNumber() {
+		count := int(rangeValue.NumberValue())
+		if count < 0 {
+			count = 0
+		}
+		items := make([]struct {
+			suffix  string
+			evalCtx *hcl.EvalContext
+		}, 0, count)
+		for idx := 0; idx < count; idx++ {
+			idxVal := cty.NumberIntVal(int64(idx))
+			items = append(items, struct {
+				suffix  string
+				evalCtx *hcl.EvalContext
+			}{
+				suffix:  fmt.Sprintf("%d", idx),
+				evalCtx: makeRangeCtx(cty.NilVal, idxVal),
+			})
+		}
+		return registerMany(items)
+	}
+
+	if rangeValue.IsArray() {
+		values := rangeValue.ArrayValue()
+		items := make([]struct {
+			suffix  string
+			evalCtx *hcl.EvalContext
+		}, 0, len(values))
+		for idx, v := range values {
+			val, err := propertyValueToCty(ctx, i.monitor, v)
+			if err != nil {
+				return err
+			}
+			items = append(items, struct {
+				suffix  string
+				evalCtx *hcl.EvalContext
+			}{
+				suffix:  fmt.Sprintf("%d", idx),
+				evalCtx: makeRangeCtx(cty.NumberIntVal(int64(idx)), val),
+			})
+		}
+		return registerMany(items)
+	}
+
+	if rangeValue.IsObject() {
+		values := rangeValue.ObjectValue()
+		keys := make([]string, 0, len(values))
+		for k := range values {
+			keys = append(keys, string(k))
+		}
+		sort.Strings(keys)
+		items := make([]struct {
+			suffix  string
+			evalCtx *hcl.EvalContext
+		}, 0, len(keys))
+		for _, key := range keys {
+			val, err := propertyValueToCty(ctx, i.monitor, values[resource.PropertyKey(key)])
+			if err != nil {
+				return err
+			}
+			items = append(items, struct {
+				suffix  string
+				evalCtx *hcl.EvalContext
+			}{
+				suffix:  key,
+				evalCtx: makeRangeCtx(cty.StringVal(key), val),
+			})
+		}
+		return registerMany(items)
+	}
+
+	return fmt.Errorf("unsupported range type for resource %s", res.Name())
 }
 
-func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resource, evalCtx *hcl.EvalContext) (resource.PropertyValue, error) {
+func (i *Interpreter) registerResourceWith(
+	ctx context.Context, res *pcl.Resource, evalCtx *hcl.EvalContext, logicalName string,
+) (resource.PropertyValue, error) {
 	inputs := resource.PropertyMap{}
 	for _, attr := range res.Inputs {
-		val, diags := i.evalExpression(attr.Value)
+		val, diags := i.evalExpressionWith(attr.Value, evalCtx)
 		if diags.HasErrors() {
-			return diags
+			return resource.PropertyValue{}, diags
 		}
 		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
 	}
 
 	schemaResource, err := i.lookupResource(ctx, res.Token)
 	if err != nil {
-		return fmt.Errorf("lookup resource schema for token %s: %w", res.Token, err)
+		return resource.PropertyValue{}, fmt.Errorf("lookup resource schema for token %s: %w", res.Token, err)
 	}
 	token := res.Token
 	if schemaResource != nil {
@@ -600,7 +720,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
-		return err
+		return resource.PropertyValue{}, err
 	}
 	// The rest of this method can send output values
 	marshalOpts.KeepOutputValues = true
@@ -624,7 +744,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 
 	request := &pulumirpc.RegisterResourceRequest{
 		Type:                 token,
-		Name:                 res.LogicalName(),
+		Name:                 logicalName,
 		Custom:               custom,
 		Remote:               !custom,
 		Object:               obj,
@@ -638,11 +758,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.AdditionalSecretOutputs != nil {
 			additionalSecretOutputs, diags := i.evalExpressionWith(res.Options.AdditionalSecretOutputs, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !additionalSecretOutputs.IsNull() && !additionalSecretOutputs.IsComputed() {
 				if !additionalSecretOutputs.IsArray() {
-					return errors.New("additionalSecretOutputs must be an array of strings")
+					return resource.PropertyValue{}, errors.New("additionalSecretOutputs must be an array of strings")
 				}
 				var additionalSecretOutputKeys []string
 				for _, v := range additionalSecretOutputs.ArrayValue() {
@@ -650,7 +770,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 						continue
 					}
 					if !v.IsString() {
-						return errors.New("additionalSecretOutputs must be an array of strings")
+						return resource.PropertyValue{}, errors.New("additionalSecretOutputs must be an array of strings")
 					}
 					additionalSecretOutputKeys = append(additionalSecretOutputKeys, v.StringValue())
 				}
@@ -660,11 +780,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.Aliases != nil {
 			aliases, diags := i.evalExpressionWith(res.Options.Aliases, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !aliases.IsNull() && !aliases.IsComputed() {
 				if !aliases.IsArray() {
-					return errors.New("aliases must be an array of strings or alias objects")
+					return resource.PropertyValue{}, errors.New("aliases must be an array of strings or alias objects")
 				}
 				var aliasOpts []*pulumirpc.Alias
 				// Translate each alias expression (either string or object) into an rpc alias object
@@ -692,17 +812,17 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 
 						err := setString("name", func(name string) { aliasOpt.Name = name })
 						if err != nil {
-							return err
+							return resource.PropertyValue{}, err
 						}
 						err = setString("type", func(typ string) { aliasOpt.Type = typ })
 						if err != nil {
-							return err
+							return resource.PropertyValue{}, err
 						}
 
 						noParent, ok := obj["noParent"]
 						if ok && !noParent.IsNull() && !noParent.IsComputed() {
 							if !noParent.IsBool() {
-								return errors.New("noParent must be a boolean")
+								return resource.PropertyValue{}, errors.New("noParent must be a boolean")
 							}
 							aliasOpt.Parent = &pulumirpc.Alias_Spec_NoParent{
 								NoParent: noParent.BoolValue(),
@@ -713,7 +833,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 						if ok && !parent.IsNull() && !parent.IsComputed() {
 							urn, _, err := unwrapResource(parent)
 							if err != nil {
-								return fmt.Errorf("parent: %w", err)
+								return resource.PropertyValue{}, fmt.Errorf("parent: %w", err)
 							}
 							aliasOpt.Parent = &pulumirpc.Alias_Spec_ParentUrn{
 								ParentUrn: urn,
@@ -726,7 +846,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 							},
 						})
 					} else {
-						return errors.New("aliases must be an array of strings or alias objects")
+						return resource.PropertyValue{}, errors.New("aliases must be an array of strings or alias objects")
 					}
 				}
 				request.Aliases = aliasOpts
@@ -735,11 +855,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.DependsOn != nil {
 			dependsOn, diags := i.evalExpressionWith(res.Options.DependsOn, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !dependsOn.IsNull() && !dependsOn.IsComputed() {
 				if !dependsOn.IsArray() {
-					return errors.New("dependsOn must be an array of resource objects")
+					return resource.PropertyValue{}, errors.New("dependsOn must be an array of resource objects")
 				}
 				var dependsOnUrns []string
 				for _, v := range dependsOn.ArrayValue() {
@@ -748,7 +868,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 					}
 					urn, _, err := unwrapResource(v)
 					if err != nil {
-						return fmt.Errorf("dependsOn: %w", err)
+						return resource.PropertyValue{}, fmt.Errorf("dependsOn: %w", err)
 					}
 					dependsOnUrns = append(dependsOnUrns, urn)
 				}
@@ -758,16 +878,16 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.EnvVarMappings != nil {
 			envVars, diags := i.evalExpressionWith(res.Options.EnvVarMappings, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !envVars.IsNull() && !envVars.IsComputed() {
 				if !envVars.IsObject() {
-					return errors.New("envVarMappings must be an object mapping environment variable names to input property keys")
+					return resource.PropertyValue{}, errors.New("envVarMappings must be an object mapping environment variable names to input property keys")
 				}
 				envVarMappings := map[string]string{}
 				for envVar, propKey := range envVars.ObjectValue() {
 					if propKey.IsNull() || propKey.IsComputed() || !propKey.IsString() {
-						return errors.New("envVarMappings must be an object mapping environment variable names to input property keys")
+						return resource.PropertyValue{}, errors.New("envVarMappings must be an object mapping environment variable names to input property keys")
 					}
 					envVarMappings[string(envVar)] = propKey.StringValue()
 				}
@@ -777,11 +897,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.ImportID != nil {
 			importID, diags := i.evalExpressionWith(res.Options.ImportID, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !importID.IsNull() && !importID.IsComputed() {
 				if !importID.IsString() {
-					return errors.New("import must be a string")
+					return resource.PropertyValue{}, errors.New("import must be a string")
 				}
 				request.ImportId = importID.StringValue()
 			}
@@ -789,11 +909,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.IgnoreChanges != nil {
 			ignoreChanges, diags := i.evalExpressionWith(res.Options.IgnoreChanges, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !ignoreChanges.IsNull() && !ignoreChanges.IsComputed() {
 				if !ignoreChanges.IsArray() {
-					return errors.New("ignoreChanges must be an array of strings")
+					return resource.PropertyValue{}, errors.New("ignoreChanges must be an array of strings")
 				}
 				icopt := []string{}
 				for _, v := range ignoreChanges.ArrayValue() {
@@ -801,7 +921,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 						continue
 					}
 					if !v.IsString() {
-						return errors.New("ignoreChanges must be an array of strings")
+						return resource.PropertyValue{}, errors.New("ignoreChanges must be an array of strings")
 					}
 					icopt = append(icopt, v.StringValue())
 				}
@@ -811,7 +931,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.Protect != nil {
 			protect, diags := i.evalExpressionWith(res.Options.Protect, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !protect.IsComputed() {
 				var popt *bool
@@ -819,7 +939,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 					b := protect.BoolValue()
 					popt = &b
 				} else if !protect.IsNull() {
-					return errors.New("protect must be a boolean or null")
+					return resource.PropertyValue{}, errors.New("protect must be a boolean or null")
 				}
 				request.Protect = popt
 			}
@@ -827,11 +947,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.ReplaceWith != nil {
 			replaceWith, diags := i.evalExpressionWith(res.Options.ReplaceWith, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !replaceWith.IsNull() && !replaceWith.IsComputed() {
 				if !replaceWith.IsArray() {
-					return errors.New("replaceWith must be an array of resources")
+					return resource.PropertyValue{}, errors.New("replaceWith must be an array of resources")
 				}
 				var rwopt []string
 				for _, v := range replaceWith.ArrayValue() {
@@ -840,7 +960,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 					}
 					urn, _, err := unwrapResource(v)
 					if err != nil {
-						return fmt.Errorf("replaceWith: %w", err)
+						return resource.PropertyValue{}, fmt.Errorf("replaceWith: %w", err)
 					}
 					rwopt = append(rwopt, urn)
 				}
@@ -850,11 +970,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.ReplaceOnChanges != nil {
 			replaceOnChanges, diags := i.evalExpressionWith(res.Options.ReplaceOnChanges, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !replaceOnChanges.IsNull() && !replaceOnChanges.IsComputed() {
 				if !replaceOnChanges.IsArray() {
-					return errors.New("replaceOnChanges must be an array of strings")
+					return resource.PropertyValue{}, errors.New("replaceOnChanges must be an array of strings")
 				}
 				rocopt := []string{}
 				for _, v := range replaceOnChanges.ArrayValue() {
@@ -862,7 +982,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 						continue
 					}
 					if !v.IsString() {
-						return errors.New("replaceOnChanges must be an array of strings")
+						return resource.PropertyValue{}, errors.New("replaceOnChanges must be an array of strings")
 					}
 					rocopt = append(rocopt, v.StringValue())
 				}
@@ -872,18 +992,18 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.ReplacementTrigger != nil {
 			replacement, diags := i.evalExpressionWith(res.Options.ReplacementTrigger, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			request.ReplacementTrigger, err = plugin.MarshalPropertyValue(
 				"replacementTrigger", replacement, marshalOpts)
 			if err != nil {
-				return err
+				return resource.PropertyValue{}, err
 			}
 		}
 		if res.Options.RetainOnDelete != nil {
 			retain, diags := i.evalExpressionWith(res.Options.RetainOnDelete, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !retain.IsNull() && !retain.IsComputed() {
 				var retainOnDelete *bool
@@ -891,7 +1011,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 					b := retain.BoolValue()
 					retainOnDelete = &b
 				} else {
-					return errors.New("retainOnDelete must be a boolean or null")
+					return resource.PropertyValue{}, errors.New("retainOnDelete must be a boolean or null")
 				}
 				request.RetainOnDelete = retainOnDelete
 			}
@@ -899,11 +1019,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.Version != nil {
 			version, diags := i.evalExpressionWith(res.Options.Version, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !version.IsNull() && !version.IsComputed() {
 				if !version.IsString() {
-					return errors.New("version must be a string")
+					return resource.PropertyValue{}, errors.New("version must be a string")
 				}
 				request.Version = version.StringValue()
 			}
@@ -911,11 +1031,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.CustomTimeouts != nil {
 			timeouts, diags := i.evalExpressionWith(res.Options.CustomTimeouts, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !timeouts.IsNull() && !timeouts.IsComputed() {
 				if !timeouts.IsObject() {
-					return errors.New("customTimeouts must be an object")
+					return resource.PropertyValue{}, errors.New("customTimeouts must be an object")
 				}
 				timeoutValues := map[string]string{}
 				for k, v := range timeouts.ObjectValue() {
@@ -923,7 +1043,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 						continue
 					}
 					if !v.IsString() {
-						return fmt.Errorf("customTimeouts.%s must be a string", k)
+						return resource.PropertyValue{}, fmt.Errorf("customTimeouts.%s must be a string", k)
 					}
 					timeoutValues[string(k)] = v.StringValue()
 				}
@@ -937,26 +1057,26 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.DeleteBeforeReplace != nil {
 			dbr, diags := i.evalExpressionWith(res.Options.DeleteBeforeReplace, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !dbr.IsNull() && !dbr.IsComputed() {
 				if dbr.IsBool() {
 					request.DeleteBeforeReplace = dbr.BoolValue()
 					request.DeleteBeforeReplaceDefined = true
 				} else if !dbr.IsNull() {
-					return errors.New("deleteBeforeReplace must be a boolean or null")
+					return resource.PropertyValue{}, errors.New("deleteBeforeReplace must be a boolean or null")
 				}
 			}
 		}
 		if res.Options.DeletedWith != nil {
 			deletedWith, diags := i.evalExpressionWith(res.Options.DeletedWith, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !deletedWith.IsNull() && !deletedWith.IsComputed() {
 				urn, _, err := unwrapResource(deletedWith)
 				if err != nil {
-					return fmt.Errorf("deletedWith: %w", err)
+					return resource.PropertyValue{}, fmt.Errorf("deletedWith: %w", err)
 				}
 				request.DeletedWith = urn
 			}
@@ -964,11 +1084,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.PluginDownloadURL != nil {
 			downloadURL, diags := i.evalExpressionWith(res.Options.PluginDownloadURL, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !downloadURL.IsNull() && !downloadURL.IsComputed() {
 				if !downloadURL.IsString() {
-					return errors.New("pluginDownloadURL must be a string")
+					return resource.PropertyValue{}, errors.New("pluginDownloadURL must be a string")
 				}
 				request.PluginDownloadURL = downloadURL.StringValue()
 			}
@@ -976,12 +1096,12 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.Parent != nil {
 			parent, diags := i.evalExpressionWith(res.Options.Parent, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !parent.IsNull() && !parent.IsComputed() {
 				urn, _, err := unwrapResource(parent)
 				if err != nil {
-					return fmt.Errorf("parent: %w", err)
+					return resource.PropertyValue{}, fmt.Errorf("parent: %w", err)
 				}
 				request.Parent = urn
 			}
@@ -989,12 +1109,12 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.Provider != nil {
 			provider, diags := i.evalExpressionWith(res.Options.Provider, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !provider.IsNull() && !provider.IsComputed() {
 				urn, id, err := unwrapResource(provider)
 				if err != nil {
-					return fmt.Errorf("provider: %w", err)
+					return resource.PropertyValue{}, fmt.Errorf("provider: %w", err)
 				}
 				var idstr string
 				if id.IsString() {
@@ -1008,7 +1128,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.Providers != nil {
 			providers, diags := i.evalExpressionWith(res.Options.Providers, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !providers.IsNull() && !providers.IsComputed() {
 				// Providers is either a list of provider objects or a map of provider name to provider objects. We need
@@ -1018,7 +1138,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 					for k, v := range providers.ObjectValue() {
 						urn, id, err := unwrapResource(v)
 						if err != nil {
-							return fmt.Errorf("providers: %w", err)
+							return resource.PropertyValue{}, fmt.Errorf("providers: %w", err)
 						}
 						var idstr string
 						if id.IsString() {
@@ -1032,7 +1152,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 					for _, v := range providers.ArrayValue() {
 						urn, id, err := unwrapResource(v)
 						if err != nil {
-							return fmt.Errorf("providers: %w", err)
+							return resource.PropertyValue{}, fmt.Errorf("providers: %w", err)
 						}
 						typ := resource.URN(urn).Type()
 						components := strings.Split(string(typ), ":")
@@ -1047,7 +1167,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 						psopt[pkg] = fmt.Sprintf("%s::%s", urn, idstr)
 					}
 				} else {
-					return errors.New("providers must be an array of provider objects or a map of provider name to provider objects")
+					return resource.PropertyValue{}, errors.New("providers must be an array of provider objects or a map of provider name to provider objects")
 				}
 				request.Providers = psopt
 			}
@@ -1055,11 +1175,11 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 		if res.Options.HideDiffs != nil {
 			hideDiffs, diags := i.evalExpressionWith(res.Options.HideDiffs, evalCtx)
 			if diags.HasErrors() {
-				return diags
+				return resource.PropertyValue{}, diags
 			}
 			if !hideDiffs.IsNull() && !hideDiffs.IsComputed() {
 				if !hideDiffs.IsArray() {
-					return errors.New("hideDiffs must be an array of strings")
+					return resource.PropertyValue{}, errors.New("hideDiffs must be an array of strings")
 				}
 				hdopt := []string{}
 				for _, v := range hideDiffs.ArrayValue() {
@@ -1067,7 +1187,7 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 						continue
 					}
 					if !v.IsString() {
-						return errors.New("hideDiffs must be an array of strings")
+						return resource.PropertyValue{}, errors.New("hideDiffs must be an array of strings")
 					}
 					hdopt = append(hdopt, v.StringValue())
 				}
@@ -1091,15 +1211,15 @@ func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resourc
 
 	resp, err := i.monitor.RegisterResource(ctx, request)
 	if err != nil {
-		return err
+		return resource.PropertyValue{}, err
 	}
 	if resp.GetResult() != pulumirpc.Result_SUCCESS {
-		return fmt.Errorf("resource registration failed: %s", resp.GetResult())
+		return resource.PropertyValue{}, fmt.Errorf("resource registration failed: %s", resp.GetResult())
 	}
 
 	outputs, err := plugin.UnmarshalProperties(resp.Object, marshalOpts)
 	if err != nil {
-		return err
+		return resource.PropertyValue{}, err
 	}
 
 	outputs["id"] = resource.NewProperty(resp.GetId())
