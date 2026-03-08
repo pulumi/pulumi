@@ -459,8 +459,7 @@ class StepEventMetadata(BaseEvent):
             keys=data.get("keys"),
             diffs=data.get("diffs"),
             detailed_diff={
-                k: PropertyDiff.from_json(v)
-                for k, v in detailed_diff.items()
+                k: PropertyDiff.from_json(v) for k, v in detailed_diff.items()
             },
             logical=data.get("logical"),
         )
