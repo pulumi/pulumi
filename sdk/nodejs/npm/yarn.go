@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,9 +22,15 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // yarnClassic is an implementation of PackageManager that uses Yarn Classic,
@@ -54,11 +60,50 @@ func (yarn *yarnClassic) Name() string {
 	return "yarn"
 }
 
+func (yarn *yarnClassic) Version() (semver.Version, error) {
+	cmd := exec.Command(yarn.executable, "--version") //nolint:gosec
+	output, err := cmd.Output()
+	if err != nil {
+		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
+	}
+	versionStr := strings.TrimSpace(string(output))
+	version, err := semver.Parse(versionStr)
+	if err != nil {
+		return semver.Version{}, err
+	}
+	return version, nil
+}
+
 func (yarn *yarnClassic) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
-	command := yarn.installCmd(ctx, production)
-	command.Dir = dir
-	command.Stdout = stdout
-	return yarn.runCmd(command, stderr)
+	const maxRetries = 3
+
+	var err error
+	for attempt := range maxRetries {
+		command := yarn.installCmd(ctx, production)
+		command.Dir = dir
+		command.Stdout = stdout
+		err = yarn.runCmd(command, stderr)
+
+		if err == nil {
+			logging.V(5).Infof("yarn install succeeded on attempt %d", attempt)
+			return nil
+		}
+
+		// Don't sleep after the last attempt
+		if attempt < maxRetries-1 {
+			delay := time.Second * time.Duration(2^(attempt)) // Exponential backoff: 1s, 2s, 4s
+			logging.V(5).Infof("yarn install failed (attempt %d/%d), retrying in %v: %v",
+				attempt+1, maxRetries, delay, err)
+
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return err
+			}
+		}
+	}
+
+	return fmt.Errorf("yarn install failed after %d attempts: %w", maxRetries, err)
 }
 
 // Generates the installation command for a given installation of YarnClassic.
@@ -100,6 +145,12 @@ func (yarn *yarnClassic) Link(ctx context.Context, dir, packageName, path string
 	return nil
 }
 
+func (yarn *yarnClassic) ListPackages(
+	ctx context.Context, dir string, transitive bool,
+) ([]plugin.DependencyInfo, error) {
+	return listPackagesFromLockFile(dir, "yarn.lock", transitive)
+}
+
 // Pack runs `yarn pack` in the given directory, packaging the Node.js app located
 // there into a tarball an returning it as `[]byte`. `stdout` is ignored for this command,
 // as it does not produce useful data.
@@ -121,7 +172,7 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 	packfile := tmpfile.Name()
 	// Clean up the tarball after we're done here.
 	defer func() {
-		contract.IgnoreError(tmpfile.Close())
+		contract.IgnoreClose(tmpfile)
 		contract.IgnoreError(os.Remove(packfile))
 	}()
 
@@ -147,7 +198,6 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 // This function is used to indicate whether to prefer Yarn over
 // other package managers.
 func checkYarnLock(pwd string) bool {
-	yarnFile := filepath.Join(pwd, "yarn.lock")
-	_, err := os.Stat(yarnFile)
+	_, err := fsutil.Searchup(pwd, "yarn.lock")
 	return err == nil
 }

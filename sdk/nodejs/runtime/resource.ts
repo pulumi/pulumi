@@ -23,6 +23,8 @@ import {
     ComponentResourceOptions,
     createUrn,
     CustomResourceOptions,
+    ErrorHook,
+    ErrorHookFunction,
     expandProviders,
     ID,
     pkgFromType,
@@ -46,6 +48,7 @@ import {
     deserializeProperty,
     OutputResolvers,
     resolveProperties,
+    SerializationOptions,
     serializeProperties,
     serializeProperty,
     serializeResourceProperties,
@@ -181,6 +184,11 @@ interface ResourceResolverOperation {
      * of this resource.
      */
     replaceWithResources: Resource[] | undefined;
+
+    /**
+     * If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+     */
+    replacementTrigger: any | undefined;
 }
 
 /**
@@ -617,6 +625,22 @@ export function registerResource(
                 req.setSupportspartialvalues(true);
                 req.setRemote(remote);
                 req.setReplaceonchangesList(opts.replaceOnChanges || []);
+                if (resop.replacementTrigger !== undefined) {
+                    const options: SerializationOptions = {};
+
+                    if (Output.isInstance(resop.replacementTrigger)) {
+                        const isKnown = await resop.replacementTrigger.isKnown;
+                        options.keepOutputValues = !isKnown || isDryRun();
+                    }
+
+                    const serializedTrigger = await serializeProperty(
+                        `${label}.replacementTrigger`,
+                        resop.replacementTrigger,
+                        new Set(),
+                        options,
+                    );
+                    req.setReplacementTrigger(gstruct.Value.fromJavaScript(serializedTrigger));
+                }
                 req.setPlugindownloadurl(opts.pluginDownloadURL || "");
                 if (opts.retainOnDelete !== undefined) {
                     req.setRetainondelete(opts.retainOnDelete);
@@ -649,6 +673,13 @@ export function registerResource(
                 req.setTransformsList(callbacks);
                 req.setSupportsresultreporting(true);
                 req.setHooks(hooks);
+
+                if (opts.envVarMappings !== undefined) {
+                    const envVarMappingsMap = req.getEnvvarmappingsMap();
+                    for (const [key, value] of Object.entries(opts.envVarMappings)) {
+                        envVarMappingsMap.set(key, value);
+                    }
+                }
 
                 if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                     throw new Error(
@@ -1023,6 +1054,7 @@ export async function prepareResource(
         }
     }
 
+    const replacementTrigger = opts?.replacementTrigger;
     const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
     const replaceWithResources =
         replaceWithDependencies.length > 0 ? Array.from(new Set(replaceWithDependencies)) : undefined;
@@ -1042,6 +1074,7 @@ export async function prepareResource(
         monitorSupportsStructuredAliases,
         deletedWithURN,
         replaceWithResources,
+        replacementTrigger,
     };
 }
 
@@ -1084,6 +1117,12 @@ export async function prepareHooks(
         }
     }
 
+    // Handle error hooks separately since they use ErrorHook instead of ResourceHook
+    for (const hook of binding.onError ?? []) {
+        await hook.__registered;
+        req.addOnError(hook.name);
+    }
+
     return req;
 }
 
@@ -1123,6 +1162,40 @@ export class StubResourceHook {
 }
 
 /**
+ * StubErrorHook is an error hook that does nothing.
+ *
+ * Note that we do not subclass {@link ErrorHook} here, because we do
+ * not want to call the super constructor, which would cause a hook
+ * registration.
+ *
+ * We need to reconstruct {@link ErrorHook} instances to set on the
+ * {@link ResourceOption}, but we only have the name available to us. We also
+ * know that these hooks have already been registered, so we can construct
+ * dummy hooks here, that will later be serialized back into list of hook
+ * names.
+ *
+ * @internal
+ */
+export class StubErrorHook {
+    public name: string;
+    public callback: ErrorHookFunction;
+    public __registered: Promise<void>;
+    public readonly __pulumiErrorHook: boolean = true;
+
+    constructor(name: string) {
+        this.name = name;
+        this.callback = () => {
+            return false;
+        };
+        this.__registered = Promise.resolve();
+    }
+
+    public static isInstance(obj: any): obj is ErrorHook {
+        return utils.isInstance<ErrorHook>(obj, "__pulumiErrorHook");
+    }
+}
+
+/**
  * Convert a hook binding from a protobuf message to an {@link ResourceHookBinding} with {@link StubHook}s.
  *
  * @internal
@@ -1138,6 +1211,7 @@ export function hookBindingFromProto(
         resourceHooks.afterUpdate = protoBinding.getAfterUpdateList().map((n) => new StubResourceHook(n));
         resourceHooks.beforeDelete = protoBinding.getBeforeDeleteList().map((n) => new StubResourceHook(n));
         resourceHooks.afterDelete = protoBinding.getAfterDeleteList().map((n) => new StubResourceHook(n));
+        resourceHooks.onError = protoBinding.getOnErrorList().map((n) => new StubErrorHook(n));
         return resourceHooks;
     }
     return;
@@ -1324,4 +1398,17 @@ export async function registerResourceHook(hook: ResourceHook) {
     }
 
     return callbackServer.registerResourceHook(hook);
+}
+
+export async function registerErrorHook(hook: ErrorHook) {
+    if (!getStore().supportsErrorHooks) {
+        throw new Error("The Pulumi CLI does not support error hooks. Please update the Pulumi CLI");
+    }
+
+    const callbackServer = getCallbacks();
+    if (callbackServer === undefined) {
+        throw new Error("Callback server could not initialize");
+    }
+
+    return callbackServer.registerErrorHook(hook);
 }

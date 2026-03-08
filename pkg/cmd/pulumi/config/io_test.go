@@ -78,7 +78,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 			LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 				return workspace.LoadProjectStack(cmdutil.Diag(), project, "Pulumi.name.yaml")
 			},
-			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+			DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 				return nil, nil
 			},
 			BackendF: func() backend.Backend {
@@ -114,7 +114,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 			LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 				return nil, workspace.ErrProjectNotFound
 			},
-			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+			DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 				return nil, nil
 			},
 			BackendF: func() backend.Backend {
@@ -335,7 +335,7 @@ func TestStackEnvConfig(t *testing.T) {
 				FullyQualifiedNameV: tokens.QName("org/project/" + name),
 			}
 		}
-		stack.DefaultSecretManagerF = func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		stack.DefaultSecretManagerF = func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return mockSecretsManager, nil
 		}
 
@@ -420,7 +420,7 @@ func TestCopyConfig(t *testing.T) {
 				FullyQualifiedNameV: tokens.QName("org/project/" + name),
 			}
 		}
-		stack.DefaultSecretManagerF = func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		stack.DefaultSecretManagerF = func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return mockSecretsManager, nil
 		}
 

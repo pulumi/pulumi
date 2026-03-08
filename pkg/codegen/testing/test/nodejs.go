@@ -26,49 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
-func GenerateNodeJSProgramTest(
-	t *testing.T,
-	genProgram GenProgram,
-	genProject GenProject,
-) {
-	expectedVersion := map[string]PkgVersionInfo{
-		"aws-resource-options-4.26": {
-			Pkg:          "\"@pulumi/aws\"",
-			OpAndVersion: "\"4.26.0\"",
-		},
-		"aws-resource-options-5.16.2": {
-			Pkg:          "\"@pulumi/aws\"",
-			OpAndVersion: "\"5.16.2\"",
-		},
-	}
-
-	TestProgramCodegen(t,
-		ProgramCodegenOptions{
-			Language:   "nodejs",
-			Extension:  "ts",
-			OutputFile: "index.ts",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				checkNodeJS(t, path, dependencies, true)
-			},
-			GenProgram: genProgram,
-			TestCases: []ProgramTest{
-				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
-				},
-			},
-
-			IsGenProject:    true,
-			GenProject:      genProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "package.json",
-		})
-}
-
 func GenerateNodeJSBatchTest(t *testing.T, rootDir string, genProgram GenProgram, testCases []ProgramTest) {
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{

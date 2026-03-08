@@ -1,0 +1,5 @@
+name: l2-resource-provider-inheritance
+runtime:
+  name: nodejs
+  options:
+    typescript: false

@@ -39,6 +39,14 @@ describe("defaultErrorMessage", () => {
         },
     });
 
+    // This error has a stack but causes util.inspect to throw (simulating errors with
+    // large metadata, e.g. from SDKs). See https://github.com/pulumi/pulumi/issues/21326
+    const errorWithLargeMetadata = Object.assign(new Error("Secret EMAIL not set"), {
+        [util.inspect.custom]() {
+            throw new RangeError("Invalid string length");
+        },
+    });
+
     const tests = [
         {
             name: "a plain string",
@@ -96,6 +104,14 @@ describe("defaultErrorMessage", () => {
             name: "very naughty",
             input: veryNaughty,
             expected: /an error occurred while inspecting an error: I'm a naughty object/,
+        },
+        {
+            // https://github.com/pulumi/pulumi/issues/21326
+            // Some errors (e.g. from SDKs) have large metadata that can cause util.inspect to throw.
+            // When this happens, we should still show the original error message.
+            name: "error with stack that causes inspect to throw",
+            input: errorWithLargeMetadata,
+            expected: /Secret EMAIL not set/,
         },
     ];
 

@@ -31,6 +31,7 @@ export class SomeResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === SomeResource.__pulumiType;
     }
 
+    declare public readonly resourceName: pulumi.Output<string | undefined>;
     declare public /*out*/ readonly theOutput: pulumi.Output<boolean>;
 
     /**
@@ -47,9 +48,11 @@ export class SomeResource extends pulumi.CustomResource {
             if (args?.theInput === undefined && !opts.urn) {
                 throw new Error("Missing required property 'theInput'");
             }
+            resourceInputs["resourceName"] = args?.resourceName;
             resourceInputs["theInput"] = args?.theInput;
             resourceInputs["theOutput"] = undefined /*out*/;
         } else {
+            resourceInputs["resourceName"] = undefined /*out*/;
             resourceInputs["theOutput"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
@@ -61,5 +64,6 @@ export class SomeResource extends pulumi.CustomResource {
  * The set of arguments for constructing a SomeResource resource.
  */
 export interface SomeResourceArgs {
+    resourceName?: pulumi.Input<string>;
     theInput: pulumi.Input<boolean>;
 }

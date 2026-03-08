@@ -27,12 +27,14 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	opentracing "github.com/opentracing/opentracing-go"
+	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
 
 	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
@@ -191,12 +193,21 @@ type Backend interface {
 	Capabilities(ctx context.Context) apitype.Capabilities
 }
 
+// userInfo holds the user account details fetched from the backend.
+type userInfo struct {
+	username      string
+	organizations []string
+	tokenInfo     *workspace.TokenInformation
+}
+
 type cloudBackend struct {
 	d            diag.Sink
 	url          string
 	client       *client.Client
 	escClient    esc_client.Client
 	capabilities *promise.Promise[apitype.Capabilities]
+	userInfo     *promise.Promise[userInfo]
+	defaultOrg   *promise.Promise[string]
 
 	// The current project, if any.
 	currentProject              *workspace.Project
@@ -225,7 +236,9 @@ func New(ctx context.Context, d diag.Sink,
 		url:            cloudURL,
 		client:         apiClient,
 		escClient:      escClient,
-		capabilities:   detectCapabilities(d, apiClient),
+		capabilities:   detectCapabilities(ctx, d, apiClient),
+		userInfo:       detectUserInfo(ctx, d, cloudURL, apiClient),
+		defaultOrg:     detectDefaultOrg(ctx, d, apiClient),
 		currentProject: project,
 	}, nil
 }
@@ -588,7 +601,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	setCurrent bool,
 ) (*workspace.Account, error) {
 	accessToken, expiresAt, err := exchangeOidcToken(
-		sink, cloudURL, insecure, oidcTokenSource, organization, scope, expiration)
+		ctx, sink, cloudURL, insecure, oidcTokenSource, organization, scope, expiration)
 	if err != nil {
 		return nil, err
 	}
@@ -680,16 +693,11 @@ func (b *cloudBackend) CurrentUser() (string, []string, *workspace.TokenInformat
 }
 
 func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
-	account, err := workspace.GetAccount(b.CloudURL())
+	info, err := b.userInfo.Result(ctx)
 	if err != nil {
 		return "", nil, nil, err
 	}
-	if account.Username != "" {
-		logging.V(1).Infof("found username for access token")
-		return account.Username, account.Organizations, account.TokenInformation, nil
-	}
-	logging.V(1).Infof("no username for access token")
-	return b.client.GetPulumiAccountDetails(ctx)
+	return info.username, info.organizations, info.tokenInfo, nil
 }
 
 func (b *cloudBackend) CloudURL() string { return b.url }
@@ -745,6 +753,29 @@ func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inCo
 	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
 ) {
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
+}
+
+// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
+func (b *cloudBackend) GetStackPolicyPacks(
+	ctx context.Context, stackRef backend.StackReference,
+) ([]engine.RequiredPolicy, error) {
+	if !b.Capabilities(ctx).StackPolicyPacks {
+		return nil, errors.New("getting stack policies is not supported by the backend")
+	}
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := b.client.GetStackPolicyPacks(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+
+	return slices.Collect(fxs.Map(resp.RequiredPolicies, func(policy apitype.RequiredPolicy) engine.RequiredPolicy {
+		return newCloudRequiredPolicy(b.client, policy, stackID.Owner)
+	})), nil
 }
 
 func (b *cloudBackend) ListTemplates(ctx context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
@@ -1243,7 +1274,7 @@ func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display
 
 func (b *cloudBackend) isNeoFeaturesEnabled(opts display.Options) bool {
 	// Have Neo features been requested by specifying the --neo flag to the cli
-	if !opts.ShowNeoFeatures {
+	if !opts.ShowNeoFeatures && !opts.StartNeoTaskOnError {
 		return false
 	}
 
@@ -1426,12 +1457,23 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 	)
 	renderer.ProcessEventSlice(events)
 
-	permalink := b.getPermalink(update, updateMeta.version, dryRun)
 	if renderer.OutputIncludesFailure() {
-		summary, err := b.summarizeErrorWithNeo(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
-		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
-		// if we can't generate a summary.
-		display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink)
+		if op.Opts.Display.StartNeoTaskOnError {
+			taskResp, taskErr := b.createNeoTaskOnError(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+			stackID, err := b.getCloudStackIdentifier(stack.Ref())
+			if err != nil {
+				return
+			}
+			display.RenderNeoTaskCreated(taskResp, taskErr, b.CloudConsoleURL(), stackID.Owner, op.Opts.Display)
+		}
+
+		if op.Opts.Display.ShowNeoFeatures {
+			permalink := b.getPermalink(update, updateMeta.version, dryRun)
+			summary, err := b.summarizeErrorWithNeo(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+			// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
+			// if we can't generate a summary.
+			display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink)
+		}
 	}
 }
 
@@ -1466,6 +1508,26 @@ func (b *cloudBackend) summarizeErrorWithNeo(
 	}, nil
 }
 
+// createNeoTaskOnError creates a Neo agent task to help debug errors that occurred during an operation.
+func (b *cloudBackend) createNeoTaskOnError(
+	ctx context.Context, pulumiOutput string, stackRef backend.StackReference, opts display.Options,
+) (*client.NeoTaskResponse, error) {
+	if len(pulumiOutput) == 0 {
+		return nil, nil
+	}
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	content := fmt.Sprintf(
+		"Help me debug the following Pulumi error for project %s and stack %s:\n\n%s",
+		stackID.Project, stackID.Stack.String(), pulumiOutput)
+
+	return b.client.CreateNeoTask(ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project)
+}
+
 type updateMetadata struct {
 	version        int
 	leaseToken     string
@@ -1477,7 +1539,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op *backend.UpdateOperation, dryRun bool,
 ) (client.UpdateIdentifier, updateMetadata, error) {
-	// Once we start an update we want to keep the machine from sleeping.
 	stackRef := stack.Ref()
 
 	stackID, err := b.getCloudStackIdentifier(stackRef)
@@ -1715,7 +1776,7 @@ func (b *cloudBackend) runEngineAction(
 		// we can send a newer version than 1, and switch out the API completely on the server side, while the client
 		// will continue working with the non-journaling snapshotter. This will be slower but won't be a breaking change
 		// for older clients.
-		if journalVersion == 1 && env.EnableJournaling.Value() {
+		if journalVersion == 1 && !env.DisableJournaling.Value() {
 			snapshotJournaler := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
 			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
 			if err != nil {
@@ -2219,6 +2280,7 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 }
 
 func exchangeOidcToken(
+	ctx context.Context,
 	sink diag.Sink,
 	cloudURL string,
 	insecure bool,
@@ -2236,7 +2298,7 @@ func exchangeOidcToken(
 	}
 	now := time.Now()
 	resp, err := client.NewClient(cloudURL, "", insecure, sink).
-		ExchangeOidcToken(tokenValue, organization, scope, expiration)
+		ExchangeOidcToken(ctx, tokenValue, organization, scope, expiration)
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("OIDC token exchange failed: %w", err)
 	}
@@ -2503,11 +2565,11 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 }
 
 func (b *cloudBackend) GetDefaultOrg(ctx context.Context) (string, error) {
-	resp, err := b.client.GetDefaultOrg(ctx)
+	org, err := b.defaultOrg.Result(ctx)
 	if err != nil {
 		return "", err
 	}
-	return resp.GitHubLogin, nil
+	return org, nil
 }
 
 type httpstateBackendClient struct {
@@ -2538,9 +2600,13 @@ func (c httpstateBackendClient) GetStackResourceOutputs(
 }
 
 // Builds a lazy wrapper around doDetectCapabilities.
-func detectCapabilities(d diag.Sink, client *client.Client) *promise.Promise[apitype.Capabilities] {
+func detectCapabilities(
+	ctx context.Context,
+	d diag.Sink,
+	client *client.Client,
+) *promise.Promise[apitype.Capabilities] {
 	return promise.Run(func() (apitype.Capabilities, error) {
-		return doDetectCapabilities(context.Background(), d, client), nil
+		return doDetectCapabilities(ctx, d, client), nil
 	})
 }
 
@@ -2567,7 +2633,51 @@ func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Clien
 	return caps
 }
 
-func (b *cloudBackend) DefaultSecretManager(*workspace.ProjectStack) (secrets.Manager, error) {
+// Builds a lazy wrapper around fetching user info.
+func detectUserInfo(
+	ctx context.Context,
+	d diag.Sink,
+	cloudURL string,
+	client *client.Client,
+) *promise.Promise[userInfo] {
+	return promise.Run(func() (userInfo, error) {
+		account, err := workspace.GetAccount(cloudURL)
+		if err == nil && account.Username != "" {
+			logging.V(1).Infof("found cached username for access token")
+			return userInfo{
+				username:      account.Username,
+				organizations: account.Organizations,
+				tokenInfo:     account.TokenInformation,
+			}, nil
+		}
+
+		logging.V(1).Infof("no username for access token")
+		username, orgs, tokenInfo, err := client.GetPulumiAccountDetails(ctx)
+		if err != nil {
+			d.Warningf(diag.Message("" /*urn*/, "failed to get user account details: %v"), err)
+			return userInfo{}, err
+		}
+		return userInfo{
+			username:      username,
+			organizations: orgs,
+			tokenInfo:     tokenInfo,
+		}, nil
+	})
+}
+
+// Builds a lazy wrapper around fetching default org.
+func detectDefaultOrg(ctx context.Context, d diag.Sink, client *client.Client) *promise.Promise[string] {
+	return promise.Run(func() (string, error) {
+		resp, err := client.GetDefaultOrg(ctx)
+		if err != nil {
+			logging.V(1).Infof("failed to get default org: %v", err)
+			return "", err
+		}
+		return resp.GitHubLogin, nil
+	})
+}
+
+func (b *cloudBackend) DefaultSecretManager(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
 	// The default secrets manager for a cloud-backed stack is a cloud secrets manager, which is inherently
 	// stack-specific. Thus at the backend level we return nil, deferring to Stack.DefaultSecretManager when the stack has
 	// been created.

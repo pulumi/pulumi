@@ -25,6 +25,7 @@ build:: gen ../../bin/pulumi-language-go
 .PHONY: ../../bin/pulumi-language-go
 ../../bin/pulumi-language-go:
 	go build -C pulumi-language-go -o ../../../bin/pulumi-language-go \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		${LANGHOST_PKG}
 
@@ -61,6 +62,7 @@ endif
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -C pulumi-language-go \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 
 lint:: .make/ensure/golangci-lint
@@ -68,6 +70,9 @@ lint:: .make/ensure/golangci-lint
 
 	cd pulumi-language-go && \
 		golangci-lint run -c ../../../.golangci.yml --timeout 5m --path-prefix pulumi-language-go
+
+clean::
+	rm -rf .make
 
 publish:
 	git tag sdk/v${VERSION}

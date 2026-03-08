@@ -15,11 +15,6 @@ on:
         required: true
         description: "Version to produce"
         type: string
-      test-codegen:
-        required: false
-        default: true
-        description: "Whether to run per-language codegen tests."
-        type: boolean
       lint:
         required: false
         default: true
@@ -45,11 +40,6 @@ on:
         default: false
         required: false
         type: boolean
-      enable-journaling:
-        description: "Whether journaling is enabled in tests"
-        default: true
-        required: false
-        type: boolean
       fail-fast:
         required: false
         default: false
@@ -60,6 +50,11 @@ on:
         default: 0
         description: "Retry tests n times if there are failures"
         type: number
+      fuzz-test-optional:
+        required: false
+        default: false
+        description: "If true, fuzz test failures won't block the workflow"
+        type: boolean
     secrets:
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
@@ -75,7 +70,7 @@ on:
         description: "Azure client ID, required to run tests against Azure"
       AZURE_CLIENT_SECRET:
         required: false
-        description: "Azure clients secret, needs to be rotated before 2025-12-21 (see the pulumi-test user in Azure portal)"
+        description: "Azure clients secret, needs to be rotated before 2027-12-22 (see the TestAzureLoginAzLogin test for detailed instructions)"
       AZURE_STORAGE_SAS_TOKEN:
         required: false
         description: "Azure storage SAS token, required to run tests against Azure"
@@ -89,7 +84,7 @@ jobs:
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
@@ -97,14 +92,14 @@ jobs:
           CACHE_KEY: "matrix-setup"
         run: echo "$CACHE_KEY" > .gocache.tmp
       - name: Setup Go Caching
-        uses: actions/setup-go@v5 # only used by gotestsum
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5 # only used by gotestsum
         with:
           go-version: '>=1.19.0' # decoupled from version sets, only used by gotestsum
           cache: true
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           repository: dnephin/gotestsum
           ref: d09768c81065b404caed0855eb3ab8f11a2a4431
@@ -112,17 +107,19 @@ jobs:
       - run: |
           cd vendor/gotestsum
           go install .
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
         id: matrix
         env:
-          TEST_CODEGEN: ${{ inputs.test-codegen }}
           TEST_VERSION_SETS: ${{ inputs.test-version-sets }}
           INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
           INPUT_ACCEPTANCE_TEST_PLATFORMS: ${{ inputs.acceptance-test-platforms }}
@@ -153,10 +150,6 @@ jobs:
 
           CODEGEN_TESTS_FLAG=--codegen-tests
           PKG_UNIT_TEST_PARTITIONS=7
-          if [ "${TEST_CODEGEN}" = "false" ]; then
-            CODEGEN_TESTS_FLAG=--no-codegen-tests
-            PKG_UNIT_TEST_PARTITIONS=3
-          fi
 
           UNIT_TEST_MATRIX=$(
             ./scripts/get-job-matrix.py \
@@ -166,7 +159,6 @@ jobs:
             "$CODEGEN_TESTS_FLAG" \
             --platform "${INTEGRATION_PLATFORMS[@]}" "${ACCEPTANCE_PLATFORMS[@]}" \
             --version-set current \
-            --partition-module cmd/pulumi-test-language 1 \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-module sdk 1 \
             --partition-module tests 8
@@ -183,8 +175,12 @@ jobs:
             --partition-module pkg 1 \
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
-            --partition-module sdk/nodejs/cmd/pulumi-language-nodejs 1 \
-            --partition-module sdk/python/cmd/pulumi-language-python 1 \
+            --partition-package github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl \
+                sdk/pcl/cmd/pulumi-language-pcl 2 \
+            --partition-package github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3 \
+                sdk/nodejs/cmd/pulumi-language-nodejs 2 \
+            --partition-package github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 \
+                sdk/python/cmd/pulumi-language-python 4 \
             --partition-module tests 2 \
             --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
             --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
@@ -216,9 +212,9 @@ jobs:
               "$CODEGEN_TESTS_FLAG" \
               --platform windows-latest \
               --version-set current \
-              --partition-module pkg 1 \
+              --partition-module pkg 2 \
               --partition-module sdk 1 \
-              --partition-module tests 2 \
+              --partition-module tests 3 \
               --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
               --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
             )
@@ -236,7 +232,7 @@ jobs:
               --version-set current \
               --partition-module pkg 1 \
               --partition-module sdk 1 \
-              --partition-module tests 2 \
+              --partition-module tests 4 \
               --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
               --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
             )
@@ -365,7 +361,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: false
       enable-coverage: ${{ inputs.enable-coverage }}
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -392,7 +387,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -420,7 +414,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -448,11 +441,27 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
       version-set: ${{ toJson(matrix.version-set) }}
+    secrets: inherit
+
+  fuzz-test:
+    name: Fuzz Test
+    uses: ./.github/workflows/ci-run-test.yml
+    needs: [matrix]
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ubuntu-latest
+      test-name: Fuzz test
+      test-command: make test_lifecycle_fuzz
+      is-integration-test: false
+      enable-coverage: false
+      test-retries: ${{ inputs.test-retries }}
+      version-set: ${{ needs.matrix.outputs.version-set }}
+      continue-on-error: ${{ inputs.fuzz-test-optional }}
     secrets: inherit
 
   test-collect-reports:
@@ -460,12 +469,12 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: test-results
           key: gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         continue-on-error: true
         with:
           pattern: gotestsum-test-results-*
@@ -492,11 +501,11 @@ jobs:
               exit 1
           fi
       # Checkout repository to upload coverage results.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ inputs.ref }}
       - name: Retrieve code coverage reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: coverage-*
           merge-multiple: true
@@ -509,7 +518,7 @@ jobs:
           sudo chmod +x codecov
           ./codecov pr-base-picking --base-sha "$(git merge-base origin/master HEAD)" --pr ${{ github.event.number }} --slug pulumi/pulumi --token ${{ secrets.CODECOV_TOKEN }} --service github
       - name: Upload code coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           directory: coverage/
           files: "*,!.gitkeep"

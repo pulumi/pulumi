@@ -5,7 +5,7 @@ from collections.abc import Callable
 from collections.abc import Awaitable, Mapping
 
 
-from .runtime.resource import register_resource_hook
+from .runtime.resource import register_resource_hook, register_error_hook
 
 
 class ResourceHookArgs:
@@ -79,6 +79,105 @@ ResourceHookFunction = Callable[
     Union[None, Awaitable[None]],
 ]
 """ResourceHookFunction is a function that can be registered as a resource hook."""
+
+
+class ErrorHookArgs:
+    """
+    ErrorHookArgs represents the arguments passed to an error hook.
+
+    Depending on the failed operation, only some of the new/old inputs/outputs are set.
+
+    | Failed Operation | old_inputs | new_inputs | old_outputs |
+    | ---------------- | ---------- | ---------- | ----------- |
+    | create           |            | ✓          |             |
+    | update           | ✓          | ✓          | ✓           |
+    | delete           | ✓          |            | ✓           |
+    """
+
+    urn: str
+    """The URN of the resource that triggered the hook."""
+    id: str
+    """The ID of the resource that triggered the hook."""
+    name: str
+    """The name of the resource that triggered the hook."""
+    type: str
+    """The type of the resource that triggered the hook."""
+    new_inputs: Optional[Mapping[str, Any]] = None
+    """The new inputs of the resource that triggered the hook."""
+    old_inputs: Optional[Mapping[str, Any]] = None
+    """The old inputs of the resource that triggered the hook."""
+    old_outputs: Optional[Mapping[str, Any]] = None
+    """The old outputs of the resource that triggered the hook."""
+    failed_operation: str
+    """The operation that failed (create, update, or delete)."""
+    errors: list[str]
+    """The errors that have been seen so far (newest first)."""
+
+    def __init__(
+        self,
+        urn: str,
+        id: str,
+        name: str,
+        type: str,
+        new_inputs: Optional[Mapping[str, Any]] = None,
+        old_inputs: Optional[Mapping[str, Any]] = None,
+        old_outputs: Optional[Mapping[str, Any]] = None,
+        failed_operation: str = "",
+        errors: Optional[list[str]] = None,
+    ):
+        self.urn = urn
+        self.id = id
+        self.name = name
+        self.type = type
+        self.new_inputs = new_inputs
+        self.old_inputs = old_inputs
+        self.old_outputs = old_outputs
+        self.failed_operation = failed_operation
+        self.errors = errors or []
+
+    def __repr__(self):
+        return (
+            f"ErrorHookArgs(urn={self.urn}, "
+            + f"id={self.id}, "
+            + f"name={self.name}, "
+            + f"type={self.type}, "
+            + f"failed_operation={self.failed_operation}, "
+            + f"errors={self.errors})"
+        )
+
+
+ErrorHookFunction = Callable[
+    [ErrorHookArgs],
+    Union[bool, Awaitable[bool]],
+]
+"""ErrorHookFunction is a function that can be registered as an error hook. Returns True to retry, False to not retry."""
+
+
+class ErrorHook:
+    """ErrorHook is a named hook that can be registered as an error hook."""
+
+    name: str
+    """The unique name of the error hook."""
+    callback: ErrorHookFunction
+    """The function that will be called when the error hook is triggered."""
+    _registered: asyncio.Future[None]
+    """
+    Tracks the registration of the error hook. The future will resolve once
+    the hook has been registered, or reject if any error occurs.
+    """
+
+    def __init__(self, name: str, func: ErrorHookFunction):
+        self.__doc__ = getattr(func, "__doc__", None)
+        self.__name__ = getattr(func, "__name__", None)
+        self.name = name
+        self.callback = func
+        self._registered = register_error_hook(self)
+
+    def __call__(self, args: ErrorHookArgs) -> Union[bool, Awaitable[bool]]:
+        return self.callback(args)
+
+    def __repr__(self) -> str:
+        return f"ErrorHook(name={self.name}, callback={self.callback})"
 
 
 class ResourceHookOptions:
@@ -168,6 +267,8 @@ class ResourceHookBinding:
     :class:`ResourceHookFunction`. This is because the engine needs to be able to identify a hook when a resource is
     deleted.
     """
+    on_error: Optional[list["ErrorHook"]]
+    """Hooks to be invoked when a resource operation fails. Return True to retry, False to not retry."""
 
     def __init__(
         self,
@@ -177,6 +278,7 @@ class ResourceHookBinding:
         after_update: Optional[list[Union[ResourceHook, ResourceHookFunction]]] = None,
         before_delete: Optional[list[ResourceHook]] = None,
         after_delete: Optional[list[ResourceHook]] = None,
+        on_error: Optional[list["ErrorHook"]] = None,
     ):
         self.before_create = before_create
         self.after_create = after_create
@@ -184,6 +286,7 @@ class ResourceHookBinding:
         self.after_update = after_update
         self.before_delete = before_delete
         self.after_delete = after_delete
+        self.on_error = on_error
 
     def __repr__(self):
         return (
@@ -192,7 +295,8 @@ class ResourceHookBinding:
             + f"before_update={self.before_update}, "
             + f"after_update={self.after_update}, "
             + f"before_delete={self.before_delete}, "
-            + f"after_delete={self.after_delete})"
+            + f"after_delete={self.after_delete}, "
+            + f"on_error={self.on_error})"
         )
 
     def _copy(self):
@@ -223,6 +327,7 @@ class ResourceHookBinding:
         dest.after_update = _merge_lists(dest.after_update, source.after_update)
         dest.before_delete = _merge_lists(dest.before_delete, source.before_delete)
         dest.after_delete = _merge_lists(dest.after_delete, source.after_delete)
+        dest.on_error = _merge_lists(dest.on_error, source.on_error)
 
         return dest
 

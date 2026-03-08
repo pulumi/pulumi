@@ -17,22 +17,22 @@ package stack
 import (
 	"fmt"
 
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 // Resets the currently selected stack from the current workspace such that
 // next time the users get prompted with a stack to select
 func newStackUnselectCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "unselect",
 		Short: "Resets stack selection from the current workspace",
 		Long: "Resets stack selection from the current workspace.\n" +
 			"\n" +
 			"This way, next time pulumi needs to execute an operation, the user is prompted with one of the stacks to select\n" +
 			"from.\n",
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			currentWorkspace, err := pkgWorkspace.Instance.New()
 			if err != nil {
@@ -58,4 +58,8 @@ func newStackUnselectCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
+	return cmd
 }

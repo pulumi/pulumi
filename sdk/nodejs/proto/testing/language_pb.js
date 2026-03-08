@@ -498,7 +498,9 @@ snapshotEditsList: jspb.Message.toObjectList(msg.getSnapshotEditsList(),
 languageInfo: jspb.Message.getFieldWithDefault(msg, 8, ""),
 programOverridesMap: (f = msg.getProgramOverridesMap()) ? f.toObject(includeInstance, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.toObject) : [],
 policyPackDirectory: jspb.Message.getFieldWithDefault(msg, 10, ""),
-local: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
+local: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
+providersDirectory: jspb.Message.getFieldWithDefault(msg, 12, ""),
+converterPluginTarget: jspb.Message.getFieldWithDefault(msg, 13, "")
   };
 
   if (includeInstance) {
@@ -581,6 +583,14 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.deserializeBinaryFromReader 
     case 11:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setLocal(value);
+      break;
+    case 12:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setProvidersDirectory(value);
+      break;
+    case 13:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setConverterPluginTarget(value);
       break;
     default:
       reader.skipField();
@@ -683,6 +693,20 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.serializeBinaryToWriter = fu
   if (f) {
     writer.writeBool(
       11,
+      f
+    );
+  }
+  f = message.getProvidersDirectory();
+  if (f.length > 0) {
+    writer.writeString(
+      12,
+      f
+    );
+  }
+  f = message.getConverterPluginTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      13,
       f
     );
   }
@@ -1258,6 +1282,42 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setLocal = functio
 };
 
 
+/**
+ * optional string providers_directory = 12;
+ * @return {string}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getProvidersDirectory = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 12, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setProvidersDirectory = function(value) {
+  return jspb.Message.setProto3StringField(this, 12, value);
+};
+
+
+/**
+ * optional string converter_plugin_target = 13;
+ * @return {string}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getConverterPluginTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setConverterPluginTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 13, value);
+};
+
+
 
 
 
@@ -1421,7 +1481,8 @@ proto.pulumirpc.testing.RunLanguageTestRequest.prototype.toObject = function(opt
 proto.pulumirpc.testing.RunLanguageTestRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-test: jspb.Message.getFieldWithDefault(msg, 2, "")
+test: jspb.Message.getFieldWithDefault(msg, 2, ""),
+skipConvertTests: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -1466,6 +1527,10 @@ proto.pulumirpc.testing.RunLanguageTestRequest.deserializeBinaryFromReader = fun
       var value = /** @type {string} */ (reader.readString());
       msg.setTest(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSkipConvertTests(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1509,6 +1574,13 @@ proto.pulumirpc.testing.RunLanguageTestRequest.serializeBinaryToWriter = functio
       f
     );
   }
+  f = message.getSkipConvertTests();
+  if (f) {
+    writer.writeBool(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -1545,6 +1617,24 @@ proto.pulumirpc.testing.RunLanguageTestRequest.prototype.getTest = function() {
  */
 proto.pulumirpc.testing.RunLanguageTestRequest.prototype.setTest = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional bool skip_convert_tests = 3;
+ * @return {boolean}
+ */
+proto.pulumirpc.testing.RunLanguageTestRequest.prototype.getSkipConvertTests = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.testing.RunLanguageTestRequest} returns this
+ */
+proto.pulumirpc.testing.RunLanguageTestRequest.prototype.setSkipConvertTests = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 

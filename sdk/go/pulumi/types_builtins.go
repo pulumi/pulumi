@@ -606,6 +606,594 @@ func ToArchiveArrayArrayOutput(in []ArchiveArrayOutput) ArchiveArrayArrayOutput 
 	return a.ToArchiveArrayArrayOutput()
 }
 
+var archiveArrayMapMapType = reflect.TypeOf((*map[string]map[string][]Archive)(nil)).Elem()
+
+// ArchiveArrayMapMapInput is an input type that accepts ArchiveArrayMapMap and ArchiveArrayMapMapOutput values.
+type ArchiveArrayMapMapInput interface {
+	Input
+
+	ToArchiveArrayMapMapOutput() ArchiveArrayMapMapOutput
+	ToArchiveArrayMapMapOutputWithContext(ctx context.Context) ArchiveArrayMapMapOutput
+}
+
+// ArchiveArrayMapMap is an input type for map[string]ArchiveArrayMapInput values.
+type ArchiveArrayMapMap map[string]ArchiveArrayMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string][]Archive).
+func (ArchiveArrayMapMap) ElementType() reflect.Type {
+	return archiveArrayMapMapType
+}
+
+func (in ArchiveArrayMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]Archive] {
+	return pulumix.Output[map[string]map[string][]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ArchiveArrayMapMap) ToArchiveArrayMapMapOutput() ArchiveArrayMapMapOutput {
+	return ToOutput(in).(ArchiveArrayMapMapOutput)
+}
+
+func (in ArchiveArrayMapMap) ToArchiveArrayMapMapOutputWithContext(ctx context.Context) ArchiveArrayMapMapOutput {
+	return ToOutputWithContext(ctx, in).(ArchiveArrayMapMapOutput)
+}
+
+// ArchiveArrayMapMapOutput is an Output that returns map[string]map[string][]Archive values.
+type ArchiveArrayMapMapOutput struct{ *OutputState }
+
+func (ArchiveArrayMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveArrayMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]Archive] {
+	return pulumix.Output[map[string]map[string][]Archive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string][]Archive).
+func (ArchiveArrayMapMapOutput) ElementType() reflect.Type {
+	return archiveArrayMapMapType
+}
+
+func (o ArchiveArrayMapMapOutput) ToArchiveArrayMapMapOutput() ArchiveArrayMapMapOutput {
+	return o
+}
+
+func (o ArchiveArrayMapMapOutput) ToArchiveArrayMapMapOutputWithContext(ctx context.Context) ArchiveArrayMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o ArchiveArrayMapMapOutput) MapIndex(k StringInput) ArchiveArrayMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string][]Archive {
+		return vs[0].(map[string]map[string][]Archive)[vs[1].(string)]
+	}).(ArchiveArrayMapOutput)
+}
+
+func ToArchiveArrayMapMap(in map[string]map[string][]Archive) ArchiveArrayMapMap {
+	m := make(ArchiveArrayMapMap)
+	for k, v := range in {
+		m[k] = ToArchiveArrayMap(v)
+	}
+	return m
+}
+
+func ToArchiveArrayMapMapOutput(in map[string]ArchiveArrayMapOutput) ArchiveArrayMapMapOutput {
+	m := make(ArchiveArrayMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArchiveArrayMapMapOutput()
+}
+
+var archiveMapArrayMapType = reflect.TypeOf((*map[string][]map[string]Archive)(nil)).Elem()
+
+// ArchiveMapArrayMapInput is an input type that accepts ArchiveMapArrayMap and ArchiveMapArrayMapOutput values.
+type ArchiveMapArrayMapInput interface {
+	Input
+
+	ToArchiveMapArrayMapOutput() ArchiveMapArrayMapOutput
+	ToArchiveMapArrayMapOutputWithContext(ctx context.Context) ArchiveMapArrayMapOutput
+}
+
+// ArchiveMapArrayMap is an input type for map[string]ArchiveMapArrayInput values.
+type ArchiveMapArrayMap map[string]ArchiveMapArrayInput
+
+// ElementType returns the element type of this Input (map[string][]map[string]Archive).
+func (ArchiveMapArrayMap) ElementType() reflect.Type {
+	return archiveMapArrayMapType
+}
+
+func (in ArchiveMapArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]Archive] {
+	return pulumix.Output[map[string][]map[string]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ArchiveMapArrayMap) ToArchiveMapArrayMapOutput() ArchiveMapArrayMapOutput {
+	return ToOutput(in).(ArchiveMapArrayMapOutput)
+}
+
+func (in ArchiveMapArrayMap) ToArchiveMapArrayMapOutputWithContext(ctx context.Context) ArchiveMapArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(ArchiveMapArrayMapOutput)
+}
+
+// ArchiveMapArrayMapOutput is an Output that returns map[string][]map[string]Archive values.
+type ArchiveMapArrayMapOutput struct{ *OutputState }
+
+func (ArchiveMapArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveMapArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]Archive] {
+	return pulumix.Output[map[string][]map[string]Archive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]map[string]Archive).
+func (ArchiveMapArrayMapOutput) ElementType() reflect.Type {
+	return archiveMapArrayMapType
+}
+
+func (o ArchiveMapArrayMapOutput) ToArchiveMapArrayMapOutput() ArchiveMapArrayMapOutput {
+	return o
+}
+
+func (o ArchiveMapArrayMapOutput) ToArchiveMapArrayMapOutputWithContext(ctx context.Context) ArchiveMapArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o ArchiveMapArrayMapOutput) MapIndex(k StringInput) ArchiveMapArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) []map[string]Archive {
+		return vs[0].(map[string][]map[string]Archive)[vs[1].(string)]
+	}).(ArchiveMapArrayOutput)
+}
+
+func ToArchiveMapArrayMap(in map[string][]map[string]Archive) ArchiveMapArrayMap {
+	m := make(ArchiveMapArrayMap)
+	for k, v := range in {
+		m[k] = ToArchiveMapArray(v)
+	}
+	return m
+}
+
+func ToArchiveMapArrayMapOutput(in map[string]ArchiveMapArrayOutput) ArchiveMapArrayMapOutput {
+	m := make(ArchiveMapArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArchiveMapArrayMapOutput()
+}
+
+var archiveMapMapArrayType = reflect.TypeOf((*[]map[string]map[string]Archive)(nil)).Elem()
+
+// ArchiveMapMapArrayInput is an input type that accepts ArchiveMapMapArray and ArchiveMapMapArrayOutput values.
+type ArchiveMapMapArrayInput interface {
+	Input
+
+	ToArchiveMapMapArrayOutput() ArchiveMapMapArrayOutput
+	ToArchiveMapMapArrayOutputWithContext(ctx context.Context) ArchiveMapMapArrayOutput
+}
+
+// ArchiveMapMapArray is an input type for []ArchiveMapMapInput values.
+type ArchiveMapMapArray []ArchiveMapMapInput
+
+// ElementType returns the element type of this Input ([]map[string]map[string]Archive).
+func (ArchiveMapMapArray) ElementType() reflect.Type {
+	return archiveMapMapArrayType
+}
+
+func (in ArchiveMapMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]Archive] {
+	return pulumix.Output[[]map[string]map[string]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ArchiveMapMapArray) ToArchiveMapMapArrayOutput() ArchiveMapMapArrayOutput {
+	return ToOutput(in).(ArchiveMapMapArrayOutput)
+}
+
+func (in ArchiveMapMapArray) ToArchiveMapMapArrayOutputWithContext(ctx context.Context) ArchiveMapMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(ArchiveMapMapArrayOutput)
+}
+
+// ArchiveMapMapArrayOutput is an Output that returns []map[string]map[string]Archive values.
+type ArchiveMapMapArrayOutput struct{ *OutputState }
+
+func (ArchiveMapMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveMapMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]Archive] {
+	return pulumix.Output[[]map[string]map[string]Archive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]map[string]Archive).
+func (ArchiveMapMapArrayOutput) ElementType() reflect.Type {
+	return archiveMapMapArrayType
+}
+
+func (o ArchiveMapMapArrayOutput) ToArchiveMapMapArrayOutput() ArchiveMapMapArrayOutput {
+	return o
+}
+
+func (o ArchiveMapMapArrayOutput) ToArchiveMapMapArrayOutputWithContext(ctx context.Context) ArchiveMapMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o ArchiveMapMapArrayOutput) Index(i IntInput) ArchiveMapMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string]map[string]Archive {
+		arr := vs[0].([]map[string]map[string]Archive)
+		idx := vs[1].(int)
+		var ret map[string]map[string]Archive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(ArchiveMapMapOutput)
+}
+
+func ToArchiveMapMapArray(in []map[string]map[string]Archive) ArchiveMapMapArray {
+	a := make(ArchiveMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToArchiveMapMap(v)
+	}
+	return a
+}
+
+func ToArchiveMapMapArrayOutput(in []ArchiveMapMapOutput) ArchiveMapMapArrayOutput {
+	a := make(ArchiveMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArchiveMapMapArrayOutput()
+}
+
+var archiveArrayMapArrayType = reflect.TypeOf((*[]map[string][]Archive)(nil)).Elem()
+
+// ArchiveArrayMapArrayInput is an input type that accepts ArchiveArrayMapArray and ArchiveArrayMapArrayOutput values.
+type ArchiveArrayMapArrayInput interface {
+	Input
+
+	ToArchiveArrayMapArrayOutput() ArchiveArrayMapArrayOutput
+	ToArchiveArrayMapArrayOutputWithContext(ctx context.Context) ArchiveArrayMapArrayOutput
+}
+
+// ArchiveArrayMapArray is an input type for []ArchiveArrayMapInput values.
+type ArchiveArrayMapArray []ArchiveArrayMapInput
+
+// ElementType returns the element type of this Input ([]map[string][]Archive).
+func (ArchiveArrayMapArray) ElementType() reflect.Type {
+	return archiveArrayMapArrayType
+}
+
+func (in ArchiveArrayMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]Archive] {
+	return pulumix.Output[[]map[string][]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ArchiveArrayMapArray) ToArchiveArrayMapArrayOutput() ArchiveArrayMapArrayOutput {
+	return ToOutput(in).(ArchiveArrayMapArrayOutput)
+}
+
+func (in ArchiveArrayMapArray) ToArchiveArrayMapArrayOutputWithContext(ctx context.Context) ArchiveArrayMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(ArchiveArrayMapArrayOutput)
+}
+
+// ArchiveArrayMapArrayOutput is an Output that returns []map[string][]Archive values.
+type ArchiveArrayMapArrayOutput struct{ *OutputState }
+
+func (ArchiveArrayMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveArrayMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]Archive] {
+	return pulumix.Output[[]map[string][]Archive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string][]Archive).
+func (ArchiveArrayMapArrayOutput) ElementType() reflect.Type {
+	return archiveArrayMapArrayType
+}
+
+func (o ArchiveArrayMapArrayOutput) ToArchiveArrayMapArrayOutput() ArchiveArrayMapArrayOutput {
+	return o
+}
+
+func (o ArchiveArrayMapArrayOutput) ToArchiveArrayMapArrayOutputWithContext(ctx context.Context) ArchiveArrayMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o ArchiveArrayMapArrayOutput) Index(i IntInput) ArchiveArrayMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string][]Archive {
+		arr := vs[0].([]map[string][]Archive)
+		idx := vs[1].(int)
+		var ret map[string][]Archive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(ArchiveArrayMapOutput)
+}
+
+func ToArchiveArrayMapArray(in []map[string][]Archive) ArchiveArrayMapArray {
+	a := make(ArchiveArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToArchiveArrayMap(v)
+	}
+	return a
+}
+
+func ToArchiveArrayMapArrayOutput(in []ArchiveArrayMapOutput) ArchiveArrayMapArrayOutput {
+	a := make(ArchiveArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArchiveArrayMapArrayOutput()
+}
+
+var archiveArrayArrayMapType = reflect.TypeOf((*map[string][][]Archive)(nil)).Elem()
+
+// ArchiveArrayArrayMapInput is an input type that accepts ArchiveArrayArrayMap and ArchiveArrayArrayMapOutput values.
+type ArchiveArrayArrayMapInput interface {
+	Input
+
+	ToArchiveArrayArrayMapOutput() ArchiveArrayArrayMapOutput
+	ToArchiveArrayArrayMapOutputWithContext(ctx context.Context) ArchiveArrayArrayMapOutput
+}
+
+// ArchiveArrayArrayMap is an input type for map[string]ArchiveArrayArrayInput values.
+type ArchiveArrayArrayMap map[string]ArchiveArrayArrayInput
+
+// ElementType returns the element type of this Input (map[string][][]Archive).
+func (ArchiveArrayArrayMap) ElementType() reflect.Type {
+	return archiveArrayArrayMapType
+}
+
+func (in ArchiveArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]Archive] {
+	return pulumix.Output[map[string][][]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ArchiveArrayArrayMap) ToArchiveArrayArrayMapOutput() ArchiveArrayArrayMapOutput {
+	return ToOutput(in).(ArchiveArrayArrayMapOutput)
+}
+
+func (in ArchiveArrayArrayMap) ToArchiveArrayArrayMapOutputWithContext(ctx context.Context) ArchiveArrayArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(ArchiveArrayArrayMapOutput)
+}
+
+// ArchiveArrayArrayMapOutput is an Output that returns map[string][][]Archive values.
+type ArchiveArrayArrayMapOutput struct{ *OutputState }
+
+func (ArchiveArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]Archive] {
+	return pulumix.Output[map[string][][]Archive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][][]Archive).
+func (ArchiveArrayArrayMapOutput) ElementType() reflect.Type {
+	return archiveArrayArrayMapType
+}
+
+func (o ArchiveArrayArrayMapOutput) ToArchiveArrayArrayMapOutput() ArchiveArrayArrayMapOutput {
+	return o
+}
+
+func (o ArchiveArrayArrayMapOutput) ToArchiveArrayArrayMapOutputWithContext(ctx context.Context) ArchiveArrayArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o ArchiveArrayArrayMapOutput) MapIndex(k StringInput) ArchiveArrayArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) [][]Archive {
+		return vs[0].(map[string][][]Archive)[vs[1].(string)]
+	}).(ArchiveArrayArrayOutput)
+}
+
+func ToArchiveArrayArrayMap(in map[string][][]Archive) ArchiveArrayArrayMap {
+	m := make(ArchiveArrayArrayMap)
+	for k, v := range in {
+		m[k] = ToArchiveArrayArray(v)
+	}
+	return m
+}
+
+func ToArchiveArrayArrayMapOutput(in map[string]ArchiveArrayArrayOutput) ArchiveArrayArrayMapOutput {
+	m := make(ArchiveArrayArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArchiveArrayArrayMapOutput()
+}
+
+var archiveArrayArrayArrayType = reflect.TypeOf((*[][][]Archive)(nil)).Elem()
+
+// ArchiveArrayArrayArrayInput is an input type that accepts ArchiveArrayArrayArray and ArchiveArrayArrayArrayOutput values.
+type ArchiveArrayArrayArrayInput interface {
+	Input
+
+	ToArchiveArrayArrayArrayOutput() ArchiveArrayArrayArrayOutput
+	ToArchiveArrayArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayArrayOutput
+}
+
+// ArchiveArrayArrayArray is an input type for []ArchiveArrayArrayInput values.
+type ArchiveArrayArrayArray []ArchiveArrayArrayInput
+
+// ElementType returns the element type of this Input ([][][]Archive).
+func (ArchiveArrayArrayArray) ElementType() reflect.Type {
+	return archiveArrayArrayArrayType
+}
+
+func (in ArchiveArrayArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][][]Archive] {
+	return pulumix.Output[[][][]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ArchiveArrayArrayArray) ToArchiveArrayArrayArrayOutput() ArchiveArrayArrayArrayOutput {
+	return ToOutput(in).(ArchiveArrayArrayArrayOutput)
+}
+
+func (in ArchiveArrayArrayArray) ToArchiveArrayArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(ArchiveArrayArrayArrayOutput)
+}
+
+// ArchiveArrayArrayArrayOutput is an Output that returns [][][]Archive values.
+type ArchiveArrayArrayArrayOutput struct{ *OutputState }
+
+func (ArchiveArrayArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]Archive] {
+	return pulumix.Output[[][][]Archive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][][]Archive).
+func (ArchiveArrayArrayArrayOutput) ElementType() reflect.Type {
+	return archiveArrayArrayArrayType
+}
+
+func (o ArchiveArrayArrayArrayOutput) ToArchiveArrayArrayArrayOutput() ArchiveArrayArrayArrayOutput {
+	return o
+}
+
+func (o ArchiveArrayArrayArrayOutput) ToArchiveArrayArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o ArchiveArrayArrayArrayOutput) Index(i IntInput) ArchiveArrayArrayOutput {
+	return All(o, i).ApplyT(func(vs []any) [][]Archive {
+		arr := vs[0].([][][]Archive)
+		idx := vs[1].(int)
+		var ret [][]Archive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(ArchiveArrayArrayOutput)
+}
+
+func ToArchiveArrayArrayArray(in [][][]Archive) ArchiveArrayArrayArray {
+	a := make(ArchiveArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToArchiveArrayArray(v)
+	}
+	return a
+}
+
+func ToArchiveArrayArrayArrayOutput(in []ArchiveArrayArrayOutput) ArchiveArrayArrayArrayOutput {
+	a := make(ArchiveArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArchiveArrayArrayArrayOutput()
+}
+
+var archiveMapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]Archive)(nil)).Elem()
+
+// ArchiveMapMapMapInput is an input type that accepts ArchiveMapMapMap and ArchiveMapMapMapOutput values.
+type ArchiveMapMapMapInput interface {
+	Input
+
+	ToArchiveMapMapMapOutput() ArchiveMapMapMapOutput
+	ToArchiveMapMapMapOutputWithContext(ctx context.Context) ArchiveMapMapMapOutput
+}
+
+// ArchiveMapMapMap is an input type for map[string]ArchiveMapMapInput values.
+type ArchiveMapMapMap map[string]ArchiveMapMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]map[string]Archive).
+func (ArchiveMapMapMap) ElementType() reflect.Type {
+	return archiveMapMapMapType
+}
+
+func (in ArchiveMapMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]Archive] {
+	return pulumix.Output[map[string]map[string]map[string]Archive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ArchiveMapMapMap) ToArchiveMapMapMapOutput() ArchiveMapMapMapOutput {
+	return ToOutput(in).(ArchiveMapMapMapOutput)
+}
+
+func (in ArchiveMapMapMap) ToArchiveMapMapMapOutputWithContext(ctx context.Context) ArchiveMapMapMapOutput {
+	return ToOutputWithContext(ctx, in).(ArchiveMapMapMapOutput)
+}
+
+// ArchiveMapMapMapOutput is an Output that returns map[string]map[string]map[string]Archive values.
+type ArchiveMapMapMapOutput struct{ *OutputState }
+
+func (ArchiveMapMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ArchiveMapMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]Archive] {
+	return pulumix.Output[map[string]map[string]map[string]Archive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]map[string]Archive).
+func (ArchiveMapMapMapOutput) ElementType() reflect.Type {
+	return archiveMapMapMapType
+}
+
+func (o ArchiveMapMapMapOutput) ToArchiveMapMapMapOutput() ArchiveMapMapMapOutput {
+	return o
+}
+
+func (o ArchiveMapMapMapOutput) ToArchiveMapMapMapOutputWithContext(ctx context.Context) ArchiveMapMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o ArchiveMapMapMapOutput) MapIndex(k StringInput) ArchiveMapMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string]map[string]Archive {
+		return vs[0].(map[string]map[string]map[string]Archive)[vs[1].(string)]
+	}).(ArchiveMapMapOutput)
+}
+
+func ToArchiveMapMapMap(in map[string]map[string]map[string]Archive) ArchiveMapMapMap {
+	m := make(ArchiveMapMapMap)
+	for k, v := range in {
+		m[k] = ToArchiveMapMap(v)
+	}
+	return m
+}
+
+func ToArchiveMapMapMapOutput(in map[string]ArchiveMapMapOutput) ArchiveMapMapMapOutput {
+	m := make(ArchiveMapMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArchiveMapMapMapOutput()
+}
+
 var assetType = reflect.TypeOf((*Asset)(nil)).Elem()
 
 // AssetInput is an input type that accepts Asset and AssetOutput values.
@@ -1186,6 +1774,594 @@ func ToAssetArrayArrayOutput(in []AssetArrayOutput) AssetArrayArrayOutput {
 	return a.ToAssetArrayArrayOutput()
 }
 
+var assetArrayMapMapType = reflect.TypeOf((*map[string]map[string][]Asset)(nil)).Elem()
+
+// AssetArrayMapMapInput is an input type that accepts AssetArrayMapMap and AssetArrayMapMapOutput values.
+type AssetArrayMapMapInput interface {
+	Input
+
+	ToAssetArrayMapMapOutput() AssetArrayMapMapOutput
+	ToAssetArrayMapMapOutputWithContext(ctx context.Context) AssetArrayMapMapOutput
+}
+
+// AssetArrayMapMap is an input type for map[string]AssetArrayMapInput values.
+type AssetArrayMapMap map[string]AssetArrayMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string][]Asset).
+func (AssetArrayMapMap) ElementType() reflect.Type {
+	return assetArrayMapMapType
+}
+
+func (in AssetArrayMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]Asset] {
+	return pulumix.Output[map[string]map[string][]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetArrayMapMap) ToAssetArrayMapMapOutput() AssetArrayMapMapOutput {
+	return ToOutput(in).(AssetArrayMapMapOutput)
+}
+
+func (in AssetArrayMapMap) ToAssetArrayMapMapOutputWithContext(ctx context.Context) AssetArrayMapMapOutput {
+	return ToOutputWithContext(ctx, in).(AssetArrayMapMapOutput)
+}
+
+// AssetArrayMapMapOutput is an Output that returns map[string]map[string][]Asset values.
+type AssetArrayMapMapOutput struct{ *OutputState }
+
+func (AssetArrayMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetArrayMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]Asset] {
+	return pulumix.Output[map[string]map[string][]Asset]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string][]Asset).
+func (AssetArrayMapMapOutput) ElementType() reflect.Type {
+	return assetArrayMapMapType
+}
+
+func (o AssetArrayMapMapOutput) ToAssetArrayMapMapOutput() AssetArrayMapMapOutput {
+	return o
+}
+
+func (o AssetArrayMapMapOutput) ToAssetArrayMapMapOutputWithContext(ctx context.Context) AssetArrayMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o AssetArrayMapMapOutput) MapIndex(k StringInput) AssetArrayMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string][]Asset {
+		return vs[0].(map[string]map[string][]Asset)[vs[1].(string)]
+	}).(AssetArrayMapOutput)
+}
+
+func ToAssetArrayMapMap(in map[string]map[string][]Asset) AssetArrayMapMap {
+	m := make(AssetArrayMapMap)
+	for k, v := range in {
+		m[k] = ToAssetArrayMap(v)
+	}
+	return m
+}
+
+func ToAssetArrayMapMapOutput(in map[string]AssetArrayMapOutput) AssetArrayMapMapOutput {
+	m := make(AssetArrayMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToAssetArrayMapMapOutput()
+}
+
+var assetMapArrayMapType = reflect.TypeOf((*map[string][]map[string]Asset)(nil)).Elem()
+
+// AssetMapArrayMapInput is an input type that accepts AssetMapArrayMap and AssetMapArrayMapOutput values.
+type AssetMapArrayMapInput interface {
+	Input
+
+	ToAssetMapArrayMapOutput() AssetMapArrayMapOutput
+	ToAssetMapArrayMapOutputWithContext(ctx context.Context) AssetMapArrayMapOutput
+}
+
+// AssetMapArrayMap is an input type for map[string]AssetMapArrayInput values.
+type AssetMapArrayMap map[string]AssetMapArrayInput
+
+// ElementType returns the element type of this Input (map[string][]map[string]Asset).
+func (AssetMapArrayMap) ElementType() reflect.Type {
+	return assetMapArrayMapType
+}
+
+func (in AssetMapArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]Asset] {
+	return pulumix.Output[map[string][]map[string]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetMapArrayMap) ToAssetMapArrayMapOutput() AssetMapArrayMapOutput {
+	return ToOutput(in).(AssetMapArrayMapOutput)
+}
+
+func (in AssetMapArrayMap) ToAssetMapArrayMapOutputWithContext(ctx context.Context) AssetMapArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(AssetMapArrayMapOutput)
+}
+
+// AssetMapArrayMapOutput is an Output that returns map[string][]map[string]Asset values.
+type AssetMapArrayMapOutput struct{ *OutputState }
+
+func (AssetMapArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetMapArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]Asset] {
+	return pulumix.Output[map[string][]map[string]Asset]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]map[string]Asset).
+func (AssetMapArrayMapOutput) ElementType() reflect.Type {
+	return assetMapArrayMapType
+}
+
+func (o AssetMapArrayMapOutput) ToAssetMapArrayMapOutput() AssetMapArrayMapOutput {
+	return o
+}
+
+func (o AssetMapArrayMapOutput) ToAssetMapArrayMapOutputWithContext(ctx context.Context) AssetMapArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o AssetMapArrayMapOutput) MapIndex(k StringInput) AssetMapArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) []map[string]Asset {
+		return vs[0].(map[string][]map[string]Asset)[vs[1].(string)]
+	}).(AssetMapArrayOutput)
+}
+
+func ToAssetMapArrayMap(in map[string][]map[string]Asset) AssetMapArrayMap {
+	m := make(AssetMapArrayMap)
+	for k, v := range in {
+		m[k] = ToAssetMapArray(v)
+	}
+	return m
+}
+
+func ToAssetMapArrayMapOutput(in map[string]AssetMapArrayOutput) AssetMapArrayMapOutput {
+	m := make(AssetMapArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToAssetMapArrayMapOutput()
+}
+
+var assetMapMapArrayType = reflect.TypeOf((*[]map[string]map[string]Asset)(nil)).Elem()
+
+// AssetMapMapArrayInput is an input type that accepts AssetMapMapArray and AssetMapMapArrayOutput values.
+type AssetMapMapArrayInput interface {
+	Input
+
+	ToAssetMapMapArrayOutput() AssetMapMapArrayOutput
+	ToAssetMapMapArrayOutputWithContext(ctx context.Context) AssetMapMapArrayOutput
+}
+
+// AssetMapMapArray is an input type for []AssetMapMapInput values.
+type AssetMapMapArray []AssetMapMapInput
+
+// ElementType returns the element type of this Input ([]map[string]map[string]Asset).
+func (AssetMapMapArray) ElementType() reflect.Type {
+	return assetMapMapArrayType
+}
+
+func (in AssetMapMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]Asset] {
+	return pulumix.Output[[]map[string]map[string]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetMapMapArray) ToAssetMapMapArrayOutput() AssetMapMapArrayOutput {
+	return ToOutput(in).(AssetMapMapArrayOutput)
+}
+
+func (in AssetMapMapArray) ToAssetMapMapArrayOutputWithContext(ctx context.Context) AssetMapMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(AssetMapMapArrayOutput)
+}
+
+// AssetMapMapArrayOutput is an Output that returns []map[string]map[string]Asset values.
+type AssetMapMapArrayOutput struct{ *OutputState }
+
+func (AssetMapMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetMapMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]Asset] {
+	return pulumix.Output[[]map[string]map[string]Asset]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]map[string]Asset).
+func (AssetMapMapArrayOutput) ElementType() reflect.Type {
+	return assetMapMapArrayType
+}
+
+func (o AssetMapMapArrayOutput) ToAssetMapMapArrayOutput() AssetMapMapArrayOutput {
+	return o
+}
+
+func (o AssetMapMapArrayOutput) ToAssetMapMapArrayOutputWithContext(ctx context.Context) AssetMapMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o AssetMapMapArrayOutput) Index(i IntInput) AssetMapMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string]map[string]Asset {
+		arr := vs[0].([]map[string]map[string]Asset)
+		idx := vs[1].(int)
+		var ret map[string]map[string]Asset
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(AssetMapMapOutput)
+}
+
+func ToAssetMapMapArray(in []map[string]map[string]Asset) AssetMapMapArray {
+	a := make(AssetMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToAssetMapMap(v)
+	}
+	return a
+}
+
+func ToAssetMapMapArrayOutput(in []AssetMapMapOutput) AssetMapMapArrayOutput {
+	a := make(AssetMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToAssetMapMapArrayOutput()
+}
+
+var assetArrayMapArrayType = reflect.TypeOf((*[]map[string][]Asset)(nil)).Elem()
+
+// AssetArrayMapArrayInput is an input type that accepts AssetArrayMapArray and AssetArrayMapArrayOutput values.
+type AssetArrayMapArrayInput interface {
+	Input
+
+	ToAssetArrayMapArrayOutput() AssetArrayMapArrayOutput
+	ToAssetArrayMapArrayOutputWithContext(ctx context.Context) AssetArrayMapArrayOutput
+}
+
+// AssetArrayMapArray is an input type for []AssetArrayMapInput values.
+type AssetArrayMapArray []AssetArrayMapInput
+
+// ElementType returns the element type of this Input ([]map[string][]Asset).
+func (AssetArrayMapArray) ElementType() reflect.Type {
+	return assetArrayMapArrayType
+}
+
+func (in AssetArrayMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]Asset] {
+	return pulumix.Output[[]map[string][]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetArrayMapArray) ToAssetArrayMapArrayOutput() AssetArrayMapArrayOutput {
+	return ToOutput(in).(AssetArrayMapArrayOutput)
+}
+
+func (in AssetArrayMapArray) ToAssetArrayMapArrayOutputWithContext(ctx context.Context) AssetArrayMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(AssetArrayMapArrayOutput)
+}
+
+// AssetArrayMapArrayOutput is an Output that returns []map[string][]Asset values.
+type AssetArrayMapArrayOutput struct{ *OutputState }
+
+func (AssetArrayMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetArrayMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]Asset] {
+	return pulumix.Output[[]map[string][]Asset]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string][]Asset).
+func (AssetArrayMapArrayOutput) ElementType() reflect.Type {
+	return assetArrayMapArrayType
+}
+
+func (o AssetArrayMapArrayOutput) ToAssetArrayMapArrayOutput() AssetArrayMapArrayOutput {
+	return o
+}
+
+func (o AssetArrayMapArrayOutput) ToAssetArrayMapArrayOutputWithContext(ctx context.Context) AssetArrayMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o AssetArrayMapArrayOutput) Index(i IntInput) AssetArrayMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string][]Asset {
+		arr := vs[0].([]map[string][]Asset)
+		idx := vs[1].(int)
+		var ret map[string][]Asset
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(AssetArrayMapOutput)
+}
+
+func ToAssetArrayMapArray(in []map[string][]Asset) AssetArrayMapArray {
+	a := make(AssetArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToAssetArrayMap(v)
+	}
+	return a
+}
+
+func ToAssetArrayMapArrayOutput(in []AssetArrayMapOutput) AssetArrayMapArrayOutput {
+	a := make(AssetArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToAssetArrayMapArrayOutput()
+}
+
+var assetArrayArrayMapType = reflect.TypeOf((*map[string][][]Asset)(nil)).Elem()
+
+// AssetArrayArrayMapInput is an input type that accepts AssetArrayArrayMap and AssetArrayArrayMapOutput values.
+type AssetArrayArrayMapInput interface {
+	Input
+
+	ToAssetArrayArrayMapOutput() AssetArrayArrayMapOutput
+	ToAssetArrayArrayMapOutputWithContext(ctx context.Context) AssetArrayArrayMapOutput
+}
+
+// AssetArrayArrayMap is an input type for map[string]AssetArrayArrayInput values.
+type AssetArrayArrayMap map[string]AssetArrayArrayInput
+
+// ElementType returns the element type of this Input (map[string][][]Asset).
+func (AssetArrayArrayMap) ElementType() reflect.Type {
+	return assetArrayArrayMapType
+}
+
+func (in AssetArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]Asset] {
+	return pulumix.Output[map[string][][]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetArrayArrayMap) ToAssetArrayArrayMapOutput() AssetArrayArrayMapOutput {
+	return ToOutput(in).(AssetArrayArrayMapOutput)
+}
+
+func (in AssetArrayArrayMap) ToAssetArrayArrayMapOutputWithContext(ctx context.Context) AssetArrayArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(AssetArrayArrayMapOutput)
+}
+
+// AssetArrayArrayMapOutput is an Output that returns map[string][][]Asset values.
+type AssetArrayArrayMapOutput struct{ *OutputState }
+
+func (AssetArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]Asset] {
+	return pulumix.Output[map[string][][]Asset]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][][]Asset).
+func (AssetArrayArrayMapOutput) ElementType() reflect.Type {
+	return assetArrayArrayMapType
+}
+
+func (o AssetArrayArrayMapOutput) ToAssetArrayArrayMapOutput() AssetArrayArrayMapOutput {
+	return o
+}
+
+func (o AssetArrayArrayMapOutput) ToAssetArrayArrayMapOutputWithContext(ctx context.Context) AssetArrayArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o AssetArrayArrayMapOutput) MapIndex(k StringInput) AssetArrayArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) [][]Asset {
+		return vs[0].(map[string][][]Asset)[vs[1].(string)]
+	}).(AssetArrayArrayOutput)
+}
+
+func ToAssetArrayArrayMap(in map[string][][]Asset) AssetArrayArrayMap {
+	m := make(AssetArrayArrayMap)
+	for k, v := range in {
+		m[k] = ToAssetArrayArray(v)
+	}
+	return m
+}
+
+func ToAssetArrayArrayMapOutput(in map[string]AssetArrayArrayOutput) AssetArrayArrayMapOutput {
+	m := make(AssetArrayArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToAssetArrayArrayMapOutput()
+}
+
+var assetArrayArrayArrayType = reflect.TypeOf((*[][][]Asset)(nil)).Elem()
+
+// AssetArrayArrayArrayInput is an input type that accepts AssetArrayArrayArray and AssetArrayArrayArrayOutput values.
+type AssetArrayArrayArrayInput interface {
+	Input
+
+	ToAssetArrayArrayArrayOutput() AssetArrayArrayArrayOutput
+	ToAssetArrayArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayArrayOutput
+}
+
+// AssetArrayArrayArray is an input type for []AssetArrayArrayInput values.
+type AssetArrayArrayArray []AssetArrayArrayInput
+
+// ElementType returns the element type of this Input ([][][]Asset).
+func (AssetArrayArrayArray) ElementType() reflect.Type {
+	return assetArrayArrayArrayType
+}
+
+func (in AssetArrayArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][][]Asset] {
+	return pulumix.Output[[][][]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetArrayArrayArray) ToAssetArrayArrayArrayOutput() AssetArrayArrayArrayOutput {
+	return ToOutput(in).(AssetArrayArrayArrayOutput)
+}
+
+func (in AssetArrayArrayArray) ToAssetArrayArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(AssetArrayArrayArrayOutput)
+}
+
+// AssetArrayArrayArrayOutput is an Output that returns [][][]Asset values.
+type AssetArrayArrayArrayOutput struct{ *OutputState }
+
+func (AssetArrayArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]Asset] {
+	return pulumix.Output[[][][]Asset]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][][]Asset).
+func (AssetArrayArrayArrayOutput) ElementType() reflect.Type {
+	return assetArrayArrayArrayType
+}
+
+func (o AssetArrayArrayArrayOutput) ToAssetArrayArrayArrayOutput() AssetArrayArrayArrayOutput {
+	return o
+}
+
+func (o AssetArrayArrayArrayOutput) ToAssetArrayArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o AssetArrayArrayArrayOutput) Index(i IntInput) AssetArrayArrayOutput {
+	return All(o, i).ApplyT(func(vs []any) [][]Asset {
+		arr := vs[0].([][][]Asset)
+		idx := vs[1].(int)
+		var ret [][]Asset
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(AssetArrayArrayOutput)
+}
+
+func ToAssetArrayArrayArray(in [][][]Asset) AssetArrayArrayArray {
+	a := make(AssetArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToAssetArrayArray(v)
+	}
+	return a
+}
+
+func ToAssetArrayArrayArrayOutput(in []AssetArrayArrayOutput) AssetArrayArrayArrayOutput {
+	a := make(AssetArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToAssetArrayArrayArrayOutput()
+}
+
+var assetMapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]Asset)(nil)).Elem()
+
+// AssetMapMapMapInput is an input type that accepts AssetMapMapMap and AssetMapMapMapOutput values.
+type AssetMapMapMapInput interface {
+	Input
+
+	ToAssetMapMapMapOutput() AssetMapMapMapOutput
+	ToAssetMapMapMapOutputWithContext(ctx context.Context) AssetMapMapMapOutput
+}
+
+// AssetMapMapMap is an input type for map[string]AssetMapMapInput values.
+type AssetMapMapMap map[string]AssetMapMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]map[string]Asset).
+func (AssetMapMapMap) ElementType() reflect.Type {
+	return assetMapMapMapType
+}
+
+func (in AssetMapMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]Asset] {
+	return pulumix.Output[map[string]map[string]map[string]Asset]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetMapMapMap) ToAssetMapMapMapOutput() AssetMapMapMapOutput {
+	return ToOutput(in).(AssetMapMapMapOutput)
+}
+
+func (in AssetMapMapMap) ToAssetMapMapMapOutputWithContext(ctx context.Context) AssetMapMapMapOutput {
+	return ToOutputWithContext(ctx, in).(AssetMapMapMapOutput)
+}
+
+// AssetMapMapMapOutput is an Output that returns map[string]map[string]map[string]Asset values.
+type AssetMapMapMapOutput struct{ *OutputState }
+
+func (AssetMapMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetMapMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]Asset] {
+	return pulumix.Output[map[string]map[string]map[string]Asset]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]map[string]Asset).
+func (AssetMapMapMapOutput) ElementType() reflect.Type {
+	return assetMapMapMapType
+}
+
+func (o AssetMapMapMapOutput) ToAssetMapMapMapOutput() AssetMapMapMapOutput {
+	return o
+}
+
+func (o AssetMapMapMapOutput) ToAssetMapMapMapOutputWithContext(ctx context.Context) AssetMapMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o AssetMapMapMapOutput) MapIndex(k StringInput) AssetMapMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string]map[string]Asset {
+		return vs[0].(map[string]map[string]map[string]Asset)[vs[1].(string)]
+	}).(AssetMapMapOutput)
+}
+
+func ToAssetMapMapMap(in map[string]map[string]map[string]Asset) AssetMapMapMap {
+	m := make(AssetMapMapMap)
+	for k, v := range in {
+		m[k] = ToAssetMapMap(v)
+	}
+	return m
+}
+
+func ToAssetMapMapMapOutput(in map[string]AssetMapMapOutput) AssetMapMapMapOutput {
+	m := make(AssetMapMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToAssetMapMapMapOutput()
+}
+
 var assetOrArchiveType = reflect.TypeOf((*AssetOrArchive)(nil)).Elem()
 
 // AssetOrArchiveInput is an input type that accepts AssetOrArchive and AssetOrArchiveOutput values.
@@ -1631,6 +2807,482 @@ func (o AssetOrArchiveArrayArrayOutput) Index(i IntInput) AssetOrArchiveArrayOut
 		}
 		return ret
 	}).(AssetOrArchiveArrayOutput)
+}
+
+var assetOrArchiveArrayMapMapType = reflect.TypeOf((*map[string]map[string][]AssetOrArchive)(nil)).Elem()
+
+// AssetOrArchiveArrayMapMapInput is an input type that accepts AssetOrArchiveArrayMapMap and AssetOrArchiveArrayMapMapOutput values.
+type AssetOrArchiveArrayMapMapInput interface {
+	Input
+
+	ToAssetOrArchiveArrayMapMapOutput() AssetOrArchiveArrayMapMapOutput
+	ToAssetOrArchiveArrayMapMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapMapOutput
+}
+
+// AssetOrArchiveArrayMapMap is an input type for map[string]AssetOrArchiveArrayMapInput values.
+type AssetOrArchiveArrayMapMap map[string]AssetOrArchiveArrayMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string][]AssetOrArchive).
+func (AssetOrArchiveArrayMapMap) ElementType() reflect.Type {
+	return assetOrArchiveArrayMapMapType
+}
+
+func (in AssetOrArchiveArrayMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]AssetOrArchive] {
+	return pulumix.Output[map[string]map[string][]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetOrArchiveArrayMapMap) ToAssetOrArchiveArrayMapMapOutput() AssetOrArchiveArrayMapMapOutput {
+	return ToOutput(in).(AssetOrArchiveArrayMapMapOutput)
+}
+
+func (in AssetOrArchiveArrayMapMap) ToAssetOrArchiveArrayMapMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapMapOutput {
+	return ToOutputWithContext(ctx, in).(AssetOrArchiveArrayMapMapOutput)
+}
+
+// AssetOrArchiveArrayMapMapOutput is an Output that returns map[string]map[string][]AssetOrArchive values.
+type AssetOrArchiveArrayMapMapOutput struct{ *OutputState }
+
+func (AssetOrArchiveArrayMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveArrayMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]AssetOrArchive] {
+	return pulumix.Output[map[string]map[string][]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string][]AssetOrArchive).
+func (AssetOrArchiveArrayMapMapOutput) ElementType() reflect.Type {
+	return assetOrArchiveArrayMapMapType
+}
+
+func (o AssetOrArchiveArrayMapMapOutput) ToAssetOrArchiveArrayMapMapOutput() AssetOrArchiveArrayMapMapOutput {
+	return o
+}
+
+func (o AssetOrArchiveArrayMapMapOutput) ToAssetOrArchiveArrayMapMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o AssetOrArchiveArrayMapMapOutput) MapIndex(k StringInput) AssetOrArchiveArrayMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string][]AssetOrArchive {
+		return vs[0].(map[string]map[string][]AssetOrArchive)[vs[1].(string)]
+	}).(AssetOrArchiveArrayMapOutput)
+}
+
+var assetOrArchiveMapArrayMapType = reflect.TypeOf((*map[string][]map[string]AssetOrArchive)(nil)).Elem()
+
+// AssetOrArchiveMapArrayMapInput is an input type that accepts AssetOrArchiveMapArrayMap and AssetOrArchiveMapArrayMapOutput values.
+type AssetOrArchiveMapArrayMapInput interface {
+	Input
+
+	ToAssetOrArchiveMapArrayMapOutput() AssetOrArchiveMapArrayMapOutput
+	ToAssetOrArchiveMapArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayMapOutput
+}
+
+// AssetOrArchiveMapArrayMap is an input type for map[string]AssetOrArchiveMapArrayInput values.
+type AssetOrArchiveMapArrayMap map[string]AssetOrArchiveMapArrayInput
+
+// ElementType returns the element type of this Input (map[string][]map[string]AssetOrArchive).
+func (AssetOrArchiveMapArrayMap) ElementType() reflect.Type {
+	return assetOrArchiveMapArrayMapType
+}
+
+func (in AssetOrArchiveMapArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]AssetOrArchive] {
+	return pulumix.Output[map[string][]map[string]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetOrArchiveMapArrayMap) ToAssetOrArchiveMapArrayMapOutput() AssetOrArchiveMapArrayMapOutput {
+	return ToOutput(in).(AssetOrArchiveMapArrayMapOutput)
+}
+
+func (in AssetOrArchiveMapArrayMap) ToAssetOrArchiveMapArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(AssetOrArchiveMapArrayMapOutput)
+}
+
+// AssetOrArchiveMapArrayMapOutput is an Output that returns map[string][]map[string]AssetOrArchive values.
+type AssetOrArchiveMapArrayMapOutput struct{ *OutputState }
+
+func (AssetOrArchiveMapArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveMapArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]AssetOrArchive] {
+	return pulumix.Output[map[string][]map[string]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]map[string]AssetOrArchive).
+func (AssetOrArchiveMapArrayMapOutput) ElementType() reflect.Type {
+	return assetOrArchiveMapArrayMapType
+}
+
+func (o AssetOrArchiveMapArrayMapOutput) ToAssetOrArchiveMapArrayMapOutput() AssetOrArchiveMapArrayMapOutput {
+	return o
+}
+
+func (o AssetOrArchiveMapArrayMapOutput) ToAssetOrArchiveMapArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o AssetOrArchiveMapArrayMapOutput) MapIndex(k StringInput) AssetOrArchiveMapArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) []map[string]AssetOrArchive {
+		return vs[0].(map[string][]map[string]AssetOrArchive)[vs[1].(string)]
+	}).(AssetOrArchiveMapArrayOutput)
+}
+
+var assetOrArchiveMapMapArrayType = reflect.TypeOf((*[]map[string]map[string]AssetOrArchive)(nil)).Elem()
+
+// AssetOrArchiveMapMapArrayInput is an input type that accepts AssetOrArchiveMapMapArray and AssetOrArchiveMapMapArrayOutput values.
+type AssetOrArchiveMapMapArrayInput interface {
+	Input
+
+	ToAssetOrArchiveMapMapArrayOutput() AssetOrArchiveMapMapArrayOutput
+	ToAssetOrArchiveMapMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapMapArrayOutput
+}
+
+// AssetOrArchiveMapMapArray is an input type for []AssetOrArchiveMapMapInput values.
+type AssetOrArchiveMapMapArray []AssetOrArchiveMapMapInput
+
+// ElementType returns the element type of this Input ([]map[string]map[string]AssetOrArchive).
+func (AssetOrArchiveMapMapArray) ElementType() reflect.Type {
+	return assetOrArchiveMapMapArrayType
+}
+
+func (in AssetOrArchiveMapMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]AssetOrArchive] {
+	return pulumix.Output[[]map[string]map[string]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetOrArchiveMapMapArray) ToAssetOrArchiveMapMapArrayOutput() AssetOrArchiveMapMapArrayOutput {
+	return ToOutput(in).(AssetOrArchiveMapMapArrayOutput)
+}
+
+func (in AssetOrArchiveMapMapArray) ToAssetOrArchiveMapMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(AssetOrArchiveMapMapArrayOutput)
+}
+
+// AssetOrArchiveMapMapArrayOutput is an Output that returns []map[string]map[string]AssetOrArchive values.
+type AssetOrArchiveMapMapArrayOutput struct{ *OutputState }
+
+func (AssetOrArchiveMapMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveMapMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]AssetOrArchive] {
+	return pulumix.Output[[]map[string]map[string]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]map[string]AssetOrArchive).
+func (AssetOrArchiveMapMapArrayOutput) ElementType() reflect.Type {
+	return assetOrArchiveMapMapArrayType
+}
+
+func (o AssetOrArchiveMapMapArrayOutput) ToAssetOrArchiveMapMapArrayOutput() AssetOrArchiveMapMapArrayOutput {
+	return o
+}
+
+func (o AssetOrArchiveMapMapArrayOutput) ToAssetOrArchiveMapMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o AssetOrArchiveMapMapArrayOutput) Index(i IntInput) AssetOrArchiveMapMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string]map[string]AssetOrArchive {
+		arr := vs[0].([]map[string]map[string]AssetOrArchive)
+		idx := vs[1].(int)
+		var ret map[string]map[string]AssetOrArchive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(AssetOrArchiveMapMapOutput)
+}
+
+var assetOrArchiveArrayMapArrayType = reflect.TypeOf((*[]map[string][]AssetOrArchive)(nil)).Elem()
+
+// AssetOrArchiveArrayMapArrayInput is an input type that accepts AssetOrArchiveArrayMapArray and AssetOrArchiveArrayMapArrayOutput values.
+type AssetOrArchiveArrayMapArrayInput interface {
+	Input
+
+	ToAssetOrArchiveArrayMapArrayOutput() AssetOrArchiveArrayMapArrayOutput
+	ToAssetOrArchiveArrayMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapArrayOutput
+}
+
+// AssetOrArchiveArrayMapArray is an input type for []AssetOrArchiveArrayMapInput values.
+type AssetOrArchiveArrayMapArray []AssetOrArchiveArrayMapInput
+
+// ElementType returns the element type of this Input ([]map[string][]AssetOrArchive).
+func (AssetOrArchiveArrayMapArray) ElementType() reflect.Type {
+	return assetOrArchiveArrayMapArrayType
+}
+
+func (in AssetOrArchiveArrayMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]AssetOrArchive] {
+	return pulumix.Output[[]map[string][]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetOrArchiveArrayMapArray) ToAssetOrArchiveArrayMapArrayOutput() AssetOrArchiveArrayMapArrayOutput {
+	return ToOutput(in).(AssetOrArchiveArrayMapArrayOutput)
+}
+
+func (in AssetOrArchiveArrayMapArray) ToAssetOrArchiveArrayMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(AssetOrArchiveArrayMapArrayOutput)
+}
+
+// AssetOrArchiveArrayMapArrayOutput is an Output that returns []map[string][]AssetOrArchive values.
+type AssetOrArchiveArrayMapArrayOutput struct{ *OutputState }
+
+func (AssetOrArchiveArrayMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveArrayMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]AssetOrArchive] {
+	return pulumix.Output[[]map[string][]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string][]AssetOrArchive).
+func (AssetOrArchiveArrayMapArrayOutput) ElementType() reflect.Type {
+	return assetOrArchiveArrayMapArrayType
+}
+
+func (o AssetOrArchiveArrayMapArrayOutput) ToAssetOrArchiveArrayMapArrayOutput() AssetOrArchiveArrayMapArrayOutput {
+	return o
+}
+
+func (o AssetOrArchiveArrayMapArrayOutput) ToAssetOrArchiveArrayMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o AssetOrArchiveArrayMapArrayOutput) Index(i IntInput) AssetOrArchiveArrayMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string][]AssetOrArchive {
+		arr := vs[0].([]map[string][]AssetOrArchive)
+		idx := vs[1].(int)
+		var ret map[string][]AssetOrArchive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(AssetOrArchiveArrayMapOutput)
+}
+
+var assetOrArchiveArrayArrayMapType = reflect.TypeOf((*map[string][][]AssetOrArchive)(nil)).Elem()
+
+// AssetOrArchiveArrayArrayMapInput is an input type that accepts AssetOrArchiveArrayArrayMap and AssetOrArchiveArrayArrayMapOutput values.
+type AssetOrArchiveArrayArrayMapInput interface {
+	Input
+
+	ToAssetOrArchiveArrayArrayMapOutput() AssetOrArchiveArrayArrayMapOutput
+	ToAssetOrArchiveArrayArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayMapOutput
+}
+
+// AssetOrArchiveArrayArrayMap is an input type for map[string]AssetOrArchiveArrayArrayInput values.
+type AssetOrArchiveArrayArrayMap map[string]AssetOrArchiveArrayArrayInput
+
+// ElementType returns the element type of this Input (map[string][][]AssetOrArchive).
+func (AssetOrArchiveArrayArrayMap) ElementType() reflect.Type {
+	return assetOrArchiveArrayArrayMapType
+}
+
+func (in AssetOrArchiveArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]AssetOrArchive] {
+	return pulumix.Output[map[string][][]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetOrArchiveArrayArrayMap) ToAssetOrArchiveArrayArrayMapOutput() AssetOrArchiveArrayArrayMapOutput {
+	return ToOutput(in).(AssetOrArchiveArrayArrayMapOutput)
+}
+
+func (in AssetOrArchiveArrayArrayMap) ToAssetOrArchiveArrayArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(AssetOrArchiveArrayArrayMapOutput)
+}
+
+// AssetOrArchiveArrayArrayMapOutput is an Output that returns map[string][][]AssetOrArchive values.
+type AssetOrArchiveArrayArrayMapOutput struct{ *OutputState }
+
+func (AssetOrArchiveArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]AssetOrArchive] {
+	return pulumix.Output[map[string][][]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][][]AssetOrArchive).
+func (AssetOrArchiveArrayArrayMapOutput) ElementType() reflect.Type {
+	return assetOrArchiveArrayArrayMapType
+}
+
+func (o AssetOrArchiveArrayArrayMapOutput) ToAssetOrArchiveArrayArrayMapOutput() AssetOrArchiveArrayArrayMapOutput {
+	return o
+}
+
+func (o AssetOrArchiveArrayArrayMapOutput) ToAssetOrArchiveArrayArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o AssetOrArchiveArrayArrayMapOutput) MapIndex(k StringInput) AssetOrArchiveArrayArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) [][]AssetOrArchive {
+		return vs[0].(map[string][][]AssetOrArchive)[vs[1].(string)]
+	}).(AssetOrArchiveArrayArrayOutput)
+}
+
+var assetOrArchiveArrayArrayArrayType = reflect.TypeOf((*[][][]AssetOrArchive)(nil)).Elem()
+
+// AssetOrArchiveArrayArrayArrayInput is an input type that accepts AssetOrArchiveArrayArrayArray and AssetOrArchiveArrayArrayArrayOutput values.
+type AssetOrArchiveArrayArrayArrayInput interface {
+	Input
+
+	ToAssetOrArchiveArrayArrayArrayOutput() AssetOrArchiveArrayArrayArrayOutput
+	ToAssetOrArchiveArrayArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayArrayOutput
+}
+
+// AssetOrArchiveArrayArrayArray is an input type for []AssetOrArchiveArrayArrayInput values.
+type AssetOrArchiveArrayArrayArray []AssetOrArchiveArrayArrayInput
+
+// ElementType returns the element type of this Input ([][][]AssetOrArchive).
+func (AssetOrArchiveArrayArrayArray) ElementType() reflect.Type {
+	return assetOrArchiveArrayArrayArrayType
+}
+
+func (in AssetOrArchiveArrayArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][][]AssetOrArchive] {
+	return pulumix.Output[[][][]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetOrArchiveArrayArrayArray) ToAssetOrArchiveArrayArrayArrayOutput() AssetOrArchiveArrayArrayArrayOutput {
+	return ToOutput(in).(AssetOrArchiveArrayArrayArrayOutput)
+}
+
+func (in AssetOrArchiveArrayArrayArray) ToAssetOrArchiveArrayArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(AssetOrArchiveArrayArrayArrayOutput)
+}
+
+// AssetOrArchiveArrayArrayArrayOutput is an Output that returns [][][]AssetOrArchive values.
+type AssetOrArchiveArrayArrayArrayOutput struct{ *OutputState }
+
+func (AssetOrArchiveArrayArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]AssetOrArchive] {
+	return pulumix.Output[[][][]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][][]AssetOrArchive).
+func (AssetOrArchiveArrayArrayArrayOutput) ElementType() reflect.Type {
+	return assetOrArchiveArrayArrayArrayType
+}
+
+func (o AssetOrArchiveArrayArrayArrayOutput) ToAssetOrArchiveArrayArrayArrayOutput() AssetOrArchiveArrayArrayArrayOutput {
+	return o
+}
+
+func (o AssetOrArchiveArrayArrayArrayOutput) ToAssetOrArchiveArrayArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o AssetOrArchiveArrayArrayArrayOutput) Index(i IntInput) AssetOrArchiveArrayArrayOutput {
+	return All(o, i).ApplyT(func(vs []any) [][]AssetOrArchive {
+		arr := vs[0].([][][]AssetOrArchive)
+		idx := vs[1].(int)
+		var ret [][]AssetOrArchive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(AssetOrArchiveArrayArrayOutput)
+}
+
+var assetOrArchiveMapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]AssetOrArchive)(nil)).Elem()
+
+// AssetOrArchiveMapMapMapInput is an input type that accepts AssetOrArchiveMapMapMap and AssetOrArchiveMapMapMapOutput values.
+type AssetOrArchiveMapMapMapInput interface {
+	Input
+
+	ToAssetOrArchiveMapMapMapOutput() AssetOrArchiveMapMapMapOutput
+	ToAssetOrArchiveMapMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapMapOutput
+}
+
+// AssetOrArchiveMapMapMap is an input type for map[string]AssetOrArchiveMapMapInput values.
+type AssetOrArchiveMapMapMap map[string]AssetOrArchiveMapMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]map[string]AssetOrArchive).
+func (AssetOrArchiveMapMapMap) ElementType() reflect.Type {
+	return assetOrArchiveMapMapMapType
+}
+
+func (in AssetOrArchiveMapMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]AssetOrArchive] {
+	return pulumix.Output[map[string]map[string]map[string]AssetOrArchive]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in AssetOrArchiveMapMapMap) ToAssetOrArchiveMapMapMapOutput() AssetOrArchiveMapMapMapOutput {
+	return ToOutput(in).(AssetOrArchiveMapMapMapOutput)
+}
+
+func (in AssetOrArchiveMapMapMap) ToAssetOrArchiveMapMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapMapOutput {
+	return ToOutputWithContext(ctx, in).(AssetOrArchiveMapMapMapOutput)
+}
+
+// AssetOrArchiveMapMapMapOutput is an Output that returns map[string]map[string]map[string]AssetOrArchive values.
+type AssetOrArchiveMapMapMapOutput struct{ *OutputState }
+
+func (AssetOrArchiveMapMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o AssetOrArchiveMapMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]AssetOrArchive] {
+	return pulumix.Output[map[string]map[string]map[string]AssetOrArchive]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]map[string]AssetOrArchive).
+func (AssetOrArchiveMapMapMapOutput) ElementType() reflect.Type {
+	return assetOrArchiveMapMapMapType
+}
+
+func (o AssetOrArchiveMapMapMapOutput) ToAssetOrArchiveMapMapMapOutput() AssetOrArchiveMapMapMapOutput {
+	return o
+}
+
+func (o AssetOrArchiveMapMapMapOutput) ToAssetOrArchiveMapMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o AssetOrArchiveMapMapMapOutput) MapIndex(k StringInput) AssetOrArchiveMapMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string]map[string]AssetOrArchive {
+		return vs[0].(map[string]map[string]map[string]AssetOrArchive)[vs[1].(string)]
+	}).(AssetOrArchiveMapMapOutput)
 }
 
 var boolType = reflect.TypeOf((*bool)(nil)).Elem()
@@ -2299,6 +3951,594 @@ func ToBoolArrayArrayOutput(in []BoolArrayOutput) BoolArrayArrayOutput {
 	return a.ToBoolArrayArrayOutput()
 }
 
+var boolArrayMapMapType = reflect.TypeOf((*map[string]map[string][]bool)(nil)).Elem()
+
+// BoolArrayMapMapInput is an input type that accepts BoolArrayMapMap and BoolArrayMapMapOutput values.
+type BoolArrayMapMapInput interface {
+	Input
+
+	ToBoolArrayMapMapOutput() BoolArrayMapMapOutput
+	ToBoolArrayMapMapOutputWithContext(ctx context.Context) BoolArrayMapMapOutput
+}
+
+// BoolArrayMapMap is an input type for map[string]BoolArrayMapInput values.
+type BoolArrayMapMap map[string]BoolArrayMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string][]bool).
+func (BoolArrayMapMap) ElementType() reflect.Type {
+	return boolArrayMapMapType
+}
+
+func (in BoolArrayMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]bool] {
+	return pulumix.Output[map[string]map[string][]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BoolArrayMapMap) ToBoolArrayMapMapOutput() BoolArrayMapMapOutput {
+	return ToOutput(in).(BoolArrayMapMapOutput)
+}
+
+func (in BoolArrayMapMap) ToBoolArrayMapMapOutputWithContext(ctx context.Context) BoolArrayMapMapOutput {
+	return ToOutputWithContext(ctx, in).(BoolArrayMapMapOutput)
+}
+
+// BoolArrayMapMapOutput is an Output that returns map[string]map[string][]bool values.
+type BoolArrayMapMapOutput struct{ *OutputState }
+
+func (BoolArrayMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolArrayMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]bool] {
+	return pulumix.Output[map[string]map[string][]bool]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string][]bool).
+func (BoolArrayMapMapOutput) ElementType() reflect.Type {
+	return boolArrayMapMapType
+}
+
+func (o BoolArrayMapMapOutput) ToBoolArrayMapMapOutput() BoolArrayMapMapOutput {
+	return o
+}
+
+func (o BoolArrayMapMapOutput) ToBoolArrayMapMapOutputWithContext(ctx context.Context) BoolArrayMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o BoolArrayMapMapOutput) MapIndex(k StringInput) BoolArrayMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string][]bool {
+		return vs[0].(map[string]map[string][]bool)[vs[1].(string)]
+	}).(BoolArrayMapOutput)
+}
+
+func ToBoolArrayMapMap(in map[string]map[string][]bool) BoolArrayMapMap {
+	m := make(BoolArrayMapMap)
+	for k, v := range in {
+		m[k] = ToBoolArrayMap(v)
+	}
+	return m
+}
+
+func ToBoolArrayMapMapOutput(in map[string]BoolArrayMapOutput) BoolArrayMapMapOutput {
+	m := make(BoolArrayMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBoolArrayMapMapOutput()
+}
+
+var boolMapArrayMapType = reflect.TypeOf((*map[string][]map[string]bool)(nil)).Elem()
+
+// BoolMapArrayMapInput is an input type that accepts BoolMapArrayMap and BoolMapArrayMapOutput values.
+type BoolMapArrayMapInput interface {
+	Input
+
+	ToBoolMapArrayMapOutput() BoolMapArrayMapOutput
+	ToBoolMapArrayMapOutputWithContext(ctx context.Context) BoolMapArrayMapOutput
+}
+
+// BoolMapArrayMap is an input type for map[string]BoolMapArrayInput values.
+type BoolMapArrayMap map[string]BoolMapArrayInput
+
+// ElementType returns the element type of this Input (map[string][]map[string]bool).
+func (BoolMapArrayMap) ElementType() reflect.Type {
+	return boolMapArrayMapType
+}
+
+func (in BoolMapArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]bool] {
+	return pulumix.Output[map[string][]map[string]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BoolMapArrayMap) ToBoolMapArrayMapOutput() BoolMapArrayMapOutput {
+	return ToOutput(in).(BoolMapArrayMapOutput)
+}
+
+func (in BoolMapArrayMap) ToBoolMapArrayMapOutputWithContext(ctx context.Context) BoolMapArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(BoolMapArrayMapOutput)
+}
+
+// BoolMapArrayMapOutput is an Output that returns map[string][]map[string]bool values.
+type BoolMapArrayMapOutput struct{ *OutputState }
+
+func (BoolMapArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolMapArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]bool] {
+	return pulumix.Output[map[string][]map[string]bool]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]map[string]bool).
+func (BoolMapArrayMapOutput) ElementType() reflect.Type {
+	return boolMapArrayMapType
+}
+
+func (o BoolMapArrayMapOutput) ToBoolMapArrayMapOutput() BoolMapArrayMapOutput {
+	return o
+}
+
+func (o BoolMapArrayMapOutput) ToBoolMapArrayMapOutputWithContext(ctx context.Context) BoolMapArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o BoolMapArrayMapOutput) MapIndex(k StringInput) BoolMapArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) []map[string]bool {
+		return vs[0].(map[string][]map[string]bool)[vs[1].(string)]
+	}).(BoolMapArrayOutput)
+}
+
+func ToBoolMapArrayMap(in map[string][]map[string]bool) BoolMapArrayMap {
+	m := make(BoolMapArrayMap)
+	for k, v := range in {
+		m[k] = ToBoolMapArray(v)
+	}
+	return m
+}
+
+func ToBoolMapArrayMapOutput(in map[string]BoolMapArrayOutput) BoolMapArrayMapOutput {
+	m := make(BoolMapArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBoolMapArrayMapOutput()
+}
+
+var boolMapMapArrayType = reflect.TypeOf((*[]map[string]map[string]bool)(nil)).Elem()
+
+// BoolMapMapArrayInput is an input type that accepts BoolMapMapArray and BoolMapMapArrayOutput values.
+type BoolMapMapArrayInput interface {
+	Input
+
+	ToBoolMapMapArrayOutput() BoolMapMapArrayOutput
+	ToBoolMapMapArrayOutputWithContext(ctx context.Context) BoolMapMapArrayOutput
+}
+
+// BoolMapMapArray is an input type for []BoolMapMapInput values.
+type BoolMapMapArray []BoolMapMapInput
+
+// ElementType returns the element type of this Input ([]map[string]map[string]bool).
+func (BoolMapMapArray) ElementType() reflect.Type {
+	return boolMapMapArrayType
+}
+
+func (in BoolMapMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]bool] {
+	return pulumix.Output[[]map[string]map[string]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BoolMapMapArray) ToBoolMapMapArrayOutput() BoolMapMapArrayOutput {
+	return ToOutput(in).(BoolMapMapArrayOutput)
+}
+
+func (in BoolMapMapArray) ToBoolMapMapArrayOutputWithContext(ctx context.Context) BoolMapMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(BoolMapMapArrayOutput)
+}
+
+// BoolMapMapArrayOutput is an Output that returns []map[string]map[string]bool values.
+type BoolMapMapArrayOutput struct{ *OutputState }
+
+func (BoolMapMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolMapMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]bool] {
+	return pulumix.Output[[]map[string]map[string]bool]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]map[string]bool).
+func (BoolMapMapArrayOutput) ElementType() reflect.Type {
+	return boolMapMapArrayType
+}
+
+func (o BoolMapMapArrayOutput) ToBoolMapMapArrayOutput() BoolMapMapArrayOutput {
+	return o
+}
+
+func (o BoolMapMapArrayOutput) ToBoolMapMapArrayOutputWithContext(ctx context.Context) BoolMapMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o BoolMapMapArrayOutput) Index(i IntInput) BoolMapMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string]map[string]bool {
+		arr := vs[0].([]map[string]map[string]bool)
+		idx := vs[1].(int)
+		var ret map[string]map[string]bool
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(BoolMapMapOutput)
+}
+
+func ToBoolMapMapArray(in []map[string]map[string]bool) BoolMapMapArray {
+	a := make(BoolMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToBoolMapMap(v)
+	}
+	return a
+}
+
+func ToBoolMapMapArrayOutput(in []BoolMapMapOutput) BoolMapMapArrayOutput {
+	a := make(BoolMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBoolMapMapArrayOutput()
+}
+
+var boolArrayMapArrayType = reflect.TypeOf((*[]map[string][]bool)(nil)).Elem()
+
+// BoolArrayMapArrayInput is an input type that accepts BoolArrayMapArray and BoolArrayMapArrayOutput values.
+type BoolArrayMapArrayInput interface {
+	Input
+
+	ToBoolArrayMapArrayOutput() BoolArrayMapArrayOutput
+	ToBoolArrayMapArrayOutputWithContext(ctx context.Context) BoolArrayMapArrayOutput
+}
+
+// BoolArrayMapArray is an input type for []BoolArrayMapInput values.
+type BoolArrayMapArray []BoolArrayMapInput
+
+// ElementType returns the element type of this Input ([]map[string][]bool).
+func (BoolArrayMapArray) ElementType() reflect.Type {
+	return boolArrayMapArrayType
+}
+
+func (in BoolArrayMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]bool] {
+	return pulumix.Output[[]map[string][]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BoolArrayMapArray) ToBoolArrayMapArrayOutput() BoolArrayMapArrayOutput {
+	return ToOutput(in).(BoolArrayMapArrayOutput)
+}
+
+func (in BoolArrayMapArray) ToBoolArrayMapArrayOutputWithContext(ctx context.Context) BoolArrayMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(BoolArrayMapArrayOutput)
+}
+
+// BoolArrayMapArrayOutput is an Output that returns []map[string][]bool values.
+type BoolArrayMapArrayOutput struct{ *OutputState }
+
+func (BoolArrayMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolArrayMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]bool] {
+	return pulumix.Output[[]map[string][]bool]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string][]bool).
+func (BoolArrayMapArrayOutput) ElementType() reflect.Type {
+	return boolArrayMapArrayType
+}
+
+func (o BoolArrayMapArrayOutput) ToBoolArrayMapArrayOutput() BoolArrayMapArrayOutput {
+	return o
+}
+
+func (o BoolArrayMapArrayOutput) ToBoolArrayMapArrayOutputWithContext(ctx context.Context) BoolArrayMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o BoolArrayMapArrayOutput) Index(i IntInput) BoolArrayMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string][]bool {
+		arr := vs[0].([]map[string][]bool)
+		idx := vs[1].(int)
+		var ret map[string][]bool
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(BoolArrayMapOutput)
+}
+
+func ToBoolArrayMapArray(in []map[string][]bool) BoolArrayMapArray {
+	a := make(BoolArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToBoolArrayMap(v)
+	}
+	return a
+}
+
+func ToBoolArrayMapArrayOutput(in []BoolArrayMapOutput) BoolArrayMapArrayOutput {
+	a := make(BoolArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBoolArrayMapArrayOutput()
+}
+
+var boolArrayArrayMapType = reflect.TypeOf((*map[string][][]bool)(nil)).Elem()
+
+// BoolArrayArrayMapInput is an input type that accepts BoolArrayArrayMap and BoolArrayArrayMapOutput values.
+type BoolArrayArrayMapInput interface {
+	Input
+
+	ToBoolArrayArrayMapOutput() BoolArrayArrayMapOutput
+	ToBoolArrayArrayMapOutputWithContext(ctx context.Context) BoolArrayArrayMapOutput
+}
+
+// BoolArrayArrayMap is an input type for map[string]BoolArrayArrayInput values.
+type BoolArrayArrayMap map[string]BoolArrayArrayInput
+
+// ElementType returns the element type of this Input (map[string][][]bool).
+func (BoolArrayArrayMap) ElementType() reflect.Type {
+	return boolArrayArrayMapType
+}
+
+func (in BoolArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]bool] {
+	return pulumix.Output[map[string][][]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BoolArrayArrayMap) ToBoolArrayArrayMapOutput() BoolArrayArrayMapOutput {
+	return ToOutput(in).(BoolArrayArrayMapOutput)
+}
+
+func (in BoolArrayArrayMap) ToBoolArrayArrayMapOutputWithContext(ctx context.Context) BoolArrayArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(BoolArrayArrayMapOutput)
+}
+
+// BoolArrayArrayMapOutput is an Output that returns map[string][][]bool values.
+type BoolArrayArrayMapOutput struct{ *OutputState }
+
+func (BoolArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]bool] {
+	return pulumix.Output[map[string][][]bool]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][][]bool).
+func (BoolArrayArrayMapOutput) ElementType() reflect.Type {
+	return boolArrayArrayMapType
+}
+
+func (o BoolArrayArrayMapOutput) ToBoolArrayArrayMapOutput() BoolArrayArrayMapOutput {
+	return o
+}
+
+func (o BoolArrayArrayMapOutput) ToBoolArrayArrayMapOutputWithContext(ctx context.Context) BoolArrayArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o BoolArrayArrayMapOutput) MapIndex(k StringInput) BoolArrayArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) [][]bool {
+		return vs[0].(map[string][][]bool)[vs[1].(string)]
+	}).(BoolArrayArrayOutput)
+}
+
+func ToBoolArrayArrayMap(in map[string][][]bool) BoolArrayArrayMap {
+	m := make(BoolArrayArrayMap)
+	for k, v := range in {
+		m[k] = ToBoolArrayArray(v)
+	}
+	return m
+}
+
+func ToBoolArrayArrayMapOutput(in map[string]BoolArrayArrayOutput) BoolArrayArrayMapOutput {
+	m := make(BoolArrayArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBoolArrayArrayMapOutput()
+}
+
+var boolArrayArrayArrayType = reflect.TypeOf((*[][][]bool)(nil)).Elem()
+
+// BoolArrayArrayArrayInput is an input type that accepts BoolArrayArrayArray and BoolArrayArrayArrayOutput values.
+type BoolArrayArrayArrayInput interface {
+	Input
+
+	ToBoolArrayArrayArrayOutput() BoolArrayArrayArrayOutput
+	ToBoolArrayArrayArrayOutputWithContext(ctx context.Context) BoolArrayArrayArrayOutput
+}
+
+// BoolArrayArrayArray is an input type for []BoolArrayArrayInput values.
+type BoolArrayArrayArray []BoolArrayArrayInput
+
+// ElementType returns the element type of this Input ([][][]bool).
+func (BoolArrayArrayArray) ElementType() reflect.Type {
+	return boolArrayArrayArrayType
+}
+
+func (in BoolArrayArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][][]bool] {
+	return pulumix.Output[[][][]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BoolArrayArrayArray) ToBoolArrayArrayArrayOutput() BoolArrayArrayArrayOutput {
+	return ToOutput(in).(BoolArrayArrayArrayOutput)
+}
+
+func (in BoolArrayArrayArray) ToBoolArrayArrayArrayOutputWithContext(ctx context.Context) BoolArrayArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(BoolArrayArrayArrayOutput)
+}
+
+// BoolArrayArrayArrayOutput is an Output that returns [][][]bool values.
+type BoolArrayArrayArrayOutput struct{ *OutputState }
+
+func (BoolArrayArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]bool] {
+	return pulumix.Output[[][][]bool]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][][]bool).
+func (BoolArrayArrayArrayOutput) ElementType() reflect.Type {
+	return boolArrayArrayArrayType
+}
+
+func (o BoolArrayArrayArrayOutput) ToBoolArrayArrayArrayOutput() BoolArrayArrayArrayOutput {
+	return o
+}
+
+func (o BoolArrayArrayArrayOutput) ToBoolArrayArrayArrayOutputWithContext(ctx context.Context) BoolArrayArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o BoolArrayArrayArrayOutput) Index(i IntInput) BoolArrayArrayOutput {
+	return All(o, i).ApplyT(func(vs []any) [][]bool {
+		arr := vs[0].([][][]bool)
+		idx := vs[1].(int)
+		var ret [][]bool
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(BoolArrayArrayOutput)
+}
+
+func ToBoolArrayArrayArray(in [][][]bool) BoolArrayArrayArray {
+	a := make(BoolArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToBoolArrayArray(v)
+	}
+	return a
+}
+
+func ToBoolArrayArrayArrayOutput(in []BoolArrayArrayOutput) BoolArrayArrayArrayOutput {
+	a := make(BoolArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBoolArrayArrayArrayOutput()
+}
+
+var boolMapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]bool)(nil)).Elem()
+
+// BoolMapMapMapInput is an input type that accepts BoolMapMapMap and BoolMapMapMapOutput values.
+type BoolMapMapMapInput interface {
+	Input
+
+	ToBoolMapMapMapOutput() BoolMapMapMapOutput
+	ToBoolMapMapMapOutputWithContext(ctx context.Context) BoolMapMapMapOutput
+}
+
+// BoolMapMapMap is an input type for map[string]BoolMapMapInput values.
+type BoolMapMapMap map[string]BoolMapMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]map[string]bool).
+func (BoolMapMapMap) ElementType() reflect.Type {
+	return boolMapMapMapType
+}
+
+func (in BoolMapMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]bool] {
+	return pulumix.Output[map[string]map[string]map[string]bool]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BoolMapMapMap) ToBoolMapMapMapOutput() BoolMapMapMapOutput {
+	return ToOutput(in).(BoolMapMapMapOutput)
+}
+
+func (in BoolMapMapMap) ToBoolMapMapMapOutputWithContext(ctx context.Context) BoolMapMapMapOutput {
+	return ToOutputWithContext(ctx, in).(BoolMapMapMapOutput)
+}
+
+// BoolMapMapMapOutput is an Output that returns map[string]map[string]map[string]bool values.
+type BoolMapMapMapOutput struct{ *OutputState }
+
+func (BoolMapMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BoolMapMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]bool] {
+	return pulumix.Output[map[string]map[string]map[string]bool]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]map[string]bool).
+func (BoolMapMapMapOutput) ElementType() reflect.Type {
+	return boolMapMapMapType
+}
+
+func (o BoolMapMapMapOutput) ToBoolMapMapMapOutput() BoolMapMapMapOutput {
+	return o
+}
+
+func (o BoolMapMapMapOutput) ToBoolMapMapMapOutputWithContext(ctx context.Context) BoolMapMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o BoolMapMapMapOutput) MapIndex(k StringInput) BoolMapMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string]map[string]bool {
+		return vs[0].(map[string]map[string]map[string]bool)[vs[1].(string)]
+	}).(BoolMapMapOutput)
+}
+
+func ToBoolMapMapMap(in map[string]map[string]map[string]bool) BoolMapMapMap {
+	m := make(BoolMapMapMap)
+	for k, v := range in {
+		m[k] = ToBoolMapMap(v)
+	}
+	return m
+}
+
+func ToBoolMapMapMapOutput(in map[string]BoolMapMapOutput) BoolMapMapMapOutput {
+	m := make(BoolMapMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBoolMapMapMapOutput()
+}
+
 var float64Type = reflect.TypeOf((*float64)(nil)).Elem()
 
 // Float64Input is an input type that accepts Float64 and Float64Output values.
@@ -2963,6 +5203,594 @@ func ToFloat64ArrayArrayOutput(in []Float64ArrayOutput) Float64ArrayArrayOutput 
 		a[i] = v
 	}
 	return a.ToFloat64ArrayArrayOutput()
+}
+
+var float64ArrayMapMapType = reflect.TypeOf((*map[string]map[string][]float64)(nil)).Elem()
+
+// Float64ArrayMapMapInput is an input type that accepts Float64ArrayMapMap and Float64ArrayMapMapOutput values.
+type Float64ArrayMapMapInput interface {
+	Input
+
+	ToFloat64ArrayMapMapOutput() Float64ArrayMapMapOutput
+	ToFloat64ArrayMapMapOutputWithContext(ctx context.Context) Float64ArrayMapMapOutput
+}
+
+// Float64ArrayMapMap is an input type for map[string]Float64ArrayMapInput values.
+type Float64ArrayMapMap map[string]Float64ArrayMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string][]float64).
+func (Float64ArrayMapMap) ElementType() reflect.Type {
+	return float64ArrayMapMapType
+}
+
+func (in Float64ArrayMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]float64] {
+	return pulumix.Output[map[string]map[string][]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in Float64ArrayMapMap) ToFloat64ArrayMapMapOutput() Float64ArrayMapMapOutput {
+	return ToOutput(in).(Float64ArrayMapMapOutput)
+}
+
+func (in Float64ArrayMapMap) ToFloat64ArrayMapMapOutputWithContext(ctx context.Context) Float64ArrayMapMapOutput {
+	return ToOutputWithContext(ctx, in).(Float64ArrayMapMapOutput)
+}
+
+// Float64ArrayMapMapOutput is an Output that returns map[string]map[string][]float64 values.
+type Float64ArrayMapMapOutput struct{ *OutputState }
+
+func (Float64ArrayMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64ArrayMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]float64] {
+	return pulumix.Output[map[string]map[string][]float64]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string][]float64).
+func (Float64ArrayMapMapOutput) ElementType() reflect.Type {
+	return float64ArrayMapMapType
+}
+
+func (o Float64ArrayMapMapOutput) ToFloat64ArrayMapMapOutput() Float64ArrayMapMapOutput {
+	return o
+}
+
+func (o Float64ArrayMapMapOutput) ToFloat64ArrayMapMapOutputWithContext(ctx context.Context) Float64ArrayMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o Float64ArrayMapMapOutput) MapIndex(k StringInput) Float64ArrayMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string][]float64 {
+		return vs[0].(map[string]map[string][]float64)[vs[1].(string)]
+	}).(Float64ArrayMapOutput)
+}
+
+func ToFloat64ArrayMapMap(in map[string]map[string][]float64) Float64ArrayMapMap {
+	m := make(Float64ArrayMapMap)
+	for k, v := range in {
+		m[k] = ToFloat64ArrayMap(v)
+	}
+	return m
+}
+
+func ToFloat64ArrayMapMapOutput(in map[string]Float64ArrayMapOutput) Float64ArrayMapMapOutput {
+	m := make(Float64ArrayMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToFloat64ArrayMapMapOutput()
+}
+
+var float64MapArrayMapType = reflect.TypeOf((*map[string][]map[string]float64)(nil)).Elem()
+
+// Float64MapArrayMapInput is an input type that accepts Float64MapArrayMap and Float64MapArrayMapOutput values.
+type Float64MapArrayMapInput interface {
+	Input
+
+	ToFloat64MapArrayMapOutput() Float64MapArrayMapOutput
+	ToFloat64MapArrayMapOutputWithContext(ctx context.Context) Float64MapArrayMapOutput
+}
+
+// Float64MapArrayMap is an input type for map[string]Float64MapArrayInput values.
+type Float64MapArrayMap map[string]Float64MapArrayInput
+
+// ElementType returns the element type of this Input (map[string][]map[string]float64).
+func (Float64MapArrayMap) ElementType() reflect.Type {
+	return float64MapArrayMapType
+}
+
+func (in Float64MapArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]float64] {
+	return pulumix.Output[map[string][]map[string]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in Float64MapArrayMap) ToFloat64MapArrayMapOutput() Float64MapArrayMapOutput {
+	return ToOutput(in).(Float64MapArrayMapOutput)
+}
+
+func (in Float64MapArrayMap) ToFloat64MapArrayMapOutputWithContext(ctx context.Context) Float64MapArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(Float64MapArrayMapOutput)
+}
+
+// Float64MapArrayMapOutput is an Output that returns map[string][]map[string]float64 values.
+type Float64MapArrayMapOutput struct{ *OutputState }
+
+func (Float64MapArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64MapArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]float64] {
+	return pulumix.Output[map[string][]map[string]float64]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]map[string]float64).
+func (Float64MapArrayMapOutput) ElementType() reflect.Type {
+	return float64MapArrayMapType
+}
+
+func (o Float64MapArrayMapOutput) ToFloat64MapArrayMapOutput() Float64MapArrayMapOutput {
+	return o
+}
+
+func (o Float64MapArrayMapOutput) ToFloat64MapArrayMapOutputWithContext(ctx context.Context) Float64MapArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o Float64MapArrayMapOutput) MapIndex(k StringInput) Float64MapArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) []map[string]float64 {
+		return vs[0].(map[string][]map[string]float64)[vs[1].(string)]
+	}).(Float64MapArrayOutput)
+}
+
+func ToFloat64MapArrayMap(in map[string][]map[string]float64) Float64MapArrayMap {
+	m := make(Float64MapArrayMap)
+	for k, v := range in {
+		m[k] = ToFloat64MapArray(v)
+	}
+	return m
+}
+
+func ToFloat64MapArrayMapOutput(in map[string]Float64MapArrayOutput) Float64MapArrayMapOutput {
+	m := make(Float64MapArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToFloat64MapArrayMapOutput()
+}
+
+var float64MapMapArrayType = reflect.TypeOf((*[]map[string]map[string]float64)(nil)).Elem()
+
+// Float64MapMapArrayInput is an input type that accepts Float64MapMapArray and Float64MapMapArrayOutput values.
+type Float64MapMapArrayInput interface {
+	Input
+
+	ToFloat64MapMapArrayOutput() Float64MapMapArrayOutput
+	ToFloat64MapMapArrayOutputWithContext(ctx context.Context) Float64MapMapArrayOutput
+}
+
+// Float64MapMapArray is an input type for []Float64MapMapInput values.
+type Float64MapMapArray []Float64MapMapInput
+
+// ElementType returns the element type of this Input ([]map[string]map[string]float64).
+func (Float64MapMapArray) ElementType() reflect.Type {
+	return float64MapMapArrayType
+}
+
+func (in Float64MapMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]float64] {
+	return pulumix.Output[[]map[string]map[string]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in Float64MapMapArray) ToFloat64MapMapArrayOutput() Float64MapMapArrayOutput {
+	return ToOutput(in).(Float64MapMapArrayOutput)
+}
+
+func (in Float64MapMapArray) ToFloat64MapMapArrayOutputWithContext(ctx context.Context) Float64MapMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(Float64MapMapArrayOutput)
+}
+
+// Float64MapMapArrayOutput is an Output that returns []map[string]map[string]float64 values.
+type Float64MapMapArrayOutput struct{ *OutputState }
+
+func (Float64MapMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64MapMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]float64] {
+	return pulumix.Output[[]map[string]map[string]float64]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]map[string]float64).
+func (Float64MapMapArrayOutput) ElementType() reflect.Type {
+	return float64MapMapArrayType
+}
+
+func (o Float64MapMapArrayOutput) ToFloat64MapMapArrayOutput() Float64MapMapArrayOutput {
+	return o
+}
+
+func (o Float64MapMapArrayOutput) ToFloat64MapMapArrayOutputWithContext(ctx context.Context) Float64MapMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o Float64MapMapArrayOutput) Index(i IntInput) Float64MapMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string]map[string]float64 {
+		arr := vs[0].([]map[string]map[string]float64)
+		idx := vs[1].(int)
+		var ret map[string]map[string]float64
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(Float64MapMapOutput)
+}
+
+func ToFloat64MapMapArray(in []map[string]map[string]float64) Float64MapMapArray {
+	a := make(Float64MapMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToFloat64MapMap(v)
+	}
+	return a
+}
+
+func ToFloat64MapMapArrayOutput(in []Float64MapMapOutput) Float64MapMapArrayOutput {
+	a := make(Float64MapMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToFloat64MapMapArrayOutput()
+}
+
+var float64ArrayMapArrayType = reflect.TypeOf((*[]map[string][]float64)(nil)).Elem()
+
+// Float64ArrayMapArrayInput is an input type that accepts Float64ArrayMapArray and Float64ArrayMapArrayOutput values.
+type Float64ArrayMapArrayInput interface {
+	Input
+
+	ToFloat64ArrayMapArrayOutput() Float64ArrayMapArrayOutput
+	ToFloat64ArrayMapArrayOutputWithContext(ctx context.Context) Float64ArrayMapArrayOutput
+}
+
+// Float64ArrayMapArray is an input type for []Float64ArrayMapInput values.
+type Float64ArrayMapArray []Float64ArrayMapInput
+
+// ElementType returns the element type of this Input ([]map[string][]float64).
+func (Float64ArrayMapArray) ElementType() reflect.Type {
+	return float64ArrayMapArrayType
+}
+
+func (in Float64ArrayMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]float64] {
+	return pulumix.Output[[]map[string][]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in Float64ArrayMapArray) ToFloat64ArrayMapArrayOutput() Float64ArrayMapArrayOutput {
+	return ToOutput(in).(Float64ArrayMapArrayOutput)
+}
+
+func (in Float64ArrayMapArray) ToFloat64ArrayMapArrayOutputWithContext(ctx context.Context) Float64ArrayMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(Float64ArrayMapArrayOutput)
+}
+
+// Float64ArrayMapArrayOutput is an Output that returns []map[string][]float64 values.
+type Float64ArrayMapArrayOutput struct{ *OutputState }
+
+func (Float64ArrayMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64ArrayMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]float64] {
+	return pulumix.Output[[]map[string][]float64]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string][]float64).
+func (Float64ArrayMapArrayOutput) ElementType() reflect.Type {
+	return float64ArrayMapArrayType
+}
+
+func (o Float64ArrayMapArrayOutput) ToFloat64ArrayMapArrayOutput() Float64ArrayMapArrayOutput {
+	return o
+}
+
+func (o Float64ArrayMapArrayOutput) ToFloat64ArrayMapArrayOutputWithContext(ctx context.Context) Float64ArrayMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o Float64ArrayMapArrayOutput) Index(i IntInput) Float64ArrayMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string][]float64 {
+		arr := vs[0].([]map[string][]float64)
+		idx := vs[1].(int)
+		var ret map[string][]float64
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(Float64ArrayMapOutput)
+}
+
+func ToFloat64ArrayMapArray(in []map[string][]float64) Float64ArrayMapArray {
+	a := make(Float64ArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToFloat64ArrayMap(v)
+	}
+	return a
+}
+
+func ToFloat64ArrayMapArrayOutput(in []Float64ArrayMapOutput) Float64ArrayMapArrayOutput {
+	a := make(Float64ArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToFloat64ArrayMapArrayOutput()
+}
+
+var float64ArrayArrayMapType = reflect.TypeOf((*map[string][][]float64)(nil)).Elem()
+
+// Float64ArrayArrayMapInput is an input type that accepts Float64ArrayArrayMap and Float64ArrayArrayMapOutput values.
+type Float64ArrayArrayMapInput interface {
+	Input
+
+	ToFloat64ArrayArrayMapOutput() Float64ArrayArrayMapOutput
+	ToFloat64ArrayArrayMapOutputWithContext(ctx context.Context) Float64ArrayArrayMapOutput
+}
+
+// Float64ArrayArrayMap is an input type for map[string]Float64ArrayArrayInput values.
+type Float64ArrayArrayMap map[string]Float64ArrayArrayInput
+
+// ElementType returns the element type of this Input (map[string][][]float64).
+func (Float64ArrayArrayMap) ElementType() reflect.Type {
+	return float64ArrayArrayMapType
+}
+
+func (in Float64ArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]float64] {
+	return pulumix.Output[map[string][][]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in Float64ArrayArrayMap) ToFloat64ArrayArrayMapOutput() Float64ArrayArrayMapOutput {
+	return ToOutput(in).(Float64ArrayArrayMapOutput)
+}
+
+func (in Float64ArrayArrayMap) ToFloat64ArrayArrayMapOutputWithContext(ctx context.Context) Float64ArrayArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(Float64ArrayArrayMapOutput)
+}
+
+// Float64ArrayArrayMapOutput is an Output that returns map[string][][]float64 values.
+type Float64ArrayArrayMapOutput struct{ *OutputState }
+
+func (Float64ArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64ArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]float64] {
+	return pulumix.Output[map[string][][]float64]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][][]float64).
+func (Float64ArrayArrayMapOutput) ElementType() reflect.Type {
+	return float64ArrayArrayMapType
+}
+
+func (o Float64ArrayArrayMapOutput) ToFloat64ArrayArrayMapOutput() Float64ArrayArrayMapOutput {
+	return o
+}
+
+func (o Float64ArrayArrayMapOutput) ToFloat64ArrayArrayMapOutputWithContext(ctx context.Context) Float64ArrayArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o Float64ArrayArrayMapOutput) MapIndex(k StringInput) Float64ArrayArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) [][]float64 {
+		return vs[0].(map[string][][]float64)[vs[1].(string)]
+	}).(Float64ArrayArrayOutput)
+}
+
+func ToFloat64ArrayArrayMap(in map[string][][]float64) Float64ArrayArrayMap {
+	m := make(Float64ArrayArrayMap)
+	for k, v := range in {
+		m[k] = ToFloat64ArrayArray(v)
+	}
+	return m
+}
+
+func ToFloat64ArrayArrayMapOutput(in map[string]Float64ArrayArrayOutput) Float64ArrayArrayMapOutput {
+	m := make(Float64ArrayArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToFloat64ArrayArrayMapOutput()
+}
+
+var float64ArrayArrayArrayType = reflect.TypeOf((*[][][]float64)(nil)).Elem()
+
+// Float64ArrayArrayArrayInput is an input type that accepts Float64ArrayArrayArray and Float64ArrayArrayArrayOutput values.
+type Float64ArrayArrayArrayInput interface {
+	Input
+
+	ToFloat64ArrayArrayArrayOutput() Float64ArrayArrayArrayOutput
+	ToFloat64ArrayArrayArrayOutputWithContext(ctx context.Context) Float64ArrayArrayArrayOutput
+}
+
+// Float64ArrayArrayArray is an input type for []Float64ArrayArrayInput values.
+type Float64ArrayArrayArray []Float64ArrayArrayInput
+
+// ElementType returns the element type of this Input ([][][]float64).
+func (Float64ArrayArrayArray) ElementType() reflect.Type {
+	return float64ArrayArrayArrayType
+}
+
+func (in Float64ArrayArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][][]float64] {
+	return pulumix.Output[[][][]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in Float64ArrayArrayArray) ToFloat64ArrayArrayArrayOutput() Float64ArrayArrayArrayOutput {
+	return ToOutput(in).(Float64ArrayArrayArrayOutput)
+}
+
+func (in Float64ArrayArrayArray) ToFloat64ArrayArrayArrayOutputWithContext(ctx context.Context) Float64ArrayArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(Float64ArrayArrayArrayOutput)
+}
+
+// Float64ArrayArrayArrayOutput is an Output that returns [][][]float64 values.
+type Float64ArrayArrayArrayOutput struct{ *OutputState }
+
+func (Float64ArrayArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64ArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]float64] {
+	return pulumix.Output[[][][]float64]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][][]float64).
+func (Float64ArrayArrayArrayOutput) ElementType() reflect.Type {
+	return float64ArrayArrayArrayType
+}
+
+func (o Float64ArrayArrayArrayOutput) ToFloat64ArrayArrayArrayOutput() Float64ArrayArrayArrayOutput {
+	return o
+}
+
+func (o Float64ArrayArrayArrayOutput) ToFloat64ArrayArrayArrayOutputWithContext(ctx context.Context) Float64ArrayArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o Float64ArrayArrayArrayOutput) Index(i IntInput) Float64ArrayArrayOutput {
+	return All(o, i).ApplyT(func(vs []any) [][]float64 {
+		arr := vs[0].([][][]float64)
+		idx := vs[1].(int)
+		var ret [][]float64
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(Float64ArrayArrayOutput)
+}
+
+func ToFloat64ArrayArrayArray(in [][][]float64) Float64ArrayArrayArray {
+	a := make(Float64ArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToFloat64ArrayArray(v)
+	}
+	return a
+}
+
+func ToFloat64ArrayArrayArrayOutput(in []Float64ArrayArrayOutput) Float64ArrayArrayArrayOutput {
+	a := make(Float64ArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToFloat64ArrayArrayArrayOutput()
+}
+
+var float64MapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]float64)(nil)).Elem()
+
+// Float64MapMapMapInput is an input type that accepts Float64MapMapMap and Float64MapMapMapOutput values.
+type Float64MapMapMapInput interface {
+	Input
+
+	ToFloat64MapMapMapOutput() Float64MapMapMapOutput
+	ToFloat64MapMapMapOutputWithContext(ctx context.Context) Float64MapMapMapOutput
+}
+
+// Float64MapMapMap is an input type for map[string]Float64MapMapInput values.
+type Float64MapMapMap map[string]Float64MapMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]map[string]float64).
+func (Float64MapMapMap) ElementType() reflect.Type {
+	return float64MapMapMapType
+}
+
+func (in Float64MapMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]float64] {
+	return pulumix.Output[map[string]map[string]map[string]float64]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in Float64MapMapMap) ToFloat64MapMapMapOutput() Float64MapMapMapOutput {
+	return ToOutput(in).(Float64MapMapMapOutput)
+}
+
+func (in Float64MapMapMap) ToFloat64MapMapMapOutputWithContext(ctx context.Context) Float64MapMapMapOutput {
+	return ToOutputWithContext(ctx, in).(Float64MapMapMapOutput)
+}
+
+// Float64MapMapMapOutput is an Output that returns map[string]map[string]map[string]float64 values.
+type Float64MapMapMapOutput struct{ *OutputState }
+
+func (Float64MapMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o Float64MapMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]float64] {
+	return pulumix.Output[map[string]map[string]map[string]float64]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]map[string]float64).
+func (Float64MapMapMapOutput) ElementType() reflect.Type {
+	return float64MapMapMapType
+}
+
+func (o Float64MapMapMapOutput) ToFloat64MapMapMapOutput() Float64MapMapMapOutput {
+	return o
+}
+
+func (o Float64MapMapMapOutput) ToFloat64MapMapMapOutputWithContext(ctx context.Context) Float64MapMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o Float64MapMapMapOutput) MapIndex(k StringInput) Float64MapMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string]map[string]float64 {
+		return vs[0].(map[string]map[string]map[string]float64)[vs[1].(string)]
+	}).(Float64MapMapOutput)
+}
+
+func ToFloat64MapMapMap(in map[string]map[string]map[string]float64) Float64MapMapMap {
+	m := make(Float64MapMapMap)
+	for k, v := range in {
+		m[k] = ToFloat64MapMap(v)
+	}
+	return m
+}
+
+func ToFloat64MapMapMapOutput(in map[string]Float64MapMapOutput) Float64MapMapMapOutput {
+	m := make(Float64MapMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToFloat64MapMapMapOutput()
 }
 
 var idType = reflect.TypeOf((*ID)(nil)).Elem()
@@ -3646,6 +6474,594 @@ func ToIDArrayArrayOutput(in []IDArrayOutput) IDArrayArrayOutput {
 	return a.ToIDArrayArrayOutput()
 }
 
+var iDArrayMapMapType = reflect.TypeOf((*map[string]map[string][]ID)(nil)).Elem()
+
+// IDArrayMapMapInput is an input type that accepts IDArrayMapMap and IDArrayMapMapOutput values.
+type IDArrayMapMapInput interface {
+	Input
+
+	ToIDArrayMapMapOutput() IDArrayMapMapOutput
+	ToIDArrayMapMapOutputWithContext(ctx context.Context) IDArrayMapMapOutput
+}
+
+// IDArrayMapMap is an input type for map[string]IDArrayMapInput values.
+type IDArrayMapMap map[string]IDArrayMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string][]ID).
+func (IDArrayMapMap) ElementType() reflect.Type {
+	return iDArrayMapMapType
+}
+
+func (in IDArrayMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]ID] {
+	return pulumix.Output[map[string]map[string][]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IDArrayMapMap) ToIDArrayMapMapOutput() IDArrayMapMapOutput {
+	return ToOutput(in).(IDArrayMapMapOutput)
+}
+
+func (in IDArrayMapMap) ToIDArrayMapMapOutputWithContext(ctx context.Context) IDArrayMapMapOutput {
+	return ToOutputWithContext(ctx, in).(IDArrayMapMapOutput)
+}
+
+// IDArrayMapMapOutput is an Output that returns map[string]map[string][]ID values.
+type IDArrayMapMapOutput struct{ *OutputState }
+
+func (IDArrayMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IDArrayMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]ID] {
+	return pulumix.Output[map[string]map[string][]ID]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string][]ID).
+func (IDArrayMapMapOutput) ElementType() reflect.Type {
+	return iDArrayMapMapType
+}
+
+func (o IDArrayMapMapOutput) ToIDArrayMapMapOutput() IDArrayMapMapOutput {
+	return o
+}
+
+func (o IDArrayMapMapOutput) ToIDArrayMapMapOutputWithContext(ctx context.Context) IDArrayMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o IDArrayMapMapOutput) MapIndex(k StringInput) IDArrayMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string][]ID {
+		return vs[0].(map[string]map[string][]ID)[vs[1].(string)]
+	}).(IDArrayMapOutput)
+}
+
+func ToIDArrayMapMap(in map[string]map[string][]ID) IDArrayMapMap {
+	m := make(IDArrayMapMap)
+	for k, v := range in {
+		m[k] = ToIDArrayMap(v)
+	}
+	return m
+}
+
+func ToIDArrayMapMapOutput(in map[string]IDArrayMapOutput) IDArrayMapMapOutput {
+	m := make(IDArrayMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIDArrayMapMapOutput()
+}
+
+var iDMapArrayMapType = reflect.TypeOf((*map[string][]map[string]ID)(nil)).Elem()
+
+// IDMapArrayMapInput is an input type that accepts IDMapArrayMap and IDMapArrayMapOutput values.
+type IDMapArrayMapInput interface {
+	Input
+
+	ToIDMapArrayMapOutput() IDMapArrayMapOutput
+	ToIDMapArrayMapOutputWithContext(ctx context.Context) IDMapArrayMapOutput
+}
+
+// IDMapArrayMap is an input type for map[string]IDMapArrayInput values.
+type IDMapArrayMap map[string]IDMapArrayInput
+
+// ElementType returns the element type of this Input (map[string][]map[string]ID).
+func (IDMapArrayMap) ElementType() reflect.Type {
+	return iDMapArrayMapType
+}
+
+func (in IDMapArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]ID] {
+	return pulumix.Output[map[string][]map[string]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IDMapArrayMap) ToIDMapArrayMapOutput() IDMapArrayMapOutput {
+	return ToOutput(in).(IDMapArrayMapOutput)
+}
+
+func (in IDMapArrayMap) ToIDMapArrayMapOutputWithContext(ctx context.Context) IDMapArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(IDMapArrayMapOutput)
+}
+
+// IDMapArrayMapOutput is an Output that returns map[string][]map[string]ID values.
+type IDMapArrayMapOutput struct{ *OutputState }
+
+func (IDMapArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IDMapArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]ID] {
+	return pulumix.Output[map[string][]map[string]ID]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]map[string]ID).
+func (IDMapArrayMapOutput) ElementType() reflect.Type {
+	return iDMapArrayMapType
+}
+
+func (o IDMapArrayMapOutput) ToIDMapArrayMapOutput() IDMapArrayMapOutput {
+	return o
+}
+
+func (o IDMapArrayMapOutput) ToIDMapArrayMapOutputWithContext(ctx context.Context) IDMapArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o IDMapArrayMapOutput) MapIndex(k StringInput) IDMapArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) []map[string]ID {
+		return vs[0].(map[string][]map[string]ID)[vs[1].(string)]
+	}).(IDMapArrayOutput)
+}
+
+func ToIDMapArrayMap(in map[string][]map[string]ID) IDMapArrayMap {
+	m := make(IDMapArrayMap)
+	for k, v := range in {
+		m[k] = ToIDMapArray(v)
+	}
+	return m
+}
+
+func ToIDMapArrayMapOutput(in map[string]IDMapArrayOutput) IDMapArrayMapOutput {
+	m := make(IDMapArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIDMapArrayMapOutput()
+}
+
+var iDMapMapArrayType = reflect.TypeOf((*[]map[string]map[string]ID)(nil)).Elem()
+
+// IDMapMapArrayInput is an input type that accepts IDMapMapArray and IDMapMapArrayOutput values.
+type IDMapMapArrayInput interface {
+	Input
+
+	ToIDMapMapArrayOutput() IDMapMapArrayOutput
+	ToIDMapMapArrayOutputWithContext(ctx context.Context) IDMapMapArrayOutput
+}
+
+// IDMapMapArray is an input type for []IDMapMapInput values.
+type IDMapMapArray []IDMapMapInput
+
+// ElementType returns the element type of this Input ([]map[string]map[string]ID).
+func (IDMapMapArray) ElementType() reflect.Type {
+	return iDMapMapArrayType
+}
+
+func (in IDMapMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]ID] {
+	return pulumix.Output[[]map[string]map[string]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IDMapMapArray) ToIDMapMapArrayOutput() IDMapMapArrayOutput {
+	return ToOutput(in).(IDMapMapArrayOutput)
+}
+
+func (in IDMapMapArray) ToIDMapMapArrayOutputWithContext(ctx context.Context) IDMapMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(IDMapMapArrayOutput)
+}
+
+// IDMapMapArrayOutput is an Output that returns []map[string]map[string]ID values.
+type IDMapMapArrayOutput struct{ *OutputState }
+
+func (IDMapMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IDMapMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]ID] {
+	return pulumix.Output[[]map[string]map[string]ID]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]map[string]ID).
+func (IDMapMapArrayOutput) ElementType() reflect.Type {
+	return iDMapMapArrayType
+}
+
+func (o IDMapMapArrayOutput) ToIDMapMapArrayOutput() IDMapMapArrayOutput {
+	return o
+}
+
+func (o IDMapMapArrayOutput) ToIDMapMapArrayOutputWithContext(ctx context.Context) IDMapMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o IDMapMapArrayOutput) Index(i IntInput) IDMapMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string]map[string]ID {
+		arr := vs[0].([]map[string]map[string]ID)
+		idx := vs[1].(int)
+		var ret map[string]map[string]ID
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(IDMapMapOutput)
+}
+
+func ToIDMapMapArray(in []map[string]map[string]ID) IDMapMapArray {
+	a := make(IDMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToIDMapMap(v)
+	}
+	return a
+}
+
+func ToIDMapMapArrayOutput(in []IDMapMapOutput) IDMapMapArrayOutput {
+	a := make(IDMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIDMapMapArrayOutput()
+}
+
+var iDArrayMapArrayType = reflect.TypeOf((*[]map[string][]ID)(nil)).Elem()
+
+// IDArrayMapArrayInput is an input type that accepts IDArrayMapArray and IDArrayMapArrayOutput values.
+type IDArrayMapArrayInput interface {
+	Input
+
+	ToIDArrayMapArrayOutput() IDArrayMapArrayOutput
+	ToIDArrayMapArrayOutputWithContext(ctx context.Context) IDArrayMapArrayOutput
+}
+
+// IDArrayMapArray is an input type for []IDArrayMapInput values.
+type IDArrayMapArray []IDArrayMapInput
+
+// ElementType returns the element type of this Input ([]map[string][]ID).
+func (IDArrayMapArray) ElementType() reflect.Type {
+	return iDArrayMapArrayType
+}
+
+func (in IDArrayMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]ID] {
+	return pulumix.Output[[]map[string][]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IDArrayMapArray) ToIDArrayMapArrayOutput() IDArrayMapArrayOutput {
+	return ToOutput(in).(IDArrayMapArrayOutput)
+}
+
+func (in IDArrayMapArray) ToIDArrayMapArrayOutputWithContext(ctx context.Context) IDArrayMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(IDArrayMapArrayOutput)
+}
+
+// IDArrayMapArrayOutput is an Output that returns []map[string][]ID values.
+type IDArrayMapArrayOutput struct{ *OutputState }
+
+func (IDArrayMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IDArrayMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]ID] {
+	return pulumix.Output[[]map[string][]ID]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string][]ID).
+func (IDArrayMapArrayOutput) ElementType() reflect.Type {
+	return iDArrayMapArrayType
+}
+
+func (o IDArrayMapArrayOutput) ToIDArrayMapArrayOutput() IDArrayMapArrayOutput {
+	return o
+}
+
+func (o IDArrayMapArrayOutput) ToIDArrayMapArrayOutputWithContext(ctx context.Context) IDArrayMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o IDArrayMapArrayOutput) Index(i IntInput) IDArrayMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string][]ID {
+		arr := vs[0].([]map[string][]ID)
+		idx := vs[1].(int)
+		var ret map[string][]ID
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(IDArrayMapOutput)
+}
+
+func ToIDArrayMapArray(in []map[string][]ID) IDArrayMapArray {
+	a := make(IDArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToIDArrayMap(v)
+	}
+	return a
+}
+
+func ToIDArrayMapArrayOutput(in []IDArrayMapOutput) IDArrayMapArrayOutput {
+	a := make(IDArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIDArrayMapArrayOutput()
+}
+
+var iDArrayArrayMapType = reflect.TypeOf((*map[string][][]ID)(nil)).Elem()
+
+// IDArrayArrayMapInput is an input type that accepts IDArrayArrayMap and IDArrayArrayMapOutput values.
+type IDArrayArrayMapInput interface {
+	Input
+
+	ToIDArrayArrayMapOutput() IDArrayArrayMapOutput
+	ToIDArrayArrayMapOutputWithContext(ctx context.Context) IDArrayArrayMapOutput
+}
+
+// IDArrayArrayMap is an input type for map[string]IDArrayArrayInput values.
+type IDArrayArrayMap map[string]IDArrayArrayInput
+
+// ElementType returns the element type of this Input (map[string][][]ID).
+func (IDArrayArrayMap) ElementType() reflect.Type {
+	return iDArrayArrayMapType
+}
+
+func (in IDArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]ID] {
+	return pulumix.Output[map[string][][]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IDArrayArrayMap) ToIDArrayArrayMapOutput() IDArrayArrayMapOutput {
+	return ToOutput(in).(IDArrayArrayMapOutput)
+}
+
+func (in IDArrayArrayMap) ToIDArrayArrayMapOutputWithContext(ctx context.Context) IDArrayArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(IDArrayArrayMapOutput)
+}
+
+// IDArrayArrayMapOutput is an Output that returns map[string][][]ID values.
+type IDArrayArrayMapOutput struct{ *OutputState }
+
+func (IDArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IDArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]ID] {
+	return pulumix.Output[map[string][][]ID]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][][]ID).
+func (IDArrayArrayMapOutput) ElementType() reflect.Type {
+	return iDArrayArrayMapType
+}
+
+func (o IDArrayArrayMapOutput) ToIDArrayArrayMapOutput() IDArrayArrayMapOutput {
+	return o
+}
+
+func (o IDArrayArrayMapOutput) ToIDArrayArrayMapOutputWithContext(ctx context.Context) IDArrayArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o IDArrayArrayMapOutput) MapIndex(k StringInput) IDArrayArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) [][]ID {
+		return vs[0].(map[string][][]ID)[vs[1].(string)]
+	}).(IDArrayArrayOutput)
+}
+
+func ToIDArrayArrayMap(in map[string][][]ID) IDArrayArrayMap {
+	m := make(IDArrayArrayMap)
+	for k, v := range in {
+		m[k] = ToIDArrayArray(v)
+	}
+	return m
+}
+
+func ToIDArrayArrayMapOutput(in map[string]IDArrayArrayOutput) IDArrayArrayMapOutput {
+	m := make(IDArrayArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIDArrayArrayMapOutput()
+}
+
+var iDArrayArrayArrayType = reflect.TypeOf((*[][][]ID)(nil)).Elem()
+
+// IDArrayArrayArrayInput is an input type that accepts IDArrayArrayArray and IDArrayArrayArrayOutput values.
+type IDArrayArrayArrayInput interface {
+	Input
+
+	ToIDArrayArrayArrayOutput() IDArrayArrayArrayOutput
+	ToIDArrayArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayArrayOutput
+}
+
+// IDArrayArrayArray is an input type for []IDArrayArrayInput values.
+type IDArrayArrayArray []IDArrayArrayInput
+
+// ElementType returns the element type of this Input ([][][]ID).
+func (IDArrayArrayArray) ElementType() reflect.Type {
+	return iDArrayArrayArrayType
+}
+
+func (in IDArrayArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][][]ID] {
+	return pulumix.Output[[][][]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IDArrayArrayArray) ToIDArrayArrayArrayOutput() IDArrayArrayArrayOutput {
+	return ToOutput(in).(IDArrayArrayArrayOutput)
+}
+
+func (in IDArrayArrayArray) ToIDArrayArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(IDArrayArrayArrayOutput)
+}
+
+// IDArrayArrayArrayOutput is an Output that returns [][][]ID values.
+type IDArrayArrayArrayOutput struct{ *OutputState }
+
+func (IDArrayArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IDArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]ID] {
+	return pulumix.Output[[][][]ID]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][][]ID).
+func (IDArrayArrayArrayOutput) ElementType() reflect.Type {
+	return iDArrayArrayArrayType
+}
+
+func (o IDArrayArrayArrayOutput) ToIDArrayArrayArrayOutput() IDArrayArrayArrayOutput {
+	return o
+}
+
+func (o IDArrayArrayArrayOutput) ToIDArrayArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o IDArrayArrayArrayOutput) Index(i IntInput) IDArrayArrayOutput {
+	return All(o, i).ApplyT(func(vs []any) [][]ID {
+		arr := vs[0].([][][]ID)
+		idx := vs[1].(int)
+		var ret [][]ID
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(IDArrayArrayOutput)
+}
+
+func ToIDArrayArrayArray(in [][][]ID) IDArrayArrayArray {
+	a := make(IDArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToIDArrayArray(v)
+	}
+	return a
+}
+
+func ToIDArrayArrayArrayOutput(in []IDArrayArrayOutput) IDArrayArrayArrayOutput {
+	a := make(IDArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIDArrayArrayArrayOutput()
+}
+
+var iDMapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]ID)(nil)).Elem()
+
+// IDMapMapMapInput is an input type that accepts IDMapMapMap and IDMapMapMapOutput values.
+type IDMapMapMapInput interface {
+	Input
+
+	ToIDMapMapMapOutput() IDMapMapMapOutput
+	ToIDMapMapMapOutputWithContext(ctx context.Context) IDMapMapMapOutput
+}
+
+// IDMapMapMap is an input type for map[string]IDMapMapInput values.
+type IDMapMapMap map[string]IDMapMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]map[string]ID).
+func (IDMapMapMap) ElementType() reflect.Type {
+	return iDMapMapMapType
+}
+
+func (in IDMapMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]ID] {
+	return pulumix.Output[map[string]map[string]map[string]ID]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IDMapMapMap) ToIDMapMapMapOutput() IDMapMapMapOutput {
+	return ToOutput(in).(IDMapMapMapOutput)
+}
+
+func (in IDMapMapMap) ToIDMapMapMapOutputWithContext(ctx context.Context) IDMapMapMapOutput {
+	return ToOutputWithContext(ctx, in).(IDMapMapMapOutput)
+}
+
+// IDMapMapMapOutput is an Output that returns map[string]map[string]map[string]ID values.
+type IDMapMapMapOutput struct{ *OutputState }
+
+func (IDMapMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IDMapMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]ID] {
+	return pulumix.Output[map[string]map[string]map[string]ID]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]map[string]ID).
+func (IDMapMapMapOutput) ElementType() reflect.Type {
+	return iDMapMapMapType
+}
+
+func (o IDMapMapMapOutput) ToIDMapMapMapOutput() IDMapMapMapOutput {
+	return o
+}
+
+func (o IDMapMapMapOutput) ToIDMapMapMapOutputWithContext(ctx context.Context) IDMapMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o IDMapMapMapOutput) MapIndex(k StringInput) IDMapMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string]map[string]ID {
+		return vs[0].(map[string]map[string]map[string]ID)[vs[1].(string)]
+	}).(IDMapMapOutput)
+}
+
+func ToIDMapMapMap(in map[string]map[string]map[string]ID) IDMapMapMap {
+	m := make(IDMapMapMap)
+	for k, v := range in {
+		m[k] = ToIDMapMap(v)
+	}
+	return m
+}
+
+func ToIDMapMapMapOutput(in map[string]IDMapMapOutput) IDMapMapMapOutput {
+	m := make(IDMapMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIDMapMapMapOutput()
+}
+
 var arrayType = reflect.TypeOf((*[]any)(nil)).Elem()
 
 // ArrayInput is an input type that accepts Array and ArrayOutput values.
@@ -4153,6 +7569,344 @@ func ToArrayArrayOutput(in []ArrayOutput) ArrayArrayOutput {
 	return a.ToArrayArrayOutput()
 }
 
+var arrayMapMapType = reflect.TypeOf((*map[string]map[string][]any)(nil)).Elem()
+
+// ArrayMapMapInput is an input type that accepts ArrayMapMap and ArrayMapMapOutput values.
+type ArrayMapMapInput interface {
+	Input
+
+	ToArrayMapMapOutput() ArrayMapMapOutput
+	ToArrayMapMapOutputWithContext(ctx context.Context) ArrayMapMapOutput
+}
+
+// ArrayMapMap is an input type for map[string]ArrayMapInput values.
+type ArrayMapMap map[string]ArrayMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string][]any).
+func (ArrayMapMap) ElementType() reflect.Type {
+	return arrayMapMapType
+}
+
+func (in ArrayMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]any] {
+	return pulumix.Output[map[string]map[string][]any]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ArrayMapMap) ToArrayMapMapOutput() ArrayMapMapOutput {
+	return ToOutput(in).(ArrayMapMapOutput)
+}
+
+func (in ArrayMapMap) ToArrayMapMapOutputWithContext(ctx context.Context) ArrayMapMapOutput {
+	return ToOutputWithContext(ctx, in).(ArrayMapMapOutput)
+}
+
+// ArrayMapMapOutput is an Output that returns map[string]map[string][]any values.
+type ArrayMapMapOutput struct{ *OutputState }
+
+func (ArrayMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ArrayMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]any] {
+	return pulumix.Output[map[string]map[string][]any]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string][]any).
+func (ArrayMapMapOutput) ElementType() reflect.Type {
+	return arrayMapMapType
+}
+
+func (o ArrayMapMapOutput) ToArrayMapMapOutput() ArrayMapMapOutput {
+	return o
+}
+
+func (o ArrayMapMapOutput) ToArrayMapMapOutputWithContext(ctx context.Context) ArrayMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o ArrayMapMapOutput) MapIndex(k StringInput) ArrayMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string][]any {
+		return vs[0].(map[string]map[string][]any)[vs[1].(string)]
+	}).(ArrayMapOutput)
+}
+
+func ToArrayMapMap(in map[string]map[string][]any) ArrayMapMap {
+	m := make(ArrayMapMap)
+	for k, v := range in {
+		m[k] = ToArrayMap(v)
+	}
+	return m
+}
+
+func ToArrayMapMapOutput(in map[string]ArrayMapOutput) ArrayMapMapOutput {
+	m := make(ArrayMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArrayMapMapOutput()
+}
+
+var mapArrayMapType = reflect.TypeOf((*map[string][]map[string]any)(nil)).Elem()
+
+// MapArrayMapInput is an input type that accepts MapArrayMap and MapArrayMapOutput values.
+type MapArrayMapInput interface {
+	Input
+
+	ToMapArrayMapOutput() MapArrayMapOutput
+	ToMapArrayMapOutputWithContext(ctx context.Context) MapArrayMapOutput
+}
+
+// MapArrayMap is an input type for map[string]MapArrayInput values.
+type MapArrayMap map[string]MapArrayInput
+
+// ElementType returns the element type of this Input (map[string][]map[string]any).
+func (MapArrayMap) ElementType() reflect.Type {
+	return mapArrayMapType
+}
+
+func (in MapArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]any] {
+	return pulumix.Output[map[string][]map[string]any]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in MapArrayMap) ToMapArrayMapOutput() MapArrayMapOutput {
+	return ToOutput(in).(MapArrayMapOutput)
+}
+
+func (in MapArrayMap) ToMapArrayMapOutputWithContext(ctx context.Context) MapArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(MapArrayMapOutput)
+}
+
+// MapArrayMapOutput is an Output that returns map[string][]map[string]any values.
+type MapArrayMapOutput struct{ *OutputState }
+
+func (MapArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o MapArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]any] {
+	return pulumix.Output[map[string][]map[string]any]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]map[string]any).
+func (MapArrayMapOutput) ElementType() reflect.Type {
+	return mapArrayMapType
+}
+
+func (o MapArrayMapOutput) ToMapArrayMapOutput() MapArrayMapOutput {
+	return o
+}
+
+func (o MapArrayMapOutput) ToMapArrayMapOutputWithContext(ctx context.Context) MapArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o MapArrayMapOutput) MapIndex(k StringInput) MapArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) []map[string]any {
+		return vs[0].(map[string][]map[string]any)[vs[1].(string)]
+	}).(MapArrayOutput)
+}
+
+func ToMapArrayMap(in map[string][]map[string]any) MapArrayMap {
+	m := make(MapArrayMap)
+	for k, v := range in {
+		m[k] = ToMapArray(v)
+	}
+	return m
+}
+
+func ToMapArrayMapOutput(in map[string]MapArrayOutput) MapArrayMapOutput {
+	m := make(MapArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToMapArrayMapOutput()
+}
+
+var mapMapArrayType = reflect.TypeOf((*[]map[string]map[string]any)(nil)).Elem()
+
+// MapMapArrayInput is an input type that accepts MapMapArray and MapMapArrayOutput values.
+type MapMapArrayInput interface {
+	Input
+
+	ToMapMapArrayOutput() MapMapArrayOutput
+	ToMapMapArrayOutputWithContext(ctx context.Context) MapMapArrayOutput
+}
+
+// MapMapArray is an input type for []MapMapInput values.
+type MapMapArray []MapMapInput
+
+// ElementType returns the element type of this Input ([]map[string]map[string]any).
+func (MapMapArray) ElementType() reflect.Type {
+	return mapMapArrayType
+}
+
+func (in MapMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]any] {
+	return pulumix.Output[[]map[string]map[string]any]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in MapMapArray) ToMapMapArrayOutput() MapMapArrayOutput {
+	return ToOutput(in).(MapMapArrayOutput)
+}
+
+func (in MapMapArray) ToMapMapArrayOutputWithContext(ctx context.Context) MapMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(MapMapArrayOutput)
+}
+
+// MapMapArrayOutput is an Output that returns []map[string]map[string]any values.
+type MapMapArrayOutput struct{ *OutputState }
+
+func (MapMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o MapMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]any] {
+	return pulumix.Output[[]map[string]map[string]any]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]map[string]any).
+func (MapMapArrayOutput) ElementType() reflect.Type {
+	return mapMapArrayType
+}
+
+func (o MapMapArrayOutput) ToMapMapArrayOutput() MapMapArrayOutput {
+	return o
+}
+
+func (o MapMapArrayOutput) ToMapMapArrayOutputWithContext(ctx context.Context) MapMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o MapMapArrayOutput) Index(i IntInput) MapMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string]map[string]any {
+		arr := vs[0].([]map[string]map[string]any)
+		idx := vs[1].(int)
+		var ret map[string]map[string]any
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(MapMapOutput)
+}
+
+func ToMapMapArray(in []map[string]map[string]any) MapMapArray {
+	a := make(MapMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToMapMap(v)
+	}
+	return a
+}
+
+func ToMapMapArrayOutput(in []MapMapOutput) MapMapArrayOutput {
+	a := make(MapMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToMapMapArrayOutput()
+}
+
+var arrayMapArrayType = reflect.TypeOf((*[]map[string][]any)(nil)).Elem()
+
+// ArrayMapArrayInput is an input type that accepts ArrayMapArray and ArrayMapArrayOutput values.
+type ArrayMapArrayInput interface {
+	Input
+
+	ToArrayMapArrayOutput() ArrayMapArrayOutput
+	ToArrayMapArrayOutputWithContext(ctx context.Context) ArrayMapArrayOutput
+}
+
+// ArrayMapArray is an input type for []ArrayMapInput values.
+type ArrayMapArray []ArrayMapInput
+
+// ElementType returns the element type of this Input ([]map[string][]any).
+func (ArrayMapArray) ElementType() reflect.Type {
+	return arrayMapArrayType
+}
+
+func (in ArrayMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]any] {
+	return pulumix.Output[[]map[string][]any]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ArrayMapArray) ToArrayMapArrayOutput() ArrayMapArrayOutput {
+	return ToOutput(in).(ArrayMapArrayOutput)
+}
+
+func (in ArrayMapArray) ToArrayMapArrayOutputWithContext(ctx context.Context) ArrayMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(ArrayMapArrayOutput)
+}
+
+// ArrayMapArrayOutput is an Output that returns []map[string][]any values.
+type ArrayMapArrayOutput struct{ *OutputState }
+
+func (ArrayMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ArrayMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]any] {
+	return pulumix.Output[[]map[string][]any]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string][]any).
+func (ArrayMapArrayOutput) ElementType() reflect.Type {
+	return arrayMapArrayType
+}
+
+func (o ArrayMapArrayOutput) ToArrayMapArrayOutput() ArrayMapArrayOutput {
+	return o
+}
+
+func (o ArrayMapArrayOutput) ToArrayMapArrayOutputWithContext(ctx context.Context) ArrayMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o ArrayMapArrayOutput) Index(i IntInput) ArrayMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string][]any {
+		arr := vs[0].([]map[string][]any)
+		idx := vs[1].(int)
+		var ret map[string][]any
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(ArrayMapOutput)
+}
+
+func ToArrayMapArray(in []map[string][]any) ArrayMapArray {
+	a := make(ArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToArrayMap(v)
+	}
+	return a
+}
+
+func ToArrayMapArrayOutput(in []ArrayMapOutput) ArrayMapArrayOutput {
+	a := make(ArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArrayMapArrayOutput()
+}
+
 var arrayArrayMapType = reflect.TypeOf((*map[string][][]any)(nil)).Elem()
 
 // ArrayArrayMapInput is an input type that accepts ArrayArrayMap and ArrayArrayMapOutput values.
@@ -4232,6 +7986,175 @@ func ToArrayArrayMapOutput(in map[string]ArrayArrayOutput) ArrayArrayMapOutput {
 		m[k] = v
 	}
 	return m.ToArrayArrayMapOutput()
+}
+
+var arrayArrayArrayType = reflect.TypeOf((*[][][]any)(nil)).Elem()
+
+// ArrayArrayArrayInput is an input type that accepts ArrayArrayArray and ArrayArrayArrayOutput values.
+type ArrayArrayArrayInput interface {
+	Input
+
+	ToArrayArrayArrayOutput() ArrayArrayArrayOutput
+	ToArrayArrayArrayOutputWithContext(ctx context.Context) ArrayArrayArrayOutput
+}
+
+// ArrayArrayArray is an input type for []ArrayArrayInput values.
+type ArrayArrayArray []ArrayArrayInput
+
+// ElementType returns the element type of this Input ([][][]any).
+func (ArrayArrayArray) ElementType() reflect.Type {
+	return arrayArrayArrayType
+}
+
+func (in ArrayArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][][]any] {
+	return pulumix.Output[[][][]any]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in ArrayArrayArray) ToArrayArrayArrayOutput() ArrayArrayArrayOutput {
+	return ToOutput(in).(ArrayArrayArrayOutput)
+}
+
+func (in ArrayArrayArray) ToArrayArrayArrayOutputWithContext(ctx context.Context) ArrayArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(ArrayArrayArrayOutput)
+}
+
+// ArrayArrayArrayOutput is an Output that returns [][][]any values.
+type ArrayArrayArrayOutput struct{ *OutputState }
+
+func (ArrayArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o ArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]any] {
+	return pulumix.Output[[][][]any]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][][]any).
+func (ArrayArrayArrayOutput) ElementType() reflect.Type {
+	return arrayArrayArrayType
+}
+
+func (o ArrayArrayArrayOutput) ToArrayArrayArrayOutput() ArrayArrayArrayOutput {
+	return o
+}
+
+func (o ArrayArrayArrayOutput) ToArrayArrayArrayOutputWithContext(ctx context.Context) ArrayArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o ArrayArrayArrayOutput) Index(i IntInput) ArrayArrayOutput {
+	return All(o, i).ApplyT(func(vs []any) [][]any {
+		arr := vs[0].([][][]any)
+		idx := vs[1].(int)
+		var ret [][]any
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(ArrayArrayOutput)
+}
+
+func ToArrayArrayArray(in [][][]any) ArrayArrayArray {
+	a := make(ArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToArrayArray(v)
+	}
+	return a
+}
+
+func ToArrayArrayArrayOutput(in []ArrayArrayOutput) ArrayArrayArrayOutput {
+	a := make(ArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArrayArrayArrayOutput()
+}
+
+var mapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]any)(nil)).Elem()
+
+// MapMapMapInput is an input type that accepts MapMapMap and MapMapMapOutput values.
+type MapMapMapInput interface {
+	Input
+
+	ToMapMapMapOutput() MapMapMapOutput
+	ToMapMapMapOutputWithContext(ctx context.Context) MapMapMapOutput
+}
+
+// MapMapMap is an input type for map[string]MapMapInput values.
+type MapMapMap map[string]MapMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]map[string]any).
+func (MapMapMap) ElementType() reflect.Type {
+	return mapMapMapType
+}
+
+func (in MapMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]any] {
+	return pulumix.Output[map[string]map[string]map[string]any]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in MapMapMap) ToMapMapMapOutput() MapMapMapOutput {
+	return ToOutput(in).(MapMapMapOutput)
+}
+
+func (in MapMapMap) ToMapMapMapOutputWithContext(ctx context.Context) MapMapMapOutput {
+	return ToOutputWithContext(ctx, in).(MapMapMapOutput)
+}
+
+// MapMapMapOutput is an Output that returns map[string]map[string]map[string]any values.
+type MapMapMapOutput struct{ *OutputState }
+
+func (MapMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o MapMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]any] {
+	return pulumix.Output[map[string]map[string]map[string]any]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]map[string]any).
+func (MapMapMapOutput) ElementType() reflect.Type {
+	return mapMapMapType
+}
+
+func (o MapMapMapOutput) ToMapMapMapOutput() MapMapMapOutput {
+	return o
+}
+
+func (o MapMapMapOutput) ToMapMapMapOutputWithContext(ctx context.Context) MapMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o MapMapMapOutput) MapIndex(k StringInput) MapMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string]map[string]any {
+		return vs[0].(map[string]map[string]map[string]any)[vs[1].(string)]
+	}).(MapMapOutput)
+}
+
+func ToMapMapMap(in map[string]map[string]map[string]any) MapMapMap {
+	m := make(MapMapMap)
+	for k, v := range in {
+		m[k] = ToMapMap(v)
+	}
+	return m
+}
+
+func ToMapMapMapOutput(in map[string]MapMapOutput) MapMapMapOutput {
+	m := make(MapMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToMapMapMapOutput()
 }
 
 var intType = reflect.TypeOf((*int)(nil)).Elem()
@@ -4900,6 +8823,594 @@ func ToIntArrayArrayOutput(in []IntArrayOutput) IntArrayArrayOutput {
 	return a.ToIntArrayArrayOutput()
 }
 
+var intArrayMapMapType = reflect.TypeOf((*map[string]map[string][]int)(nil)).Elem()
+
+// IntArrayMapMapInput is an input type that accepts IntArrayMapMap and IntArrayMapMapOutput values.
+type IntArrayMapMapInput interface {
+	Input
+
+	ToIntArrayMapMapOutput() IntArrayMapMapOutput
+	ToIntArrayMapMapOutputWithContext(ctx context.Context) IntArrayMapMapOutput
+}
+
+// IntArrayMapMap is an input type for map[string]IntArrayMapInput values.
+type IntArrayMapMap map[string]IntArrayMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string][]int).
+func (IntArrayMapMap) ElementType() reflect.Type {
+	return intArrayMapMapType
+}
+
+func (in IntArrayMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]int] {
+	return pulumix.Output[map[string]map[string][]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IntArrayMapMap) ToIntArrayMapMapOutput() IntArrayMapMapOutput {
+	return ToOutput(in).(IntArrayMapMapOutput)
+}
+
+func (in IntArrayMapMap) ToIntArrayMapMapOutputWithContext(ctx context.Context) IntArrayMapMapOutput {
+	return ToOutputWithContext(ctx, in).(IntArrayMapMapOutput)
+}
+
+// IntArrayMapMapOutput is an Output that returns map[string]map[string][]int values.
+type IntArrayMapMapOutput struct{ *OutputState }
+
+func (IntArrayMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IntArrayMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]int] {
+	return pulumix.Output[map[string]map[string][]int]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string][]int).
+func (IntArrayMapMapOutput) ElementType() reflect.Type {
+	return intArrayMapMapType
+}
+
+func (o IntArrayMapMapOutput) ToIntArrayMapMapOutput() IntArrayMapMapOutput {
+	return o
+}
+
+func (o IntArrayMapMapOutput) ToIntArrayMapMapOutputWithContext(ctx context.Context) IntArrayMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o IntArrayMapMapOutput) MapIndex(k StringInput) IntArrayMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string][]int {
+		return vs[0].(map[string]map[string][]int)[vs[1].(string)]
+	}).(IntArrayMapOutput)
+}
+
+func ToIntArrayMapMap(in map[string]map[string][]int) IntArrayMapMap {
+	m := make(IntArrayMapMap)
+	for k, v := range in {
+		m[k] = ToIntArrayMap(v)
+	}
+	return m
+}
+
+func ToIntArrayMapMapOutput(in map[string]IntArrayMapOutput) IntArrayMapMapOutput {
+	m := make(IntArrayMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIntArrayMapMapOutput()
+}
+
+var intMapArrayMapType = reflect.TypeOf((*map[string][]map[string]int)(nil)).Elem()
+
+// IntMapArrayMapInput is an input type that accepts IntMapArrayMap and IntMapArrayMapOutput values.
+type IntMapArrayMapInput interface {
+	Input
+
+	ToIntMapArrayMapOutput() IntMapArrayMapOutput
+	ToIntMapArrayMapOutputWithContext(ctx context.Context) IntMapArrayMapOutput
+}
+
+// IntMapArrayMap is an input type for map[string]IntMapArrayInput values.
+type IntMapArrayMap map[string]IntMapArrayInput
+
+// ElementType returns the element type of this Input (map[string][]map[string]int).
+func (IntMapArrayMap) ElementType() reflect.Type {
+	return intMapArrayMapType
+}
+
+func (in IntMapArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]int] {
+	return pulumix.Output[map[string][]map[string]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IntMapArrayMap) ToIntMapArrayMapOutput() IntMapArrayMapOutput {
+	return ToOutput(in).(IntMapArrayMapOutput)
+}
+
+func (in IntMapArrayMap) ToIntMapArrayMapOutputWithContext(ctx context.Context) IntMapArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(IntMapArrayMapOutput)
+}
+
+// IntMapArrayMapOutput is an Output that returns map[string][]map[string]int values.
+type IntMapArrayMapOutput struct{ *OutputState }
+
+func (IntMapArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IntMapArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]int] {
+	return pulumix.Output[map[string][]map[string]int]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]map[string]int).
+func (IntMapArrayMapOutput) ElementType() reflect.Type {
+	return intMapArrayMapType
+}
+
+func (o IntMapArrayMapOutput) ToIntMapArrayMapOutput() IntMapArrayMapOutput {
+	return o
+}
+
+func (o IntMapArrayMapOutput) ToIntMapArrayMapOutputWithContext(ctx context.Context) IntMapArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o IntMapArrayMapOutput) MapIndex(k StringInput) IntMapArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) []map[string]int {
+		return vs[0].(map[string][]map[string]int)[vs[1].(string)]
+	}).(IntMapArrayOutput)
+}
+
+func ToIntMapArrayMap(in map[string][]map[string]int) IntMapArrayMap {
+	m := make(IntMapArrayMap)
+	for k, v := range in {
+		m[k] = ToIntMapArray(v)
+	}
+	return m
+}
+
+func ToIntMapArrayMapOutput(in map[string]IntMapArrayOutput) IntMapArrayMapOutput {
+	m := make(IntMapArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIntMapArrayMapOutput()
+}
+
+var intMapMapArrayType = reflect.TypeOf((*[]map[string]map[string]int)(nil)).Elem()
+
+// IntMapMapArrayInput is an input type that accepts IntMapMapArray and IntMapMapArrayOutput values.
+type IntMapMapArrayInput interface {
+	Input
+
+	ToIntMapMapArrayOutput() IntMapMapArrayOutput
+	ToIntMapMapArrayOutputWithContext(ctx context.Context) IntMapMapArrayOutput
+}
+
+// IntMapMapArray is an input type for []IntMapMapInput values.
+type IntMapMapArray []IntMapMapInput
+
+// ElementType returns the element type of this Input ([]map[string]map[string]int).
+func (IntMapMapArray) ElementType() reflect.Type {
+	return intMapMapArrayType
+}
+
+func (in IntMapMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]int] {
+	return pulumix.Output[[]map[string]map[string]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IntMapMapArray) ToIntMapMapArrayOutput() IntMapMapArrayOutput {
+	return ToOutput(in).(IntMapMapArrayOutput)
+}
+
+func (in IntMapMapArray) ToIntMapMapArrayOutputWithContext(ctx context.Context) IntMapMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(IntMapMapArrayOutput)
+}
+
+// IntMapMapArrayOutput is an Output that returns []map[string]map[string]int values.
+type IntMapMapArrayOutput struct{ *OutputState }
+
+func (IntMapMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IntMapMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]int] {
+	return pulumix.Output[[]map[string]map[string]int]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]map[string]int).
+func (IntMapMapArrayOutput) ElementType() reflect.Type {
+	return intMapMapArrayType
+}
+
+func (o IntMapMapArrayOutput) ToIntMapMapArrayOutput() IntMapMapArrayOutput {
+	return o
+}
+
+func (o IntMapMapArrayOutput) ToIntMapMapArrayOutputWithContext(ctx context.Context) IntMapMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o IntMapMapArrayOutput) Index(i IntInput) IntMapMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string]map[string]int {
+		arr := vs[0].([]map[string]map[string]int)
+		idx := vs[1].(int)
+		var ret map[string]map[string]int
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(IntMapMapOutput)
+}
+
+func ToIntMapMapArray(in []map[string]map[string]int) IntMapMapArray {
+	a := make(IntMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToIntMapMap(v)
+	}
+	return a
+}
+
+func ToIntMapMapArrayOutput(in []IntMapMapOutput) IntMapMapArrayOutput {
+	a := make(IntMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIntMapMapArrayOutput()
+}
+
+var intArrayMapArrayType = reflect.TypeOf((*[]map[string][]int)(nil)).Elem()
+
+// IntArrayMapArrayInput is an input type that accepts IntArrayMapArray and IntArrayMapArrayOutput values.
+type IntArrayMapArrayInput interface {
+	Input
+
+	ToIntArrayMapArrayOutput() IntArrayMapArrayOutput
+	ToIntArrayMapArrayOutputWithContext(ctx context.Context) IntArrayMapArrayOutput
+}
+
+// IntArrayMapArray is an input type for []IntArrayMapInput values.
+type IntArrayMapArray []IntArrayMapInput
+
+// ElementType returns the element type of this Input ([]map[string][]int).
+func (IntArrayMapArray) ElementType() reflect.Type {
+	return intArrayMapArrayType
+}
+
+func (in IntArrayMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]int] {
+	return pulumix.Output[[]map[string][]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IntArrayMapArray) ToIntArrayMapArrayOutput() IntArrayMapArrayOutput {
+	return ToOutput(in).(IntArrayMapArrayOutput)
+}
+
+func (in IntArrayMapArray) ToIntArrayMapArrayOutputWithContext(ctx context.Context) IntArrayMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(IntArrayMapArrayOutput)
+}
+
+// IntArrayMapArrayOutput is an Output that returns []map[string][]int values.
+type IntArrayMapArrayOutput struct{ *OutputState }
+
+func (IntArrayMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IntArrayMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]int] {
+	return pulumix.Output[[]map[string][]int]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string][]int).
+func (IntArrayMapArrayOutput) ElementType() reflect.Type {
+	return intArrayMapArrayType
+}
+
+func (o IntArrayMapArrayOutput) ToIntArrayMapArrayOutput() IntArrayMapArrayOutput {
+	return o
+}
+
+func (o IntArrayMapArrayOutput) ToIntArrayMapArrayOutputWithContext(ctx context.Context) IntArrayMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o IntArrayMapArrayOutput) Index(i IntInput) IntArrayMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string][]int {
+		arr := vs[0].([]map[string][]int)
+		idx := vs[1].(int)
+		var ret map[string][]int
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(IntArrayMapOutput)
+}
+
+func ToIntArrayMapArray(in []map[string][]int) IntArrayMapArray {
+	a := make(IntArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToIntArrayMap(v)
+	}
+	return a
+}
+
+func ToIntArrayMapArrayOutput(in []IntArrayMapOutput) IntArrayMapArrayOutput {
+	a := make(IntArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIntArrayMapArrayOutput()
+}
+
+var intArrayArrayMapType = reflect.TypeOf((*map[string][][]int)(nil)).Elem()
+
+// IntArrayArrayMapInput is an input type that accepts IntArrayArrayMap and IntArrayArrayMapOutput values.
+type IntArrayArrayMapInput interface {
+	Input
+
+	ToIntArrayArrayMapOutput() IntArrayArrayMapOutput
+	ToIntArrayArrayMapOutputWithContext(ctx context.Context) IntArrayArrayMapOutput
+}
+
+// IntArrayArrayMap is an input type for map[string]IntArrayArrayInput values.
+type IntArrayArrayMap map[string]IntArrayArrayInput
+
+// ElementType returns the element type of this Input (map[string][][]int).
+func (IntArrayArrayMap) ElementType() reflect.Type {
+	return intArrayArrayMapType
+}
+
+func (in IntArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]int] {
+	return pulumix.Output[map[string][][]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IntArrayArrayMap) ToIntArrayArrayMapOutput() IntArrayArrayMapOutput {
+	return ToOutput(in).(IntArrayArrayMapOutput)
+}
+
+func (in IntArrayArrayMap) ToIntArrayArrayMapOutputWithContext(ctx context.Context) IntArrayArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(IntArrayArrayMapOutput)
+}
+
+// IntArrayArrayMapOutput is an Output that returns map[string][][]int values.
+type IntArrayArrayMapOutput struct{ *OutputState }
+
+func (IntArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IntArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]int] {
+	return pulumix.Output[map[string][][]int]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][][]int).
+func (IntArrayArrayMapOutput) ElementType() reflect.Type {
+	return intArrayArrayMapType
+}
+
+func (o IntArrayArrayMapOutput) ToIntArrayArrayMapOutput() IntArrayArrayMapOutput {
+	return o
+}
+
+func (o IntArrayArrayMapOutput) ToIntArrayArrayMapOutputWithContext(ctx context.Context) IntArrayArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o IntArrayArrayMapOutput) MapIndex(k StringInput) IntArrayArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) [][]int {
+		return vs[0].(map[string][][]int)[vs[1].(string)]
+	}).(IntArrayArrayOutput)
+}
+
+func ToIntArrayArrayMap(in map[string][][]int) IntArrayArrayMap {
+	m := make(IntArrayArrayMap)
+	for k, v := range in {
+		m[k] = ToIntArrayArray(v)
+	}
+	return m
+}
+
+func ToIntArrayArrayMapOutput(in map[string]IntArrayArrayOutput) IntArrayArrayMapOutput {
+	m := make(IntArrayArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIntArrayArrayMapOutput()
+}
+
+var intArrayArrayArrayType = reflect.TypeOf((*[][][]int)(nil)).Elem()
+
+// IntArrayArrayArrayInput is an input type that accepts IntArrayArrayArray and IntArrayArrayArrayOutput values.
+type IntArrayArrayArrayInput interface {
+	Input
+
+	ToIntArrayArrayArrayOutput() IntArrayArrayArrayOutput
+	ToIntArrayArrayArrayOutputWithContext(ctx context.Context) IntArrayArrayArrayOutput
+}
+
+// IntArrayArrayArray is an input type for []IntArrayArrayInput values.
+type IntArrayArrayArray []IntArrayArrayInput
+
+// ElementType returns the element type of this Input ([][][]int).
+func (IntArrayArrayArray) ElementType() reflect.Type {
+	return intArrayArrayArrayType
+}
+
+func (in IntArrayArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][][]int] {
+	return pulumix.Output[[][][]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IntArrayArrayArray) ToIntArrayArrayArrayOutput() IntArrayArrayArrayOutput {
+	return ToOutput(in).(IntArrayArrayArrayOutput)
+}
+
+func (in IntArrayArrayArray) ToIntArrayArrayArrayOutputWithContext(ctx context.Context) IntArrayArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(IntArrayArrayArrayOutput)
+}
+
+// IntArrayArrayArrayOutput is an Output that returns [][][]int values.
+type IntArrayArrayArrayOutput struct{ *OutputState }
+
+func (IntArrayArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IntArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]int] {
+	return pulumix.Output[[][][]int]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][][]int).
+func (IntArrayArrayArrayOutput) ElementType() reflect.Type {
+	return intArrayArrayArrayType
+}
+
+func (o IntArrayArrayArrayOutput) ToIntArrayArrayArrayOutput() IntArrayArrayArrayOutput {
+	return o
+}
+
+func (o IntArrayArrayArrayOutput) ToIntArrayArrayArrayOutputWithContext(ctx context.Context) IntArrayArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o IntArrayArrayArrayOutput) Index(i IntInput) IntArrayArrayOutput {
+	return All(o, i).ApplyT(func(vs []any) [][]int {
+		arr := vs[0].([][][]int)
+		idx := vs[1].(int)
+		var ret [][]int
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(IntArrayArrayOutput)
+}
+
+func ToIntArrayArrayArray(in [][][]int) IntArrayArrayArray {
+	a := make(IntArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToIntArrayArray(v)
+	}
+	return a
+}
+
+func ToIntArrayArrayArrayOutput(in []IntArrayArrayOutput) IntArrayArrayArrayOutput {
+	a := make(IntArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIntArrayArrayArrayOutput()
+}
+
+var intMapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]int)(nil)).Elem()
+
+// IntMapMapMapInput is an input type that accepts IntMapMapMap and IntMapMapMapOutput values.
+type IntMapMapMapInput interface {
+	Input
+
+	ToIntMapMapMapOutput() IntMapMapMapOutput
+	ToIntMapMapMapOutputWithContext(ctx context.Context) IntMapMapMapOutput
+}
+
+// IntMapMapMap is an input type for map[string]IntMapMapInput values.
+type IntMapMapMap map[string]IntMapMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]map[string]int).
+func (IntMapMapMap) ElementType() reflect.Type {
+	return intMapMapMapType
+}
+
+func (in IntMapMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]int] {
+	return pulumix.Output[map[string]map[string]map[string]int]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in IntMapMapMap) ToIntMapMapMapOutput() IntMapMapMapOutput {
+	return ToOutput(in).(IntMapMapMapOutput)
+}
+
+func (in IntMapMapMap) ToIntMapMapMapOutputWithContext(ctx context.Context) IntMapMapMapOutput {
+	return ToOutputWithContext(ctx, in).(IntMapMapMapOutput)
+}
+
+// IntMapMapMapOutput is an Output that returns map[string]map[string]map[string]int values.
+type IntMapMapMapOutput struct{ *OutputState }
+
+func (IntMapMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o IntMapMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]int] {
+	return pulumix.Output[map[string]map[string]map[string]int]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]map[string]int).
+func (IntMapMapMapOutput) ElementType() reflect.Type {
+	return intMapMapMapType
+}
+
+func (o IntMapMapMapOutput) ToIntMapMapMapOutput() IntMapMapMapOutput {
+	return o
+}
+
+func (o IntMapMapMapOutput) ToIntMapMapMapOutputWithContext(ctx context.Context) IntMapMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o IntMapMapMapOutput) MapIndex(k StringInput) IntMapMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string]map[string]int {
+		return vs[0].(map[string]map[string]map[string]int)[vs[1].(string)]
+	}).(IntMapMapOutput)
+}
+
+func ToIntMapMapMap(in map[string]map[string]map[string]int) IntMapMapMap {
+	m := make(IntMapMapMap)
+	for k, v := range in {
+		m[k] = ToIntMapMap(v)
+	}
+	return m
+}
+
+func ToIntMapMapMapOutput(in map[string]IntMapMapOutput) IntMapMapMapOutput {
+	m := make(IntMapMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIntMapMapMapOutput()
+}
+
 var stringType = reflect.TypeOf((*string)(nil)).Elem()
 
 // StringInput is an input type that accepts String and StringOutput values.
@@ -5564,6 +10075,513 @@ func ToStringArrayArrayOutput(in []StringArrayOutput) StringArrayArrayOutput {
 		a[i] = v
 	}
 	return a.ToStringArrayArrayOutput()
+}
+
+var stringArrayMapMapType = reflect.TypeOf((*map[string]map[string][]string)(nil)).Elem()
+
+// StringArrayMapMapInput is an input type that accepts StringArrayMapMap and StringArrayMapMapOutput values.
+type StringArrayMapMapInput interface {
+	Input
+
+	ToStringArrayMapMapOutput() StringArrayMapMapOutput
+	ToStringArrayMapMapOutputWithContext(ctx context.Context) StringArrayMapMapOutput
+}
+
+// StringArrayMapMap is an input type for map[string]StringArrayMapInput values.
+type StringArrayMapMap map[string]StringArrayMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string][]string).
+func (StringArrayMapMap) ElementType() reflect.Type {
+	return stringArrayMapMapType
+}
+
+func (in StringArrayMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]string] {
+	return pulumix.Output[map[string]map[string][]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in StringArrayMapMap) ToStringArrayMapMapOutput() StringArrayMapMapOutput {
+	return ToOutput(in).(StringArrayMapMapOutput)
+}
+
+func (in StringArrayMapMap) ToStringArrayMapMapOutputWithContext(ctx context.Context) StringArrayMapMapOutput {
+	return ToOutputWithContext(ctx, in).(StringArrayMapMapOutput)
+}
+
+// StringArrayMapMapOutput is an Output that returns map[string]map[string][]string values.
+type StringArrayMapMapOutput struct{ *OutputState }
+
+func (StringArrayMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o StringArrayMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]string] {
+	return pulumix.Output[map[string]map[string][]string]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string][]string).
+func (StringArrayMapMapOutput) ElementType() reflect.Type {
+	return stringArrayMapMapType
+}
+
+func (o StringArrayMapMapOutput) ToStringArrayMapMapOutput() StringArrayMapMapOutput {
+	return o
+}
+
+func (o StringArrayMapMapOutput) ToStringArrayMapMapOutputWithContext(ctx context.Context) StringArrayMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o StringArrayMapMapOutput) MapIndex(k StringInput) StringArrayMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string][]string {
+		return vs[0].(map[string]map[string][]string)[vs[1].(string)]
+	}).(StringArrayMapOutput)
+}
+
+func ToStringArrayMapMap(in map[string]map[string][]string) StringArrayMapMap {
+	m := make(StringArrayMapMap)
+	for k, v := range in {
+		m[k] = ToStringArrayMap(v)
+	}
+	return m
+}
+
+func ToStringArrayMapMapOutput(in map[string]StringArrayMapOutput) StringArrayMapMapOutput {
+	m := make(StringArrayMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToStringArrayMapMapOutput()
+}
+
+var stringMapArrayMapType = reflect.TypeOf((*map[string][]map[string]string)(nil)).Elem()
+
+// StringMapArrayMapInput is an input type that accepts StringMapArrayMap and StringMapArrayMapOutput values.
+type StringMapArrayMapInput interface {
+	Input
+
+	ToStringMapArrayMapOutput() StringMapArrayMapOutput
+	ToStringMapArrayMapOutputWithContext(ctx context.Context) StringMapArrayMapOutput
+}
+
+// StringMapArrayMap is an input type for map[string]StringMapArrayInput values.
+type StringMapArrayMap map[string]StringMapArrayInput
+
+// ElementType returns the element type of this Input (map[string][]map[string]string).
+func (StringMapArrayMap) ElementType() reflect.Type {
+	return stringMapArrayMapType
+}
+
+func (in StringMapArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]string] {
+	return pulumix.Output[map[string][]map[string]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in StringMapArrayMap) ToStringMapArrayMapOutput() StringMapArrayMapOutput {
+	return ToOutput(in).(StringMapArrayMapOutput)
+}
+
+func (in StringMapArrayMap) ToStringMapArrayMapOutputWithContext(ctx context.Context) StringMapArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(StringMapArrayMapOutput)
+}
+
+// StringMapArrayMapOutput is an Output that returns map[string][]map[string]string values.
+type StringMapArrayMapOutput struct{ *OutputState }
+
+func (StringMapArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o StringMapArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]string] {
+	return pulumix.Output[map[string][]map[string]string]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]map[string]string).
+func (StringMapArrayMapOutput) ElementType() reflect.Type {
+	return stringMapArrayMapType
+}
+
+func (o StringMapArrayMapOutput) ToStringMapArrayMapOutput() StringMapArrayMapOutput {
+	return o
+}
+
+func (o StringMapArrayMapOutput) ToStringMapArrayMapOutputWithContext(ctx context.Context) StringMapArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o StringMapArrayMapOutput) MapIndex(k StringInput) StringMapArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) []map[string]string {
+		return vs[0].(map[string][]map[string]string)[vs[1].(string)]
+	}).(StringMapArrayOutput)
+}
+
+func ToStringMapArrayMap(in map[string][]map[string]string) StringMapArrayMap {
+	m := make(StringMapArrayMap)
+	for k, v := range in {
+		m[k] = ToStringMapArray(v)
+	}
+	return m
+}
+
+func ToStringMapArrayMapOutput(in map[string]StringMapArrayOutput) StringMapArrayMapOutput {
+	m := make(StringMapArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToStringMapArrayMapOutput()
+}
+
+var stringMapMapArrayType = reflect.TypeOf((*[]map[string]map[string]string)(nil)).Elem()
+
+// StringMapMapArrayInput is an input type that accepts StringMapMapArray and StringMapMapArrayOutput values.
+type StringMapMapArrayInput interface {
+	Input
+
+	ToStringMapMapArrayOutput() StringMapMapArrayOutput
+	ToStringMapMapArrayOutputWithContext(ctx context.Context) StringMapMapArrayOutput
+}
+
+// StringMapMapArray is an input type for []StringMapMapInput values.
+type StringMapMapArray []StringMapMapInput
+
+// ElementType returns the element type of this Input ([]map[string]map[string]string).
+func (StringMapMapArray) ElementType() reflect.Type {
+	return stringMapMapArrayType
+}
+
+func (in StringMapMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]string] {
+	return pulumix.Output[[]map[string]map[string]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in StringMapMapArray) ToStringMapMapArrayOutput() StringMapMapArrayOutput {
+	return ToOutput(in).(StringMapMapArrayOutput)
+}
+
+func (in StringMapMapArray) ToStringMapMapArrayOutputWithContext(ctx context.Context) StringMapMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(StringMapMapArrayOutput)
+}
+
+// StringMapMapArrayOutput is an Output that returns []map[string]map[string]string values.
+type StringMapMapArrayOutput struct{ *OutputState }
+
+func (StringMapMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o StringMapMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]string] {
+	return pulumix.Output[[]map[string]map[string]string]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]map[string]string).
+func (StringMapMapArrayOutput) ElementType() reflect.Type {
+	return stringMapMapArrayType
+}
+
+func (o StringMapMapArrayOutput) ToStringMapMapArrayOutput() StringMapMapArrayOutput {
+	return o
+}
+
+func (o StringMapMapArrayOutput) ToStringMapMapArrayOutputWithContext(ctx context.Context) StringMapMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o StringMapMapArrayOutput) Index(i IntInput) StringMapMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string]map[string]string {
+		arr := vs[0].([]map[string]map[string]string)
+		idx := vs[1].(int)
+		var ret map[string]map[string]string
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(StringMapMapOutput)
+}
+
+func ToStringMapMapArray(in []map[string]map[string]string) StringMapMapArray {
+	a := make(StringMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToStringMapMap(v)
+	}
+	return a
+}
+
+func ToStringMapMapArrayOutput(in []StringMapMapOutput) StringMapMapArrayOutput {
+	a := make(StringMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToStringMapMapArrayOutput()
+}
+
+var stringArrayMapArrayType = reflect.TypeOf((*[]map[string][]string)(nil)).Elem()
+
+// StringArrayMapArrayInput is an input type that accepts StringArrayMapArray and StringArrayMapArrayOutput values.
+type StringArrayMapArrayInput interface {
+	Input
+
+	ToStringArrayMapArrayOutput() StringArrayMapArrayOutput
+	ToStringArrayMapArrayOutputWithContext(ctx context.Context) StringArrayMapArrayOutput
+}
+
+// StringArrayMapArray is an input type for []StringArrayMapInput values.
+type StringArrayMapArray []StringArrayMapInput
+
+// ElementType returns the element type of this Input ([]map[string][]string).
+func (StringArrayMapArray) ElementType() reflect.Type {
+	return stringArrayMapArrayType
+}
+
+func (in StringArrayMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]string] {
+	return pulumix.Output[[]map[string][]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in StringArrayMapArray) ToStringArrayMapArrayOutput() StringArrayMapArrayOutput {
+	return ToOutput(in).(StringArrayMapArrayOutput)
+}
+
+func (in StringArrayMapArray) ToStringArrayMapArrayOutputWithContext(ctx context.Context) StringArrayMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(StringArrayMapArrayOutput)
+}
+
+// StringArrayMapArrayOutput is an Output that returns []map[string][]string values.
+type StringArrayMapArrayOutput struct{ *OutputState }
+
+func (StringArrayMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o StringArrayMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]string] {
+	return pulumix.Output[[]map[string][]string]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string][]string).
+func (StringArrayMapArrayOutput) ElementType() reflect.Type {
+	return stringArrayMapArrayType
+}
+
+func (o StringArrayMapArrayOutput) ToStringArrayMapArrayOutput() StringArrayMapArrayOutput {
+	return o
+}
+
+func (o StringArrayMapArrayOutput) ToStringArrayMapArrayOutputWithContext(ctx context.Context) StringArrayMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o StringArrayMapArrayOutput) Index(i IntInput) StringArrayMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string][]string {
+		arr := vs[0].([]map[string][]string)
+		idx := vs[1].(int)
+		var ret map[string][]string
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(StringArrayMapOutput)
+}
+
+func ToStringArrayMapArray(in []map[string][]string) StringArrayMapArray {
+	a := make(StringArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToStringArrayMap(v)
+	}
+	return a
+}
+
+func ToStringArrayMapArrayOutput(in []StringArrayMapOutput) StringArrayMapArrayOutput {
+	a := make(StringArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToStringArrayMapArrayOutput()
+}
+
+var stringArrayArrayMapType = reflect.TypeOf((*map[string][][]string)(nil)).Elem()
+
+// StringArrayArrayMapInput is an input type that accepts StringArrayArrayMap and StringArrayArrayMapOutput values.
+type StringArrayArrayMapInput interface {
+	Input
+
+	ToStringArrayArrayMapOutput() StringArrayArrayMapOutput
+	ToStringArrayArrayMapOutputWithContext(ctx context.Context) StringArrayArrayMapOutput
+}
+
+// StringArrayArrayMap is an input type for map[string]StringArrayArrayInput values.
+type StringArrayArrayMap map[string]StringArrayArrayInput
+
+// ElementType returns the element type of this Input (map[string][][]string).
+func (StringArrayArrayMap) ElementType() reflect.Type {
+	return stringArrayArrayMapType
+}
+
+func (in StringArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]string] {
+	return pulumix.Output[map[string][][]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in StringArrayArrayMap) ToStringArrayArrayMapOutput() StringArrayArrayMapOutput {
+	return ToOutput(in).(StringArrayArrayMapOutput)
+}
+
+func (in StringArrayArrayMap) ToStringArrayArrayMapOutputWithContext(ctx context.Context) StringArrayArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(StringArrayArrayMapOutput)
+}
+
+// StringArrayArrayMapOutput is an Output that returns map[string][][]string values.
+type StringArrayArrayMapOutput struct{ *OutputState }
+
+func (StringArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o StringArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]string] {
+	return pulumix.Output[map[string][][]string]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][][]string).
+func (StringArrayArrayMapOutput) ElementType() reflect.Type {
+	return stringArrayArrayMapType
+}
+
+func (o StringArrayArrayMapOutput) ToStringArrayArrayMapOutput() StringArrayArrayMapOutput {
+	return o
+}
+
+func (o StringArrayArrayMapOutput) ToStringArrayArrayMapOutputWithContext(ctx context.Context) StringArrayArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o StringArrayArrayMapOutput) MapIndex(k StringInput) StringArrayArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) [][]string {
+		return vs[0].(map[string][][]string)[vs[1].(string)]
+	}).(StringArrayArrayOutput)
+}
+
+func ToStringArrayArrayMap(in map[string][][]string) StringArrayArrayMap {
+	m := make(StringArrayArrayMap)
+	for k, v := range in {
+		m[k] = ToStringArrayArray(v)
+	}
+	return m
+}
+
+func ToStringArrayArrayMapOutput(in map[string]StringArrayArrayOutput) StringArrayArrayMapOutput {
+	m := make(StringArrayArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToStringArrayArrayMapOutput()
+}
+
+var stringArrayArrayArrayType = reflect.TypeOf((*[][][]string)(nil)).Elem()
+
+// StringArrayArrayArrayInput is an input type that accepts StringArrayArrayArray and StringArrayArrayArrayOutput values.
+type StringArrayArrayArrayInput interface {
+	Input
+
+	ToStringArrayArrayArrayOutput() StringArrayArrayArrayOutput
+	ToStringArrayArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayArrayOutput
+}
+
+// StringArrayArrayArray is an input type for []StringArrayArrayInput values.
+type StringArrayArrayArray []StringArrayArrayInput
+
+// ElementType returns the element type of this Input ([][][]string).
+func (StringArrayArrayArray) ElementType() reflect.Type {
+	return stringArrayArrayArrayType
+}
+
+func (in StringArrayArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][][]string] {
+	return pulumix.Output[[][][]string]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in StringArrayArrayArray) ToStringArrayArrayArrayOutput() StringArrayArrayArrayOutput {
+	return ToOutput(in).(StringArrayArrayArrayOutput)
+}
+
+func (in StringArrayArrayArray) ToStringArrayArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(StringArrayArrayArrayOutput)
+}
+
+// StringArrayArrayArrayOutput is an Output that returns [][][]string values.
+type StringArrayArrayArrayOutput struct{ *OutputState }
+
+func (StringArrayArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o StringArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]string] {
+	return pulumix.Output[[][][]string]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][][]string).
+func (StringArrayArrayArrayOutput) ElementType() reflect.Type {
+	return stringArrayArrayArrayType
+}
+
+func (o StringArrayArrayArrayOutput) ToStringArrayArrayArrayOutput() StringArrayArrayArrayOutput {
+	return o
+}
+
+func (o StringArrayArrayArrayOutput) ToStringArrayArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o StringArrayArrayArrayOutput) Index(i IntInput) StringArrayArrayOutput {
+	return All(o, i).ApplyT(func(vs []any) [][]string {
+		arr := vs[0].([][][]string)
+		idx := vs[1].(int)
+		var ret [][]string
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(StringArrayArrayOutput)
+}
+
+func ToStringArrayArrayArray(in [][][]string) StringArrayArrayArray {
+	a := make(StringArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToStringArrayArray(v)
+	}
+	return a
+}
+
+func ToStringArrayArrayArrayOutput(in []StringArrayArrayOutput) StringArrayArrayArrayOutput {
+	a := make(StringArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToStringArrayArrayArrayOutput()
 }
 
 var stringMapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]string)(nil)).Elem()
@@ -6328,6 +11346,594 @@ func ToURNArrayArrayOutput(in []URNArrayOutput) URNArrayArrayOutput {
 	return a.ToURNArrayArrayOutput()
 }
 
+var uRNArrayMapMapType = reflect.TypeOf((*map[string]map[string][]URN)(nil)).Elem()
+
+// URNArrayMapMapInput is an input type that accepts URNArrayMapMap and URNArrayMapMapOutput values.
+type URNArrayMapMapInput interface {
+	Input
+
+	ToURNArrayMapMapOutput() URNArrayMapMapOutput
+	ToURNArrayMapMapOutputWithContext(ctx context.Context) URNArrayMapMapOutput
+}
+
+// URNArrayMapMap is an input type for map[string]URNArrayMapInput values.
+type URNArrayMapMap map[string]URNArrayMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string][]URN).
+func (URNArrayMapMap) ElementType() reflect.Type {
+	return uRNArrayMapMapType
+}
+
+func (in URNArrayMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]URN] {
+	return pulumix.Output[map[string]map[string][]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in URNArrayMapMap) ToURNArrayMapMapOutput() URNArrayMapMapOutput {
+	return ToOutput(in).(URNArrayMapMapOutput)
+}
+
+func (in URNArrayMapMap) ToURNArrayMapMapOutputWithContext(ctx context.Context) URNArrayMapMapOutput {
+	return ToOutputWithContext(ctx, in).(URNArrayMapMapOutput)
+}
+
+// URNArrayMapMapOutput is an Output that returns map[string]map[string][]URN values.
+type URNArrayMapMapOutput struct{ *OutputState }
+
+func (URNArrayMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o URNArrayMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string][]URN] {
+	return pulumix.Output[map[string]map[string][]URN]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string][]URN).
+func (URNArrayMapMapOutput) ElementType() reflect.Type {
+	return uRNArrayMapMapType
+}
+
+func (o URNArrayMapMapOutput) ToURNArrayMapMapOutput() URNArrayMapMapOutput {
+	return o
+}
+
+func (o URNArrayMapMapOutput) ToURNArrayMapMapOutputWithContext(ctx context.Context) URNArrayMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o URNArrayMapMapOutput) MapIndex(k StringInput) URNArrayMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string][]URN {
+		return vs[0].(map[string]map[string][]URN)[vs[1].(string)]
+	}).(URNArrayMapOutput)
+}
+
+func ToURNArrayMapMap(in map[string]map[string][]URN) URNArrayMapMap {
+	m := make(URNArrayMapMap)
+	for k, v := range in {
+		m[k] = ToURNArrayMap(v)
+	}
+	return m
+}
+
+func ToURNArrayMapMapOutput(in map[string]URNArrayMapOutput) URNArrayMapMapOutput {
+	m := make(URNArrayMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToURNArrayMapMapOutput()
+}
+
+var uRNMapArrayMapType = reflect.TypeOf((*map[string][]map[string]URN)(nil)).Elem()
+
+// URNMapArrayMapInput is an input type that accepts URNMapArrayMap and URNMapArrayMapOutput values.
+type URNMapArrayMapInput interface {
+	Input
+
+	ToURNMapArrayMapOutput() URNMapArrayMapOutput
+	ToURNMapArrayMapOutputWithContext(ctx context.Context) URNMapArrayMapOutput
+}
+
+// URNMapArrayMap is an input type for map[string]URNMapArrayInput values.
+type URNMapArrayMap map[string]URNMapArrayInput
+
+// ElementType returns the element type of this Input (map[string][]map[string]URN).
+func (URNMapArrayMap) ElementType() reflect.Type {
+	return uRNMapArrayMapType
+}
+
+func (in URNMapArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]URN] {
+	return pulumix.Output[map[string][]map[string]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in URNMapArrayMap) ToURNMapArrayMapOutput() URNMapArrayMapOutput {
+	return ToOutput(in).(URNMapArrayMapOutput)
+}
+
+func (in URNMapArrayMap) ToURNMapArrayMapOutputWithContext(ctx context.Context) URNMapArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(URNMapArrayMapOutput)
+}
+
+// URNMapArrayMapOutput is an Output that returns map[string][]map[string]URN values.
+type URNMapArrayMapOutput struct{ *OutputState }
+
+func (URNMapArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o URNMapArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]map[string]URN] {
+	return pulumix.Output[map[string][]map[string]URN]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]map[string]URN).
+func (URNMapArrayMapOutput) ElementType() reflect.Type {
+	return uRNMapArrayMapType
+}
+
+func (o URNMapArrayMapOutput) ToURNMapArrayMapOutput() URNMapArrayMapOutput {
+	return o
+}
+
+func (o URNMapArrayMapOutput) ToURNMapArrayMapOutputWithContext(ctx context.Context) URNMapArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o URNMapArrayMapOutput) MapIndex(k StringInput) URNMapArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) []map[string]URN {
+		return vs[0].(map[string][]map[string]URN)[vs[1].(string)]
+	}).(URNMapArrayOutput)
+}
+
+func ToURNMapArrayMap(in map[string][]map[string]URN) URNMapArrayMap {
+	m := make(URNMapArrayMap)
+	for k, v := range in {
+		m[k] = ToURNMapArray(v)
+	}
+	return m
+}
+
+func ToURNMapArrayMapOutput(in map[string]URNMapArrayOutput) URNMapArrayMapOutput {
+	m := make(URNMapArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToURNMapArrayMapOutput()
+}
+
+var uRNMapMapArrayType = reflect.TypeOf((*[]map[string]map[string]URN)(nil)).Elem()
+
+// URNMapMapArrayInput is an input type that accepts URNMapMapArray and URNMapMapArrayOutput values.
+type URNMapMapArrayInput interface {
+	Input
+
+	ToURNMapMapArrayOutput() URNMapMapArrayOutput
+	ToURNMapMapArrayOutputWithContext(ctx context.Context) URNMapMapArrayOutput
+}
+
+// URNMapMapArray is an input type for []URNMapMapInput values.
+type URNMapMapArray []URNMapMapInput
+
+// ElementType returns the element type of this Input ([]map[string]map[string]URN).
+func (URNMapMapArray) ElementType() reflect.Type {
+	return uRNMapMapArrayType
+}
+
+func (in URNMapMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]URN] {
+	return pulumix.Output[[]map[string]map[string]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in URNMapMapArray) ToURNMapMapArrayOutput() URNMapMapArrayOutput {
+	return ToOutput(in).(URNMapMapArrayOutput)
+}
+
+func (in URNMapMapArray) ToURNMapMapArrayOutputWithContext(ctx context.Context) URNMapMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(URNMapMapArrayOutput)
+}
+
+// URNMapMapArrayOutput is an Output that returns []map[string]map[string]URN values.
+type URNMapMapArrayOutput struct{ *OutputState }
+
+func (URNMapMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o URNMapMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]map[string]URN] {
+	return pulumix.Output[[]map[string]map[string]URN]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]map[string]URN).
+func (URNMapMapArrayOutput) ElementType() reflect.Type {
+	return uRNMapMapArrayType
+}
+
+func (o URNMapMapArrayOutput) ToURNMapMapArrayOutput() URNMapMapArrayOutput {
+	return o
+}
+
+func (o URNMapMapArrayOutput) ToURNMapMapArrayOutputWithContext(ctx context.Context) URNMapMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o URNMapMapArrayOutput) Index(i IntInput) URNMapMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string]map[string]URN {
+		arr := vs[0].([]map[string]map[string]URN)
+		idx := vs[1].(int)
+		var ret map[string]map[string]URN
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(URNMapMapOutput)
+}
+
+func ToURNMapMapArray(in []map[string]map[string]URN) URNMapMapArray {
+	a := make(URNMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToURNMapMap(v)
+	}
+	return a
+}
+
+func ToURNMapMapArrayOutput(in []URNMapMapOutput) URNMapMapArrayOutput {
+	a := make(URNMapMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToURNMapMapArrayOutput()
+}
+
+var uRNArrayMapArrayType = reflect.TypeOf((*[]map[string][]URN)(nil)).Elem()
+
+// URNArrayMapArrayInput is an input type that accepts URNArrayMapArray and URNArrayMapArrayOutput values.
+type URNArrayMapArrayInput interface {
+	Input
+
+	ToURNArrayMapArrayOutput() URNArrayMapArrayOutput
+	ToURNArrayMapArrayOutputWithContext(ctx context.Context) URNArrayMapArrayOutput
+}
+
+// URNArrayMapArray is an input type for []URNArrayMapInput values.
+type URNArrayMapArray []URNArrayMapInput
+
+// ElementType returns the element type of this Input ([]map[string][]URN).
+func (URNArrayMapArray) ElementType() reflect.Type {
+	return uRNArrayMapArrayType
+}
+
+func (in URNArrayMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]URN] {
+	return pulumix.Output[[]map[string][]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in URNArrayMapArray) ToURNArrayMapArrayOutput() URNArrayMapArrayOutput {
+	return ToOutput(in).(URNArrayMapArrayOutput)
+}
+
+func (in URNArrayMapArray) ToURNArrayMapArrayOutputWithContext(ctx context.Context) URNArrayMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(URNArrayMapArrayOutput)
+}
+
+// URNArrayMapArrayOutput is an Output that returns []map[string][]URN values.
+type URNArrayMapArrayOutput struct{ *OutputState }
+
+func (URNArrayMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o URNArrayMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string][]URN] {
+	return pulumix.Output[[]map[string][]URN]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string][]URN).
+func (URNArrayMapArrayOutput) ElementType() reflect.Type {
+	return uRNArrayMapArrayType
+}
+
+func (o URNArrayMapArrayOutput) ToURNArrayMapArrayOutput() URNArrayMapArrayOutput {
+	return o
+}
+
+func (o URNArrayMapArrayOutput) ToURNArrayMapArrayOutputWithContext(ctx context.Context) URNArrayMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o URNArrayMapArrayOutput) Index(i IntInput) URNArrayMapOutput {
+	return All(o, i).ApplyT(func(vs []any) map[string][]URN {
+		arr := vs[0].([]map[string][]URN)
+		idx := vs[1].(int)
+		var ret map[string][]URN
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(URNArrayMapOutput)
+}
+
+func ToURNArrayMapArray(in []map[string][]URN) URNArrayMapArray {
+	a := make(URNArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToURNArrayMap(v)
+	}
+	return a
+}
+
+func ToURNArrayMapArrayOutput(in []URNArrayMapOutput) URNArrayMapArrayOutput {
+	a := make(URNArrayMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToURNArrayMapArrayOutput()
+}
+
+var uRNArrayArrayMapType = reflect.TypeOf((*map[string][][]URN)(nil)).Elem()
+
+// URNArrayArrayMapInput is an input type that accepts URNArrayArrayMap and URNArrayArrayMapOutput values.
+type URNArrayArrayMapInput interface {
+	Input
+
+	ToURNArrayArrayMapOutput() URNArrayArrayMapOutput
+	ToURNArrayArrayMapOutputWithContext(ctx context.Context) URNArrayArrayMapOutput
+}
+
+// URNArrayArrayMap is an input type for map[string]URNArrayArrayInput values.
+type URNArrayArrayMap map[string]URNArrayArrayInput
+
+// ElementType returns the element type of this Input (map[string][][]URN).
+func (URNArrayArrayMap) ElementType() reflect.Type {
+	return uRNArrayArrayMapType
+}
+
+func (in URNArrayArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][][]URN] {
+	return pulumix.Output[map[string][][]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in URNArrayArrayMap) ToURNArrayArrayMapOutput() URNArrayArrayMapOutput {
+	return ToOutput(in).(URNArrayArrayMapOutput)
+}
+
+func (in URNArrayArrayMap) ToURNArrayArrayMapOutputWithContext(ctx context.Context) URNArrayArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(URNArrayArrayMapOutput)
+}
+
+// URNArrayArrayMapOutput is an Output that returns map[string][][]URN values.
+type URNArrayArrayMapOutput struct{ *OutputState }
+
+func (URNArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o URNArrayArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][][]URN] {
+	return pulumix.Output[map[string][][]URN]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][][]URN).
+func (URNArrayArrayMapOutput) ElementType() reflect.Type {
+	return uRNArrayArrayMapType
+}
+
+func (o URNArrayArrayMapOutput) ToURNArrayArrayMapOutput() URNArrayArrayMapOutput {
+	return o
+}
+
+func (o URNArrayArrayMapOutput) ToURNArrayArrayMapOutputWithContext(ctx context.Context) URNArrayArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o URNArrayArrayMapOutput) MapIndex(k StringInput) URNArrayArrayOutput {
+	return All(o, k).ApplyT(func(vs []any) [][]URN {
+		return vs[0].(map[string][][]URN)[vs[1].(string)]
+	}).(URNArrayArrayOutput)
+}
+
+func ToURNArrayArrayMap(in map[string][][]URN) URNArrayArrayMap {
+	m := make(URNArrayArrayMap)
+	for k, v := range in {
+		m[k] = ToURNArrayArray(v)
+	}
+	return m
+}
+
+func ToURNArrayArrayMapOutput(in map[string]URNArrayArrayOutput) URNArrayArrayMapOutput {
+	m := make(URNArrayArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToURNArrayArrayMapOutput()
+}
+
+var uRNArrayArrayArrayType = reflect.TypeOf((*[][][]URN)(nil)).Elem()
+
+// URNArrayArrayArrayInput is an input type that accepts URNArrayArrayArray and URNArrayArrayArrayOutput values.
+type URNArrayArrayArrayInput interface {
+	Input
+
+	ToURNArrayArrayArrayOutput() URNArrayArrayArrayOutput
+	ToURNArrayArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayArrayOutput
+}
+
+// URNArrayArrayArray is an input type for []URNArrayArrayInput values.
+type URNArrayArrayArray []URNArrayArrayInput
+
+// ElementType returns the element type of this Input ([][][]URN).
+func (URNArrayArrayArray) ElementType() reflect.Type {
+	return uRNArrayArrayArrayType
+}
+
+func (in URNArrayArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][][]URN] {
+	return pulumix.Output[[][][]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in URNArrayArrayArray) ToURNArrayArrayArrayOutput() URNArrayArrayArrayOutput {
+	return ToOutput(in).(URNArrayArrayArrayOutput)
+}
+
+func (in URNArrayArrayArray) ToURNArrayArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(URNArrayArrayArrayOutput)
+}
+
+// URNArrayArrayArrayOutput is an Output that returns [][][]URN values.
+type URNArrayArrayArrayOutput struct{ *OutputState }
+
+func (URNArrayArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o URNArrayArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][][]URN] {
+	return pulumix.Output[[][][]URN]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][][]URN).
+func (URNArrayArrayArrayOutput) ElementType() reflect.Type {
+	return uRNArrayArrayArrayType
+}
+
+func (o URNArrayArrayArrayOutput) ToURNArrayArrayArrayOutput() URNArrayArrayArrayOutput {
+	return o
+}
+
+func (o URNArrayArrayArrayOutput) ToURNArrayArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o URNArrayArrayArrayOutput) Index(i IntInput) URNArrayArrayOutput {
+	return All(o, i).ApplyT(func(vs []any) [][]URN {
+		arr := vs[0].([][][]URN)
+		idx := vs[1].(int)
+		var ret [][]URN
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(URNArrayArrayOutput)
+}
+
+func ToURNArrayArrayArray(in [][][]URN) URNArrayArrayArray {
+	a := make(URNArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToURNArrayArray(v)
+	}
+	return a
+}
+
+func ToURNArrayArrayArrayOutput(in []URNArrayArrayOutput) URNArrayArrayArrayOutput {
+	a := make(URNArrayArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToURNArrayArrayArrayOutput()
+}
+
+var uRNMapMapMapType = reflect.TypeOf((*map[string]map[string]map[string]URN)(nil)).Elem()
+
+// URNMapMapMapInput is an input type that accepts URNMapMapMap and URNMapMapMapOutput values.
+type URNMapMapMapInput interface {
+	Input
+
+	ToURNMapMapMapOutput() URNMapMapMapOutput
+	ToURNMapMapMapOutputWithContext(ctx context.Context) URNMapMapMapOutput
+}
+
+// URNMapMapMap is an input type for map[string]URNMapMapInput values.
+type URNMapMapMap map[string]URNMapMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]map[string]URN).
+func (URNMapMapMap) ElementType() reflect.Type {
+	return uRNMapMapMapType
+}
+
+func (in URNMapMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]URN] {
+	return pulumix.Output[map[string]map[string]map[string]URN]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in URNMapMapMap) ToURNMapMapMapOutput() URNMapMapMapOutput {
+	return ToOutput(in).(URNMapMapMapOutput)
+}
+
+func (in URNMapMapMap) ToURNMapMapMapOutputWithContext(ctx context.Context) URNMapMapMapOutput {
+	return ToOutputWithContext(ctx, in).(URNMapMapMapOutput)
+}
+
+// URNMapMapMapOutput is an Output that returns map[string]map[string]map[string]URN values.
+type URNMapMapMapOutput struct{ *OutputState }
+
+func (URNMapMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o URNMapMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]map[string]URN] {
+	return pulumix.Output[map[string]map[string]map[string]URN]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]map[string]URN).
+func (URNMapMapMapOutput) ElementType() reflect.Type {
+	return uRNMapMapMapType
+}
+
+func (o URNMapMapMapOutput) ToURNMapMapMapOutput() URNMapMapMapOutput {
+	return o
+}
+
+func (o URNMapMapMapOutput) ToURNMapMapMapOutputWithContext(ctx context.Context) URNMapMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o URNMapMapMapOutput) MapIndex(k StringInput) URNMapMapOutput {
+	return All(o, k).ApplyT(func(vs []any) map[string]map[string]URN {
+		return vs[0].(map[string]map[string]map[string]URN)[vs[1].(string)]
+	}).(URNMapMapOutput)
+}
+
+func ToURNMapMapMap(in map[string]map[string]map[string]URN) URNMapMapMap {
+	m := make(URNMapMapMap)
+	for k, v := range in {
+		m[k] = ToURNMapMap(v)
+	}
+	return m
+}
+
+func ToURNMapMapMapOutput(in map[string]URNMapMapOutput) URNMapMapMapOutput {
+	m := make(URNMapMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToURNMapMapMapOutput()
+}
+
 func init() {
 	internal.FullyResolvedTypes[reflect.TypeOf((*asset)(nil))] = struct{}{}
 	internal.FullyResolvedTypes[reflect.TypeOf((*archive)(nil))] = struct{}{}
@@ -6420,6 +12026,97 @@ func (a AnyOutput) AsArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
 	}).(ArchiveArrayArrayOutput)
 }
 
+// AsArchiveArrayMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string][]Archive or a compatible type and returns a `ArchiveArrayMapMapOutput` with that value.
+// AsArchiveArrayMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveArrayMapMapOutput() ArchiveArrayMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string][]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string][]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string][]Archive), nil
+	}).(ArchiveArrayMapMapOutput)
+}
+
+// AsArchiveMapArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]map[string]Archive or a compatible type and returns a `ArchiveMapArrayMapOutput` with that value.
+// AsArchiveMapArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveMapArrayMapOutput() ArchiveMapArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][]map[string]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]map[string]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]map[string]Archive), nil
+	}).(ArchiveMapArrayMapOutput)
+}
+
+// AsArchiveMapMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]map[string]Archive or a compatible type and returns a `ArchiveMapMapArrayOutput` with that value.
+// AsArchiveMapMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveMapMapArrayOutput() ArchiveMapMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string]map[string]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]map[string]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]map[string]Archive), nil
+	}).(ArchiveMapMapArrayOutput)
+}
+
+// AsArchiveArrayMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string][]Archive or a compatible type and returns a `ArchiveArrayMapArrayOutput` with that value.
+// AsArchiveArrayMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveArrayMapArrayOutput() ArchiveArrayMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string][]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string][]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string][]Archive), nil
+	}).(ArchiveArrayMapArrayOutput)
+}
+
+// AsArchiveArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][][]Archive or a compatible type and returns a `ArchiveArrayArrayMapOutput` with that value.
+// AsArchiveArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveArrayArrayMapOutput() ArchiveArrayArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][][]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]Archive), nil
+	}).(ArchiveArrayArrayMapOutput)
+}
+
+// AsArchiveArrayArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][][]Archive or a compatible type and returns a `ArchiveArrayArrayArrayOutput` with that value.
+// AsArchiveArrayArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveArrayArrayArrayOutput() ArchiveArrayArrayArrayOutput {
+	return a.ApplyT(func(i any) ([][][]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][][]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][][]Archive), nil
+	}).(ArchiveArrayArrayArrayOutput)
+}
+
+// AsArchiveMapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string]map[string]Archive or a compatible type and returns a `ArchiveMapMapMapOutput` with that value.
+// AsArchiveMapMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveMapMapMapOutput() ArchiveMapMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string]map[string]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]map[string]Archive), nil
+	}).(ArchiveMapMapMapOutput)
+}
+
 // AsAssetOutput asserts that the type of the AnyOutput's underlying any value is
 // Asset and returns a `AssetOutput` with that value. AsAssetOutput panics if the value
 // was not the expected type.
@@ -6507,6 +12204,97 @@ func (a AnyOutput) AsAssetArrayArrayOutput() AssetArrayArrayOutput {
 	}).(AssetArrayArrayOutput)
 }
 
+// AsAssetArrayMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string][]Asset or a compatible type and returns a `AssetArrayMapMapOutput` with that value.
+// AsAssetArrayMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetArrayMapMapOutput() AssetArrayMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string][]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string][]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string][]Asset), nil
+	}).(AssetArrayMapMapOutput)
+}
+
+// AsAssetMapArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]map[string]Asset or a compatible type and returns a `AssetMapArrayMapOutput` with that value.
+// AsAssetMapArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetMapArrayMapOutput() AssetMapArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][]map[string]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]map[string]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]map[string]Asset), nil
+	}).(AssetMapArrayMapOutput)
+}
+
+// AsAssetMapMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]map[string]Asset or a compatible type and returns a `AssetMapMapArrayOutput` with that value.
+// AsAssetMapMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetMapMapArrayOutput() AssetMapMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string]map[string]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]map[string]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]map[string]Asset), nil
+	}).(AssetMapMapArrayOutput)
+}
+
+// AsAssetArrayMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string][]Asset or a compatible type and returns a `AssetArrayMapArrayOutput` with that value.
+// AsAssetArrayMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetArrayMapArrayOutput() AssetArrayMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string][]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string][]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string][]Asset), nil
+	}).(AssetArrayMapArrayOutput)
+}
+
+// AsAssetArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][][]Asset or a compatible type and returns a `AssetArrayArrayMapOutput` with that value.
+// AsAssetArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetArrayArrayMapOutput() AssetArrayArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][][]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]Asset), nil
+	}).(AssetArrayArrayMapOutput)
+}
+
+// AsAssetArrayArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][][]Asset or a compatible type and returns a `AssetArrayArrayArrayOutput` with that value.
+// AsAssetArrayArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetArrayArrayArrayOutput() AssetArrayArrayArrayOutput {
+	return a.ApplyT(func(i any) ([][][]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][][]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][][]Asset), nil
+	}).(AssetArrayArrayArrayOutput)
+}
+
+// AsAssetMapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string]map[string]Asset or a compatible type and returns a `AssetMapMapMapOutput` with that value.
+// AsAssetMapMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetMapMapMapOutput() AssetMapMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string]map[string]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]map[string]Asset), nil
+	}).(AssetMapMapMapOutput)
+}
+
 // AsAssetOrArchiveOutput asserts that the type of the AnyOutput's underlying any value is
 // AssetOrArchive and returns a `AssetOrArchiveOutput` with that value. AsAssetOrArchiveOutput panics if the value
 // was not the expected type.
@@ -6592,6 +12380,97 @@ func (a AnyOutput) AsAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOu
 		}
 		return v.([][]AssetOrArchive), nil
 	}).(AssetOrArchiveArrayArrayOutput)
+}
+
+// AsAssetOrArchiveArrayMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string][]AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayMapMapOutput` with that value.
+// AsAssetOrArchiveArrayMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveArrayMapMapOutput() AssetOrArchiveArrayMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string][]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayMapMapOutput)
+}
+
+// AsAssetOrArchiveMapArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapArrayMapOutput` with that value.
+// AsAssetOrArchiveMapArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveMapArrayMapOutput() AssetOrArchiveMapArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][]map[string]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapArrayMapOutput)
+}
+
+// AsAssetOrArchiveMapMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapMapArrayOutput` with that value.
+// AsAssetOrArchiveMapMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveMapMapArrayOutput() AssetOrArchiveMapMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string]map[string]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapMapArrayOutput)
+}
+
+// AsAssetOrArchiveArrayMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string][]AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayMapArrayOutput` with that value.
+// AsAssetOrArchiveArrayMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveArrayMapArrayOutput() AssetOrArchiveArrayMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string][]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayMapArrayOutput)
+}
+
+// AsAssetOrArchiveArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][][]AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayArrayMapOutput` with that value.
+// AsAssetOrArchiveArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveArrayArrayMapOutput() AssetOrArchiveArrayArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][][]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayArrayMapOutput)
+}
+
+// AsAssetOrArchiveArrayArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][][]AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayArrayArrayOutput` with that value.
+// AsAssetOrArchiveArrayArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveArrayArrayArrayOutput() AssetOrArchiveArrayArrayArrayOutput {
+	return a.ApplyT(func(i any) ([][][]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayArrayArrayOutput)
+}
+
+// AsAssetOrArchiveMapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string]map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapMapMapOutput` with that value.
+// AsAssetOrArchiveMapMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveMapMapMapOutput() AssetOrArchiveMapMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string]map[string]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapMapMapOutput)
 }
 
 // AsBoolOutput asserts that the type of the AnyOutput's underlying any value is
@@ -6694,6 +12573,97 @@ func (a AnyOutput) AsBoolArrayArrayOutput() BoolArrayArrayOutput {
 	}).(BoolArrayArrayOutput)
 }
 
+// AsBoolArrayMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string][]bool or a compatible type and returns a `BoolArrayMapMapOutput` with that value.
+// AsBoolArrayMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolArrayMapMapOutput() BoolArrayMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string][]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string][]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string][]bool), nil
+	}).(BoolArrayMapMapOutput)
+}
+
+// AsBoolMapArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]map[string]bool or a compatible type and returns a `BoolMapArrayMapOutput` with that value.
+// AsBoolMapArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolMapArrayMapOutput() BoolMapArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][]map[string]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]map[string]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]map[string]bool), nil
+	}).(BoolMapArrayMapOutput)
+}
+
+// AsBoolMapMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]map[string]bool or a compatible type and returns a `BoolMapMapArrayOutput` with that value.
+// AsBoolMapMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolMapMapArrayOutput() BoolMapMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string]map[string]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]map[string]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]map[string]bool), nil
+	}).(BoolMapMapArrayOutput)
+}
+
+// AsBoolArrayMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string][]bool or a compatible type and returns a `BoolArrayMapArrayOutput` with that value.
+// AsBoolArrayMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolArrayMapArrayOutput() BoolArrayMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string][]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string][]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string][]bool), nil
+	}).(BoolArrayMapArrayOutput)
+}
+
+// AsBoolArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][][]bool or a compatible type and returns a `BoolArrayArrayMapOutput` with that value.
+// AsBoolArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolArrayArrayMapOutput() BoolArrayArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][][]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]bool), nil
+	}).(BoolArrayArrayMapOutput)
+}
+
+// AsBoolArrayArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][][]bool or a compatible type and returns a `BoolArrayArrayArrayOutput` with that value.
+// AsBoolArrayArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolArrayArrayArrayOutput() BoolArrayArrayArrayOutput {
+	return a.ApplyT(func(i any) ([][][]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][][]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][][]bool), nil
+	}).(BoolArrayArrayArrayOutput)
+}
+
+// AsBoolMapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string]map[string]bool or a compatible type and returns a `BoolMapMapMapOutput` with that value.
+// AsBoolMapMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolMapMapMapOutput() BoolMapMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string]map[string]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]map[string]bool), nil
+	}).(BoolMapMapMapOutput)
+}
+
 // AsFloat64Output asserts that the type of the AnyOutput's underlying any value is
 // float64 and returns a `Float64Output` with that value. AsFloat64Output panics if the value
 // was not the expected type.
@@ -6792,6 +12762,97 @@ func (a AnyOutput) AsFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
 		}
 		return v.([][]float64), nil
 	}).(Float64ArrayArrayOutput)
+}
+
+// AsFloat64ArrayMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string][]float64 or a compatible type and returns a `Float64ArrayMapMapOutput` with that value.
+// AsFloat64ArrayMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64ArrayMapMapOutput() Float64ArrayMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string][]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string][]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string][]float64), nil
+	}).(Float64ArrayMapMapOutput)
+}
+
+// AsFloat64MapArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]map[string]float64 or a compatible type and returns a `Float64MapArrayMapOutput` with that value.
+// AsFloat64MapArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64MapArrayMapOutput() Float64MapArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][]map[string]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]map[string]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]map[string]float64), nil
+	}).(Float64MapArrayMapOutput)
+}
+
+// AsFloat64MapMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]map[string]float64 or a compatible type and returns a `Float64MapMapArrayOutput` with that value.
+// AsFloat64MapMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64MapMapArrayOutput() Float64MapMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string]map[string]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]map[string]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]map[string]float64), nil
+	}).(Float64MapMapArrayOutput)
+}
+
+// AsFloat64ArrayMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string][]float64 or a compatible type and returns a `Float64ArrayMapArrayOutput` with that value.
+// AsFloat64ArrayMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64ArrayMapArrayOutput() Float64ArrayMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string][]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string][]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string][]float64), nil
+	}).(Float64ArrayMapArrayOutput)
+}
+
+// AsFloat64ArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][][]float64 or a compatible type and returns a `Float64ArrayArrayMapOutput` with that value.
+// AsFloat64ArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64ArrayArrayMapOutput() Float64ArrayArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][][]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]float64), nil
+	}).(Float64ArrayArrayMapOutput)
+}
+
+// AsFloat64ArrayArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][][]float64 or a compatible type and returns a `Float64ArrayArrayArrayOutput` with that value.
+// AsFloat64ArrayArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64ArrayArrayArrayOutput() Float64ArrayArrayArrayOutput {
+	return a.ApplyT(func(i any) ([][][]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][][]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][][]float64), nil
+	}).(Float64ArrayArrayArrayOutput)
+}
+
+// AsFloat64MapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string]map[string]float64 or a compatible type and returns a `Float64MapMapMapOutput` with that value.
+// AsFloat64MapMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64MapMapMapOutput() Float64MapMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string]map[string]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]map[string]float64), nil
+	}).(Float64MapMapMapOutput)
 }
 
 // AsIDOutput asserts that the type of the AnyOutput's underlying any value is
@@ -6894,6 +12955,97 @@ func (a AnyOutput) AsIDArrayArrayOutput() IDArrayArrayOutput {
 	}).(IDArrayArrayOutput)
 }
 
+// AsIDArrayMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string][]ID or a compatible type and returns a `IDArrayMapMapOutput` with that value.
+// AsIDArrayMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDArrayMapMapOutput() IDArrayMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string][]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string][]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string][]ID), nil
+	}).(IDArrayMapMapOutput)
+}
+
+// AsIDMapArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]map[string]ID or a compatible type and returns a `IDMapArrayMapOutput` with that value.
+// AsIDMapArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDMapArrayMapOutput() IDMapArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][]map[string]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]map[string]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]map[string]ID), nil
+	}).(IDMapArrayMapOutput)
+}
+
+// AsIDMapMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]map[string]ID or a compatible type and returns a `IDMapMapArrayOutput` with that value.
+// AsIDMapMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDMapMapArrayOutput() IDMapMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string]map[string]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]map[string]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]map[string]ID), nil
+	}).(IDMapMapArrayOutput)
+}
+
+// AsIDArrayMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string][]ID or a compatible type and returns a `IDArrayMapArrayOutput` with that value.
+// AsIDArrayMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDArrayMapArrayOutput() IDArrayMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string][]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string][]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string][]ID), nil
+	}).(IDArrayMapArrayOutput)
+}
+
+// AsIDArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][][]ID or a compatible type and returns a `IDArrayArrayMapOutput` with that value.
+// AsIDArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDArrayArrayMapOutput() IDArrayArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][][]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]ID), nil
+	}).(IDArrayArrayMapOutput)
+}
+
+// AsIDArrayArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][][]ID or a compatible type and returns a `IDArrayArrayArrayOutput` with that value.
+// AsIDArrayArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDArrayArrayArrayOutput() IDArrayArrayArrayOutput {
+	return a.ApplyT(func(i any) ([][][]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][][]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][][]ID), nil
+	}).(IDArrayArrayArrayOutput)
+}
+
+// AsIDMapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string]map[string]ID or a compatible type and returns a `IDMapMapMapOutput` with that value.
+// AsIDMapMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDMapMapMapOutput() IDMapMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string]map[string]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]map[string]ID), nil
+	}).(IDMapMapMapOutput)
+}
+
 // AsArrayOutput asserts that the type of the AnyOutput's underlying any value is
 // []any or a compatible type and returns a `ArrayOutput` with that value.
 // AsArrayOutput panics if the value was not the expected type or a compatible type.
@@ -6972,6 +13124,58 @@ func (a AnyOutput) AsArrayArrayOutput() ArrayArrayOutput {
 	}).(ArrayArrayOutput)
 }
 
+// AsArrayMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string][]any or a compatible type and returns a `ArrayMapMapOutput` with that value.
+// AsArrayMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArrayMapMapOutput() ArrayMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string][]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string][]any)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string][]any), nil
+	}).(ArrayMapMapOutput)
+}
+
+// AsMapArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]map[string]any or a compatible type and returns a `MapArrayMapOutput` with that value.
+// AsMapArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsMapArrayMapOutput() MapArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][]map[string]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]map[string]any)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]map[string]any), nil
+	}).(MapArrayMapOutput)
+}
+
+// AsMapMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]map[string]any or a compatible type and returns a `MapMapArrayOutput` with that value.
+// AsMapMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsMapMapArrayOutput() MapMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string]map[string]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]map[string]any)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]map[string]any), nil
+	}).(MapMapArrayOutput)
+}
+
+// AsArrayMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string][]any or a compatible type and returns a `ArrayMapArrayOutput` with that value.
+// AsArrayMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArrayMapArrayOutput() ArrayMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string][]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string][]any)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string][]any), nil
+	}).(ArrayMapArrayOutput)
+}
+
 // AsArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
 // map[string][][]any or a compatible type and returns a `ArrayArrayMapOutput` with that value.
 // AsArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
@@ -6983,6 +13187,32 @@ func (a AnyOutput) AsArrayArrayMapOutput() ArrayArrayMapOutput {
 		}
 		return v.(map[string][][]any), nil
 	}).(ArrayArrayMapOutput)
+}
+
+// AsArrayArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][][]any or a compatible type and returns a `ArrayArrayArrayOutput` with that value.
+// AsArrayArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArrayArrayArrayOutput() ArrayArrayArrayOutput {
+	return a.ApplyT(func(i any) ([][][]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][][]any)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][][]any), nil
+	}).(ArrayArrayArrayOutput)
+}
+
+// AsMapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string]map[string]any or a compatible type and returns a `MapMapMapOutput` with that value.
+// AsMapMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsMapMapMapOutput() MapMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string]map[string]any, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]any)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]map[string]any), nil
+	}).(MapMapMapOutput)
 }
 
 // AsIntOutput asserts that the type of the AnyOutput's underlying any value is
@@ -7085,6 +13315,97 @@ func (a AnyOutput) AsIntArrayArrayOutput() IntArrayArrayOutput {
 	}).(IntArrayArrayOutput)
 }
 
+// AsIntArrayMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string][]int or a compatible type and returns a `IntArrayMapMapOutput` with that value.
+// AsIntArrayMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntArrayMapMapOutput() IntArrayMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string][]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string][]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string][]int), nil
+	}).(IntArrayMapMapOutput)
+}
+
+// AsIntMapArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]map[string]int or a compatible type and returns a `IntMapArrayMapOutput` with that value.
+// AsIntMapArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntMapArrayMapOutput() IntMapArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][]map[string]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]map[string]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]map[string]int), nil
+	}).(IntMapArrayMapOutput)
+}
+
+// AsIntMapMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]map[string]int or a compatible type and returns a `IntMapMapArrayOutput` with that value.
+// AsIntMapMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntMapMapArrayOutput() IntMapMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string]map[string]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]map[string]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]map[string]int), nil
+	}).(IntMapMapArrayOutput)
+}
+
+// AsIntArrayMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string][]int or a compatible type and returns a `IntArrayMapArrayOutput` with that value.
+// AsIntArrayMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntArrayMapArrayOutput() IntArrayMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string][]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string][]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string][]int), nil
+	}).(IntArrayMapArrayOutput)
+}
+
+// AsIntArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][][]int or a compatible type and returns a `IntArrayArrayMapOutput` with that value.
+// AsIntArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntArrayArrayMapOutput() IntArrayArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][][]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]int), nil
+	}).(IntArrayArrayMapOutput)
+}
+
+// AsIntArrayArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][][]int or a compatible type and returns a `IntArrayArrayArrayOutput` with that value.
+// AsIntArrayArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntArrayArrayArrayOutput() IntArrayArrayArrayOutput {
+	return a.ApplyT(func(i any) ([][][]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][][]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][][]int), nil
+	}).(IntArrayArrayArrayOutput)
+}
+
+// AsIntMapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string]map[string]int or a compatible type and returns a `IntMapMapMapOutput` with that value.
+// AsIntMapMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntMapMapMapOutput() IntMapMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string]map[string]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]map[string]int), nil
+	}).(IntMapMapMapOutput)
+}
+
 // AsStringOutput asserts that the type of the AnyOutput's underlying any value is
 // string and returns a `StringOutput` with that value. AsStringOutput panics if the value
 // was not the expected type.
@@ -7183,6 +13504,84 @@ func (a AnyOutput) AsStringArrayArrayOutput() StringArrayArrayOutput {
 		}
 		return v.([][]string), nil
 	}).(StringArrayArrayOutput)
+}
+
+// AsStringArrayMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string][]string or a compatible type and returns a `StringArrayMapMapOutput` with that value.
+// AsStringArrayMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringArrayMapMapOutput() StringArrayMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string][]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string][]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string][]string), nil
+	}).(StringArrayMapMapOutput)
+}
+
+// AsStringMapArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]map[string]string or a compatible type and returns a `StringMapArrayMapOutput` with that value.
+// AsStringMapArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringMapArrayMapOutput() StringMapArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][]map[string]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]map[string]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]map[string]string), nil
+	}).(StringMapArrayMapOutput)
+}
+
+// AsStringMapMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]map[string]string or a compatible type and returns a `StringMapMapArrayOutput` with that value.
+// AsStringMapMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringMapMapArrayOutput() StringMapMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string]map[string]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]map[string]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]map[string]string), nil
+	}).(StringMapMapArrayOutput)
+}
+
+// AsStringArrayMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string][]string or a compatible type and returns a `StringArrayMapArrayOutput` with that value.
+// AsStringArrayMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringArrayMapArrayOutput() StringArrayMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string][]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string][]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string][]string), nil
+	}).(StringArrayMapArrayOutput)
+}
+
+// AsStringArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][][]string or a compatible type and returns a `StringArrayArrayMapOutput` with that value.
+// AsStringArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringArrayArrayMapOutput() StringArrayArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][][]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]string), nil
+	}).(StringArrayArrayMapOutput)
+}
+
+// AsStringArrayArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][][]string or a compatible type and returns a `StringArrayArrayArrayOutput` with that value.
+// AsStringArrayArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringArrayArrayArrayOutput() StringArrayArrayArrayOutput {
+	return a.ApplyT(func(i any) ([][][]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][][]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][][]string), nil
+	}).(StringArrayArrayArrayOutput)
 }
 
 // AsStringMapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
@@ -7298,6 +13697,97 @@ func (a AnyOutput) AsURNArrayArrayOutput() URNArrayArrayOutput {
 	}).(URNArrayArrayOutput)
 }
 
+// AsURNArrayMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string][]URN or a compatible type and returns a `URNArrayMapMapOutput` with that value.
+// AsURNArrayMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNArrayMapMapOutput() URNArrayMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string][]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string][]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string][]URN), nil
+	}).(URNArrayMapMapOutput)
+}
+
+// AsURNMapArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][]map[string]URN or a compatible type and returns a `URNMapArrayMapOutput` with that value.
+// AsURNMapArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNMapArrayMapOutput() URNMapArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][]map[string]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]map[string]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]map[string]URN), nil
+	}).(URNMapArrayMapOutput)
+}
+
+// AsURNMapMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string]map[string]URN or a compatible type and returns a `URNMapMapArrayOutput` with that value.
+// AsURNMapMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNMapMapArrayOutput() URNMapMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string]map[string]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]map[string]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]map[string]URN), nil
+	}).(URNMapMapArrayOutput)
+}
+
+// AsURNArrayMapArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// []map[string][]URN or a compatible type and returns a `URNArrayMapArrayOutput` with that value.
+// AsURNArrayMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNArrayMapArrayOutput() URNArrayMapArrayOutput {
+	return a.ApplyT(func(i any) ([]map[string][]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string][]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string][]URN), nil
+	}).(URNArrayMapArrayOutput)
+}
+
+// AsURNArrayArrayMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string][][]URN or a compatible type and returns a `URNArrayArrayMapOutput` with that value.
+// AsURNArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNArrayArrayMapOutput() URNArrayArrayMapOutput {
+	return a.ApplyT(func(i any) (map[string][][]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]URN), nil
+	}).(URNArrayArrayMapOutput)
+}
+
+// AsURNArrayArrayArrayOutput asserts that the type of the AnyOutput's underlying any value is
+// [][][]URN or a compatible type and returns a `URNArrayArrayArrayOutput` with that value.
+// AsURNArrayArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNArrayArrayArrayOutput() URNArrayArrayArrayOutput {
+	return a.ApplyT(func(i any) ([][][]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][][]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][][]URN), nil
+	}).(URNArrayArrayArrayOutput)
+}
+
+// AsURNMapMapMapOutput asserts that the type of the AnyOutput's underlying any value is
+// map[string]map[string]map[string]URN or a compatible type and returns a `URNMapMapMapOutput` with that value.
+// AsURNMapMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNMapMapMapOutput() URNMapMapMapOutput {
+	return a.ApplyT(func(i any) (map[string]map[string]map[string]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]map[string]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]map[string]URN), nil
+	}).(URNMapMapMapOutput)
+}
+
 func init() {
 	RegisterInputType(reflect.TypeOf((*ArchiveArrayInput)(nil)).Elem(), ArchiveArray{})
 	RegisterInputType(reflect.TypeOf((*ArchiveMapInput)(nil)).Elem(), ArchiveMap{})
@@ -7305,18 +13795,39 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*ArchiveMapArrayInput)(nil)).Elem(), ArchiveMapArray{})
 	RegisterInputType(reflect.TypeOf((*ArchiveMapMapInput)(nil)).Elem(), ArchiveMapMap{})
 	RegisterInputType(reflect.TypeOf((*ArchiveArrayArrayInput)(nil)).Elem(), ArchiveArrayArray{})
+	RegisterInputType(reflect.TypeOf((*ArchiveArrayMapMapInput)(nil)).Elem(), ArchiveArrayMapMap{})
+	RegisterInputType(reflect.TypeOf((*ArchiveMapArrayMapInput)(nil)).Elem(), ArchiveMapArrayMap{})
+	RegisterInputType(reflect.TypeOf((*ArchiveMapMapArrayInput)(nil)).Elem(), ArchiveMapMapArray{})
+	RegisterInputType(reflect.TypeOf((*ArchiveArrayMapArrayInput)(nil)).Elem(), ArchiveArrayMapArray{})
+	RegisterInputType(reflect.TypeOf((*ArchiveArrayArrayMapInput)(nil)).Elem(), ArchiveArrayArrayMap{})
+	RegisterInputType(reflect.TypeOf((*ArchiveArrayArrayArrayInput)(nil)).Elem(), ArchiveArrayArrayArray{})
+	RegisterInputType(reflect.TypeOf((*ArchiveMapMapMapInput)(nil)).Elem(), ArchiveMapMapMap{})
 	RegisterInputType(reflect.TypeOf((*AssetArrayInput)(nil)).Elem(), AssetArray{})
 	RegisterInputType(reflect.TypeOf((*AssetMapInput)(nil)).Elem(), AssetMap{})
 	RegisterInputType(reflect.TypeOf((*AssetArrayMapInput)(nil)).Elem(), AssetArrayMap{})
 	RegisterInputType(reflect.TypeOf((*AssetMapArrayInput)(nil)).Elem(), AssetMapArray{})
 	RegisterInputType(reflect.TypeOf((*AssetMapMapInput)(nil)).Elem(), AssetMapMap{})
 	RegisterInputType(reflect.TypeOf((*AssetArrayArrayInput)(nil)).Elem(), AssetArrayArray{})
+	RegisterInputType(reflect.TypeOf((*AssetArrayMapMapInput)(nil)).Elem(), AssetArrayMapMap{})
+	RegisterInputType(reflect.TypeOf((*AssetMapArrayMapInput)(nil)).Elem(), AssetMapArrayMap{})
+	RegisterInputType(reflect.TypeOf((*AssetMapMapArrayInput)(nil)).Elem(), AssetMapMapArray{})
+	RegisterInputType(reflect.TypeOf((*AssetArrayMapArrayInput)(nil)).Elem(), AssetArrayMapArray{})
+	RegisterInputType(reflect.TypeOf((*AssetArrayArrayMapInput)(nil)).Elem(), AssetArrayArrayMap{})
+	RegisterInputType(reflect.TypeOf((*AssetArrayArrayArrayInput)(nil)).Elem(), AssetArrayArrayArray{})
+	RegisterInputType(reflect.TypeOf((*AssetMapMapMapInput)(nil)).Elem(), AssetMapMapMap{})
 	RegisterInputType(reflect.TypeOf((*AssetOrArchiveArrayInput)(nil)).Elem(), AssetOrArchiveArray{})
 	RegisterInputType(reflect.TypeOf((*AssetOrArchiveMapInput)(nil)).Elem(), AssetOrArchiveMap{})
 	RegisterInputType(reflect.TypeOf((*AssetOrArchiveArrayMapInput)(nil)).Elem(), AssetOrArchiveArrayMap{})
 	RegisterInputType(reflect.TypeOf((*AssetOrArchiveMapArrayInput)(nil)).Elem(), AssetOrArchiveMapArray{})
 	RegisterInputType(reflect.TypeOf((*AssetOrArchiveMapMapInput)(nil)).Elem(), AssetOrArchiveMapMap{})
 	RegisterInputType(reflect.TypeOf((*AssetOrArchiveArrayArrayInput)(nil)).Elem(), AssetOrArchiveArrayArray{})
+	RegisterInputType(reflect.TypeOf((*AssetOrArchiveArrayMapMapInput)(nil)).Elem(), AssetOrArchiveArrayMapMap{})
+	RegisterInputType(reflect.TypeOf((*AssetOrArchiveMapArrayMapInput)(nil)).Elem(), AssetOrArchiveMapArrayMap{})
+	RegisterInputType(reflect.TypeOf((*AssetOrArchiveMapMapArrayInput)(nil)).Elem(), AssetOrArchiveMapMapArray{})
+	RegisterInputType(reflect.TypeOf((*AssetOrArchiveArrayMapArrayInput)(nil)).Elem(), AssetOrArchiveArrayMapArray{})
+	RegisterInputType(reflect.TypeOf((*AssetOrArchiveArrayArrayMapInput)(nil)).Elem(), AssetOrArchiveArrayArrayMap{})
+	RegisterInputType(reflect.TypeOf((*AssetOrArchiveArrayArrayArrayInput)(nil)).Elem(), AssetOrArchiveArrayArrayArray{})
+	RegisterInputType(reflect.TypeOf((*AssetOrArchiveMapMapMapInput)(nil)).Elem(), AssetOrArchiveMapMapMap{})
 	RegisterInputType(reflect.TypeOf((*BoolInput)(nil)).Elem(), Bool(false))
 	RegisterInputType(reflect.TypeOf((*BoolPtrInput)(nil)).Elem(), Bool(false))
 	RegisterInputType(reflect.TypeOf((*BoolArrayInput)(nil)).Elem(), BoolArray{})
@@ -7325,6 +13836,13 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*BoolMapArrayInput)(nil)).Elem(), BoolMapArray{})
 	RegisterInputType(reflect.TypeOf((*BoolMapMapInput)(nil)).Elem(), BoolMapMap{})
 	RegisterInputType(reflect.TypeOf((*BoolArrayArrayInput)(nil)).Elem(), BoolArrayArray{})
+	RegisterInputType(reflect.TypeOf((*BoolArrayMapMapInput)(nil)).Elem(), BoolArrayMapMap{})
+	RegisterInputType(reflect.TypeOf((*BoolMapArrayMapInput)(nil)).Elem(), BoolMapArrayMap{})
+	RegisterInputType(reflect.TypeOf((*BoolMapMapArrayInput)(nil)).Elem(), BoolMapMapArray{})
+	RegisterInputType(reflect.TypeOf((*BoolArrayMapArrayInput)(nil)).Elem(), BoolArrayMapArray{})
+	RegisterInputType(reflect.TypeOf((*BoolArrayArrayMapInput)(nil)).Elem(), BoolArrayArrayMap{})
+	RegisterInputType(reflect.TypeOf((*BoolArrayArrayArrayInput)(nil)).Elem(), BoolArrayArrayArray{})
+	RegisterInputType(reflect.TypeOf((*BoolMapMapMapInput)(nil)).Elem(), BoolMapMapMap{})
 	RegisterInputType(reflect.TypeOf((*Float64Input)(nil)).Elem(), Float64(0))
 	RegisterInputType(reflect.TypeOf((*Float64PtrInput)(nil)).Elem(), Float64(0))
 	RegisterInputType(reflect.TypeOf((*Float64ArrayInput)(nil)).Elem(), Float64Array{})
@@ -7333,6 +13851,13 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*Float64MapArrayInput)(nil)).Elem(), Float64MapArray{})
 	RegisterInputType(reflect.TypeOf((*Float64MapMapInput)(nil)).Elem(), Float64MapMap{})
 	RegisterInputType(reflect.TypeOf((*Float64ArrayArrayInput)(nil)).Elem(), Float64ArrayArray{})
+	RegisterInputType(reflect.TypeOf((*Float64ArrayMapMapInput)(nil)).Elem(), Float64ArrayMapMap{})
+	RegisterInputType(reflect.TypeOf((*Float64MapArrayMapInput)(nil)).Elem(), Float64MapArrayMap{})
+	RegisterInputType(reflect.TypeOf((*Float64MapMapArrayInput)(nil)).Elem(), Float64MapMapArray{})
+	RegisterInputType(reflect.TypeOf((*Float64ArrayMapArrayInput)(nil)).Elem(), Float64ArrayMapArray{})
+	RegisterInputType(reflect.TypeOf((*Float64ArrayArrayMapInput)(nil)).Elem(), Float64ArrayArrayMap{})
+	RegisterInputType(reflect.TypeOf((*Float64ArrayArrayArrayInput)(nil)).Elem(), Float64ArrayArrayArray{})
+	RegisterInputType(reflect.TypeOf((*Float64MapMapMapInput)(nil)).Elem(), Float64MapMapMap{})
 	RegisterInputType(reflect.TypeOf((*IDInput)(nil)).Elem(), ID(""))
 	RegisterInputType(reflect.TypeOf((*IDPtrInput)(nil)).Elem(), ID(""))
 	RegisterInputType(reflect.TypeOf((*IDArrayInput)(nil)).Elem(), IDArray{})
@@ -7341,13 +13866,26 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*IDMapArrayInput)(nil)).Elem(), IDMapArray{})
 	RegisterInputType(reflect.TypeOf((*IDMapMapInput)(nil)).Elem(), IDMapMap{})
 	RegisterInputType(reflect.TypeOf((*IDArrayArrayInput)(nil)).Elem(), IDArrayArray{})
+	RegisterInputType(reflect.TypeOf((*IDArrayMapMapInput)(nil)).Elem(), IDArrayMapMap{})
+	RegisterInputType(reflect.TypeOf((*IDMapArrayMapInput)(nil)).Elem(), IDMapArrayMap{})
+	RegisterInputType(reflect.TypeOf((*IDMapMapArrayInput)(nil)).Elem(), IDMapMapArray{})
+	RegisterInputType(reflect.TypeOf((*IDArrayMapArrayInput)(nil)).Elem(), IDArrayMapArray{})
+	RegisterInputType(reflect.TypeOf((*IDArrayArrayMapInput)(nil)).Elem(), IDArrayArrayMap{})
+	RegisterInputType(reflect.TypeOf((*IDArrayArrayArrayInput)(nil)).Elem(), IDArrayArrayArray{})
+	RegisterInputType(reflect.TypeOf((*IDMapMapMapInput)(nil)).Elem(), IDMapMapMap{})
 	RegisterInputType(reflect.TypeOf((*ArrayInput)(nil)).Elem(), Array{})
 	RegisterInputType(reflect.TypeOf((*MapInput)(nil)).Elem(), Map{})
 	RegisterInputType(reflect.TypeOf((*ArrayMapInput)(nil)).Elem(), ArrayMap{})
 	RegisterInputType(reflect.TypeOf((*MapArrayInput)(nil)).Elem(), MapArray{})
 	RegisterInputType(reflect.TypeOf((*MapMapInput)(nil)).Elem(), MapMap{})
 	RegisterInputType(reflect.TypeOf((*ArrayArrayInput)(nil)).Elem(), ArrayArray{})
+	RegisterInputType(reflect.TypeOf((*ArrayMapMapInput)(nil)).Elem(), ArrayMapMap{})
+	RegisterInputType(reflect.TypeOf((*MapArrayMapInput)(nil)).Elem(), MapArrayMap{})
+	RegisterInputType(reflect.TypeOf((*MapMapArrayInput)(nil)).Elem(), MapMapArray{})
+	RegisterInputType(reflect.TypeOf((*ArrayMapArrayInput)(nil)).Elem(), ArrayMapArray{})
 	RegisterInputType(reflect.TypeOf((*ArrayArrayMapInput)(nil)).Elem(), ArrayArrayMap{})
+	RegisterInputType(reflect.TypeOf((*ArrayArrayArrayInput)(nil)).Elem(), ArrayArrayArray{})
+	RegisterInputType(reflect.TypeOf((*MapMapMapInput)(nil)).Elem(), MapMapMap{})
 	RegisterInputType(reflect.TypeOf((*IntInput)(nil)).Elem(), Int(0))
 	RegisterInputType(reflect.TypeOf((*IntPtrInput)(nil)).Elem(), Int(0))
 	RegisterInputType(reflect.TypeOf((*IntArrayInput)(nil)).Elem(), IntArray{})
@@ -7356,6 +13894,13 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*IntMapArrayInput)(nil)).Elem(), IntMapArray{})
 	RegisterInputType(reflect.TypeOf((*IntMapMapInput)(nil)).Elem(), IntMapMap{})
 	RegisterInputType(reflect.TypeOf((*IntArrayArrayInput)(nil)).Elem(), IntArrayArray{})
+	RegisterInputType(reflect.TypeOf((*IntArrayMapMapInput)(nil)).Elem(), IntArrayMapMap{})
+	RegisterInputType(reflect.TypeOf((*IntMapArrayMapInput)(nil)).Elem(), IntMapArrayMap{})
+	RegisterInputType(reflect.TypeOf((*IntMapMapArrayInput)(nil)).Elem(), IntMapMapArray{})
+	RegisterInputType(reflect.TypeOf((*IntArrayMapArrayInput)(nil)).Elem(), IntArrayMapArray{})
+	RegisterInputType(reflect.TypeOf((*IntArrayArrayMapInput)(nil)).Elem(), IntArrayArrayMap{})
+	RegisterInputType(reflect.TypeOf((*IntArrayArrayArrayInput)(nil)).Elem(), IntArrayArrayArray{})
+	RegisterInputType(reflect.TypeOf((*IntMapMapMapInput)(nil)).Elem(), IntMapMapMap{})
 	RegisterInputType(reflect.TypeOf((*StringInput)(nil)).Elem(), String(""))
 	RegisterInputType(reflect.TypeOf((*StringPtrInput)(nil)).Elem(), String(""))
 	RegisterInputType(reflect.TypeOf((*StringArrayInput)(nil)).Elem(), StringArray{})
@@ -7364,6 +13909,12 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*StringMapArrayInput)(nil)).Elem(), StringMapArray{})
 	RegisterInputType(reflect.TypeOf((*StringMapMapInput)(nil)).Elem(), StringMapMap{})
 	RegisterInputType(reflect.TypeOf((*StringArrayArrayInput)(nil)).Elem(), StringArrayArray{})
+	RegisterInputType(reflect.TypeOf((*StringArrayMapMapInput)(nil)).Elem(), StringArrayMapMap{})
+	RegisterInputType(reflect.TypeOf((*StringMapArrayMapInput)(nil)).Elem(), StringMapArrayMap{})
+	RegisterInputType(reflect.TypeOf((*StringMapMapArrayInput)(nil)).Elem(), StringMapMapArray{})
+	RegisterInputType(reflect.TypeOf((*StringArrayMapArrayInput)(nil)).Elem(), StringArrayMapArray{})
+	RegisterInputType(reflect.TypeOf((*StringArrayArrayMapInput)(nil)).Elem(), StringArrayArrayMap{})
+	RegisterInputType(reflect.TypeOf((*StringArrayArrayArrayInput)(nil)).Elem(), StringArrayArrayArray{})
 	RegisterInputType(reflect.TypeOf((*StringMapMapMapInput)(nil)).Elem(), StringMapMapMap{})
 	RegisterInputType(reflect.TypeOf((*URNInput)(nil)).Elem(), URN(""))
 	RegisterInputType(reflect.TypeOf((*URNPtrInput)(nil)).Elem(), URN(""))
@@ -7373,6 +13924,13 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*URNMapArrayInput)(nil)).Elem(), URNMapArray{})
 	RegisterInputType(reflect.TypeOf((*URNMapMapInput)(nil)).Elem(), URNMapMap{})
 	RegisterInputType(reflect.TypeOf((*URNArrayArrayInput)(nil)).Elem(), URNArrayArray{})
+	RegisterInputType(reflect.TypeOf((*URNArrayMapMapInput)(nil)).Elem(), URNArrayMapMap{})
+	RegisterInputType(reflect.TypeOf((*URNMapArrayMapInput)(nil)).Elem(), URNMapArrayMap{})
+	RegisterInputType(reflect.TypeOf((*URNMapMapArrayInput)(nil)).Elem(), URNMapMapArray{})
+	RegisterInputType(reflect.TypeOf((*URNArrayMapArrayInput)(nil)).Elem(), URNArrayMapArray{})
+	RegisterInputType(reflect.TypeOf((*URNArrayArrayMapInput)(nil)).Elem(), URNArrayArrayMap{})
+	RegisterInputType(reflect.TypeOf((*URNArrayArrayArrayInput)(nil)).Elem(), URNArrayArrayArray{})
+	RegisterInputType(reflect.TypeOf((*URNMapMapMapInput)(nil)).Elem(), URNMapMapMap{})
 	RegisterOutputType(ArchiveOutput{})
 	RegisterOutputType(ArchiveArrayOutput{})
 	RegisterOutputType(ArchiveMapOutput{})
@@ -7380,6 +13938,13 @@ func init() {
 	RegisterOutputType(ArchiveMapArrayOutput{})
 	RegisterOutputType(ArchiveMapMapOutput{})
 	RegisterOutputType(ArchiveArrayArrayOutput{})
+	RegisterOutputType(ArchiveArrayMapMapOutput{})
+	RegisterOutputType(ArchiveMapArrayMapOutput{})
+	RegisterOutputType(ArchiveMapMapArrayOutput{})
+	RegisterOutputType(ArchiveArrayMapArrayOutput{})
+	RegisterOutputType(ArchiveArrayArrayMapOutput{})
+	RegisterOutputType(ArchiveArrayArrayArrayOutput{})
+	RegisterOutputType(ArchiveMapMapMapOutput{})
 	RegisterOutputType(AssetOutput{})
 	RegisterOutputType(AssetArrayOutput{})
 	RegisterOutputType(AssetMapOutput{})
@@ -7387,6 +13952,13 @@ func init() {
 	RegisterOutputType(AssetMapArrayOutput{})
 	RegisterOutputType(AssetMapMapOutput{})
 	RegisterOutputType(AssetArrayArrayOutput{})
+	RegisterOutputType(AssetArrayMapMapOutput{})
+	RegisterOutputType(AssetMapArrayMapOutput{})
+	RegisterOutputType(AssetMapMapArrayOutput{})
+	RegisterOutputType(AssetArrayMapArrayOutput{})
+	RegisterOutputType(AssetArrayArrayMapOutput{})
+	RegisterOutputType(AssetArrayArrayArrayOutput{})
+	RegisterOutputType(AssetMapMapMapOutput{})
 	RegisterOutputType(AssetOrArchiveOutput{})
 	RegisterOutputType(AssetOrArchiveArrayOutput{})
 	RegisterOutputType(AssetOrArchiveMapOutput{})
@@ -7394,6 +13966,13 @@ func init() {
 	RegisterOutputType(AssetOrArchiveMapArrayOutput{})
 	RegisterOutputType(AssetOrArchiveMapMapOutput{})
 	RegisterOutputType(AssetOrArchiveArrayArrayOutput{})
+	RegisterOutputType(AssetOrArchiveArrayMapMapOutput{})
+	RegisterOutputType(AssetOrArchiveMapArrayMapOutput{})
+	RegisterOutputType(AssetOrArchiveMapMapArrayOutput{})
+	RegisterOutputType(AssetOrArchiveArrayMapArrayOutput{})
+	RegisterOutputType(AssetOrArchiveArrayArrayMapOutput{})
+	RegisterOutputType(AssetOrArchiveArrayArrayArrayOutput{})
+	RegisterOutputType(AssetOrArchiveMapMapMapOutput{})
 	RegisterOutputType(BoolOutput{})
 	RegisterOutputType(BoolPtrOutput{})
 	RegisterOutputType(BoolArrayOutput{})
@@ -7402,6 +13981,13 @@ func init() {
 	RegisterOutputType(BoolMapArrayOutput{})
 	RegisterOutputType(BoolMapMapOutput{})
 	RegisterOutputType(BoolArrayArrayOutput{})
+	RegisterOutputType(BoolArrayMapMapOutput{})
+	RegisterOutputType(BoolMapArrayMapOutput{})
+	RegisterOutputType(BoolMapMapArrayOutput{})
+	RegisterOutputType(BoolArrayMapArrayOutput{})
+	RegisterOutputType(BoolArrayArrayMapOutput{})
+	RegisterOutputType(BoolArrayArrayArrayOutput{})
+	RegisterOutputType(BoolMapMapMapOutput{})
 	RegisterOutputType(Float64Output{})
 	RegisterOutputType(Float64PtrOutput{})
 	RegisterOutputType(Float64ArrayOutput{})
@@ -7410,6 +13996,13 @@ func init() {
 	RegisterOutputType(Float64MapArrayOutput{})
 	RegisterOutputType(Float64MapMapOutput{})
 	RegisterOutputType(Float64ArrayArrayOutput{})
+	RegisterOutputType(Float64ArrayMapMapOutput{})
+	RegisterOutputType(Float64MapArrayMapOutput{})
+	RegisterOutputType(Float64MapMapArrayOutput{})
+	RegisterOutputType(Float64ArrayMapArrayOutput{})
+	RegisterOutputType(Float64ArrayArrayMapOutput{})
+	RegisterOutputType(Float64ArrayArrayArrayOutput{})
+	RegisterOutputType(Float64MapMapMapOutput{})
 	RegisterOutputType(IDOutput{})
 	RegisterOutputType(IDPtrOutput{})
 	RegisterOutputType(IDArrayOutput{})
@@ -7418,13 +14011,26 @@ func init() {
 	RegisterOutputType(IDMapArrayOutput{})
 	RegisterOutputType(IDMapMapOutput{})
 	RegisterOutputType(IDArrayArrayOutput{})
+	RegisterOutputType(IDArrayMapMapOutput{})
+	RegisterOutputType(IDMapArrayMapOutput{})
+	RegisterOutputType(IDMapMapArrayOutput{})
+	RegisterOutputType(IDArrayMapArrayOutput{})
+	RegisterOutputType(IDArrayArrayMapOutput{})
+	RegisterOutputType(IDArrayArrayArrayOutput{})
+	RegisterOutputType(IDMapMapMapOutput{})
 	RegisterOutputType(ArrayOutput{})
 	RegisterOutputType(MapOutput{})
 	RegisterOutputType(ArrayMapOutput{})
 	RegisterOutputType(MapArrayOutput{})
 	RegisterOutputType(MapMapOutput{})
 	RegisterOutputType(ArrayArrayOutput{})
+	RegisterOutputType(ArrayMapMapOutput{})
+	RegisterOutputType(MapArrayMapOutput{})
+	RegisterOutputType(MapMapArrayOutput{})
+	RegisterOutputType(ArrayMapArrayOutput{})
 	RegisterOutputType(ArrayArrayMapOutput{})
+	RegisterOutputType(ArrayArrayArrayOutput{})
+	RegisterOutputType(MapMapMapOutput{})
 	RegisterOutputType(IntOutput{})
 	RegisterOutputType(IntPtrOutput{})
 	RegisterOutputType(IntArrayOutput{})
@@ -7433,6 +14039,13 @@ func init() {
 	RegisterOutputType(IntMapArrayOutput{})
 	RegisterOutputType(IntMapMapOutput{})
 	RegisterOutputType(IntArrayArrayOutput{})
+	RegisterOutputType(IntArrayMapMapOutput{})
+	RegisterOutputType(IntMapArrayMapOutput{})
+	RegisterOutputType(IntMapMapArrayOutput{})
+	RegisterOutputType(IntArrayMapArrayOutput{})
+	RegisterOutputType(IntArrayArrayMapOutput{})
+	RegisterOutputType(IntArrayArrayArrayOutput{})
+	RegisterOutputType(IntMapMapMapOutput{})
 	RegisterOutputType(StringOutput{})
 	RegisterOutputType(StringPtrOutput{})
 	RegisterOutputType(StringArrayOutput{})
@@ -7441,6 +14054,12 @@ func init() {
 	RegisterOutputType(StringMapArrayOutput{})
 	RegisterOutputType(StringMapMapOutput{})
 	RegisterOutputType(StringArrayArrayOutput{})
+	RegisterOutputType(StringArrayMapMapOutput{})
+	RegisterOutputType(StringMapArrayMapOutput{})
+	RegisterOutputType(StringMapMapArrayOutput{})
+	RegisterOutputType(StringArrayMapArrayOutput{})
+	RegisterOutputType(StringArrayArrayMapOutput{})
+	RegisterOutputType(StringArrayArrayArrayOutput{})
 	RegisterOutputType(StringMapMapMapOutput{})
 	RegisterOutputType(URNOutput{})
 	RegisterOutputType(URNPtrOutput{})
@@ -7450,4 +14069,11 @@ func init() {
 	RegisterOutputType(URNMapArrayOutput{})
 	RegisterOutputType(URNMapMapOutput{})
 	RegisterOutputType(URNArrayArrayOutput{})
+	RegisterOutputType(URNArrayMapMapOutput{})
+	RegisterOutputType(URNMapArrayMapOutput{})
+	RegisterOutputType(URNMapMapArrayOutput{})
+	RegisterOutputType(URNArrayMapArrayOutput{})
+	RegisterOutputType(URNArrayArrayMapOutput{})
+	RegisterOutputType(URNArrayArrayArrayOutput{})
+	RegisterOutputType(URNMapMapMapOutput{})
 }

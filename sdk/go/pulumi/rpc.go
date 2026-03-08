@@ -18,13 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 
 	"github.com/blang/semver"
-	"golang.org/x/exp/maps"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -309,8 +309,7 @@ func marshalInputOptionsImpl(v any,
 				var dependencies []resource.URN
 				if len(depSet) > 0 {
 					dependencies = make([]resource.URN, len(depSet))
-					urns := maps.Keys(depSet)
-					sort.Slice(urns, func(i, j int) bool { return urns[i] < urns[j] })
+					urns := slices.Sorted(maps.Keys(depSet))
 					for i, urn := range urns {
 						dependencies[i] = resource.URN(urn)
 					}

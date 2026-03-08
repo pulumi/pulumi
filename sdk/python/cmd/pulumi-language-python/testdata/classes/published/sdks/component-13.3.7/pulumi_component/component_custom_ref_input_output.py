@@ -42,6 +42,7 @@ class ComponentCustomRefInputOutput(pulumi.ComponentResource):
         """
         A component resource that accepts a reference to a custom resource. The input resource's `value` is used to create a child custom resource inside the component, before a reference to this child is returned.
 
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -53,6 +54,7 @@ class ComponentCustomRefInputOutput(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A component resource that accepts a reference to a custom resource. The input resource's `value` is used to create a child custom resource inside the component, before a reference to this child is returned.
+
 
         :param str resource_name: The name of the resource.
         :param ComponentCustomRefInputOutputArgs args: The arguments to use to populate this resource's properties.

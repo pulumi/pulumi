@@ -88,19 +88,17 @@ follows:[^side-node-exhaustive]
   under that language's SDK directory, and named `pulumi-language-<language>`
   (e.g. `pulumi-language-nodejs` in the case of NodeJS/TypeScript).
 
-* `pkg/{backend,engine,graph,operations,resource}` -- contains the core
+* `pkg/{backend,engine,resource}` -- contains the core
   components of the Pulumi engine. The various directories roughly segregate
   some of the responsibilities that fall to the engine, such as:
 
   * Persisting state to a configured `backend`;
-  * Computing and respecting dependency `graph`s so that operations can be
-    executed in the correct order;
   * Managing `resource` lifecycles and deployments.
 
   Of particular note is `pkg/resource/deploy`, which houses a number of the
   pieces required to enact a complete deployment.
 
-* `pkg/{cmd,display}` -- contains code pertinent to the Pulumi CLI. In
+* `pkg/cmd` -- contains code pertinent to the Pulumi CLI. In
   particular, `pulumi/cmd/pulumi` is the entry point to the CLI and exposes the
   various `pulumi preview`, `pulumi up`, `pulumi destroy`, etc. commands that
   you may be familiar with, routing these commands to an instance of the engine

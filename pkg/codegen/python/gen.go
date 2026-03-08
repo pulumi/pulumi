@@ -147,7 +147,7 @@ func (mod *modContext) isTopLevel() bool {
 }
 
 func (mod *modContext) walkSelfWithDescendants() []*modContext {
-	var found []*modContext
+	found := slice.Prealloc[*modContext](1 + len(mod.children))
 	found = append(found, mod)
 	for _, childMod := range mod.children {
 		found = append(found, childMod.walkSelfWithDescendants()...)
@@ -381,14 +381,14 @@ func moduleToPythonModule(canonicalModName string, moduleNameOverrides map[strin
 		return override
 	}
 	// A module can include fileparts, which we want to preserve.
-	var modName string
+	var modName strings.Builder
 	for i, part := range strings.Split(strings.ToLower(canonicalModName), "/") {
 		if i > 0 {
-			modName += "/"
+			modName.WriteString("/")
 		}
-		modName += PyName(part)
+		modName.WriteString(PyName(part))
 	}
-	return modName
+	return modName.String()
 }
 
 func (mod *modContext) tokenToModule(tok string) string {
@@ -439,11 +439,6 @@ func typingImports() []string {
 }
 
 func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typingImports []string) {
-	rel, err := filepath.Rel(mod.mod, "")
-	contract.AssertNoErrorf(err, "could not turn %q into a relative path", mod.mod)
-	relRoot := path.Dir(rel)
-	relImport := relPathToRelImport(relRoot)
-
 	fmt.Fprintf(w, "import warnings\n")
 	if typedDictEnabled(mod.inputTypes) {
 		fmt.Fprintf(w, "import sys\n")
@@ -457,7 +452,7 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 		fmt.Fprintf(w, "else:\n")
 		fmt.Fprintf(w, "    from typing_extensions import NotRequired, TypedDict, TypeAlias\n")
 	}
-	fmt.Fprintf(w, "from %s import _utilities\n", relImport)
+	fmt.Fprintf(w, "%s\n", mod.genUtilitiesImport())
 	for _, imp := range imports.strings() {
 		fmt.Fprintf(w, "%s\n", imp)
 	}
@@ -492,18 +487,19 @@ func (mod *modContext) genFunctionHeader(w io.Writer, function *schema.Function,
 func relPathToRelImport(relPath string) string {
 	// Convert relative path to relative import e.g. "../.." -> "..."
 	// https://realpython.com/absolute-vs-relative-python-imports/#relative-imports
-	relImport := "."
 	if relPath == "." {
-		return relImport
+		return "."
 	}
+	var relImport strings.Builder
+	relImport.WriteString(".")
 	for _, component := range strings.Split(relPath, "/") {
 		if component == ".." {
-			relImport += "."
+			relImport.WriteString(".")
 		} else {
-			relImport += component
+			relImport.WriteString(component)
 		}
 	}
-	return relImport
+	return relImport.String()
 }
 
 func (mod *modContext) genUtilitiesFile() ([]byte, error) {
@@ -890,6 +886,9 @@ func (mod *modContext) genInit(exports []string) string {
 
 func (mod *modContext) getRelImportFromRoot(target string) string {
 	rel, err := filepath.Rel(mod.mod, target)
+	// On Go >=1.26 filepath.Rel calls filepath.Clean already, but not on version on <1.26. Once we drop support for
+	// older versions we can drop the call to filepath.Clean here.
+	rel = filepath.Clean(rel)
 	contract.AssertNoErrorf(err, "error turning %q into a relative path", mod.mod)
 	if path.Base(rel) == "." {
 		rel = path.Dir(rel)
@@ -900,8 +899,10 @@ func (mod *modContext) getRelImportFromRoot(target string) string {
 func (mod *modContext) genUtilitiesImport() string {
 	rel, err := filepath.Rel(mod.mod, "")
 	contract.AssertNoErrorf(err, "error turning %q into a relative path", mod.mod)
-	relRoot := path.Dir(rel)
-	relImport := relPathToRelImport(relRoot)
+	// On Go >=1.26 filepath.Rel calls filepath.Clean already, but not on version on <1.26. Once we drop support for
+	// older versions we can drop the call to filepath.Clean here.
+	rel = filepath.Clean(rel)
+	relImport := relPathToRelImport(rel)
 	return fmt.Sprintf("from %s import _utilities", relImport)
 }
 
@@ -1173,10 +1174,6 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			}
 		}
 		fmt.Fprintf(w, "]\n\n")
-
-		if input && typedDictEnabled(mod.inputTypes) {
-			fmt.Fprintf(w, "MYPY = False\n\n")
-		}
 
 		var hasTypes bool
 		for _, t := range mod.types {
@@ -1895,7 +1892,9 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
 	}
-	fmt.Fprintf(w, "    '%s',\n", name)
+	if fun.Plain {
+		fmt.Fprintf(w, "    '%s',\n", name)
+	}
 	if fun.NeedsOutputVersion() {
 		fmt.Fprintf(w, "    '%s_output',\n", name)
 	}
@@ -2028,8 +2027,10 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	// generate plain invoke
-	if err := genFunctionDef(retTypeName, true /* plain */); err != nil {
-		return "", err
+	if fun.Plain {
+		if err := genFunctionDef(retTypeName, true /* plain */); err != nil {
+			return "", err
+		}
 	}
 
 	if fun.NeedsOutputVersion() {
@@ -2408,6 +2409,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
 	}
+	fmt.Fprintln(b, "")
 
 	// All resources have a resource_name parameter and opts parameter.
 	fmt.Fprintln(b, ":param str resource_name: The name of the resource.")
@@ -2454,6 +2456,7 @@ func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties 
 	// If this type has documentation, write it at the top of the docstring.
 	if comment != "" {
 		fmt.Fprintln(b, comment)
+		fmt.Fprintln(b, "")
 	}
 
 	for _, prop := range properties {
@@ -2862,19 +2865,11 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 		}
 	})
 
-	indent := "    "
 	name = pythonCase(name)
 
-	// TODO[pulumi/pulumi/issues/16408]
-	// Running mypy gets very slow when there are a lot of TypedDicts.
-	// https://github.com/python/mypy/issues/17231
-	// For now we only use the TypedDict types when using a typechecker
-	// other than mypy. For mypy we define the XXXArgsDict class as an alias
-	// to the type `Mapping[str, Any]`.
-	fmt.Fprintf(w, "if not MYPY:\n")
-	fmt.Fprintf(w, "%sclass %sDict(TypedDict):\n", indent, name)
+	fmt.Fprintf(w, "class %sDict(TypedDict):\n", name)
 
-	indent += "    "
+	indent := "    "
 
 	if comment != "" {
 		printComment(w, comment, indent)
@@ -2892,10 +2887,6 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 	if len(props) == 0 {
 		fmt.Fprintf(w, "%spass\n", indent)
 	}
-
-	indent = "    "
-	fmt.Fprintf(w, "elif False:\n")
-	fmt.Fprintf(w, "%s%sDict: TypeAlias = Mapping[str, Any]\n", indent, name)
 
 	fmt.Fprintf(w, "\n")
 	return nil
@@ -2955,14 +2946,15 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 			envFunc = "_utilities.get_env_float"
 		}
 
-		envVars := fmt.Sprintf("'%s'", dv.Environment[0])
+		var envVars strings.Builder
+		envVars.WriteString(fmt.Sprintf("'%s'", dv.Environment[0]))
 		for _, e := range dv.Environment[1:] {
-			envVars += fmt.Sprintf(", '%s'", e)
+			envVars.WriteString(fmt.Sprintf(", '%s'", e))
 		}
 		if defaultValue == "" {
-			defaultValue = fmt.Sprintf("%s(%s)", envFunc, envVars)
+			defaultValue = fmt.Sprintf("%s(%s)", envFunc, envVars.String())
 		} else {
-			defaultValue = fmt.Sprintf("(%s(%s) or %s)", envFunc, envVars, defaultValue)
+			defaultValue = fmt.Sprintf("(%s(%s) or %s)", envFunc, envVars.String(), defaultValue)
 		}
 	}
 
@@ -3328,9 +3320,13 @@ func genPyprojectTOML(tool string,
 	// • Description and License: These fields are populated the same
 	//   way as in setup.py.
 	description := sanitizePackageDescription(pkg.Description)
-	schema.Project.Description = &description
-	schema.Project.License = &License{
-		Text: pkg.License,
+	if description != "" {
+		schema.Project.Description = &description
+	}
+	if pkg.License != "" {
+		schema.Project.License = &License{
+			Text: pkg.License,
+		}
 	}
 
 	// • Next, we set the version field.

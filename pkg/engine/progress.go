@@ -15,7 +15,9 @@
 package engine
 
 import (
+	"bytes"
 	"io"
+	"sync"
 	"time"
 )
 
@@ -43,10 +45,13 @@ func NewProgressReportingCloser(
 		message:           message,
 		received:          0,
 		total:             size,
-		lastReported:      time.Now(),
 		reportingInterval: reportingInterval,
 		closed:            false,
 		closer:            closer,
+		// lastReported is left as the zero time so that the first Read()
+		// always emits a progress event immediately. Without this, small
+		// tarballs that extract within the reporting interval would never
+		// emit any events before the stream is closed.
 	}
 }
 
@@ -103,4 +108,71 @@ func (d *progressReportingCloser) Close() error {
 
 	d.closed = true
 	return err
+}
+
+// progressEventWriter is an io.Writer that emits a progress event with Total=0
+// (message only, no progress bar) on first write, and captures all output. This
+// is used to show a status message during dependency installation (e.g. npm
+// install) while capturing output for error reporting. Call Done() when the
+// associated operation is complete to dismiss the message.
+type progressEventWriter struct {
+	events  eventEmitter
+	typ     ProgressType
+	id      string
+	message string
+
+	mu      sync.Mutex
+	buf     bytes.Buffer
+	started bool
+	done    bool
+}
+
+// NewProgressEventWriter creates a new progressEventWriter that will emit a
+// progress event (Total=0, no progress bar) on its first Write call and dismiss
+// it when Done is called. All written bytes are captured for error reporting via
+// Output().
+func NewProgressEventWriter(
+	events eventEmitter,
+	typ ProgressType,
+	id string,
+	message string,
+) *progressEventWriter {
+	return &progressEventWriter{
+		events:  events,
+		typ:     typ,
+		id:      id,
+		message: message,
+	}
+}
+
+func (w *progressEventWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if !w.started {
+		w.started = true
+		w.events.progressEvent(w.typ, w.id, w.message, 0, 0, false)
+	}
+
+	return w.buf.Write(p)
+}
+
+// Done emits a Done progress event to dismiss the message. It is safe to call
+// multiple times; only the first call after a Write has occurred will emit an
+// event.
+func (w *progressEventWriter) Done() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if w.started && !w.done {
+		w.done = true
+		w.events.progressEvent(w.typ, w.id, w.message, 0, 0, true)
+	}
+}
+
+// Output returns the full captured output as a string.
+func (w *progressEventWriter) Output() string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.buf.String()
 }

@@ -19,13 +19,8 @@ __all__ = [
     'FooArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class FooArgsDict(TypedDict):
-        a: NotRequired[pulumi.Input[_builtins.bool]]
-elif False:
-    FooArgsDict: TypeAlias = Mapping[str, Any]
+class FooArgsDict(TypedDict):
+    a: NotRequired[pulumi.Input[_builtins.bool]]
 
 @pulumi.input_type
 class FooArgs:

@@ -131,7 +131,7 @@ func TestDetectEnclosingPluginOrProject(t *testing.T) {
 				"some-file.txt": "not a project or plugin\n",
 			},
 			wd:            ".",
-			expectedError: errors.New("unable to find an enclosing plugin or project"),
+			expectedError: workspace.ErrBaseProjectNotFound,
 		},
 		{
 			name: "both plugin and project at same level",

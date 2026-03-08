@@ -27,27 +27,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestGenerateProgramVersionSelection(t *testing.T) {
-	t.Parallel()
-
-	test.GenerateNodeJSProgramTest(
-		t,
-		GenerateProgram,
-		func(
-			directory string, project workspace.Project, program *pcl.Program, localDependencies map[string]string,
-		) error {
-			return GenerateProject(directory, project, program, localDependencies, false)
-		},
-	)
-}
 
 func TestEnumReferencesCorrectIdentifier(t *testing.T) {
 	t.Parallel()
@@ -97,10 +83,10 @@ resource "app" "scaleway:iam/application:Application" {}
 	err = parser.ParseFile(bytes.NewReader([]byte(hcl)), "infra.tf")
 	require.NoError(t, err, "parse failed")
 	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(&plugin.MockHost{
-		ResolvePluginF: func(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+		ResolvePluginF: func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 			return &workspace.PluginInfo{Name: spec.Name}, nil
 		},
-		ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 			return &plugin.MockProvider{
 				GetSchemaF: func(
 					ctx context.Context,
@@ -195,7 +181,7 @@ func TestGeneratingPackageJSON_UsingZippedLocalDependency(t *testing.T) {
 		"tfe": "sdk/tfe/tfe-0.68.2.tgz",
 	}
 
-	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies)
+	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies, "nodejs")
 	require.NoError(t, err)
 	require.Contains(t, string(packageJSON), `"@pulumi/tfe": "sdk/tfe/tfe-0.68.2.tgz"`)
 }
@@ -208,7 +194,7 @@ func TestGeneratingPackageJSON_UsingLocalSourceDependency(t *testing.T) {
 		"tfe": "sdk/tfe",
 	}
 
-	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies)
+	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies, "nodejs")
 	require.NoError(t, err, "unexpected error generating package.json")
 	require.Contains(t, string(packageJSON), `"@pulumi/tfe": "file:sdk/tfe"`)
 }

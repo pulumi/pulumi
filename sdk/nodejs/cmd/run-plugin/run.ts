@@ -282,8 +282,12 @@ ${errMsg}`,
             const components = getPulumiComponents(reqResult);
             if (components.length > 0) {
                 const absDir = path.resolve(program);
-                const packStr = fs.readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
+                const packageJSONPath = path.join(absDir, "package.json");
+                const packStr = fs.readFileSync(packageJSONPath, { encoding: "utf-8" });
                 const packageJSON = JSON.parse(packStr);
+                if (!packageJSON?.name) {
+                    throw new Error(`${packageJSONPath} is missing a 'name' field.`);
+                }
                 const matches = packageJSON.name.match(/(@.*?\/)?(.+)/);
                 const providerName = matches[2].replace(/[^-a-zA-Z0-9_]/g, "-");
                 if (!/^[a-zA-Z]/.test(providerName)) {

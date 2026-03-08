@@ -21,18 +21,20 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"google.golang.org/grpc"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -41,7 +43,7 @@ import (
 const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
-func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
+func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Host,
 	diag, statusDiag diag.Sink, debugging plugin.DebugContext, disableProviderPreview bool,
 	tracingSpan opentracing.Span, config map[config.Key]string,
 ) (string, string, *plugin.Context, error) {
@@ -53,27 +55,17 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 		return "", "", nil, err
 	}
 
-	// Create a context for plugins.
-	ctx, err := plugin.NewContextWithRoot(context.TODO(), diag, statusDiag, host, pwd, projinfo.Root,
+	// Create a new context with the OTel span from ctx for trace propagation to plugins.
+	// Note that we can't simply pass `ctx` here, because the cancellation for plugins
+	// requires that it isn't canceled when the main context is canceled.  See also
+	// https://github.com/pulumi/pulumi/pull/20561.
+	pluginCtx := context.WithoutCancel(ctx)
+
+	pctx, err := plugin.NewContextWithRoot(pluginCtx, diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
-		projinfo.Proj.GetPackageSpecs(), config, debugging)
+		projinfo.Proj.GetPackageSpecs(), config, debugging, schema.NewLoaderServerFromHost)
 	if err != nil {
 		return "", "", nil, err
-	}
-
-	if logFile := env.DebugGRPC.Value(); logFile != "" {
-		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
-			LogFile: logFile,
-			Mutex:   ctx.DebugTraceMutex,
-		})
-		if err != nil {
-			return "", "", nil, err
-		}
-		ctx.DialOptions = func(metadata any) []grpc.DialOption {
-			return di.DialOptions(interceptors.LogOptions{
-				Metadata: metadata,
-			})
-		}
 	}
 
 	// If the project wants to connect to an existing language runtime, do so now.
@@ -86,19 +78,24 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 		if !ok {
 			return "", "", nil, errors.New("address of language runtime service must be a string")
 		}
-		host, err := connectToLanguageRuntime(ctx, address)
+		host, err := connectToLanguageRuntime(pctx, address)
 		if err != nil {
 			return "", "", nil, err
 		}
-		ctx.Host = host
+		pctx.Host = host
 	}
 
-	return pwd, main, ctx, nil
+	return pwd, main, pctx, nil
 }
 
 // newDeploymentContext creates a context for a subsequent deployment. Callers must call Close on the context after the
 // associated deployment completes.
-func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.SpanContext) (*deploymentContext, error) {
+func newDeploymentContext(
+	ctx context.Context,
+	u UpdateInfo,
+	opName string,
+	parentSpan opentracing.SpanContext,
+) (*deploymentContext, error) {
 	// Create a root span for the operation
 	opts := []opentracing.StartSpanOption{}
 	if opName != "" {
@@ -109,19 +106,31 @@ func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.Sp
 	}
 	tracingSpan := opentracing.StartSpan("pulumi-plan", opts...)
 
+	tracer := otel.Tracer("pulumi-cli")
+	var otelOpts []trace.SpanStartOption
+	if opName != "" {
+		otelOpts = append(otelOpts, trace.WithAttributes(attribute.String("operation", opName)))
+	}
+	_, otelSpan := cmdutil.StartSpan(ctx, tracer, "pulumi-plan", otelOpts...)
+
 	return &deploymentContext{
 		Update:      u,
 		TracingSpan: tracingSpan,
+		otelSpan:    otelSpan,
 	}, nil
 }
 
 type deploymentContext struct {
 	Update      UpdateInfo       // The update being processed.
 	TracingSpan opentracing.Span // An OpenTracing span to parent deployment operations within.
+	otelSpan    trace.Span
 }
 
 func (ctx *deploymentContext) Close() {
 	ctx.TracingSpan.Finish()
+	if ctx.otelSpan != nil {
+		ctx.otelSpan.End()
+	}
 }
 
 // deploymentOptions includes a full suite of options for performing a deployment.
@@ -163,7 +172,8 @@ type deploymentOptions struct {
 type deploymentSourceFunc func(
 	ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks) (deploy.Source, error)
+	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks, panicErrs chan<- error,
+) (deploy.Source, error)
 
 // newDeployment creates a new deployment with the given context and options.
 func newDeployment(
@@ -188,32 +198,34 @@ func newDeployment(
 		return nil, fmt.Errorf("failed to decrypt config: %w", err)
 	}
 
+	panicErrsChannel := make(chan error)
+
 	// Create a context for plugins.
 	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
-	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
+	pwd, main, plugctx, err := ProjectInfoContext(ctx.Cancel.Base(), projinfo, opts.Host,
 		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
 	}
 
 	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
-	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Terminated())
+	go func() { <-ctx.Cancel.Terminated(); contract.IgnoreClose(plugctx) }()
 
 	// Set up a goroutine that will signal cancellation to the source if the caller context
 	// is cancelled.
 	cancelCtx, cancelFunc := context.WithCancel(context.Background())
-	go func() {
+	go deploy.PanicRecovery(panicErrsChannel, func() {
 		<-ctx.Cancel.Canceled()
 		logging.V(7).Infof("engine.newDeployment(...): received cancellation signal")
 		cancelFunc()
-	}()
+	})
 
 	resourceHooks := deploy.NewResourceHooks(plugctx.DialOptions)
 
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
 	source, err := opts.SourceFunc(
-		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, resourceHooks)
+		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, resourceHooks, panicErrsChannel)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -258,6 +270,7 @@ func newDeployment(
 			opts,
 			plugctx,
 			false, /*returnInstallErrors*/
+			nil,   /*installTasks*/
 		)
 		if pluginErr != nil {
 			return nil, pluginErr
@@ -325,6 +338,7 @@ func newDeployment(
 		Deployment: depl,
 		Actions:    actions,
 		Options:    opts,
+		panicErrs:  panicErrsChannel,
 	}, nil
 }
 
@@ -339,6 +353,8 @@ type deployment struct {
 	Actions runActions
 	// the options used while deploying.
 	Options *deploymentOptions
+	// Channel to collect panic errors from goroutines
+	panicErrs chan error
 }
 
 // runActions represents a set of actions to run as part of a deployment,
@@ -371,13 +387,13 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 	done := make(chan bool)
 	var newPlan *deploy.Plan
 	var walkError error
-	go func() {
+	go deploy.PanicRecovery(deployment.panicErrs, func() {
 		newPlan, walkError = deployment.Deployment.Execute(ctx)
 		close(done)
-	}()
+	})
 
 	// Asynchronously listen for cancellation, and deliver that signal to the deployment.
-	go func() {
+	go deploy.PanicRecovery(deployment.panicErrs, func() {
 		select {
 		case <-cancelCtx.Cancel.Canceled():
 			// Cancel the deployment's execution context, so it begins to shut down.
@@ -385,11 +401,13 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 		case <-done:
 			return
 		}
-	}()
+	})
 
 	var err error
 	// Wait for the deployment to finish executing or for the user to terminate the run.
 	select {
+	case err = <-deployment.panicErrs:
+		panic(err)
 	case <-cancelCtx.Cancel.Terminated():
 		err = cancelCtx.Cancel.TerminateErr()
 
@@ -415,6 +433,8 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 	// Emit a summary event.
 	deployment.Options.Events.summaryEvent(
 		deployment.Options.DryRun, deployment.Actions.MaybeCorrupt(), duration, changes, policies)
+
+	close(deployment.panicErrs)
 
 	return newPlan, changes, err
 }

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from random import random
+import uuid
 
 from pulumi.automation import fully_qualified_stack_name
 
@@ -28,8 +28,8 @@ def get_test_org():
     return test_org
 
 
-def get_test_suffix() -> int:
-    return int(100000 + random() * 900000)
+def get_test_suffix() -> str:
+    return str(uuid.uuid4())
 
 
 def stack_namer(project_name: str) -> str:

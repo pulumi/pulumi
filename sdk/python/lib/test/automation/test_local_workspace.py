@@ -1229,6 +1229,8 @@ class TestLocalWorkspace(unittest.TestCase):
         destroy_res = stack.destroy(refresh=True)
         self.assertRegex(destroy_res.stdout, r".*refreshing.*")
 
+        stack.workspace.remove_stack(stack_name)
+
     def test_pulumi_command(self):
         p = PulumiCommand()
         ws = LocalWorkspace(pulumi_command=p)
@@ -1646,3 +1648,21 @@ def test_config_get_float(mock_config, config_settings):
     assert mock_config.get_float("float") == float(
         config_settings.get("test-config:float")
     )
+
+
+def test_no_logs(caplog):
+    """
+    A simple inline program should not be logging messages
+    Regression test for https://github.com/pulumi/pulumi/issues/21378
+    """
+    project_name = "inline_python"
+    stack_name = stack_namer(project_name)
+    stack = create_stack(
+        stack_name, program=pulumi_program_with_resource, project_name=project_name
+    )
+
+    try:
+        stack.preview()
+        assert len(caplog.records) == 0, "Nothing should be logged"
+    finally:
+        stack.workspace.remove_stack(stack_name, force=True)

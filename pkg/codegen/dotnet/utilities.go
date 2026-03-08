@@ -46,6 +46,17 @@ func isReservedWord(s string) bool {
 	}
 }
 
+// isPulumiNamespaceConflict returns true if s is a potential Pulumi namespace conflict. For example, `Output` is
+// a potential conflict because there is a `Pulumi.Output` module and a `Output` type in `Pulumi`.
+func isPulumiNamespaceConflict(s string) bool {
+	switch s {
+	case "Output":
+		return true
+	default:
+		return false
+	}
+}
+
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a C# identifier as per
 // https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure
 func isLegalIdentifierStart(c rune) bool {
@@ -83,6 +94,17 @@ func makeValidIdentifier(name string) string {
 	if isReservedWord(name) {
 		return "@" + name
 	}
+	return name
+}
+
+// makeSafePulumiNamespace takes a Pulumi namespace and returns a safe alias for
+// it. For example, `Pulumi.Output` is a module and `Output` is a type in
+// `Pulumi`, so we'll return `PulumiOutput` rather than `Output`.
+func makeSafePulumiNamespace(name string) string {
+	if isPulumiNamespaceConflict(name) {
+		return "Pulumi" + name
+	}
+
 	return name
 }
 

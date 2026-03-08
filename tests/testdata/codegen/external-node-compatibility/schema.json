@@ -5,7 +5,7 @@
     "example::Foo": {
       "inputProperties": {
         "auditConfig": {
-          "$ref": "/google-native/v0.18.2/schema.json#/types/google-native:iam/v1:AuditConfig"
+          "$ref": "/nodecompat/v1.0.0/schema.json#/types/nodecompat:index:MyConfig"
         }
       },
       "requiredInputs": [
@@ -17,7 +17,7 @@
     "nodejs": {
       "compatibility": "kubernetes20",
       "dependencies": {
-        "@pulumi/google-native": "^0.11.0"
+        "@pulumi/nodecompat": "^1.0.0"
       }
     }
   }

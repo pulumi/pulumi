@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/pulumi/pulumi-unknown/sdk/go/unknown"
 	"github.com/pulumi/pulumi-unknown/sdk/go/unknown/eks"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -33,8 +35,8 @@ func main() {
 			}
 			fromModule = append(fromModule, __res)
 		}
-		ctx.Export("mainId", main.Id)
-		ctx.Export("values", fromModule.Values.First)
+		ctx.Export("mainId", pulumi.Any(main.Id))
+		ctx.Export("values", pulumi.Any(fromModule.Values.First))
 		return nil
 	})
 }

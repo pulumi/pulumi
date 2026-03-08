@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -274,6 +274,8 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 					}
 					g.genResource(w, node)
 					g.Fgen(w, "\n")
+				case *pcl.PulumiBlock:
+					g.genPulumi(w, node)
 				}
 			}
 
@@ -630,6 +632,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genOutputVariable(w, n)
 	case *pcl.Component:
 		g.genComponent(w, n)
+	case *pcl.PulumiBlock:
+		g.genPulumi(w, n)
 	}
 }
 
@@ -754,7 +758,9 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf(`f"%s-{%s}"`, baseName, count)
 }
 
-func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []*quoteTemp) {
+func (g *generator) lowerResourceOptions(
+	opts *pcl.ResourceOptions, schema *schema.Resource,
+) (*model.Block, []*quoteTemp) {
 	if opts == nil {
 		return nil, nil
 	}
@@ -780,6 +786,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	}
 
 	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
+	if opts.Aliases != nil {
+		appendOption("aliases", opts.Aliases)
+	}
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}
@@ -807,11 +816,35 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.ReplaceWith != nil {
 		appendOption("replace_with", opts.ReplaceWith)
 	}
+	if opts.ReplacementTrigger != nil {
+		appendOption("replacement_trigger", opts.ReplacementTrigger)
+	}
 	if opts.ImportID != nil {
 		appendOption("import_", opts.ImportID)
 	}
 	if opts.HideDiffs != nil {
 		appendOption("hide_diffs", opts.HideDiffs)
+	}
+	if opts.ReplaceOnChanges != nil {
+		appendOption("replace_on_changes", opts.ReplaceOnChanges)
+	}
+	if opts.DeleteBeforeReplace != nil {
+		appendOption("delete_before_replace", opts.DeleteBeforeReplace)
+	}
+	if opts.AdditionalSecretOutputs != nil {
+		appendOption("additional_secret_outputs", opts.AdditionalSecretOutputs)
+	}
+	if opts.CustomTimeouts != nil {
+		appendOption("custom_timeouts", opts.CustomTimeouts)
+	}
+	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
+		appendOption("version", opts.Version)
+	}
+	if opts.PluginDownloadURL != nil && pcl.NeedsPluginDownloadURLResourceOption(opts.PluginDownloadURL, schema) {
+		appendOption("plugin_download_url", opts.PluginDownloadURL)
+	}
+	if opts.EnvVarMappings != nil {
+		appendOption("env_var_mappings", opts.EnvVarMappings)
 	}
 
 	return block, temps
@@ -833,7 +866,58 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 				g.Fprintf(w, ",\n%s", g.Indent)
 			}
 			attr := item.(*model.Attribute)
-			g.Fgenf(w, "%s=%v", attr.Name, attr.Value)
+
+			if attr.Name == "aliases" {
+				// aliases might be a list of strings or Alias objects
+				g.Fprintf(w, "aliases=[")
+				for i, expr := range attr.Value.(*model.TupleConsExpression).Expressions {
+					if i > 0 {
+						g.Fprintf(w, ", ")
+					}
+					// If the expression is a string literal, we can inline it directly.
+					if expr.Type().Equals(model.StringType) {
+						g.Fprintf(w, "%v", expr)
+						continue
+					}
+					// Otherwise pull off the fields dynamically.
+					obj := expr.(*model.ObjectConsExpression)
+					g.Fprintf(w, "pulumi.Alias(")
+					for j, item := range obj.Items {
+						if j > 0 {
+							g.Fprintf(w, ", ")
+						}
+						// We need a literal key here.
+						key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+						contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+						switch key.AsString() {
+						case "name":
+							g.Fgenf(w, "name=%v", item.Value)
+						case "noParent":
+							g.Fgenf(w, "parent=(None if %v else ...)", item.Value)
+						case "parent":
+							g.Fgenf(w, "parent=%v", item.Value)
+						}
+					}
+					g.Fprintf(w, ")")
+				}
+				g.Fprintf(w, "]")
+			} else if attr.Name == "custom_timeouts" {
+				obj := attr.Value.(*model.ObjectConsExpression)
+				g.Fprintf(w, "custom_timeouts=pulumi.CustomTimeouts(")
+				for j, item := range obj.Items {
+					if j > 0 {
+						g.Fprintf(w, ", ")
+					}
+					key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+					contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+					g.Fgenf(w, "%s=%v", key.AsString(), item.Value)
+				}
+				g.Fprintf(w, ")")
+			} else {
+				g.Fgenf(w, "%s=%v", attr.Name, attr.Value)
+			}
 		}
 	})
 	g.Fprint(w, ")")
@@ -843,7 +927,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
 	qualifiedMemberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
-	optionsBag, temps := g.lowerResourceOptions(r.Options)
+	optionsBag, temps := g.lowerResourceOptions(r.Options, r.Schema)
 	name := r.LogicalName()
 	nameVar := PyName(r.Name())
 
@@ -1038,7 +1122,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	componentName := r.DeclarationName()
-	optionsBag, temps := g.lowerResourceOptions(r.Options)
+	optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
 	name := r.LogicalName()
 	nameVar := PyName(r.Name())
 
@@ -1051,7 +1135,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	// collect here all the deferred output variables
 	// these must be declared before the component instantiation
 	componentInputs := slice.Prealloc[*model.Attribute](len(r.Inputs))
-	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	componentDeferredOutputVariables := slice.Prealloc[*pcl.DeferredOutputVariable](len(r.Inputs))
 	for _, attr := range r.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, r, attr.Value)
 		componentInputs = append(componentInputs, &model.Attribute{
@@ -1182,8 +1266,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		g.configCreated = true
 	}
 
+	configType := model.ResolveOutputs(v.Type())
+
 	getType := "_object"
-	switch v.Type() {
+	switch configType {
 	case model.StringType:
 		getType = ""
 	case model.NumberType:
@@ -1197,6 +1283,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	getOrRequire := "get"
 	if v.DefaultValue == nil {
 		getOrRequire = "require"
+	}
+	if v.Secret {
+		getOrRequire += "_secret"
 	}
 
 	var defaultValue model.Expression
@@ -1235,6 +1324,14 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 
 	// TODO(pdg): trivia
 	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.LogicalName(), value)
+}
+
+func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
+	if v.RequiredVersion != nil {
+		value, temps := g.lowerExpression(v.RequiredVersion, v.Type())
+		g.genTemps(w, temps)
+		g.Fgenf(w, "%spulumi.require_pulumi_version(%v)\n", g.Indent, value)
+	}
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {

@@ -17,10 +17,9 @@ package deploytest
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type Analyzer struct {
@@ -69,10 +68,18 @@ func (a *Analyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
 	return a.Info, nil
 }
 
-func (a *Analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{
-		Kind: apitype.AnalyzerPlugin,
-		Name: a.Info.Name,
+func (a *Analyzer) GetPluginInfo() (plugin.PluginInfo, error) {
+	var version *semver.Version
+	if a.Info.Version != "" {
+		sv, err := semver.ParseTolerant(a.Info.Version)
+		if err != nil {
+			return plugin.PluginInfo{}, err
+		}
+		version = &sv
+	}
+
+	return plugin.PluginInfo{
+		Version: version,
 	}, nil
 }
 

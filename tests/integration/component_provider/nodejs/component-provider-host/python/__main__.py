@@ -13,6 +13,7 @@ comp = provider.MyComponent(
     an_optional_string="Bonnie",
     a_boolean_input=pulumi.Output.from_input(True),
     a_complex_type_input={"aNumber": 7, "nestedComplexType": {"aNumber": 9}},
+    enum_input=provider.MyEnum.B,
     opts=pulumi.ResourceOptions(parent=parent),
 )
 
@@ -23,3 +24,4 @@ pulumi.export("aBooleanOutput", comp.a_boolean_output)
 pulumi.export("aComplexTypeOutput", comp.a_complex_type_output)
 pulumi.export("aResourceOutputUrn", comp.a_resource_output.urn)
 pulumi.export("aString", comp.a_string)
+pulumi.export("enumOutput", comp.enum_output)

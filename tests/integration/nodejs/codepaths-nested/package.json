@@ -4,6 +4,6 @@
     "main": "nested/index.ts",
     "dependencies": {
         "@pulumi/pulumi": "latest",
-        "semver": "^7.6.0"
+        "semver": "7.7.3"
     }
 }

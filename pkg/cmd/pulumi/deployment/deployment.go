@@ -15,9 +15,10 @@
 package deployment
 
 import (
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -30,11 +31,12 @@ func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 		Long: "Manage stack deployments on Pulumi Cloud.\n" +
 			"\n" +
 			"Use this command to trigger deployment jobs and manage deployment settings.",
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.PersistentFlags().StringVar(
 		&stackDeploymentConfigFile, "config-file", "",

@@ -29,6 +29,7 @@ import {
     CustomResourceOptions,
     DependencyProviderResource,
     DependencyResource,
+    ErrorHook,
     ProviderResource,
     Resource,
     ResourceHook,
@@ -41,7 +42,15 @@ import {
 import { InvokeOptions, InvokeTransform, InvokeTransformArgs } from "../invoke";
 
 import { hookBindingFromProto, mapAliasesForRequest, prepareHooks } from "./resource";
-import { deserializeProperties, serializeProperties, unknownValue, isRpcSecret, unwrapRpcSecret } from "./rpc";
+import {
+    deserializeProperties,
+    deserializeProperty,
+    serializeProperties,
+    serializeProperty,
+    unknownValue,
+    isRpcSecret,
+    unwrapRpcSecret,
+} from "./rpc";
 import { debuggablePromise } from "./debuggable";
 import { grpcChannelOptions, rpcKeepAlive } from "./settings";
 import { Http2Server, Http2Session } from "http2";
@@ -54,6 +63,7 @@ export interface ICallbackServer {
     registerStackInvokeTransform(callback: InvokeTransform): void;
     registerStackInvokeTransformAsync(callback: InvokeTransform): Promise<callproto.Callback>;
     registerResourceHook(hook: ResourceHook): Promise<void>;
+    registerErrorHook(hook: ErrorHook): Promise<void>;
     shutdown(): void;
     // Wait for any pendind registerStackTransform calls to complete.
     awaitStackRegistrations(): Promise<void>;
@@ -265,6 +275,10 @@ export class CallbackServer implements ICallbackServer {
             ropts.protect = opts.getProtect();
             ropts.provider = opts.getProvider() !== "" ? new DependencyProviderResource(opts.getProvider()) : undefined;
             ropts.replaceOnChanges = opts.getReplaceOnChangesList();
+            const replacementTrigger = opts.getReplacementTrigger();
+            ropts.replacementTrigger = replacementTrigger
+                ? deserializeProperty(replacementTrigger.toJavaScript())
+                : undefined;
             ropts.retainOnDelete = opts.getRetainOnDelete();
             ropts.version = opts.getVersion() !== "" ? opts.getVersion() : undefined;
 
@@ -354,6 +368,13 @@ export class CallbackServer implements ICallbackServer {
                     }
                     if (result.opts.replaceOnChanges !== undefined) {
                         opts.setReplaceOnChangesList(result.opts.replaceOnChanges);
+                    }
+                    if (result.opts.replacementTrigger !== undefined) {
+                        const triggerValue = await serializeProperty(
+                            "replacementTrigger",
+                            result.opts.replacementTrigger,
+                        );
+                        opts.setReplacementTrigger(gstruct.Value.fromJavaScript(triggerValue));
                     }
                     if (result.opts.retainOnDelete !== undefined) {
                         opts.setRetainOnDelete(result.opts.retainOnDelete);
@@ -612,6 +633,68 @@ export class CallbackServer implements ICallbackServer {
                 });
             }),
             `resourceHook:${hook.name}`,
+        );
+    }
+
+    async registerErrorHook(hook: ErrorHook): Promise<void> {
+        const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
+            try {
+                const request = resproto.ErrorHookRequest.deserializeBinary(bytes);
+                const newInputs = request.getNewInputs();
+                const oldInputs = request.getOldInputs();
+                const oldOutputs = request.getOldOutputs();
+                const retry = await hook.callback({
+                    urn: request.getUrn(),
+                    id: request.getId(),
+                    name: request.getName(),
+                    type: request.getType(),
+                    newInputs: newInputs
+                        ? outputtifySecrets(deserializeProperties(newInputs, true /*keepUnknowns */))
+                        : undefined,
+                    oldInputs: oldInputs
+                        ? outputtifySecrets(deserializeProperties(oldInputs, true /*keepUnknowns */))
+                        : undefined,
+                    oldOutputs: oldOutputs
+                        ? outputtifySecrets(deserializeProperties(oldOutputs, true /*keepUnknowns */))
+                        : undefined,
+                    failedOperation: request.getFailedOperation(),
+                    errors: request.getErrorsList(),
+                });
+                const response = new resproto.ErrorHookResponse();
+                response.setRetry(retry);
+                return response;
+            } catch (error) {
+                const response = new resproto.ErrorHookResponse();
+                response.setError(error.message);
+                return response;
+            }
+        };
+
+        const uuid = randomUUID();
+        this._callbacks.set(uuid, cb);
+        const callback = new Callback();
+        callback.setToken(uuid);
+        callback.setTarget(await this._target);
+
+        const req = new resproto.RegisterErrorHookRequest();
+        req.setCallback(callback);
+        req.setName(hook.name);
+
+        const done = rpcKeepAlive();
+        return debuggablePromise(
+            new Promise((resolve, reject) => {
+                this._monitor.registerErrorHook(req, (err, _) => {
+                    if (err !== null) {
+                        // Remove this from the list of callbacks given we didn't manage to actually register it.
+                        this._callbacks.delete(uuid);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                    done();
+                });
+            }),
+            `errorHook:${hook.name}`,
         );
     }
 }

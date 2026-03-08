@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,27 +62,6 @@ func TestParseRunParams(t *testing.T) {
 			},
 		},
 		{
-			desc: "binary",
-			give: []string{"-binary", "foo", "localhost:1234"},
-			want: runParams{
-				engineAddress: "localhost:1234",
-			},
-		},
-		{
-			desc: "buildTarget",
-			give: []string{"-buildTarget", "foo", "localhost:1234"},
-			want: runParams{
-				engineAddress: "localhost:1234",
-			},
-		},
-		{
-			desc: "root",
-			give: []string{"-root", "path/to/root", "localhost:1234"},
-			want: runParams{
-				engineAddress: "localhost:1234",
-			},
-		},
-		{
 			desc:    "unknown option",
 			give:    []string{"-unknown-option", "bar", "localhost:1234"},
 			wantErr: "flag provided but not defined: -unknown-option",
@@ -129,6 +108,10 @@ func TestGetPackage(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v1.29.0",
 			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
+			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v1.29.0",
@@ -139,6 +122,10 @@ func TestGetPackage(t *testing.T) {
 			Mod: &modInfo{
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v1.29.1-0.20200403140640-efb5e2a48a86",
+			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
 			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
@@ -159,6 +146,10 @@ func TestGetPackage(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "42-42-42",
 			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
+			},
 			ExpectedError: "module does not have semver compatible version",
 		},
 		{
@@ -175,6 +166,10 @@ func TestGetPackage(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v2.0.0-beta.1",
 			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "aws",
+				Resource: true,
+			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v2.0.0-beta.1",
@@ -184,6 +179,10 @@ func TestGetPackage(t *testing.T) {
 			Name: "non-zero-patch-module", Mod: &modInfo{
 				Path:    "github.com/pulumi/pulumi-kubernetes/sdk",
 				Version: "v1.5.8",
+			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "kubernetes",
+				Resource: true,
 			},
 			Expected: &pulumirpc.PackageDependency{
 				Name:    "kubernetes",
@@ -412,7 +411,7 @@ func TestPluginsAndDependencies_subdir(t *testing.T) {
 }
 
 func testPluginsAndDependencies(t *testing.T, progDir string) {
-	host := newLanguageHost("0.0.0.0:0", progDir, "")
+	host := newLanguageHost("0.0.0.0:0", progDir, "", "")
 	ctx := t.Context()
 
 	t.Run("GetRequiredPackages", func(t *testing.T) {
@@ -493,6 +492,12 @@ func (m *mockEngine) StartDebugging(ctx context.Context, in *pulumirpc.StartDebu
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
+}
+
+func (e *mockEngine) RequirePulumiVersion(ctx context.Context, req *pulumirpc.RequirePulumiVersionRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.RequirePulumiVersionResponse, error) {
+	return &pulumirpc.RequirePulumiVersionResponse{}, nil
 }
 
 func TestCompileProgram(t *testing.T) {

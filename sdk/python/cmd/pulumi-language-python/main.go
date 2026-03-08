@@ -46,6 +46,8 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
@@ -59,6 +61,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -85,7 +91,7 @@ const (
 	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
 
 	// A exit-code we recognize when the python process exits.  If we see this error, there's no
-	// need for us to print any additional error messages since the user already got a a good
+	// need for us to print any additional error messages since the user already got a good
 	// one they can handle.
 	pythonProcessExitedAfterShowingUserActionableMessage = 32
 
@@ -107,10 +113,6 @@ var (
 func main() {
 	var tracing string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.String("virtualenv", "", "[obsolete] Virtual environment path to use")
-	flag.String("root", "", "[obsolete] Project root path to use")
-	flag.String("typechecker", "", "[obsolete] Use a typechecker to type check")
-	flag.String("toolchain", "pip", "[obsolete] Select the package manager to use for dependency management.")
 	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
@@ -129,6 +131,12 @@ func main() {
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
+
+	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if err := cmdutil.InitOtelTracing("pulumi-language-python", otelEndpoint); err != nil {
+		logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+	}
+	defer cmdutil.CloseOtelTracing()
 
 	var pythonExec string
 	if givenExecutor == "" {
@@ -178,11 +186,11 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing, "", "")
+			host := newLanguageHost(pythonExec, engineAddress, tracing, otelEndpoint, "", "")
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
@@ -205,6 +213,7 @@ type pythonLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
+	otelEndpoint  string
 
 	// This is used by conformance testing to set the typechecker to use in ProgramGen.
 	typechecker string
@@ -261,12 +270,13 @@ func parseOptions(root string, programDir string, options map[string]any) (toolc
 	return pythonOptions, nil
 }
 
-func newLanguageHost(exec, engineAddress, tracing, typechecker, toolchain string,
+func newLanguageHost(exec, engineAddress, tracing, otelEndpoint, typechecker, toolchain string,
 ) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		otelEndpoint:  otelEndpoint,
 		typechecker:   typechecker,
 		toolchain:     toolchain,
 	}
@@ -796,7 +806,7 @@ func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
 	}
-	args := []string{}
+	args := slice.Prealloc[string](8)
 	args = append(args, "-Xfrozen_modules=off")
 	args = append(args, "-m", "debugpy", "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	args = append(args, "--wait-for-client")
@@ -931,16 +941,14 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		contract.IgnoreClose(closer)
-	}()
+	defer contract.IgnoreClose(closer)
 
 	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return nil, err
 	}
 
-	args := []string{}
+	var args []string //nolint:prealloc // capacity depends on debug mode
 	var dbg *debugger
 	if req.GetAttachDebugger() {
 		args, dbg, err = debugCommand(ctx, opts)
@@ -987,19 +995,35 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	if config != "" || configSecretKeys != "" {
-		env := cmd.Env
-		if env == nil {
-			env = os.Environ()
-		}
-		if config != "" {
-			env = append(env, pulumiConfigVar+"="+config)
-		}
-		if configSecretKeys != "" {
-			env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
-		}
-		cmd.Env = env
+	env := cmd.Env
+	if env == nil {
+		env = os.Environ()
 	}
+	if config != "" {
+		env = append(env, pulumiConfigVar+"="+config)
+	}
+	if configSecretKeys != "" {
+		env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
+	}
+
+	tracer := otel.Tracer("pulumi-language-python")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, "execPython",
+		trace.WithAttributes(
+			attribute.String("component", "exec.Command"),
+			attribute.StringSlice("args", args),
+		))
+	defer otelSpan.End()
+
+	carrier := make(propagation.MapCarrier)
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	if traceparent := carrier.Get("traceparent"); traceparent != "" {
+		env = append(env, "TRACEPARENT="+traceparent)
+	}
+
+	if host.otelEndpoint != "" {
+		env = append(env, "OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
+	}
+	cmd.Env = env
 
 	// Before running the command, we might need to run typechecker first
 	var typechecker string
@@ -1237,6 +1261,10 @@ func (host *pythonLanguageHost) InstallDependencies(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
+	tracer := otel.Tracer("pulumi-language-python")
+	_, otelSpan := cmdutil.StartSpan(server.Context(), tracer, "pip-install")
+	defer otelSpan.End()
+
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
 	tc, err := toolchain.ResolveToolchain(opts)
@@ -1297,7 +1325,8 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 			DisplayName: "pip",
 		}
 		// Pip is always available in a Python installation or virtual environment.
-		choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{pipOption}
+		choices := slice.Prealloc[*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue](3)
+		choices = append(choices, pipOption)
 		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry", "uv")...)
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 			Key:         "toolchain",
@@ -1433,6 +1462,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
+	ctx := server.Context()
 
 	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
@@ -1445,9 +1475,10 @@ func (host *pythonLanguageHost) RunPlugin(
 		return err
 	}
 
-	// Default the `virtualenv` option to `venv` if not provided. We don't support running
-	// plugins using the global or ambient Python environment.
-	if opts.Toolchain == toolchain.Pip && opts.Virtualenv == "" {
+	// Default the `virtualenv` option to `venv` if not provided. We don't support running plugins using the global or
+	// ambient Python environment. Except for policy packs that still need to support the old behavior of defaulting to
+	// the global environment.
+	if opts.Toolchain == toolchain.Pip && opts.Virtualenv == "" && req.Kind != string(apitype.AnalyzerPlugin) {
 		opts.Virtualenv = "venv"
 	}
 	tc, err := toolchain.ResolveToolchain(opts)
@@ -1471,7 +1502,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	// Pulumi package. A plugin might ship with an old version, in which case we
 	// fallback to the bare directory mode.
 	hasPluginRunModule := true
-	checkModuleCmd, err := tc.Command(server.Context(), "-c", "import pulumi.run.plugin")
+	checkModuleCmd, err := tc.Command(ctx, "-c", "import pulumi.run.plugin")
 	if err != nil {
 		return err
 	}
@@ -1484,7 +1515,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	args := []string{}
 	var dbg *debugger
 	if req.GetAttachDebugger() {
-		args, dbg, err = debugCommand(server.Context(), opts)
+		args, dbg, err = debugCommand(ctx, opts)
 		if err != nil {
 			return err
 		}
@@ -1508,16 +1539,27 @@ func (host *pythonLanguageHost) RunPlugin(
 
 		args = append(args, pyproject.Project.Name)
 		args = append(args, req.Args...)
-		cmd, err = tc.ModuleCommand(server.Context(), "pulumi.run.plugin", args...)
+		cmd, err = tc.ModuleCommand(ctx, "pulumi.run.plugin", args...)
 		if err != nil {
 			return err
 		}
 		logging.V(5).Infof("RunPlugin: %s", cmd.String())
 	} else {
-		// Run `python <path to plugin> req.Args...`, executing the plugin's `__main__.py`.
-		args = append(args, req.Info.ProgramDirectory)
-		args = append(args, req.Args...)
-		cmd, err = tc.Command(server.Context(), args...)
+		// For policy analyzers we need to send the program directory as an argument _last_, for everything
+		// else it comes first
+		if req.Kind == string(apitype.AnalyzerPlugin) {
+			// Policy packs (i.e. kind=analyzer) need to be treated specially for back compatibility reasons. We
+			// used to have a dedicated shim plugin "pulumi-analyzer-python-policy" that would start policy packs
+			// up, but now we just let the RunPlugin code handle that logic.
+			args = append(args, []string{"-u", "-m", "pulumi.policy"}...)
+			args = append(args, req.Args...)
+			args = append(args, req.Info.ProgramDirectory)
+		} else {
+			// Run `python <path to plugin> req.Args...`, executing the plugin's `__main__.py`.
+			args = append(args, req.Info.ProgramDirectory)
+			args = append(args, req.Args...)
+		}
+		cmd, err = tc.Command(ctx, args...)
 		if err != nil {
 			return err
 		}
@@ -1530,7 +1572,49 @@ func (host *pythonLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	cmd.Dir = req.Pwd
+	// python policy packs used to always run with the working directory set to the policy pack directory, not
+	// the main working directory. We need to continue that for backwards compatibility.
+	if req.Kind == string(apitype.AnalyzerPlugin) {
+		cmd.Dir = req.Info.ProgramDirectory
+	} else {
+		cmd.Dir = req.Pwd
+	}
+
+	// For policy packs we also need to adjust the environment to include stack configuration as well. Unfortunately to
+	// get that info we need to connect to the engine as a policy pack so that we can get the StackConfiguration call,
+	// we then need to wait for the _real_ policy pack to start up and shim all it's other request/responses.
+	var policyPackServer *sdk.PolicyProxy
+	if req.Kind == string(apitype.AnalyzerPlugin) {
+		policyPackServer, stdout, err = sdk.NewPolicyProxy(ctx, stdout)
+		if err != nil {
+			return fmt.Errorf("could not start policy pack proxy: %w", err)
+		}
+
+		config, err := policyPackServer.AwaitConfiguration(ctx)
+		if err != nil {
+			return fmt.Errorf("could not get stack configuration: %w", err)
+		}
+
+		if config != nil {
+			maybeAppendEnv := func(k, v string) {
+				if v != "" {
+					cmd.Env = append(cmd.Env, k+"="+v)
+				}
+			}
+			maybeAppendEnv("PULUMI_ORGANIZATION", config.Organization)
+			maybeAppendEnv("PULUMI_PROJECT", config.Project)
+			maybeAppendEnv("PULUMI_STACK", config.Stack)
+			maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(config.DryRun))
+			if config.Config != nil {
+				configJSON, err := json.Marshal(config.Config)
+				if err != nil {
+					return fmt.Errorf("could not marshal stack configuration: %w", err)
+				}
+				maybeAppendEnv("PULUMI_CONFIG", string(configJSON))
+			}
+		}
+	}
+
 	cmd.Env = append(cmd.Env, req.Env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
@@ -1541,7 +1625,7 @@ func (host *pythonLanguageHost) RunPlugin(
 		}
 		if req.GetAttachDebugger() {
 			// create a sub-context to cancel the startDebugging operation when the process exits.
-			ctx, cancel := context.WithCancel(server.Context())
+			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			go func() {
 				err := startDebugging(ctx, engineClient, cmd, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
@@ -1551,6 +1635,14 @@ func (host *pythonLanguageHost) RunPlugin(
 					contract.IgnoreError(cmd.Process.Kill())
 				}
 			}()
+		}
+		// If we've got a proxy policy then tell it to attach now
+		if policyPackServer != nil {
+			err = policyPackServer.Attach(ctx, cmd)
+			if err != nil {
+				return fmt.Errorf("could not attach policy pack proxy: %w", err)
+			}
+			return nil
 		}
 		return cmd.Wait()
 	}
@@ -1783,6 +1875,7 @@ func (host *pythonLanguageHost) Link(
 
 	// Map of python package names to paths
 	packages := map[string]string{}
+	var imports strings.Builder
 	for _, dep := range req.Packages {
 		if dep.Package.Name == "pulumi" {
 			packages["pulumi"] = dep.Path
@@ -1831,7 +1924,7 @@ func (host *pythonLanguageHost) Link(
 		}
 		var importName string
 		var packageName string
-		if info, ok := pkg.Language["go"]; ok {
+		if info, ok := pkg.Language["python"]; ok {
 			if info, ok := info.(codegen.PackageInfo); ok && info.PackageName != "" {
 				importName = info.PackageName
 				packageName = info.PackageName
@@ -1844,8 +1937,9 @@ func (host *pythonLanguageHost) Link(
 			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
 		}
 		packages[packageName] = dep.Path
-		instructions += fmt.Sprintf("  import %s as %s\n", packageName, importName)
+		imports.WriteString(fmt.Sprintf("  import %s as %s\n", packageName, importName))
 	}
+	instructions += imports.String()
 
 	if opts.Toolchain != toolchain.Pip {
 		pyprojectPath := filepath.Join(req.Info.ProgramDirectory, "pyproject.toml")

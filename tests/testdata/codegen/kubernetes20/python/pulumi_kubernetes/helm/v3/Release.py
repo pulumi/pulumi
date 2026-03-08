@@ -24,6 +24,7 @@ class ReleaseArgs:
                  values: Optional[pulumi.Input[Mapping[str, Any]]] = None):
         """
         The set of arguments for constructing a Release resource.
+
         :param pulumi.Input[_builtins.str] chart: Chart name to be installed. A path may be used.
         :param pulumi.Input[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]] value_yaml_files: List of assets (raw yaml files). Content is read and merged with values.
         :param pulumi.Input[Mapping[str, Any]] values: Custom values set for the release.
@@ -84,6 +85,7 @@ class Release(pulumi.CustomResource):
         """
         A non-overlay, non-component, non-Kubernetes resource.
 
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[_builtins.str] chart: Chart name to be installed. A path may be used.
@@ -98,6 +100,7 @@ class Release(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A non-overlay, non-component, non-Kubernetes resource.
+
 
         :param str resource_name: The name of the resource.
         :param ReleaseArgs args: The arguments to use to populate this resource's properties.

@@ -29,6 +29,7 @@ from .analyzer import (
     Dependency,
     PropertyDefinition,
     TypeDefinition,
+    PropertyType,
 )
 from .schema import generate_schema
 
@@ -156,13 +157,11 @@ class ComponentProvider(Provider):
             input_val = (
                 inputs.get(schema_name, None) if isinstance(inputs, dict) else None
             )
+            full_path = (
+                schema_name if not property_path else f"{property_path}.{schema_name}"
+            )
             if input_val is None:
                 if not prop.optional:
-                    full_path = (
-                        schema_name
-                        if not property_path
-                        else f"{property_path}.{schema_name}"
-                    )
                     raise InputPropertyError(
                         full_path,
                         f"Missing required input '{full_path}' on '{component_name}'",
@@ -273,6 +272,16 @@ class ComponentProvider(Provider):
                     )
                 mapped_value[py_name] = mapped_dict
                 continue
+
+            # Integers are sent as floats over the write. Convert to `int` here.
+            if prop.type == PropertyType.INTEGER:
+                try:
+                    mapped_value[py_name] = int(input_val)  # type: ignore
+                except ValueError as e:
+                    raise InputPropertyError(
+                        property_path,
+                        f"Invalid value {repr(input_val)} of type {type(input_val)} for integer property {full_path}",
+                    ) from e
 
             # Simple type, just map the name
             mapped_value[py_name] = input_val

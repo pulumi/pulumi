@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -113,24 +114,24 @@ func TestParsePolicyPackConfigFromAPISuccess(t *testing.T) {
 func TestParsePolicyPackConfigSuccess(t *testing.T) {
 	t.Parallel()
 
-	tests := []JSONTestCaseSuccess{
-		{
-			JSON:     "",
-			Expected: nil,
-		},
-		{
+	tests := slice.Prealloc[JSONTestCaseSuccess](7 + len(success))
+	tests = append(tests, JSONTestCaseSuccess{
+		JSON:     "",
+		Expected: nil,
+	},
+		JSONTestCaseSuccess{
 			JSON:     "    ",
 			Expected: nil,
 		},
-		{
+		JSONTestCaseSuccess{
 			JSON:     "\t",
 			Expected: nil,
 		},
-		{
+		JSONTestCaseSuccess{
 			JSON:     "\n",
 			Expected: nil,
 		},
-		{
+		JSONTestCaseSuccess{
 			JSON: `{"foo":"advisory"}`,
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"foo": {
@@ -138,7 +139,7 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 				},
 			},
 		},
-		{
+		JSONTestCaseSuccess{
 			JSON: `{"foo":"mandatory"}`,
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"foo": {
@@ -146,7 +147,7 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 				},
 			},
 		},
-		{
+		JSONTestCaseSuccess{
 			JSON: `{"all":"mandatory","policy1":{"foo":"one"},"policy2":{"foo":"two"}}`,
 			Expected: map[string]plugin.AnalyzerPolicyConfig{
 				"all": {
@@ -163,8 +164,7 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 					},
 				},
 			},
-		},
-	}
+		})
 	tests = append(tests, success...)
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg

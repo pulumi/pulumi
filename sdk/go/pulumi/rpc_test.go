@@ -1876,7 +1876,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
-			"computed": resource.NewProperty(resource.Computed{}),
+			"computed": resource.NewProperty(resource.Computed{Element: resource.NewProperty("")}),
 			"unknown":  resource.MakeComputed(resource.NewProperty("")),
 		})
 		require.NoError(t, err)

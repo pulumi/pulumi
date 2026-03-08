@@ -22,15 +22,18 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	mapset "github.com/deckarep/golang-set/v2"
+	"golang.org/x/sync/errgroup"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -657,7 +660,6 @@ func (sg *stepGenerator) getOldResource(
 
 func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
 	var invalid bool // will be set to true if this object fails validation.
-
 	goal := event.Goal()
 
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
@@ -706,6 +708,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	if old != nil {
 		refreshBeforeUpdate = old.RefreshBeforeUpdate
 	}
+
 	new := resource.NewState{
 		Type:                    goal.Type,
 		URN:                     urn,
@@ -759,7 +762,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		!sdkproviders.IsProviderType(goal.Type) {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
-		go func() {
+		go PanicRecovery(sg.deployment.panicErrs, func() {
 			// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
 			// but a goroutine blocked on Result and then posting to a channel is very cheap.
 			state, err := cts.Promise().Result(context.Background())
@@ -779,7 +782,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				invalid:               invalid,
 				err:                   err,
 			}
-		}()
+		})
 
 		oldViews := sg.deployment.GetOldViews(old.URN)
 		step := NewRefreshStep(sg.deployment, cts, old, oldViews, new)
@@ -861,8 +864,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		if err != nil {
 			return nil, false, err
 		}
-		if goal.Custom && !sdkproviders.IsProviderType(goal.Type) ||
-			sdkproviders.IsProviderType(goal.Type) && hasSkippedDeps {
+		if (goal.Custom && !sdkproviders.IsProviderType(goal.Type)) || hasSkippedDeps {
 			// Custom resources that aren't in state just have to be skipped.
 			if old == nil {
 				sg.sames[urn] = true
@@ -989,7 +991,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromImport when it resolves
-		go func() {
+		go PanicRecovery(sg.deployment.panicErrs, func() {
 			// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
 			// but a goroutine blocked on Result and then posting to a channel is very cheap.
 			old, err := cts.Promise().Result(context.Background())
@@ -1050,7 +1052,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 				randomSeed:            randomSeed,
 				isImported:            true,
 			}
-		}()
+		})
 
 		sg.imports[urn] = true
 		if isReplace := old != nil && !recreating; isReplace {
@@ -1257,96 +1259,75 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	// Send the resource off to any Analyzers before being operated on. We do two passes: first we perform
 	// remediations, and *then* we do analysis, since we want analyzers to run on the final resource states.
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
-	for _, remediate := range []bool{true, false} {
-		for _, analyzer := range analyzers {
-			r := plugin.AnalyzerResource{
-				URN:        new.URN,
-				Type:       new.Type,
-				Name:       new.URN.Name(),
-				Properties: inputs,
-				Options: plugin.AnalyzerResourceOptions{
-					Protect:                 new.Protect,
-					IgnoreChanges:           goal.IgnoreChanges,
-					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
-					AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-					Aliases:                 new.GetAliases(),
-					CustomTimeouts:          new.CustomTimeouts,
-					Parent:                  new.Parent,
-				},
-			}
-			providerResource := sg.getProviderResource(new.URN, new.Provider)
-			if providerResource != nil {
-				r.Provider = &plugin.AnalyzerProviderResource{
-					URN:        providerResource.URN,
-					Type:       providerResource.Type,
-					Name:       providerResource.URN.Name(),
-					Properties: providerResource.Inputs,
-				}
-			}
 
-			info, err := analyzer.GetAnalyzerInfo()
-			if err != nil {
-				return nil, false, fmt.Errorf("failed to get analyzer info: %w", err)
-			}
-
-			if remediate {
-				// During the first pass, perform remediations. This ensures subsequent analyzers run
-				// against the transformed properties, ensuring nothing circumvents the analysis checks.
-				response, err := analyzer.Remediate(r)
-				if err != nil {
-					return nil, false, fmt.Errorf("failed to run remediation: %w", err)
-				}
-				for _, tresult := range response.Remediations {
-					if tresult.Diagnostic != "" {
-						// If there is a diagnostic, we have a warning to display.
-						sg.deployment.events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
-							PolicyName:        tresult.PolicyName,
-							PolicyPackName:    tresult.PolicyPackName,
-							PolicyPackVersion: tresult.PolicyPackVersion,
-							Description:       tresult.Description,
-							Message:           tresult.Diagnostic,
-							EnforcementLevel:  apitype.Advisory,
-							URN:               new.URN,
-						})
-					} else if tresult.Properties != nil {
-						// Emit a nice message so users know what was remediated.
-						sg.deployment.events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
-						// Use the transformed inputs rather than the old ones from this point onwards.
-						inputs = tresult.Properties
-						new.Inputs = tresult.Properties
-					}
-				}
-				summary := resourceanalyzer.NewRemediatePolicySummary(new.URN, response, info)
-				sg.deployment.events.OnPolicyRemediateSummary(summary)
-			} else {
-				// During the second pass, perform analysis. This happens after remediations so that
-				// analyzers see properties as they were after the transformations have occurred.
-				response, err := analyzer.Analyze(r)
-				if err != nil {
-					return nil, false, fmt.Errorf("failed to run policy: %w", err)
-				}
-				for _, d := range response.Diagnostics {
-					if d.EnforcementLevel == apitype.Remediate {
-						// If we ran a remediation, but we are still somehow triggering a violation,
-						// "downgrade" the level we report from remediate to mandatory.
-						d.EnforcementLevel = apitype.Mandatory
-					}
-
-					if d.EnforcementLevel == apitype.Mandatory {
-						if !sg.deployment.opts.DryRun {
-							invalid = true
-						}
-						sg.sawError = true
-					}
-					// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
-					sg.deployment.events.OnPolicyViolation(new.URN, d)
-				}
-
-				summary := resourceanalyzer.NewAnalyzePolicySummary(new.URN, response, info)
-				sg.deployment.events.OnPolicyAnalyzeSummary(summary)
+	// First pass: perform remediations sequentially. Each remediation can transform the resource
+	// properties, so subsequent analyzers must see the transformed state.
+	for _, analyzer := range analyzers {
+		r := plugin.AnalyzerResource{
+			URN:        new.URN,
+			Type:       new.Type,
+			Name:       new.URN.Name(),
+			Properties: inputs,
+			Options: plugin.AnalyzerResourceOptions{
+				Protect:                 new.Protect,
+				IgnoreChanges:           goal.IgnoreChanges,
+				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+				Aliases:                 new.GetAliases(),
+				CustomTimeouts:          new.CustomTimeouts,
+				Parent:                  new.Parent,
+			},
+		}
+		providerResource := sg.getProviderResource(new.URN, new.Provider)
+		if providerResource != nil {
+			r.Provider = &plugin.AnalyzerProviderResource{
+				URN:        providerResource.URN,
+				Type:       providerResource.Type,
+				Name:       providerResource.URN.Name(),
+				Properties: providerResource.Inputs,
 			}
 		}
+
+		info, err := analyzer.GetAnalyzerInfo()
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to get analyzer info: %w", err)
+		}
+
+		response, err := analyzer.Remediate(r)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to run remediation: %w", err)
+		}
+		for _, tresult := range response.Remediations {
+			if tresult.Diagnostic != "" {
+				// If there is a diagnostic, we have a warning to display.
+				sg.deployment.events.OnPolicyViolation(new.URN, plugin.AnalyzeDiagnostic{
+					PolicyName:        tresult.PolicyName,
+					PolicyPackName:    tresult.PolicyPackName,
+					PolicyPackVersion: tresult.PolicyPackVersion,
+					Description:       tresult.Description,
+					Message:           tresult.Diagnostic,
+					EnforcementLevel:  apitype.Advisory,
+					URN:               new.URN,
+				})
+			} else if tresult.Properties != nil {
+				// Emit a nice message so users know what was remediated.
+				sg.deployment.events.OnPolicyRemediation(new.URN, tresult, inputs, tresult.Properties)
+				// Use the transformed inputs rather than the old ones from this point onwards.
+				inputs = tresult.Properties
+				new.Inputs = tresult.Properties
+			}
+		}
+		summary := resourceanalyzer.NewRemediatePolicySummary(new.URN, response, info)
+		sg.deployment.events.OnPolicyRemediateSummary(summary)
 	}
+
+	// Second pass: perform analysis in parallel. Analysis is read-only (it only produces
+	// diagnostics) so all analyzers can safely run concurrently on the resource inputs.
+	analyzeInvalid, err := sg.analyzeAll(analyzers, new, inputs, goal)
+	if err != nil {
+		return nil, false, err
+	}
+	invalid = invalid || analyzeInvalid
 
 	// If the resource isn't valid, don't proceed any further.
 	if invalid {
@@ -1392,10 +1373,6 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	if wasExternal {
 		logging.V(7).Infof("Planner recognized '%s' as old external resource, creating instead", urn)
 		sg.creates[urn] = true
-		if err != nil {
-			return nil, false, err
-		}
-
 		return []Step{
 			NewCreateReplacementStep(sg.deployment, event, old, new, nil, nil, nil, true),
 			NewReplaceStep(sg.deployment, old, new, nil, nil, nil, true),
@@ -1761,7 +1738,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			}
 
 			sg.sames[urn] = true
-			updateSteps = []Step{NewSameStep(sg.deployment, event, old, new)}
+			updateSteps = slice.Prealloc[Step](1 + len(sg.deployment.oldViews[urn]))
+			updateSteps = append(updateSteps, NewSameStep(sg.deployment, event, old, new))
 
 			// We're generating a same step for a resource. Generate same steps for any of its views as well.
 			viewSteps := slice.Map(sg.deployment.oldViews[urn], func(res *resource.State) Step {
@@ -1901,6 +1879,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				// To do this, we'll utilize the dependency information contained in the snapshot if it is
 				// trustworthy, which is interpreted by the DependencyGraph type.
 				var steps []Step
+				//nolint:prealloc // capacity depends on dynamic calculations
 				var toReplace []dependentReplace
 
 				// At this point if we're in a preview we might be trying to work out a dependent replace set for a
@@ -1957,8 +1936,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 								"as it is currently marked for protection. To unprotect the resource, "+
 								"remove the `protect` flag from the resource in your Pulumi "+
 								"program and run `pulumi up`, or use the command:\n"+
-								"`pulumi state unprotect %q`",
-								dependentResource.URN, urn, dependentResource.URN)
+								"`pulumi state unprotect %s`",
+								dependentResource.URN, urn, dependentResource.URN.Quote())
 							sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
 							sg.sawError = true
 							return nil, result.BailErrorf("%s", message)
@@ -2020,7 +1999,17 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	if hasInitErrors {
 		sg.updates[urn] = true
 		oldViews := sg.deployment.GetOldViews(old.URN)
-		return []Step{NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, nil, nil, nil, oldViews)}, nil
+		return []Step{NewUpdateStep(
+			sg.deployment,
+			event,
+			old,
+			new,
+			diff.StableKeys,
+			diff.ChangedKeys,
+			diff.DetailedDiff,
+			goal.IgnoreChanges,
+			oldViews,
+		)}, nil
 	}
 
 	// Else there are no changes needed
@@ -2705,7 +2694,7 @@ func (sg *stepGenerator) diff(
 
 	// Else setup a promise for it so our caller will yield a DiffStep.
 	pcs := &promise.CompletionSource[plugin.DiffResult]{}
-	go func() {
+	go PanicRecovery(sg.deployment.panicErrs, func() {
 		// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
 		// but a goroutine blocked on Result and then posting to a channel is very cheap.
 		diff, err := pcs.Promise().Result(context.Background())
@@ -2720,7 +2709,7 @@ func (sg *stepGenerator) diff(
 			autonaming: autonaming,
 			randomSeed: randomSeed,
 		}
-	}()
+	})
 	return plugin.DiffResult{}, pcs, nil
 }
 
@@ -3126,6 +3115,101 @@ func (sg *stepGenerator) findResourcesReplacedWith(urn resource.URN) ([]dependen
 	return resources, nil
 }
 
+// analyzeAll runs analyzer.Analyze for each analyzer in parallel, emitting policy violation
+// and summary events as results arrive. It respects the PULUMI_PARALLEL_ANALYZE environment
+// variable to limit concurrency. A value of 0 (the default) means no limit, and 1 disables
+// parallelism entirely. It returns true if any mandatory violation was found (and we are not
+// in dry-run mode), indicating the resource is invalid.
+func (sg *stepGenerator) analyzeAll(
+	analyzers []plugin.Analyzer,
+	new *resource.State,
+	inputs resource.PropertyMap,
+	goal *resource.Goal,
+) (bool, error) {
+	if len(analyzers) == 0 {
+		return false, nil
+	}
+
+	r := plugin.AnalyzerResource{
+		URN:        new.URN,
+		Type:       new.Type,
+		Name:       new.URN.Name(),
+		Properties: inputs,
+		Options: plugin.AnalyzerResourceOptions{
+			Protect:                 new.Protect,
+			IgnoreChanges:           goal.IgnoreChanges,
+			DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+			AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+			Aliases:                 new.GetAliases(),
+			CustomTimeouts:          new.CustomTimeouts,
+			Parent:                  new.Parent,
+		},
+	}
+	providerResource := sg.getProviderResource(new.URN, new.Provider)
+	if providerResource != nil {
+		r.Provider = &plugin.AnalyzerProviderResource{
+			URN:        providerResource.URN,
+			Type:       providerResource.Type,
+			Name:       providerResource.URN.Name(),
+			Properties: providerResource.Inputs,
+		}
+	}
+
+	var invalid atomic.Bool
+	var sawError atomic.Bool
+
+	// Run Analyze for each analyzer in parallel, respecting the parallelism limit.
+	var g errgroup.Group
+	if parallelism := env.ParallelAnalyze.Value(); parallelism > 0 {
+		g.SetLimit(parallelism)
+	}
+
+	for _, analyzer := range analyzers {
+		g.Go(func() error {
+			info, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				return fmt.Errorf("failed to get analyzer info: %w", err)
+			}
+
+			response, err := analyzer.Analyze(r)
+			if err != nil {
+				return fmt.Errorf("failed to run policy: %w", err)
+			}
+
+			for _, d := range response.Diagnostics {
+				if d.EnforcementLevel == apitype.Remediate {
+					// If we ran a remediation, but we are still somehow triggering a violation,
+					// "downgrade" the level we report from remediate to mandatory.
+					d.EnforcementLevel = apitype.Mandatory
+				}
+
+				if d.EnforcementLevel == apitype.Mandatory {
+					if !sg.deployment.opts.DryRun {
+						invalid.Store(true)
+					}
+					sawError.Store(true)
+				}
+				// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
+				sg.deployment.events.OnPolicyViolation(new.URN, d)
+			}
+
+			summary := resourceanalyzer.NewAnalyzePolicySummary(new.URN, response, info)
+			sg.deployment.events.OnPolicyAnalyzeSummary(summary)
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return false, err
+	}
+
+	if sawError.Load() {
+		sg.sawError = true
+	}
+
+	return invalid.Load(), nil
+}
+
 func (sg *stepGenerator) AnalyzeResources() error {
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
 
@@ -3213,40 +3297,62 @@ func (sg *stepGenerator) AnalyzeResources() error {
 		}
 	}
 
+	var sawError atomic.Bool
+
+	// Run AnalyzeStack for each analyzer in parallel, respecting the parallelism limit.
+	var g errgroup.Group
+	if parallelism := env.ParallelAnalyze.Value(); parallelism > 0 {
+		g.SetLimit(parallelism)
+	}
+
 	for _, analyzer := range analyzers {
-		info, err := analyzer.GetAnalyzerInfo()
-		if err != nil {
-			return fmt.Errorf("failed to get analyzer info: %w", err)
-		}
-
-		response, err := analyzer.AnalyzeStack(resources)
-		if err != nil {
-			return err
-		}
-		for _, d := range response.Diagnostics {
-			if d.EnforcementLevel == apitype.Remediate {
-				// Stack policies cannot be remediated, so treat the level as mandatory.
-				d.EnforcementLevel = apitype.Mandatory
+		g.Go(func() error {
+			info, err := analyzer.GetAnalyzerInfo()
+			if err != nil {
+				return fmt.Errorf("failed to get analyzer info: %w", err)
 			}
 
-			sg.sawError = sg.sawError || (d.EnforcementLevel == apitype.Mandatory)
-			// If a URN was provided and it is a URN associated with a resource in the stack, use it.
-			// Otherwise, if the URN is empty or is not associated with a resource in the stack, use
-			// the default root stack URN.
-			var urn resource.URN
-			if d.URN != "" {
-				if _, ok := sg.deployment.news.Load(d.URN); ok {
-					urn = d.URN
+			response, err := analyzer.AnalyzeStack(resources)
+			if err != nil {
+				return err
+			}
+
+			for _, d := range response.Diagnostics {
+				if d.EnforcementLevel == apitype.Remediate {
+					// Stack policies cannot be remediated, so treat the level as mandatory.
+					d.EnforcementLevel = apitype.Mandatory
 				}
-			}
-			if urn == "" {
-				urn = resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project())
-			}
-			sg.deployment.events.OnPolicyViolation(urn, d)
-		}
 
-		summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)
-		sg.deployment.events.OnPolicyAnalyzeStackSummary(summary)
+				if d.EnforcementLevel == apitype.Mandatory {
+					sawError.Store(true)
+				}
+				// If a URN was provided and it is a URN associated with a resource in the stack, use it.
+				// Otherwise, if the URN is empty or is not associated with a resource in the stack, use
+				// the default root stack URN.
+				var urn resource.URN
+				if d.URN != "" {
+					if _, ok := sg.deployment.news.Load(d.URN); ok {
+						urn = d.URN
+					}
+				}
+				if urn == "" {
+					urn = resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project())
+				}
+				sg.deployment.events.OnPolicyViolation(urn, d)
+			}
+
+			summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)
+			sg.deployment.events.OnPolicyAnalyzeStackSummary(summary)
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	if sawError.Load() {
+		sg.sawError = true
 	}
 
 	return nil
@@ -3300,8 +3406,8 @@ func newStepGenerator(
 
 // Should we trigger a replace for the given new and old property values?
 func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue) bool {
-	new = unwrapSecrets(new)
-	old = unwrapSecrets(old)
+	new = unwrapSecretsAndOutputs(new)
+	old = unwrapSecretsAndOutputs(old)
 
 	// Unknowns are always considered to be changed.
 	if old.ContainsUnknowns() || new.ContainsUnknowns() {
@@ -3316,16 +3422,25 @@ func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue
 	return !new.DeepEquals(old)
 }
 
-// Strip all `Secret` wrappers from the given property value.
-func unwrapSecrets(value resource.PropertyValue) resource.PropertyValue {
+// unwrapSecretsAndOutputs strips Secret and Output wrappers from a value so that the underlying values can be compared
+// regardless of how they were wrapped.
+func unwrapSecretsAndOutputs(value resource.PropertyValue) resource.PropertyValue {
 	if value.IsSecret() {
-		return unwrapSecrets(value.SecretValue().Element)
+		return unwrapSecretsAndOutputs(value.SecretValue().Element)
+	}
+
+	if value.IsOutput() {
+		output := value.OutputValue()
+		if !output.Known {
+			return resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+		}
+		return unwrapSecretsAndOutputs(output.Element)
 	}
 
 	if value.IsArray() {
 		arr := []resource.PropertyValue{}
 		for _, e := range value.ArrayValue() {
-			arr = append(arr, unwrapSecrets(e))
+			arr = append(arr, unwrapSecretsAndOutputs(e))
 		}
 		return resource.NewProperty(arr)
 	}
@@ -3333,7 +3448,7 @@ func unwrapSecrets(value resource.PropertyValue) resource.PropertyValue {
 	if value.IsObject() {
 		obj := resource.PropertyMap{}
 		for key, e := range value.ObjectValue() {
-			obj[key] = unwrapSecrets(e)
+			obj[key] = unwrapSecretsAndOutputs(e)
 		}
 		return resource.NewProperty(obj)
 	}

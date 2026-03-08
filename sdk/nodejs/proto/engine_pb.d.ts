@@ -140,6 +140,43 @@ export namespace StartDebuggingRequest {
     }
 }
 
+export class RequirePulumiVersionRequest extends jspb.Message { 
+    getPulumiVersionRange(): string;
+    setPulumiVersionRange(value: string): RequirePulumiVersionRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RequirePulumiVersionRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RequirePulumiVersionRequest): RequirePulumiVersionRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RequirePulumiVersionRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RequirePulumiVersionRequest;
+    static deserializeBinaryFromReader(message: RequirePulumiVersionRequest, reader: jspb.BinaryReader): RequirePulumiVersionRequest;
+}
+
+export namespace RequirePulumiVersionRequest {
+    export type AsObject = {
+        pulumiVersionRange: string,
+    }
+}
+
+export class RequirePulumiVersionResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RequirePulumiVersionResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: RequirePulumiVersionResponse): RequirePulumiVersionResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RequirePulumiVersionResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RequirePulumiVersionResponse;
+    static deserializeBinaryFromReader(message: RequirePulumiVersionResponse, reader: jspb.BinaryReader): RequirePulumiVersionResponse;
+}
+
+export namespace RequirePulumiVersionResponse {
+    export type AsObject = {
+    }
+}
+
 export enum LogSeverity {
     DEBUG = 0,
     INFO = 1,

@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -132,7 +133,7 @@ type LanguageRuntime interface {
 	// return result.Bail immediately and not print any further messages to the user.
 	Run(info RunInfo) (string, bool, error)
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (workspace.PluginInfo, error)
+	GetPluginInfo() (PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	// It returns io.Readers for stdout and stderr as well as a channel that will be closed when the operation is
@@ -206,6 +207,7 @@ type RunPluginInfo struct {
 	Env              []string
 	Kind             string
 	AttachDebugger   bool
+	LoaderAddress    string
 }
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
@@ -315,7 +317,7 @@ func MakeExecutablePromptChoices(executables ...string) []*pulumirpc.RuntimeOpti
 		name  string
 		found bool
 	}
-	pms := []packagemanagers{}
+	pms := slice.Prealloc[packagemanagers](len(executables))
 	for _, pm := range executables {
 		found := true
 		if _, err := exec.LookPath(pm); err != nil {
@@ -333,7 +335,7 @@ func MakeExecutablePromptChoices(executables ...string) []*pulumirpc.RuntimeOpti
 		return pms[i].found
 	})
 
-	choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{}
+	choices := slice.Prealloc[*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue](len(pms))
 	for _, pm := range pms {
 		displayName := pm.name
 		if !pm.found {

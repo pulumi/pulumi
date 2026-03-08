@@ -61,7 +61,7 @@ func main() {
 				VpcId:                       eksVpc.ID(),
 				MapPublicIpOnLaunch:         pulumi.Bool(true),
 				CidrBlock:                   pulumi.Sprintf("10.100.%v.0/24", key0),
-				AvailabilityZone:            pulumi.String(val0),
+				AvailabilityZone:            pulumi.String(pulumi.String(val0)),
 				Tags: pulumi.StringMap{
 					"Name": pulumi.Sprintf("pulumi-sn-%v", val0),
 				},
@@ -135,7 +135,7 @@ func main() {
 		}
 		json0 := string(tmpJSON0)
 		eksRole, err := iam.NewRole(ctx, "eksRole", &iam.RoleArgs{
-			AssumeRolePolicy: pulumi.String(json0),
+			AssumeRolePolicy: pulumi.String(pulumi.String(json0)),
 		})
 		if err != nil {
 			return err
@@ -172,7 +172,7 @@ func main() {
 		}
 		json1 := string(tmpJSON1)
 		ec2Role, err := iam.NewRole(ctx, "ec2Role", &iam.RoleArgs{
-			AssumeRolePolicy: pulumi.String(json1),
+			AssumeRolePolicy: pulumi.String(pulumi.String(json1)),
 		})
 		if err != nil {
 			return err

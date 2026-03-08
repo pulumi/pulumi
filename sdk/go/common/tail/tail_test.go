@@ -429,6 +429,9 @@ func TestTell(t *testing.T) {
 func TestBlockUntilExists(t *testing.T) {
 	t.Parallel()
 
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
+
 	tailTest, cleanup := NewTailTest("block-until-file-exists", t)
 	defer cleanup()
 	config := Config{
@@ -637,6 +640,9 @@ func TestIncompleteLongLines(t *testing.T) {
 func TestIncompleteLinesWithReopens(t *testing.T) {
 	t.Parallel()
 
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
+
 	tailTest, cleanup := NewTailTest("incomplete-lines-reopens", t)
 	defer cleanup()
 	filename := "test.txt"
@@ -770,7 +776,7 @@ func (t *TailTest) RemoveFile(name string) {
 func (t *TailTest) RenameFile(oldname string, newname string) {
 	oldname = t.path + "/" + oldname
 	newname = t.path + "/" + newname
-	err := os.Rename(oldname, newname)
+	err := os.Rename(oldname, newname) //nolint:forbidigo // test file
 	if err != nil {
 		t.Fatal(err)
 	}

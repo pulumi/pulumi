@@ -68,7 +68,7 @@ func CreateSecretsManagerForExistingStack(
 
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
 	if isDefaultSecretsProvider {
-		_, err = stack.DefaultSecretManager(ps)
+		_, err = stack.DefaultSecretManager(ctx, ps)
 	} else if secretsProvider == passphrase.Type {
 		_, err = passphrase.NewPromptingPassphraseSecretsManager(ps, rotateSecretsProvider)
 	} else {
@@ -112,7 +112,7 @@ func createSecretsManagerForNewStack(
 
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
 	if isDefaultSecretsProvider {
-		sm, err = b.DefaultSecretManager(ps)
+		sm, err = b.DefaultSecretManager(ctx, ps)
 	} else if secretsProvider == passphrase.Type {
 		sm, err = passphrase.NewPromptingPassphraseSecretsManager(ps, false /*rotateSecretsProvider*/)
 	} else {
@@ -283,7 +283,7 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 				ps.EncryptedKey = ""
 			}
 		} else {
-			sm, err = s.DefaultSecretManager(ps)
+			sm, err = s.DefaultSecretManager(ctx, ps)
 		}
 	}
 	if err != nil {

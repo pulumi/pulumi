@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
-	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -40,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // BackendClient is used to retrieve information about stacks from a backend.
@@ -299,6 +299,8 @@ type Deployment struct {
 	opts *Options
 	// event handlers for this deployment.
 	events Events
+	// Channel to collect panic errors from goroutines
+	panicErrs chan error
 	// writeSnapshot indicates whether or not the deployment should write a new snapshot at the beginning
 	// of the deployment. This is true if the previous snapshot was migrated to add providers
 	writeSnapshot bool
@@ -355,7 +357,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 	}
 
 	// Pull the versions we'll use for default providers from the snapshot's manifest.
-	defaultProviderInfo := make(map[tokens.Package]workspace.PluginSpec)
+	defaultProviderInfo := make(map[tokens.Package]workspace.PluginDescriptor)
 	for _, p := range prev.Manifest.Plugins {
 		defaultProviderInfo[tokens.Package(p.Name)] = p.Spec()
 	}
@@ -725,11 +727,10 @@ func (d *Deployment) Close() error {
 	return nil
 }
 
-// RunHooks runs all the hooks on the given state. If `isBeforeHook` is set to
-// true, a hook that returns an error will cause an error return. If
-// `isBeforeHook` is false, a hook returning an error will only generate a
-// warning.
-func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID, urn resource.URN,
+// RunHooks runs all the before/after hooks on the given state. If `hookType` is an after hook, a hook that returns an
+// error will only generate a warning. Otherwise, it will cause an error return.
+func (d *Deployment) RunHooks(
+	hooks []string, hookType resource.HookType, id resource.ID, urn resource.URN,
 	name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 ) error {
 	for _, hookName := range hooks {
@@ -741,17 +742,55 @@ func (d *Deployment) RunHooks(hooks []string, isBeforeHook bool, id resource.ID,
 			continue
 		}
 		logging.V(9).Infof("calling hook %q for urn %s", hookName, urn)
-		err = hook.Callback(d.Ctx().Base(), urn, id, name, typ, newInputs, oldInputs, newOutputs, oldOutputs)
+		err = hook.Callback(
+			d.Ctx().Base(),
+			urn, id, name, typ,
+			newInputs, oldInputs, newOutputs, oldOutputs,
+		)
 		if err != nil {
-			if isBeforeHook {
+			switch {
+			case resource.IsBeforeHook(hookType):
 				return fmt.Errorf("before hook %q failed: %w", hookName, err)
+			case resource.IsAfterHook(hookType):
+				// Errors on after hooks report a diagnostic, but do not fail the step.
+				d.Diag().Warningf(&diag.Diag{
+					URN:     urn,
+					Message: fmt.Sprintf("after hook %q failed: %s", hookName, err),
+				})
+				continue
+			default:
+				return fmt.Errorf("unknown hook type %q: %w", hookType, err)
 			}
-			// Errors on after hooks report a diagnostic, but do not fail the step.
-			d.Diag().Warningf(&diag.Diag{
-				URN:     urn,
-				Message: fmt.Sprintf("after hook %q failed: %s", hookName, err),
-			})
 		}
 	}
 	return nil
+}
+
+// RunErrorHooks runs all error hooks on the given state. A hook that returns an error will cause an error return.
+func (d *Deployment) RunErrorHooks(
+	hooks []string, id resource.ID, urn resource.URN,
+	name string, typ tokens.Type, newInputs, oldInputs, oldOutputs resource.PropertyMap,
+	failedOperation string, errors []string,
+) (bool, error) {
+	shouldRetry := false
+
+	for _, hookName := range hooks {
+		hook, err := d.resourceHooks.GetErrorHook(hookName)
+		if err != nil {
+			return false, fmt.Errorf("error hook %q was not registered", hookName)
+		}
+		logging.V(9).Infof("calling error hook %q for urn %s", hookName, urn)
+		retry, err := hook.Callback(
+			d.Ctx().Base(),
+			urn, id, name, typ,
+			newInputs, oldInputs, oldOutputs,
+			failedOperation,
+			errors,
+		)
+		if err != nil {
+			return false, fmt.Errorf("error hook %q failed: %w", hookName, err)
+		}
+		shouldRetry = shouldRetry || retry
+	}
+	return shouldRetry, nil
 }

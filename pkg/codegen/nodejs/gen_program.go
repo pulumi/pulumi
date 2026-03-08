@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -47,19 +49,36 @@ type generator struct {
 	program     *pcl.Program
 	diagnostics hcl.Diagnostics
 
+	// Generate ESM (ECMAScript modules) output instead of CJS (CommonJS), see https://nodejs.org/api/esm.html
+	esm                     bool
 	asyncMain               bool
 	configCreated           bool
 	isComponent             bool
 	deferredOutputVariables []*pcl.DeferredOutputVariable
 }
 
+// ProgramOptions controls optional code generation behaviour for GenerateProgramWithOptions.
+type ProgramOptions struct {
+	// The runtime we are generating code for ("nodejs", "bun").
+	Runtime string
+}
+
+// GenerateProgram generates a Node.js program from a PCL program using default options.
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	return GenerateProgramWithOptions(program, ProgramOptions{
+		Runtime: "nodejs",
+	})
+}
+
+// GenerateProgramWithOptions generates a TypeScript program from a PCL program.
+func GenerateProgramWithOptions(program *pcl.Program, opts ProgramOptions) (map[string][]byte, hcl.Diagnostics, error) {
 	pcl.MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
 	g := &generator{
 		program: program,
+		esm:     opts.Runtime == "bun",
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -113,7 +132,11 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	indenter := func(f func()) { f() }
 	if g.asyncMain {
 		indenter = g.Indented
-		g.Fgenf(&index, "export = async () => {\n")
+		if g.esm {
+			g.Fgenf(&index, "export default async () => {\n")
+		} else {
+			g.Fgenf(&index, "export = async () => {\n")
+		}
 	}
 
 	indenter(func() {
@@ -171,10 +194,24 @@ func generatePackageJSON(
 	program *pcl.Program,
 	projectName string,
 	localDependencies map[string]string,
+	runtimeName string,
 ) ([]byte, error) {
-	// Build the package.json
 	var packageJSON bytes.Buffer
-	fmt.Fprintf(&packageJSON, `{
+	if runtimeName == "bun" {
+		fmt.Fprintf(&packageJSON, `{
+	"name": "%s",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		`, projectName)
+	} else {
+		fmt.Fprintf(&packageJSON, `{
 	"name": "%s",
 	"devDependencies": {
 		"@types/node": "%s"
@@ -182,6 +219,7 @@ func generatePackageJSON(
 	"dependencies": {
 		"typescript": "^4.0.0",
 		`, projectName, MinimumNodeTypesVersion)
+	}
 
 	// Check if pulumi is a local dependency, else add it as a normal range dependency
 	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
@@ -254,64 +292,46 @@ func generatePackageJSON(
 	}
 	packageJSON.WriteString(`
 	}
-}`)
+}
+`)
 
 	return packageJSON.Bytes(), nil
 }
 
-func GenerateProject(
-	directory string, project workspace.Project,
-	program *pcl.Program, localDependencies map[string]string,
-	forceTsc bool,
-) error {
-	files, diagnostics, err := GenerateProgram(program)
-	if err != nil {
-		return err
-	}
-	if diagnostics.HasErrors() {
-		return diagnostics
-	}
-
-	// Check the project for "main" as that changes where we write out files and some relative paths.
-	rootDirectory := directory
-	if project.Main != "" {
-		directory = filepath.Join(rootDirectory, project.Main)
-		// mkdir -p the subdirectory
-		err = os.MkdirAll(directory, 0o700)
-		if err != nil {
-			return fmt.Errorf("create main directory: %w", err)
-		}
-	}
-
-	// Set the runtime to "nodejs" then marshal to Pulumi.yaml
-	runtime := workspace.NewProjectRuntimeInfo("nodejs", nil)
-	if forceTsc {
-		runtime.SetOption("typescript", false)
-	}
-	project.Runtime = runtime
-
-	projectBytes, err := encoding.YAML.Marshal(project)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
-	if err != nil {
-		return fmt.Errorf("write Pulumi.yaml: %w", err)
-	}
-
-	packageJSON, err := generatePackageJSON(program, project.Name.String(), localDependencies)
-	if err != nil {
-		return err
-	}
-	files["package.json"] = packageJSON
-
-	// Add the language specific .gitignore
-	files[".gitignore"] = []byte(`/bin/
-/node_modules/`)
-
-	// Add the basic tsconfig
+func generateTSConfig(runtimeName string, files map[string][]byte) []byte {
 	var tsConfig bytes.Buffer
-	tsConfig.WriteString(`{
+
+	if runtimeName == "bun" {
+		// https://bun.sh/docs/typescript#suggested-compileroptions
+		tsConfig.WriteString(`{
+	"compilerOptions": {
+		// Environment setup & latest features
+		"lib": ["ESNext"],
+		"target": "ESNext",
+		"module": "Preserve",
+		"moduleDetection": "force",
+		"jsx": "react-jsx",
+		"allowJs": true,
+		// Bundler mode
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"noEmit": true,
+		// Best practices
+		"strict": true,
+		"skipLibCheck": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		// Some stricter flags (disabled by default)
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"noPropertyAccessFromIndexSignature": false
+	},
+	"files": [
+`)
+	} else {
+		tsConfig.WriteString(`{
 	"compilerOptions": {
 		"strict": true,
 		"outDir": "bin",
@@ -327,6 +347,7 @@ func GenerateProject(
 	},
 	"files": [
 `)
+	}
 
 	fileNames := make([]string, 0, len(files))
 	for file := range files {
@@ -347,8 +368,66 @@ func GenerateProject(
 	}
 
 	tsConfig.WriteString(`	]
-}`)
-	files["tsconfig.json"] = tsConfig.Bytes()
+}
+`)
+	return tsConfig.Bytes()
+}
+
+func GenerateProject(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+	forceTsc bool, runtimeName string,
+) error {
+	files, diagnostics, err := GenerateProgramWithOptions(program, ProgramOptions{Runtime: runtimeName})
+	if err != nil {
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
+
+	// Check the project for "main" as that changes where we write out files and some relative paths.
+	rootDirectory := directory
+	if project.Main != "" {
+		directory = filepath.Join(rootDirectory, project.Main)
+		// mkdir -p the subdirectory
+		err = os.MkdirAll(directory, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+	}
+
+	// Set the runtime then marshal to Pulumi.yaml
+	if runtimeName == "" {
+		runtimeName = "nodejs"
+	}
+	runtime := workspace.NewProjectRuntimeInfo(runtimeName, nil)
+	if runtimeName == "nodejs" && forceTsc {
+		runtime.SetOption("typescript", false)
+	}
+	project.Runtime = runtime
+
+	projectBytes, err := encoding.YAML.Marshal(project)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("write Pulumi.yaml: %w", err)
+	}
+
+	packageJSON, err := generatePackageJSON(program, project.Name.String(), localDependencies, runtimeName)
+	if err != nil {
+		return err
+	}
+	files["package.json"] = packageJSON
+
+	// Add the language specific .gitignore
+	files[".gitignore"] = []byte(`/bin/
+/node_modules/
+`)
+
+	files["tsconfig.json"] = generateTSConfig(runtimeName, files)
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
@@ -576,7 +655,7 @@ func componentOutputType(pclType model.Type) string {
 }
 
 func (g *generator) genObjectTypedConfig(w io.Writer, objectType *model.ObjectType) {
-	attributeKeys := []string{}
+	attributeKeys := slice.Prealloc[string](len(objectType.Properties))
 	for attributeKey := range objectType.Properties {
 		attributeKeys = append(attributeKeys, attributeKey)
 	}
@@ -763,6 +842,8 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 					}
 					g.genResource(w, node)
 					g.Fgen(w, "\n")
+				case *pcl.PulumiBlock:
+					g.genPulumi(w, node)
 				}
 			}
 
@@ -822,6 +903,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genOutputVariable(w, n)
 	case *pcl.Component:
 		g.genComponent(w, n)
+	case *pcl.PulumiBlock:
+		g.genPulumi(w, n)
 	}
 }
 
@@ -880,27 +963,24 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf("`%s-${%s}`", baseName, count)
 }
 
-func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
+func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema.Resource) string {
 	if opts == nil {
 		return ""
 	}
 
 	// Turn the resource options into an ObjectConsExpression and generate it.
-	var object *model.ObjectConsExpression
+	var object map[string]model.Expression
 	appendOption := func(name string, value model.Expression) {
 		if object == nil {
-			object = &model.ObjectConsExpression{}
+			object = make(map[string]model.Expression)
 		}
-		object.Items = append(object.Items, model.ObjectConsItem{
-			Key: &model.LiteralValueExpression{
-				Tokens: syntax.NewLiteralValueTokens(cty.StringVal(name)),
-				Value:  cty.StringVal(name),
-			},
-			Value: value,
-		})
+		object[name] = value
 	}
 
 	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
+	if opts.Aliases != nil {
+		appendOption("aliases", opts.Aliases)
+	}
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}
@@ -925,14 +1005,38 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.HideDiffs != nil {
 		appendOption("hideDiffs", opts.HideDiffs)
 	}
+	if opts.ReplaceOnChanges != nil {
+		appendOption("replaceOnChanges", opts.ReplaceOnChanges)
+	}
+	if opts.DeleteBeforeReplace != nil {
+		appendOption("deleteBeforeReplace", opts.DeleteBeforeReplace)
+	}
+	if opts.AdditionalSecretOutputs != nil {
+		appendOption("additionalSecretOutputs", opts.AdditionalSecretOutputs)
+	}
+	if opts.CustomTimeouts != nil {
+		appendOption("customTimeouts", opts.CustomTimeouts)
+	}
+	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
+		appendOption("version", opts.Version)
+	}
+	if opts.PluginDownloadURL != nil && pcl.NeedsPluginDownloadURLResourceOption(opts.PluginDownloadURL, schema) {
+		appendOption("pluginDownloadURL", opts.PluginDownloadURL)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
 	}
 	if opts.ReplaceWith != nil {
 		appendOption("replaceWith", opts.ReplaceWith)
 	}
+	if opts.ReplacementTrigger != nil {
+		appendOption("replacementTrigger", opts.ReplacementTrigger)
+	}
 	if opts.ImportID != nil {
 		appendOption("import", opts.ImportID)
+	}
+	if opts.EnvVarMappings != nil {
+		appendOption("envVarMappings", opts.EnvVarMappings)
 	}
 
 	if object == nil {
@@ -940,7 +1044,54 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 
 	var buffer bytes.Buffer
-	g.Fgenf(&buffer, ", %v", g.lowerExpression(object, nil))
+	g.Indented(func() {
+		g.Fprint(&buffer, ", {\n")
+		for _, key := range slices.Sorted(maps.Keys(object)) {
+			value := object[key]
+			g.Fprintf(&buffer, "%s", g.Indent)
+			if key == "aliases" {
+				// aliases might be a list of strings or Alias objects
+				g.Fprint(&buffer, "aliases:[")
+				for i, expr := range value.(*model.TupleConsExpression).Expressions {
+					if i > 0 {
+						g.Fprint(&buffer, ", ")
+					}
+					// If the expression is a string literal, we can inline it directly.
+					if expr.Type().Equals(model.StringType) {
+						g.Fgenf(&buffer, "%v", expr)
+					} else {
+						// Otherwise pull off the fields dynamically.
+						obj := expr.(*model.ObjectConsExpression)
+						g.Fprint(&buffer, "{")
+						for j, item := range obj.Items {
+							if j > 0 {
+								g.Fprint(&buffer, ", ")
+							}
+							// We need a literal key here.
+							key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+							contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+							switch key.AsString() {
+							case "name":
+								g.Fgenf(&buffer, "name: %v", item.Value)
+							case "noParent":
+								g.Fgenf(&buffer, "parent: (%v ? pulumi.rootStackResource : undefined)", item.Value)
+							case "parent":
+								g.Fgenf(&buffer, "parent: %v", item.Value)
+							}
+						}
+						g.Fprint(&buffer, "}")
+					}
+				}
+				g.Fprint(&buffer, "]")
+			} else {
+				g.Fgenf(&buffer, "%s: %v", key, g.lowerExpression(value, nil))
+			}
+			g.Fprint(&buffer, ",\n")
+		}
+	})
+	g.Fprintf(&buffer, "%s}", g.Indent)
+
 	return buffer.String()
 }
 
@@ -955,7 +1106,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
 
-	optionsBag := g.genResourceOptions(r.Options)
+	optionsBag := g.genResourceOptions(r.Options, r.Schema)
 
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
@@ -1162,7 +1313,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	componentName := component.DeclarationName()
 
-	optionsBag := g.genResourceOptions(component.Options)
+	optionsBag := g.genResourceOptions(component.Options, nil)
 
 	name := component.LogicalName()
 	variableName := makeValidIdentifier(component.Name())
@@ -1176,7 +1327,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	// collect here all the deferred output variables
 	// these must be declared before the component instantiation
 	componentInputs := slice.Prealloc[*model.Attribute](len(component.Inputs))
-	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	componentDeferredOutputVariables := slice.Prealloc[*pcl.DeferredOutputVariable](len(component.Inputs))
 	for _, attr := range component.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, component, attr.Value)
 		componentInputs = append(componentInputs, &model.Attribute{
@@ -1347,8 +1498,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		g.configCreated = true
 	}
 
+	configType := pcl.UnwrapOption(model.ResolveOutputs(v.Type()))
+
 	getType := "Object"
-	switch pcl.UnwrapOption(v.Type()) {
+	switch configType {
 	case model.StringType:
 		getType = ""
 	case model.NumberType, model.IntType:
@@ -1368,6 +1521,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if v.DefaultValue == nil && !model.IsOptionalType(v.Type()) {
 		getOrRequire = "require"
 	}
+	if v.Secret {
+		getOrRequire += "Secret"
+	}
 
 	if v.Description != "" {
 		for _, line := range strings.Split(v.Description, "\n") {
@@ -1379,7 +1535,11 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s%[5]s(\"%[6]s\")",
 		g.Indent, name, getOrRequire, getType, typeParam, v.LogicalName())
 	if v.DefaultValue != nil && !model.IsOptionalType(v.Type()) {
-		g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+		if v.Secret {
+			g.Fgenf(w, " || pulumi.secret(%.v)", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+		} else {
+			g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+		}
 	}
 	g.Fgenf(w, ";\n")
 }
@@ -1401,6 +1561,13 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	// TODO(pdg): trivia
 	g.Fgenf(w, "%sexport const %s = %.3v;\n", g.Indent,
 		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
+}
+
+func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
+	if v.RequiredVersion != nil {
+		value := g.lowerExpression(v.RequiredVersion, v.Type())
+		g.Fgenf(w, "%spulumi.requirePulumiVersion(%v);\n", g.Indent, value)
+	}
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {

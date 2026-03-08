@@ -91,6 +91,8 @@ func TestInvalidRemoteFlags(t *testing.T) {
 				e := ptesting.NewEnvironment(t)
 				defer e.DeleteIfNotFailed()
 
+				e.WriteTestFile("Pulumi.yaml", "runtime: yaml\nname: test")
+
 				// Remote flags currently require PULUMI_EXPERIMENTAL.
 				e.Env = append(e.Env, "PULUMI_EXPERIMENTAL=true")
 

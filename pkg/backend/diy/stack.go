@@ -121,7 +121,7 @@ func (s *diyStack) Tags() map[apitype.StackTagName]string {
 	return tags
 }
 
-func (s *diyStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
+func (s *diyStack) DefaultSecretManager(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 	return passphrase.NewPromptingPassphraseSecretsManager(info, false /* rotatePassphraseSecretsProvider */)
 }
 

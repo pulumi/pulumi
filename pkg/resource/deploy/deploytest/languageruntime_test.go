@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -96,7 +95,7 @@ func TestLanguageRuntime(t *testing.T) {
 			p := &languageRuntime{}
 			res, err := p.GetPluginInfo()
 			require.NoError(t, err)
-			assert.Equal(t, workspace.PluginInfo{Name: "TestLanguage"}, res)
+			assert.Equal(t, plugin.PluginInfo{}, res)
 		})
 		t.Run("InstallDependencies", func(t *testing.T) {
 			t.Parallel()

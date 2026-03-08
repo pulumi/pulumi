@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -149,6 +148,9 @@ type Backend interface {
 	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
 		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 
+	// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
+	GetStackPolicyPacks(ctx context.Context, stackRef StackReference) ([]engine.RequiredPolicy, error)
+
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
 
@@ -263,7 +265,7 @@ type Backend interface {
 	//
 	// When a stack has been instantiated, you should favor using the Stack.DefaultSecretManager method to get a default
 	// secrets manager for that stack.
-	DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManager(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error)
 
 	// SupportsTemplates checks if the backend supports listing and downloading templates.
 	SupportsTemplates() bool
@@ -405,20 +407,12 @@ func (c *backendClient) GetStackOutputs(
 	}
 
 	secretsProvider := newErrorCatchingSecretsProvider(c.secretsProvider, onDecryptError)
-	snap, err := s.Snapshot(ctx, secretsProvider)
+
+	outputs, err := s.SnapshotStackOutputs(ctx, secretsProvider)
 	if err != nil {
 		return property.Map{}, err
 	}
-
-	res, err := stack.GetRootStackResource(snap)
-	if err != nil {
-		return property.Map{}, fmt.Errorf("getting root stack resources: %w", err)
-	}
-
-	if res == nil {
-		return property.Map{}, nil
-	}
-	return resource.FromResourcePropertyMap(res.Outputs), nil
+	return outputs, nil
 }
 
 func (c *backendClient) GetStackResourceOutputs(

@@ -1,0 +1,11 @@
+{
+  "name": "test-nodejs-component-inject-namespace",
+  "main": "index.ts",
+  "devDependencies": {
+    "@types/node": "^18",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.217.0"
+  }
+}

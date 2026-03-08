@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build all
-
 package install
 
 import (
@@ -24,8 +22,16 @@ import (
 
 	"github.com/BurntSushi/toml"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	testutil.SetupPulumiBinary()
+
+	code := m.Run()
+	os.Exit(code)
+}
 
 // When generating a new Python project, we call into the language runtime, so that it can setup the Python project for
 // the chosen toolchain.
@@ -98,4 +104,25 @@ func TestPulumiNewPython(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPulumiNewWithPackages(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	require.NoError(t, os.Remove(filepath.Join(e.RootPath, ".yarnrc")))
+
+	templatePath, err := filepath.Abs(filepath.Join("nodejs", "with-packages"))
+	require.NoError(t, err)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "new", templatePath, "--yes", "--force",
+		"--name", "test-packages",
+		"--stack", "test-packages",
+	)
+
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }

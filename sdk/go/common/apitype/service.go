@@ -42,6 +42,9 @@ const (
 
 	// Indicates the maximum deployment schema version that the service supports.
 	DeploymentSchemaVersion APICapability = "deployment-schema-version"
+
+	// Indicates whether the service supports retrieving a stack's required policy packs.
+	StackPolicyPacks APICapability = "stack-policy-packs"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -87,6 +90,9 @@ type Capabilities struct {
 
 	// Indicates the maximum deployment schema version that the service supports.
 	DeploymentSchemaVersion int
+
+	// Indicates whether the service supports retrieving a stack's required policy packs.
+	StackPolicyPacks bool
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -125,6 +131,10 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 					return Capabilities{}, fmt.Errorf("decoding DeploymentSchemaVersionConfig returned %w", err)
 				}
 				parsed.DeploymentSchemaVersion = versionConfig.Version
+			}
+		case StackPolicyPacks:
+			if entry.Version == 1 {
+				parsed.StackPolicyPacks = true
 			}
 		default:
 			continue

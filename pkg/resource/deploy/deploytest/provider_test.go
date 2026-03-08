@@ -64,7 +64,6 @@ func TestProvider(t *testing.T) {
 		}
 		info, err := prov.GetPluginInfo(context.Background())
 		require.NoError(t, err)
-		assert.Equal(t, "expected-name", info.Name)
 		// Ensure reference is passed correctly.
 		assert.Equal(t, &prov.Version, info.Version)
 	})

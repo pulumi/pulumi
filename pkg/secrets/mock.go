@@ -109,7 +109,7 @@ type MockProvider struct {
 	managers map[string]func(json.RawMessage) (Manager, error)
 }
 
-func (mp *MockProvider) OfType(ty string, state json.RawMessage) (Manager, error) {
+func (mp *MockProvider) OfType(_ context.Context, ty string, state json.RawMessage) (Manager, error) {
 	if f, ok := mp.managers[ty]; ok {
 		return f(state)
 	}

@@ -126,6 +126,124 @@ func TestReplaceWith(t *testing.T) {
 	require.Contains(t, deleted, created[1])
 }
 
+func TestReplaceWithAndDeletedWith(t *testing.T) {
+	t.Parallel()
+
+	created := []resource.URN{}
+	deleted := []resource.URN{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					created = append(created, req.URN)
+					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
+					return plugin.CreateResponse{
+						ID:         resourceID,
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					deleted = append(deleted, req.URN)
+					return plugin.DeleteResponse{}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	inputs := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+	numberOfRuns := 0
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		var urnB, urnC resource.URN
+
+		if numberOfRuns == 0 {
+			respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{}),
+			})
+
+			require.NoError(t, err)
+			urnB = respB.URN
+		}
+
+		respC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+
+		require.NoError(t, err)
+		urnC = respC.URN
+
+		opts := deploytest.ResourceOptions{
+			Inputs:      resource.NewPropertyMapFromMap(map[string]any{}),
+			ReplaceWith: []resource.URN{urnC},
+		}
+
+		if numberOfRuns == 0 {
+			opts.DeletedWith = urnB
+		}
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, opts)
+		require.NoError(t, err)
+
+		numberOfRuns++
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	require.Len(t, snap.Resources, 4)
+	require.Equal(t, "created-id-1", snap.Resources[1].ID.String()) // B
+	require.Equal(t, "created-id-2", snap.Resources[2].ID.String()) // C
+	require.Equal(t, "created-id-3", snap.Resources[3].ID.String()) // A (deletes with B, replaces with C)
+
+	require.Equal(t, snap.Resources[3].DeletedWith, snap.Resources[1].URN)
+	require.Contains(t, snap.Resources[3].ReplaceWith, snap.Resources[2].URN)
+
+	inputs["foo"] = resource.NewProperty("baz") // Trigger replacement of C
+	// B doesn't exist for the second update, so deletedWith should be triggered.
+
+	created = []resource.URN{}
+	deleted = []resource.URN{}
+
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	require.Len(t, snap.Resources, 3)
+	require.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+	require.Equal(t, "created-id-2", snap.Resources[2].ID.String())
+
+	require.Len(t, created, 2)
+	require.ElementsMatch(t, []string{created[0].Name(), created[1].Name()}, []string{"resC", "resA"})
+
+	require.Len(t, deleted, 2)
+	require.ElementsMatch(t, []string{deleted[0].Name(), deleted[1].Name()}, []string{"resB", "resC"})
+}
+
 func TestReplaceWithDeleteBeforeReplace(t *testing.T) {
 	t.Parallel()
 

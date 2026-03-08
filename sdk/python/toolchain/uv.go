@@ -15,7 +15,6 @@
 package toolchain
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -59,7 +58,7 @@ func newUv(root, virtualenv string) (*uv, error) {
 	_, err := exec.LookPath("uv")
 	if err != nil {
 		return nil, errors.New("Could not find `uv` executable.\n" +
-			"Install uv and make sure is is in your PATH.")
+			"Install uv and make sure it is in your PATH.")
 	}
 
 	if virtualenv == "" {
@@ -159,10 +158,12 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	// We now have either a uv.lock or at least a pyproject.toml file, and we can use uv
 	// install the dependencies.
 	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
-	if err := syncCmd.Run(); err != nil {
+	if !showOutput {
+		_, err := syncCmd.Output()
 		return errutil.ErrorWithStderr(err, "error installing dependencies")
+	} else {
+		return syncCmd.Run()
 	}
-	return nil
 }
 
 // PrepareProject prepares a project for use with uv. It will create a suitable pyproject.toml project file. If a
@@ -258,9 +259,8 @@ func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error
 
 	paths := slices.Collect(maps.Values(packages))
 	args = append(args, paths...)
-	var stdout, stderr bytes.Buffer
-	cmd := u.uvCommand(ctx, "", true, &stdout, &stderr, args...)
-	if err := cmd.Run(); err != nil {
+	cmd := u.uvCommand(ctx, u.root, false, nil, nil, args...)
+	if _, err := cmd.Output(); err != nil {
 		return errutil.ErrorWithStderr(err, "linking packages")
 	}
 	return nil
@@ -356,7 +356,7 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 		// uv run does an "inexact" sync, that is it leaves extraneous
 		// dependencies alone and does not remove them.
 		venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync", "--inexact")
-		if err := venvCmd.Run(); err != nil {
+		if _, err := venvCmd.Output(); err != nil {
 			return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
 		}
 	}

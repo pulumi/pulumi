@@ -190,16 +190,20 @@ func (b *diyBackend) getCheckpoint(
 	ref *diyBackendReference,
 ) (*apitype.CheckpointV3, int, []string, error) {
 	chkpath := b.stackPath(ctx, ref)
-	bytes, err := b.bucket.ReadAll(ctx, chkpath)
+	byts, err := b.bucket.ReadAll(ctx, chkpath)
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	m := encoding.JSON
-	if encoding.IsCompressed(bytes) {
-		m = encoding.Gzip(m)
-	}
+	m := encoding.Compress(encoding.JSON, encoding.DetectCompression(byts))
 
-	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(m, bytes)
+	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(m, byts)
+}
+
+func stripCompressionExt(file string) string {
+	if ext := filepath.Ext(file); ext == encoding.GZIPExt || ext == encoding.ZSTDExt {
+		return strings.TrimSuffix(file, ext)
+	}
+	return file
 }
 
 func (b *diyBackend) saveCheckpoint(
@@ -208,22 +212,20 @@ func (b *diyBackend) saveCheckpoint(
 	checkpoint *apitype.VersionedCheckpoint,
 ) (backupFile string, file string, _ error) {
 	// Make a serializable stack and then use the encoder to encode it.
-	file = b.stackPath(ctx, ref)
-	m, ext := encoding.Detect(strings.TrimSuffix(file, ".gz"))
+	baseFile := stripCompressionExt(b.stackPath(ctx, ref))
+	m, ext := encoding.Detect(baseFile)
 	if m == nil {
 		return "", "", fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
-	if filepath.Ext(file) == "" {
-		file = file + ext
+	if filepath.Ext(baseFile) == "" {
+		baseFile += ext
 	}
-	if b.gzip {
-		if filepath.Ext(file) != encoding.GZIPExt {
-			file = file + ".gz"
-		}
-		m = encoding.Gzip(m)
-	} else {
-		file = strings.TrimSuffix(file, ".gz")
+	file = baseFile
+	compExt := b.compression.Ext()
+	if compExt != "" {
+		file = file + compExt
 	}
+	m = encoding.Compress(m, b.compression)
 
 	byts, err := m.Marshal(checkpoint)
 	if err != nil {
@@ -234,16 +236,22 @@ func (b *diyBackend) saveCheckpoint(
 	// atomically replace it anyway and various other bits of the system depend on being able to find the
 	// .json file to know the stack currently exists (see https://github.com/pulumi/pulumi/issues/9033 for
 	// context).
-	filePlain := strings.TrimSuffix(file, ".gz")
-	fileGzip := filePlain + ".gz"
+	filePlain := stripCompressionExt(file)
+	fileGzip := filePlain + encoding.GZIPExt
+	fileZstd := filePlain + encoding.ZSTDExt
+
 	// We need to make sure that an out of date state file doesn't exist so we
 	// only keep the file of the type we are working with.
-	bckGzip := backupTarget(ctx, b.bucket, fileGzip, b.gzip)
-	bckPlain := backupTarget(ctx, b.bucket, filePlain, !b.gzip)
-	if b.gzip {
-		backupFile = bckGzip
-	} else {
+	bckPlain := backupTarget(ctx, b.bucket, filePlain, b.compression == encoding.CompressionNone)
+	bckGzip := backupTarget(ctx, b.bucket, fileGzip, b.compression == encoding.CompressionGzip)
+	bckZstd := backupTarget(ctx, b.bucket, fileZstd, b.compression == encoding.CompressionZstd)
+	switch b.compression {
+	case encoding.CompressionNone:
 		backupFile = bckPlain
+	case encoding.CompressionGzip:
+		backupFile = bckGzip
+	case encoding.CompressionZstd:
+		backupFile = bckZstd
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
@@ -426,10 +434,10 @@ func (b *diyBackend) backupStack(ctx context.Context, ref *diyBackendReference) 
 	stackFile := filepath.Base(stackPath)
 	ext := filepath.Ext(stackFile)
 	base := strings.TrimSuffix(stackFile, ext)
-	if ext2 := filepath.Ext(base); ext2 != "" && ext == encoding.GZIPExt {
-		// base: stack-name.json, ext: .gz
+	if ext2 := filepath.Ext(base); ext2 != "" && (ext == encoding.GZIPExt || ext == encoding.ZSTDExt) {
+		// base: stack-name.json, ext: .gz|.zst
 		// ->
-		// base: stack-name, ext: .json.gz
+		// base: stack-name, ext: .json.gz|.json.zst
 		ext = ext2 + ext
 		base = strings.TrimSuffix(base, ext2)
 	}
@@ -446,38 +454,44 @@ func (b *diyBackend) stackPath(ctx context.Context, ref *diyBackendReference) st
 	// "dir" option to listBucket is always suffixed with "/". Also means we don't need to save any
 	// results in a slice.
 	plainPath := filepath.ToSlash(ref.StackBasePath()) + ".json"
-	gzipedPath := plainPath + ".gz"
+	gzipPath := plainPath + encoding.GZIPExt
+	zstdPath := plainPath + encoding.ZSTDExt
 
 	bucketIter := b.bucket.List(&blob.ListOptions{
 		Delimiter: "/",
 		Prefix:    plainPath,
 	})
 
-	var plainObj *blob.ListObject
+	type candidate struct {
+		path    string
+		modTime time.Time
+	}
+	var best *candidate
+
 	for {
 		file, err := bucketIter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			// Error fetching the available ojects, assume .json
+			// Error fetching the available objects, assume .json
 			return plainPath
 		}
 
-		// plainObj will always come out first since allObjs is sorted by Key
 		switch file.Key {
-		case plainPath:
-			plainObj = file
-		case gzipedPath:
-			// We have a plain .json file and it was modified after this gzipped one so use it.
-			if plainObj != nil && plainObj.ModTime.After(file.ModTime) {
-				return plainPath
+		case plainPath, gzipPath, zstdPath:
+			if best == nil || !file.ModTime.Before(best.modTime) {
+				// Keep the most recently modified variant.
+				best = &candidate{path: file.Key, modTime: file.ModTime}
 			}
-			// else use the gzipped object
-			return gzipedPath
 		}
 	}
-	// Couldn't find any objects, assume nongzipped path?
+
+	if best != nil {
+		return best.path
+	}
+
+	// Couldn't find any objects, assume noncompressed path.
 	return plainPath
 }
 
@@ -513,7 +527,8 @@ func (b *diyBackend) getHistory(
 
 		// ignore checkpoints
 		if !strings.HasSuffix(filepath, ".history.json") &&
-			!strings.HasSuffix(filepath, ".history.json.gz") {
+			!strings.HasSuffix(filepath, ".history.json.gz") &&
+			!strings.HasSuffix(filepath, ".history.json.zst") {
 			continue
 		}
 
@@ -544,10 +559,7 @@ func (b *diyBackend) getHistory(
 		if err != nil {
 			return nil, fmt.Errorf("reading history file %s: %w", filepath, err)
 		}
-		m := encoding.JSON
-		if encoding.IsCompressed(b) {
-			m = encoding.Gzip(m)
-		}
+		m := encoding.Compress(encoding.JSON, encoding.DetectCompression(b))
 		err = m.Unmarshal(b, &update)
 		if err != nil {
 			return nil, fmt.Errorf("reading history file %s: %w", filepath, err)
@@ -579,7 +591,7 @@ func (b *diyBackend) renameHistory(ctx context.Context, oldName, newName *diyBac
 		fileName := objectName(file)
 		oldBlob := path.Join(oldHistory, fileName)
 
-		// The filename format is <stack-name>-<timestamp>.[checkpoint|history].json[.gz], we need to change
+		// The filename format is <stack-name>-<timestamp>.[checkpoint|history].json[.gz|.zst], we need to change
 		// the stack name part but retain the other parts. If we find files that don't match this format
 		// ignore them.
 		dashIndex := strings.LastIndex(fileName, "-")
@@ -611,11 +623,8 @@ func (b *diyBackend) addToHistory(ctx context.Context, ref *diyBackendReference,
 	// Prefix for the update and checkpoint files.
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", ref.name, time.Now().UnixNano()))
 
-	m, ext := encoding.JSON, "json"
-	if b.gzip {
-		m = encoding.Gzip(m)
-		ext += ".gz"
-	}
+	m := encoding.Compress(encoding.JSON, b.compression)
+	ext := "json" + b.compression.Ext()
 
 	// Save the history file.
 	byts, err := m.Marshal(&update)

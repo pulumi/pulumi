@@ -31,9 +31,6 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
-      # codegen tests are not the fastest, but we want to run all
-      # tests daily
-      test-codegen: true
       test-version-sets: 'all'
       integration-test-platforms: ubuntu-latest
       acceptance-test-platforms: 'macos-latest windows-latest'
@@ -43,7 +40,6 @@ jobs:
       # data on every merge to main, so getting it in the daily cro
       # job is not important.
       enable-coverage: false
-      enable-journaling: false
     secrets: inherit
 
   performance-gate:

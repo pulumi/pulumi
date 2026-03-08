@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -42,7 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -65,7 +66,6 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			" - the current project\n" +
 			" - the current stack\n" +
 			" - the current backend\n",
-		Args: cmdutil.MaximumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
@@ -76,6 +76,8 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newAboutEnvCmd())
 
@@ -138,7 +140,7 @@ func getSummaryAbout(
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			addError(err, "Failed to create plugin context")
 		} else {
@@ -219,7 +221,7 @@ func (summary *summaryAbout) Print() {
 	if summary.Backend != nil {
 		fmt.Println(summary.Backend)
 	}
-	formatEnvironmentVariables(declared.Variables())
+	formatEnvironmentVariables(env.ConfiguredVariables())
 	if summary.Dependencies != nil {
 		fmt.Println(formatProgramDependenciesAbout(summary.Dependencies))
 	}
@@ -263,7 +265,7 @@ func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main str
 }
 
 func formatPlugins(p []pluginAbout) string {
-	rows := []cmdutil.TableRow{}
+	rows := slice.Prealloc[cmdutil.TableRow](len(p))
 	for _, plugin := range p {
 		var version string
 		if plugin.Version != nil {
@@ -482,18 +484,16 @@ type programDependencyAbout struct {
 	Version string `json:"version"`
 }
 
-func formatEnvironmentVariables(vars []declared.Var) {
+func formatEnvironmentVariables(vars map[string]string) {
 	table := cmdutil.Table{
 		Headers: []string{"Name", "Value"},
 		Rows:    []cmdutil.TableRow{},
 	}
 
-	for _, v := range vars {
-		if _, present := v.Value.Underlying(); present {
-			table.Rows = append(table.Rows, cmdutil.TableRow{
-				Columns: []string{v.Name(), v.Value.String()},
-			})
-		}
+	for k, v := range vars {
+		table.Rows = append(table.Rows, cmdutil.TableRow{
+			Columns: []string{k, v},
+		})
 	}
 
 	if len(table.Rows) > 0 {
@@ -610,7 +610,7 @@ func (runtime projectRuntimeAbout) String() string {
 // getProjectPlugins.
 func getProjectPluginsSilently(
 	ctx *plugin.Context, proj *workspace.Project, pwd, main string,
-) ([]workspace.PluginSpec, error) {
+) ([]workspace.PluginDescriptor, error) {
 	_, w, err := os.Pipe()
 	if err != nil {
 		return nil, err

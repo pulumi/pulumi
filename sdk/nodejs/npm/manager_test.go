@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/blang/semver"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
@@ -200,6 +201,29 @@ func TestBunPackNonExistentPackageJSON(t *testing.T) {
 	require.ErrorAs(t, err, &exitErr)
 	assert.NotZero(t, exitErr.ExitCode())
 	require.Contains(t, stderr.String(), errorMessage)
+}
+
+//nolint:paralleltest // chdir
+func TestManagerVersion(t *testing.T) {
+	for _, pmType := range []PackageManagerType{
+		NpmPackageManager,
+		YarnPackageManager,
+		PnpmPackageManager,
+		BunPackageManager,
+	} {
+		t.Run(string(pmType), func(t *testing.T) {
+			//nolint:paralleltest // chdir
+			dir := t.TempDir()
+			t.Chdir(dir)
+
+			pm, err := ResolvePackageManager(pmType, dir)
+			require.NoError(t, err)
+
+			version, err := pm.Version()
+			require.NoError(t, err)
+			require.NotEqual(t, version, semver.Version{})
+		})
+	}
 }
 
 // writeLockFile writes a mock lockfile for the selected package manager

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // hostServer is the server side of the host RPC machinery.
@@ -43,7 +45,7 @@ type hostServer struct {
 }
 
 // newHostServer creates a new host server wired up to the given host and context.
-func newHostServer(host Host, ctx *Context) (*hostServer, error) {
+func newHostServer(host Host, ctx *Context, newLoader NewLoaderFunc) (*hostServer, error) {
 	// New up an engine RPC server.
 	engine := &hostServer{
 		host:   host,
@@ -56,9 +58,12 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 		Cancel: engine.cancel,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterEngineServer(srv, engine)
+			if newLoader != nil {
+				codegenrpc.RegisterLoaderServer(srv, newLoader(host))
+			}
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
+		Options: rpcutil.TracingServerInterceptorOptions(ctx.tracingSpan),
 	})
 	if err != nil {
 		return nil, err
@@ -147,4 +152,11 @@ func (eng *hostServer) StartDebugging(ctx context.Context,
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (eng *hostServer) RequirePulumiVersion(ctx context.Context,
+	req *pulumirpc.RequirePulumiVersionRequest,
+) (*pulumirpc.RequirePulumiVersionResponse, error) {
+	return &pulumirpc.RequirePulumiVersionResponse{},
+		ValidatePulumiVersionRange(req.PulumiVersionRange, version.Version)
 }

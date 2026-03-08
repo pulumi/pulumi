@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,14 +70,19 @@ func generateAndWriteRepro(
 	planSpec *PlanSpec,
 ) string {
 	reproTest := GenerateReproTest(t, stackSpec, snapSpec, programSpec, providerSpec, planSpec)
-	reproFile, reproErr := writeReproTest(reproTest)
 
 	var reproMessage string
-	if reproErr != nil {
-		reproMessage = fmt.Sprintf("Error writing reproduction test case:\n\n%v", reproErr)
+	if os.Getenv("CI") != "" {
+		reproMessage = "Full test case:\n\n" + reproTest + "\n\n"
 	} else {
-		reproMessage = "Reproduction test case was written to " + reproFile
+		reproFile, reproErr := writeReproTest(reproTest)
+		if reproErr != nil {
+			reproMessage = fmt.Sprintf("Error writing reproduction test case:\n\n%v", reproErr)
+		} else {
+			reproMessage = "Reproduction test case was written to " + reproFile
+		}
 	}
+
 	return reproMessage
 }
 
@@ -91,6 +96,12 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 		progSpec := GeneratedProgramSpec(snapSpec, fo.StackSpecOptions, fo.ProgramSpecOptions).Draw(t, "ProgramSpec")
 		provSpec := GeneratedProviderSpec(progSpec, fo.ProviderSpecOptions).Draw(t, "ProviderSpec")
 		planSpec := GeneratedPlanSpec(snapSpec, fo.PlanSpecOptions).Draw(t, "PlanSpec")
+
+		if fo.SnapshotSpecOptions.ExclusionRules.ShouldExclude(snapSpec, progSpec, provSpec, planSpec) {
+			// If the generated snapshot matches an exclusion rule, we skip this test case.
+			t.Skip("snapshot matches exclusion rule")
+			return
+		}
 
 		inSnap := snapSpec.AsSnapshot()
 		require.NoError(t, inSnap.VerifyIntegrity(), "initial snapshot is not valid")
@@ -151,6 +162,10 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 			}
 
 			if err != nil && strings.Contains(err.Error(), "actual and expected resources differ") {
+				failWithError(err)
+			}
+
+			if err != nil && strings.Contains(err.Error(), "panic") {
 				failWithError(err)
 			}
 

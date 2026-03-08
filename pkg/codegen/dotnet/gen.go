@@ -859,12 +859,13 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 			getType = "Double"
 		}
 
-		envVars := fmt.Sprintf("%q", dv.Environment[0])
+		var envVars strings.Builder
+		envVars.WriteString(fmt.Sprintf("%q", dv.Environment[0]))
 		for _, e := range dv.Environment[1:] {
-			envVars += fmt.Sprintf(", %q", e)
+			envVars.WriteString(fmt.Sprintf(", %q", e))
 		}
 
-		getEnv := fmt.Sprintf("Utilities.GetEnv%s(%s)", getType, envVars)
+		getEnv := fmt.Sprintf("Utilities.GetEnv%s(%s)", getType, envVars.String())
 		if val != "" {
 			val = fmt.Sprintf("%s ?? %s", getEnv, val)
 		} else {
@@ -1634,8 +1635,13 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 			fmt.Fprintf(w, "        public static Output%s Invoke(%sInvokeOptions? options = null)\n",
 				typeParamOrEmpty(typeParameter), outputArgsParamDef)
 		}
-		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.%s%s(\"%s\", %s, options.WithDefaults());\n",
+
+		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.%s%s(\"%s\", %s, options.WithDefaults()",
 			invokeCall, typeParamOrEmpty(typeParameter), fun.Token, outputArgsParamRef)
+		if mod.parameterization != nil {
+			fmt.Fprint(w, ", Utilities.PackageParameterization()")
+		}
+		fmt.Fprint(w, ");\n")
 	} else {
 		fmt.Fprintf(w, "        public static Output%s Invoke(", typeParamOrEmpty(typeParameter))
 		for _, prop := range fun.Inputs.Properties {
@@ -1665,8 +1671,12 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 			}
 		}
 		fmt.Fprint(w, "            var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());\n")
-		fmt.Fprintf(w, "            return global::Pulumi.Deployment.Instance.%s%s(\"%s\", args, invokeOptions.WithDefaults());\n",
+		fmt.Fprintf(w, "            return global::Pulumi.Deployment.Instance.%s%s(\"%s\", args, invokeOptions.WithDefaults()",
 			invokeCall, typeParamOrEmpty(typeParameter), fun.Token)
+		if mod.parameterization != nil {
+			fmt.Fprint(w, ", Utilities.PackageParameterization()")
+		}
+		fmt.Fprint(w, ");\n")
 		fmt.Fprint(w, "        }\n")
 	}
 
@@ -2675,7 +2685,7 @@ func GeneratePackage(
 	files := codegen.Fs{}
 
 	files.Add(".gitattributes", codegen.GenGitAttributesFile())
-	files.Add(".gitingore", genGitignoreFile())
+	files.Add(".gitignore", genGitignoreFile())
 
 	for p, f := range extraFiles {
 		files.Add(p, f)

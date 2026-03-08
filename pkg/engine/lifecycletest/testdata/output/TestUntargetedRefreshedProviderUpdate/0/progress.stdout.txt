@@ -1,7 +1,7 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
-<{%fg 5%}>Loading policy packs...<{%reset%}>
-
+Loading policy packs...: starting
+Loading policy packs...: done
 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_1_0_0 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default_1_0_0 <{%fg 2%}>created<{%reset%}> 

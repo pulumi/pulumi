@@ -15,11 +15,12 @@
 package secrets
 
 import (
+	"context"
 	"encoding/json"
 )
 
 // Provider allows for the creation of secrets managers based on a well-known type name.
 type Provider interface {
 	// OfType returns a secrets manager for the given type, initialized with its previous state.
-	OfType(ty string, state json.RawMessage) (Manager, error)
+	OfType(ctx context.Context, ty string, state json.RawMessage) (Manager, error)
 }

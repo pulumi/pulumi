@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -61,7 +62,8 @@ type publishPackageArgs struct {
 type packagePublishCmd struct {
 	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
 	extractSchema func(
-		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
+		registry registry.Registry, e env.Env, concurrency int,
 	) (*schema.PackageSpec, *workspace.PackageSpec, error)
 }
 
@@ -70,8 +72,7 @@ func newPackagePublishCmd() *cobra.Command {
 	var pkgPublishCmd packagePublishCmd
 
 	cmd := &cobra.Command{
-		Use:   "publish <provider|schema> --readme <path> [--] [provider-parameter...]",
-		Args:  cmdutil.MinimumNArgs(1),
+		Use:   "publish",
 		Short: "Publish a package to the Private Registry",
 		Long: "Publish a package to the Private Registry.\n\n" +
 			"This command publishes a package to the Private Registry. The package can be a provider " +
@@ -98,6 +99,19 @@ func newPackagePublishCmd() *cobra.Command {
 			return pkgPublishCmd.Run(ctx, args, cliArgs[0], parameters)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "provider", Usage: "<provider|schema>"},
+			{Name: "provider-parameter"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "publish <provider|schema> [flags] [--] [provider-parameter]..."
 
 	cmd.Flags().StringVar(
 		&args.source, "source", defaultPackageSource,
@@ -145,13 +159,14 @@ func (cmd *packagePublishCmd) Run(
 		return err
 	}
 	sink := cmdutil.Diag()
-	pctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, wd, nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, wd, nil, false, nil, schema.NewLoaderServerFromHost)
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(pctx)
 
-	pkg, _, err := cmd.extractSchema(pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry())
+	pkg, _, err := cmd.extractSchema(pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(),
+		env.Global(), 0 /* unbounded concurrency */)
 	if err != nil {
 		return fmt.Errorf("failed to get schema: %w", err)
 	}
@@ -314,7 +329,7 @@ func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string)
 	}
 
 	// Otherwise, try to retrieve the readme from the installed plugin.
-	pluginSpec, err := workspace.NewPluginSpec(ctx, packageSrc, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(ctx, packageSrc, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create plugin spec: %w", err)
 	}

@@ -22,12 +22,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/graph"
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/spf13/cobra"
 )
 
@@ -58,8 +61,7 @@ func newStackGraphCmd() *cobra.Command {
 	var cmdOpts graphCommandOptions
 
 	cmd := &cobra.Command{
-		Use:   "graph [filename]",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "graph",
 		Short: "Export a stack's dependency graph to a file",
 		Long: "Export a stack's dependency graph to a file.\n" +
 			"\n" +
@@ -112,6 +114,14 @@ func newStackGraphCmd() *cobra.Command {
 			return file.Close()
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "filename"},
+		},
+		Required: 1,
+	})
+
 	cmd.PersistentFlags().StringVarP(
 		&cmdOpts.stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVar(&cmdOpts.ignoreParentEdges, "ignore-parent-edges", false,
@@ -236,8 +246,9 @@ type dependencyGraph struct {
 // Roots are edges that point to the root set of our graph. In our case,
 // for simplicity, we define the root set of our dependency graph to be everything.
 func (dg *dependencyGraph) Roots() []graph.Edge {
-	rootEdges := []graph.Edge{}
-	for _, vertex := range dg.vertices {
+	rootEdges := slice.Prealloc[graph.Edge](len(dg.vertices))
+	for _, urn := range maputil.SortedKeys(dg.vertices) {
+		vertex := dg.vertices[urn]
 		edge := &dependencyEdge{
 			to:   vertex,
 			from: nil,
@@ -266,13 +277,14 @@ func makeDependencyGraph(snapshot *deploy.Snapshot, opts *graphCommandOptions) *
 		dg.vertices[resource.URN] = vertex
 	}
 
-	for _, vertex := range dg.vertices {
+	for _, res := range snapshot.Resources {
+		vertex := dg.vertices[res.URN]
 		if !opts.ignoreDependencyEdges {
 			// If we have per-property dependency information, annotate the dependency edges
 			// we generate with the names of the properties associated with each dependency.
 			depBlame := make(map[resource.URN][]string)
-			for k, deps := range vertex.resource.PropertyDependencies {
-				for _, dep := range deps {
+			for _, k := range maputil.SortedKeys(vertex.resource.PropertyDependencies) {
+				for _, dep := range vertex.resource.PropertyDependencies[k] {
 					depBlame[dep] = append(depBlame[dep], string(k))
 				}
 			}

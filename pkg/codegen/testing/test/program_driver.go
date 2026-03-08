@@ -162,18 +162,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Webserver",
 	},
 	{
-		Directory:   "simple-range",
-		Description: "Simple range as int expression translation",
-	},
-	{
-		Directory:   "azure-native",
-		Description: "Azure Native",
-		SkipCompile: codegen.NewStringSet(TestGo, TestDotnet),
-		// Blocked on go:
-		//   TODO[pulumi/pulumi#8073]
-		//   TODO[pulumi/pulumi#8074]
-	},
-	{
 		Directory:   "azure-native-v2-eventgrid",
 		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
 		// Specifically use a simplified azure-native v2.x schema when testing this program
@@ -184,13 +172,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "azure-sa",
 		Description: "Azure SA",
-	},
-	{
-		Directory:   "string-enum-union-list",
-		Description: "Contains resource which has a property of type List<Union<String, Enum>>",
-		// skipping compiling on Go because it doesn't know to handle unions in lists
-		// and instead generates pulumi.StringArray
-		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
 		Directory:   "using-object-as-input-for-any",
@@ -215,10 +196,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "kubernetes-template-quoted",
 		Description: "K8s Template with quoted string property keys to ensure that resource binding works here",
-	},
-	{
-		Directory:   "random-pet",
-		Description: "Random Pet",
 	},
 	{
 		Directory:   "aws-secret",
@@ -252,20 +229,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
 	},
 	{
-		Directory:   "typed-enum",
-		Description: "Supply strongly typed enums",
-		Skip:        codegen.NewStringSet(TestGo),
-	},
-	{
-		Directory:   "pulumi-stack-reference",
-		Description: "StackReference as resource",
-	},
-	{
-		Directory:   "python-resource-names",
-		Description: "Repro for #9357",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
 		Directory:   "logical-name",
 		Description: "Logical names",
 	},
@@ -274,11 +237,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Lambdas",
 		// We have special testing for this case because lambda is a python keyword.
 		Skip: codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
-		Directory:   "basic-unions",
-		Description: "Tests program generation of fields of type union",
-		SkipCompile: allProgLanguages, // because the schema is synthetic
 	},
 	{
 		Directory:   "deferred-outputs",
@@ -311,25 +269,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
-		Directory:   "entries-function",
-		Description: "Using the entries function",
-		// go and dotnet do fully not support GenForExpression yet
-		// Todo: https://github.com/pulumi/pulumi/issues/12606
-		SkipCompile: allProgLanguages.Except(TestNodeJS).Except(TestPython),
-	},
-	{
-		Directory:   "retain-on-delete",
-		Description: "Generate RetainOnDelete option",
-	},
-	{
-		Directory:   "depends-on-array",
-		Description: "Using DependsOn resource option with an array of resources",
-	},
-	{
-		Directory:   "multiline-string",
-		Description: "Multiline string literals",
-	},
-	{
 		Directory:   "config-variables",
 		Description: "Basic program with a bunch of config variables",
 		// TODO[https://github.com/pulumi/pulumi/issues/14957] - object config variables are broken here
@@ -358,18 +297,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages,
 	},
 	{
-		Directory:   "output-literals",
-		Description: "Tests that we can return various literal values via stack outputs",
-	},
-	{
 		Directory:   "dynamic-entries",
 		Description: "Testing iteration of dynamic entries in TypeScript",
 		Skip:        allProgLanguages.Except(TestNodeJS),
 		SkipCompile: allProgLanguages,
-	},
-	{
-		Directory:   "single-or-none",
-		Description: "Tests using the singleOrNone function",
 	},
 	{
 		Directory:   "simple-splat",
@@ -440,10 +371,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except(TestDotnet),
 	},
 	{
-		Directory:   "empty-list-property",
-		Description: "Tests compiling empty list expressions of object properties",
-	},
-	{
 		Directory:   "python-regress-14037",
 		Description: "Regression test for rewriting qoutes in python",
 		Skip:        allProgLanguages.Except(TestPython),
@@ -472,21 +399,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Directory:   transpiled("awsx-fargate"),
 		Description: "AWSx Fargate",
 		Skip:        codegen.NewStringSet(TestDotnet, TestNodeJS, TestGo),
-	},
-	{
-		Directory:   transpiled("azure-app-service"),
-		Description: "Azure App Service",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet),
-	},
-	{
-		Directory:   transpiled("azure-container-apps"),
-		Description: "Azure Container Apps",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet, TestPython),
-	},
-	{
-		Directory:   transpiled("azure-static-website"),
-		Description: "Azure static website",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet, TestPython),
 	},
 	{
 		Directory:   transpiled("cue-eks"),
@@ -574,6 +486,20 @@ type ProgramCodegenOptions struct {
 	// version prefixed by an operator (i.e. " v5.11.0", ==5.11.0")
 	ExpectedVersion map[string]PkgVersionInfo
 	DependencyFile  string
+
+	// The directory where generated outputs should be put. When unspecified, it defaults to
+	// "../testing/test/testdata/${TestCases[i].Directory}-pp/${Language}".
+	ResultDirectory string
+	// The directory where inputs will be evaluated relative to. When unspecified, it defaults to
+	// "../testing/test/testdata/${TestCases[i].Directory}-pp".
+	InputDirectory string
+}
+
+func (pco ProgramCodegenOptions) inputDirectory() string {
+	if pco.InputDirectory == "" {
+		return testdataPath
+	}
+	return pco.InputDirectory
 }
 
 type PkgVersionInfo struct {
@@ -617,15 +543,20 @@ func TestProgramCodegen(
 
 			expectNYIDiags := tt.ExpectNYIDiags.Has(testcase.Language)
 
-			testDir := filepath.Join(testdataPath, tt.Directory+"-pp")
-			pclFile := filepath.Join(testDir, tt.Directory+".pp")
+			testInputDir := filepath.Join(testcase.inputDirectory(), tt.Directory+"-pp")
+			pclFile := filepath.Join(testInputDir, tt.Directory+".pp")
 			if strings.HasPrefix(tt.Directory, transpiledExamplesDir) {
-				pclFile = filepath.Join(testDir, filepath.Base(tt.Directory)+".pp")
+				pclFile = filepath.Join(testInputDir, filepath.Base(tt.Directory)+".pp")
 			}
-			testDir = filepath.Join(testDir, testcase.Language)
-			err = os.MkdirAll(testDir, 0o700)
-			if err != nil && !os.IsExist(err) {
-				t.Fatalf("Failed to create %q: %s", testDir, err)
+			var testOutDir string
+			if testcase.ResultDirectory != "" {
+				testOutDir = filepath.Join(testcase.ResultDirectory, tt.Directory+"-pp")
+			} else {
+				testOutDir = filepath.Join(testdataPath, tt.Directory+"-pp", testcase.Language)
+			}
+			err = os.MkdirAll(testOutDir, 0o700)
+			if err != nil {
+				t.Fatalf("Failed to create %q: %s", testOutDir, err)
 			}
 
 			contents, err := os.ReadFile(pclFile)
@@ -633,9 +564,9 @@ func TestProgramCodegen(
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
 
-			expectedFile := filepath.Join(testDir, tt.Directory+"."+testcase.Extension)
+			expectedFile := filepath.Join(testOutDir, tt.Directory+"."+testcase.Extension)
 			if strings.HasPrefix(tt.Directory, transpiledExamplesDir) {
-				expectedFile = filepath.Join(testDir, filepath.Base(tt.Directory)+"."+testcase.Extension)
+				expectedFile = filepath.Join(testOutDir, filepath.Base(tt.Directory)+"."+testcase.Extension)
 			}
 			expected, err := os.ReadFile(expectedFile)
 			if err != nil && !pulumiAccept {
@@ -658,14 +589,13 @@ func TestProgramCodegen(
 			if tt.PluginHost != nil {
 				pluginHost = tt.PluginHost
 			} else {
-				pluginHost = utils.NewHost(testdataPath)
+				pluginHost = utils.NewHost(testcase.inputDirectory())
 			}
 
 			opts := append(tt.BindOptions, pcl.PluginHost(pluginHost))
-			rootProgramPath := filepath.Join(testdataPath, tt.Directory+"-pp")
-			absoluteProgramPath, err := filepath.Abs(rootProgramPath)
+			absoluteProgramPath, err := filepath.Abs(testInputDir)
 			if err != nil {
-				t.Fatalf("failed to bind program: unable to find the absolute path of %v", rootProgramPath)
+				t.Fatalf("failed to bind program: unable to find the absolute path of %v", testInputDir)
 			}
 			opts = append(opts, pcl.DirPath(absoluteProgramPath))
 			opts = append(opts, pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
@@ -689,13 +619,13 @@ func TestProgramCodegen(
 					Name:    "test",
 					Runtime: workspace.NewProjectRuntimeInfo(testcase.Language, nil),
 				}
-				err = testcase.GenProject(testDir, project, program, nil /*localDependencies*/)
+				err = testcase.GenProject(testOutDir, project, program, nil /*localDependencies*/)
 				require.NoError(t, err)
 
-				depFilePath := filepath.Join(testDir, testcase.DependencyFile)
-				outfilePath := filepath.Join(testDir, testcase.OutputFile)
+				depFilePath := filepath.Join(testOutDir, testcase.DependencyFile)
+				outfilePath := filepath.Join(testOutDir, testcase.OutputFile)
 				CheckVersion(t, tt.Directory, depFilePath, testcase.ExpectedVersion)
-				GenProjectCleanUp(t, testDir, depFilePath, outfilePath)
+				GenProjectCleanUp(t, testOutDir, depFilePath, outfilePath)
 			}
 			files, diags, err = testcase.GenProgram(program)
 			require.NoError(t, err)
@@ -723,7 +653,7 @@ func TestProgramCodegen(
 				// generate the rest of the files
 				for fileName, content := range files {
 					if fileName != testcase.OutputFile {
-						outputPath := filepath.Join(testDir, fileName)
+						outputPath := filepath.Join(testOutDir, fileName)
 						err := os.WriteFile(outputPath, content, 0o600)
 						require.NoError(t, err, "Failed to write file %s", outputPath)
 					}
@@ -733,7 +663,7 @@ func TestProgramCodegen(
 				// assert that the content is correct for the rest of the files
 				for fileName, content := range files {
 					if fileName != testcase.OutputFile {
-						outputPath := filepath.Join(testDir, fileName)
+						outputPath := filepath.Join(testOutDir, fileName)
 						outputContent, err := os.ReadFile(outputPath)
 						require.NoError(t, err)
 						assert.Equal(t, string(outputContent), string(content))

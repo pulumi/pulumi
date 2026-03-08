@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,9 @@ service Engine {
     // StartDebugging indicates to the engine that the program has started under a debugger, and the engine
     // should notify the user of how to connect to the debugger.
     rpc StartDebugging(StartDebuggingRequest) returns (google.protobuf.Empty) {}
+
+    // RequirePulumiVersion checks that the version of the engine satisfies the passed in range.
+    rpc RequirePulumiVersion(RequirePulumiVersionRequest) returns (RequirePulumiVersionResponse) {}
 }
 
 // LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
@@ -94,4 +97,17 @@ message StartDebuggingRequest {
     google.protobuf.Struct config = 1;
     // the string to display to the user with instructions on how to connect to the debugger.
     string message = 2;
+}
+
+message RequirePulumiVersionRequest {
+    // A version range to check against the engine (CLI) version. If the version is not compatible with the specified
+    // range, an error is returned. The supported syntax for ranges is that of
+    // https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
+    // together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
+    // Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
+    string pulumi_version_range = 1;
+}
+
+message RequirePulumiVersionResponse {
+    // empty
 }

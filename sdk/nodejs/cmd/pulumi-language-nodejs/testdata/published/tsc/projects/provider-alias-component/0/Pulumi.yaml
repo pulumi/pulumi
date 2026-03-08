@@ -1,0 +1,5 @@
+name: provider-alias-component
+runtime:
+  name: nodejs
+  options:
+    typescript: false

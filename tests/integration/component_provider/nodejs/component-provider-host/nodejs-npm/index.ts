@@ -22,7 +22,8 @@ let comp = new provider.MyComponent("comp", {
         nestedComplexType: {
             aNumber: 9,
         }
-    }
+    },
+    enumInput: provider.MyEnum.B,
 }, { parent: parent })
 
 export const urn = comp.urn;
@@ -32,3 +33,4 @@ export const aBooleanOutput = comp.aBooleanOutput;
 export const aComplexTypeOutput = comp.aComplexTypeOutput;
 export const aResourceOutputUrn = comp.aResourceOutput.urn;
 export const aString = comp.aString;
+export const enumOutput = comp.enumOutput;

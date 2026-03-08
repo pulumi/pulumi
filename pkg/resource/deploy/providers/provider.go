@@ -105,7 +105,8 @@ func (p ProviderRequest) PluginChecksums() map[string][]byte {
 // If a version is not provided, "default" is returned. Otherwise, Name returns a name starting with "default" and
 // followed by a QName-legal representation of the semantic version of the requested provider.
 func (p ProviderRequest) DefaultName() string {
-	base := "default"
+	var base strings.Builder
+	base.WriteString("default")
 
 	var v *semver.Version
 	if p.parameterization != nil {
@@ -117,23 +118,24 @@ func (p ProviderRequest) DefaultName() string {
 	if v != nil {
 		// QNames are forbidden to contain dashes, so we construct a string here using the semantic
 		// version's component parts.
-		base += fmt.Sprintf("_%d_%d_%d", v.Major, v.Minor, v.Patch)
+		base.WriteString(fmt.Sprintf("_%d_%d_%d", v.Major, v.Minor, v.Patch))
 		for _, pre := range v.Pre {
-			base += "_" + pre.String()
+			base.WriteString("_" + pre.String())
 		}
 		for _, build := range v.Build {
-			base += "_" + build
+			base.WriteString("_" + build)
 		}
 	}
 
 	if url := p.pluginDownloadURL; url != "" {
-		base += "_" + tokens.IntoQName(url).String()
+		base.WriteString("_" + tokens.IntoQName(url).String())
 	}
 
 	// This thing that we generated must be a QName, the engine doesn't actually care but it probably helps
 	// down the line if we keep these names simple.
-	contract.Assertf(tokens.IsQName(base), "generated provider name %q is not a QName", base)
-	return base
+	result := base.String()
+	contract.Assertf(tokens.IsQName(result), "generated provider name %q is not a QName", result)
+	return result
 }
 
 // String returns a string representation of this request. This string is suitable for use as a hash key.

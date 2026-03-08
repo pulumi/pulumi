@@ -15,11 +15,16 @@
 package pcl
 
 import (
+	"bytes"
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // ResourceOptions represents a resource instantiation's options.
@@ -27,6 +32,8 @@ type ResourceOptions struct {
 	// The definition of the resource options.
 	Definition *model.Block
 
+	// An experession that evaluates to a list of aliases for the resource.
+	Aliases model.Expression
 	// An expression to range over when instantiating the resource.
 	Range model.Expression
 	// The resource's parent, if any.
@@ -46,8 +53,16 @@ type ResourceOptions struct {
 	IgnoreChanges model.Expression
 	// A list of properties where the diff is not displayed.
 	HideDiffs model.Expression
+	// A list of properties that should trigger resource replacement when changed.
+	ReplaceOnChanges model.Expression
+	// Whether the old resource should be deleted before creating the new one during replacement.
+	DeleteBeforeReplace model.Expression
+	// A list of output properties that should be treated as secret, in addition to ones detected from schema.
+	AdditionalSecretOutputs model.Expression
 	// The version of the provider for this resource.
 	Version model.Expression
+	// CustomTimeouts overrides default timeouts for resource CRUD operations.
+	CustomTimeouts model.Expression
 	// The plugin download URL for this resource.
 	PluginDownloadURL model.Expression
 	// If set, the provider's Delete method will not be called for this resource if the specified resource is being
@@ -59,6 +74,8 @@ type ResourceOptions struct {
 	ImportID model.Expression
 	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
 	ReplacementTrigger model.Expression
+	// Environment variable mappings for provider resources.
+	EnvVarMappings model.Expression
 }
 
 // Resource represents a resource instantiation inside of a program or component.
@@ -114,6 +131,13 @@ func (r *Resource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagn
 	return model.VisitExpressions(r.Definition, pre, post)
 }
 
+func (r *Resource) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := context.Variables[r.Name()]; hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
+}
+
 func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	if r == nil || r.VariableType == nil {
 		return model.DynamicType.Traverse(traverser)
@@ -160,6 +184,31 @@ func (*ResourceProperty) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
+func (p *ResourceProperty) Value(*hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	var buffer bytes.Buffer
+	for _, t := range p.Path {
+		var err error
+		switch t := t.(type) {
+		case hcl.TraverseRoot:
+			_, err = fmt.Fprint(&buffer, t.Name)
+		case hcl.TraverseAttr:
+			_, err = fmt.Fprintf(&buffer, ".%s", t.Name)
+		case hcl.TraverseIndex:
+			switch t.Key.Type() {
+			case cty.String:
+				_, err = fmt.Fprintf(&buffer, "[%s]", t.Key.AsString())
+			case cty.Number:
+				idx, _ := t.Key.AsBigFloat().Int64()
+				_, err = fmt.Fprintf(&buffer, "[%d]", idx)
+			default:
+				contract.Failf("unexpected traversal index of type %v", t.Key.Type())
+			}
+		}
+		contract.IgnoreError(err)
+	}
+	return cty.StringVal(buffer.String()), nil
+}
+
 func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	propertyType, diagnostics := p.PropertyType.Traverse(traverser)
 	return &ResourceProperty{
@@ -170,4 +219,71 @@ func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable,
 
 func (p *ResourceProperty) Type() model.Type {
 	return ResourcePropertyType
+}
+
+// NeedsVersionResourceOption returns false if the version resource matches the version in the schema.
+//
+// Languages that bake versions into their generated schemas can use NeedsVersionResourceOption to omit redundant
+// version information.
+func NeedsVersionResourceOption(version model.Expression, schema *schema.Resource) bool {
+	if version == nil {
+		return false
+	}
+
+	if schema == nil {
+		return true
+	}
+
+	v := schema.PackageReference.Version()
+	if v == nil {
+		return true
+	}
+
+	e, ok := version.(*model.TemplateExpression)
+	contract.Assertf(ok, "Expected a model.TemplateExpression, found %T", version)
+	if len(e.Parts) != 1 {
+		return true
+	}
+
+	optV, ok := e.Parts[0].(*model.LiteralValueExpression)
+	contract.Assertf(ok, "Expected a version literal, found %T", optV)
+	if !optV.Value.Type().Equals(cty.String) || !optV.Value.IsKnown() || optV.Value.IsNull() {
+		return true
+	}
+
+	return v.String() != optV.Value.AsString()
+}
+
+func NeedsPluginDownloadURLResourceOption(pluginDownloadURL model.Expression, schema *schema.Resource) bool {
+	if pluginDownloadURL == nil {
+		return false
+	}
+
+	if schema == nil {
+		return true
+	}
+
+	pkg, err := schema.PackageReference.Definition()
+	if err != nil || pkg == nil {
+		return true
+	}
+
+	schemaURL := pkg.PluginDownloadURL
+	if schemaURL == "" {
+		return true
+	}
+
+	e, ok := pluginDownloadURL.(*model.TemplateExpression)
+	contract.Assertf(ok, "Expected a model.TemplateExpression, found %T", pluginDownloadURL)
+	if len(e.Parts) != 1 {
+		return true
+	}
+
+	optURL, ok := e.Parts[0].(*model.LiteralValueExpression)
+	contract.Assertf(ok, "Expected a pluginDownloadURL literal, found %T", optURL)
+	if !optURL.Value.Type().Equals(cty.String) || !optURL.Value.IsKnown() || optURL.Value.IsNull() {
+		return true
+	}
+
+	return schemaURL != optURL.Value.AsString()
 }

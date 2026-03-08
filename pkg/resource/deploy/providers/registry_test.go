@@ -23,6 +23,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+
 	"github.com/blang/semver"
 
 	"github.com/stretchr/testify/assert"
@@ -39,7 +41,7 @@ import (
 
 type testPluginHost struct {
 	t             *testing.T
-	provider      func(descriptor workspace.PackageDescriptor) (plugin.Provider, error)
+	provider      func(descriptor workspace.PluginDescriptor) (plugin.Provider, error)
 	closeProvider func(provider plugin.Provider) error
 }
 
@@ -53,6 +55,11 @@ func (host *testPluginHost) Close() error {
 
 func (host *testPluginHost) ServerAddr() string {
 	host.t.Fatalf("Host RPC address not available")
+	return ""
+}
+
+func (host *testPluginHost) LoaderAddr() string {
+	host.t.Fatalf("Loader RPC address not available")
 	return ""
 }
 
@@ -78,24 +85,20 @@ func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
 
-func (host *testPluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+func (host *testPluginHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 	return host.provider(descriptor)
-}
-
-func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
-	return host.closeProvider(provider)
 }
 
 func (host *testPluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
 
-func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
 	return nil
 }
 
 func (host *testPluginHost) ResolvePlugin(
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	return nil, nil
 }
@@ -163,9 +166,8 @@ func (prov *testProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (prov *testProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{
-		Name:    "testProvider",
+func (prov *testProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
+	return plugin.PluginInfo{
 		Version: &prov.version,
 	}, nil
 }
@@ -191,7 +193,7 @@ type providerLoader struct {
 func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
 	return &testPluginHost{
 		t: t,
-		provider: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		provider: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
 			var best *providerLoader
 			for _, l := range loaders {
 				if string(l.pkg) != descriptor.Name {
@@ -818,7 +820,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 	loader := newLoader(t, "myplugin", "1.2.3",
 		func(p tokens.Package, v semver.Version) (plugin.Provider, error) {
 			return nil, workspace.NewMissingError(
-				workspace.PluginSpec{
+				workspace.PluginDescriptor{
 					Kind:    apitype.ResourcePlugin,
 					Name:    "myplugin",
 					Version: &version,
@@ -832,7 +834,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		_, err := loadProvider(
 			context.Background(),
 			"myplugin", &version, srv.URL,
-			nil, host, nil /* builtins */)
+			nil, host, nil /* builtins */, nil)
 		assert.ErrorContains(t, err,
 			"no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v1.2.3")
 		assert.Equal(t, 0, count)
@@ -844,7 +846,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		_, err := loadProvider(
 			context.Background(),
 			"myplugin", &version, srv.URL,
-			nil, host, nil /* builtins */)
+			nil, host, nil /* builtins */, nil)
 		assert.ErrorContains(t, err,
 			"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
 		assert.ErrorContains(t, err,
@@ -993,4 +995,273 @@ func TestRegistry(t *testing.T) {
 		r := &Registry{}
 		assert.Nil(t, r.SignalCancellation(context.Background()))
 	})
+}
+
+func TestEnvironmentVariableMappings(t *testing.T) {
+	t.Parallel()
+
+	t.Run("SetAndGet", func(t *testing.T) {
+		t.Parallel()
+
+		inputs := resource.PropertyMap{}
+		mappings := map[string]string{
+			"MY_SPECIAL_VAR": "PROVIDER_VAR",
+			"ANOTHER_VAR":    "OTHER_VAR",
+		}
+
+		SetEnvironmentVariableMappings(inputs, mappings)
+
+		retrieved, err := GetEnvironmentVariableMappings(inputs)
+		require.NoError(t, err)
+		assert.Equal(t, mappings, retrieved)
+	})
+
+	t.Run("GetEmpty", func(t *testing.T) {
+		t.Parallel()
+
+		inputs := resource.PropertyMap{}
+		retrieved, err := GetEnvironmentVariableMappings(inputs)
+		require.NoError(t, err)
+		assert.Nil(t, retrieved)
+	})
+
+	t.Run("GetWithNoInternal", func(t *testing.T) {
+		t.Parallel()
+
+		// Old state without __internal key should return nil
+		inputs := resource.PropertyMap{
+			"version": resource.NewProperty("1.0.0"),
+		}
+		retrieved, err := GetEnvironmentVariableMappings(inputs)
+		require.NoError(t, err)
+		assert.Nil(t, retrieved)
+	})
+
+	t.Run("ErrorWhenInternalNotObject", func(t *testing.T) {
+		t.Parallel()
+
+		// __internal is not an object (it's a string)
+		inputs := resource.PropertyMap{
+			"__internal": resource.NewProperty("not-an-object"),
+		}
+		retrieved, err := GetEnvironmentVariableMappings(inputs)
+		assert.ErrorContains(t, err, "'__internal' must be an object")
+		assert.Nil(t, retrieved)
+	})
+
+	t.Run("ErrorWhenEnvVarMappingsNotObject", func(t *testing.T) {
+		t.Parallel()
+
+		// envVarMappings is not an object (it's a string)
+		inputs := resource.PropertyMap{
+			"__internal": resource.NewProperty(resource.PropertyMap{
+				"envVarMappings": resource.NewProperty("not-an-object"),
+			}),
+		}
+		retrieved, err := GetEnvironmentVariableMappings(inputs)
+		assert.ErrorContains(t, err, "'envVarMappings' must be an object")
+		assert.Nil(t, retrieved)
+	})
+
+	t.Run("ErrorWhenMappingValueNotString", func(t *testing.T) {
+		t.Parallel()
+
+		// A value in envVarMappings is not a string (it's a number)
+		inputs := resource.PropertyMap{
+			"__internal": resource.NewProperty(resource.PropertyMap{
+				"envVarMappings": resource.NewProperty(resource.PropertyMap{
+					"VALID_KEY":   resource.NewProperty("valid-value"),
+					"INVALID_KEY": resource.NewProperty(123.0),
+				}),
+			}),
+		}
+		retrieved, err := GetEnvironmentVariableMappings(inputs)
+		assert.ErrorContains(t, err, "'envVarMappings[INVALID_KEY]' must be a string")
+		assert.Nil(t, retrieved)
+	})
+
+	t.Run("ProviderWithEnvMappings", func(t *testing.T) {
+		t.Parallel()
+
+		// Create provider inputs with env mappings
+		inputs := resource.PropertyMap{}
+		mappings := map[string]string{"SOURCE_VAR": "TARGET_VAR"}
+		SetEnvironmentVariableMappings(inputs, mappings)
+
+		// Create provider state
+		old := newProviderState("pkgA", "test-provider", "id1", false, inputs)
+
+		loaders := []*providerLoader{
+			newSimpleLoader(t, "pkgA", "", nil),
+		}
+		host := newPluginHost(t, loaders)
+
+		r := NewRegistry(host, false, nil)
+		require.NotNil(t, r)
+
+		// Same the provider
+		err := r.Same(context.Background(), old)
+		require.NoError(t, err)
+
+		// Verify provider is registered
+		ref, err := providers.NewReference(old.URN, old.ID)
+		require.NoError(t, err)
+
+		p, ok := r.GetProvider(ref)
+		assert.True(t, ok)
+		require.NotNil(t, p)
+
+		// Verify the mappings can be retrieved from the original inputs
+		retrieved, err := GetEnvironmentVariableMappings(old.Inputs)
+		require.NoError(t, err)
+		assert.Equal(t, mappings, retrieved)
+	})
+
+	t.Run("CheckWithEnvMappings", func(t *testing.T) {
+		t.Parallel()
+
+		loaders := []*providerLoader{
+			newSimpleLoader(t, "testPackage", "", nil),
+		}
+		host := newPluginHost(t, loaders)
+
+		r := NewRegistry(host, false, nil)
+		require.NotNil(t, r)
+
+		typ := providers.MakeProviderType(tokens.Package("testPackage"))
+		urn := resource.NewURN("test", "test", "", typ, "test-provider")
+
+		// Create news with env mappings
+		news := resource.PropertyMap{}
+		mappings := map[string]string{"MY_VAR": "PROVIDER_VAR"}
+		SetEnvironmentVariableMappings(news, mappings)
+
+		// Check should succeed and preserve the mappings
+		check, err := r.Check(context.Background(), plugin.CheckRequest{
+			URN:  urn,
+			Olds: resource.PropertyMap{},
+			News: news,
+		})
+		require.NoError(t, err)
+		assert.Empty(t, check.Failures)
+
+		// The returned properties should contain the mappings
+		retrieved, err := GetEnvironmentVariableMappings(check.Properties)
+		require.NoError(t, err)
+		assert.Equal(t, mappings, retrieved)
+	})
+
+	t.Run("CreateWithEnvMappings", func(t *testing.T) {
+		t.Parallel()
+
+		loaders := []*providerLoader{
+			newSimpleLoader(t, "testPackage", "", nil),
+		}
+		host := newPluginHost(t, loaders)
+
+		r := NewRegistry(host, false, nil)
+		require.NotNil(t, r)
+
+		typ := providers.MakeProviderType(tokens.Package("testPackage"))
+		urn := resource.NewURN("test", "test", "", typ, "test-provider")
+
+		// Create inputs with env mappings
+		inputs := resource.PropertyMap{}
+		mappings := map[string]string{"MY_VAR": "PROVIDER_VAR"}
+		SetEnvironmentVariableMappings(inputs, mappings)
+
+		// Call Check first
+		check, err := r.Check(context.Background(), plugin.CheckRequest{
+			URN:  urn,
+			Olds: resource.PropertyMap{},
+			News: inputs,
+		})
+		require.NoError(t, err)
+
+		create, err := r.Create(context.Background(), plugin.CreateRequest{
+			URN:        urn,
+			Name:       urn.Name(),
+			Type:       urn.Type(),
+			Properties: check.Properties,
+			Timeout:    120,
+		})
+		require.NoError(t, err)
+		assert.NotEqual(t, "", create.ID)
+		assert.Equal(t, resource.StatusOK, create.Status)
+
+		// Verify provider is registered and configured
+		p, ok := r.GetProvider(mustNewReference(urn, create.ID))
+		assert.True(t, ok)
+		assert.True(t, p.(*testProvider).configured)
+	})
+}
+
+// testPluginHostWithEnvCapture is a test host that captures the env passed to Provider()
+type testPluginHostWithEnvCapture struct {
+	testPluginHost
+	capturedEnv env.Env
+}
+
+//nolint:lll
+func (host *testPluginHostWithEnvCapture) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+	host.capturedEnv = e
+	return host.provider(descriptor)
+}
+
+func TestEnvMappingsPassedToHost(t *testing.T) {
+	// Set SOURCE_VAR in the environment so the mapping can be tested
+	t.Setenv("CUSTOM_VAR", "use-this-value")
+
+	// Create a host that captures the environment passed to Provider()
+	customHost := &testPluginHostWithEnvCapture{
+		testPluginHost: testPluginHost{
+			t: t,
+			provider: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+				return &testProvider{
+					pkg:     tokens.Package(descriptor.Name),
+					version: semver.MustParse("1.0.0"),
+					//nolint:lll
+					checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						return news, nil, nil
+					},
+					//nolint:lll
+					diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+						return plugin.DiffResult{}, nil
+					},
+					config: func(inputs resource.PropertyMap) error {
+						return nil
+					},
+				}, nil
+			},
+		},
+	}
+
+	r := NewRegistry(customHost, false, nil)
+	require.NotNil(t, r)
+
+	typ := providers.MakeProviderType(tokens.Package("testPackage"))
+	urn := resource.NewURN("test", "test", "", typ, "test-provider")
+	inputs := resource.PropertyMap{}
+	mappings := map[string]string{"CUSTOM_VAR": "PROVIDER_VAR"}
+	SetEnvironmentVariableMappings(inputs, mappings)
+
+	// Load the provider and pass env to host
+	_, err := r.Check(context.Background(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: resource.PropertyMap{},
+		News: inputs,
+	})
+	require.NoError(t, err)
+
+	// Verify that an env was passed to the host
+	require.NotNil(t, customHost.capturedEnv, "Environment should be passed to host.Provider()")
+
+	store := customHost.capturedEnv.GetStore()
+	require.NotNil(t, store, "Environment should have a store")
+
+	targetValue, ok := store.Raw("PROVIDER_VAR")
+	assert.True(t, ok, "PROVIDER_VAR should exist in the environment")
+	customValue, ok := store.Raw("CUSTOM_VAR")
+	assert.True(t, ok, "CUSTOM_VAR should also still exist in the environment")
+	assert.Equal(t, targetValue, customValue, "PROVIDER_VAR should have CUSTOM_VAR's value")
 }

@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/clispec"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
@@ -87,6 +88,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type commandGroup struct {
@@ -183,16 +186,23 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var logToStderr bool
 	var tracingFlag string
 	var tracingHeaderFlag string
+	var otelFlag string
 	var profiling string
 	var verbose int
 	var color string
 	var memProfileRate int
+	var rootSpan oteltrace.Span
 
-	updateCheckResult := make(chan *diag.Diag)
+	updateCheckResult := make(chan *updateCheckResult)
 
 	cleanup := func() {
 		logging.Flush()
 		cmdutil.CloseTracing()
+
+		if rootSpan != nil {
+			rootSpan.End()
+		}
+		cmdutil.CloseOtelTracing()
 
 		if logging.Verbose > 0 && !logging.LogToStderr {
 			logFile, err := logging.GetLogfilePath()
@@ -200,7 +210,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				logging.Warningf("could not find the log file: %s", err)
 				logging.Flush()
 			} else {
-				fmt.Printf("The log file for this run is at %s\n", logFile)
+				fmt.Fprintf(os.Stderr, "The log file for this run is at %s\n", logFile)
 			}
 		}
 
@@ -266,6 +276,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			logging.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
+			if err := cmdutil.InitOtelReceiver(otelFlag); err != nil {
+				logging.V(3).Infof("failed to initialize OTLP receiver: %v", err)
+			}
+
 			ctx := cmd.Context()
 			if cmdutil.IsTracingEnabled() {
 				if cmdutil.TracingRootSpan != nil {
@@ -283,6 +297,11 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					TracingHeader:  tracingHeader,
 				}
 				ctx = tracing.ContextWithOptions(ctx, tracingOptions)
+			}
+
+			if cmdutil.IsOTelEnabled() {
+				tracer := otel.Tracer("pulumi-cli")
+				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi")
 			}
 			cmd.SetContext(ctx)
 
@@ -303,7 +322,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			} else {
 				logging.V(3).Info("Pulumi " + ver.String())
 			}
-			metadata := getCLIMetadata(cmd, os.Environ())
+			metadata := getCLIMetadata(cmd, os.Environ(), args)
 			logging.V(9).Infof("CLI Metadata: %v", metadata)
 
 			if profiling != "" {
@@ -331,9 +350,19 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
 
-			checkVersionMsg, ok := <-updateCheckResult
-			if ok && checkVersionMsg != nil && !isJSON {
-				cmdutil.Diag().Warningf(checkVersionMsg)
+			if !isJSON {
+				select {
+				case result, ok := <-updateCheckResult:
+					if ok && result != nil {
+						cmdutil.Diag().Warningf(result.diag)
+						err := cacheVersionInfo(result.versionInfo)
+						if err != nil {
+							logging.V(3).Infof("failed to cache version info: %s", err)
+						}
+					}
+				default:
+					// The version didn't make it in time, so don't block the user
+				}
 			}
 		},
 	}
@@ -354,6 +383,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Disable interactive mode for all commands")
 	cmd.PersistentFlags().StringVar(&tracingFlag, "tracing", "",
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
+	cmd.PersistentFlags().StringVar(&otelFlag, "otel", "",
+		"Export OpenTelemetry data to the specified endpoint. "+
+			"Use file:// for local JSON files, grpc:// for remote collectors")
+	_ = cmd.PersistentFlags().MarkHidden("otel")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,
@@ -396,7 +429,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
-				auth.NewLoginCmd(pkgWorkspace.Instance),
+				auth.NewLoginCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
 				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				org.NewOrgCmd(),
@@ -454,6 +487,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				trace.NewViewTraceCmd(),
 				trace.NewConvertTraceCmd(),
 				events.NewReplayEventsCmd(),
+				clispec.NewGenCLISpecCmd(cmd),
 			},
 		},
 		// AI Commands relating to specifically the Pulumi AI service
@@ -523,9 +557,14 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 	return devCommits > curCommits
 }
 
+type updateCheckResult struct {
+	diag        *diag.Diag
+	versionInfo cachedVersionInfo
+}
+
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
-func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *diag.Diag {
+func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *updateCheckResult {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
 		logging.V(3).Infof("error parsing current version: %s", err)
@@ -553,30 +592,28 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 		lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
 	}
 
-	err = cacheVersionInfo(cachedVersionInfo{
-		LatestVersion:         latestVer.String(),
-		OldestWithoutWarning:  oldestAllowedVer.String(),
-		LatestDevVersion:      devVer.String(),
-		LastPromptTimeStampMS: lastPromptTimestampMS,
-	})
-	if err != nil {
-		logging.V(3).Infof("failed to cache version info: %s", err)
-	}
-
 	if willPrompt {
 		if isCurVerDev {
 			latestVer = devVer
 		}
 
 		msg := getUpgradeMessage(latestVer, curVer, isCurVerDev)
-		return diag.RawMessage("", msg)
+		return &updateCheckResult{
+			diag: diag.RawMessage("", msg),
+			versionInfo: cachedVersionInfo{
+				LatestVersion:         latestVer.String(),
+				OldestWithoutWarning:  oldestAllowedVer.String(),
+				LatestDevVersion:      devVer.String(),
+				LastPromptTimeStampMS: lastPromptTimestampMS,
+			},
+		}
 	}
 
 	return nil
 }
 
 // getCLIMetadata returns a map of metadata about the given CLI command.
-func getCLIMetadata(cmd *cobra.Command, environ []string) map[string]string {
+func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[string]string {
 	if cmd == nil {
 		return nil
 	}
@@ -594,6 +631,12 @@ func getCLIMetadata(cmd *cobra.Command, environ []string) map[string]string {
 			i++
 		}
 	})
+
+	if command == "pulumi plugin run" {
+		if len(args) > 0 {
+			command += " " + args[0]
+		}
+	}
 
 	env := []string{}
 	for _, e := range environ {

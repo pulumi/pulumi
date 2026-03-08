@@ -24,12 +24,14 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -39,7 +41,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/yaml.v2"
 )
 
@@ -61,9 +68,9 @@ func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
 // It returns the path to the installed package.
 func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, root,
 	schemaSource string, parameters plugin.ParameterizeParameters,
-	registry registry.Registry,
+	registry registry.Registry, e env.Env, concurrency int,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkgSpec, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry)
+	pkgSpec, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry, e, concurrency)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
@@ -91,6 +98,7 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 	pkg.SupportPack = true
 
 	diags, err := GenSDK(
+		pctx.Request(),
 		language,
 		tempOut,
 		pkg,
@@ -122,7 +130,7 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 		}
 	}
 
-	err = CopyAll(out, filepath.Join(tempOut, language))
+	err = fsutil.CopyFile(out, filepath.Join(tempOut, language), nil)
 	if err != nil {
 		return nil, nil, diags, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
@@ -143,7 +151,17 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 	return pkg, specOverride, diags, nil
 }
 
-func GenSDK(language, out string, pkg *schema.Package, overlays string, local bool) (hcl.Diagnostics, error) {
+func GenSDK(
+	ctx context.Context, language, out string, pkg *schema.Package, overlays string, local bool,
+) (hcl.Diagnostics, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	_, span := cmdutil.StartSpan(ctx, tracer, "generate-sdk",
+		trace.WithAttributes(
+			attribute.String("language", language),
+			attribute.String("package", pkg.Name),
+		))
+	defer span.End()
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("get current working directory: %w", err)
@@ -247,14 +265,6 @@ type LinkPackagesContext struct {
 // LinkPackages links a locally generated SDK to an existing project.
 // Currently Java is not supported and will print instructions for manual linking.
 func LinkPackages(ctx *LinkPackagesContext) error {
-	if ctx.Language == "yaml" {
-		return nil // Nothing to do for YAML
-	}
-	return linkPackage(ctx)
-}
-
-// linkPackage links a locally generated SDK into a project using `Language.Link`.
-func linkPackage(ctx *LinkPackagesContext) error {
 	root, err := filepath.Abs(ctx.Root)
 	if err != nil {
 		return err
@@ -307,7 +317,7 @@ func linkPackage(ctx *LinkPackagesContext) error {
 		if err = pkgCmdUtil.InstallDependencies(languagePlugin, plugin.InstallDependenciesRequest{
 			Info: programInfo,
 		}, ctx.Writer, ctx.Writer); err != nil {
-			return fmt.Errorf("installing dependencies: %w", err)
+			return errutil.ErrorWithStderr(err, "installing dependencies")
 		}
 	}
 
@@ -315,57 +325,19 @@ func linkPackage(ctx *LinkPackagesContext) error {
 	return nil
 }
 
-// CopyAll copies src to dst. If src is a directory, its contents will be copied
-// recursively.
-func CopyAll(dst string, src string) error {
-	info, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
-	if info.IsDir() {
-		// Recursively copy all files in a directory.
-		files, err := os.ReadDir(src)
-		if err != nil {
-			return fmt.Errorf("read dir: %w", err)
-		}
-		for _, file := range files {
-			name := file.Name()
-			copyerr := CopyAll(filepath.Join(dst, name), filepath.Join(src, name))
-			if copyerr != nil {
-				return copyerr
-			}
-		}
-	} else if info.Mode().IsRegular() {
-		// Copy files by reading and rewriting their contents.  Skip other special files.
-		data, err := os.ReadFile(src)
-		if err != nil {
-			return fmt.Errorf("read file: %w", err)
-		}
-		dstdir := filepath.Dir(dst)
-		if err = os.MkdirAll(dstdir, 0o700); err != nil {
-			return err
-		}
-		if err = os.WriteFile(dst, data, info.Mode()); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func NewPluginContext(cwd string) (*plugin.Context, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil,
+		schema.NewLoaderServerFromHost)
 	if err != nil {
 		return nil, err
 	}
 	return pluginCtx, nil
 }
 
-func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec) {
+func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescriptor) {
 	if spec.Namespace == "" && pluginSpec.IsGitPlugin() {
 		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
 		matches := namespaceRegex.FindStringSubmatch(pluginSpec.PluginDownloadURL)
@@ -380,8 +352,12 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec)
 // optional version:
 //
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
+//
+// The returned workspace.PackageSpec will be non-nil if and only if the schema is sourced
+// from a plugin.
 func SchemaFromSchemaSource(
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
+	env env.Env, concurrency int,
 ) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 	var spec schema.PackageSpec
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
@@ -413,21 +389,15 @@ func SchemaFromSchemaSource(
 		return &spec, nil, nil
 	}
 
-	p, specOverride, err := ProviderFromSource(pctx, packageSource, registry)
+	p, packageSpec, err := ProviderFromSource(pctx, packageSource, registry, env, concurrency)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer func() {
-		contract.IgnoreError(pctx.Host.CloseProvider(p.Provider))
-	}()
+	defer contract.IgnoreClose(p)
 
 	var request plugin.GetSchemaRequest
 	if !parameters.Empty() {
-		if p.AlreadyParameterized {
-			return nil, nil,
-				fmt.Errorf("cannot specify parameters since %s is already parameterized", packageSource)
-		}
-		resp, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
+		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
 			Parameters: parameters,
 		})
 		if err != nil {
@@ -440,7 +410,11 @@ func SchemaFromSchemaSource(
 		}
 	}
 
-	schema, err := p.Provider.GetSchema(pctx.Request(), request)
+	tracer := otel.Tracer("pulumi-cli")
+	_, schemaSpan := cmdutil.StartSpan(pctx.Request(), tracer, "get-schema",
+		trace.WithAttributes(attribute.String("source", packageSource)))
+	schema, err := p.GetSchema(pctx.Request(), request)
+	schemaSpan.End()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -448,7 +422,7 @@ func SchemaFromSchemaSource(
 	if err != nil {
 		return nil, nil, err
 	}
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -456,13 +430,7 @@ func SchemaFromSchemaSource(
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
 	setSpecNamespace(&spec, pluginSpec)
-	return &spec, specOverride, nil
-}
-
-type Provider struct {
-	Provider plugin.Provider
-
-	AlreadyParameterized bool
+	return &spec, &packageSpec, nil
 }
 
 // ProviderFromSource takes a plugin name or path.
@@ -470,160 +438,41 @@ type Provider struct {
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
-) (Provider, *workspace.PackageSpec, error) {
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
-	if err != nil {
-		return Provider{}, nil, err
+	e env.Env, concurrency int,
+) (plugin.Provider, workspace.PackageSpec, error) {
+	var version string
+	if parts := strings.SplitN(packageSource, "@", 2); len(parts) > 1 {
+		packageSource = parts[0]
+		version = parts[1]
 	}
-	descriptor := workspace.PackageDescriptor{
-		PluginSpec: pluginSpec,
-	}
-
-	installDescriptor := func(descriptor workspace.PackageDescriptor) (Provider, error) {
-		p, err := pctx.Host.Provider(descriptor)
-		if err == nil {
-			return Provider{
-				Provider:             p,
-				AlreadyParameterized: descriptor.Parameterization != nil,
-			}, nil
+	packageSpec := workspace.PackageSpec{Source: packageSource, Version: version}
+	{
+		proj, _, err := pkgWorkspace.Instance.LoadBaseProjectFrom(pctx.Request(), pctx.Pwd)
+		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+			return nil, workspace.PackageSpec{}, fmt.Errorf("error loading Pulumi Project: %w", err)
 		}
-
-		// There is an executable or directory with the same name, so suggest that
-		if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
-			return Provider{}, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
-		}
-
-		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
-		var missingError *workspace.MissingError
-		if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {
-			return Provider{}, err
-		}
-
-		log := func(sev diag.Severity, msg string) {
-			pctx.Host.Log(sev, "", msg, 0)
-		}
-
-		_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginSpec, log)
-		if err != nil {
-			return Provider{}, err
-		}
-
-		p, err = pctx.Host.Provider(descriptor)
-		if err != nil {
-			return Provider{}, err
-		}
-
-		return Provider{Provider: p}, nil
-	}
-
-	setupProvider := func(
-		descriptor workspace.PackageDescriptor, specOverride *workspace.PackageSpec,
-	) (Provider, *workspace.PackageSpec, error) {
-		p, err := installDescriptor(descriptor)
-		if err != nil {
-			return Provider{}, nil, err
-		}
-		if descriptor.Parameterization != nil {
-			_, err := p.Provider.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-				Parameters: &plugin.ParameterizeValue{
-					Name:    descriptor.Parameterization.Name,
-					Version: descriptor.Parameterization.Version,
-					Value:   descriptor.Parameterization.Value,
-				},
-			})
-			if err != nil {
-				return Provider{}, nil, fmt.Errorf("failed to parameterize %s: %w", p.Provider.Pkg().Name(), err)
+		if proj != nil {
+			if remap, ok := proj.GetPackageSpecs()[packageSource]; ok {
+				packageSpec = remap
 			}
 		}
-		return p, specOverride, nil
 	}
 
-	result, err := packageresolution.Resolve(
-		pctx.Base(),
-		reg,
-		packageresolution.DefaultWorkspace(),
-		pluginSpec,
-		packageresolution.Options{
-			DisableRegistryResolve:      env.DisableRegistryResolve.Value(),
-			Experimental:                env.Experimental.Value(),
-			IncludeInstalledInWorkspace: true,
+	f, spec, err := packageinstallation.InstallPlugin(pctx.Request(), packageSpec, nil, "", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveWithRegistry:                        !e.GetBool(env.DisableRegistryResolve),
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
-		pctx.Root,
-	)
+		Concurrency: concurrency,
+	}, reg, packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, os.Stderr, os.Stderr,
+		nil, packageworkspace.Options{}))
 	if err != nil {
-		var packageNotFoundErr *packageresolution.PackageNotFoundError
-		if errors.As(err, &packageNotFoundErr) {
-			for _, suggested := range packageNotFoundErr.Suggestions() {
-				pctx.Diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
-					suggested.Source, suggested.Publisher, suggested.Name, suggested.Version)
-			}
-		}
-		return Provider{}, nil, fmt.Errorf("Unable to resolve package from name: %w", err)
+		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to install %s: %w", packageSpec, err)
 	}
-
-	switch res := result.(type) {
-	case packageresolution.LocalPathResult:
-		return setupProviderFromPath(res.LocalPluginPathAbs, pctx)
-	case packageresolution.ExternalSourceResult, packageresolution.InstalledInWorkspaceResult:
-		return setupProvider(descriptor, nil)
-	case packageresolution.RegistryResult:
-		return setupProviderFromRegistryMeta(res.Metadata, setupProvider)
-	default:
-		contract.Failf("Unexpected result type: %T", result)
-		return Provider{}, nil, nil
-	}
-}
-
-func setupProviderFromPath(packageSource string, pctx *plugin.Context) (Provider, *workspace.PackageSpec, error) {
-	info, err := os.Stat(packageSource)
-	if os.IsNotExist(err) {
-		return Provider{}, nil, fmt.Errorf("could not find file %s", packageSource)
-	} else if err != nil {
-		return Provider{}, nil, err
-	} else if !info.IsDir() && !isExecutable(info) {
-		if p, err := filepath.Abs(packageSource); err == nil {
-			packageSource = p
-		}
-		return Provider{}, nil, fmt.Errorf("plugin at path %q not executable", packageSource)
-	}
-
-	p, err := plugin.NewProviderFromPath(pctx.Host, pctx, packageSource)
+	p, err := f(pctx.Request(), ".")
 	if err != nil {
-		return Provider{}, nil, err
+		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to run %s: %w", packageSpec, err)
 	}
-	return Provider{Provider: p}, nil, nil
-}
-
-func isExecutable(info fs.FileInfo) bool {
-	// Windows doesn't have executable bits to check
-	if runtime.GOOS == "windows" {
-		return !info.IsDir()
-	}
-	return info.Mode()&0o111 != 0 && !info.IsDir()
-}
-
-func setupProviderFromRegistryMeta(
-	meta apitype.PackageMetadata,
-	setupProvider func(workspace.PackageDescriptor, *workspace.PackageSpec) (Provider, *workspace.PackageSpec, error),
-) (Provider, *workspace.PackageSpec, error) {
-	spec := workspace.PluginSpec{
-		Name:              meta.Name,
-		Kind:              apitype.ResourcePlugin,
-		Version:           &meta.Version,
-		PluginDownloadURL: meta.PluginDownloadURL,
-	}
-	var params *workspace.Parameterization
-	if meta.Parameterization != nil {
-		spec.Name = meta.Parameterization.BaseProvider.Name
-		spec.Version = &meta.Parameterization.BaseProvider.Version
-		params = &workspace.Parameterization{
-			Name:    meta.Name,
-			Version: meta.Version,
-			Value:   meta.Parameterization.Parameter,
-		}
-	}
-	return setupProvider(workspace.NewPackageDescriptor(spec, params), &workspace.PackageSpec{
-		Source:  meta.Source + "/" + meta.Publisher + "/" + meta.Name,
-		Version: meta.Version.String(),
-	})
+	return p, spec, nil
 }

@@ -324,22 +324,13 @@ runtime: nodejs
 	}
 }
 
-type mockTemplateWorkspace struct {
-	readProjectErr error
-}
-
-var _ pkgWorkspace.Context = &mockTemplateWorkspace{}
-
-func (m *mockTemplateWorkspace) New() (pkgWorkspace.W, error) {
-	return nil, m.readProjectErr
-}
-
-func (m *mockTemplateWorkspace) ReadProject() (*workspace.Project, string, error) {
-	return nil, "", m.readProjectErr
-}
-
-func (m *mockTemplateWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
-	return workspace.Credentials{}, nil
+func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
+	return &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) { return nil, readProjectErr },
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return nil, "", readProjectErr
+		},
+	}
 }
 
 //nolint:paralleltest // This test uses the global pkgWorkspace.Instance variable
@@ -353,7 +344,7 @@ func TestTemplatePublishCmd_Run_ReadProjectError(t *testing.T) {
 	customErr := errors.New("custom project read error")
 	originalWorkspace := pkgWorkspace.Instance
 	t.Cleanup(func() { pkgWorkspace.Instance = originalWorkspace })
-	pkgWorkspace.Instance = &mockTemplateWorkspace{readProjectErr: customErr}
+	pkgWorkspace.Instance = newMockTemplateWorkspace(customErr)
 
 	tmpDir := t.TempDir()
 	err := os.WriteFile(path.Join(tmpDir, "Pulumi.yaml"), []byte(`name: test-template
@@ -362,7 +353,7 @@ runtime: nodejs
 	require.NoError(t, err)
 
 	mockCmd := &cobra.Command{}
-	err = cmd.Run(context.Background(), mockCmd, publishTemplateArgs{
+	err = cmd.Run(t.Context(), mockCmd, publishTemplateArgs{
 		publisher: "publisher",
 		name:      "test-template",
 		version:   "1.0.0",

@@ -17,9 +17,11 @@ package state
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -39,7 +41,7 @@ func newStateDeleteCommand(ws pkgWorkspace.Context, lm backend.LoginManager) *co
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "delete [resource URN]",
+		Use:   "delete",
 		Short: "Deletes a resource from a stack's state",
 		Long: `Deletes a resource from a stack's state
 
@@ -54,7 +56,6 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
-		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -116,14 +117,15 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			if err != nil {
 				switch e := err.(type) {
 				case edit.ResourceHasDependenciesError:
-					message := string(e.Condemned.URN) + " can't be safely deleted because the following resources depend on it:\n"
+					var message strings.Builder
+					message.WriteString(string(e.Condemned.URN))
+					message.WriteString(" can't be safely deleted because the following resources depend on it:\n")
 					for _, dependentResource := range e.Dependencies {
 						depUrn := dependentResource.URN
-						message += fmt.Sprintf(" * %-15q (%s)\n", depUrn.Name(), depUrn)
+						message.WriteString(fmt.Sprintf(" * %-15q (%s)\n", depUrn.Name(), depUrn))
 					}
-
-					message += "\nDelete those resources first or pass --target-dependents."
-					return errors.New(message)
+					message.WriteString("\nDelete those resources first or pass --target-dependents.")
+					return errors.New(message.String())
 				case edit.ResourceProtectedError:
 					return fmt.Errorf(
 						"%s can't be safely deleted because it is protected. "+
@@ -140,6 +142,13 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "resource-urn"},
+		},
+		Required: 0,
+	})
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",

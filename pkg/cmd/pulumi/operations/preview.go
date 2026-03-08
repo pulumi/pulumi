@@ -18,7 +18,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
@@ -30,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	pkgPlan "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
@@ -45,9 +48,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -288,14 +295,10 @@ func NewPreviewCmd() *cobra.Command {
 
 	// Flags for Neo.
 	var neoEnabled bool
-
-	use, cmdArgs := "preview", cmdutil.NoArgs
-	if deployment.RemoteSupported() {
-		use, cmdArgs = "preview [url]", cmdutil.MaximumNArgs(1)
-	}
+	var neoTaskOnFailure bool
 
 	cmd := &cobra.Command{
-		Use:        use,
+		Use:        "preview",
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
 		Short:      "Show a preview of updates to a stack's resources",
@@ -310,17 +313,26 @@ func NewPreviewCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			ws := pkgWorkspace.Instance
 
-			err := validateAttachDebuggerFlag(attachDebugger)
+			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil {
 				return err
 			}
 
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
+
+			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+
+			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
+				return err
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			ws := pkgWorkspace.Instance
 			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
@@ -385,6 +397,7 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
+			configureNeoTaskOption(neoTaskOnFailure, cmd, &displayOpts, isDIYBackend)
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
@@ -405,11 +418,6 @@ func NewPreviewCmd() *cobra.Command {
 
 			// Save any config values passed via flags.
 			if err = parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath); err != nil {
-				return err
-			}
-
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
 				return err
 			}
 
@@ -439,13 +447,13 @@ func NewPreviewCmd() *cobra.Command {
 				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
-			targetURNs := []string{}
+			targetURNs := slice.Prealloc[string](len(targets))
 			targetURNs = append(targetURNs, targets...)
 
-			excludeURNs := []string{}
+			excludeURNs := slice.Prealloc[string](len(excludes))
 			excludeURNs = append(excludeURNs, excludes...)
 
-			replaceURNs := []string{}
+			replaceURNs := slice.Prealloc[string](len(replaces))
 			replaceURNs = append(replaceURNs, replaces...)
 
 			for _, tr := range targetReplaces {
@@ -499,6 +507,15 @@ func NewPreviewCmd() *cobra.Command {
 			if importFilePath != "" {
 				events = make(chan engine.Event)
 				importFilePromise = buildImportFile(events)
+			}
+
+			start := time.Now()
+			metadata, err := meta.Result(ctx)
+			logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+			if err != nil {
+				logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+			} else {
+				maps.Copy(m.Environment, metadata)
 			}
 
 			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
@@ -560,6 +577,15 @@ func NewPreviewCmd() *cobra.Command {
 				return nil
 			}
 		},
+	}
+
+	if deployment.RemoteSupported() {
+		constrictor.AttachArguments(cmd, &constrictor.Arguments{
+			Arguments: []constrictor.Argument{{Name: "url"}},
+			Required:  0,
+		})
+	} else {
+		constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	}
 
 	cmd.PersistentFlags().BoolVarP(
@@ -690,6 +716,15 @@ func NewPreviewCmd() *cobra.Command {
 		&neoEnabled, "neo", false,
 		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_NEO environment variable)")
+
+	cmd.PersistentFlags().BoolVar(
+		&neoTaskOnFailure, "neo-task-on-failure", false,
+		"Start a Neo task to help debug errors that occur during the operation")
+	if !env.Experimental.Value() {
+		contract.AssertNoErrorf(
+			cmd.PersistentFlags().MarkHidden("neo-task-on-failure"),
+			`Could not mark "neo-task-on-failure" as hidden`)
+	}
 
 	// Keep --copilot flag for backwards compatibility, but hide it
 	cmd.PersistentFlags().BoolVar(

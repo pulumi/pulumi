@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type GetSchemaRequest struct {
@@ -154,6 +153,8 @@ type GetSchemaResponse struct {
 	// The bytes of the JSON serialized Pulumi schema for generating the provider's SDK.
 	Schema []byte
 }
+
+var ErrDoubleParameterized = errors.New("cannot specify parameterization for a parameterized provider")
 
 type CheckConfigRequest struct {
 	URN           resource.URN
@@ -457,7 +458,7 @@ type Provider interface {
 	Call(context.Context, CallRequest) (CallResponse, error)
 
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo(context.Context) (workspace.PluginInfo, error)
+	GetPluginInfo(context.Context) (PluginInfo, error)
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -719,11 +720,14 @@ func (r DiffResult) Replace() bool {
 // Invert computes the inverse diff of the receiver -- the diff that would be
 // required to "undo" this one.
 func (r DiffResult) Invert() DiffResult {
-	detailedDiff := make(map[string]PropertyDiff)
-	for k, v := range r.DetailedDiff {
-		detailedDiff[k] = PropertyDiff{
-			Kind:      v.Kind.Invert(),
-			InputDiff: v.InputDiff,
+	var detailedDiff map[string]PropertyDiff
+	if r.DetailedDiff != nil {
+		detailedDiff = make(map[string]PropertyDiff)
+		for k, v := range r.DetailedDiff {
+			detailedDiff[k] = PropertyDiff{
+				Kind:      v.Kind.Invert(),
+				InputDiff: v.InputDiff,
+			}
 		}
 	}
 

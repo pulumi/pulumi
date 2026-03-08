@@ -125,7 +125,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 						CheckYAMLEnvironmentF: checkYAMLEnvironment,
 					}
 				},
-				DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+				DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 					return b64.NewBase64SecretsManager(), nil
 				},
 				ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },

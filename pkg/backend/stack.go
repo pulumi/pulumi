@@ -61,7 +61,7 @@ type Stack interface {
 
 	// DefaultSecretManager returns the default secrets manager to use for this stack. This may be more specific than
 	// Backend.DefaultSecretManager.
-	DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManager(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error)
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.

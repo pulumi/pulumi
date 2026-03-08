@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -42,6 +43,8 @@ import (
 var ErrHostIsClosed = errors.New("plugin host is shutting down")
 
 var UseGrpcPluginsByDefault = false
+
+var UseHandshakePluginsByDefault = false
 
 type (
 	LoadPluginFunc         func(opts any) (any, error)
@@ -68,6 +71,14 @@ func WithGrpc(p *PluginLoader) {
 	p.useGRPC = true
 }
 
+func WithoutHandshake(p *PluginLoader) {
+	p.useHandshake = false
+}
+
+func WithHandshake(p *PluginLoader) {
+	p.useHandshake = true
+}
+
 type PluginLoader struct {
 	kind         apitype.PluginKind
 	name         string
@@ -75,6 +86,7 @@ type PluginLoader struct {
 	load         LoadPluginFunc
 	loadWithHost LoadPluginWithHostFunc
 	useGRPC      bool
+	useHandshake bool
 }
 
 type (
@@ -86,11 +98,12 @@ func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProv
 	opts ...ProviderOption,
 ) *ProviderLoader {
 	p := &ProviderLoader{
-		kind:    apitype.ResourcePlugin,
-		name:    string(pkg),
-		version: version,
-		load:    func(_ any) (any, error) { return load() },
-		useGRPC: UseGrpcPluginsByDefault,
+		kind:         apitype.ResourcePlugin,
+		name:         string(pkg),
+		version:      version,
+		load:         func(_ any) (any, error) { return load() },
+		useGRPC:      UseGrpcPluginsByDefault,
+		useHandshake: UseHandshakePluginsByDefault,
 	}
 	for _, o := range opts {
 		o(p)
@@ -107,6 +120,7 @@ func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version,
 		version:      version,
 		loadWithHost: func(_ any, host plugin.Host) (any, error) { return load(host) },
 		useGRPC:      UseGrpcPluginsByDefault,
+		useHandshake: UseHandshakePluginsByDefault,
 	}
 	for _, o := range opts {
 		o(p)
@@ -165,10 +179,11 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: wrapper.stop,
 		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterResourceProviderServer(srv, plugin.NewProviderServer(provider))
+			server := plugin.NewProviderServer(provider)
+			pulumirpc.RegisterResourceProviderServer(srv, server)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
@@ -197,7 +212,7 @@ func wrapAnalyzerWithGrpc(analyzer plugin.Analyzer) (plugin.Analyzer, io.Closer,
 			pulumirpc.RegisterAnalyzerServer(srv, plugin.NewAnalyzerServer(analyzer))
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start policy analyzer service: %w", err)
@@ -270,6 +285,12 @@ func (e *hostEngine) StartDebugging(ctx context.Context,
 	return nil, errors.New("unsupported")
 }
 
+func (e *hostEngine) RequirePulumiVersion(ctx context.Context,
+	req *pulumirpc.RequirePulumiVersionRequest,
+) (*pulumirpc.RequirePulumiVersionResponse, error) {
+	return nil, errors.New("unsupported")
+}
+
 type PluginHostFactory func() plugin.Host
 
 type pluginHost struct {
@@ -314,7 +335,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 			pulumirpc.RegisterEngineServer(srv, engine)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		panic(fmt.Errorf("could not start engine service: %w", err))
@@ -385,6 +406,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 			if err != nil {
 				return nil, err
 			}
+
 		case apitype.LanguagePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 			// We don't support gRPC wrapping for these plugin types yet.
 		}
@@ -397,7 +419,20 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 	case apitype.AnalyzerPlugin:
 		host.analyzers = append(host.analyzers, plug.(plugin.Analyzer))
 	case apitype.ResourcePlugin:
-		host.providers = append(host.providers, plug.(plugin.Provider))
+		provider := plug.(plugin.Provider)
+		if best.useHandshake {
+			_, err := provider.Handshake(context.Background(), plugin.ProviderHandshakeRequest{
+				EngineAddress:               host.engine.address,
+				ConfigureWithUrn:            true,
+				SupportsViews:               true,
+				SupportsRefreshBeforeUpdate: true,
+				InvokeWithPreview:           true,
+			})
+			if err != nil {
+				return nil, errors.Join(err, provider.Close())
+			}
+		}
+		host.providers = append(host.providers, provider)
 	case apitype.LanguagePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 		// Nothing to do for these to plugins.
 	}
@@ -406,7 +441,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 	return plug, nil
 }
 
-func (host *pluginHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+func (host *pluginHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed
 	}
@@ -483,6 +518,10 @@ func (host *pluginHost) ServerAddr() string {
 	return host.engine.address
 }
 
+func (host *pluginHost) LoaderAddr() string {
+	return host.engine.address
+}
+
 func (host *pluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	if !host.isClosed() {
 		host.sink.Logf(sev, diag.StreamMessage(urn, msg, streamID))
@@ -507,18 +546,7 @@ func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.PolicyAnalyzer(nm, "", nil)
 }
 
-func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
-	if host.isClosed() {
-		return ErrHostIsClosed
-	}
-	host.m.Lock()
-	defer host.m.Unlock()
-
-	delete(host.plugins, provider)
-	return nil
-}
-
-func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
 	if host.isClosed() {
 		return ErrHostIsClosed
 	}
@@ -526,7 +554,7 @@ func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plug
 }
 
 func (host *pluginHost) ResolvePlugin(
-	spec workspace.PluginSpec,
+	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	plugins := slice.Prealloc[workspace.PluginInfo](len(host.pluginLoaders))
 

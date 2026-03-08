@@ -15,6 +15,7 @@
 package toolchain
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -280,4 +281,61 @@ func TestParsePipVersion(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test that we show the underlying error from `pip` when linking fails
+func TestPipLinkPackagesError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	err := os.WriteFile(filepath.Join(root, "requirements.txt"), []byte(``), 0o600)
+	require.NoError(t, err)
+	pip, err := newPip(root, "venv")
+	require.NoError(t, err)
+
+	err = pip.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
+	require.NoError(t, err)
+	// Pip linking just adds the package to requirements.txt, but does not actually try to resolve any package names or
+	// versions. Run the installation to catch the error.
+	err = pip.InstallDependencies(t.Context(), root, false, false, nil, nil)
+
+	require.Regexp(t, "It looks like a path. File '.*nope' does not exist.", err)
+}
+
+// Test that we show the underlying error from `pip` when dependency installation fails
+func TestPipInstallDependenciesError(t *testing.T) {
+	t.Parallel()
+
+	requirements := []byte("./fail-to-install")
+	if runtime.GOOS == "windows" {
+		requirements = []byte(".\\fail-to-install")
+	}
+
+	t.Run("show output false", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "requirements.txt"), requirements, 0o600)
+		require.NoError(t, err)
+		pip, err := newPip(root, "venv")
+		require.NoError(t, err)
+
+		err = pip.InstallDependencies(t.Context(), root, false, false /* showOutput */, nil, nil)
+		require.Regexp(t, "File '.*fail-to-install' does not exist.", err)
+	})
+
+	t.Run("show output true", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "requirements.txt"), requirements, 0o600)
+		require.NoError(t, err)
+		pip, err := newPip(root, "venv")
+		require.NoError(t, err)
+		stdout := &bytes.Buffer{}
+		stderr := &bytes.Buffer{}
+
+		err = pip.InstallDependencies(t.Context(), root, false, true /* showOutput */, stdout, stderr)
+
+		require.ErrorContains(t, err, "exit status")
+		require.Regexp(t, "File '.*fail-to-install' does not exist.", stderr)
+	})
 }

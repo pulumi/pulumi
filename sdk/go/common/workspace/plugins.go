@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,6 +62,8 @@ const (
 )
 
 var enableLegacyPluginBehavior = os.Getenv("PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH") != ""
+
+var ErrGetLatestVersionNotSupported = errors.New("GetLatestVersion is not supported for plugins from http sources")
 
 // pluginDownloadURLOverrides is a variable instead of a constant so it can be set using the `-X` `ldflag` at build
 // time, if necessary. When non-empty, it's parsed into `pluginDownloadURLOverridesParsed` in `init()`. The expected
@@ -153,14 +155,14 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 // MissingError is returned by functions that attempt to load plugins if a plugin can't be located.
 type MissingError struct {
 	// PluginSpec of the plugin that couldn't be found.
-	spec PluginSpec
+	spec PluginDescriptor
 	// includeAmbient is true if we search $PATH for this plugin
 	includeAmbient bool
 }
 
 // NewMissingError allocates a new error indicating the given plugin info was not found.
 func NewMissingError(
-	spec PluginSpec, includeAmbient bool,
+	spec PluginDescriptor, includeAmbient bool,
 ) error {
 	return &MissingError{
 		spec:           spec,
@@ -237,6 +239,10 @@ func (source *getPulumiSource) Download(
 		return nil, -1, err
 	}
 	return getHTTPResponse(req)
+}
+
+func (source *getPulumiSource) url() string {
+	return "https://get.pulumi.com/releases/plugins"
 }
 
 // gitlabSource can download a plugin from gitlab releases.
@@ -630,6 +636,41 @@ func (source *githubSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
+	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
+
+	// For Pulumi's official plugins on github.com, try direct download URL first to reduce
+	// API usage.  We know where the plugin is supposed to live, so we can construct the URL
+	// directly without going through the API.  If the naming doesn't match, we fall back to
+	// the API. This costs us one additional request, but it doesn't count at the rate limit,
+	// and compared to the time it takes to download the plugin the additional time for the
+	// API request should be negligible.
+	if source.organization == "pulumi" && source.host == "api.github.com" {
+		directURL := fmt.Sprintf(
+			"https://github.com/%s/%s/releases/download/v%s/%s",
+			source.organization, source.repository, version, assetName)
+		logging.V(1).Infof("%s trying direct download from %s", source.name, directURL)
+
+		req, err := buildHTTPRequest(ctx, directURL, "")
+		if err != nil {
+			return nil, -1, err
+		}
+		req.Header.Set("Accept", "application/octet-stream")
+		resp, length, err := getHTTPResponse(req)
+		if err == nil {
+			return resp, length, nil
+		}
+		logging.V(1).Infof("%s direct download failed, falling back to API: %v", source.name, err)
+	}
+
+	return source.downloadViaAPI(ctx, version, opSy, arch, getHTTPResponse, assetName)
+}
+
+func (source *githubSource) downloadViaAPI(
+	ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+	assetName string,
+) (io.ReadCloser, int64, error) {
 	releaseURL := fmt.Sprintf(
 		"https://%s/repos/%s/%s/releases/tags/v%s",
 		source.host, source.organization, source.repository, version)
@@ -650,7 +691,6 @@ func (source *githubSource) Download(
 		return nil, -1, fmt.Errorf("cannot decode github response len(%d): %w", length, err)
 	}
 
-	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
 	assetURL := ""
 	for _, asset := range release.Assets {
 		if asset.Name == assetName {
@@ -694,7 +734,7 @@ func (source *httpSource) GetLatestVersion(
 	ctx context.Context,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (*semver.Version, error) {
-	return nil, errors.New("GetLatestVersion is not supported for plugins from http sources")
+	return nil, ErrGetLatestVersionNotSupported
 }
 
 func interpolateURL(serverURL string, name string, version semver.Version, os, arch string) string {
@@ -785,6 +825,19 @@ func (source *fallbackSource) Download(
 
 	// Fallback to get.pulumi.com
 	pulumi := newGetPulumiSource(source.name, source.kind)
+	// Check if there's a URL override for the get.pulumi.com URL.
+	// Note: This check is necessary because GetSource() checks overrides against fallbackSource.URL()
+	// which returns the GitHub URL, not the get.pulumi.com URL. When we actually fall back to
+	// get.pulumi.com here, we need to check if there's an override for that specific URL.
+	if overrideURL, ok := pluginDownloadURLOverridesParsed.get(pulumi.url()); ok {
+		logging.V(1).Infof("Applying URL override for %s: %s -> %s", source.name, pulumi.url(), overrideURL)
+		overrideSource, err := newPluginSource(source.name, source.kind, overrideURL)
+		if err != nil {
+			return nil, 0, fmt.Errorf("unable to construct override for %q: %w", source.name, err)
+		}
+		return overrideSource.Download(ctx, version, opSy, arch, getHTTPResponse)
+	}
+
 	return pulumi.Download(ctx, version, opSy, arch, getHTTPResponse)
 }
 
@@ -890,8 +943,8 @@ type ProjectPlugin struct {
 }
 
 // Spec Return a PluginSpec object for this project plugin.
-func (pp ProjectPlugin) Spec(ctx context.Context) (PluginSpec, error) {
-	return NewPluginSpec(ctx, pp.Name, pp.Kind, pp.Version, "", nil)
+func (pp ProjectPlugin) Spec(ctx context.Context) (PluginDescriptor, error) {
+	return NewPluginDescriptor(ctx, pp.Name, pp.Kind, pp.Version, "", nil)
 }
 
 // LinkablePackageDescriptor contains the information necessary to link an SDK for a package specified by a
@@ -907,16 +960,27 @@ type LinkablePackageDescriptor struct {
 // that must be applied to that plugin in order to produce the package.
 type PackageDescriptor struct {
 	// A specification for the plugin that provides the package.
-	PluginSpec
+	PluginDescriptor
 
 	// An optional parameterization to apply to the providing plugin to produce
 	// the package.
 	Parameterization *Parameterization
 }
 
-func NewPackageDescriptor(spec PluginSpec, parameterization *Parameterization) PackageDescriptor {
+// A resolved plugin with parameterization arguments.
+//
+// This is different then a [PackageDescriptor], which holds a parameterization value.
+type UnresolvedPackageDescriptor struct {
+	// The fully resolved plugin descriptor.
+	PluginDescriptor
+
+	// The parameterization args to be applied against the plugin descriptor.
+	ParameterizationArgs []string
+}
+
+func NewPackageDescriptor(spec PluginDescriptor, parameterization *Parameterization) PackageDescriptor {
 	return PackageDescriptor{
-		PluginSpec:       spec,
+		PluginDescriptor: spec,
 		Parameterization: parameterization,
 	}
 }
@@ -996,8 +1060,14 @@ type Parameterization struct {
 	Value []byte
 }
 
-// PluginSpec provides basic specification for a plugin.
-type PluginSpec struct {
+// PluginSpec is a resolved plugin, ready for download.
+//
+// Deprecated: workspace.PluginSpec has been renamed to [PluginDescriptor]. If you are
+// looking for the unresolved variant, see [PackageSpec].
+type PluginSpec = PluginDescriptor
+
+// PluginDescriptor is a resolved plugin, ready for download.
+type PluginDescriptor struct {
 	Name              string             // the simple name of the plugin.
 	Kind              apitype.PluginKind // the kind of the plugin (language, resource, etc).
 	Version           *semver.Version    // the plugin's semantic version, if present.
@@ -1010,7 +1080,7 @@ type PluginSpec struct {
 type PluginVersionNotFoundError error
 
 var urlRegex = sync.OnceValue(func() *regexp.Regexp {
-	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/](@.*)?$`)
+	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-_/]*[a-zA-Z0-9/](@.*)?$`)
 })
 
 func IsExternalURL(source string) bool {
@@ -1022,6 +1092,12 @@ var gitCommitHashRegex = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^[0-9a-fA-F]{4,64}$`)
 })
 
+// NewPluginDescriptor creates a new [PluginDescriptor] from a source string.
+//
+// If you are using this to resolve a "package", consider using
+// [packageresolution.Resolve] instead.
+//
+// Deprecated: NewPluginSpec has been renamed to [NewPluginDescriptor].
 func NewPluginSpec(
 	ctx context.Context,
 	source string,
@@ -1029,7 +1105,22 @@ func NewPluginSpec(
 	version *semver.Version,
 	pluginDownloadURL string,
 	checksums map[string][]byte,
-) (PluginSpec, error) {
+) (PluginDescriptor, error) {
+	return NewPluginDescriptor(ctx, source, kind, version, pluginDownloadURL, checksums)
+}
+
+// NewPluginDescriptor creates a new [PluginDescriptor] from a source string.
+//
+// If you are using this to resolve a "package", consider using
+// [packageresolution.Resolve] instead.
+func NewPluginDescriptor(
+	ctx context.Context,
+	source string,
+	kind apitype.PluginKind,
+	version *semver.Version,
+	pluginDownloadURL string,
+	checksums map[string][]byte,
+) (PluginDescriptor, error) {
 	spec, inference, err := parsePluginSpec(ctx, source, kind)
 	if err != nil {
 		return spec, err
@@ -1037,14 +1128,14 @@ func NewPluginSpec(
 
 	if version != nil {
 		if inference.explicitVersion {
-			return PluginSpec{}, errors.New("cannot specify a version when the version is part of the name")
+			return PluginDescriptor{}, errors.New("cannot specify a version when the version is part of the name")
 		}
 		spec.Version = version
 	}
 
 	if pluginDownloadURL != "" {
 		if inference.explicitPluginDownloadURL {
-			return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
+			return PluginDescriptor{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
 		}
 		spec.PluginDownloadURL = pluginDownloadURL
 	}
@@ -1060,7 +1151,7 @@ type parsePluginSpecInference struct {
 
 func parsePluginSpec(
 	ctx context.Context, source string, kind apitype.PluginKind,
-) (PluginSpec, parsePluginSpecInference, error) {
+) (PluginDescriptor, parsePluginSpecInference, error) {
 	if IsExternalURL(source) {
 		return parsePluginSpecFromURL(ctx, source, kind)
 	}
@@ -1078,7 +1169,7 @@ func (inference *parsePluginSpecInference) parseVersion(spec string, parse func(
 
 func parsePluginSpecFromURL(
 	ctx context.Context, spec string, kind apitype.PluginKind,
-) (PluginSpec, parsePluginSpecInference, error) {
+) (PluginDescriptor, parsePluginSpecInference, error) {
 	// Parse the version if available.  This can either be a simple semver version, or a git commit hash.
 	var version *semver.Version
 	var inference parsePluginSpecInference
@@ -1098,18 +1189,18 @@ func parsePluginSpecFromURL(
 		return fmt.Errorf("VERSION must be valid semver or git commit hash: %s", versionStr)
 	})
 	if err != nil {
-		return PluginSpec{}, inference, err
+		return PluginDescriptor{}, inference, err
 	}
 
 	parsedURL, err := url.Parse(spec)
 	if err != nil {
-		return PluginSpec{}, inference, fmt.Errorf("invalid URL: %w", err)
+		return PluginDescriptor{}, inference, fmt.Errorf("invalid URL: %w", err)
 	}
 	switch parsedURL.Scheme {
 	case "git", "https", "":
 		parsedURL.Scheme = "https"
 	default:
-		return PluginSpec{}, inference, errors.New(`unknown URL scheme: expected "git" or "https"`)
+		return PluginDescriptor{}, inference, errors.New(`unknown URL scheme: expected "git" or "https"`)
 	}
 	// We're purposely dropping any authentication info from the URL here. The name is used as
 	// the folder name for writing the plugin to disk, and we 1) don't want to write secrets
@@ -1122,12 +1213,12 @@ func parsePluginSpecFromURL(
 	}
 	nameURL, path, err := gitutil.ParseGitRepoURL(urlWithoutAuth.String())
 	if err != nil {
-		return PluginSpec{}, inference, err
+		return PluginDescriptor{}, inference, err
 	}
 	if path != "" {
 		path = "_" + path
 	}
-	pluginSpec := PluginSpec{
+	pluginSpec := PluginDescriptor{
 		Name:    strings.ReplaceAll(strings.TrimPrefix(nameURL, "https://")+path, "/", "_"),
 		Kind:    kind,
 		Version: version,
@@ -1144,7 +1235,7 @@ func parsePluginSpecFromURL(
 		var err error
 		gitURL, _, err := gitutil.ParseGitRepoURL(parsedURL.String())
 		if err != nil {
-			return PluginSpec{}, inference, err
+			return PluginDescriptor{}, inference, err
 		}
 		pluginSpec.Version, err = gitutil.GetLatestTagOrHash(ctx, gitURL)
 		if err != nil {
@@ -1157,7 +1248,7 @@ func parsePluginSpecFromURL(
 
 func parsePluginSpecFromName(
 	_ context.Context, spec string, kind apitype.PluginKind,
-) (PluginSpec, parsePluginSpecInference, error) {
+) (PluginDescriptor, parsePluginSpecInference, error) {
 	var version *semver.Version
 	var inference parsePluginSpecInference
 	// Parse the version if available.  This must be a simple semver version.
@@ -1170,7 +1261,7 @@ func parsePluginSpecFromName(
 		return nil
 	})
 
-	return PluginSpec{
+	return PluginDescriptor{
 		Name:    spec,
 		Kind:    kind,
 		Version: version,
@@ -1178,13 +1269,13 @@ func parsePluginSpecFromName(
 }
 
 // IsGitPlugin returns if the plugin comes from the git source
-func (spec PluginSpec) IsGitPlugin() bool {
+func (spec PluginDescriptor) IsGitPlugin() bool {
 	return strings.HasPrefix(spec.PluginDownloadURL, "git://")
 }
 
 // LocalName returns the local name of the plugin, which is used in the directory name, and a path
 // within that directory if the plugin is located in a subdirectory.
-func (spec PluginSpec) LocalName() (string, string) {
+func (spec PluginDescriptor) LocalName() (string, string) {
 	if spec.IsGitPlugin() {
 		trimmed := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
 		url, path, err := gitutil.ParseGitRepoURL("https://" + strings.TrimPrefix(trimmed, "git://"))
@@ -1201,7 +1292,7 @@ func (spec PluginSpec) LocalName() (string, string) {
 }
 
 // Dir gets the expected plugin directory for this plugin.
-func (spec PluginSpec) Dir() string {
+func (spec PluginDescriptor) Dir() string {
 	localName, _ := spec.LocalName()
 	dir := fmt.Sprintf("%s-%s", spec.Kind, localName)
 	if spec.Version != nil {
@@ -1211,19 +1302,19 @@ func (spec PluginSpec) Dir() string {
 }
 
 // SubDir gets the expected subdirectory for this plugin.
-func (spec PluginSpec) SubDir() string {
+func (spec PluginDescriptor) SubDir() string {
 	_, path := spec.LocalName()
 	return path
 }
 
 // File gets the expected filename for this plugin, excluding any platform specific suffixes (e.g. ".exe" on
 // windows).
-func (spec PluginSpec) File() string {
+func (spec PluginDescriptor) File() string {
 	return fmt.Sprintf("pulumi-%s-%s", spec.Kind, spec.Name)
 }
 
 // DirPath returns the directory where this plugin should be installed.
-func (spec PluginSpec) DirPath() (string, error) {
+func (spec PluginDescriptor) DirPath() (string, error) {
 	dir, err := GetPluginDir()
 	if err != nil {
 		return "", err
@@ -1234,7 +1325,7 @@ func (spec PluginSpec) DirPath() (string, error) {
 
 // LockFilePath returns the full path to the plugin's lock file used during installation
 // to prevent concurrent installs.
-func (spec PluginSpec) LockFilePath() (string, error) {
+func (spec PluginDescriptor) LockFilePath() (string, error) {
 	dir, err := spec.DirPath()
 	if err != nil {
 		return "", err
@@ -1244,7 +1335,7 @@ func (spec PluginSpec) LockFilePath() (string, error) {
 
 // PartialFilePath returns the full path to the plugin's partial file used during installation
 // to indicate installation of the plugin hasn't completed yet.
-func (spec PluginSpec) PartialFilePath() (string, error) {
+func (spec PluginDescriptor) PartialFilePath() (string, error) {
 	dir, err := spec.DirPath()
 	if err != nil {
 		return "", err
@@ -1252,7 +1343,7 @@ func (spec PluginSpec) PartialFilePath() (string, error) {
 	return dir + ".partial", nil
 }
 
-func (spec PluginSpec) String() string {
+func (spec PluginDescriptor) String() string {
 	var version string
 	if v := spec.Version; v != nil {
 		version = fmt.Sprintf("-%s", v)
@@ -1291,8 +1382,8 @@ func (info *PluginInfo) Size() uint64 {
 }
 
 // Spec returns the PluginSpec for this PluginInfo
-func (info *PluginInfo) Spec() PluginSpec {
-	return PluginSpec{Name: info.Name, Kind: info.Kind, Version: info.Version}
+func (info *PluginInfo) Spec() PluginDescriptor {
+	return PluginDescriptor{Name: info.Name, Kind: info.Kind, Version: info.Version}
 }
 
 func (info PluginInfo) String() string {
@@ -1364,11 +1455,11 @@ func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL str
 	case "git":
 		return newGitHTTPSSource(url)
 	default:
-		return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
+		return nil, fmt.Errorf("unknown plugin source scheme: %q", url.Scheme)
 	}
 }
 
-func (spec PluginSpec) GetSource() (PluginSource, error) {
+func (spec PluginDescriptor) GetSource() (PluginSource, error) {
 	var source PluginSource
 	var err error
 
@@ -1401,7 +1492,7 @@ func (spec PluginSpec) GetSource() (PluginSource, error) {
 
 // GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
 // plugins we can get from github releases. The context allows for I/O cancellation.
-func (spec PluginSpec) GetLatestVersion(ctx context.Context) (*semver.Version, error) {
+func (spec PluginDescriptor) GetLatestVersion(ctx context.Context) (*semver.Version, error) {
 	source, err := spec.GetSource()
 	if err != nil {
 		return nil, err
@@ -1411,7 +1502,7 @@ func (spec PluginSpec) GetLatestVersion(ctx context.Context) (*semver.Version, e
 
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
 // The context allows for I/O cancellation.
-func (spec PluginSpec) Download(ctx context.Context) (io.ReadCloser, int64, error) {
+func (spec PluginDescriptor) Download(ctx context.Context) (io.ReadCloser, int64, error) {
 	// Figure out the OS/ARCH pair for the download URL.
 	var opSy string
 	switch runtime.GOOS {
@@ -1604,7 +1695,9 @@ func (d *pluginDownloader) copyBuffer(dst io.Writer, src io.Reader) (written int
 	}
 }
 
-func (d *pluginDownloader) tryDownload(ctx context.Context, pkgPlugin PluginSpec, dst io.WriteCloser) (error, error) {
+func (d *pluginDownloader) tryDownload(
+	ctx context.Context, pkgPlugin PluginDescriptor, dst io.WriteCloser,
+) (error, error) {
 	defer dst.Close()
 	tarball, expectedByteCount, err := pkgPlugin.Download(ctx)
 	if err != nil {
@@ -1625,7 +1718,7 @@ func (d *pluginDownloader) tryDownload(ctx context.Context, pkgPlugin PluginSpec
 	return nil, nil
 }
 
-func (d *pluginDownloader) tryDownloadToFile(ctx context.Context, pkgPlugin PluginSpec) (string, error, error) {
+func (d *pluginDownloader) tryDownloadToFile(ctx context.Context, pkgPlugin PluginDescriptor) (string, error, error) {
 	file, err := os.CreateTemp("" /* default temp dir */, "pulumi-plugin-tar")
 	if err != nil {
 		return "", nil, err
@@ -1648,7 +1741,7 @@ func (d *pluginDownloader) tryDownloadToFile(ctx context.Context, pkgPlugin Plug
 	return file.Name(), nil, nil
 }
 
-func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugin PluginSpec) (string, error) {
+func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugin PluginDescriptor) (string, error) {
 	delay := 80 * time.Millisecond
 	backoff := 2.0
 	maxAttempts := 5
@@ -1701,7 +1794,7 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 
 // DownloadToFile downloads the given PluginSpec to a temporary file and returns that temporary file. This has
 // some retry logic to re-attempt the download if it errors for any reason.
-func (d *pluginDownloader) DownloadToFile(ctx context.Context, pkgPlugin PluginSpec) (*os.File, error) {
+func (d *pluginDownloader) DownloadToFile(ctx context.Context, pkgPlugin PluginDescriptor) (*os.File, error) {
 	tarball, err := d.downloadToFileWithRetry(ctx, pkgPlugin)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
@@ -1718,7 +1811,7 @@ func (d *pluginDownloader) DownloadToFile(ctx context.Context, pkgPlugin PluginS
 // may be used for cancellable I/O.
 func DownloadToFile(
 	ctx context.Context,
-	pkgPlugin PluginSpec,
+	pkgPlugin PluginDescriptor,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
 	retry func(err error, attempt int, limit int, delay time.Duration),
 ) (*os.File, error) {
@@ -1753,7 +1846,7 @@ func IsPluginKind(k string) bool {
 }
 
 // HasPlugin returns true if the given plugin exists.
-func HasPlugin(spec PluginSpec) bool {
+func HasPlugin(spec PluginDescriptor) bool {
 	dir, err := spec.DirPath()
 	if err == nil {
 		_, err := os.Stat(dir)
@@ -1769,17 +1862,18 @@ func HasPlugin(spec PluginSpec) bool {
 	return false
 }
 
-// HasPluginGTE returns true if the given plugin exists at the given version number or greater.
-func HasPluginGTE(spec PluginSpec) (bool, error) {
+// HasPluginGTE returns the version selected if the given plugin exists at the given
+// version number or greater.
+func HasPluginGTE(spec PluginDescriptor) (bool, *semver.Version, error) {
 	// If an exact match, return true right away.
 	if HasPlugin(spec) {
-		return true, nil
+		return true, spec.Version, nil
 	}
 
 	// Otherwise, load up the list of plugins and find one with the same name/type and >= version.
 	plugs, err := GetPlugins()
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	// If we're not doing the legacy plugin behavior and we've been asked for a specific version, do the same plugin
@@ -1791,7 +1885,10 @@ func HasPluginGTE(spec PluginSpec) (bool, error) {
 	} else {
 		match = LegacySelectCompatiblePlugin(plugs, spec)
 	}
-	return match != nil, nil
+	if match != nil {
+		return true, match.Version, nil
+	}
+	return false, nil, nil
 }
 
 // GetPolicyDir returns the directory in which an organization's Policy Packs on the current machine are managed.
@@ -1899,16 +1996,14 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 		(kind == apitype.LanguagePlugin && name == "yaml") ||
 		(kind == apitype.LanguagePlugin && name == "java") ||
 		(kind == apitype.ResourcePlugin && name == "pulumi-nodejs") ||
-		(kind == apitype.ResourcePlugin && name == "pulumi-python") ||
-		(kind == apitype.AnalyzerPlugin && name == "policy") ||
-		(kind == apitype.AnalyzerPlugin && name == "policy-python")
+		(kind == apitype.ResourcePlugin && name == "pulumi-python")
 }
 
 // GetPluginPath finds a plugin's path by its kind, name, and optional version.  It will match the latest version that
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
+func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (string, error) {
 	info, path, err := getPluginInfoAndPath(ctx, d, spec, true /* skipMetadata */, projectPlugins)
 	if err != nil {
@@ -1920,7 +2015,7 @@ func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginSpec, projectPlu
 	return path, err
 }
 
-func GetPluginInfo(ctx context.Context, d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
+func GetPluginInfo(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
 	info, path, err := getPluginInfoAndPath(ctx, d, spec, false, projectPlugins)
 	if err != nil {
@@ -1956,7 +2051,7 @@ func getPluginPath(info *PluginInfo) string {
 func getPluginInfoAndPath(
 	ctx context.Context,
 	d diag.Sink,
-	spec PluginSpec, skipMetadata bool,
+	spec PluginDescriptor, skipMetadata bool,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, string, error) {
 	filename := spec.File()
@@ -2161,7 +2256,7 @@ func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 // SelectPrereleasePlugin selects a plugin from the list of plugins, which matches the exact version we
 // are looking for, based on the commit hash.
 func SelectPrereleasePlugin(
-	plugins []PluginInfo, spec PluginSpec,
+	plugins []PluginInfo, spec PluginDescriptor,
 ) *PluginInfo {
 	name, _ := spec.LocalName()
 	for _, cur := range plugins {
@@ -2179,7 +2274,7 @@ func SelectPrereleasePlugin(
 // If there exist plugins in the plugin list that don't have a version, LegacySelectCompatiblePlugin will select
 // them if there are no other compatible plugins available.
 func LegacySelectCompatiblePlugin(
-	plugins []PluginInfo, spec PluginSpec,
+	plugins []PluginInfo, spec PluginDescriptor,
 ) *PluginInfo {
 	name, _ := spec.LocalName()
 	var match *PluginInfo
@@ -2245,7 +2340,7 @@ func LegacySelectCompatiblePlugin(
 // If there exist plugins in the plugin list that don't have a version, SelectCompatiblePlugin will select them if there
 // are no other compatible plugins available.
 func SelectCompatiblePlugin(
-	plugins []PluginInfo, spec PluginSpec,
+	plugins []PluginInfo, spec PluginDescriptor,
 ) *PluginInfo {
 	name, _ := spec.LocalName()
 	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): beginning", name)

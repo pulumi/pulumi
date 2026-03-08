@@ -400,9 +400,8 @@ func TestPublishTemplate_Integration(t *testing.T) {
 
 			// Create a mock cloud registry that uses the HTTP client methods
 			client := &Client{
-				apiURL:     server.URL,
-				apiToken:   "fake-token",
-				httpClient: httpClient,
+				apiURL:   server.URL,
+				apiToken: "fake-token",
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: httpClient,
@@ -689,6 +688,7 @@ func TestListTemplates(t *testing.T) {
 
 		// Call ListTemplates and collect results
 		searchName := "my-template"
+		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
 		for tmpl, err := range mockClient.ListTemplates(context.Background(), &searchName) {
 			require.NoError(t, err)
@@ -786,6 +786,7 @@ func TestListTemplates(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		searchName := "my-template"
+		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
 		for tmpl, err := range mockClient.ListTemplates(context.Background(), &searchName) {
 			require.NoError(t, err)

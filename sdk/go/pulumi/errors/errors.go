@@ -14,7 +14,10 @@
 
 package errors
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // InputPropertyErrorDetails contains the error details for an input property error.
 type InputPropertyErrorDetails struct {
@@ -63,17 +66,18 @@ func InputPropertiesErrorf(format string, args ...any) *InputPropertiesError {
 }
 
 func (ipe *InputPropertiesError) Error() string {
-	message := ipe.Message
-	if message != "" && len(ipe.Errors) > 0 {
-		message += ": "
+	var message strings.Builder
+	message.WriteString(ipe.Message)
+	if ipe.Message != "" && len(ipe.Errors) > 0 {
+		message.WriteString(": ")
 	}
 	for i, err := range ipe.Errors {
 		if i == 0 {
-			message += "\n "
+			message.WriteString("\n ")
 		}
-		message += err.String()
+		message.WriteString(err.String())
 	}
-	return message
+	return message.String()
 }
 
 // WithDetails adds additional property errors to an existing InputPropertiesError.

@@ -272,7 +272,7 @@ func TestImportSpec(t *testing.T) {
 	t.Parallel()
 
 	// Read in, decode, and import the schema.
-	pkgSpec := readSchemaFile("kubernetes-3.7.2.json")
+	pkgSpec := readSchemaFile("kubernetes-3.7.0.json")
 
 	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
 		AllowDanglingReferences: true,
@@ -2077,10 +2077,11 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 		{
 			name: "return-type-plain",
 			fn: &Function{
-				PackageReference: packageDefRef{},
+				PackageReference: nil,
 				Token:            "token",
 				ReturnType:       IntType,
 				ReturnTypePlain:  true,
+				Plain:            true,
 			},
 			fspec: FunctionSpec{
 				ReturnType: &ReturnTypeSpec{
@@ -2189,7 +2190,7 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginCtx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost)
 	require.NoError(t, err)
 	return pluginCtx.Host
 }
@@ -2610,4 +2611,28 @@ func TestProviderRefWarning(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expectedWarning, diags)
+}
+
+// Test that we can bind a package with external references to a parameterized package.
+func TestBindParameterizedExternals(t *testing.T) {
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("parameterized-schemas/parameterizedref-1.0.0.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	// Try and bind again
+	_, diags, err = BindSpec(*newSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	assert.Empty(t, diags)
 }

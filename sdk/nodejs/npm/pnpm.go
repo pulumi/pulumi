@@ -26,6 +26,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
+
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
 // pnpm is an alternative package manager for Node.js.
@@ -52,6 +58,20 @@ func newPnpm() (*pnpmManager, error) {
 
 func (pnpm *pnpmManager) Name() string {
 	return "pnpm"
+}
+
+func (pnpm *pnpmManager) Version() (semver.Version, error) {
+	cmd := exec.Command(pnpm.executable, "--version") //nolint:gosec
+	output, err := cmd.Output()
+	if err != nil {
+		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
+	}
+	versionStr := strings.TrimSpace(string(output))
+	version, err := semver.Parse(versionStr)
+	if err != nil {
+		return semver.Version{}, err
+	}
+	return version, nil
 }
 
 func (pnpm *pnpmManager) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
@@ -114,6 +134,12 @@ func (pnpm *pnpmManager) Link(ctx context.Context, dir, packageName, path string
 	return nil
 }
 
+func (pnpm *pnpmManager) ListPackages(
+	ctx context.Context, dir string, transitive bool,
+) ([]plugin.DependencyInfo, error) {
+	return listPackagesFromLockFile(dir, "pnpm-lock.yaml", transitive)
+}
+
 func (pnpm *pnpmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, pnpm.executable, "pack", "--use-stderr")
@@ -157,7 +183,6 @@ func (pnpm *pnpmManager) Pack(ctx context.Context, dir string, stderr io.Writer)
 // This function is used to indicate whether to prefer pnpm over
 // other package managers.
 func checkPnpmLock(pwd string) bool {
-	pnpmFile := filepath.Join(pwd, "pnpm-lock.yaml")
-	_, err := os.Stat(pnpmFile)
+	_, err := fsutil.Searchup(pwd, "pnpm-lock.yaml")
 	return err == nil
 }

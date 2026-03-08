@@ -224,7 +224,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},
-		DefaultSecretManagerF: func(_ *workspace.ProjectStack) (secrets.Manager, error) {
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
 			return secretsManager, nil
 		},
 	}

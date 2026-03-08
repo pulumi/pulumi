@@ -29,3 +29,22 @@ const res = new plain.Resource("res", {data: {
         y: "200",
     },
 }});
+const emptyListRes = new plain.Resource("emptyListRes", {
+    data: {
+        innerData: {
+            boolean: false,
+            float: 0,
+            integer: 0,
+            string: "",
+            boolArray: [],
+            stringMap: {},
+        },
+        boolean: false,
+        float: 0,
+        integer: 0,
+        string: "",
+        boolArray: [],
+        stringMap: {},
+    },
+    dataList: [],
+});

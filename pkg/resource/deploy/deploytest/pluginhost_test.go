@@ -123,12 +123,10 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Parallel()
 		expectedVersion := semver.MustParse("1.0.0")
 		host := &pluginHost{}
-		_, err := host.Provider(workspace.PackageDescriptor{
-			PluginSpec: workspace.PluginSpec{
-				Name:    "pkgA",
-				Version: &expectedVersion,
-			},
-		})
+		_, err := host.Provider(workspace.PluginDescriptor{
+			Name:    "pkgA",
+			Version: &expectedVersion,
+		}, nil)
 		assert.ErrorContains(t, err, "Could not find plugin for (pkgA, 1.0.0)")
 	})
 	t.Run("error: plugin host is shutting down", func(t *testing.T) {
@@ -136,12 +134,10 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Run("Provider", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.Provider(workspace.PackageDescriptor{
-				PluginSpec: workspace.PluginSpec{
-					Name:    "pkgA",
-					Version: &semver.Version{},
-				},
-			})
+			_, err := host.Provider(workspace.PluginDescriptor{
+				Name:    "pkgA",
+				Version: &semver.Version{},
+			}, nil)
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 		t.Run("LanguageRuntime", func(t *testing.T) {
@@ -160,12 +156,6 @@ func TestPluginHostProvider(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
 			_, err := host.Analyzer("")
-			assert.ErrorIs(t, err, ErrHostIsClosed)
-		})
-		t.Run("CloseProvider", func(t *testing.T) {
-			t.Parallel()
-			host := &pluginHost{closed: true}
-			err := host.CloseProvider(nil)
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 		t.Run("EnsurePlugins", func(t *testing.T) {

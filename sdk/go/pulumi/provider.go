@@ -18,7 +18,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
@@ -29,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"golang.org/x/exp/maps"
 
 	"google.golang.org/grpc"
 )
@@ -91,8 +92,26 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 
 	// Rebuild the resource options.
 	aliases := make([]Alias, len(req.GetAliases()))
-	for i, urn := range req.GetAliases() {
-		aliases[i] = Alias{URN: URN(urn)}
+	for i, alias := range req.GetAliases() {
+		var result Alias
+		switch a := alias.Alias.(type) {
+		case *pulumirpc.Alias_Spec_:
+			result = Alias{
+				Name:    String(a.Spec.Name),
+				Type:    String(a.Spec.Type),
+				Project: String(a.Spec.Project),
+				Stack:   String(a.Spec.Stack),
+			}
+			switch p := a.Spec.Parent.(type) {
+			case *pulumirpc.Alias_Spec_ParentUrn:
+				result.Parent = pulumiCtx.newDependencyResource(URN(p.ParentUrn))
+			case *pulumirpc.Alias_Spec_NoParent:
+				result.NoParent = Bool(p.NoParent)
+			}
+		case *pulumirpc.Alias_Urn:
+			result = Alias{URN: URN(a.Urn)}
+		}
+		aliases[i] = result
 	}
 
 	dependencies := slice.Prealloc[Resource](len(req.GetDependencies()))
@@ -123,6 +142,34 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		hooks.AfterUpdate = makeStubHooks(binding.GetAfterUpdate())
 		hooks.BeforeDelete = makeStubHooks(binding.GetBeforeDelete())
 		hooks.AfterDelete = makeStubHooks(binding.GetAfterDelete())
+		hooks.OnError = makeStubErrorHooks(binding.GetOnError())
+	}
+
+	var replacementTrigger Input
+	if rt := req.GetReplacementTrigger(); rt != nil {
+		pv, err := plugin.UnmarshalPropertyValue(
+			resource.PropertyKey("replacementTrigger"),
+			rt,
+			plugin.MarshalOptions{
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepUnknowns:     req.GetDryRun(),
+				KeepOutputValues: true,
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
+		}
+
+		if pv != nil && !pv.IsNull() { // null = explicitly unset
+			m, err := unmarshalPropertyMap(pulumiCtx, resource.PropertyMap{
+				resource.PropertyKey("replacementTrigger"): *pv,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
+			}
+			replacementTrigger = m["replacementTrigger"]
+		}
 	}
 
 	opts := resourceOption(func(ro *resourceOptions) {
@@ -154,6 +201,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		ro.DeleteBeforeReplace = req.DeleteBeforeReplace
 		ro.IgnoreChanges = append(ro.IgnoreChanges, req.GetIgnoreChanges()...)
 		ro.ReplaceOnChanges = append(ro.ReplaceOnChanges, req.GetReplaceOnChanges()...)
+		ro.ReplacementTrigger = replacementTrigger
 		ro.RetainOnDelete = req.RetainOnDelete
 		ro.Hooks = hooks
 	})
@@ -247,8 +295,7 @@ func (ci constructInput) Dependencies(ctx *Context) []Resource {
 	if ci.deps == nil {
 		return nil
 	}
-	urns := maps.Keys(ci.deps)
-	sort.Slice(urns, func(i, j int) bool { return urns[i] < urns[j] })
+	urns := slices.Sorted(maps.Keys(ci.deps))
 	var result []Resource
 	if len(urns) > 0 {
 		result = make([]Resource, len(urns))

@@ -13,6 +13,7 @@
         "strict": true
     },
     "files": [
+        "doGoodbyeWorld.ts",
         "goodbyeWorld.ts",
         "goodbyeWorldComponent.ts",
         "index.ts",

@@ -542,7 +542,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "length":
 		g.Fgenf(w, "%.20v.length", expr.Args[0])
 	case "lookup":
-		g.Fgenf(w, "%v[%v]", expr.Args[0], expr.Args[1])
+		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
+		switch argType.(type) {
+		case *model.ObjectType:
+			g.Fgenf(w, "(%.v as Record<string, any>)[%v]", expr.Args[0], expr.Args[1])
+		default:
+			g.Fgenf(w, "%v[%v]", expr.Args[0], expr.Args[1])
+		}
 		if len(expr.Args) == 3 {
 			g.Fgenf(w, " || %v", expr.Args[2])
 		}

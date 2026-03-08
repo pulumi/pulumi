@@ -47,7 +47,7 @@ func ResolveGoogleCredentials(ctx context.Context, scope string) (*google.Creden
 	if creds := os.Getenv("GOOGLE_CREDENTIALS"); creds != "" {
 		// We try $GOOGLE_CREDENTIALS before gcp.DefaultCredentials
 		// so that users can override the default creds
-		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), scope)
+		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), scope) //nolint:staticcheck
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse credentials from $GOOGLE_CREDENTIALS: %w", err)
 		}

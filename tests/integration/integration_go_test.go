@@ -17,7 +17,6 @@ package ints
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -44,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -1022,16 +1022,12 @@ func TestConstructResourceOptionsGo(t *testing.T) {
 func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	t.Parallel()
 
-	// Context scoped to the lifetime of the test.
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("go", "regress-13301"))
 
 	// Rename go.mod.bad to go.mod so that the Go toolchain uses it.
-	require.NoError(t, os.Rename(
+	require.NoError(t, os.Rename( //nolint:forbidigo // os.Rename is OK for tests
 		filepath.Join(e.CWD, "go.mod.bad"),
 		filepath.Join(e.CWD, "go.mod"),
 	))
@@ -1066,7 +1062,7 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 		"PULUMI_DEBUG_GRPC="+grpcLog)
 	e.RunCommand("pulumi", "plugin", "install")
 
-	ws, err := auto.NewLocalWorkspace(ctx,
+	ws, err := auto.NewLocalWorkspace(t.Context(),
 		auto.Project(workspace.Project{
 			Name:    "issue-13301",
 			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
@@ -1092,10 +1088,10 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 		return nil
 	})
 
-	stack, err := auto.UpsertStack(ctx, "foo", ws)
+	stack, err := auto.UpsertStack(t.Context(), "foo", ws)
 	require.NoError(t, err)
 
-	_, err = stack.Preview(ctx)
+	_, err = stack.Preview(t.Context())
 	require.NoError(t, err)
 }
 
@@ -1370,7 +1366,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	require.NoError(t, err)
 
 	containsRename := false
-	containedRenames := make([]string, len(gomod.Replace))
+	containedRenames := slice.Prealloc[string](len(gomod.Replace))
 	for _, r := range gomod.Replace {
 		if filepath.ToSlash(r.New.Path) == "./sdks/netapp-cloudmanager" &&
 			r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/netapp-cloudmanager/v25" {

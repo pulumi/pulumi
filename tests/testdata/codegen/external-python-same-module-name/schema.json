@@ -6,11 +6,11 @@
                 "advancedEventSelectors": {
                     "type": "array",
                     "items": {
-                        "$ref": "/aws/v4.37.1/schema.json#/types/aws:cloudtrail%2FTrailAdvancedEventSelector:TrailAdvancedEventSelector"
+                        "$ref": "/aws/v5.4.0/schema.json#/types/aws:cloudtrail%2FTrailAdvancedEventSelector:TrailAdvancedEventSelector"
                     }
                 },
                 "trail": {
-                    "$ref": "/aws/v4.37.1/schema.json#/resources/aws:cloudtrail%2Ftrail:Trail"
+                    "$ref": "/aws/v5.4.0/schema.json#/resources/aws:cloudtrail%2Ftrail:Trail"
                 }
             },
             "isComponent": true
@@ -20,7 +20,7 @@
         "python": {
             "requires": {
                 "pulumi": ">=3.0.0,<4.0.0",
-                "pulumi-aws": ">=4.37.1,<5.0.0"
+                "pulumi-aws": ">=5.4.0,<6.0.0"
             }
         }
     }

@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -59,7 +60,6 @@ var errAbortCmd = errors.New("abort")
 func newDeploymentSettingsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "settings",
-		Args:  cmdutil.NoArgs,
 		Short: "Manage stack deployment settings",
 		Long: "Manage stack deployment settings\n" +
 			"\n" +
@@ -70,6 +70,8 @@ func newDeploymentSettingsCmd() *cobra.Command {
 			return cmd.Help()
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newDeploymentSettingsInitCmd())
 	cmd.AddCommand(newDeploymentSettingsPullCmd())
@@ -177,7 +179,6 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "init",
 		SuggestFor: []string{"new", "create"},
-		Args:       cmdutil.ExactArgs(0),
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -202,6 +203,8 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.PersistentFlags().StringVar(
 		&gitSSHPrivateKeyPath, "git-auth-ssh-private-key-path", "",
@@ -290,7 +293,6 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "configure",
-		Args:  cmdutil.ExactArgs(0),
 		Short: "Updates stack's deployment settings secrets",
 		Long:  "",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -351,6 +353,8 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.PersistentFlags().StringVarP(
 		&gitSSHPrivateKeyPath, "git-auth-ssh-private-key-path", "k", "",

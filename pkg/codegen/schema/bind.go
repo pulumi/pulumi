@@ -297,7 +297,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil)
+		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil, NewLoaderServerFromHost)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -850,7 +850,28 @@ func (t *types) bindTypeSpecRef(
 	// If this is a reference to an external sch
 	referencesExternalSchema := ref.Package != t.pkg.Name || !versionEquals(ref.Version, t.pkg.Version)
 	if referencesExternalSchema {
-		pkg, err := LoadPackageReference(t.loader, ref.Package, ref.Version)
+		// Try and find the package descriptor from the dependencies list.
+		var pkgdesc *PackageDescriptor
+		for _, d := range t.pkg.Dependencies {
+			name := d.Name
+			version := d.Version
+			if d.Parameterization != nil {
+				name = d.Parameterization.Name
+				version = &d.Parameterization.Version
+			}
+
+			if versionEquals(version, ref.Version) && name == ref.Package {
+				pkgdesc = &d
+				break
+			}
+		}
+
+		if pkgdesc == nil {
+			// Default package descriptor of just name and version
+			pkgdesc = &PackageDescriptor{Name: ref.Package, Version: ref.Version}
+		}
+
+		pkg, err := LoadPackageReferenceV2(context.TODO(), t.loader, pkgdesc)
 		if err != nil {
 			return nil, nil, fmt.Errorf("resolving package %v: %w", ref.URL, err)
 		}
@@ -1882,6 +1903,11 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 		}
 	}
 
+	plain := true
+	if spec.Plain != nil {
+		plain = *spec.Plain
+	}
+
 	fn := &Function{
 		PackageReference:          t.externalPackage(),
 		Token:                     token,
@@ -1896,6 +1922,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 		Language:                  makeLanguageMap(spec.Language),
 		IsOverlay:                 spec.IsOverlay,
 		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
+		Plain:                     plain,
 	}
 	t.functionDefs[token] = fn
 

@@ -35,6 +35,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -180,7 +182,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 	templateSource := cmdTemplates.New(ctx,
 		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject, env.Global())
-	defer func() { contract.IgnoreError(templateSource.Close()) }()
+	defer contract.IgnoreClose(templateSource)
 
 	// List the templates from the repo.
 	templates, err := templateSource.Templates()
@@ -361,6 +363,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
+		ctx,
 		projinfo,
 		nil, /* host */
 		cmdutil.Diag(),
@@ -437,6 +440,11 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
+		if err := InstallPackagesFromProject(ctx, proj, root,
+			cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
+			-1, false, os.Stderr, os.Stderr, env.Global()); err != nil {
+			return err
+		}
 		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
 			return err
 		}
@@ -541,7 +549,6 @@ func NewNewCmd() *cobra.Command {
 			"* `pulumi new --language <language>`\n" +
 			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
 			"Any missing but required information will be prompted for.\n",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
@@ -568,6 +575,10 @@ func NewNewCmd() *cobra.Command {
 			return runNew(ctx, args)
 		},
 	}
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "template-or-url", Usage: "[template|url]"}},
+		Required:  0,
+	})
 
 	// Add additional help that includes a list of available templates.
 	defaultHelp := cmd.HelpFunc()

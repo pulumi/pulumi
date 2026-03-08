@@ -71,6 +71,10 @@ export class PrepareLanguageTestsRequest extends jspb.Message {
     setPolicyPackDirectory(value: string): PrepareLanguageTestsRequest;
     getLocal(): boolean;
     setLocal(value: boolean): PrepareLanguageTestsRequest;
+    getProvidersDirectory(): string;
+    setProvidersDirectory(value: string): PrepareLanguageTestsRequest;
+    getConverterPluginTarget(): string;
+    setConverterPluginTarget(value: string): PrepareLanguageTestsRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PrepareLanguageTestsRequest.AsObject;
@@ -96,6 +100,8 @@ export namespace PrepareLanguageTestsRequest {
         programOverridesMap: Array<[string, PrepareLanguageTestsRequest.ProgramOverride.AsObject]>,
         policyPackDirectory: string,
         local: boolean,
+        providersDirectory: string,
+        converterPluginTarget: string,
     }
 
 
@@ -174,6 +180,8 @@ export class RunLanguageTestRequest extends jspb.Message {
     setToken(value: string): RunLanguageTestRequest;
     getTest(): string;
     setTest(value: string): RunLanguageTestRequest;
+    getSkipConvertTests(): boolean;
+    setSkipConvertTests(value: boolean): RunLanguageTestRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunLanguageTestRequest.AsObject;
@@ -189,6 +197,7 @@ export namespace RunLanguageTestRequest {
     export type AsObject = {
         token: string,
         test: string,
+        skipConvertTests: boolean,
     }
 }
 

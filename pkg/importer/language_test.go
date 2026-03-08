@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 )
@@ -111,10 +112,10 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
-	generatedProgram := ""
+	var generatedProgram strings.Builder
 	generator := func(_ io.Writer, p *pcl.Program) error {
 		for _, content := range p.Source() {
-			generatedProgram += content
+			generatedProgram.WriteString(content)
 		}
 		return nil
 	}
@@ -154,7 +155,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -181,7 +182,7 @@ resource second "aws:s3/bucketObject:BucketObject" {
 
 }
 `
-	assert.Equal(t, expectedCode, generatedProgram)
+	assert.Equal(t, expectedCode, generatedProgram.String())
 }
 
 func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T) {
@@ -189,10 +190,10 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
-	generatedProgram := ""
+	var generatedProgram strings.Builder
 	generator := func(_ io.Writer, p *pcl.Program) error {
 		for _, content := range p.Source() {
-			generatedProgram += content
+			generatedProgram.WriteString(content)
 		}
 		return nil
 	}
@@ -228,7 +229,7 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -250,5 +251,5 @@ parent = parentComponent
 
 }
 `
-	assert.Equal(t, expectedCode, generatedProgram)
+	assert.Equal(t, expectedCode, generatedProgram.String())
 }

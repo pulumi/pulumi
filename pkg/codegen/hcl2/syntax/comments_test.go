@@ -29,15 +29,15 @@ import (
 )
 
 func commentString(trivia []Trivia) string {
-	s := ""
+	var s strings.Builder
 	for _, t := range trivia {
 		if comment, ok := t.(Comment); ok {
 			for _, l := range comment.Lines {
-				s += strings.ReplaceAll(l, "✱", "*")
+				s.WriteString(strings.ReplaceAll(l, "✱", "*"))
 			}
 		}
 	}
-	return normString(s)
+	return normString(s.String())
 }
 
 func validateTokenLeadingTrivia(t *testing.T, token Token) {

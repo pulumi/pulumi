@@ -258,31 +258,31 @@ func TestGenerateName(t *testing.T) {
 		{
 			name:          "hex generation",
 			pattern:       "${name}-${hex(4)}",
-			want:          "myresource-ccf3",
+			want:          "myresource-f93c",
 			wantHasRandom: true,
 		},
 		{
 			name:          "alphanum generation",
 			pattern:       "${name}-${alphanum(5)}",
-			want:          "myresource-uqk8s",
+			want:          "myresource-3ufv0",
 			wantHasRandom: true,
 		},
 		{
 			name:          "string generation",
 			pattern:       "${name}-${string(6)}",
-			want:          "myresource-qekgoj",
+			want:          "myresource-xgtfme",
 			wantHasRandom: true,
 		},
 		{
 			name:          "num generation",
 			pattern:       "${num(7)}_${name}",
-			want:          "4080051_myresource",
+			want:          "5657624_myresource",
 			wantHasRandom: true,
 		},
 		{
 			name:          "uuid generation",
 			pattern:       "${uuid}",
-			want:          "ccf35be6-7106-5ccd-784a-fa394fcdb57c",
+			want:          "f93c359b-82a2-9def-ec84-776cd822c95a",
 			wantHasRandom: true,
 		},
 	}

@@ -18,10 +18,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -32,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
@@ -44,10 +47,14 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -119,9 +126,11 @@ func NewUpCmd() *cobra.Command {
 	var excludeDependents bool
 	var planFilePath string
 	var attachDebugger []string
+	var strict bool
 
 	// Flags for Neo.
 	var neoEnabled bool
+	var neoTaskOnFailure bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -131,6 +140,7 @@ func NewUpCmd() *cobra.Command {
 		lm cmdBackend.LoginManager,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
+		meta *promise.Promise[map[string]string],
 	) error {
 		s, err := cmdStack.RequireStack(
 			ctx,
@@ -181,7 +191,9 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("validating stack config: %w", configErr)
 		}
 
-		targetURNs, replaceURNs, excludeURNs := []string{}, []string{}, []string{}
+		targetURNs := slice.Prealloc[string](len(targets) + len(targetReplaces))
+		replaceURNs := slice.Prealloc[string](len(replaces) + len(targetReplaces))
+		excludeURNs := slice.Prealloc[string](len(excludes))
 		targetURNs = append(targetURNs, targets...)
 		excludeURNs = append(excludeURNs, excludes...)
 		replaceURNs = append(replaceURNs, replaces...)
@@ -221,8 +233,9 @@ func NewUpCmd() *cobra.Command {
 			ExcludeDependents:         excludeDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan:    true,
+			GeneratePlan:    env.Experimental.Value() || strict,
 			Experimental:    env.Experimental.Value(),
+			Strict:          strict,
 			ContinueOnError: continueOnError,
 			AttachDebugger:  attachDebugger,
 			Autonamer:       autonamer,
@@ -235,6 +248,15 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 			opts.Engine.Plan = p
+		}
+
+		start := time.Now()
+		metadata, err := meta.Result(ctx)
+		logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+		if err != nil {
+			logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+		} else {
+			maps.Copy(m.Environment, metadata)
 		}
 
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
@@ -268,14 +290,13 @@ func NewUpCmd() *cobra.Command {
 		templateNameOrURL string,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
+		meta *promise.Promise[map[string]string],
 	) error {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
 			templateNameOrURL, cmdTemplates.ScopeAll,
 			workspace.TemplateKindPulumiProject, env.Global())
-		defer func() {
-			contract.IgnoreError(templateSource.Close())
-		}()
+		defer contract.IgnoreClose(templateSource)
 
 		// List the templates from the repo.
 		templates, err := templateSource.Templates()
@@ -406,7 +427,8 @@ func NewUpCmd() *cobra.Command {
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		_, main, pctx, err := engine.ProjectInfoContext(
+			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
 		}
@@ -455,15 +477,25 @@ func NewUpCmd() *cobra.Command {
 			Refresh:          refreshOption,
 			RefreshProgram:   runProgram,
 			ShowSecrets:      showSecrets,
-			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
+			// If the user passed --plan (but no path) then trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: env.Experimental.Value(),
+			GeneratePlan: env.Experimental.Value() || strict,
 			Experimental: env.Experimental.Value(),
+			Strict:       strict,
 
 			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
 
 			AttachDebugger: attachDebugger,
+		}
+
+		start := time.Now()
+		metadata, err := meta.Result(ctx)
+		logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+		if err != nil {
+			logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+		} else {
+			maps.Copy(m.Environment, metadata)
 		}
 
 		// TODO for the URL case:
@@ -494,7 +526,7 @@ func NewUpCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        "up [template|url]",
+		Use:        "up",
 		Aliases:    []string{"update"},
 		SuggestFor: []string{"apply", "deploy", "push"},
 		Short:      "Create or update the resources in a stack",
@@ -512,11 +544,22 @@ func NewUpCmd() *cobra.Command {
 			"\n" +
 			"Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary\n" +
 			" project is created, deployed, and then deleted, leaving only the stack state.",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
+
+			proj, root, err := readProjectForUpdate(ws, client)
+			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
+
+			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.Remote {
@@ -525,6 +568,12 @@ func NewUpCmd() *cobra.Command {
 
 			yes = yes || skipPreview || env.SkipConfirmations.Value()
 
+			// Validate that the user did not pass both --skip-preview and --plan.
+			// Plan requires a preview so these flags are mutually exclusive.
+			if skipPreview && strict {
+				return errors.New("--strict cannot be used with --skip-preview; strict requires a preview")
+			}
+
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
 				return errors.New(
@@ -532,8 +581,7 @@ func NewUpCmd() *cobra.Command {
 				)
 			}
 
-			err := validateAttachDebuggerFlag(attachDebugger)
-			if err != nil {
+			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
 				return err
 			}
 
@@ -615,6 +663,7 @@ func NewUpCmd() *cobra.Command {
 			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
+			configureNeoTaskOption(neoTaskOnFailure, cmd, &opts.Display, isDIYBackend)
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
@@ -625,6 +674,7 @@ func NewUpCmd() *cobra.Command {
 					args[0],
 					opts,
 					cmd,
+					meta,
 				)
 			}
 
@@ -635,9 +685,15 @@ func NewUpCmd() *cobra.Command {
 				cmdBackend.DefaultLoginManager,
 				opts,
 				cmd,
+				meta,
 			)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "template-or-url", Usage: "[template|url]"}},
+		Required:  0,
+	})
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
@@ -781,9 +837,23 @@ func NewUpCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(
+		&strict, "strict", false,
+		"[EXPERIMENTAL] Enable strict plan behavior: generate a plan during preview and constrain the update "+
+			"to that plan (opt-in). Cannot be used with --skip-preview.")
+
+	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,
 		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_NEO environment variable)")
+
+	cmd.PersistentFlags().BoolVar(
+		&neoTaskOnFailure, "neo-task-on-failure", false,
+		"Start a Neo task to help debug errors that occur during the operation")
+	if !env.Experimental.Value() {
+		contract.AssertNoErrorf(
+			cmd.PersistentFlags().MarkHidden("neo-task-on-failure"),
+			`Could not mark "neo-task-on-failure" as hidden`)
+	}
 
 	// Keep --copilot flag for backwards compatibility, but hide it
 	cmd.PersistentFlags().BoolVar(

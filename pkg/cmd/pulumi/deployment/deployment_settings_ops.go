@@ -17,11 +17,13 @@ package deployment
 import (
 	"errors"
 
+	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/spf13/cobra"
 )
 
 func verifyInteractiveMode(yes bool) error {
@@ -39,7 +41,6 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "pull",
-		Args:  cmdutil.ExactArgs(0),
 		Short: "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
 		Long:  "",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -66,6 +67,8 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 		},
 	}
 
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
@@ -81,7 +84,6 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		Use:        "push",
 		Aliases:    []string{"update", "up"},
 		SuggestFor: []string{"apply", "deploy", "push"},
-		Args:       cmdutil.ExactArgs(0),
 		Short:      "Update stack deployment settings from deployment.yaml",
 		Long:       "",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -116,6 +118,8 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		},
 	}
 
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically confirm every confirmation prompt")
@@ -135,7 +139,6 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		Use:        "destroy",
 		Aliases:    []string{"down", "dn", "clear"},
 		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
-		Args:       cmdutil.ExactArgs(0),
 		Short:      "Delete all the stack's deployment settings",
 		Long:       "",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -166,6 +169,8 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		},
 	}
 
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically confirm every confirmation prompt")
@@ -183,8 +188,7 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 	var remove bool
 
 	cmd := &cobra.Command{
-		Use:   "env <key> [value]",
-		Args:  cmdutil.RangeArgs(1, 2),
+		Use:   "env",
 		Short: "Update stack's deployment settings secrets",
 		Long:  "",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -251,6 +255,14 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "key"},
+			{Name: "value"},
+		},
+		Required: 1,
+	})
 
 	cmd.PersistentFlags().BoolVar(
 		&secret, "secret", false,

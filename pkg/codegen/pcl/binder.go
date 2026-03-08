@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -176,7 +176,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, cwd, nil, false, nil)
+		ctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, cwd, nil, false, nil, schema.NewLoaderServerFromHost)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -264,11 +264,12 @@ func BindDirectory(
 		return nil, parseDiagnostics, nil
 	}
 
-	opts := []BindOption{
+	opts := make([]BindOption, 0, 3+len(extraOptions))
+	opts = append(opts,
 		Loader(loader),
 		DirPath(directory),
 		ComponentBinder(ComponentProgramBinderFromFileSystem()),
-	}
+	)
 
 	opts = append(opts, extraOptions...)
 
@@ -488,6 +489,17 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 					VariableType: model.DynamicType,
 				}
 				diags := b.declareNode(name, v)
+				diagnostics = append(diagnostics, diags...)
+			case "pulumi":
+				labels := item.Labels
+				if len(labels) != 0 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "pulumi block must not have any labels"))
+					continue
+				}
+				v := &PulumiBlock{
+					syntax: item,
+				}
+				diags := b.declareNode(PulumiBlockName, v)
 				diagnostics = append(diagnostics, diags...)
 			}
 		}

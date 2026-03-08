@@ -273,13 +273,13 @@ func TestPostgresBackend(t *testing.T) {
 
 	// Test default secrets manager
 	projectStack := &workspace.ProjectStack{}
-	secretsManager, err := b.DefaultSecretManager(projectStack)
+	secretsManager, err := b.DefaultSecretManager(ctx, projectStack)
 	if err == nil {
 		require.NotNil(t, secretsManager, "Default secrets manager should not be nil")
 	}
 
 	// Test stack-level secrets manager
-	stackSecretsManager, err := stack1.DefaultSecretManager(projectStack)
+	stackSecretsManager, err := stack1.DefaultSecretManager(ctx, projectStack)
 	if err == nil {
 		require.NotNil(t, stackSecretsManager, "Stack secrets manager should not be nil")
 	}

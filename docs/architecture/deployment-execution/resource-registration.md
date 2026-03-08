@@ -70,58 +70,70 @@ providers](component-providers), responding to
 (step-generation)=
 ## Step generation
 
-The *step generator* (<gh-file:pulumi#pkg/resource/deploy/step_generator.go>) is
-responsible for processing `RegisterResourceEvent`s emitted by the resource
-monitor. When an event is received, the step generator proceeds as follows:
+The *step generator* (<gh-file:pulumi#pkg/resource/deploy/step_generator.go>)
+converts `RegisterResourceEvents` and `ReadResourceEvents` from the Pulumi program
+into executable [steps](steps).  Steps are the internal representation of
+everything that needs to happen to fulfill the goals of that program. The steps
+are passed to the step executor, which will do the actual work encoded in the
+steps.
 
-1. A URN is generated for the resource, using the type, name and parent fields
-   from the event.
-2. The URN is used to look up the resource's existing state, if it has any. If
-   the event contains aliases, state under those aliases will also be looked up.
-   It is an error if multiple pieces of existing state are found due to
-   aliasing.
-3. Input properties are pre-processed to implement the `ignoreChanges` resource
-   option, by resetting the values of any properties which should be ignored to
-   their previous values.
-4. If the event indicates that the resource should be imported, the step
-   generator will emit an `ImportStep` and return.
-5. If the resource is not being imported, the step generator will continue by
-   calling the provider's [](pulumirpc.ResourceProvider.Check) method with both
-   the event's input properties and the resource's existing
-   inputs.[^existing-inputs] `Check` will return a validated bag of input values
-   that may be used in later calls to [](pulumirpc.ResourceProvider.Diff),
-   [](pulumirpc.ResourceProvider.Create), and
-   [](pulumirpc.ResourceProvider.Update).
-6. At this point, the step generator will invoke any *analyzers* that have been
-   configured in the stack to perform additional validation on the resource's
-   input properties.
-7. If the resource has no existing state, it must be created. Issue a
-   `CreateStep` and return.
-8. [Diff](step-generation-diff) the resource in order to determine whether it
-   must be updated, replaced, or left as-is.
-9. If there are no changes, issue a `SameStep` and return.
-10. If the resource is not being replaced, issue an `UpdateStep` and return.
-11. If the resource is being replaced, call the resource provider's
-    [](pulumirpc.ResourceProvider.Check) method again, this time sending no
-    existing inputs. This call ensures that the input properties used to create
-    the replacement will not reuse generated defaults that should be unique to
-    the existing resource.
-12. If the replacement should be created before the original is deleted (a
-    normal replacement, also "create-replace" or "create-before-replace"), issue
-    an appropriate `CreateStep` and `DeleteStep` pair and return.
-13. If the replacement should be created after the original has been deleted
-    ("delete-replace", "delete-before-replace", "DBR"), calculate the list of
-    resources that will have to be deleted in response to the deletion of the
-    original (see the sections on [deletions](step-generation-deletions) and
-    [dependent replacements](step-generation-dependent-replacements) later on
-    for more details). Then, issue a `DeleteStep` and `CreateStep` pair for the
-    replacement and return.
+This is a fire and forget process. Once a step has been generated
+the step generator immediately moves on to the next `RegisterResourceEvent`. It
+is the responsibility of the [step executor](step-execution) to communicate the
+results of each step back to the [resource monitor](resource-monitor).
+executor to the step generator.
 
-[^existing-inputs]:
-    Existing inputs inputs may be used to repopulate default values for input
-    properties that are automatically generated when the resource is created but
-    that are not changed on subsequent updates (e.g. automatically generated
-    names).
+### Process Overview
+
+```mermaid
+flowchart TD
+    Start[RegisterResourceEvent] --> GenURN[Generate URN]
+    GenURN --> LookupOld[Lookup existing state<br/>Check aliases]
+    LookupOld --> Import{Import?}
+
+    Import -->|Yes| ImportStep[Generate ImportStep]
+    Import -->|No| Check[Call Provider.Check]
+
+    Check --> Analyzers[Run Analyzers]
+    Analyzers --> HasOld{Existing<br/>state?}
+
+    HasOld -->|No| CreateStep[Generate CreateStep]
+    HasOld -->|Yes| Diff[Compute Diff]
+
+    Diff --> DiffResult{Changes?}
+    DiffResult -->|None| SameStep[Generate SameStep]
+    DiffResult -->|Update| UpdateStep[Generate UpdateStep]
+    DiffResult -->|Replace| ReplaceFlow[Replacement Flow]
+
+    ReplaceFlow --> ReplaceType{Replace<br/>Type?}
+    ReplaceType -->|Create-Before| CBR[CreateStep +<br/>ReplaceStep +<br/>DeleteStep]
+    ReplaceType -->|Delete-Before| DBR[Calculate Dependents<br/>DeleteStep +<br/>CreateStep]
+
+    CreateStep --> Submit[Submit to Executor]
+    SameStep --> Submit
+    UpdateStep --> Submit
+    ImportStep --> Submit
+    CBR --> Submit
+    DBR --> Submit
+```
+
+### Step Generation Algorithm
+
+When a `RegisterResourceEvent` is received:
+
+1. URN Generation: Create URN from type, name, and parent
+2. State Lookup: Find existing state by URN or aliases (error if multiple matches)
+3. Import Check: If importing, generate `ImportStep` and return
+4. Check Inputs: Call provider's `Check` to validate and normalize inputs
+5. Run Analyzers: Execute configured analyzers for validation
+6. Decision Point:
+   - No existing state: Generate `CreateStep`
+   - Has existing state: Proceed to diff
+7. Diff: Compute differences between old and new state (can happen async, see below)
+8. Generate Steps:
+   - No changes: `SameStep`
+   - Update: `UpdateStep`
+   - Replace: Replacement flow (see below)
 
 :::{note}
 Presently, step generation is a *serial* process (that is, steps are processed
@@ -132,12 +144,53 @@ generally insignificant compared to the time spend performing provider
 operations (e.g. cloud updates), but in the case of a large preview operation,
 or an update where most resources are unchanged, the step generator could become
 a bottleneck.
+
+There are some exceptions to this, e.g. with diffs (see below), but largely operations
+that happen in the step generator should be fast, to not slow the whole deployment
+down.
 :::
 
-Step generation is a fire-and-forget process. Once a step has been generated,
-the step generator immediately moves on to the next `RegisterResourceEvent`. It
-is the responsibility of the [step executor](step-execution) to communicate the
-results of each step back to the [resource monitor](resource-monitor).
+
+
+### Read Resource Events
+
+While `RegisterResourceEvent`s represent resources managed by Pulumi,
+`ReadResourceEvent`s fetch existing resources as external references. These
+resources are marked `External = true`, meaning Pulumi tracks them but doesn't
+own their lifecycle.
+
+```mermaid
+flowchart TD
+    Start[ReadResourceEvent] --> GenURN[Generate URN]
+    GenURN --> CreateState[Create new state<br/>marked External]
+    CreateState --> HasOld{Existing<br/>resource?}
+
+    HasOld -->|No| ReadStep[Generate ReadStep]
+    HasOld -->|Yes| CheckExternal{Old is<br/>External?}
+
+    CheckExternal -->|Yes| ReadStep
+    CheckExternal -->|No| CheckID{IDs<br/>match?}
+
+    CheckID -->|Yes| Relinquish[Relinquish:<br/>Release from management]
+    CheckID -->|No| ReadReplace[Read Replacement:<br/>Delete old, read new]
+
+    Relinquish --> ReadStep
+    ReadReplace --> ReadReplaceStep[Generate ReadReplacementStep<br/>+ ReplaceStep]
+
+    ReadStep --> Submit[Submit to Executor]
+    ReadReplaceStep --> Submit
+```
+
+1. Generate URN from type, name, and parent
+2. Create state marked as `External = true` with provided ID
+3. Check existing resource:
+   - No existing: Simple `ReadStep` to fetch state
+   - Existing external: Simple `ReadStep` (updating reference)
+   - Existing managed, same ID: "Relinquish" - release from Pulumi
+     management, generate `ReadStep`
+   - Existing managed, different ID: "Read replacement" - generate
+     `ReadReplacementStep` to delete old managed resource and `ReplaceStep`
+     marker
 
 (step-generation-diff)=
 ### Diffing
@@ -163,31 +216,80 @@ is as follows:
    [](pulumirpc.ResourceProvider.Diff) method to determine whether the resource
    must be updated, replaced, or left as-is.
 
+#### Parallel Diff Optimization
+
+To avoid blocking step generation, diffs can be computed in parallel using the
+step executor's worker pool (note that this is disabled by default as of the time
+of this writing, and can be enabled with the `PULUMI_PARALLEL_DIFF=true` env var):
+
+```mermaid
+sequenceDiagram
+    participant SG as Step Generator
+    participant SE as Step Executor
+    participant P as Provider
+
+    SG->>SE: Submit DiffStep
+    Note over SG: Continues to next resource
+    SE->>P: Call Diff
+    P-->>SE: DiffResult
+    SE->>SG: Fire ContinueResourceDiffEvent
+    SG->>SG: Generate steps from diff
+```
+
+The `DiffStep` leverages parallel workers while the step generator continues
+processing other resources. When complete, a `ContinueResourceDiffEvent` re-enters
+step generation to produce the final steps.
+
 (step-generation-deletions)=
 ### Deletions
 
-Once the Pulumi program has exited, the step generator determines the set of
-resources that must be deleted by computing the difference between the set of
-registered resources and the set of resources that were present in the previous
-state snapshot. This set is sorted topologically by reverse dependencies (that
-is, resources that depend on other resources are deleted first). This sorted
-list is then decomposed into a list of lists where the sublists must be
-processed serially but the contents of each sublist can be processed in
-parallel.
+After the program exits, resources not registered in the new state are deleted:
 
-(step-generation-dependent-replacements)=
-### Dependent replacements
+```mermaid
+flowchart LR
+    A[Old State Resources] --> B[Subtract Registered<br/>Resources]
+    B --> C[Resources to Delete]
+    C --> D[Topological Sort<br/>Reverse Dependencies]
+    D --> E[Decompose into<br/>Parallel Groups]
+    E --> F[Submit Delete Steps]
 
-By default, Pulumi will replace resources by first creating the replacement and
-then deleting the original (create-before-replace). There are cases however
-where Pulumi will delete the original first (a delete-before-replace):
+    style C fill:#f99
+```
 
-* If the resource's provider specifies that the resource must be deleted before
-  it can be replaced as using a [](pulumirpc.DiffResponse)'s
-  `deleteBeforeReplace` field.
-* If the program specifies the [`deleteBeforeReplace` resource
-  option](https://www.pulumi.com/docs/concepts/options/deletebeforereplace/) for
-  the resource.
+#### Replacement Decision Flow
+
+Pulumi supports two different type of replaces, either creating the new resource
+before deleting the old one (default), or deleting the old resource first, and
+then replacing it.
+
+Delete-before-replace (DBR) is triggered when:
+- Provider indicates via `deleteBeforeReplace` in [](pulumirpc.DiffResponse)
+- User specifies [`deleteBeforeReplace` resource option](https://www.pulumi.com/docs/concepts/options/deletebeforereplace/)
+
+```mermaid
+flowchart TD
+    Replace[Resource Requires<br/>Replacement] --> CheckType{Delete<br/>Before?}
+
+    CheckType -->|No| CBR[Create-Before-Replace]
+    CheckType -->|Yes| DBR[Delete-Before-Replace]
+
+    CBR --> CBRCheck[Check inputs<br/>without old defaults]
+    CBRCheck --> CBRCreate[Generate CreateStep<br/>pendingDelete=true]
+    CBRCreate --> CBRReplace[Generate ReplaceStep]
+    CBRReplace --> CBRDelete[Generate DeleteStep]
+
+    DBR --> DBRCalc[Calculate dependent<br/>replacements]
+    DBRCalc --> DBRDelete[Generate DeleteStep]
+    DBRDelete --> DBRCheck[Check inputs<br/>without old defaults]
+    DBRCheck --> DBRCreate[Generate CreateStep]
+
+    CBRDelete --> End[Return Steps]
+    DBRCreate --> End
+```
+
+For DBR replacements, a second `Check` call is made without old inputs to ensure
+new auto-generated properties (like names) don't reuse old values.[^existing-inputs]
+
 
 In such cases, it may be necessary to first delete resources that depend on that
 being replaced, since there will be a moment between the delete and create steps
@@ -230,6 +332,40 @@ replaced. `c`'s inputs are affected by the deletion of `a`, so we must call
 `Diff` to see whether it needs to be replaced or not. `d`'s dependency on `a` is
 through `b`, which we have established does not need to be replaced, so `d` does
 not need to be replaced either.
+
+[^existing-inputs]:
+    Existing inputs may be used to repopulate default values for input
+    properties that are automatically generated when the resource is created but
+    that are not changed on subsequent updates (e.g. automatically generated
+    names). For replacements, we don't want to reuse these values.
+
+#### Dependent Replacement Algorithm
+
+```mermaid
+flowchart TD
+    Start[Resource A needs DBR] --> Find[Find all transitive<br/>dependents]
+    Find --> Filter[Filter: Keep only<br/>property dependents]
+    Filter --> TestDiff[For each dependent:<br/>Substitute unknowns<br/>for A's outputs]
+    TestDiff --> CallDiff[Call Provider.Diff]
+    CallDiff --> NeedsReplace{Needs<br/>replace?}
+    NeedsReplace -->|Yes| AddToList[Add to replacement list]
+    NeedsReplace -->|No| Skip[Skip this dependent]
+    AddToList --> Next{More<br/>dependents?}
+    Skip --> Next
+    Next -->|Yes| TestDiff
+    Next -->|No| Sort[Sort by reverse<br/>topological order]
+    Sort --> Execute[Execute replacements]
+```
+
+**Process**:
+1. Find all resources transitively depending on the DBR resource
+2. Filter to only those with property dependencies (not just `dependsOn`)
+3. For each dependent, test if it would be replaced:
+   - Substitute unknowns for the DBR resource's outputs
+   - Call provider's `Diff` to determine if replacement needed
+4. Sort remaining dependents in reverse topological order
+5. Execute cascading replacements
+
 
 (step-execution)=
 ## Step execution
@@ -416,4 +552,29 @@ sequenceDiagram
     SG->>+SE: SameStep(inputs', old state, options)
     SE->>-RM: Done(old state)
     RM->>-LH: RegisterResourceResponse(URN, ID, old state)
+```
+
+### Reading an external resource
+
+```mermaid
+:zoom:
+
+sequenceDiagram
+    participant LH as Language host
+    box Engine
+        participant RM as Resource monitor
+        participant SG as Step generator
+        participant SE as Step executor
+    end
+    participant P as Provider
+
+    LH->>+RM: ReadResourceRequest(type, name, id, parent)
+    RM->>+SG: ReadResourceEvent(type, name, id, parent)
+    SG->>SG: Generate URN
+    SG->>SG: Create state marked External=true
+    SG->>+SE: ReadStep(id, provider)
+    SE->>+P: ReadRequest(type, id)
+    P->>-SE: ReadResponse(current state)
+    SE->>-RM: Done(external state)
+    RM->>-LH: ReadResourceResponse(URN, ID, state)
 ```

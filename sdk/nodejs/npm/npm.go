@@ -24,6 +24,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
 // NPM is the canonical "Node Package Manager".
@@ -50,6 +54,20 @@ func newNPM() (*npmManager, error) {
 
 func (node *npmManager) Name() string {
 	return "npm"
+}
+
+func (node *npmManager) Version() (semver.Version, error) {
+	cmd := exec.Command(node.executable, "--version") //nolint:gosec
+	output, err := cmd.Output()
+	if err != nil {
+		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
+	}
+	versionStr := strings.TrimSpace(string(output))
+	version, err := semver.Parse(versionStr)
+	if err != nil {
+		return semver.Version{}, err
+	}
+	return version, nil
 }
 
 func (node *npmManager) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
@@ -81,6 +99,12 @@ func (node *npmManager) Link(ctx context.Context, dir, packageName, path string)
 		return fmt.Errorf("error executing npm command %s: %w, output: %s", cmd.String(), err, out)
 	}
 	return nil
+}
+
+func (node *npmManager) ListPackages(
+	ctx context.Context, dir string, transitive bool,
+) ([]plugin.DependencyInfo, error) {
+	return listPackagesFromLockFile(dir, "package-lock.json", transitive)
 }
 
 func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {

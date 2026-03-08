@@ -1361,7 +1361,7 @@ func TestImportDefaultProvider(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		return errors.New("unexpected program execution")
 	}, workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
+		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "pkgA",
 			Kind:    apitype.ResourcePlugin,
 			Version: &pkgAVersion,

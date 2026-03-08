@@ -516,9 +516,9 @@ func TestProvider_ConstructOptions(t *testing.T) {
 				},
 			},
 			want: &pulumirpc.ConstructRequest{
-				Aliases: []string{
-					"urn:pulumi:stack::project::type::oldName",
-					"urn:pulumi:stack::project::type::anotherOldName",
+				Aliases: []*pulumirpc.Alias{
+					{Alias: &pulumirpc.Alias_Urn{Urn: "urn:pulumi:stack::project::type::oldName"}},
+					{Alias: &pulumirpc.Alias_Urn{Urn: "urn:pulumi:stack::project::type::anotherOldName"}},
 				},
 			},
 		},
@@ -636,6 +636,15 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			},
 			want: &pulumirpc.ConstructRequest{
 				ReplaceOnChanges: []string{"foo", "bar"},
+			},
+		},
+		{
+			desc: "replacement trigger",
+			give: ConstructOptions{
+				ReplacementTrigger: resource.NewProperty("trigger-value"),
+			},
+			want: &pulumirpc.ConstructRequest{
+				ReplacementTrigger: structpb.NewStringValue("trigger-value"),
 			},
 		},
 		{
@@ -790,7 +799,7 @@ func newTestContext(t testing.TB) *Context {
 	ctx, err := NewContext(
 		context.Background(),
 		sink, sink,
-		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */)
+		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */, nil)
 	require.NoError(t, err, "build context")
 
 	return ctx

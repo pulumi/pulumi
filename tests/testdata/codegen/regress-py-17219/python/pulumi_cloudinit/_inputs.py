@@ -21,16 +21,11 @@ __all__ = [
     'GetConfigPartArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class ConfigPartArgsDict(TypedDict):
-        content: pulumi.Input[_builtins.str]
-        content_type: NotRequired[pulumi.Input[_builtins.str]]
-        filename: NotRequired[pulumi.Input[_builtins.str]]
-        merge_type: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    ConfigPartArgsDict: TypeAlias = Mapping[str, Any]
+class ConfigPartArgsDict(TypedDict):
+    content: pulumi.Input[_builtins.str]
+    content_type: NotRequired[pulumi.Input[_builtins.str]]
+    filename: NotRequired[pulumi.Input[_builtins.str]]
+    merge_type: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class ConfigPartArgs:
@@ -84,14 +79,11 @@ class ConfigPartArgs:
         pulumi.set(self, "merge_type", value)
 
 
-if not MYPY:
-    class GetConfigPartArgsDict(TypedDict):
-        content: _builtins.str
-        content_type: NotRequired[_builtins.str]
-        filename: NotRequired[_builtins.str]
-        merge_type: NotRequired[_builtins.str]
-elif False:
-    GetConfigPartArgsDict: TypeAlias = Mapping[str, Any]
+class GetConfigPartArgsDict(TypedDict):
+    content: _builtins.str
+    content_type: NotRequired[_builtins.str]
+    filename: NotRequired[_builtins.str]
+    merge_type: NotRequired[_builtins.str]
 
 @pulumi.input_type
 class GetConfigPartArgs:

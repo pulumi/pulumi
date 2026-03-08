@@ -360,8 +360,8 @@ func (e *PackageReferenceVersionMismatchError) Error() string {
 	)
 }
 
-func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginSpec {
-	return workspace.PluginSpec{
+func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginDescriptor {
+	return workspace.PluginDescriptor{
 		Name:              descriptor.Name,
 		Version:           descriptor.Version,
 		PluginDownloadURL: descriptor.DownloadURL,
@@ -405,7 +405,7 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, err
 		}
 
-		spec := workspace.PluginSpec{
+		spec := workspace.PluginDescriptor{
 			Kind:              apitype.ResourcePlugin,
 			Name:              descriptor.Name,
 			Version:           descriptor.Version,
@@ -416,7 +416,7 @@ func (l *pluginLoader) loadSchemaBytes(
 			l.host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log)
+		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log, NewLoaderServerFromHost)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -465,23 +465,14 @@ func (l *pluginLoader) loadSchemaBytes(
 func (l *pluginLoader) loadPluginSchemaBytes(
 	ctx context.Context, descriptor *PackageDescriptor,
 ) ([]byte, plugin.Provider, error) {
-	wsDescriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
-			Name:              descriptor.Name,
-			Version:           descriptor.Version,
-			PluginDownloadURL: descriptor.DownloadURL,
-			Kind:              apitype.ResourcePlugin,
-		},
-	}
-	if descriptor.Parameterization != nil {
-		wsDescriptor.Parameterization = &workspace.Parameterization{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version,
-			Value:   descriptor.Parameterization.Value,
-		}
+	wsDescriptor := workspace.PluginDescriptor{
+		Name:              descriptor.Name,
+		Version:           descriptor.Version,
+		PluginDownloadURL: descriptor.DownloadURL,
+		Kind:              apitype.ResourcePlugin,
 	}
 
-	provider, err := l.host.Provider(wsDescriptor)
+	provider, err := l.host.Provider(wsDescriptor, env.Global())
 	if err != nil {
 		return nil, nil, err
 	}

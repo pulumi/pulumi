@@ -19,18 +19,13 @@ __all__ = [
     'DataArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class DataArgsDict(TypedDict):
-        bool_array: pulumi.Input[Sequence[pulumi.Input[_builtins.bool]]]
-        boolean: pulumi.Input[_builtins.bool]
-        float: pulumi.Input[_builtins.float]
-        integer: pulumi.Input[_builtins.int]
-        string: pulumi.Input[_builtins.str]
-        string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]
-elif False:
-    DataArgsDict: TypeAlias = Mapping[str, Any]
+class DataArgsDict(TypedDict):
+    bool_array: pulumi.Input[Sequence[pulumi.Input[_builtins.bool]]]
+    boolean: pulumi.Input[_builtins.bool]
+    float: pulumi.Input[_builtins.float]
+    integer: pulumi.Input[_builtins.int]
+    string: pulumi.Input[_builtins.str]
+    string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]
 
 @pulumi.input_type
 class DataArgs:

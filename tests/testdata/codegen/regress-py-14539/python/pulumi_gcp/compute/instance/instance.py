@@ -23,6 +23,7 @@ class InstanceArgs:
                  boot_disk: pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs']):
         """
         The set of arguments for constructing a Instance resource.
+
         :param pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs'] boot_disk: The boot disk for the instance.
                Structure is documented below.
         """
@@ -48,6 +49,7 @@ class _InstanceState:
                  boot_disk: Optional[pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs']] = None):
         """
         Input properties used for looking up and filtering Instance resources.
+
         :param pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs'] boot_disk: The boot disk for the instance.
                Structure is documented below.
         """
@@ -79,6 +81,7 @@ class Instance(pulumi.CustomResource):
         """
         A mock of an instance.
 
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict']] boot_disk: The boot disk for the instance.
@@ -92,6 +95,7 @@ class Instance(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A mock of an instance.
+
 
         :param str resource_name: The name of the resource.
         :param InstanceArgs args: The arguments to use to populate this resource's properties.

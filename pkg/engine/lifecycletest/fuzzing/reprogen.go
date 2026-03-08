@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2024-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package fuzzing
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -24,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 )
 
 // GenerateReproTest generates a string containing Go code for a set of lifecycle tests that reproduce the scenario
@@ -245,6 +245,12 @@ func writeSnapshotTestFunction(
 					g.writeBlock(
 						"UpdateOptions: engine.UpdateOptions{",
 						func(g *generator) {
+							if planSpec.Refresh {
+								g.writeLine("Refresh: true,")
+							}
+							if planSpec.RefreshProgram {
+								g.writeLine("RefreshProgram: true,")
+							}
 							if len(planSpec.TargetURNs) > 0 {
 								g.writeBlock(
 									"Targets: deploy.NewUrnTargets([]string{",
@@ -403,6 +409,12 @@ func writeFrameworkTestFunction(
 					g.writeBlock(
 						"UpdateOptions: engine.UpdateOptions{",
 						func(g *generator) {
+							if planSpec.Refresh {
+								g.writeLine("Refresh: true,")
+							}
+							if planSpec.RefreshProgram {
+								g.writeLine("RefreshProgram: true,")
+							}
 							if len(planSpec.TargetURNs) > 0 {
 								g.writeBlock(
 									"Targets: deploy.NewUrnTargets([]string{",
@@ -631,8 +643,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 //	...
 func writeSetupLoaderElements(provSpec *ProviderSpec) func(g *generator) {
 	return func(g *generator) {
-		pkgs := maps.Keys(provSpec.Packages)
-		slices.Sort(pkgs)
+		pkgs := slices.Sorted(maps.Keys(provSpec.Packages))
 
 		for _, pkg := range pkgs {
 			g.writeBlock(
@@ -726,10 +737,10 @@ func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec)
 					}
 
 					if r.Protect {
-						g.writeLine("Protect: true,")
+						g.writeLine("Protect: ptr(true),")
 					}
 					if r.RetainOnDelete {
-						g.writeLine("RetainOnDelete: true,")
+						g.writeLine("RetainOnDelete: ptr(true),")
 					}
 
 					if r.Provider != "" {
@@ -981,8 +992,7 @@ func writeUpdateFStatements(provSpec *ProviderSpec) func(g *generator) {
 
 func writeReproLoaderElements(provSpec *ProviderSpec) func(g *generator) {
 	return func(g *generator) {
-		pkgs := maps.Keys(provSpec.Packages)
-		slices.Sort(pkgs)
+		pkgs := slices.Sorted(maps.Keys(provSpec.Packages))
 
 		for _, pkg := range pkgs {
 			g.writeBlock(

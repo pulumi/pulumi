@@ -1,0 +1,736 @@
+// Copyright 2025-2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package fuzzing
+
+import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+)
+
+// ExclusionRule represents a rule that determines if a snapshot should be excluded from fuzzing.
+// If the rule returns true, the snapshot will be rejected and a new one will be generated.
+type ExclusionRule func(*SnapshotSpec, *ProgramSpec, *ProviderSpec, *PlanSpec) bool
+
+// ExclusionRules is a collection of exclusion rules that can be applied to snapshots.
+type ExclusionRules []ExclusionRule
+
+// DefaultExclusionRules returns the default set of exclusion rules that prevent known
+// problematic patterns from being generated.
+func DefaultExclusionRules() ExclusionRules {
+	return []ExclusionRule{
+		ExcludeDestroyAndRefreshProgramSet,
+		// TODO[pulumi/pulumi#21433]
+		ExcludeResourceDeletedWithMarkedForDeletionResourceUpdate,
+		// TODO[pulumi/pulumi#21404]
+		ExcludeResourcePendingReplacementChangingParentRefreshProgram,
+		// TODO[pulumi/pulumi#21426]
+		ExcludeUpdateWithDependencyOnAliasedResource,
+		// TODO[pulumi/pulumi#21386]
+		ExcludeChildProviderOfDuplicateResourceRefresh,
+		// TODO[pulumi/pulumi#21431]
+		ExcludeTargetsRefreshV2,
+		// TODO[pulumi/pulumi#21277]
+		ExcludeProtectedResourceWithDuplicateProviderDestroyV2,
+		// TODO[pulumi/pulumi#21347]
+		ExcludeResourceWithTargetedDependency,
+		// TODO[pulumi/pulumi#21282]
+		ExcludeTargetedAliasDestroyV2,
+		// TODO[pulumi/pulumi#21364]
+		ExcludeTargetedResourceWithAliasedParentDestroyV2,
+		// TODO[pulumi/pulumi#21384]
+		ExcludeResourceWithDependencyOnDeletedResourceDestroyV2,
+		// TODO[pulumi/pulumi#21399]
+		ExcludeResourceReferencingAliasedProviderDestroyV2,
+		// TODO[pulumi/pulumi#21402]
+		ExcludeRefreshWithTargetedProviderParentChangeDestroyV2,
+		// TODO[pulumi/pulumi#21645]
+		ExcludeDependenciesInProgramButNotInSnapshotRefreshV2,
+		// TODO[pulumi/pulumi#21672]
+		ExcludeParentedResourcesRefreshV2,
+		// TODO[pulumi/pulumi#21675]
+		ExcludeDependenciesOnPendingReplacementRefreshV2,
+		// TODO[pulumi/pulumi#21700]
+		ExcludePendingReplacementRegisteredInUpdate,
+	}
+}
+
+// ShouldExclude checks if a snapshot should be excluded based on the configured exclusion rules.
+// Returns true if any rule indicates the snapshot should be excluded.
+func (er ExclusionRules) ShouldExclude(
+	snap *SnapshotSpec,
+	program *ProgramSpec,
+	provider *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	for _, rule := range er {
+		if rule(snap, program, provider, plan) {
+			return true
+		}
+	}
+	return false
+}
+
+func ExcludeDestroyAndRefreshProgramSet(
+	_ *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if (plan.Operation == PlanOperationDestroyV2 || plan.Operation == PlanOperationDestroy) &&
+		plan.RefreshProgram {
+		return true
+	}
+	return false
+}
+
+// ExcludeChildProviderOfDuplicateResourceRefresh excludes snapshots where a resource appears
+// twice in the snapshot (once normal, once marked for deletion) and has a child resource.
+// During refresh, this causes a snapshot integrity error because the child resource's parent
+// can appear after it in the resulting snapshot.
+func ExcludeChildProviderOfDuplicateResourceRefresh(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefresh &&
+		plan.Operation != PlanOperationRefreshV2 &&
+		!plan.Refresh &&
+		!plan.RefreshProgram {
+		return false
+	}
+
+	urnCounts := make(map[resource.URN]int)
+	deletedURNs := make(map[resource.URN]bool)
+
+	for _, res := range snap.Resources {
+		urn := res.URN()
+		urnCounts[urn]++
+		if res.Delete {
+			deletedURNs[urn] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent == "" {
+			continue
+		}
+
+		if urnCounts[res.Parent] > 1 && deletedURNs[res.Parent] {
+			return true
+		}
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent != "" && deletedURNs[res.Parent] {
+			return true
+		}
+	}
+
+	return false
+}
+
+func ExcludeResourcePendingReplacementChangingParentRefreshProgram(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate &&
+		plan.Operation != PlanOperationRefreshV2 &&
+		!plan.RefreshProgram {
+		return false
+	}
+
+	snapParents := make(map[resource.URN]resource.URN)
+	for _, res := range snap.Resources {
+		snapParents[res.URN()] = res.Parent
+	}
+
+	progParents := make(map[resource.URN]resource.URN)
+	aliasMap := make(map[resource.URN]resource.URN)
+	for _, res := range prog.ResourceRegistrations {
+		progParents[res.URN()] = res.Parent
+		for _, alias := range res.Aliases {
+			aliasMap[alias] = res.URN()
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if !res.PendingReplacement {
+			continue
+		}
+
+		if newURN, hasAlias := aliasMap[res.URN()]; hasAlias {
+			if snapParents[res.URN()] != progParents[newURN] {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func ExcludeUpdateWithDependencyOnAliasedResource(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate {
+		return false
+	}
+
+	aliasMap := make(map[resource.URN]bool)
+	for _, res := range prog.ResourceRegistrations {
+		for _, alias := range res.Aliases {
+			aliasMap[alias] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent != "" && aliasMap[res.Parent] {
+			return true
+		}
+
+		if res.DeletedWith != "" && aliasMap[res.DeletedWith] {
+			return true
+		}
+
+		for _, dep := range res.Dependencies {
+			if aliasMap[dep] {
+				return true
+			}
+		}
+
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if aliasMap[dep] {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// ExcludeTargetedAlias excludes programs where a resource is renamed with an old
+// alias, and the new name of the resource is targeted for deletion.
+func ExcludeTargetedAliasDestroyV2(
+	_ *SnapshotSpec,
+	program *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	hasTargetedResources := len(plan.TargetURNs) > 0
+	for _, res := range program.ResourceRegistrations {
+		if hasTargetedResources && len(res.Aliases) > 0 {
+			// If there are targeted resources, and a resource registrations with
+			// aliases happens, we need to exclude this snapshot, as there are
+			// different issues with the handling of this.
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeResourceWithTargetedDependency excludes snapshots where a resource has a
+// dependency (Parent, DeletedWith, Dependencies, or PropertyDependencies) pointing to a targeted
+// resource during a destroy v2 operation.
+func ExcludeResourceWithTargetedDependency(
+	spec *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 && plan.Operation != PlanOperationRefreshV2 {
+		return false
+	}
+
+	specParents := make(map[resource.URN]resource.URN)
+	for _, res := range spec.Resources {
+		specParents[res.URN()] = res.Parent
+	}
+
+	targetURNs := make(map[resource.URN]bool)
+	for _, urn := range plan.TargetURNs {
+		targetURNs[urn] = true
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent != "" && targetURNs[res.Parent] && res.Parent != specParents[res.URN()] {
+			return true
+		}
+
+		if res.DeletedWith != "" && targetURNs[res.DeletedWith] {
+			return true
+		}
+
+		for _, dep := range res.Dependencies {
+			if targetURNs[dep] {
+				return true
+			}
+		}
+
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if targetURNs[dep] {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// ExcludeProtectedResourceWithDuplicateProvider excludes snapshots where a protected component
+// resource references a provider that will be deleted during the destroy.
+func ExcludeProtectedResourceWithDuplicateProviderDestroyV2(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+	providersByURN := make(map[string][]*ResourceSpec)
+	for _, res := range snap.Resources {
+		if providers.IsProviderType(res.Type) {
+			urn := string(res.URN())
+			providersByURN[urn] = append(providersByURN[urn], res)
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if !res.Protect {
+			continue
+		}
+
+		if res.Provider == "" {
+			continue
+		}
+
+		providerRef, err := providers.ParseReference(res.Provider)
+		if err != nil {
+			continue
+		}
+
+		providerURN := string(providerRef.URN())
+
+		_, ok := providersByURN[providerURN]
+		if ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeTargetedResourceWithAliasedParentDestroyV2 excludes snapshots where a resource is
+// targeted for deletion and its parent has been aliased to change parent relationships.
+// This causes a panic: "parent not found in urnIndex".
+func ExcludeTargetedResourceWithAliasedParentDestroyV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	snapParents := make(map[resource.URN]resource.URN)
+	for _, res := range snap.Resources {
+		snapParents[res.URN()] = res.Parent
+	}
+
+	progParents := make(map[resource.URN]resource.URN)
+	aliasMap := make(map[resource.URN]resource.URN)
+	for _, res := range prog.ResourceRegistrations {
+		progParents[res.URN()] = res.Parent
+		for _, alias := range res.Aliases {
+			aliasMap[alias] = res.URN()
+		}
+	}
+
+	targetURNs := make(map[resource.URN]bool)
+	for _, urn := range plan.TargetURNs {
+		targetURNs[urn] = true
+	}
+
+	for _, res := range snap.Resources {
+		if !targetURNs[res.URN()] {
+			continue
+		}
+
+		parentURN := res.Parent
+		if parentURN == "" {
+			continue
+		}
+
+		if newParentURN, hasAlias := aliasMap[parentURN]; hasAlias {
+			if snapParents[parentURN] != progParents[newParentURN] {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// ExcludeResourceWithPropertyDependencyOnDeletedResourceDestroyV2 excludes snapshots where a resource
+// has a dependency on another resource that will be deleted during a DestroyV2 operation.
+// This causes a snapshot integrity error.
+func ExcludeResourceWithDependencyOnDeletedResourceDestroyV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	progURNs := make(map[resource.URN]bool)
+	for _, res := range prog.ResourceRegistrations {
+		progURNs[res.URN()] = true
+	}
+
+	deletedURNs := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if !progURNs[res.URN()] {
+			deletedURNs[res.URN()] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent != "" && deletedURNs[res.Parent] {
+			return true
+		}
+
+		if res.DeletedWith != "" && deletedURNs[res.DeletedWith] {
+			return true
+		}
+
+		for _, dep := range res.Dependencies {
+			if deletedURNs[dep] {
+				return true
+			}
+		}
+
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if deletedURNs[dep] {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+func ExcludeResourceReferencingAliasedProviderDestroyV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	snapProviders := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if providers.IsProviderType(res.Type) {
+			snapProviders[res.URN()] = true
+		}
+	}
+
+	progProviders := make(map[resource.URN]bool)
+	for _, res := range prog.ResourceRegistrations {
+		if providers.IsProviderType(res.Type) {
+			progProviders[res.URN()] = true
+			for _, alias := range res.Aliases {
+				if _, ok := snapProviders[alias]; ok {
+					return true
+				}
+			}
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Provider == "" {
+			continue
+		}
+
+		providerRef, err := providers.ParseReference(res.Provider)
+		if err != nil {
+			continue
+		}
+
+		providerURN := providerRef.URN()
+		if _, inProg := progProviders[providerURN]; inProg {
+			if _, inSnap := snapProviders[providerURN]; inSnap {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func ExcludeRefreshWithTargetedProviderParentChangeDestroyV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationDestroyV2 {
+		return false
+	}
+
+	snapParents := make(map[resource.URN]resource.URN)
+	for _, res := range snap.Resources {
+		snapParents[res.URN()] = res.Parent
+	}
+
+	targetURNs := make(map[resource.URN]bool)
+	for _, res := range plan.TargetURNs {
+		targetURNs[res] = true
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if !providers.IsProviderType(res.Type) {
+			continue
+		}
+
+		snapParent, inSnap := snapParents[res.URN()]
+		if inSnap && snapParent == res.Parent {
+			continue
+		}
+
+		res.Parent = snapParent
+		if targetURNs[res.URN()] {
+			return true
+		}
+	}
+
+	return false
+}
+
+func ExcludeResourceDeletedWithMarkedForDeletionResourceUpdate(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	_ *PlanSpec,
+) bool {
+	deletedResources := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if res.Delete {
+			deletedResources[res.URN()] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		for _, dep := range res.Dependencies {
+			if deletedResources[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if deletedResources[dep] {
+					return true
+				}
+			}
+		}
+		if res.DeletedWith != "" && deletedResources[res.DeletedWith] {
+			return true
+		}
+	}
+
+	return false
+}
+
+func ExcludeTargetsRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 {
+		return false
+	}
+
+	if len(plan.TargetURNs) > 0 {
+		return true
+	}
+
+	return false
+}
+
+func ExcludeDependenciesInProgramButNotInSnapshotRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 && !plan.RefreshProgram {
+		return false
+	}
+	snapResources := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		snapResources[res.URN()] = true
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent != "" && !snapResources[res.Parent] {
+			return true
+		}
+		for _, dep := range res.Dependencies {
+			if !snapResources[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if !snapResources[dep] {
+					return true
+				}
+			}
+		}
+		if res.DeletedWith != "" && !snapResources[res.DeletedWith] {
+			return true
+		}
+	}
+	return false
+}
+
+func ExcludeParentedResourcesRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 && !plan.RefreshProgram {
+		return false
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.Parent != "" {
+			return true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent != "" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func ExcludeDependenciesOnPendingReplacementRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 && !plan.RefreshProgram && !plan.Refresh {
+		return false
+	}
+
+	pendingReplacementURNs := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if res.PendingReplacement {
+			pendingReplacementURNs[res.URN()] = true
+		}
+	}
+
+	for _, res := range snap.Resources {
+		for _, dep := range res.Dependencies {
+			if pendingReplacementURNs[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if pendingReplacementURNs[dep] {
+					return true
+				}
+			}
+		}
+		if res.DeletedWith != "" && pendingReplacementURNs[res.DeletedWith] {
+			return true
+		}
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		for _, dep := range res.Dependencies {
+			if pendingReplacementURNs[dep] {
+				return true
+			}
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if pendingReplacementURNs[dep] {
+					return true
+				}
+			}
+		}
+		if res.DeletedWith != "" && pendingReplacementURNs[res.DeletedWith] {
+			return true
+		}
+	}
+
+	return false
+}
+
+func ExcludePendingReplacementRegisteredInUpdate(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate || !plan.RefreshProgram {
+		return false
+	}
+
+	resourcesPendingReplacement := make(map[resource.URN]bool)
+
+	for _, res := range snap.Resources {
+		if res.PendingReplacement {
+			resourcesPendingReplacement[res.URN()] = true
+		}
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if resourcesPendingReplacement[res.URN()] {
+			return true
+		}
+	}
+
+	return false
+}

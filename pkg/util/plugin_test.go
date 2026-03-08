@@ -27,7 +27,7 @@ import (
 func TestUrlAlreadySet(t *testing.T) {
 	t.Parallel()
 
-	spec := workspace.PluginSpec{
+	spec := workspace.PluginDescriptor{
 		Name:              "acme",
 		Kind:              apitype.ResourcePlugin,
 		PluginDownloadURL: "github://api.github.com/pulumiverse",
@@ -39,7 +39,7 @@ func TestUrlAlreadySet(t *testing.T) {
 func TestKnownProvider(t *testing.T) {
 	t.Parallel()
 
-	spec := workspace.PluginSpec{
+	spec := workspace.PluginDescriptor{
 		Name: "acme",
 		Kind: apitype.ResourcePlugin,
 	}

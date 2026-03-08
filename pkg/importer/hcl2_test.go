@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -106,11 +107,11 @@ func renderTemplate(t *testing.T, x *model.TemplateExpression) property.Value {
 	if len(x.Parts) == 1 {
 		return renderLiteralValue(t, x.Parts[0].(*model.LiteralValueExpression))
 	}
-	b := ""
+	var b strings.Builder
 	for _, p := range x.Parts {
-		b += p.(*model.LiteralValueExpression).Value.AsString()
+		b.WriteString(p.(*model.LiteralValueExpression).Value.AsString())
 	}
-	return property.New(b)
+	return property.New(b.String())
 }
 
 func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) property.Value {
@@ -425,8 +426,8 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 
 	// Arrange.
 	pkg := tokens.Package("aws")
-	requestVersion := "4.37.0"
-	loadVersion := "4.37.1"
+	requestVersion := "4.26.0"
+	loadVersion := "5.4.0"
 
 	pluginLoader := deploytest.NewProviderLoader(pkg, semver.MustParse(requestVersion), func() (plugin.Provider, error) {
 		return &deploytest.Provider{
@@ -466,7 +467,7 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 				URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				Custom: true,
 				Inputs: resource.PropertyMap{
-					"version": resource.NewProperty("4.37.0"),
+					"version": resource.NewProperty("4.26.0"),
 				},
 			},
 		},
@@ -514,7 +515,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -596,7 +597,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsesLexicalNameInGenerated
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -686,7 +687,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -773,7 +774,7 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -843,7 +844,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)

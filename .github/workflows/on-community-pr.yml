@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Comment PR
-        uses: thollander/actions-comment-pull-request@1.0.1
+        uses: thollander/actions-comment-pull-request@71efef56b184328c7ef1f213577c3a90edaa4aff # 1.0.1
         with:
           message: |
             PR is now waiting for a maintainer to take action.

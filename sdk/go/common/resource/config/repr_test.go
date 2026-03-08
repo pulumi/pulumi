@@ -53,7 +53,7 @@ func mapPaths(t *testing.T, c Map) []Key {
 func valuePaths(o any) []resource.PropertyPath {
 	switch o := o.(type) {
 	case []any:
-		var paths []resource.PropertyPath
+		var paths []resource.PropertyPath //nolint:prealloc // recursive function with unknown depth
 		for i, v := range o {
 			paths = append(paths, resource.PropertyPath{i})
 			for _, p := range valuePaths(v) {

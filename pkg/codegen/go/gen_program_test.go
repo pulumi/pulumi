@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/hashicorp/hcl/v2"
@@ -32,29 +33,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/zclconf/go-cty/cty"
 )
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
-
-func TestGenerateProgramVersionSelection(t *testing.T) {
-	t.Parallel()
-
-	rootDir, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	require.NoError(t, err)
-
-	test.GenerateGoProgramTest(
-		t,
-		rootDir,
-		func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-			// Prevent tests from interfering with each other
-			return GenerateProgramWithOptions(program, GenerateProgramOptions{ExternalCache: NewCache()})
-		},
-		GenerateProject,
-	)
-}
 
 func TestCollectImports(t *testing.T) {
 	t.Parallel()
@@ -62,8 +45,13 @@ func TestCollectImports(t *testing.T) {
 	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 	g.collectImports(g.program)
 
-	var allImports []string
-	for _, group := range g.importer.ImportGroups() {
+	groups := g.importer.ImportGroups()
+	totalImports := 0
+	for _, group := range groups {
+		totalImports += len(group)
+	}
+	allImports := slice.Prealloc[string](totalImports)
+	for _, group := range groups {
 		allImports = append(allImports, group...)
 	}
 
@@ -461,6 +449,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		splatSpiller:        &splatSpiller{},
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
+		callSpiller:         &callSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		importer:            newFileImporter(),
@@ -555,6 +544,7 @@ func TestReplacementTriggerInputConversion(t *testing.T) {
 		splatSpiller:        &splatSpiller{},
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
+		callSpiller:         &callSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		importer:            newFileImporter(),

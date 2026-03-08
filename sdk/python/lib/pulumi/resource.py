@@ -460,6 +460,12 @@ class ResourceOptions:
     require replacement instead of update only if `"*"` is passed.
     """
 
+    replacement_trigger: Optional["Input[Any]"]
+    """
+    If set, the engine will diff this with the last recorded value, and trigger
+    a replace if they are not equal.
+    """
+
     retain_on_delete: Optional[bool]
     """
     If set to True, the providers Delete method will not be called for this resource.
@@ -481,6 +487,14 @@ class ResourceOptions:
     """
     If set, diffs from the included property paths will not be shown.
     This only affects the diff display, and does not affect update behavior.
+    """
+
+    env_var_mappings: Optional[Mapping[str, str]]
+    """
+    Environment variable mappings for provider resources. Maps source environment variable
+    names to target names. If the source variable exists, the provider will see the target
+    variable set to its value. For example, {"MY_VAR": "PROVIDER_VAR"} means if MY_VAR
+    is set, the provider sees PROVIDER_VAR with MY_VAR's value.
     """
 
     def __init__(
@@ -507,11 +521,13 @@ class ResourceOptions:
         hooks: Optional[ResourceHookBinding] = None,
         urn: Optional[str] = None,
         replace_on_changes: Optional[list[str]] = None,
+        replacement_trigger: Optional["Input[Any]"] = None,
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
         deleted_with: Optional["Resource"] = None,
         replace_with: Optional[list["Resource"]] = None,
         hide_diffs: Optional[list[str]] = None,
+        env_var_mappings: Optional[Mapping[str, str]] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -579,11 +595,13 @@ class ResourceOptions:
         self.hooks = hooks
         self.urn = urn
         self.replace_on_changes = replace_on_changes
+        self.replacement_trigger = replacement_trigger
         self.depends_on = depends_on
         self.retain_on_delete = retain_on_delete
         self.deleted_with = deleted_with
         self.replace_with = replace_with
         self.hide_diffs = hide_diffs
+        self.env_var_mappings = env_var_mappings
 
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
@@ -706,6 +724,11 @@ class ResourceOptions:
         dest.replace_on_changes = _merge_lists(
             dest.replace_on_changes, source.replace_on_changes
         )
+        dest.replacement_trigger = (
+            dest.replacement_trigger
+            if source.replacement_trigger is None
+            else source.replacement_trigger
+        )
         dest.aliases = _merge_lists(dest.aliases, source.aliases)
         dest.additional_secret_outputs = _merge_lists(
             dest.additional_secret_outputs, source.additional_secret_outputs
@@ -747,6 +770,11 @@ class ResourceOptions:
         )
         dest.replace_with = _merge_lists(dest.replace_with, source.replace_with)
         dest.hide_diffs = _merge_lists(dest.hide_diffs, source.hide_diffs)
+        dest.env_var_mappings = (
+            dest.env_var_mappings
+            if source.env_var_mappings is None
+            else source.env_var_mappings
+        )
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.

@@ -439,7 +439,8 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 			if step.DetailedDiff != nil {
 				diff, _ = engine.TranslateDetailedDiff(&step, false)
 			} else if step.Old.Inputs != nil && step.New.Inputs != nil {
-				diff = step.Old.Inputs.Diff(step.New.Inputs)
+				diff = step.Old.Inputs.DiffWithOptions(step.New.Inputs,
+					resource.IgnoreKeyFunc(resource.IsInternalPropertyKey))
 			}
 		}
 

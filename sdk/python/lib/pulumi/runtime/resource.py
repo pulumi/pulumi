@@ -26,6 +26,8 @@ from collections.abc import Callable
 from collections.abc import Awaitable, Mapping, Sequence
 
 import grpc
+
+from ._instrumentation import wrap_with_context
 from google.protobuf import struct_pb2
 
 from .. import _types, log
@@ -34,11 +36,12 @@ from ..output import Input, Output, _safe_str
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
 from . import known_types, rpc, settings
 from ._depends_on import _resolve_depends_on_urns
-from .rpc import _expand_dependencies
+from .rpc import _expand_dependencies, serialize_property
 from .settings import (
     _get_callbacks,
     _get_rpc_manager,
     _sync_monitor_supports_transforms,
+    monitor_supports_error_hooks,
     monitor_supports_resource_hooks,
     handle_grpc_error,
 )
@@ -53,7 +56,12 @@ if TYPE_CHECKING:
         CustomTimeouts,
     )
     from ..resource import ResourceOptions
-    from ..resource_hooks import ResourceHook, ResourceHookBinding, ResourceHookFunction
+    from ..resource_hooks import (
+        ErrorHook,
+        ResourceHook,
+        ResourceHookBinding,
+        ResourceHookFunction,
+    )
 
 
 class ResourceResolverOperations(NamedTuple):
@@ -105,6 +113,11 @@ class ResourceResolverOperations(NamedTuple):
     replace_with_urns: list[str]
     """
     URNs of resources whose replacement should trigger a replace of this resource.
+    """
+
+    replacement_trigger: Optional[Any]
+    """
+    If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
     """
 
     supports_alias_specs: bool
@@ -248,6 +261,10 @@ async def prepare_resource(
         dependencies |= urns
         property_dependencies[key] = list(urns)
 
+    replacement_trigger: Optional[Any] = None
+    if opts is not None and opts.replacement_trigger is not None:
+        replacement_trigger = opts.replacement_trigger
+
     supports_alias_specs = await settings.monitor_supports_alias_specs()
     aliases = await prepare_aliases(res, opts, supports_alias_specs)
     deleted_with_urn: Optional[str] = ""
@@ -273,6 +290,7 @@ async def prepare_resource(
         aliases,
         deleted_with_urn,
         replace_with_urns,
+        replacement_trigger,
         supports_alias_specs,
     )
 
@@ -285,8 +303,11 @@ async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
     parent_urn: str = ""
     no_parent: bool = False
 
-    if resolved_alias.name is not ... and resolved_alias.name is not None:
-        name = resolved_alias.name
+    try:
+        if resolved_alias.name is not ... and resolved_alias.name is not None:
+            name = resolved_alias.name
+    except Exception as exn:
+        raise Exception(f"Bad alias object {resolved_alias}: {exn}") from exn
 
     if resolved_alias.type_ is not ... and resolved_alias.type_ is not None:
         resource_type = resolved_alias.type_
@@ -578,7 +599,9 @@ def get_resource(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, wrap_with_context(do_invoke)
+            )
 
             # If the invoke failed, raise an error.
             if resp.failures:
@@ -859,7 +882,9 @@ def read_resource(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, wrap_with_context(do_rpc_call)
+            )
 
         except Exception as exn:
             log.debug(
@@ -909,6 +934,32 @@ def _create_custom_timeouts(
     else:
         raise Exception("Expected custom_timeouts to be a CustomTimeouts object")
     return result
+
+
+def _struct_value_to_python(value: struct_pb2.Value) -> Any:
+    """
+    Converts a struct_pb2.Value to Python native types recursively.
+    This is used when we receive a struct_pb2.Value from transforms and need to re-serialize it.
+    """
+    kind = value.WhichOneof("kind")
+    if kind == "null_value":
+        return None
+    elif kind == "number_value":
+        return value.number_value
+    elif kind == "string_value":
+        return value.string_value
+    elif kind == "bool_value":
+        return value.bool_value
+    elif kind == "struct_value":
+        # Recursively convert all nested struct_pb2.Value objects
+        return {
+            k: _struct_value_to_python(v) for k, v in value.struct_value.fields.items()
+        }
+    elif kind == "list_value":
+        # Recursively convert all nested struct_pb2.Value objects
+        return [_struct_value_to_python(v) for v in value.list_value.values]
+    else:
+        return None
 
 
 def register_resource(
@@ -1054,6 +1105,17 @@ def register_resource(
             hook_prefix = f"{ty}_{name}"
             hooks = await _prepare_resource_hooks(opts.hooks, hook_prefix)
 
+            replacement_trigger: Optional[Any] = None
+            if resolver.replacement_trigger is not None:
+                replacement_trigger = await serialize_property(
+                    resolver.replacement_trigger,
+                    [],
+                    property_key="replacement_trigger",
+                    resource_obj=res,
+                    keep_output_values=False,
+                    return_protobuf_value=True,
+                )
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -1080,6 +1142,7 @@ def register_resource(
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes or [],
+                replacement_trigger=replacement_trigger,
                 retainOnDelete=opts.retain_on_delete,
                 deletedWith=resolver.deleted_with_urn or "",
                 replace_with=resolver.replace_with_urns or [],
@@ -1090,6 +1153,7 @@ def register_resource(
                 packageRef=package_ref_str or "",
                 hooks=hooks,
                 hideDiffs=opts.hide_diffs,
+                envVarMappings=opts.env_var_mappings or {},
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
@@ -1109,7 +1173,9 @@ def register_resource(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, wrap_with_context(do_rpc_call)
+            )
         except Exception as exn:
             log.debug(
                 f"exception when preparing or executing rpc for {ty=} {name=}: {traceback.format_exc()}"
@@ -1213,7 +1279,9 @@ def register_resource_outputs(
             except grpc.RpcError as exn:
                 handle_grpc_error(exn)
 
-        await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+        await asyncio.get_event_loop().run_in_executor(
+            None, wrap_with_context(do_rpc_call)
+        )
         log.debug(
             f"resource registration successful: urn={urn}, props={serialized_props}"
         )
@@ -1293,7 +1361,7 @@ async def _prepare_resource_hooks(
     hooks: Optional["ResourceHookBinding"],
     name_prefix: str,
 ) -> resource_pb2.RegisterResourceRequest.ResourceHooksBinding:
-    from ..resource_hooks import ResourceHook
+    from ..resource_hooks import ErrorHook, ResourceHook
 
     proto = resource_pb2.RegisterResourceRequest.ResourceHooksBinding()
     if not hooks:
@@ -1331,6 +1399,19 @@ async def _prepare_resource_hooks(
             await hook._registered
             getattr(proto, hook_type).append(hook.name)
 
+    on_error_hooks_list: list[ErrorHook] = getattr(hooks, "on_error", []) or []
+    if on_error_hooks_list:
+        if not await monitor_supports_error_hooks():
+            raise Exception(
+                "The Pulumi CLI does not support error hooks. Please update the Pulumi CLI."
+            )
+
+        for error_hook in on_error_hooks_list:
+            if not isinstance(error_hook, ErrorHook):
+                raise ValueError("Error hooks must be ErrorHook instances")
+            await error_hook._registered
+            proto.on_error.append(error_hook.name)
+
     return proto
 
 
@@ -1349,6 +1430,29 @@ def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
 
         result, exception = await _get_rpc_manager().do_rpc(
             "register resource hook", do_register
+        )()
+        if exception:
+            raise exception
+        return result
+
+    return asyncio.ensure_future(wrapper())
+
+
+def register_error_hook(hook: "ErrorHook") -> asyncio.Future[None]:
+    async def do_register() -> None:
+        callbacks = await _get_callbacks()
+        if callbacks is None:
+            raise Exception("No callback server registered.")
+        return callbacks.register_error_hook(hook)
+
+    async def wrapper() -> None:
+        if not await monitor_supports_error_hooks():
+            raise Exception(
+                "The Pulumi CLI does not support error hooks. Please update the Pulumi CLI."
+            )
+
+        result, exception = await _get_rpc_manager().do_rpc(
+            "register error hook", do_register
         )()
         if exception:
             raise exception

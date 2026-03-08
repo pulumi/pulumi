@@ -38,6 +38,7 @@ class SsisEnvironmentReferenceResponse(dict):
                  reference_type: Optional[_builtins.str] = None):
         """
         Ssis environment reference.
+
         :param _builtins.str environment_folder_name: Environment folder name.
         :param _builtins.str environment_name: Environment name.
         :param _builtins.float id: Environment reference id.
@@ -99,6 +100,7 @@ class SsisEnvironmentResponse(dict):
                  variables: Optional[Sequence['outputs.SsisVariableResponse']] = None):
         """
         Ssis environment.
+
         :param _builtins.str type: The type of SSIS object metadata.
                Expected value is 'Environment'.
         :param _builtins.str description: Metadata description.
@@ -181,6 +183,7 @@ class SsisFolderResponse(dict):
                  name: Optional[_builtins.str] = None):
         """
         Ssis folder.
+
         :param _builtins.str type: The type of SSIS object metadata.
                Expected value is 'Folder'.
         :param _builtins.str description: Metadata description.
@@ -245,6 +248,7 @@ class SsisPackageResponse(dict):
                  project_version: Optional[_builtins.float] = None):
         """
         Ssis Package.
+
         :param _builtins.str type: The type of SSIS object metadata.
                Expected value is 'Package'.
         :param _builtins.str description: Metadata description.
@@ -357,6 +361,7 @@ class SsisParameterResponse(dict):
                  variable: Optional[_builtins.str] = None):
         """
         Ssis parameter.
+
         :param _builtins.str data_type: Parameter type.
         :param _builtins.str default_value: Default value of parameter.
         :param _builtins.str description: Parameter description.
@@ -508,6 +513,7 @@ class SsisProjectResponse(dict):
                  version: Optional[_builtins.float] = None):
         """
         Ssis project.
+
         :param _builtins.str type: The type of SSIS object metadata.
                Expected value is 'Project'.
         :param _builtins.str description: Metadata description.
@@ -615,6 +621,7 @@ class SsisVariableResponse(dict):
                  value: Optional[_builtins.str] = None):
         """
         Ssis variable.
+
         :param _builtins.str data_type: Variable type.
         :param _builtins.str description: Variable description.
         :param _builtins.float id: Variable id.
@@ -707,6 +714,7 @@ class StorageAccountKeyResponse(dict):
                  value: _builtins.str):
         """
         An access key for the storage account.
+
         :param _builtins.str creation_time: Creation time of the key, in round trip date format.
         :param _builtins.str key_name: Name of the key.
         :param _builtins.str permissions: Permissions for the key -- read-only or full permissions.

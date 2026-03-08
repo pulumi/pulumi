@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -292,6 +293,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		name     string
 		cmd      *cobra.Command
 		environ  []string
+		args     []string
 		metadata map[string]string
 	}{
 		{
@@ -423,6 +425,26 @@ func TestGetCLIMetadata(t *testing.T) {
 				"Environment": "PULUMI_EXPERIMENTAL PULUMI_COPILOT",
 			},
 		},
+		{
+			name: "plugin run with argument",
+			cmd: (func() *cobra.Command {
+				cmd := &cobra.Command{Use: "pulumi"}
+				pluginCmd := &cobra.Command{Use: "plugin"}
+				cmd.AddCommand(pluginCmd)
+				pluginRunCmd := &cobra.Command{Use: "run", Args: cmdutil.MinimumNArgs(1)}
+				pluginCmd.AddCommand(pluginRunCmd)
+				err := pluginRunCmd.Execute()
+				require.NoError(t, err)
+				return pluginRunCmd
+			})(),
+			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
+			args:    []string{"my-plugin"},
+			metadata: map[string]string{
+				"Command":     "pulumi plugin run my-plugin",
+				"Flags":       "",
+				"Environment": "PULUMI_EXPERIMENTAL PULUMI_COPILOT",
+			},
+		},
 	}
 
 	for _, c := range cases {
@@ -430,7 +452,7 @@ func TestGetCLIMetadata(t *testing.T) {
 			t.Parallel()
 
 			// Act.
-			metadata := getCLIMetadata(c.cmd, c.environ)
+			metadata := getCLIMetadata(c.cmd, c.environ, c.args)
 
 			// Assert.
 			require.Equal(t, c.metadata, metadata)
@@ -477,7 +499,6 @@ func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 
 //nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_CachesPrompts(t *testing.T) {
-	// Arrange.
 	realVersion := version.Version
 	t.Cleanup(func() {
 		version.Version = realVersion
@@ -509,12 +530,16 @@ func TestCheckForUpdate_CachesPrompts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Act.
 	uncached := checkForUpdate(ctx, srv.URL, nil)
-	cached := checkForUpdate(ctx, srv.URL, nil)
-	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
+	require.NotNil(t, uncached)
+	require.NoError(t, cacheVersionInfo(uncached.versionInfo))
 
-	// Store an expired last prompt timesamp
+	cached := checkForUpdate(ctx, srv.URL, nil)
+	require.Nil(t, cached)
+	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
+	require.Nil(t, cachedAgain)
+
+	// Store an expired last prompt timestamp
 	expiredTime := time.Now().Add(-25 * time.Hour)
 	info, err := readVersionInfo()
 	require.NoError(t, err)
@@ -523,17 +548,13 @@ func TestCheckForUpdate_CachesPrompts(t *testing.T) {
 
 	expired := checkForUpdate(ctx, srv.URL, nil)
 
-	// Assert.
 	require.Equal(t, 4, callCount, "should call API every time")
 
-	require.Contains(t, uncached.Message, "A new version of Pulumi is available")
-	require.Contains(t, uncached.Message, "upgrade from version '1.0.0' to '1.2.3'")
+	require.Contains(t, uncached.diag.Message, "A new version of Pulumi is available")
+	require.Contains(t, uncached.diag.Message, "upgrade from version '1.0.0' to '1.2.3'")
 
-	require.Nil(t, cached)
-	require.Nil(t, cachedAgain)
-
-	require.Contains(t, expired.Message, "A new version of Pulumi is available")
-	require.Contains(t, expired.Message, "upgrade from version '1.0.0' to '1.2.3'")
+	require.Contains(t, expired.diag.Message, "A new version of Pulumi is available")
+	require.Contains(t, expired.diag.Message, "upgrade from version '1.0.0' to '1.2.3'")
 }
 
 func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
@@ -570,7 +591,6 @@ func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
 
 //nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
-	// Arrange.
 	realVersion := version.Version
 	t.Cleanup(func() {
 		version.Version = realVersion
@@ -603,10 +623,15 @@ func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Act.
 	uncached := checkForUpdate(ctx, srv.URL, nil)
+	require.NotNil(t, uncached)
+	require.NoError(t, cacheVersionInfo(uncached.versionInfo))
+
 	cached := checkForUpdate(ctx, srv.URL, nil)
+	require.Nil(t, cached)
+
 	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
+	require.Nil(t, cachedAgain)
 
 	// Store an expired last prompt timesamp
 	expiredTime := time.Now().Add(-2 * time.Hour)
@@ -616,18 +641,15 @@ func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	require.NoError(t, cacheVersionInfo(info))
 
 	expired := checkForUpdate(ctx, srv.URL, nil)
+	require.NotNil(t, expired)
 
-	// Assert.
 	require.Equal(t, 4, callCount, "should call API every time")
 
-	require.Contains(t, uncached.Message, "A new version of Pulumi is available")
-	require.Contains(t, uncached.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
+	require.Contains(t, uncached.diag.Message, "A new version of Pulumi is available")
+	require.Contains(t, uncached.diag.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
 
-	require.Nil(t, cached)
-	require.Nil(t, cachedAgain)
-
-	require.Contains(t, expired.Message, "A new version of Pulumi is available")
-	require.Contains(t, expired.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
+	require.Contains(t, expired.diag.Message, "A new version of Pulumi is available")
+	require.Contains(t, expired.diag.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
 }
 
 //nolint:paralleltest // changes environment variables and globals
@@ -679,7 +701,6 @@ func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 
 //nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
-	// Arrange.
 	realVersion := version.Version
 	t.Cleanup(func() {
 		version.Version = realVersion
@@ -712,10 +733,15 @@ func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Act.
 	uncached := checkForUpdate(ctx, srv.URL, nil)
+	require.NotNil(t, uncached)
+	require.NoError(t, cacheVersionInfo(uncached.versionInfo))
+
 	cached := checkForUpdate(ctx, srv.URL, nil)
+	require.Nil(t, cached)
+
 	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
+	require.Nil(t, cachedAgain)
 
 	// Store an expired last prompt timesamp
 	expiredTime := time.Now().Add(-25 * time.Hour)
@@ -725,23 +751,19 @@ func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
 	require.NoError(t, cacheVersionInfo(info))
 
 	expired := checkForUpdate(ctx, srv.URL, nil)
+	require.NotNil(t, expired)
 
-	// Assert.
 	require.Equal(t, 4, callCount, "should call API every time")
 
-	require.Contains(t, uncached.Message, "A new version of Pulumi is available")
-	require.Contains(t, uncached.Message, "upgrade from version '1.0.0' to '2.0.3'")
+	require.Contains(t, uncached.diag.Message, "A new version of Pulumi is available")
+	require.Contains(t, uncached.diag.Message, "upgrade from version '1.0.0' to '2.0.3'")
 
-	require.Nil(t, cached)
-	require.Nil(t, cachedAgain)
-
-	require.Contains(t, expired.Message, "A new version of Pulumi is available")
-	require.Contains(t, expired.Message, "upgrade from version '1.0.0' to '2.0.3'")
+	require.Contains(t, expired.diag.Message, "A new version of Pulumi is available")
+	require.Contains(t, expired.diag.Message, "upgrade from version '1.0.0' to '2.0.3'")
 }
 
 //nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
-	// Arrange.
 	realVersion := version.Version
 	t.Cleanup(func() {
 		version.Version = realVersion
@@ -774,10 +796,15 @@ func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Act.
 	uncached := checkForUpdate(ctx, srv.URL, nil)
+	require.NotNil(t, uncached)
+	require.NoError(t, cacheVersionInfo(uncached.versionInfo))
+
 	cached := checkForUpdate(ctx, srv.URL, nil)
+	require.Nil(t, cached)
+
 	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
+	require.Nil(t, cachedAgain)
 
 	// Store an expired last prompt timesamp
 	expiredTime := time.Now().Add(-25 * time.Hour)
@@ -787,18 +814,18 @@ func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
 	require.NoError(t, cacheVersionInfo(info))
 
 	expired := checkForUpdate(ctx, srv.URL, nil)
+	require.NotNil(t, expired)
 
-	// Assert.
 	require.Equal(t, 4, callCount, "should call API every time")
 
-	require.Contains(t, uncached.Message, "You are running a very old version of Pulumi")
-	require.Contains(t, uncached.Message, "upgrade from version '1.0.0' to '1.40.3'")
+	require.Contains(t, uncached.diag.Message, "You are running a very old version of Pulumi")
+	require.Contains(t, uncached.diag.Message, "upgrade from version '1.0.0' to '1.40.3'")
 
 	require.Nil(t, cached)
 	require.Nil(t, cachedAgain)
 
-	require.Contains(t, expired.Message, "You are running a very old version of Pulumi")
-	require.Contains(t, expired.Message, "upgrade from version '1.0.0' to '1.40.3'")
+	require.Contains(t, expired.diag.Message, "You are running a very old version of Pulumi")
+	require.Contains(t, expired.diag.Message, "upgrade from version '1.0.0' to '1.40.3'")
 }
 
 func TestDiffVersions(t *testing.T) {

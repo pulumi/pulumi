@@ -17,7 +17,9 @@ package fuzzing
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -25,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"golang.org/x/exp/maps"
 	"pgregory.net/rapid"
 )
 
@@ -70,9 +71,7 @@ func (ps *ProviderSpec) AsProviderLoaders() []*deploytest.ProviderLoader {
 
 	loaders := make([]*deploytest.ProviderLoader, len(ps.Packages))
 
-	pkgs := maps.Keys(ps.Packages)
-	slices.Sort(pkgs)
-	for i, pkg := range pkgs {
+	for i, pkg := range slices.Sorted(maps.Keys(ps.Packages)) {
 		loaders[i] = deploytest.NewProviderLoader(pkg, version, load)
 	}
 
@@ -82,17 +81,14 @@ func (ps *ProviderSpec) AsProviderLoaders() []*deploytest.ProviderLoader {
 // Implements PrettySpec.Pretty. Returns a human-readable representation of this ProviderSpec, suitable for use in
 // debugging output and error messages.
 func (ps *ProviderSpec) Pretty(indent string) string {
-	rendered := fmt.Sprintf("%sProvider %p", indent, ps)
+	var rendered strings.Builder
+	rendered.WriteString(fmt.Sprintf("%sProvider %p", indent, ps))
 	if len(ps.Packages) == 0 {
-		rendered += fmt.Sprintf("\n%s  No packages", indent)
+		rendered.WriteString(fmt.Sprintf("\n%s  No packages", indent))
 	} else {
-		rendered += fmt.Sprintf("\n%s  Packages (%d):", indent, len(ps.Packages))
-
-		pkgs := maps.Keys(ps.Packages)
-		slices.Sort(pkgs)
-
-		for _, p := range pkgs {
-			rendered += fmt.Sprintf("\n%s    %s", indent, p)
+		rendered.WriteString(fmt.Sprintf("\n%s  Packages (%d):", indent, len(ps.Packages)))
+		for _, p := range slices.Sorted(maps.Keys(ps.Packages)) {
+			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, p))
 		}
 	}
 
@@ -109,16 +105,16 @@ func (ps *ProviderSpec) Pretty(indent string) string {
 		len(renderedUpdate) > 0
 
 	if !hasAny {
-		rendered += fmt.Sprintf("\n%s  No modified operations", indent)
+		rendered.WriteString(fmt.Sprintf("\n%s  No modified operations", indent))
 	} else {
-		rendered += renderedCreate
-		rendered += renderedDelete
-		rendered += renderedDiff
-		rendered += renderedRead
-		rendered += renderedUpdate
+		rendered.WriteString(renderedCreate)
+		rendered.WriteString(renderedDelete)
+		rendered.WriteString(renderedDiff)
+		rendered.WriteString(renderedRead)
+		rendered.WriteString(renderedUpdate)
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // A ProviderCreateSpec specifies the behavior of a provider's create function. It maps resource URNs to the action that

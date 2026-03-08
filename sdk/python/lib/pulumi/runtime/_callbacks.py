@@ -29,7 +29,7 @@ from typing import (
 import grpc
 from google.protobuf.message import Message
 from grpc import aio
-from grpc.experimental.aio import init_grpc_aio
+from packaging import version
 
 from .. import log
 from ..invoke import InvokeOptions, InvokeTransform
@@ -54,13 +54,8 @@ if TYPE_CHECKING:
         ResourceOptions,
         ResourceTransform,
     )
-    from ..resource_hooks import ResourceHook
+    from ..resource_hooks import ErrorHook, ResourceHook
 
-
-# Workaround for https://github.com/grpc/grpc/issues/38679,
-# https://github.com/grpc/grpc/issues/22365#issuecomment-2254278769
-# This will be fixed in grpcio 1.75.1 with https://github.com/grpc/grpc/pull/40649
-init_grpc_aio()
 
 _CallbackFunction = Callable[[bytes], Awaitable[Message]]
 
@@ -87,6 +82,13 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         self._target = f"127.0.0.1:{port}"
 
     async def serve(self):
+        # Workaround for https://github.com/grpc/grpc/issues/38679,
+        # https://github.com/grpc/grpc/issues/22365#issuecomment-2254278769
+        # This will be fixed in grpcio 1.75.1 with https://github.com/grpc/grpc/pull/40649
+        if version.parse(grpc.__version__) < version.parse("1.75.1"):
+            from grpc.experimental.aio import init_grpc_aio
+
+            init_grpc_aio()
         await self._server.start()
 
     @classmethod
@@ -381,12 +383,105 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             on_dry_run=hook.opts.on_dry_run if hook.opts else False,
         )
 
+    def do_register_error_hook(
+        self, hook: ErrorHook
+    ) -> resource_pb2.RegisterErrorHookRequest:
+        log.debug(f"do_register_error_hook {hook.name}")
+
+        async def cb(s: bytes) -> Message:
+            request: resource_pb2.ErrorHookRequest = (
+                resource_pb2.ErrorHookRequest.FromString(s)
+            )
+
+            try:
+                from ..resource_hooks import ErrorHookArgs
+
+                new_inputs = (
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.new_inputs,
+                                keep_unknowns=True,
+                            ),
+                        )
+                    )
+                    if request.HasField("new_inputs") and request.new_inputs
+                    else None
+                )
+                old_inputs = (
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.old_inputs,
+                                keep_unknowns=True,
+                            ),
+                        )
+                    )
+                    if request.HasField("old_inputs") and request.old_inputs
+                    else None
+                )
+                old_outputs = (
+                    outputtify_secrets(
+                        cast(
+                            dict[str, Any],
+                            deserialize_properties(
+                                request.old_outputs,
+                                keep_unknowns=True,
+                            ),
+                        )
+                    )
+                    if request.HasField("old_outputs") and request.old_outputs
+                    else None
+                )
+
+                args = ErrorHookArgs(
+                    urn=request.urn,
+                    id=request.id,
+                    name=request.name,
+                    type=request.type,
+                    new_inputs=new_inputs,
+                    old_inputs=old_inputs,
+                    old_outputs=old_outputs,
+                    failed_operation=request.failed_operation,
+                    errors=list(request.errors),
+                )
+                maybe_retry = hook(args)
+                if isinstance(maybe_retry, Awaitable):
+                    retry = await maybe_retry
+                else:
+                    retry = maybe_retry
+                return resource_pb2.ErrorHookResponse(retry=retry)
+            except Exception as e:  # noqa: BLE001 catch blind exception
+                log.debug(f"Exception while executing error hook: {str(e)}")
+                return resource_pb2.ErrorHookResponse(error=str(e))
+
+        token = str(uuid.uuid4())
+        self._callbacks[token] = cb
+        callback = callback_pb2.Callback(
+            token=token,
+            target=self._target,
+        )
+        return resource_pb2.RegisterErrorHookRequest(
+            name=hook.name,
+            callback=callback,
+        )
+
     def register_resource_hook(self, hook: ResourceHook) -> None:
         req = self.do_register_resource_hook(hook)
         try:
             self._monitor.RegisterResourceHook(req)
         except:
             # Remove the hook since we didn't manage to actually register it.
+            self._callbacks.pop(req.callback.token)
+            raise
+
+    def register_error_hook(self, hook: ErrorHook) -> None:
+        req = self.do_register_error_hook(hook)
+        try:
+            self._monitor.RegisterErrorHook(req)
+        except Exception:
             self._callbacks.pop(req.callback.token)
             raise
 
@@ -465,6 +560,9 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         replace_on_changes = list(opts.replace_on_changes)
         if replace_on_changes:
             ropts.replace_on_changes = replace_on_changes
+
+        if opts.replacement_trigger:
+            ropts.replacement_trigger = opts.replacement_trigger
 
         if opts.retain_on_delete:
             ropts.retain_on_delete = opts.retain_on_delete
@@ -553,6 +651,16 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
         hooks = await _prepare_resource_hooks(opts.hooks, resource_name)
 
+        replacement_trigger = None
+        if opts.replacement_trigger is not None:
+            from .. import output as output_mod
+            from .rpc import serialize_property
+
+            resolved = output_mod.Output.from_input(opts.replacement_trigger)
+            replacement_trigger = await serialize_property(
+                resolved, [], "replacement_trigger", None, None, None, False, False
+            )
+
         result = resource_pb2.TransformResourceOptions(
             aliases=aliases or None,
             custom_timeouts=custom_timeouts,
@@ -561,6 +669,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             replace_on_changes=replace_on_changes,
             additional_secret_outputs=additional_secret_outputs,
             hooks=hooks,
+            replacement_trigger=replacement_trigger,
         )
 
         if opts.import_ is not None:

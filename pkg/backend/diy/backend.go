@@ -115,7 +115,7 @@ type diyBackend struct {
 
 	lockID string
 
-	gzip bool
+	compression encoding.Compression
 
 	Env env.Env
 
@@ -284,7 +284,10 @@ func newDIYBackend(
 		return nil, err
 	}
 
-	gzipCompression := opts.Env.GetBool(env.DIYBackendGzip)
+	compression, err := resolveCompression(opts.Env)
+	if err != nil {
+		return nil, err
+	}
 
 	wbucket := &wrappedBucket{bucket: bucket}
 
@@ -299,7 +302,7 @@ func newDIYBackend(
 		url:         u,
 		bucket:      wbucket,
 		lockID:      lockID.String(),
-		gzip:        gzipCompression,
+		compression: compression,
 		Env:         opts.Env,
 	}
 	backend.currentProject.Store(project)
@@ -532,7 +535,7 @@ func (b *diyBackend) upgradeStack(
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
-// can support.  Importantly, s3/azblob/gs paths should not be be touched. This will only affect
+// can support.  Importantly, s3/azblob/gs paths should not be touched. This will only affect
 // file:// paths which have a few oddities around them that we want to ensure work properly.
 func massageBlobPath(path string) (string, error) {
 	if !strings.HasPrefix(path, FilePathPrefix) {
@@ -648,6 +651,12 @@ func (b *diyBackend) ListPolicyPacks(ctx context.Context, orgName string, _ back
 	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
 ) {
 	return apitype.ListPolicyPacksResponse{}, nil, errors.New("DIY backend does not support resource policy")
+}
+
+func (b *diyBackend) GetStackPolicyPacks(
+	ctx context.Context, stackRef backend.StackReference,
+) ([]engine.RequiredPolicy, error) {
+	return nil, errors.New("DIY backend does not support resource policy")
 }
 
 func (b *diyBackend) SupportsTemplates() bool {
@@ -1228,7 +1237,7 @@ func (b *diyBackend) apply(
 	case apitype.PreviewUpdate:
 		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		_, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.ResourceImportUpdate:
 		_, changes, updateErr = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
 	case apitype.RefreshUpdate:
@@ -1559,10 +1568,25 @@ func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.S
 	return nil
 }
 
-func (b *diyBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error) {
+func (b *diyBackend) DefaultSecretManager(_ context.Context, ps *workspace.ProjectStack) (secrets.Manager, error) {
 	// The default secrets manager for stacks against a DIY backend is a
 	// passphrase-based manager.
 	return passphrase.NewPromptingPassphraseSecretsManager(ps, false /* rotateSecretsProvider */)
+}
+
+func resolveCompression(e env.Env) (encoding.Compression, error) {
+	gzip := e.GetBool(env.DIYBackendGzip)
+	zstd := e.GetBool(env.DIYBackendZstd)
+	if gzip && zstd {
+		return "", errors.New("DIY_BACKEND_GZIP and DIY_BACKEND_ZSTD cannot both be enabled")
+	}
+	if zstd {
+		return encoding.CompressionZstd, nil
+	}
+	if gzip {
+		return encoding.CompressionGzip, nil
+	}
+	return encoding.CompressionNone, nil
 }
 
 // getParallel returns the number of parallel operations to use from the environment

@@ -711,6 +711,13 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
+		case "/api/user":
+			resp := map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
 		case "/api/user/organizations/default":
 			resp := apitype.GetDefaultOrganizationResponse{
 				GitHubLogin: "owner",
@@ -827,6 +834,13 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 		switch req.URL.Path {
 		case "/api/capabilities":
 			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
+			err := json.NewEncoder(rw).Encode(resp)
+			require.NoError(t, err)
+		case "/api/user":
+			resp := map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			}
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
 		case "/api/user/organizations/default":
@@ -1154,7 +1168,7 @@ func TestExchangeOidcToken(t *testing.T) {
 			}
 
 			accessToken, expiresAt, err := exchangeOidcToken(
-				diagtest.LogSink(t), cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expiration,
+				t.Context(), diagtest.LogSink(t), cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expiration,
 			)
 
 			if tt.wantErr {
@@ -1257,4 +1271,115 @@ func TestGetAccountDetails(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCreateNeoTaskOnError(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty output returns nil", func(t *testing.T) {
+		t.Parallel()
+
+		b := &cloudBackend{
+			client: &client.Client{},
+			d:      diagtest.LogSink(t),
+		}
+		stackRef := cloudBackendReference{
+			name:    tokens.MustParseStackName("my-stack"),
+			owner:   "my-org",
+			project: "my-project",
+		}
+
+		resp, err := b.createNeoTaskOnError(context.Background(), "", stackRef, display.Options{})
+		require.NoError(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("bad stack reference returns error", func(t *testing.T) {
+		t.Parallel()
+
+		b := &cloudBackend{
+			client: &client.Client{},
+			d:      diagtest.LogSink(t),
+		}
+		resp, err := b.createNeoTaskOnError(context.Background(), "some error", nil, display.Options{})
+		require.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		neoResponse, err := json.Marshal(client.NeoTaskResponse{TaskID: "task_abc123"})
+		require.NoError(t, err)
+
+		var capturedBody []byte
+		mockTransport := &mockTransport{
+			roundTrip: func(req *http.Request) (*http.Response, error) {
+				capturedBody, err = io.ReadAll(req.Body)
+				if err != nil {
+					return nil, err
+				}
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader(neoResponse)),
+					Header:     make(http.Header),
+				}, nil
+			},
+		}
+
+		apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
+		apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
+		b := &cloudBackend{
+			client: apiClient,
+			d:      diagtest.LogSink(t),
+		}
+
+		stackRef := cloudBackendReference{
+			name:    tokens.MustParseStackName("my-stack"),
+			owner:   "my-org",
+			project: "my-project",
+		}
+
+		resp, err := b.createNeoTaskOnError(context.Background(), "resource failed to create", stackRef, display.Options{})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, "task_abc123", resp.TaskID)
+
+		assert.Contains(
+			t, string(capturedBody),
+			"Help me debug the following Pulumi error for project my-project and stack my-stack",
+		)
+		assert.Contains(t, string(capturedBody), "resource failed to create")
+	})
+
+	t.Run("API error is propagated", func(t *testing.T) {
+		t.Parallel()
+
+		mockTransport := &mockTransport{
+			roundTrip: func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusInternalServerError,
+					Body:       io.NopCloser(bytes.NewReader([]byte(`{"code":500,"message":"server error"}`))),
+					Header:     make(http.Header),
+				}, nil
+			},
+		}
+
+		apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
+		apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
+		b := &cloudBackend{
+			client: apiClient,
+			d:      diagtest.LogSink(t),
+		}
+
+		stackRef := cloudBackendReference{
+			name:    tokens.MustParseStackName("my-stack"),
+			owner:   "my-org",
+			project: "my-project",
+		}
+
+		resp, err := b.createNeoTaskOnError(context.Background(), "something broke", stackRef, display.Options{})
+		require.Error(t, err)
+		assert.Nil(t, resp)
+	})
 }

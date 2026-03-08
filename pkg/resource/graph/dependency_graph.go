@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -334,7 +335,7 @@ func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) mapset.Se
 
 // ChildrenOf returns a slice containing all resources that are children of the given resource.
 func (dg *DependencyGraph) ChildrenOf(res *resource.State) []*resource.State {
-	children := make([]*resource.State, 0)
+	children := slice.Prealloc[*resource.State](len(dg.childrenOf[res.URN]))
 	for _, childIndex := range dg.childrenOf[res.URN] {
 		children = append(children, dg.resources[childIndex])
 	}

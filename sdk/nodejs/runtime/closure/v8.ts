@@ -239,7 +239,12 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
         }
 
         const remoteObject = retType.result;
-        if (remoteObject.type !== "function") {
+        // Regular functions have type "function", but async generators have type "object" with className "AsyncGeneratorFunction"
+        // and regular generators have type "function"
+        const isFunction = remoteObject.type === "function";
+        const isAsyncGenerator = remoteObject.type === "object" && remoteObject.className === "AsyncGeneratorFunction";
+
+        if (!isFunction && !isAsyncGenerator) {
             throw new Error("Remote object was not 'function': " + JSON.stringify(remoteObject));
         }
 

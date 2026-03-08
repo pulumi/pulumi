@@ -41,7 +41,7 @@ func Destroy(
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "destroy", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "destroy", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -92,7 +92,7 @@ func getDeleteHooks(target *deploy.Target) map[resource.URN][]string {
 func newDestroySource(
 	ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks,
+	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks, panicErrs chan<- error,
 ) (deploy.Source, error) {
 	// First we check if any of the resouces have delete hooks. If hooks are
 	// present, we error out as we can't run the hooks without the program.
@@ -178,7 +178,7 @@ func DestroyV2(
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "destroy", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "destroy", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}

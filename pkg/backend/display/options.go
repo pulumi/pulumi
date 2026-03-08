@@ -60,8 +60,9 @@ type Options struct {
 	SuppressDiagEventsInDiff bool                // true to suppress displaying diagnostic events in the diff display
 
 	// Neo options
-	ShowLinkToNeo   bool // true to display a 'explainFailure' link to Neo.
-	ShowNeoFeatures bool // true to display Neo features like summaries and explanations.
+	ShowLinkToNeo       bool // true to display a 'explainFailure' link to Neo.
+	ShowNeoFeatures     bool // true to display Neo features like summaries and explanations.
+	StartNeoTaskOnError bool // true to start a Neo task when an error occurs.
 	// Neo options that are ignored if ShowCopilotFeatures is false.
 	NeoSummaryModel  string // the Neo summary model to use (default: "gpt-4o-mini").
 	NeoSummaryMaxLen int    // the maximum length of the Neo summary. (default 80 characters).

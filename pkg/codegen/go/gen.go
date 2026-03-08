@@ -104,6 +104,8 @@ func (d *typeDetails) markMap(input, output bool) {
 // Title converts the input string to a title case
 // where only the initial letter is upper-cased.
 // It also removes $-prefix if any.
+// If the result doesn't start with a legal Go identifier character, it is
+// prefixed with "_" to produce a valid Go identifier.
 func Title(s string) string {
 	if s == "" {
 		return ""
@@ -113,6 +115,9 @@ func Title(s string) string {
 	}
 	s = cgstrings.UppercaseFirst(s)
 	s = cgstrings.Unhyphenate(s)
+	if len(s) > 0 && !isLegalIdentifierStart(rune(s[0])) {
+		s = "_" + s
+	}
 	return s
 }
 
@@ -232,6 +237,12 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
+	// Handle method-related tokens like "Resource/callResult" → "ResourceCallResult".
+	// Method function tokens use the format "ResourceName/methodName" in the name component,
+	// and derived types append "Result" or "Args" to produce e.g. "Resource/callResult".
+	if idx := strings.Index(name, "/"); idx >= 0 {
+		name = name[:idx] + Title(name[idx+1:])
+	}
 	name = Title(name)
 	if modPkg, ok := pkg.packages[mod]; ok {
 		newName, renamed := modPkg.renamed[name]
@@ -1601,7 +1612,7 @@ func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *sch
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	if goPkgInfo.Generics != GenericsSettingNone {
+	if goPkgInfo.Generics == GenericsSettingSideBySide || goPkgInfo.Generics == GenericsSettingGenericsOnly {
 		// ToOutput implementation for pulumix.Input.
 		fmt.Fprintf(w, "func (in *%sPtr) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", typeName, name)
 		fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", name)
@@ -1697,7 +1708,18 @@ func (pkg *pkgContext) assignProperty(
 
 func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) string {
 	contract.Assertf(field != nil, "Field must not be nil")
-	return fieldName(pkg, r, field)
+	s := Title(field.Name)
+	var name string
+	if r != nil {
+		name = disambiguatedResourceName(r, pkg)
+	}
+	if !isReservedResourceField(name, s) {
+		return s
+	}
+
+	res := s + "_"
+	contract.Assertf(!isReservedResourceField(name, res), "Name %q is reserved on resource %q", name, res)
+	return res
 }
 
 func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
@@ -2884,101 +2906,103 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	returnType := f.ReturnType
 	objectReturnType, _ := returnType.(*schema.ObjectType)
 
-	printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
+	if f.Plain {
+		printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 
-	// Now, emit the function signature.
-	argsig := "ctx *pulumi.Context"
-	if f.Inputs != nil {
-		argsig = fmt.Sprintf("%s, args *%sArgs", argsig, name)
-	}
-	var retty string
-	if objectReturnType != nil {
-		retty = fmt.Sprintf("(*%sResult, error)", name)
-	} else if returnType != nil {
-		retty = fmt.Sprintf("(%s, error)", pkg.typeString(returnType))
-	} else {
-		retty = "error"
-	}
-	fmt.Fprintf(w, "func %s(%s, opts ...pulumi.InvokeOption) %s {\n", name, argsig, retty)
+		// Now, emit the function signature.
+		argsig := "ctx *pulumi.Context"
+		if f.Inputs != nil {
+			argsig = fmt.Sprintf("%s, args *%sArgs", argsig, name)
+		}
+		var retty string
+		if objectReturnType != nil {
+			retty = fmt.Sprintf("(*%sResult, error)", name)
+		} else if returnType != nil {
+			retty = fmt.Sprintf("(%s, error)", pkg.typeString(returnType))
+		} else {
+			retty = "error"
+		}
+		fmt.Fprintf(w, "func %s(%s, opts ...pulumi.InvokeOption) %s {\n", name, argsig, retty)
 
-	// Make a map of inputs to pass to the runtime function.
-	var inputsVar string
-	if f.Inputs == nil {
-		inputsVar = "nil"
-	} else if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
-		inputsVar = "args.Defaults()"
-	} else {
-		inputsVar = "args"
-	}
+		// Make a map of inputs to pass to the runtime function.
+		var inputsVar string
+		if f.Inputs == nil {
+			inputsVar = "nil"
+		} else if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
+			inputsVar = "args.Defaults()"
+		} else {
+			inputsVar = "args"
+		}
 
-	// Now simply invoke the runtime function with the arguments.
-	var outputsType string
-	if returnType == nil {
-		outputsType = "struct{}"
-	} else if objectReturnType == nil {
-		outputsType = "map[string]" + pkg.typeString(returnType)
-	} else {
-		outputsType = name + "Result"
-	}
+		// Now simply invoke the runtime function with the arguments.
+		var outputsType string
+		if returnType == nil {
+			outputsType = "struct{}"
+		} else if objectReturnType == nil {
+			outputsType = "map[string]" + pkg.typeString(returnType)
+		} else {
+			outputsType = name + "Result"
+		}
 
-	err := pkg.GenPkgDefaultsOptsCall(w, true /*invoke*/)
-	if err != nil {
-		return err
-	}
-
-	// If this is a parameterized resource we need the package ref.
-	def, err := pkg.pkg.Definition()
-	if err != nil {
-		return err
-	}
-	assignment := ":="
-	packageRef := ""
-	packageArg := ""
-	if def.Parameterization != nil {
-		assignment = "="
-		packageRef = "Package"
-		packageArg = "ref, "
-		err = pkg.GenPkgGetPackageRefCall(w, "nil")
+		err := pkg.GenPkgDefaultsOptsCall(w, true /*invoke*/)
 		if err != nil {
 			return err
 		}
-	}
 
-	fmt.Fprintf(w, "\tvar rv %s\n", outputsType)
-	fmt.Fprintf(w, "\terr %s ctx.Invoke%s(\"%s\", %s, &rv, %sopts...)\n",
-		assignment, packageRef, f.Token, inputsVar, packageArg)
-
-	if returnType == nil {
-		fmt.Fprintf(w, "\treturn err\n")
-	} else if objectReturnType == nil {
-		// Check the error before proceeding.
-		typ := pkg.typeString(returnType)
-		fmt.Fprintf(w, "\tvar result %s\n", typ)
-		fmt.Fprintf(w, "\tif err != nil {\n")
-		fmt.Fprintf(w, "\t\treturn result, err\n")
-		fmt.Fprintf(w, "\t}\n")
-		// Loop and collect the result
-		fmt.Fprintf(w, "\tfor _, v := range rv {\n")
-		fmt.Fprintf(w, "\t\tresult = v\n")
-		fmt.Fprintf(w, "\t\tbreak\n")
-		fmt.Fprintf(w, "\t}\n")
-		fmt.Fprintf(w, "\treturn result, nil\n")
-	} else {
-		// Check the error before proceeding.
-		fmt.Fprintf(w, "\tif err != nil {\n")
-		fmt.Fprintf(w, "\t\treturn nil, err\n")
-		fmt.Fprintf(w, "\t}\n")
-
-		// Return the result.
-		var retValue string
-		if codegen.IsProvideDefaultsFuncRequired(objectReturnType) && !pkg.disableObjectDefaults {
-			retValue = "rv.Defaults()"
-		} else {
-			retValue = "&rv"
+		// If this is a parameterized resource we need the package ref.
+		def, err := pkg.pkg.Definition()
+		if err != nil {
+			return err
 		}
-		fmt.Fprintf(w, "\treturn %s, nil\n", retValue)
+		assignment := ":="
+		packageRef := ""
+		packageArg := ""
+		if def.Parameterization != nil {
+			assignment = "="
+			packageRef = "Package"
+			packageArg = "ref, "
+			err = pkg.GenPkgGetPackageRefCall(w, "nil")
+			if err != nil {
+				return err
+			}
+		}
+
+		fmt.Fprintf(w, "\tvar rv %s\n", outputsType)
+		fmt.Fprintf(w, "\terr %s ctx.Invoke%s(\"%s\", %s, &rv, %sopts...)\n",
+			assignment, packageRef, f.Token, inputsVar, packageArg)
+
+		if returnType == nil {
+			fmt.Fprintf(w, "\treturn err\n")
+		} else if objectReturnType == nil {
+			// Check the error before proceeding.
+			typ := pkg.typeString(returnType)
+			fmt.Fprintf(w, "\tvar result %s\n", typ)
+			fmt.Fprintf(w, "\tif err != nil {\n")
+			fmt.Fprintf(w, "\t\treturn result, err\n")
+			fmt.Fprintf(w, "\t}\n")
+			// Loop and collect the result
+			fmt.Fprintf(w, "\tfor _, v := range rv {\n")
+			fmt.Fprintf(w, "\t\tresult = v\n")
+			fmt.Fprintf(w, "\t\tbreak\n")
+			fmt.Fprintf(w, "\t}\n")
+			fmt.Fprintf(w, "\treturn result, nil\n")
+		} else {
+			// Check the error before proceeding.
+			fmt.Fprintf(w, "\tif err != nil {\n")
+			fmt.Fprintf(w, "\t\treturn nil, err\n")
+			fmt.Fprintf(w, "\t}\n")
+
+			// Return the result.
+			var retValue string
+			if codegen.IsProvideDefaultsFuncRequired(objectReturnType) && !pkg.disableObjectDefaults {
+				retValue = "rv.Defaults()"
+			} else {
+				retValue = "&rv"
+			}
+			fmt.Fprintf(w, "\treturn %s, nil\n", retValue)
+		}
+		fmt.Fprintf(w, "}\n")
 	}
-	fmt.Fprintf(w, "}\n")
 
 	// If there are argument and/or return types, emit them.
 	if f.Inputs != nil {
@@ -3538,10 +3562,15 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 // different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
 // in a second step, we avoid collision and redeclaration.
 func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*nestedTypeInfo) []string {
-	var names []string
+	// Pre-calculate total capacity for names
+	totalNames := 0
+	for _, info := range types {
+		totalNames += len(info.names)
+	}
+	names := slice.Prealloc[string](totalNames)
 
 	// map iteration is unstable so sort items for deterministic codegen
-	sortedElems := []string{}
+	sortedElems := slice.Prealloc[string](len(types))
 	for k := range types {
 		sortedElems = append(sortedElems, k)
 	}
@@ -3550,7 +3579,7 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*n
 	for _, elementTypeName := range sortedElems {
 		info := types[elementTypeName]
 
-		collectionTypes := []string{}
+		collectionTypes := slice.Prealloc[string](len(info.names))
 		for k := range info.names {
 			collectionTypes = append(collectionTypes, k)
 		}
@@ -3842,6 +3871,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 
 // ExtractModulePath creates a go module path for a given package.
 func ExtractModulePath(extPkg schema.PackageReference) string {
+	contract.Assertf(extPkg != nil, "ExtractModulePath(nil) is not allowed")
 	var vPath string
 	version := extPkg.Version()
 	name := extPkg.Name()
@@ -4991,7 +5021,7 @@ func GeneratePackage(tool string,
 			if hasOutputs {
 				goImports = []string{"context", "reflect"}
 				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-				if goPkgInfo.Generics != GenericsSettingNone {
+				if goPkgInfo.Generics == GenericsSettingSideBySide || goPkgInfo.Generics == GenericsSettingGenericsOnly {
 					imports["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 				}
 			}

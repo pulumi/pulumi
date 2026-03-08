@@ -33,20 +33,20 @@ func formatMissingKeys(missingKeys []string) string {
 
 	sort.Strings(missingKeys)
 
-	formattedMissingKeys := ""
+	var formattedMissingKeys strings.Builder
 	for index, key := range missingKeys {
 		// if last index, then use and before the key
 		if index == len(missingKeys)-1 {
-			formattedMissingKeys += fmt.Sprintf("and '%s'", key)
+			formattedMissingKeys.WriteString(fmt.Sprintf("and '%s'", key))
 		} else if index == len(missingKeys)-2 {
 			// no comma before the last key
-			formattedMissingKeys += fmt.Sprintf("'%s' ", key)
+			formattedMissingKeys.WriteString(fmt.Sprintf("'%s' ", key))
 		} else {
-			formattedMissingKeys += fmt.Sprintf("'%s', ", key)
+			formattedMissingKeys.WriteString(fmt.Sprintf("'%s', ", key))
 		}
 	}
 
-	return formattedMissingKeys
+	return formattedMissingKeys.String()
 }
 
 func missingStackConfigurationKeysError(missingKeys []string, stackName string) error {
@@ -77,7 +77,8 @@ func validateStackConfigValues(
 		return nil
 	}
 
-	decryptedConfig, err := stackConfig.Decrypt(dec)
+	// Batch decrypt all stack config values once to warm the cache.
+	_, err := stackConfig.Decrypt(dec)
 	if err != nil {
 		return err
 	}
@@ -102,8 +103,14 @@ func validateStackConfigValues(
 		}
 
 		if projectConfigType.IsExplicitlyTyped() {
-			decryptedValue := decryptedConfig[key]
-			err := validateStackConfigValue(stackName, projectConfigKey, projectConfigType, stackValue, decryptedValue)
+			// We need to use stackValue.Value(dec) here to account for nested values.
+			// We cannot get these from the decrypted config map as it does not handle nested values.
+			// Uses the cached decrypted value from the batch decrypt above.
+			decryptedValue, err := stackValue.Value(dec)
+			if err != nil {
+				return err
+			}
+			err = validateStackConfigValue(stackName, projectConfigKey, projectConfigType, stackValue, decryptedValue)
 			if err != nil {
 				return err
 			}

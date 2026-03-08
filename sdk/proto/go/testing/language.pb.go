@@ -138,9 +138,15 @@ type PrepareLanguageTestsRequest struct {
 	// support. These must be manually written.
 	PolicyPackDirectory string `protobuf:"bytes,10,opt,name=policy_pack_directory,json=policyPackDirectory,proto3" json:"policy_pack_directory,omitempty"`
 	// If true, tests will be run in "local" mode, meaning all SDKs will be generated with the `--local` flag and not packed.
-	Local         bool `protobuf:"varint,11,opt,name=local,proto3" json:"local,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Local bool `protobuf:"varint,11,opt,name=local,proto3" json:"local,omitempty"`
+	// The path to a directory containing provider plugins to be used for the "provider-" tests.
+	ProvidersDirectory string `protobuf:"bytes,12,opt,name=providers_directory,json=providersDirectory,proto3" json:"providers_directory,omitempty"`
+	// If set, the address of the converter plugin.
+	//
+	// Convert will be tested if and only if this is set.
+	ConverterPluginTarget string `protobuf:"bytes,13,opt,name=converter_plugin_target,json=converterPluginTarget,proto3" json:"converter_plugin_target,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *PrepareLanguageTestsRequest) Reset() {
@@ -250,6 +256,20 @@ func (x *PrepareLanguageTestsRequest) GetLocal() bool {
 	return false
 }
 
+func (x *PrepareLanguageTestsRequest) GetProvidersDirectory() string {
+	if x != nil {
+		return x.ProvidersDirectory
+	}
+	return ""
+}
+
+func (x *PrepareLanguageTestsRequest) GetConverterPluginTarget() string {
+	if x != nil {
+		return x.ConverterPluginTarget
+	}
+	return ""
+}
+
 type PrepareLanguageTestsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
@@ -295,11 +315,13 @@ func (x *PrepareLanguageTestsResponse) GetToken() string {
 }
 
 type RunLanguageTestRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	Test          string                 `protobuf:"bytes,2,opt,name=test,proto3" json:"test,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Token string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Test  string                 `protobuf:"bytes,2,opt,name=test,proto3" json:"test,omitempty"`
+	// Skip a convert test if applicable.
+	SkipConvertTests bool `protobuf:"varint,3,opt,name=skip_convert_tests,json=skipConvertTests,proto3" json:"skip_convert_tests,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *RunLanguageTestRequest) Reset() {
@@ -344,6 +366,13 @@ func (x *RunLanguageTestRequest) GetTest() string {
 		return x.Test
 	}
 	return ""
+}
+
+func (x *RunLanguageTestRequest) GetSkipConvertTests() bool {
+	if x != nil {
+		return x.SkipConvertTests
+	}
+	return false
 }
 
 type RunLanguageTestResponse struct {
@@ -532,7 +561,7 @@ const file_pulumi_testing_language_proto_rawDesc = "" +
 	"\x1dpulumi/testing/language.proto\x12\x11pulumirpc.testing\"\x19\n" +
 	"\x17GetLanguageTestsRequest\"0\n" +
 	"\x18GetLanguageTestsResponse\x12\x14\n" +
-	"\x05tests\x18\x01 \x03(\tR\x05tests\"\x90\a\n" +
+	"\x05tests\x18\x01 \x03(\tR\x05tests\"\xf9\a\n" +
 	"\x1bPrepareLanguageTestsRequest\x120\n" +
 	"\x14language_plugin_name\x18\x01 \x01(\tR\x12languagePluginName\x124\n" +
 	"\x16language_plugin_target\x18\x02 \x01(\tR\x14languagePluginTarget\x12-\n" +
@@ -545,7 +574,9 @@ const file_pulumi_testing_language_proto_rawDesc = "" +
 	"\x11program_overrides\x18\t \x03(\v2D.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverridesEntryR\x10programOverrides\x122\n" +
 	"\x15policy_pack_directory\x18\n" +
 	" \x01(\tR\x13policyPackDirectory\x12\x14\n" +
-	"\x05local\x18\v \x01(\bR\x05local\x1a]\n" +
+	"\x05local\x18\v \x01(\bR\x05local\x12/\n" +
+	"\x13providers_directory\x18\f \x01(\tR\x12providersDirectory\x126\n" +
+	"\x17converter_plugin_target\x18\r \x01(\tR\x15converterPluginTarget\x1a]\n" +
 	"\vReplacement\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
 	"\apattern\x18\x02 \x01(\tR\apattern\x12 \n" +
@@ -556,10 +587,11 @@ const file_pulumi_testing_language_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12T\n" +
 	"\x05value\x18\x02 \x01(\v2>.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverrideR\x05value:\x028\x01\"4\n" +
 	"\x1cPrepareLanguageTestsResponse\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"B\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"p\n" +
 	"\x16RunLanguageTestRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x12\n" +
-	"\x04test\x18\x02 \x01(\tR\x04test\"\x7f\n" +
+	"\x04test\x18\x02 \x01(\tR\x04test\x12,\n" +
+	"\x12skip_convert_tests\x18\x03 \x01(\bR\x10skipConvertTests\"\x7f\n" +
 	"\x17RunLanguageTestResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1a\n" +
 	"\bmessages\x18\x02 \x03(\tR\bmessages\x12\x16\n" +

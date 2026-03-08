@@ -23,6 +23,9 @@ import (
 
 // ErrorWithStderr returns an error that includes the stderr output if the error is an ExitError.
 func ErrorWithStderr(err error, message string) error {
+	if err == nil {
+		return nil
+	}
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
 		stderr := strings.TrimSpace(string(exitErr.Stderr))

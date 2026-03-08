@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -34,8 +35,7 @@ const allKeyword = "all"
 func newPolicyRmCmd() *cobra.Command {
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "rm <org-name>/<policy-pack-name> <all|version>",
-		Args:  cmdutil.ExactArgs(2),
+		Use:   "rm",
 		Short: "Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
@@ -77,6 +77,14 @@ func newPolicyRmCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "policy-pack", Usage: "<org-name>/<policy-pack-name>"},
+			{Name: "version", Usage: "<all|version>"},
+		},
+		Required: 2,
+	})
 
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,

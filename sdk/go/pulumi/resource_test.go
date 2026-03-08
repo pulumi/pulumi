@@ -19,15 +19,15 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 	grpc "google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -211,9 +211,7 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		urns := maps.Keys(allDeps)
-		sort.Slice(urns, func(i, j int) bool { return urns[i] < urns[j] })
-		return urns
+		return slices.Sorted(maps.Keys(allDeps))
 	}
 
 	// two singleton options
@@ -568,6 +566,34 @@ func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
 	assert.Equal(t, []string{i1, i2, i2, i3}, opts.ReplaceOnChanges)
 }
 
+func TestResourceOptionMergingEnvVarMappings(t *testing.T) {
+	t.Parallel()
+
+	// EnvVarMappings maps are merged together, last value for a key wins
+	m1 := map[string]string{"SOURCE_VAR": "TARGET_VAR"}
+	m2 := map[string]string{"OTHER_VAR": "ANOTHER_VAR"}
+	m3 := map[string]string{"SOURCE_VAR": "DIFFERENT_TARGET"}
+
+	// two singleton options with different keys
+	opts := merge(EnvVarMappings(m1), EnvVarMappings(m2))
+	assert.Equal(t, map[string]string{
+		"SOURCE_VAR": "TARGET_VAR",
+		"OTHER_VAR":  "ANOTHER_VAR",
+	}, opts.EnvVarMappings)
+
+	// nil m1
+	opts = merge(EnvVarMappings(nil), EnvVarMappings(m2))
+	assert.Equal(t, map[string]string{"OTHER_VAR": "ANOTHER_VAR"}, opts.EnvVarMappings)
+
+	// nil m2
+	opts = merge(EnvVarMappings(m1), EnvVarMappings(nil))
+	assert.Equal(t, map[string]string{"SOURCE_VAR": "TARGET_VAR"}, opts.EnvVarMappings)
+
+	// overlapping keys - last value wins
+	opts = merge(EnvVarMappings(m1), EnvVarMappings(m3))
+	assert.Equal(t, map[string]string{"SOURCE_VAR": "DIFFERENT_TARGET"}, opts.EnvVarMappings)
+}
+
 func TestNewResourceInput(t *testing.T) {
 	t.Parallel()
 
@@ -672,7 +698,8 @@ func TestUninitializedParentResource(t *testing.T) {
 				var buff bytes.Buffer
 				ctx.state.engine.(*mockEngine).logger = log.New(&buff, "", 0)
 
-				opts := []ResourceOption{Parent(tt.parent)}
+				opts := slice.Prealloc[ResourceOption](1 + len(tt.opts))
+				opts = append(opts, Parent(tt.parent))
 				opts = append(opts, tt.opts...)
 
 				var res testRes
@@ -1138,6 +1165,26 @@ func TestNewResourceOptions(t *testing.T) {
 			give: DeletedWith(&testRes{foo: "a"}),
 			want: ResourceOptions{DeletedWith: &testRes{foo: "a"}},
 		},
+		{
+			desc: "EnvVarMappings",
+			give: EnvVarMappings(map[string]string{"SOURCE_VAR": "TARGET_VAR"}),
+			want: ResourceOptions{
+				EnvVarMappings: map[string]string{"SOURCE_VAR": "TARGET_VAR"},
+			},
+		},
+		{
+			desc: "EnvVarMappings/multiple options",
+			give: Composite(
+				EnvVarMappings(map[string]string{"VAR1": "TARGET1"}),
+				EnvVarMappings(map[string]string{"VAR2": "TARGET2"}),
+			),
+			want: ResourceOptions{
+				EnvVarMappings: map[string]string{
+					"VAR1": "TARGET1",
+					"VAR2": "TARGET2",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1285,7 +1332,7 @@ func (dt *dependenciesTracker) Wrap(cl pulumirpc.ResourceMonitorClient) pulumirp
 		resp *pulumirpc.RegisterResourceResponse,
 		err error,
 	) {
-		var deps []URN
+		deps := slice.Prealloc[URN](len(in.GetDependencies()))
 		for _, dep := range in.GetDependencies() {
 			deps = append(deps, URN(dep))
 		}

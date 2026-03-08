@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import (
 // hasReferenceTo returns true if the source node has a reference to the target node.
 // In other words, if the target node is a dependency of the source node.
 func hasReferenceTo(source Node, target Node) bool {
-	for _, dep := range source.getDependencies() {
+	for _, dep := range source.GetDependencies() {
 		if dep.Name() == target.Name() {
 			return true
 		}
@@ -110,6 +110,9 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 		diagnostics = append(diagnostics, diags...)
 	case *OutputVariable:
 		diags := b.bindOutputVariable(node)
+		diagnostics = append(diagnostics, diags...)
+	case *PulumiBlock:
+		diags := b.bindPulumi(node)
 		diagnostics = append(diagnostics, diags...)
 	default:
 		contract.Failf("unexpected node of type %T (%v)", node, node.SyntaxNode().Range())
@@ -200,6 +203,19 @@ func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
 		}
 	}
 
+	if secretAttr, ok := block.Body.Attribute("secret"); ok {
+		secret, diags := getBooleanAttributeValue(secretAttr)
+		if diags != nil {
+			diagnostics = diagnostics.Append(diags)
+		} else {
+			node.Secret = secret
+		}
+	}
+
+	if node.Secret {
+		node.typ = model.NewOutputType(node.typ)
+	}
+
 	node.Definition = block
 	return diagnostics
 }
@@ -228,6 +244,20 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.Value))
 		}
 	}
+	node.Definition = block
+	return diagnostics
+}
+
+func (b *binder) bindPulumi(node *PulumiBlock) hcl.Diagnostics {
+	block, diagnostics := model.BindBlock(node.syntax, model.StaticScope(b.root), b.tokens, b.options.modelOptions()...)
+
+	if value, ok := block.Body.Attribute("requiredVersionRange"); ok {
+		node.RequiredVersion = value.Value
+		if model.InputType(model.StringType).ConversionFrom(node.RequiredVersion.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(model.StringType), node.RequiredVersion))
+		}
+	}
+
 	node.Definition = block
 	return diagnostics
 }

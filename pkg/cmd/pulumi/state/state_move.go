@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -64,14 +65,13 @@ func newStateMoveCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use:   "move [flags] <urn>...",
+		Use:   "move",
 		Short: "Move resources from one stack to another",
 		Long: `Move resources from one stack to another
 
 This command can be used to move resources from one stack to another. This can be useful when
 splitting a stack into multiple stacks or when merging multiple stacks into one.
 `,
-		Args: cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -124,6 +124,14 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			return stateMove.Run(ctx, sourceStack, destStack, args, sourceSecretsProvider, destSecretsProvider)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "urn"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
 
 	cmd.Flags().StringVarP(&sourceStackName, "source", "", "", "The name of the stack to move resources from")
 	cmd.Flags().StringVarP(&destStackName, "dest", "", "", "The name of the stack to move resources to")
@@ -205,7 +213,7 @@ func (cmd *stateMoveCmd) Run(
 			return err
 		}
 
-		destSecretManager, err := dest.DefaultSecretManager(ps)
+		destSecretManager, err := dest.DefaultSecretManager(ctx, ps)
 		if err != nil {
 			return err
 		}
@@ -337,6 +345,7 @@ func (cmd *stateMoveCmd) Run(
 	for _, res := range providers {
 		// Providers stay in the source stack, so we need a copy of the provider to be able to
 		// rewrite the URNs of the resource.
+		originalProviderRef := fmt.Sprintf("%s::%s", res.URN, res.ID)
 		r := res.Copy()
 		if _, ok := resourcesToMove[string(r.Parent)]; !ok {
 			rootStack, err := stack.GetRootStackResource(destSnapshot)
@@ -353,6 +362,7 @@ func (cmd *stateMoveCmd) Run(
 		if destRes, ok := destResMap[r.URN]; ok {
 			// If the provider ID matches, we can assume that the provider has previously been copied and we can just copy it.
 			if destRes.ID == r.ID {
+				rewriteMap[originalProviderRef] = fmt.Sprintf("%s::%s", destRes.URN, destRes.ID)
 				continue
 			}
 			// If all the inputs of the provider in the destination stack are the same as the provider in the source stack,
@@ -365,6 +375,7 @@ func (cmd *stateMoveCmd) Run(
 			return fmt.Errorf("provider %s already exists in destination stack", r.URN)
 		}
 
+		rewriteMap[originalProviderRef] = fmt.Sprintf("%s::%s", r.URN, r.ID)
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
@@ -395,6 +406,7 @@ func (cmd *stateMoveCmd) Run(
 		if err != nil {
 			return err
 		}
+		rewriteMap[string(res.URN)] = string(r.URN)
 
 		if _, ok := destResMap[r.URN]; ok {
 			return fmt.Errorf("resource %s already exists in destination stack", r.URN)
@@ -477,19 +489,19 @@ None of the resources have been moved, it is safe to try again`, err)
 		destSnapshot.Resources = originalDestResources
 		errDest := cmdStack.SaveSnapshot(ctx, dest, destSnapshot, false)
 		if errDest != nil {
-			var deleteCommands string
+			var deleteCommands strings.Builder
 			// Iterate over the resources in reverse order, so resources with no dependencies will be deleted first.
 			for i := len(resourcesToMoveOrdered) - 1; i >= 0; i-- {
-				deleteCommands += fmt.Sprintf(
+				deleteCommands.WriteString(fmt.Sprintf(
 					"\n    pulumi state delete --stack %s '%s'",
 					source.Ref().FullyQualifiedName(),
-					resourcesToMoveOrdered[i].URN)
+					resourcesToMoveOrdered[i].URN))
 			}
 			return fmt.Errorf(`failed to save source snapshot: %w
 
 The resources being moved have already been appended to the destination stack, but will still also be in the
 source stack.  Please remove the resources from the source stack manually using the following commands:%v
-'`, err, deleteCommands)
+'`, err, deleteCommands.String())
 		}
 		return fmt.Errorf(`failed to save source snapshot: %w
 
@@ -630,9 +642,15 @@ func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]
 	rewrittenPropDeps := map[resource.PropertyKey][]urn.URN{}
 
 	for _, dep := range allDeps {
-		rewrittenURN, err := renameStackAndProject(dep.URN, dest)
-		if err != nil {
-			return err
+		var rewrittenURN resource.URN
+		if newURN, ok := rewriteMap[string(dep.URN)]; ok {
+			rewrittenURN = urn.URN(newURN)
+		} else {
+			var err error
+			rewrittenURN, err = renameStackAndProject(dep.URN, dest)
+			if err != nil {
+				return err
+			}
 		}
 
 		switch dep.Type {
@@ -648,6 +666,13 @@ func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]
 			res.ReplaceWith = append(res.ReplaceWith, rewrittenURN)
 		}
 	}
+
+	// Update the URN to point to our new parent.
+	parentType := tokens.Type("")
+	if res.Parent != "" {
+		parentType = res.Parent.QualifiedType()
+	}
+	res.URN = urn.New(res.URN.Stack(), res.URN.Project(), parentType, res.URN.Type(), res.URN.Name())
 
 	res.Dependencies = rewrittenDeps
 	res.PropertyDependencies = rewrittenPropDeps

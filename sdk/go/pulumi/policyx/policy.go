@@ -68,6 +68,8 @@ type ResourceValidationArgs struct {
 	Config map[string]any
 	// DryRun indicates if the current operation is a dry run (preview).
 	DryRun bool
+	// StackTags contains the stack tags for the stack being analyzed.
+	StackTags map[string]string
 }
 
 // ResourceValidationArgs contains the arguments passed to a resource validation policy.

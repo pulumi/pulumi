@@ -2,7 +2,6 @@
 // Copyright (c) 2024, Pulumi Corporation.
 // Copyright (c) 2019 FOSS contributors of https://github.com/nxadm/tail
 //go:build windows
-// +build windows
 
 package tail
 

@@ -38,7 +38,7 @@ func Refresh(
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "refresh", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -75,6 +75,7 @@ func Refresh(
 func newRefreshSource(
 	ctx context.Context, client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main,
 	projectRoot string, target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks,
+	panicErrs chan<- error,
 ) (deploy.Source, error) {
 	// Like update, we need to gather the set of plugins necessary to refresh everything in the snapshot. While we don't
 	// run the program like update does, we still grab the plugins from the program in order to inform the user if their
@@ -139,7 +140,7 @@ func RefreshV2(
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "refresh", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}

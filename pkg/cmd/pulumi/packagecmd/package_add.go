@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -40,8 +40,7 @@ import (
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <provider|schema|path> [provider-parameter...]",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "add",
 		Short: "Add a package to your Pulumi project or plugin",
 		Long: `Add a package to your Pulumi project or plugin.
 
@@ -97,13 +96,12 @@ from the parameters, as in:
 			}
 
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, pluginOrProject.installRoot, nil, false, nil)
+			pctx, err := plugin.NewContext(cmd.Context(),
+				sink, sink, nil, nil, pluginOrProject.installRoot, nil, false, nil, schema.NewLoaderServerFromHost)
 			if err != nil {
 				return err
 			}
-			defer func() {
-				contract.IgnoreError(pctx.Close())
-			}()
+			defer contract.IgnoreClose(pctx)
 
 			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
@@ -116,6 +114,8 @@ from the parameters, as in:
 				pluginSource,
 				parameters,
 				pluginOrProject.reg,
+				env.Global(),
+				0, /* unbounded concurrency */
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
@@ -132,25 +132,32 @@ from the parameters, as in:
 				return nil
 			}
 
-			version := ""
-			if pkg.Version != nil {
-				version = pkg.Version.String()
-			} else if len(pluginSplit) == 2 {
-				version = pluginSplit[1]
-			}
-			if pkg.Parameterization != nil {
-				source = pkg.Parameterization.BaseProvider.Name
-				version = pkg.Parameterization.BaseProvider.Version.String()
-			}
-			if len(parameters.Args) > 0 && packageSpec != nil {
-				packageSpec.Parameters = parameters.Args
-			} else if packageSpec == nil {
-				packageSpec = &workspace.PackageSpec{
-					Source:     source,
-					Version:    version,
-					Parameters: parameters.Args,
+			// TODO[#21349]:  We can't bake  a path into  Pulumi.yaml until we  use [packageresolution.Resolve]
+			// when loading a new context, so condense local paths to the name of the package.
+			//
+			// This is wrong, but its less wrong then producing a Pulumi.yaml that `pulumi` can't process
+			// (#21348).
+			if plugin.IsLocalPluginPath(cmd.Context(), packageSpec.Source) {
+				f, err := os.Stat(packageSpec.Source)
+				if err != nil && !errors.Is(err, os.ErrNotExist) {
+					return err
+				}
+				if !f.IsDir() {
+					if pkg.Parameterization == nil {
+						packageSpec.Source = pkg.Name
+						if pkg.Version != nil {
+							packageSpec.Version = pkg.Version.String()
+						}
+					} else {
+						packageSpec.Source = pkg.Parameterization.BaseProvider.Name
+						packageSpec.Version = pkg.Parameterization.BaseProvider.Version.String()
+					}
 				}
 			}
+
+			contract.Assertf(packageSpec != nil, "packageSpec should be nil if & only if source is file based")
+			packageSpec.Parameters = parameters.Args
+
 			pluginOrProject.proj.AddPackage(pkg.Name, *packageSpec)
 
 			fileName := filepath.Base(pluginOrProject.projectFilePath)
@@ -163,6 +170,19 @@ from the parameters, as in:
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "provider", Usage: "<provider|schema|path>"},
+			{Name: "provider-parameter"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "add <provider|schema|path> [flags] [--] [provider-parameter]..."
 
 	return cmd
 }
@@ -186,73 +206,30 @@ func schemaDisplayName(schema *schema.Package) string {
 
 // Detect the nearest enclosing Pulumi Project or Pulumi Plugin root directory.
 func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrProject, error) {
-	pluginPath, detectPluginErr := workspace.DetectPluginPathFrom(wd)
-	if detectPluginErr != nil && !errors.Is(detectPluginErr, workspace.ErrPluginNotFound) {
-		return pluginOrProject{}, fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectPluginErr)
+	baseProject, filePath, err := workspace.LoadBaseProjectFrom(wd)
+	if err != nil {
+		return pluginOrProject{}, err
 	}
 
-	loadPlugin := func() (pluginOrProject, error) {
-		pluginProj, err := workspace.LoadPluginProject(pluginPath)
-		if err != nil {
-			return pluginOrProject{}, err
-		}
-
+	switch baseProject := baseProject.(type) {
+	case *workspace.Project:
 		return pluginOrProject{
-			installRoot:     filepath.Dir(pluginPath),
-			projectFilePath: pluginPath,
-			proj:            pluginProj,
+			installRoot:     filepath.Dir(filePath),
+			projectFilePath: filePath,
+			reg:             cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global()),
+			proj:            baseProject,
+		}, nil
+	case *workspace.PluginProject:
+		return pluginOrProject{
+			installRoot:     filepath.Dir(filePath),
+			projectFilePath: filePath,
+			proj:            baseProject,
 			// Cloud registry is linked to a backend, but we don't have one
-			// available in a plugin. Use the unauthenticated registry.
-			reg: unauthenticatedregistry.New(cmdutil.Diag(), env.Global()),
+			// available in a plugin. Use the default backend.
+			reg: cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
 		}, nil
-	}
-
-	projectPath, detectProjectErr := workspace.DetectProjectPathFrom(wd)
-	if detectProjectErr != nil && !errors.Is(detectProjectErr, workspace.ErrProjectNotFound) {
-		return pluginOrProject{}, fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectProjectErr)
-	}
-
-	loadProject := func() (pluginOrProject, error) {
-		project, err := workspace.LoadProject(projectPath)
-		if err != nil {
-			return pluginOrProject{}, err
-		}
-		return pluginOrProject{
-			installRoot:     filepath.Dir(projectPath),
-			projectFilePath: projectPath,
-			reg:             cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, project, cmdutil.Diag(), env.Global()),
-			proj:            project,
-		}, nil
-	}
-
-	switch {
-	// If both are missing, signal an error.
-	case errors.Is(detectPluginErr, workspace.ErrPluginNotFound) &&
-		errors.Is(detectProjectErr, workspace.ErrProjectNotFound):
-		return pluginOrProject{}, errors.New("unable to find an enclosing plugin or project")
-	// We didn't find a plugin, which means we found a project.
-	case errors.Is(detectPluginErr, workspace.ErrPluginNotFound):
-		return loadProject()
-	// We didn't find a project, which means we found a plugin.
-	case errors.Is(detectProjectErr, workspace.ErrProjectNotFound):
-		return loadPlugin()
-	// We found both a plugin and a project.
-	//
-	// We want to load the innermost one. Since we know that both paths enclose wd,
-	// the innermost one is just the longest one.
 	default:
-		countSegments := func(path string) int { return strings.Count(path, string(filepath.Separator)) }
-
-		pluginDepth := countSegments(filepath.Clean(pluginPath))
-		projectDepth := countSegments(filepath.Clean(projectPath))
-		switch {
-		case pluginDepth > projectDepth:
-			return loadPlugin()
-		case projectDepth > pluginDepth:
-			return loadProject()
-		default:
-			return pluginOrProject{}, fmt.Errorf("detected both %s and %s in %s",
-				filepath.Base(pluginPath), filepath.Base(projectPath), filepath.Dir(pluginPath))
-		}
+		panic(fmt.Sprintf("workspace.LoadBaseProjectFrom promises that it will return "+
+			"either *workspace.Project or *workspace.PluginProject, found %T", baseProject))
 	}
 }

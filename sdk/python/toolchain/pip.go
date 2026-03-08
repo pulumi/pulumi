@@ -32,6 +32,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -486,24 +487,16 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 		pipCmd.Dir = cwd
 		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
 
-		wrapError := func(err error) error {
-			return fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
-		}
-
 		if showOutput {
 			// Show stdout/stderr output.
 			pipCmd.Stdout = infoWriter
 			pipCmd.Stderr = errorWriter
 			if err := pipCmd.Run(); err != nil {
-				return wrapError(err)
+				return fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
 			}
 		} else {
-			// Otherwise, only show output if there is an error.
-			if output, err := pipCmd.CombinedOutput(); err != nil {
-				if len(output) > 0 {
-					fmt.Fprintf(errorWriter, "%s\n", string(output))
-				}
-				return wrapError(err)
+			if _, err := pipCmd.Output(); err != nil {
+				return errutil.ErrorWithStderr(err, strings.Join(pipCmd.Args, " "))
 			}
 		}
 		return nil

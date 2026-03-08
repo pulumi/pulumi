@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // AnalyzerPolicyType indicates the type of a policy.
@@ -55,7 +54,7 @@ type Analyzer interface {
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
 	GetAnalyzerInfo() (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (workspace.PluginInfo, error)
+	GetPluginInfo() (PluginInfo, error)
 	// Configure configures the analyzer, passing configuration properties for each policy.
 	Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 	// Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.

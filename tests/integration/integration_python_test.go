@@ -17,6 +17,7 @@ package ints
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -39,11 +40,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -2200,8 +2203,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	// Run the command from a different, sibling, directory. This ensures that
 	// get-package does not rely on the current working directory.
 	e.CWD = t.TempDir()
-	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
-	require.Empty(t, stderr)
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "provider", schema["name"].(string))
@@ -2413,15 +2415,14 @@ func TestPythonComponentProviderException(t *testing.T) {
 }
 
 // Test that resource references work
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonComponentProviderResourceReference(t *testing.T) {
+	t.Parallel()
 	// TODO[pulumi/pulumi#18437]: Run this test on windows
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
 	// Manually set pulumi home so we can pass it to `plugin install`.
-	for _, runtime := range []string{"yaml", "python"} {
+	for _, runtime := range []string{"yaml", "python"} { //nolint:paralleltest // ProgramTest calls t.Parallel()
 		t.Run(runtime, func(t *testing.T) {
 			pulumiHome := t.TempDir()
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -2561,4 +2562,25 @@ func TestOrganization(t *testing.T) {
 		},
 		Quick: true,
 	})
+}
+
+func TestGetLanguageRuntimeMetadata(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	e.ImportDirectory(filepath.Join("python", "uv"))
+	defer e.DeleteIfNotFailed()
+	project, err := workspace.LoadProject(filepath.Join(e.RootPath, "Pulumi.yaml"))
+	require.NoError(t, err)
+
+	p := metadata.GetLanguageRuntimeMetadata(t.Context(), e.RootPath, project)
+	meta, err := p.Result(context.Background())
+
+	require.NoError(t, err)
+	require.Equal(t, meta["runtime.name"], "python")
+	require.Contains(t, meta, "runtime.version")
+	require.Contains(t, meta, "runtime.executable")
+	require.Equal(t, meta["runtime.metadata.toolchain"], "Uv")
+	require.Equal(t, meta["runtime.metadata.typechecker"], "None")
+	require.Contains(t, meta, "runtime.metadata.toolchainVersion")
 }

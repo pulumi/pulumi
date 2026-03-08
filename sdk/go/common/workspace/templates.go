@@ -721,12 +721,13 @@ func walkFiles(sourceDir string, destDir string, projectName string,
 // that would be overwritten.
 func newExistingFilesError(existing []string) error {
 	contract.Assertf(len(existing) > 0, "called with no existing files")
-	message := "creating this template will make changes to existing files:\n"
+	var message strings.Builder
+	message.WriteString("creating this template will make changes to existing files:\n")
 	for _, file := range existing {
-		message = message + fmt.Sprintf("  overwrite   %s\n", file)
+		message.WriteString(fmt.Sprintf("  overwrite   %s\n", file))
 	}
-	message = message + "\nrerun the command and pass --force to accept and create"
-	return errors.New(message)
+	message.WriteString("\nrerun the command and pass --force to accept and create")
+	return errors.New(message.String())
 }
 
 type TemplateNotFoundError struct {
@@ -735,17 +736,18 @@ type TemplateNotFoundError struct {
 }
 
 func (err TemplateNotFoundError) Error() string {
-	message := fmt.Sprintf("template '%s' not found", err.templateName)
+	var message strings.Builder
+	message.WriteString(fmt.Sprintf("template '%s' not found", err.templateName))
 	if len(err.suggestions) == 0 {
-		return message
+		return message.String()
 	}
 	// Build-up error message with suggestions.
-	message = message + "\n\nDid you mean this?\n"
+	message.WriteString("\n\nDid you mean this?\n")
 	for _, suggestion := range err.suggestions {
-		message = message + fmt.Sprintf("\t%s\n", suggestion)
+		message.WriteString(fmt.Sprintf("\t%s\n", suggestion))
 	}
 
-	return message
+	return message.String()
 }
 
 // newTemplateNotFoundError returns an error for when the template doesn't exist,

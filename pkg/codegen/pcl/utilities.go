@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,10 @@
 package pcl
 
 import (
+	"cmp"
 	"io"
+	"iter"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -31,6 +34,48 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
+
+func newOrderedSet[E comparable]() *orderedSet[E] {
+	return &orderedSet[E]{m: make(map[E]int)}
+}
+
+type orderedSet[E comparable] struct {
+	m   map[E]int
+	idx int
+}
+
+func (o *orderedSet[E]) Add(v E) {
+	if _, ok := o.m[v]; ok {
+		return
+	}
+	o.m[v] = o.idx
+	o.idx++
+}
+
+func (o *orderedSet[E]) Delete(v E) { delete(o.m, v) }
+
+func (o *orderedSet[E]) Iter() iter.Seq[E] {
+	type value struct {
+		i int
+		v E
+	}
+	values := make([]value, 0, len(o.m))
+	for v, i := range o.m {
+		values = append(values, value{i, v})
+	}
+	slices.SortFunc(values, func(a, b value) int {
+		return cmp.Compare(a.i, b.i)
+	})
+	return func(yield func(v E) bool) {
+		for _, v := range values {
+			if !yield(v.v) {
+				return
+			}
+		}
+	}
+}
+
+func (o *orderedSet[E]) Len() int { return len(o.m) }
 
 // titleCase replaces the first character in the given string with its upper-case equivalent.
 func titleCase(s string) string {
@@ -50,6 +95,9 @@ func SourceOrderNodes(nodes []Node) []Node {
 
 func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, hcl.Diagnostics) {
 	components := strings.Split(tok, ":")
+	if len(components) == 2 {
+		components = []string{components[0], "index", components[1]}
+	}
 	if len(components) != 3 {
 		// If we don't have a valid type token, return the invalid token as the type name.
 		return "", "", tok, hcl.Diagnostics{malformedToken(tok, sourceRange)}
@@ -58,7 +106,7 @@ func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, 
 }
 
 func hasDependencyOn(a, b Node) bool {
-	for _, d := range a.getDependencies() {
+	for _, d := range a.GetDependencies() {
 		if d.Name() == b.Name() {
 			return true
 		}
@@ -72,7 +120,7 @@ func mutuallyDependant(a, b Node) bool {
 
 func linearizeNode(n Node, done codegen.Set, list *[]Node) {
 	if !done.Has(n) {
-		for _, d := range n.getDependencies() {
+		for _, d := range n.GetDependencies() {
 			if !mutuallyDependant(n, d) {
 				linearizeNode(d, done, list)
 			}
@@ -122,7 +170,7 @@ func Linearize(p *Program) []Node {
 		for i, f := range worklist {
 			weight, processed := 0, codegen.Set{}
 			for _, n := range f.nodes {
-				for _, d := range n.getDependencies() {
+				for _, d := range n.GetDependencies() {
 					// We don't count nodes that we've already counted or nodes that have already been ordered.
 					if processed.Has(d) || doneNodes.Has(d) {
 						continue

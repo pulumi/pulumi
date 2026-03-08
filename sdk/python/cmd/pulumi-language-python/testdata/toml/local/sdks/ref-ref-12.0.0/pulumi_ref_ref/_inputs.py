@@ -21,19 +21,14 @@ __all__ = [
     'InnerDataArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class DataArgsDict(TypedDict):
-        bool_array: pulumi.Input[Sequence[pulumi.Input[_builtins.bool]]]
-        boolean: pulumi.Input[_builtins.bool]
-        float: pulumi.Input[_builtins.float]
-        inner_data: pulumi.Input['InnerDataArgsDict']
-        integer: pulumi.Input[_builtins.int]
-        string: pulumi.Input[_builtins.str]
-        string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]
-elif False:
-    DataArgsDict: TypeAlias = Mapping[str, Any]
+class DataArgsDict(TypedDict):
+    bool_array: pulumi.Input[Sequence[pulumi.Input[_builtins.bool]]]
+    boolean: pulumi.Input[_builtins.bool]
+    float: pulumi.Input[_builtins.float]
+    inner_data: pulumi.Input['InnerDataArgsDict']
+    integer: pulumi.Input[_builtins.int]
+    string: pulumi.Input[_builtins.str]
+    string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]
 
 @pulumi.input_type
 class DataArgs:
@@ -117,16 +112,13 @@ class DataArgs:
         pulumi.set(self, "string_map", value)
 
 
-if not MYPY:
-    class InnerDataArgsDict(TypedDict):
-        bool_array: pulumi.Input[Sequence[pulumi.Input[_builtins.bool]]]
-        boolean: pulumi.Input[_builtins.bool]
-        float: pulumi.Input[_builtins.float]
-        integer: pulumi.Input[_builtins.int]
-        string: pulumi.Input[_builtins.str]
-        string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]
-elif False:
-    InnerDataArgsDict: TypeAlias = Mapping[str, Any]
+class InnerDataArgsDict(TypedDict):
+    bool_array: pulumi.Input[Sequence[pulumi.Input[_builtins.bool]]]
+    boolean: pulumi.Input[_builtins.bool]
+    float: pulumi.Input[_builtins.float]
+    integer: pulumi.Input[_builtins.int]
+    string: pulumi.Input[_builtins.str]
+    string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]
 
 @pulumi.input_type
 class InnerDataArgs:

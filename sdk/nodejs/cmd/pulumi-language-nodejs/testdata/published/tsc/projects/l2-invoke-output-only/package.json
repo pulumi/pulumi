@@ -1,0 +1,11 @@
+{
+	"name": "l2-invoke-output-only",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/output-only-invoke": "ROOT/artifacts/pulumi-output-only-invoke-24.0.0.tgz"
+	}
+}

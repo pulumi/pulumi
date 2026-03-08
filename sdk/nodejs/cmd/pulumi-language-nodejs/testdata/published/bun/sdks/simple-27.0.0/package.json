@@ -1,0 +1,20 @@
+{
+    "name": "@pulumi/simple",
+    "version": "27.0.0",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz"
+    },
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^4.3.5"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "simple",
+        "version": "27.0.0",
+        "server": "https://github.com/pulumi/pulumi-simple/releases/v${VERSION}"
+    }
+}

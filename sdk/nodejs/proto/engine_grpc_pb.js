@@ -1,7 +1,7 @@
 // GENERATED CODE -- DO NOT EDIT!
 
 // Original file comments:
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,6 +63,28 @@ function serialize_pulumirpc_LogRequest(arg) {
 
 function deserialize_pulumirpc_LogRequest(buffer_arg) {
   return pulumi_engine_pb.LogRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RequirePulumiVersionRequest(arg) {
+  if (!(arg instanceof pulumi_engine_pb.RequirePulumiVersionRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RequirePulumiVersionRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RequirePulumiVersionRequest(buffer_arg) {
+  return pulumi_engine_pb.RequirePulumiVersionRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RequirePulumiVersionResponse(arg) {
+  if (!(arg instanceof pulumi_engine_pb.RequirePulumiVersionResponse)) {
+    throw new Error('Expected argument of type pulumirpc.RequirePulumiVersionResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RequirePulumiVersionResponse(buffer_arg) {
+  return pulumi_engine_pb.RequirePulumiVersionResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_SetRootResourceRequest(arg) {
@@ -152,6 +174,18 @@ startDebugging: {
     requestDeserialize: deserialize_pulumirpc_StartDebuggingRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // RequirePulumiVersion checks that the version of the engine satisfies the passed in range.
+requirePulumiVersion: {
+    path: '/pulumirpc.Engine/RequirePulumiVersion',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_engine_pb.RequirePulumiVersionRequest,
+    responseType: pulumi_engine_pb.RequirePulumiVersionResponse,
+    requestSerialize: serialize_pulumirpc_RequirePulumiVersionRequest,
+    requestDeserialize: deserialize_pulumirpc_RequirePulumiVersionRequest,
+    responseSerialize: serialize_pulumirpc_RequirePulumiVersionResponse,
+    responseDeserialize: deserialize_pulumirpc_RequirePulumiVersionResponse,
   },
 };
 

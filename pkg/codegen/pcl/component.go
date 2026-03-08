@@ -89,13 +89,13 @@ func (c *Component) DeclarationName() string {
 		baseDirName = strings.ReplaceAll(baseDirName, invalidChar, "_")
 	}
 
-	componentName := ""
 	componentNameParts := strings.Split(baseDirName, "_")
+	var componentName strings.Builder
 	for _, part := range componentNameParts {
-		componentName += titleCase(part)
+		componentName.WriteString(titleCase(part))
 	}
 
-	return componentName
+	return componentName.String()
 }
 
 func (c *Component) Type() model.Type {

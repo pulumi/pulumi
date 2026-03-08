@@ -347,8 +347,20 @@ func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string 
 		return functionNamespaces[x.Name]
 	}
 
-	pkg, _ := g.functionName(x.Args[0])
-	return []string{fmt.Sprintf("%s = Pulumi.%[1]s", pkg)}
+	token := x.Args[0].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+	tokenRange := x.Args[0].SyntaxNode().Range()
+	pkg, _, _, diags := pcl.DecomposeToken(token, tokenRange)
+	if len(diags) > 0 {
+		return []string{}
+	}
+
+	pkgNamespace := namespaceName(g.namespaces[pkg], pkg)
+
+	if _, hasAlias := g.namespaceAliases[pkgNamespace]; hasAlias {
+		return []string{}
+	}
+
+	return []string{fmt.Sprintf("%s = Pulumi.%[1]s", pkgNamespace)}
 }
 
 func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *schema.Enum) {

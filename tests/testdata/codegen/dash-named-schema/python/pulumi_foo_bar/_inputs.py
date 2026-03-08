@@ -19,13 +19,8 @@ __all__ = [
     'TopLevelArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class TopLevelArgsDict(TypedDict):
-        buzz: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    TopLevelArgsDict: TypeAlias = Mapping[str, Any]
+class TopLevelArgsDict(TypedDict):
+    buzz: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class TopLevelArgs:

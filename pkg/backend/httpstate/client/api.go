@@ -29,12 +29,17 @@ import (
 
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -211,6 +216,30 @@ type defaultHTTPClient struct {
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
+	requestSpan, ctx := opentracing.StartSpanFromContext(
+		req.Context(),
+		"HTTP request",
+		opentracing.Tag{Key: "method", Value: req.Method},
+		opentracing.Tag{Key: "url", Value: req.URL},
+		opentracing.Tag{Key: "retry", Value: policy.String()},
+	)
+	defer requestSpan.Finish()
+
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, "HTTP request",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("http.method", req.Method),
+			attribute.String("http.url", req.URL.String()),
+			attribute.String("http.retry", policy.String()),
+		))
+	defer otelSpan.End()
+
+	req = req.WithContext(ctx)
+
+	// Add a User-Agent header to distinguish the pulumi CLI from other clients.
+	req.Header.Set("User-Agent", UserAgent())
+
 	// Wait 1s before retrying on failure. Then increase by 2x until the
 	// maximum delay is reached. Stop after maxRetryCount requests have
 	// been made.
@@ -264,12 +293,12 @@ func pulumiAPICall(ctx context.Context,
 		bodyReader = bytes.NewReader(body)
 	}
 
-	req, err := http.NewRequest(method, url, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 	if err != nil {
 		return "", nil, fmt.Errorf("creating new HTTP request: %w", err)
 	}
 
-	req = req.WithContext(ctx)
+	// Set the content type: all of our input here is JSON.
 	req.Header.Set("Content-Type", "application/json")
 
 	// Set headers from the incoming options.
@@ -277,9 +306,6 @@ func pulumiAPICall(ctx context.Context,
 		req.Header[k] = v
 	}
 
-	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
-	// backwards compatibility.
-	req.Header.Set("User-Agent", UserAgent())
 	// Specify the specific API version we accept.
 	req.Header.Add("Accept", "application/vnd.pulumi+8")
 
@@ -387,6 +413,8 @@ func decodeError(respBody []byte, statusCode int, opts httpCallOptions, reqID st
 
 // restClient is an abstraction for calling the Pulumi REST API.
 type restClient interface {
+	HTTPClient() httpClient
+
 	Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
 		respObj any, tok accessToken, opts httpCallOptions) error
 }
@@ -394,6 +422,11 @@ type restClient interface {
 // defaultRESTClient is the default implementation for calling the Pulumi REST API.
 type defaultRESTClient struct {
 	client httpClient
+}
+
+// HTTPClient returns the HTTP client for this REST client.
+func (c *defaultRESTClient) HTTPClient() httpClient {
+	return c.client
 }
 
 // Call calls the Pulumi REST API marshalling reqObj to JSON and using that as
@@ -409,6 +442,16 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 		opentracing.Tag{Key: "api", Value: cloudAPI},
 		opentracing.Tag{Key: "retry", Value: opts.RetryPolicy.String()})
 	defer requestSpan.Finish()
+
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, getEndpointName(method, path),
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("http.method", method),
+			attribute.String("http.url", cloudAPI+path),
+			attribute.String("http.retry", opts.RetryPolicy.String()),
+		))
+	defer otelSpan.End()
 
 	// Compute query string from query object
 	querystring := ""
@@ -443,7 +486,16 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	url, resp, err := pulumiAPICall(
 		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil {
+		otelSpan.RecordError(err)
+		otelSpan.SetStatus(codes.Error, err.Error())
 		return err
+	}
+
+	otelSpan.SetAttributes(attribute.Int("http.status_code", resp.StatusCode))
+	if resp.StatusCode >= 400 {
+		otelSpan.SetStatus(codes.Error, resp.Status)
+	} else {
+		otelSpan.SetStatus(codes.Ok, "")
 	}
 
 	switch respObj := respObj.(type) {
