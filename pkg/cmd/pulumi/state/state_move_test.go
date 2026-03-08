@@ -1486,11 +1486,14 @@ func TestMoveBreaksCopiedProviderDependenciesToRemainingSourceResources(t *testi
 		},
 	}
 
-	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(moveURN)})
+	sourceSnapshot, destSnapshot, stdout := runMove(t, sourceResources, []string{string(moveURN)})
 
 	require.Len(t, sourceSnapshot.Resources, 3)
 	require.Len(t, destSnapshot.Resources, 3)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
 		destSnapshot.Resources[1].URN)
 	assert.Empty(t, destSnapshot.Resources[1].Dependencies)
+	assert.Contains(t, stdout.String(),
+		"urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0 "+
+			"has a dependency on urn:pulumi:sourceStack::test::a:b:c::remaining")
 }
