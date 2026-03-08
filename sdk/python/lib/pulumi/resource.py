@@ -497,6 +497,13 @@ class ResourceOptions:
     is set, the provider sees PROVIDER_VAR with MY_VAR's value.
     """
 
+    drop_ignored_changes: Optional[bool]
+    """
+    If true, properties listed in `ignore_changes` will be stripped from state inputs and
+    outputs before persisting. This keeps the state file small for resources with large
+    ignored properties.
+    """
+
     def __init__(
         self,
         parent: Optional["Resource"] = None,
@@ -528,6 +535,7 @@ class ResourceOptions:
         replace_with: Optional[list["Resource"]] = None,
         hide_diffs: Optional[list[str]] = None,
         env_var_mappings: Optional[Mapping[str, str]] = None,
+        drop_ignored_changes: Optional[bool] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -602,6 +610,7 @@ class ResourceOptions:
         self.replace_with = replace_with
         self.hide_diffs = hide_diffs
         self.env_var_mappings = env_var_mappings
+        self.drop_ignored_changes = drop_ignored_changes
 
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
@@ -774,6 +783,11 @@ class ResourceOptions:
             dest.env_var_mappings
             if source.env_var_mappings is None
             else source.env_var_mappings
+        )
+        dest.drop_ignored_changes = (
+            dest.drop_ignored_changes
+            if source.drop_ignored_changes is None
+            else source.drop_ignored_changes
         )
 
         # Now, if we are left with a .providers that is just a single key/value pair, then

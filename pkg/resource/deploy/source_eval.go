@@ -1081,6 +1081,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = true
 	case "errorHooks":
 		hasSupport = true
+	case "dropIgnoredChanges":
+		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -2331,6 +2333,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		provider = rm.resolveProvider(req.GetProvider(), req.GetProviders(), parent, t.Package())
 	}
 
+	dropIgnoredChanges := req.GetDropIgnoredChanges()
+
 	opts := &pulumirpc.TransformResourceOptions{
 		Import:                  req.ImportId,
 		DependsOn:               req.GetDependencies(),
@@ -2352,6 +2356,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		AdditionalSecretOutputs: req.GetAdditionalSecretOutputs(),
 		PluginChecksums:         req.GetPluginChecksums(),
 		Hooks:                   req.GetHooks(),
+		DropIgnoredChanges:      &dropIgnoredChanges,
 	}
 
 	// This might be a resource registation for a resource that another process requested to be constructed.
@@ -2607,6 +2612,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	protect := opts.Protect
 	ignoreChanges := opts.IgnoreChanges
+	dropIgnoredChanges = opts.GetDropIgnoredChanges()
 	hiddenDiffs := slice.Prealloc[resource.PropertyPath](len(opts.GetHideDiff()))
 	for i, v := range opts.GetHideDiff() {
 		path, err := resource.ParsePropertyPath(v)
@@ -2867,6 +2873,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
+			DropIgnoredChanges:      dropIgnoredChanges,
 		}.Make()
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{

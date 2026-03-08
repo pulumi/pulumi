@@ -1909,7 +1909,8 @@ supportsresultreporting: jspb.Message.getBooleanFieldWithDefault(msg, 32, false)
 packageref: jspb.Message.getFieldWithDefault(msg, 33, ""),
 hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
 hidediffsList: (f = jspb.Message.getRepeatedField(msg, 37)) == null ? undefined : f,
-envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance, undefined) : []
+envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance, undefined) : [],
+dropignoredchanges: jspb.Message.getBooleanFieldWithDefault(msg, 42, false)
   };
 
   if (includeInstance) {
@@ -2121,6 +2122,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
          });
+      break;
+    case 42:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDropignoredchanges(value);
       break;
     default:
       reader.skipField();
@@ -2426,6 +2431,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   f = message.getEnvvarmappingsMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(41, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getDropignoredchanges();
+  if (f) {
+    writer.writeBool(
+      42,
+      f
+    );
   }
 };
 
@@ -4286,6 +4298,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getEnvvarmappingsMap = functio
 proto.pulumirpc.RegisterResourceRequest.prototype.clearEnvvarmappingsMap = function() {
   this.getEnvvarmappingsMap().clear();
   return this;
+};
+
+
+/**
+ * optional bool drop_ignored_changes = 42;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getDropignoredchanges = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 42, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setDropignoredchanges = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 42, value);
 };
 
 
@@ -6200,7 +6230,8 @@ hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceH
 pb_import: jspb.Message.getFieldWithDefault(msg, 17, ""),
 hideDiffList: (f = jspb.Message.getRepeatedField(msg, 18)) == null ? undefined : f,
 replaceWithList: (f = jspb.Message.getRepeatedField(msg, 19)) == null ? undefined : f,
-replacementTrigger: (f = msg.getReplacementTrigger()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
+replacementTrigger: (f = msg.getReplacementTrigger()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f),
+dropIgnoredChanges: (f = jspb.Message.getBooleanField(msg, 21)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -6324,6 +6355,10 @@ proto.pulumirpc.TransformResourceOptions.deserializeBinaryFromReader = function(
       var value = new google_protobuf_struct_pb.Value;
       reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
       msg.setReplacementTrigger(value);
+      break;
+    case 21:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDropIgnoredChanges(value);
       break;
     default:
       reader.skipField();
@@ -6490,6 +6525,13 @@ proto.pulumirpc.TransformResourceOptions.serializeBinaryToWriter = function(mess
       20,
       f,
       google_protobuf_struct_pb.Value.serializeBinaryToWriter
+    );
+  }
+  f = /** @type {boolean} */ (jspb.Message.getField(message, 21));
+  if (f != null) {
+    writer.writeBool(
+      21,
+      f
     );
   }
 };
@@ -7109,6 +7151,41 @@ proto.pulumirpc.TransformResourceOptions.prototype.hasReplacementTrigger = funct
   return jspb.Message.getField(this, 20) != null;
 };
 
+
+/**
+ * optional bool drop_ignored_changes = 21;
+ * @return {boolean}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.getDropIgnoredChanges = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 21, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.setDropIgnoredChanges = function(value) {
+  return jspb.Message.setField(this, 21, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.clearDropIgnoredChanges = function() {
+  return jspb.Message.setField(this, 21, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.hasDropIgnoredChanges = function() {
+  return jspb.Message.getField(this, 21) != null;
+};
 
 
 

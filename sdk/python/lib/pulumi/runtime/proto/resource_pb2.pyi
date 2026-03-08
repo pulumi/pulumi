@@ -424,6 +424,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     HOOKS_FIELD_NUMBER: builtins.int
     HIDEDIFFS_FIELD_NUMBER: builtins.int
     ENVVARMAPPINGS_FIELD_NUMBER: builtins.int
+    DROP_IGNORED_CHANGES_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -473,6 +474,8 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     """true if the request is from an SDK that supports the result field in the response."""
     packageRef: builtins.str
     """a reference from RegisterPackageRequest."""
+    drop_ignored_changes: builtins.bool
+    """if true, properties listed in ignoreChanges are stripped from state inputs and outputs"""
     @property
     def object(self) -> google.protobuf.struct_pb2.Struct:
         """an object produced by the interpreter/source."""
@@ -590,9 +593,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         hooks: global___RegisterResourceRequest.ResourceHooksBinding | None = ...,
         hideDiffs: collections.abc.Iterable[builtins.str] | None = ...,
         envVarMappings: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        drop_ignored_changes: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "hooks", b"hooks", "object", b"object", "protect", b"protect", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "envVarMappings", b"envVarMappings", "hideDiffs", b"hideDiffs", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "drop_ignored_changes", b"drop_ignored_changes", "envVarMappings", b"envVarMappings", "hideDiffs", b"hideDiffs", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_hooks", b"_hooks"]) -> typing.Literal["hooks"] | None: ...
     @typing.overload
@@ -972,6 +976,7 @@ class TransformResourceOptions(google.protobuf.message.Message):
     HIDE_DIFF_FIELD_NUMBER: builtins.int
     REPLACE_WITH_FIELD_NUMBER: builtins.int
     REPLACEMENT_TRIGGER_FIELD_NUMBER: builtins.int
+    DROP_IGNORED_CHANGES_FIELD_NUMBER: builtins.int
     protect: builtins.bool
     version: builtins.str
     provider: builtins.str
@@ -979,6 +984,7 @@ class TransformResourceOptions(google.protobuf.message.Message):
     retain_on_delete: builtins.bool
     deleted_with: builtins.str
     delete_before_replace: builtins.bool
+    drop_ignored_changes: builtins.bool
     @property
     def depends_on(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     @property
@@ -1025,11 +1031,14 @@ class TransformResourceOptions(google.protobuf.message.Message):
         hide_diff: collections.abc.Iterable[builtins.str] | None = ...,
         replace_with: collections.abc.Iterable[builtins.str] | None = ...,
         replacement_trigger: google.protobuf.struct_pb2.Value | None = ...,
+        drop_ignored_changes: builtins.bool | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "hooks", b"hooks", "protect", b"protect", "replacement_trigger", b"replacement_trigger", "retain_on_delete", b"retain_on_delete"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "hide_diff", b"hide_diff", "hooks", b"hooks", "ignore_changes", b"ignore_changes", "import", b"import", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_drop_ignored_changes", b"_drop_ignored_changes", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "drop_ignored_changes", b"drop_ignored_changes", "hooks", b"hooks", "protect", b"protect", "replacement_trigger", b"replacement_trigger", "retain_on_delete", b"retain_on_delete"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_delete_before_replace", b"_delete_before_replace", "_drop_ignored_changes", b"_drop_ignored_changes", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "drop_ignored_changes", b"drop_ignored_changes", "hide_diff", b"hide_diff", "hooks", b"hooks", "ignore_changes", b"ignore_changes", "import", b"import", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_delete_before_replace", b"_delete_before_replace"]) -> typing.Literal["delete_before_replace"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_drop_ignored_changes", b"_drop_ignored_changes"]) -> typing.Literal["drop_ignored_changes"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_protect", b"_protect"]) -> typing.Literal["protect"] | None: ...
     @typing.overload

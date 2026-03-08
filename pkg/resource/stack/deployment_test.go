@@ -1113,3 +1113,127 @@ func TestDeserializeStackOutputs_SecretsInStackOutputs_Decrypted(t *testing.T) {
 		"secret": resource.MakeSecret(resource.NewProperty("super secret")),
 	}, outputs)
 }
+
+func TestStripIgnoredProperties(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil props", func(t *testing.T) {
+		t.Parallel()
+		result := stripIgnoredProperties(nil, []string{"foo"})
+		assert.Nil(t, result)
+	})
+
+	t.Run("empty ignore list", func(t *testing.T) {
+		t.Parallel()
+		props := map[string]any{
+			"foo": "bar",
+			"baz": 42,
+		}
+		result := stripIgnoredProperties(props, []string{})
+		assert.Equal(t, props, result)
+	})
+
+	t.Run("strips top-level properties", func(t *testing.T) {
+		t.Parallel()
+		props := map[string]any{
+			"keep":   "yes",
+			"ignore": "large data",
+			"also":   "kept",
+		}
+		result := stripIgnoredProperties(props, []string{"ignore"})
+		assert.Equal(t, map[string]any{
+			"keep": "yes",
+			"also": "kept",
+		}, result)
+	})
+
+	t.Run("does not modify original", func(t *testing.T) {
+		t.Parallel()
+		props := map[string]any{
+			"keep":   "yes",
+			"ignore": "data",
+		}
+		_ = stripIgnoredProperties(props, []string{"ignore"})
+		assert.Contains(t, props, "ignore")
+	})
+
+	t.Run("strips multiple properties", func(t *testing.T) {
+		t.Parallel()
+		props := map[string]any{
+			"a": 1,
+			"b": 2,
+			"c": 3,
+		}
+		result := stripIgnoredProperties(props, []string{"a", "c"})
+		assert.Equal(t, map[string]any{"b": 2}, result)
+	})
+
+	t.Run("ignores non-existent properties", func(t *testing.T) {
+		t.Parallel()
+		props := map[string]any{
+			"keep": "yes",
+		}
+		result := stripIgnoredProperties(props, []string{"nonexistent"})
+		assert.Equal(t, map[string]any{"keep": "yes"}, result)
+	})
+}
+
+func TestSerializeResourceDropIgnoredChanges(t *testing.T) {
+	t.Parallel()
+
+	state := resource.NewState{
+		Type:   "test:index:MyResource",
+		URN:    "urn:pulumi:test::test::test:index:MyResource::myres",
+		Custom: true,
+		ID:     "id",
+		Inputs: resource.PropertyMap{
+			"keep":   resource.NewStringProperty("kept-input"),
+			"ignore": resource.NewStringProperty("ignored-input"),
+		},
+		Outputs: resource.PropertyMap{
+			"keep":   resource.NewStringProperty("kept-output"),
+			"ignore": resource.NewStringProperty("ignored-output"),
+		},
+		IgnoreChanges:      []string{"ignore"},
+		DropIgnoredChanges: true,
+	}.Make()
+
+	v3, err := SerializeResource(context.Background(), state, config.NopEncrypter, false)
+	require.NoError(t, err)
+
+	assert.True(t, v3.DropIgnoredChanges)
+	assert.NotContains(t, v3.Inputs, "ignore")
+	assert.Contains(t, v3.Inputs, "keep")
+	assert.NotContains(t, v3.Outputs, "ignore")
+	assert.Contains(t, v3.Outputs, "keep")
+}
+
+func TestSerializeResourceWithoutDropIgnoredChanges(t *testing.T) {
+	t.Parallel()
+
+	state := resource.NewState{
+		Type:   "test:index:MyResource",
+		URN:    "urn:pulumi:test::test::test:index:MyResource::myres",
+		Custom: true,
+		ID:     "id",
+		Inputs: resource.PropertyMap{
+			"keep":   resource.NewStringProperty("kept-input"),
+			"ignore": resource.NewStringProperty("ignored-input"),
+		},
+		Outputs: resource.PropertyMap{
+			"keep":   resource.NewStringProperty("kept-output"),
+			"ignore": resource.NewStringProperty("ignored-output"),
+		},
+		IgnoreChanges:      []string{"ignore"},
+		DropIgnoredChanges: false,
+	}.Make()
+
+	v3, err := SerializeResource(context.Background(), state, config.NopEncrypter, false)
+	require.NoError(t, err)
+
+	assert.False(t, v3.DropIgnoredChanges)
+	assert.Contains(t, v3.Inputs, "ignore")
+	assert.Contains(t, v3.Inputs, "keep")
+	assert.Contains(t, v3.Outputs, "ignore")
+	assert.Contains(t, v3.Outputs, "keep")
+}

@@ -200,6 +200,12 @@ export interface Store {
     supportsErrorHooks: boolean;
 
     /**
+     * Tells us if the resource monitor we are connected to is able to support
+     * the dropIgnoredChanges option.
+     */
+    supportsDropIgnoredChanges: boolean;
+
+    /**
      * The callback service running for this deployment. This registers
      * callbacks and forwards them to the engine.
      */
@@ -264,6 +270,7 @@ export class LocalStore implements Store {
     supportsParameterization = false;
     supportsResourceHooks = false;
     supportsErrorHooks = false;
+    supportsDropIgnoredChanges = false;
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
 }

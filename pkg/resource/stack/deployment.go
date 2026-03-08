@@ -525,6 +525,14 @@ func SerializeResource(
 		return apitype.StackFrameV1{SourcePosition: frame.SourcePosition}
 	}))
 
+	// If dropIgnoredChanges is enabled, strip ignored properties from inputs and outputs
+	// before serializing to state. This keeps the state file small for resources with
+	// large ignored properties.
+	if res.DropIgnoredChanges && len(res.IgnoreChanges) > 0 {
+		inputs = stripIgnoredProperties(inputs, res.IgnoreChanges)
+		outputs = stripIgnoredProperties(outputs, res.IgnoreChanges)
+	}
+
 	v3Resource := apitype.ResourceV3{
 		URN:                     res.URN,
 		Custom:                  res.Custom,
@@ -559,6 +567,7 @@ func SerializeResource(
 		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 		ViewOf:                  res.ViewOf,
 		ResourceHooks:           res.ResourceHooks,
+		DropIgnoredChanges:      res.DropIgnoredChanges,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -566,6 +575,31 @@ func SerializeResource(
 	}
 
 	return v3Resource, nil
+}
+
+// stripIgnoredProperties removes properties listed in ignoreChanges from a serialized property map.
+// This is used by dropIgnoredChanges to keep the state file small.
+func stripIgnoredProperties(props map[string]any, ignoreChanges []string) map[string]any {
+	if props == nil {
+		return nil
+	}
+	result := make(map[string]any, len(props))
+	for k, v := range props {
+		result[k] = v
+	}
+	for _, path := range ignoreChanges {
+		parsed, err := resource.ParsePropertyPath(path)
+		if err != nil || len(parsed) == 0 {
+			continue
+		}
+		// For top-level properties, delete directly from map.
+		if len(parsed) == 1 {
+			if key, ok := parsed[0].(string); ok {
+				delete(result, key)
+			}
+		}
+	}
+	return result
 }
 
 // SerializeOperation serializes a resource in a pending state.
@@ -790,6 +824,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
+			DropIgnoredChanges:      res.DropIgnoredChanges,
 		}.Make(),
 		nil
 }

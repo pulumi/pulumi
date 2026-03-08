@@ -47,10 +47,11 @@ type Goal struct {
 	// if specified resource is being deleted as well.
 	DeletedWith URN
 	// If set, the URNs of the resources whose replaces will also trigger a replace of the current resource.
-	ReplaceWith    []URN
-	SourcePosition string                // If set, the source location of the resource registration
-	StackTrace     []StackFrame          // If set, the stack trace at time of registration
-	ResourceHooks  map[HookType][]string // The resource hooks attached to the resource, by type.
+	ReplaceWith        []URN
+	SourcePosition     string                // If set, the source location of the resource registration
+	StackTrace         []StackFrame          // If set, the stack trace at time of registration
+	ResourceHooks      map[HookType][]string // The resource hooks attached to the resource, by type.
+	DropIgnoredChanges bool                  // If true, properties in IgnoreChanges are stripped from state.
 }
 
 // NewGoal is used to construct Goal values. The dataflow for Goal is rather sensitive, so all fields are required.
@@ -132,6 +133,9 @@ type NewGoal struct {
 
 	// If set, the list of property paths to hide the diff output of.
 	HideDiff []PropertyPath // required
+
+	// If true, properties in IgnoreChanges are stripped from state.
+	DropIgnoredChanges bool // required
 }
 
 // Make consumes the NewGoal to create a *Goal.
@@ -166,5 +170,6 @@ func (g NewGoal) Make() *Goal {
 		SourcePosition:          g.SourcePosition,
 		StackTrace:              g.StackTrace,
 		ResourceHooks:           g.ResourceHooks,
+		DropIgnoredChanges:      g.DropIgnoredChanges,
 	}
 }

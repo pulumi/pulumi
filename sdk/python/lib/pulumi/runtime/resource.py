@@ -1154,6 +1154,7 @@ def register_resource(
                 hooks=hooks,
                 hideDiffs=opts.hide_diffs,
                 envVarMappings=opts.env_var_mappings or {},
+                drop_ignored_changes=opts.drop_ignored_changes or False,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()

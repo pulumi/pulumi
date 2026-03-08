@@ -881,6 +881,13 @@ export interface ResourceOptions {
      */
     envVarMappings?: Record<string, string>;
 
+    /**
+     * If true, properties listed in `ignoreChanges` will be stripped from state inputs and
+     * outputs before persisting. This keeps the state file small for resources with large
+     * ignored properties.
+     */
+    dropIgnoredChanges?: boolean;
+
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
 }

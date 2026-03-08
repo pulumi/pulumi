@@ -288,6 +288,8 @@ export class RegisterResourceRequest extends jspb.Message {
 
     getEnvvarmappingsMap(): jspb.Map<string, string>;
     clearEnvvarmappingsMap(): void;
+    getDropignoredchanges(): boolean;
+    setDropignoredchanges(value: boolean): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -345,6 +347,7 @@ export namespace RegisterResourceRequest {
         hidediffsList: Array<string>,
 
         envvarmappingsMap: Array<[string, string]>,
+        dropignoredchanges: boolean,
     }
 
 
@@ -769,6 +772,11 @@ export class TransformResourceOptions extends jspb.Message {
     getReplacementTrigger(): google_protobuf_struct_pb.Value | undefined;
     setReplacementTrigger(value?: google_protobuf_struct_pb.Value): TransformResourceOptions;
 
+    hasDropIgnoredChanges(): boolean;
+    clearDropIgnoredChanges(): void;
+    getDropIgnoredChanges(): boolean | undefined;
+    setDropIgnoredChanges(value: boolean): TransformResourceOptions;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TransformResourceOptions.AsObject;
     static toObject(includeInstance: boolean, msg: TransformResourceOptions): TransformResourceOptions.AsObject;
@@ -803,6 +811,7 @@ export namespace TransformResourceOptions {
         hideDiffList: Array<string>,
         replaceWithList: Array<string>,
         replacementTrigger?: google_protobuf_struct_pb.Value.AsObject,
+        dropIgnoredChanges?: boolean,
     }
 }
 

@@ -309,6 +309,7 @@ export async function awaitFeatureSupport(): Promise<void> {
             parameterization,
             resourceHooks,
             errorHooks,
+            dropIgnoredChanges,
         ] = await Promise.all(
             [
                 "secrets",
@@ -322,6 +323,7 @@ export async function awaitFeatureSupport(): Promise<void> {
                 "parameterization",
                 "resourceHooks",
                 "errorHooks",
+                "dropIgnoredChanges",
             ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
         );
 
@@ -336,6 +338,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsParameterization = parameterization;
         store.supportsResourceHooks = resourceHooks;
         store.supportsErrorHooks = errorHooks;
+        store.supportsDropIgnoredChanges = dropIgnoredChanges;
     }
 }
 

@@ -77,6 +77,7 @@ type contextState struct {
 	supportsParameterization bool         // true if package references and parameterized providers are supported by pulumi
 	supportsResourceHooks    bool         // true if resource hooks are supported by pulumi
 	supportsErrorHooks       bool         // true if error hooks are supported by pulumi
+	supportsDropIgnoredChanges bool       // true if dropIgnoredChanges is supported by pulumi
 	rpcs                     int          // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
@@ -202,6 +203,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsDropIgnoredChanges, err := supportsFeature("dropIgnoredChanges")
+	if err != nil {
+		return nil, err
+	}
+
 	contextState := &contextState{
 		info:                     info,
 		exports:                  make(map[string]Input),
@@ -217,9 +223,10 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsTransforms:       supportsTransforms,
 		supportsInvokeTransforms: supportsInvokeTransforms,
 		supportsParameterization: supportsParameterization,
-		supportsResourceHooks:    supportsResourceHooks,
-		supportsErrorHooks:       supportsErrorHooks,
-		registeredOutputs:        make(map[URN]bool),
+		supportsResourceHooks:      supportsResourceHooks,
+		supportsErrorHooks:         supportsErrorHooks,
+		supportsDropIgnoredChanges: supportsDropIgnoredChanges,
+		registeredOutputs:          make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
 	context := &Context{
@@ -1372,6 +1379,10 @@ func (ctx *Context) readPackageResource(
 		return errors.New("the Pulumi CLI does not support the ReplaceWith option. Please update the Pulumi CLI")
 	}
 
+	if options.DropIgnoredChanges && !ctx.state.supportsDropIgnoredChanges {
+		return errors.New("the Pulumi CLI does not support the DropIgnoredChanges option. Please update the Pulumi CLI")
+	}
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
@@ -1886,6 +1897,7 @@ func (ctx *Context) registerResource(
 				PackageRef:                 packageRef,
 				Hooks:                      hooks,
 				EnvVarMappings:             inputs.envVarMappings,
+				DropIgnoredChanges:         inputs.dropIgnoredChanges,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -2356,6 +2368,7 @@ type resourceInputs struct {
 	replaceWith             []string
 	replacementTrigger      *structpb.Value
 	envVarMappings          map[string]string
+	dropIgnoredChanges      bool
 }
 
 func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) error {
@@ -2681,6 +2694,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		replaceWith:             replaceWithURNs,
 		replacementTrigger:      replacementTriggerValue,
 		envVarMappings:          opts.EnvVarMappings,
+		dropIgnoredChanges:      opts.DropIgnoredChanges,
 	}, nil
 }
 

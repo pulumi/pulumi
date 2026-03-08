@@ -500,6 +500,8 @@ type ResourceV3 struct {
 	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
 	// ResourceHooks is a map of hook types to lists of hook names for the given type.
 	ResourceHooks map[resource.HookType][]string `json:"resourceHooks,omitempty" yaml:"resourceHooks,omitempty"`
+	// DropIgnoredChanges indicates that properties listed in IgnoreChanges should be stripped from state.
+	DropIgnoredChanges bool `json:"dropIgnoredChanges,omitempty" yaml:"dropIgnoredChanges,omitempty"`
 }
 
 // StackFrameV1 captures information about a stack frame.

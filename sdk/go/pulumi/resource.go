@@ -549,6 +549,10 @@ type ResourceOptions struct {
 	// EnvVarMappings specifies environment variable mappings for provider resources.
 	// Keys are the source environment variable names, values are the target names.
 	EnvVarMappings map[string]string
+
+	// DropIgnoredChanges specifies that properties listed in IgnoreChanges should
+	// be stripped from state inputs and outputs before persisting.
+	DropIgnoredChanges bool
 }
 
 // NewResourceOptions builds a preview of the effect of the provided options.
@@ -590,6 +594,7 @@ type resourceOptions struct {
 	Parameterization        []byte
 	Hooks                   *ResourceHookBinding
 	EnvVarMappings          map[string]string
+	DropIgnoredChanges      bool
 }
 
 func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
@@ -658,6 +663,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		ReplaceWith:             ro.ReplaceWith,
 		Hooks:                   ro.Hooks,
 		EnvVarMappings:          ro.EnvVarMappings,
+		DropIgnoredChanges:      ro.DropIgnoredChanges,
 	}
 }
 
@@ -1197,5 +1203,14 @@ func EnvVarMappings(mappings map[string]string) ResourceOption {
 				ro.EnvVarMappings[k] = v
 			}
 		}
+	})
+}
+
+// DropIgnoredChanges opts in to stripping properties listed in IgnoreChanges from state
+// inputs and outputs before persisting. This keeps the state file small for resources
+// with large ignored properties.
+func DropIgnoredChanges(b bool) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.DropIgnoredChanges = b
 	})
 }

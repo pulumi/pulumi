@@ -188,6 +188,7 @@ message RegisterResourceRequest {
     optional ResourceHooksBinding hooks = 34;
     repeated string hideDiffs = 37;
     map<string, string> envVarMappings = 41;   // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
+    bool drop_ignored_changes = 42;            // if true, properties listed in ignoreChanges are stripped from state inputs and outputs
 }
 
 enum Result {
@@ -284,6 +285,7 @@ message TransformResourceOptions {
     repeated string hide_diff = 18;
     repeated string replace_with = 19;
     google.protobuf.Value replacement_trigger = 20;
+    optional bool drop_ignored_changes = 21;
 }
 
 message TransformRequest {

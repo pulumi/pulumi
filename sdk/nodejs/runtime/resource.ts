@@ -681,6 +681,15 @@ export function registerResource(
                     }
                 }
 
+                if (opts.dropIgnoredChanges) {
+                    if (!getStore().supportsDropIgnoredChanges) {
+                        throw new Error(
+                            "The Pulumi CLI does not support the dropIgnoredChanges option. Please update the Pulumi CLI.",
+                        );
+                    }
+                    req.setDropignoredchanges(true);
+                }
+
                 if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                     throw new Error(
                         "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.",

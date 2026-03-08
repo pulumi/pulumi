@@ -744,6 +744,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
+		DropIgnoredChanges:      goal.DropIgnoredChanges,
 	}.Make()
 	if sdkproviders.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
@@ -1037,6 +1038,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					RefreshBeforeUpdate:     new.RefreshBeforeUpdate,
 					ViewOf:                  "",
 					ResourceHooks:           goal.ResourceHooks,
+					DropIgnoredChanges:      goal.DropIgnoredChanges,
 				}.Make()
 			}
 

@@ -450,11 +450,12 @@ type RegisterResourceRequest struct {
 	SupportsResultReporting bool            `protobuf:"varint,32,opt,name=supportsResultReporting,proto3" json:"supportsResultReporting,omitempty"` // true if the request is from an SDK that supports the result field in the response.
 	PackageRef              string          `protobuf:"bytes,33,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                            // a reference from RegisterPackageRequest.
 	// The resource hooks that should run at certain points in the resource's lifecycle.
-	Hooks          *RegisterResourceRequest_ResourceHooksBinding `protobuf:"bytes,34,opt,name=hooks,proto3,oneof" json:"hooks,omitempty"`
-	HideDiffs      []string                                      `protobuf:"bytes,37,rep,name=hideDiffs,proto3" json:"hideDiffs,omitempty"`
-	EnvVarMappings map[string]string                             `protobuf:"bytes,41,rep,name=envVarMappings,proto3" json:"envVarMappings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	Hooks              *RegisterResourceRequest_ResourceHooksBinding `protobuf:"bytes,34,opt,name=hooks,proto3,oneof" json:"hooks,omitempty"`
+	HideDiffs          []string                                      `protobuf:"bytes,37,rep,name=hideDiffs,proto3" json:"hideDiffs,omitempty"`
+	EnvVarMappings     map[string]string                             `protobuf:"bytes,41,rep,name=envVarMappings,proto3" json:"envVarMappings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
+	DropIgnoredChanges bool                                          `protobuf:"varint,42,opt,name=drop_ignored_changes,json=dropIgnoredChanges,proto3" json:"drop_ignored_changes,omitempty"`                                      // if true, properties listed in ignoreChanges are stripped from state inputs and outputs
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *RegisterResourceRequest) Reset() {
@@ -765,6 +766,13 @@ func (x *RegisterResourceRequest) GetEnvVarMappings() map[string]string {
 		return x.EnvVarMappings
 	}
 	return nil
+}
+
+func (x *RegisterResourceRequest) GetDropIgnoredChanges() bool {
+	if x != nil {
+		return x.DropIgnoredChanges
+	}
+	return false
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
@@ -1185,6 +1193,7 @@ type TransformResourceOptions struct {
 	HideDiff                []string                                      `protobuf:"bytes,18,rep,name=hide_diff,json=hideDiff,proto3" json:"hide_diff,omitempty"`
 	ReplaceWith             []string                                      `protobuf:"bytes,19,rep,name=replace_with,json=replaceWith,proto3" json:"replace_with,omitempty"`
 	ReplacementTrigger      *structpb.Value                               `protobuf:"bytes,20,opt,name=replacement_trigger,json=replacementTrigger,proto3" json:"replacement_trigger,omitempty"`
+	DropIgnoredChanges      *bool                                         `protobuf:"varint,21,opt,name=drop_ignored_changes,json=dropIgnoredChanges,proto3,oneof" json:"drop_ignored_changes,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -1357,6 +1366,13 @@ func (x *TransformResourceOptions) GetReplacementTrigger() *structpb.Value {
 		return x.ReplacementTrigger
 	}
 	return nil
+}
+
+func (x *TransformResourceOptions) GetDropIgnoredChanges() bool {
+	if x != nil && x.DropIgnoredChanges != nil {
+		return *x.DropIgnoredChanges
+	}
+	return false
 }
 
 type TransformRequest struct {
@@ -2616,7 +2632,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\xbd\x15\n" +
+	"properties\"\xef\x15\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -2666,7 +2682,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"packageRef\x12R\n" +
 	"\x05hooks\x18\" \x01(\v27.pulumirpc.RegisterResourceRequest.ResourceHooksBindingH\x02R\x05hooks\x88\x01\x01\x12\x1c\n" +
 	"\thideDiffs\x18% \x03(\tR\thideDiffs\x12^\n" +
-	"\x0eenvVarMappings\x18) \x03(\v26.pulumirpc.RegisterResourceRequest.EnvVarMappingsEntryR\x0eenvVarMappings\x1a*\n" +
+	"\x0eenvVarMappings\x18) \x03(\v26.pulumirpc.RegisterResourceRequest.EnvVarMappingsEntryR\x0eenvVarMappings\x120\n" +
+	"\x14drop_ignored_changes\x18* \x01(\bR\x12dropIgnoredChanges\x1a*\n" +
 	"\x14PropertyDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\x1aX\n" +
 	"\x0eCustomTimeouts\x12\x16\n" +
@@ -2758,7 +2775,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01J\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
-	"\x10\vJ\x04\b\v\x10\fJ\x04\b\f\x10\rJ\x04\b\x0e\x10\x0fR\aprojectR\x05stackR\x06configR\x10configSecretKeysR\x06dryRunR\bparallelR\x0fmonitorEndpointR\forganization\"\xc6\t\n" +
+	"\x10\vJ\x04\b\v\x10\fJ\x04\b\f\x10\rJ\x04\b\x0e\x10\x0fR\aprojectR\x05stackR\x06configR\x10configSecretKeysR\x06dryRunR\bparallelR\x0fmonitorEndpointR\forganization\"\x96\n" +
+	"\n" +
 	"\x18TransformResourceOptions\x12\x1d\n" +
 	"\n" +
 	"depends_on\x18\x01 \x03(\tR\tdependsOn\x12\x1d\n" +
@@ -2781,7 +2799,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x06import\x18\x11 \x01(\tR\x06import\x12\x1b\n" +
 	"\thide_diff\x18\x12 \x03(\tR\bhideDiff\x12!\n" +
 	"\freplace_with\x18\x13 \x03(\tR\vreplaceWith\x12G\n" +
-	"\x13replacement_trigger\x18\x14 \x01(\v2\x16.google.protobuf.ValueR\x12replacementTrigger\x1a<\n" +
+	"\x13replacement_trigger\x18\x14 \x01(\v2\x16.google.protobuf.ValueR\x12replacementTrigger\x125\n" +
+	"\x14drop_ignored_changes\x18\x15 \x01(\bH\x03R\x12dropIgnoredChanges\x88\x01\x01\x1a<\n" +
 	"\x0eProvidersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
@@ -2791,7 +2810,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\n" +
 	"\b_protectB\x13\n" +
 	"\x11_retain_on_deleteB\x18\n" +
-	"\x16_delete_before_replace\"\xe2\x01\n" +
+	"\x16_delete_before_replaceB\x17\n" +
+	"\x15_drop_ignored_changes\"\xe2\x01\n" +
 	"\x10TransformRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
