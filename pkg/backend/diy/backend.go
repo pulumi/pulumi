@@ -1220,10 +1220,28 @@ func (b *diyBackend) apply(
 	}
 	// Create the management machinery.
 	// We only need a snapshot manager if we're doing an update.
-	var manager *backend.SnapshotManager
+	// manager is declared as the engine.SnapshotManager interface to support
+	// both the legacy SnapshotManager and the new JournalSnapshotManager paths.
+	var manager engine.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
-		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
+		if b.Env.GetBool(env.DIYBackendJournaling) {
+			// Journaling path: recover any incomplete journal from a previous crashed
+			// operation, then write a fresh epoch manifest and start recording entries.
+			if err = b.recoverJournal(ctx, diyStackRef); err != nil {
+				return nil, nil, fmt.Errorf("recovering journal: %w", err)
+			}
+			if err = b.writeJournalManifest(ctx, diyStackRef); err != nil {
+				return nil, nil, fmt.Errorf("writing journal manifest: %w", err)
+			}
+			journaler := b.newDIYJournaler(ctx, diyStackRef, op.SecretsManager)
+			manager, err = engine.NewJournalSnapshotManager(journaler, update.Target.Snapshot, op.SecretsManager)
+			if err != nil {
+				return nil, nil, fmt.Errorf("creating journal snapshot manager: %w", err)
+			}
+		} else {
+			persister := b.newSnapshotPersister(ctx, diyStackRef)
+			manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
+		}
 		engineCtx.SnapshotManager = manager
 	}
 
@@ -1272,6 +1290,18 @@ func (b *diyBackend) apply(
 		// Reporting now should make debugging and reporting easier.
 		if err != nil {
 			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
+		}
+
+		// If journaling is enabled, consolidate the journal entries into a single
+		// checkpoint now that all entries have been successfully written to blob storage.
+		// We only consolidate on success — if manager.Close() returned an error,
+		// partial entries remain and will be replayed during the next recoverJournal call.
+		if b.Env.GetBool(env.DIYBackendJournaling) {
+			if consolidateErr := b.consolidateJournal(ctx, diyStackRef); consolidateErr != nil {
+				// Preserve any engine error alongside the consolidation failure so
+				// the caller sees both: the deployment outcome and the journal problem.
+				return plan, changes, errors.Join(updateErr, fmt.Errorf("consolidating journal: %w", consolidateErr))
+			}
 		}
 	}
 

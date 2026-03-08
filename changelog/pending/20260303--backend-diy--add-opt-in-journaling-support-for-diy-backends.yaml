@@ -1,0 +1,10 @@
+changes:
+- type: feat
+  scope: backend/diy
+  description: >
+    Add opt-in journaling for DIY backends (file://, s3://, gs://, azblob://).
+    Set PULUMI_DIY_BACKEND_JOURNALING=true to record small incremental journal
+    entries instead of rewriting the full checkpoint on every resource mutation,
+    dramatically reducing I/O for large stacks. Entries are consolidated into a
+    full checkpoint at the end of each operation, and any incomplete journal from
+    a crashed operation is automatically replayed on the next run.
