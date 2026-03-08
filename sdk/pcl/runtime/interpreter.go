@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -288,7 +289,9 @@ func (i *Interpreter) evalExpression(expr model.Expression) (resource.PropertyVa
 
 // evalExpressionWith evaluates an expression using the given eval context (which may be a child of
 // i.evalContext with additional variables, e.g. range.key/range.value for ranged resources).
-func (i *Interpreter) evalExpressionWith(expr model.Expression, evalCtx *hcl.EvalContext) (resource.PropertyValue, hcl.Diagnostics) {
+func (i *Interpreter) evalExpressionWith(
+	expr model.Expression, evalCtx *hcl.EvalContext,
+) (resource.PropertyValue, hcl.Diagnostics) {
 	i.evalLock.Lock()
 	value, diags := expr.Evaluate(evalCtx)
 	i.evalLock.Unlock()
@@ -627,7 +630,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 				suffix  string
 				evalCtx *hcl.EvalContext
 			}{
-				suffix:  fmt.Sprintf("%d", idx),
+				suffix:  strconv.Itoa(idx),
 				evalCtx: makeRangeCtx(cty.NilVal, idxVal),
 			})
 		}
@@ -649,7 +652,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 				suffix  string
 				evalCtx *hcl.EvalContext
 			}{
-				suffix:  fmt.Sprintf("%d", idx),
+				suffix:  strconv.Itoa(idx),
 				evalCtx: makeRangeCtx(cty.NumberIntVal(int64(idx)), val),
 			})
 		}
@@ -888,12 +891,14 @@ func (i *Interpreter) registerResourceWith(
 			}
 			if !envVars.IsNull() && !envVars.IsComputed() {
 				if !envVars.IsObject() {
-					return resource.PropertyValue{}, errors.New("envVarMappings must be an object mapping environment variable names to input property keys")
+					return resource.PropertyValue{}, errors.New(
+						"envVarMappings must be an object mapping environment variable names to input property keys")
 				}
 				envVarMappings := map[string]string{}
 				for envVar, propKey := range envVars.ObjectValue() {
 					if propKey.IsNull() || propKey.IsComputed() || !propKey.IsString() {
-						return resource.PropertyValue{}, errors.New("envVarMappings must be an object mapping environment variable names to input property keys")
+						return resource.PropertyValue{}, errors.New(
+							"envVarMappings must be an object mapping environment variable names to input property keys")
 					}
 					envVarMappings[string(envVar)] = propKey.StringValue()
 				}
@@ -1173,7 +1178,8 @@ func (i *Interpreter) registerResourceWith(
 						psopt[pkg] = fmt.Sprintf("%s::%s", urn, idstr)
 					}
 				} else {
-					return resource.PropertyValue{}, errors.New("providers must be an array of provider objects or a map of provider name to provider objects")
+					return resource.PropertyValue{}, errors.New(
+						"providers must be an array of provider objects or a map of provider name to provider objects")
 				}
 				request.Providers = psopt
 			}
