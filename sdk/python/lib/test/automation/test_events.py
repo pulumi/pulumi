@@ -32,6 +32,15 @@ class TestStepEventMetadataFromJson(unittest.TestCase):
         assert meta.detailed_diff["name"].diff_kind == DiffKind.UPDATE
         assert meta.detailed_diff["name"].input_diff is True
 
+    def test_detailed_diff_null_deserialized(self):
+        """detailedDiff can be null in engine events and should deserialize as an empty map."""
+        data = {
+            "op": "create",
+            "detailedDiff": None,
+        }
+        meta = StepEventMetadata.from_json(data)
+        assert meta.detailed_diff == {}
+
 
 class TestPolicyEventFromJson(unittest.TestCase):
     """Test PolicyEvent.from_json reads camelCase keys matching Go JSON tags."""
