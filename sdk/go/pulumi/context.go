@@ -67,23 +67,23 @@ type contextState struct {
 	callbacksLock sync.Mutex
 	callbacks     *callbackServer
 
-	keepResources            bool         // true if resources should be marshaled as strongly-typed references.
-	keepOutputValues         bool         // true if outputs should be marshaled as strongly-type output values.
-	supportsDeletedWith      bool         // true if deletedWith supported by pulumi
-	supportsReplaceWith      bool         // true if replaceWith supported by pulumi
-	supportsAliasSpecs       bool         // true if full alias specification is supported by pulumi
-	supportsTransforms       bool         // true if remote transforms are supported by pulumi
-	supportsInvokeTransforms bool         // true if remote invoke transforms are supported by pulumi
-	supportsParameterization bool         // true if package references and parameterized providers are supported by pulumi
-	supportsResourceHooks    bool         // true if resource hooks are supported by pulumi
-	supportsErrorHooks       bool         // true if error hooks are supported by pulumi
-	supportsDropIgnoredChanges bool       // true if dropIgnoredChanges is supported by pulumi
-	rpcs                     int          // the number of outstanding RPC requests.
-	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
-	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
-	rpcError                 error        // the first error (if any) encountered during an RPC.
-	registeredOutputsLock    sync.Mutex   // a lock protecting the registeredOutputs map
-	registeredOutputs        map[URN]bool // tracks which resources have had outputs registered
+	keepResources              bool         // true if resources should be marshaled as strongly-typed references.
+	keepOutputValues           bool         // true if outputs should be marshaled as strongly-type output values.
+	supportsDeletedWith        bool         // true if deletedWith supported by pulumi
+	supportsReplaceWith        bool         // true if replaceWith supported by pulumi
+	supportsAliasSpecs         bool         // true if full alias specification is supported by pulumi
+	supportsTransforms         bool         // true if remote transforms are supported by pulumi
+	supportsInvokeTransforms   bool         // true if remote invoke transforms are supported by pulumi
+	supportsParameterization   bool         // true if package references and parameterized providers are supported by pulumi
+	supportsResourceHooks      bool         // true if resource hooks are supported by pulumi
+	supportsErrorHooks         bool         // true if error hooks are supported by pulumi
+	supportsDropIgnoredChanges bool         // true if dropIgnoredChanges is supported by pulumi
+	rpcs                       int          // the number of outstanding RPC requests.
+	rpcsDone                   *sync.Cond   // an event signaling completion of RPCs.
+	rpcsLock                   sync.Mutex   // a lock protecting the RPC count and event.
+	rpcError                   error        // the first error (if any) encountered during an RPC.
+	registeredOutputsLock      sync.Mutex   // a lock protecting the registeredOutputs map
+	registeredOutputs          map[URN]bool // tracks which resources have had outputs registered
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 }
@@ -209,20 +209,20 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	}
 
 	contextState := &contextState{
-		info:                     info,
-		exports:                  make(map[string]Input),
-		monitorConn:              monitorConn,
-		monitor:                  monitor,
-		engineConn:               engineConn,
-		engine:                   engine,
-		keepResources:            keepResources,
-		keepOutputValues:         keepOutputValues,
-		supportsDeletedWith:      supportsDeletedWith,
-		supportsReplaceWith:      supportsReplaceWith,
-		supportsAliasSpecs:       supportsAliasSpecs,
-		supportsTransforms:       supportsTransforms,
-		supportsInvokeTransforms: supportsInvokeTransforms,
-		supportsParameterization: supportsParameterization,
+		info:                       info,
+		exports:                    make(map[string]Input),
+		monitorConn:                monitorConn,
+		monitor:                    monitor,
+		engineConn:                 engineConn,
+		engine:                     engine,
+		keepResources:              keepResources,
+		keepOutputValues:           keepOutputValues,
+		supportsDeletedWith:        supportsDeletedWith,
+		supportsReplaceWith:        supportsReplaceWith,
+		supportsAliasSpecs:         supportsAliasSpecs,
+		supportsTransforms:         supportsTransforms,
+		supportsInvokeTransforms:   supportsInvokeTransforms,
+		supportsParameterization:   supportsParameterization,
 		supportsResourceHooks:      supportsResourceHooks,
 		supportsErrorHooks:         supportsErrorHooks,
 		supportsDropIgnoredChanges: supportsDropIgnoredChanges,
