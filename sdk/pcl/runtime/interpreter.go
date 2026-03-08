@@ -566,9 +566,15 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		return diags
 	}
 
+	// Unwrap any output values, but if the range is computed we just have to skip this resource
+	rangeValue, _ = unwrapOutputs(rangeValue)
+	if rangeValue.IsComputed() {
+		return nil
+	}
+
 	if rangeValue.IsBool() {
 		if !rangeValue.BoolValue() {
-			return i.setVariable(ctx, baseName, resource.NewNullProperty())
+			return nil
 		}
 		result, err := i.registerResourceWith(ctx, res, i.evalContext, baseName)
 		if err != nil {

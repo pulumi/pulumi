@@ -99,7 +99,6 @@ var expectedFailures = map[string]string{
 	"l2-parameterized-invoke":            "dependency loading reports duplicate package definition for subpackage",
 	"l2-parameterized-resource":          "dependency loading reports duplicate package definition for subpackage",
 	"l2-explicit-parameterized-provider": "dependency loading reports duplicate package definition for goodbye",
-	"l3-range-resource-output-traversal": "snapshot contains 4 resources while test expects 5",
 }
 
 func TestLanguage(t *testing.T) {
