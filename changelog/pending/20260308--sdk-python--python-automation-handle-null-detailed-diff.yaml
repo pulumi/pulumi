@@ -1,0 +1,6 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Handle null detailedDiff in automation StepEventMetadata JSON parsing
+  prs:
+  - 22140
