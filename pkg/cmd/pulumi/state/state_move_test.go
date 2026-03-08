@@ -1472,7 +1472,7 @@ func TestMoveBreaksCopiedProviderDependenciesToRemainingSourceResources(t *testi
 		},
 		{
 			URN:          providerURN,
-			Type:         "pulumi:providers:a::default_1_0_0",
+			Type:         providerURN.Type(),
 			ID:           "provider_id",
 			Parent:       resource.DefaultRootStackURN("sourceStack", "test"),
 			Custom:       true,
@@ -1480,7 +1480,7 @@ func TestMoveBreaksCopiedProviderDependenciesToRemainingSourceResources(t *testi
 		},
 		{
 			URN:      moveURN,
-			Type:     "a:b:c",
+			Type:     moveURN.Type(),
 			Provider: string(providerURN) + "::provider_id",
 			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
 		},

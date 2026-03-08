@@ -349,7 +349,7 @@ func (cmd *stateMoveCmd) Run(
 		r := res.Copy()
 		// Copied providers must not depend on resources that remain in the source stack,
 		// otherwise destination snapshot integrity verification fails.
-		breakDependencies(r, remainingResources)
+		brokenSourceDependencies = append(brokenSourceDependencies, breakDependencies(r, remainingResources)...)
 		if _, ok := resourcesToMove[string(r.Parent)]; !ok {
 			rootStack, err := stack.GetRootStackResource(destSnapshot)
 			if err != nil {
