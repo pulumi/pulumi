@@ -551,6 +551,18 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 }
 
 func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) error {
+	result, err := i.registerResourceWith(ctx, res, i.evalContext)
+	if err != nil {
+		return err
+	}
+
+	if err := i.setVariable(ctx, res.Name(), result); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (i *Interpreter) registerResourceWith(ctx context.Context, res *pcl.Resource, evalCtx *hcl.EvalContext) (resource.PropertyValue, error) {
 	inputs := resource.PropertyMap{}
 	for _, attr := range res.Inputs {
 		val, diags := i.evalExpression(attr.Value)
@@ -624,7 +636,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 
 	if res.Options != nil {
 		if res.Options.AdditionalSecretOutputs != nil {
-			additionalSecretOutputs, diags := i.evalExpression(res.Options.AdditionalSecretOutputs)
+			additionalSecretOutputs, diags := i.evalExpressionWith(res.Options.AdditionalSecretOutputs, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -646,7 +658,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.Aliases != nil {
-			aliases, diags := i.evalExpression(res.Options.Aliases)
+			aliases, diags := i.evalExpressionWith(res.Options.Aliases, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -721,7 +733,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.DependsOn != nil {
-			dependsOn, diags := i.evalExpression(res.Options.DependsOn)
+			dependsOn, diags := i.evalExpressionWith(res.Options.DependsOn, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -744,7 +756,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.EnvVarMappings != nil {
-			envVars, diags := i.evalExpression(res.Options.EnvVarMappings)
+			envVars, diags := i.evalExpressionWith(res.Options.EnvVarMappings, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -763,7 +775,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.ImportID != nil {
-			importID, diags := i.evalExpression(res.Options.ImportID)
+			importID, diags := i.evalExpressionWith(res.Options.ImportID, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -775,7 +787,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.IgnoreChanges != nil {
-			ignoreChanges, diags := i.evalExpression(res.Options.IgnoreChanges)
+			ignoreChanges, diags := i.evalExpressionWith(res.Options.IgnoreChanges, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -797,7 +809,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.Protect != nil {
-			protect, diags := i.evalExpression(res.Options.Protect)
+			protect, diags := i.evalExpressionWith(res.Options.Protect, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -813,7 +825,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.ReplaceWith != nil {
-			replaceWith, diags := i.evalExpression(res.Options.ReplaceWith)
+			replaceWith, diags := i.evalExpressionWith(res.Options.ReplaceWith, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -836,7 +848,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.ReplaceOnChanges != nil {
-			replaceOnChanges, diags := i.evalExpression(res.Options.ReplaceOnChanges)
+			replaceOnChanges, diags := i.evalExpressionWith(res.Options.ReplaceOnChanges, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -858,7 +870,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.ReplacementTrigger != nil {
-			replacement, diags := i.evalExpression(res.Options.ReplacementTrigger)
+			replacement, diags := i.evalExpressionWith(res.Options.ReplacementTrigger, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -869,7 +881,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.RetainOnDelete != nil {
-			retain, diags := i.evalExpression(res.Options.RetainOnDelete)
+			retain, diags := i.evalExpressionWith(res.Options.RetainOnDelete, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -885,7 +897,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.Version != nil {
-			version, diags := i.evalExpression(res.Options.Version)
+			version, diags := i.evalExpressionWith(res.Options.Version, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -897,7 +909,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.CustomTimeouts != nil {
-			timeouts, diags := i.evalExpression(res.Options.CustomTimeouts)
+			timeouts, diags := i.evalExpressionWith(res.Options.CustomTimeouts, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -923,7 +935,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.DeleteBeforeReplace != nil {
-			dbr, diags := i.evalExpression(res.Options.DeleteBeforeReplace)
+			dbr, diags := i.evalExpressionWith(res.Options.DeleteBeforeReplace, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -937,7 +949,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.DeletedWith != nil {
-			deletedWith, diags := i.evalExpression(res.Options.DeletedWith)
+			deletedWith, diags := i.evalExpressionWith(res.Options.DeletedWith, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -950,7 +962,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.PluginDownloadURL != nil {
-			downloadURL, diags := i.evalExpression(res.Options.PluginDownloadURL)
+			downloadURL, diags := i.evalExpressionWith(res.Options.PluginDownloadURL, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -962,7 +974,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.Parent != nil {
-			parent, diags := i.evalExpression(res.Options.Parent)
+			parent, diags := i.evalExpressionWith(res.Options.Parent, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -975,7 +987,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.Provider != nil {
-			provider, diags := i.evalExpression(res.Options.Provider)
+			provider, diags := i.evalExpressionWith(res.Options.Provider, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -994,7 +1006,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.Providers != nil {
-			providers, diags := i.evalExpression(res.Options.Providers)
+			providers, diags := i.evalExpressionWith(res.Options.Providers, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -1041,7 +1053,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.HideDiffs != nil {
-			hideDiffs, diags := i.evalExpression(res.Options.HideDiffs)
+			hideDiffs, diags := i.evalExpressionWith(res.Options.HideDiffs, evalCtx)
 			if diags.HasErrors() {
 				return diags
 			}
@@ -1112,10 +1124,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		Known:        true,
 	})
 
-	if err := i.setVariable(ctx, res.Name(), result); err != nil {
-		return err
-	}
-	return nil
+	return result, nil
 }
 
 func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) error {
