@@ -692,6 +692,140 @@ func TestDestroyShowsDeepParentHierarchy(t *testing.T) {
 		"Grandchild should be nested deeper than Child")
 }
 
+// TestDestroyShowsCustomResourceParentHierarchy verifies that the parent hierarchy
+// fix works when the parent is a custom resource (not just a component).
+func TestDestroyShowsCustomResourceParentHierarchy(t *testing.T) {
+	t.Parallel()
+
+	stackURN := resource.URN("urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev")
+	parentURN := resource.URN("urn:pulumi:dev::myproject::aws:s3/bucket:Bucket::mybucket")
+	childURN := resource.URN("urn:pulumi:dev::myproject::aws:s3/bucketObject:BucketObject::myobject")
+
+	events := []engine.Event{
+		engine.NewEvent(engine.PreludeEventPayload{Config: map[string]string{}}),
+		// Stack
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: stackURN, Op: deploy.OpSame,
+				Old: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+				New: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+				Res: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+			},
+		}),
+		// Child custom resource arrives before parent custom resource
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: childURN, Op: deploy.OpDelete,
+				Old: &engine.StepEventStateMetadata{
+					URN: childURN, Type: "aws:s3/bucketObject:BucketObject",
+					Custom: true, Parent: parentURN,
+				},
+				Res: &engine.StepEventStateMetadata{
+					URN: childURN, Type: "aws:s3/bucketObject:BucketObject",
+					Custom: true, Parent: parentURN,
+				},
+			},
+		}),
+		engine.NewEvent(engine.ResourceOutputsEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: childURN, Op: deploy.OpDelete,
+				Old: &engine.StepEventStateMetadata{
+					URN: childURN, Type: "aws:s3/bucketObject:BucketObject",
+					Custom: true, Parent: parentURN,
+				},
+				Res: &engine.StepEventStateMetadata{
+					URN: childURN, Type: "aws:s3/bucketObject:BucketObject",
+					Custom: true, Parent: parentURN,
+				},
+			},
+		}),
+		// Parent custom resource
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: parentURN, Op: deploy.OpDelete,
+				Old: &engine.StepEventStateMetadata{
+					URN: parentURN, Type: "aws:s3/bucket:Bucket",
+					Custom: true, Parent: stackURN,
+				},
+				Res: &engine.StepEventStateMetadata{
+					URN: parentURN, Type: "aws:s3/bucket:Bucket",
+					Custom: true, Parent: stackURN,
+				},
+			},
+		}),
+		engine.NewEvent(engine.ResourceOutputsEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: parentURN, Op: deploy.OpDelete,
+				Old: &engine.StepEventStateMetadata{
+					URN: parentURN, Type: "aws:s3/bucket:Bucket",
+					Custom: true, Parent: stackURN,
+				},
+				Res: &engine.StepEventStateMetadata{
+					URN: parentURN, Type: "aws:s3/bucket:Bucket",
+					Custom: true, Parent: stackURN,
+				},
+			},
+		}),
+		// Stack outputs
+		engine.NewEvent(engine.ResourceOutputsEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: stackURN, Op: deploy.OpSame,
+				Old: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+				New: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+				Res: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+			},
+		}),
+		engine.NewEvent(engine.SummaryEventPayload{
+			ResourceChanges: display.ResourceChanges{deploy.OpDelete: 2, deploy.OpSame: 1},
+			Duration:        5 * time.Second,
+		}),
+		engine.NewCancelEvent(),
+	}
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	go ShowProgressEvents(
+		"test", "destroy", tokens.MustParseStackName("stack"), "project", "",
+		eventChannel, doneChannel,
+		Options{
+			IsInteractive:       true,
+			Color:               colors.Raw,
+			ShowSameResources:   true,
+			DeterministicOutput: true,
+			RenderOnDirty:       true,
+			Stdout:              &stdout,
+			Stderr:              &stderr,
+			term:                terminal.NewMockTerminal(&stdout, 200, 80, true),
+		}, false)
+
+	for _, e := range events {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	output := stdout.String()
+	lines := strings.Split(output, "\n")
+
+	var lastParentLine, lastChildLine string
+	for _, line := range lines {
+		if strings.Contains(line, "aws:s3:BucketObject") && strings.Contains(line, "─") {
+			lastChildLine = line
+		} else if strings.Contains(line, "aws:s3:Bucket") && strings.Contains(line, "─") {
+			lastParentLine = line
+		}
+	}
+
+	require.NotEmpty(t, lastParentLine, "expected Bucket in tree output")
+	require.NotEmpty(t, lastChildLine, "expected BucketObject in tree output")
+
+	parentTreePos := strings.Index(lastParentLine, "─")
+	childTreePos := strings.Index(lastChildLine, "─")
+	assert.Greater(t, childTreePos, parentTreePos,
+		"BucketObject should be nested deeper than Bucket")
+}
+
 func TestProgressPolicyPacks(t *testing.T) {
 	t.Parallel()
 	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
