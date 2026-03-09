@@ -28,30 +28,31 @@ import {
     WriterFunction,
 } from "ts-morph";
 
-import type { Argument, Arguments, AutomationOverrides, Flag, FlagRule, Structure } from "./types";
+import type { Argument, Arguments, Command, Flag, PresetValue, Structure } from "./types";
 
 // Known collisions between the Pulumi CLI and the TypeScript keywords or globals.
 const reservedWords: string[] = ["options", "package"];
 
+/**
+ * Strip omit/preset fields from a flag so that override information doesn't
+ * leak from parent to child via inheritance. Each node re-introduces overrides
+ * via its own spec flags.
+ */
+function baseFlag(flag: Flag): Flag {
+    const { omit, preset, ...rest } = flag;
+    return rest;
+}
+
 (function main(): void {
     if (!process.argv[2]) {
-        throw new Error(
-            "Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts] [path-to-automation-overrides.json]",
-        );
+        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts]");
     }
 
     const specification: string = path.resolve(process.cwd(), process.argv[2]);
     const boilerplate: string = path.resolve(process.cwd(), process.argv[3] ?? path.join("boilerplate", "testing.ts"));
-    const overridesPath: string | undefined = process.argv[4]
-        ? path.resolve(process.cwd(), process.argv[4])
-        : path.join(process.cwd(), "automation-overrides.json");
     const output: string = path.join(process.cwd(), "output");
 
     const spec: Structure = JSON.parse(fs.readFileSync(specification, "utf-8")) as Structure;
-    let overrides: AutomationOverrides | null = null;
-    if (fs.existsSync(overridesPath)) {
-        overrides = JSON.parse(fs.readFileSync(overridesPath, "utf-8")) as AutomationOverrides;
-    }
     fs.mkdirSync(output, { recursive: true });
 
     const index: string = path.join(output, "index.ts");
@@ -73,67 +74,26 @@ const reservedWords: string[] = ["options", "package"];
         throw new Error("Boilerplate must define an `API` class.");
     }
 
-    generateOptionsTypes(spec, source, overrides);
-    generateCommands(spec, container, "ReturnType<API['__run']>", overrides);
+    generateOptionsTypes(spec, source);
+    generateCommands(spec, container, "ReturnType<API['__run']>");
     project.saveSync();
 })();
-
-/**
- * Returns merged flag rules for a command path. Applicable scopes are those
- * whose path is a prefix of the command path (with propagate: true when the
- * scope path is a strict prefix). Scopes are merged in path-length order so
- * deeper scopes override.
- */
-function getMergedFlagRules(overrides: AutomationOverrides | null, commandPath: string[]): Record<string, FlagRule> {
-    if (!overrides?.scopes?.length) {
-        return {};
-    }
-    const applicable = overrides.scopes.filter((scope) => {
-        if (scope.path.length > commandPath.length) {
-            return false;
-        }
-        for (let i = 0; i < scope.path.length; i++) {
-            if (scope.path[i] !== commandPath[i]) {
-                return false;
-            }
-        }
-        if (scope.path.length < commandPath.length && !scope.propagate) {
-            return false;
-        }
-        return true;
-    });
-    applicable.sort((a, b) => a.path.length - b.path.length);
-    const merged: Record<string, FlagRule> = {};
-    for (const scope of applicable) {
-        for (const [name, rule] of Object.entries(scope.flags)) {
-            merged[name] = { ...merged[name], ...rule };
-        }
-    }
-    return merged;
-}
 
 /**
  * Every command and menu may add some flags to the pool of available flags.
  * This means that, as we descend the command tree, we need to collect all the
  * flags that have been defined and add them to an options object.
- * Flags with omit: true in the overrides for this path are excluded.
+ * Flags with omit: true in the spec are excluded from the options type.
  */
 function generateOptionsTypes(
     structure: Structure,
     source: SourceFile,
-    overrides: AutomationOverrides | null,
     breadcrumbs: string[] = [],
     inherited: Record<string, Flag> = {},
 ): void {
     const command: string = createCommandName(breadcrumbs);
     const allFlags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
-    const merged = getMergedFlagRules(overrides, breadcrumbs);
-    const flags: Record<string, Flag> = {};
-    for (const [name, flag] of Object.entries(allFlags)) {
-        if (merged[name]?.omit !== true) {
-            flags[name] = flag;
-        }
-    }
+    const visibleFlags = Object.values(allFlags).filter((f) => !f.omit);
 
     source.addInterface({
         kind: StructureKind.Interface,
@@ -141,12 +101,13 @@ function generateOptionsTypes(
         extends: ["BaseOptions"],
         docs: ["Options for the `" + command + "` command."],
         isExported: true,
-        properties: Object.values(flags).map(flagToPropertySignature),
+        properties: visibleFlags.map(flagToPropertySignature),
     });
 
     if (structure.type === "menu" && structure.commands) {
+        const childInherited = Object.fromEntries(Object.entries(allFlags).map(([k, v]) => [k, baseFlag(v)]));
         for (const [name, child] of Object.entries(structure.commands)) {
-            generateOptionsTypes(child, source, overrides, [...breadcrumbs, name], allFlags);
+            generateOptionsTypes(child, source, [...breadcrumbs, name], childInherited);
         }
     }
 }
@@ -159,28 +120,20 @@ function generateCommands(
     structure: Structure,
     container: ClassDeclaration,
     returnType: string,
-    overrides: AutomationOverrides | null,
     breadcrumbs: string[] = [],
     inherited: Record<string, Flag> = {},
 ): void {
     const allFlags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
 
     if (structure.type === "menu" && structure.commands) {
+        const childInherited = Object.fromEntries(Object.entries(allFlags).map(([k, v]) => [k, baseFlag(v)]));
         for (const [name, child] of Object.entries(structure.commands)) {
-            generateCommands(child, container, returnType, overrides, [...breadcrumbs, name], allFlags);
+            generateCommands(child, container, returnType, [...breadcrumbs, name], childInherited);
         }
     }
 
     if (structure.type === "menu" && !structure.executable) {
         return;
-    }
-
-    const merged = getMergedFlagRules(overrides, breadcrumbs);
-    const flagsForOptions: Record<string, Flag> = {};
-    for (const [name, flag] of Object.entries(allFlags)) {
-        if (merged[name]?.omit !== true) {
-            flagsForOptions[name] = flag;
-        }
     }
 
     const parameters: ParameterDeclarationStructure[] = [];
@@ -212,49 +165,47 @@ function generateCommands(
     container.addMethod({
         name: sanitiseValueName(breadcrumbs.join("_")),
         parameters,
-        statements: generateBody(structure, breadcrumbs, flagsForOptions, merged),
+        statements: generateBody(structure, breadcrumbs, allFlags),
         returnType,
     });
 }
 
 /**
  * Emit code that pushes a preset flag value onto __flags.
- * When omitFromOptions is false, wrap in a condition so we only add the preset
+ * When the flag is not omitted, wrap in a condition so we only add the preset
  * when the user did not provide the option (options.<optName> == null).
  */
 function emitPresetFlag(
     writer: { writeLine: (s: string) => void; indent: (fn: () => void) => void },
-    flagName: string,
-    value: FlagRule["preset"],
-    omitFromOptions: boolean,
-    optName?: string,
+    flag: Flag,
 ): void {
-    if (value === undefined) {
+    if (flag.preset === undefined) {
         return;
     }
-    const wrapCondition = !omitFromOptions && optName != null;
+    const wrapCondition = !flag.omit;
+    const value: PresetValue = flag.preset;
 
     function emit(): void {
         if (typeof value === "boolean") {
             if (value) {
-                writer.writeLine(`__flags.push('--${flagName}');`);
+                writer.writeLine(`__flags.push('--${flag.name}');`);
             }
             return;
         }
         if (typeof value === "string" || typeof value === "number") {
-            writer.writeLine(`__flags.push('--${flagName}', '' + ${JSON.stringify(value)});`);
+            writer.writeLine(`__flags.push('--${flag.name}', '' + ${JSON.stringify(value)});`);
             return;
         }
         if (Array.isArray(value)) {
             writer.writeLine(`for (const __preset of ${JSON.stringify(value)}) {`);
-            writer.indent(() => writer.writeLine(`__flags.push('--${flagName}', __preset);`));
+            writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}', __preset);`));
             writer.writeLine(`}`);
             return;
         }
     }
 
     if (wrapCondition) {
-        writer.writeLine(`if (options.${optName} == null) {`);
+        writer.writeLine(`if (options.${sanitiseValueName(flag.name)} == null) {`);
         writer.indent(emit);
         writer.writeLine(`}`);
     } else {
@@ -263,12 +214,7 @@ function emitPresetFlag(
 }
 
 /** Generate the body of the commands. */
-function generateBody(
-    structure: Structure,
-    breadcrumbs: string[],
-    flagsForOptions: Record<string, Flag>,
-    mergedRules: Record<string, FlagRule>,
-): WriterFunction {
+function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Record<string, Flag>): WriterFunction {
     return (writer) => {
         writer.writeLine("const __final: string[] = [];");
         for (const breadcrumb of breadcrumbs) {
@@ -331,21 +277,20 @@ function generateBody(
         writer.writeLine("const __flags: string[] = [];");
         writer.blankLine();
 
-        /* Preset flags from overrides (e.g. --yes for non-interactive). Omitted flags always get the preset; non-omitted only when the user did not provide the option. */
-        const presetFlagNames = Object.keys(mergedRules).filter((name) => mergedRules[name].preset !== undefined);
-        presetFlagNames.sort();
-        for (const name of presetFlagNames) {
-            const rule = mergedRules[name];
-            const omitted = rule.omit === true;
-            const optName = omitted ? undefined : sanitiseValueName(name);
-            emitPresetFlag(writer, name, rule.preset, omitted, optName);
+        // Preset flags (sorted by name for determinism).
+        const presetFlags = Object.values(allFlags)
+            .filter((f) => f.preset !== undefined)
+            .sort((a, b) => a.name.localeCompare(b.name));
+        for (const flag of presetFlags) {
+            emitPresetFlag(writer, flag);
         }
-        if (presetFlagNames.length > 0) {
+        if (presetFlags.length > 0) {
             writer.blankLine();
         }
 
-        /* Flags from options (only those not omitted). */
-        Object.values(flagsForOptions).forEach((flag) => option(flag));
+        // Flags from options (only those not omitted).
+        const optionFlags = Object.values(allFlags).filter((f) => !f.omit);
+        optionFlags.forEach((flag) => option(flag));
 
         writer.writeLine("__final.push(... __flags);");
         writer.blankLine();

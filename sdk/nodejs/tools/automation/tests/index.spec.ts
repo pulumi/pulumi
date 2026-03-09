@@ -20,12 +20,11 @@ describe("Command examples", () => {
     const api = new API();
 
     it("about", () => {
-        const command = api.about({}); // Global presets: --non-interactive, --yes; about also has color preset "never"
-        assert.strictEqual(command, "pulumi about --color never --non-interactive --yes");
+        const command = api.about({});
+        assert.strictEqual(command, "pulumi about --color never --non-interactive");
     });
 
     it("about with user-provided color overrides preset", () => {
-        // Preset for a non-omitted flag is only used when the option is not provided.
         const withoutColor = api.about({});
         assert.ok(withoutColor.includes("--color never"), "without options.color we get preset --color never");
         const withColor = api.about({ color: "always" });
@@ -44,10 +43,10 @@ describe("Command examples", () => {
                 name: "test",
                 version: "1.0.0",
             },
-            ".", // Required flags
+            ".",
         );
 
-        assert.strictEqual(command, "pulumi template publish --non-interactive --yes --name test --version 1.0.0 -- .");
+        assert.strictEqual(command, "pulumi template publish --non-interactive --name test --version 1.0.0 -- .");
     });
 
     it("import", () => {
@@ -72,9 +71,9 @@ describe("Command examples", () => {
         );
     });
 
-    it("stack ls (preset --json, --non-interactive, --yes; emoji and json omitted from options)", () => {
+    it("stack ls (preset --json, --non-interactive; emoji and json omitted from options)", () => {
         const options: PulumiStackLsOptions = {};
         const command = api.stackLs(options);
-        assert.strictEqual(command, "pulumi stack ls --json --non-interactive --yes");
+        assert.strictEqual(command, "pulumi stack ls --json --non-interactive");
     });
 });
