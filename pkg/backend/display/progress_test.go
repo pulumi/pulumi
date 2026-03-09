@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -376,6 +378,318 @@ func TestStatusDisplayFlags(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestDestroyShowsParentHierarchy verifies that during `pulumi destroy`, child resources
+// are displayed nested under their parent component even when child events arrive before
+// parent events (the reverse of `pulumi up` ordering). This is a regression test for #15064.
+func TestDestroyShowsParentHierarchy(t *testing.T) {
+	t.Parallel()
+
+	stackURN := resource.URN("urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev")
+	componentURN := resource.URN("urn:pulumi:dev::myproject::my:component:Component::mycomponent")
+	childURN := resource.URN("urn:pulumi:dev::myproject::my:component:Child::mychild")
+
+	events := []engine.Event{
+		// 1. Prelude
+		engine.NewEvent(engine.PreludeEventPayload{Config: map[string]string{}}),
+		// 2. Stack pre-event
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: stackURN,
+				Op:  deploy.OpSame,
+				Old: &engine.StepEventStateMetadata{
+					URN:  stackURN,
+					Type: "pulumi:pulumi:Stack",
+				},
+				New: &engine.StepEventStateMetadata{
+					URN:  stackURN,
+					Type: "pulumi:pulumi:Stack",
+				},
+				Res: &engine.StepEventStateMetadata{
+					URN:  stackURN,
+					Type: "pulumi:pulumi:Stack",
+				},
+			},
+		}),
+		// 3. Child pre-event (arrives BEFORE parent during destroy)
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: childURN,
+				Op:  deploy.OpDelete,
+				Old: &engine.StepEventStateMetadata{
+					URN:    childURN,
+					Type:   "my:component:Child",
+					Parent: componentURN,
+				},
+				Res: &engine.StepEventStateMetadata{
+					URN:    childURN,
+					Type:   "my:component:Child",
+					Parent: componentURN,
+				},
+			},
+		}),
+		// 4. Child outputs event
+		engine.NewEvent(engine.ResourceOutputsEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: childURN,
+				Op:  deploy.OpDelete,
+				Old: &engine.StepEventStateMetadata{
+					URN:    childURN,
+					Type:   "my:component:Child",
+					Parent: componentURN,
+				},
+				Res: &engine.StepEventStateMetadata{
+					URN:    childURN,
+					Type:   "my:component:Child",
+					Parent: componentURN,
+				},
+			},
+		}),
+		// 5. Parent pre-event (arrives AFTER child during destroy)
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: componentURN,
+				Op:  deploy.OpDelete,
+				Old: &engine.StepEventStateMetadata{
+					URN:    componentURN,
+					Type:   "my:component:Component",
+					Parent: stackURN,
+				},
+				Res: &engine.StepEventStateMetadata{
+					URN:    componentURN,
+					Type:   "my:component:Component",
+					Parent: stackURN,
+				},
+			},
+		}),
+		// 6. Parent outputs event
+		engine.NewEvent(engine.ResourceOutputsEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: componentURN,
+				Op:  deploy.OpDelete,
+				Old: &engine.StepEventStateMetadata{
+					URN:    componentURN,
+					Type:   "my:component:Component",
+					Parent: stackURN,
+				},
+				Res: &engine.StepEventStateMetadata{
+					URN:    componentURN,
+					Type:   "my:component:Component",
+					Parent: stackURN,
+				},
+			},
+		}),
+		// 7. Stack outputs event
+		engine.NewEvent(engine.ResourceOutputsEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: stackURN,
+				Op:  deploy.OpSame,
+				Old: &engine.StepEventStateMetadata{
+					URN:  stackURN,
+					Type: "pulumi:pulumi:Stack",
+				},
+				New: &engine.StepEventStateMetadata{
+					URN:  stackURN,
+					Type: "pulumi:pulumi:Stack",
+				},
+				Res: &engine.StepEventStateMetadata{
+					URN:  stackURN,
+					Type: "pulumi:pulumi:Stack",
+				},
+			},
+		}),
+		// 8. Summary
+		engine.NewEvent(engine.SummaryEventPayload{
+			ResourceChanges: display.ResourceChanges{deploy.OpDelete: 2, deploy.OpSame: 1},
+			Duration:        7 * time.Second,
+		}),
+		// 9. Cancel
+		engine.NewCancelEvent(),
+	}
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	go ShowProgressEvents(
+		"test", "destroy", tokens.MustParseStackName("stack"), "project", "",
+		eventChannel, doneChannel,
+		Options{
+			IsInteractive:       true,
+			Color:               colors.Raw,
+			ShowSameResources:   true,
+			DeterministicOutput: true,
+			RenderOnDirty:       true,
+			Stdout:              &stdout,
+			Stderr:              &stderr,
+			term:                terminal.NewMockTerminal(&stdout, 200, 80, true),
+		}, false)
+
+	for _, e := range events {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	output := stdout.String()
+
+	// The child should appear indented under the parent component (with └─ tree characters),
+	// NOT at the top level under the stack. Look for "Component" appearing before "Child" in
+	// the tree, with Child being a sub-node of Component.
+	componentIdx := strings.Index(output, "my:component:Component")
+	childIdx := strings.Index(output, "my:component:Child")
+
+	require.NotEqual(t, -1, componentIdx, "expected Component to appear in output")
+	require.NotEqual(t, -1, childIdx, "expected Child to appear in output")
+
+	// In a correctly nested tree, the component appears on a line before the child.
+	// The child line should have deeper indentation (more leading whitespace before └─).
+	assert.Less(t, componentIdx, childIdx,
+		"expected Component to appear before Child in the tree output, indicating proper nesting")
+
+	// Verify the child is nested (its line contains └─ preceded by more spaces than Component's └─)
+	lines := strings.Split(output, "\n")
+	var componentLine, childLine string
+	for _, line := range lines {
+		if strings.Contains(line, "my:component:Component") && strings.Contains(line, "└─") {
+			componentLine = line
+		}
+		if strings.Contains(line, "my:component:Child") && strings.Contains(line, "└─") {
+			childLine = line
+		}
+	}
+	require.NotEmpty(t, componentLine, "expected a tree line with Component and └─")
+	require.NotEmpty(t, childLine, "expected a tree line with Child and └─")
+
+	// The child should be nested deeper - its └─ should appear at a greater offset
+	componentTreePos := strings.Index(componentLine, "└─")
+	childTreePos := strings.Index(childLine, "└─")
+	assert.Greater(t, childTreePos, componentTreePos,
+		"expected Child to be nested deeper than Component (Child └─ at %d, Component └─ at %d)",
+		childTreePos, componentTreePos)
+}
+
+// TestDestroyShowsDeepParentHierarchy verifies that 3+ level nesting works during destroy.
+// Event order: grandchild → child → parent → stack (reverse of creation order).
+func TestDestroyShowsDeepParentHierarchy(t *testing.T) {
+	t.Parallel()
+
+	stackURN := resource.URN("urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev")
+	parentURN := resource.URN("urn:pulumi:dev::myproject::my:component:Parent::myparent")
+	childURN := resource.URN("urn:pulumi:dev::myproject::my:component:Child::mychild")
+	grandchildURN := resource.URN("urn:pulumi:dev::myproject::my:component:Grandchild::mygrandchild")
+
+	makeDeletePre := func(urn, parent resource.URN, typ string) engine.Event {
+		return engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: urn,
+				Op:  deploy.OpDelete,
+				Old: &engine.StepEventStateMetadata{URN: urn, Type: tokens.Type(typ), Parent: parent},
+				Res: &engine.StepEventStateMetadata{URN: urn, Type: tokens.Type(typ), Parent: parent},
+			},
+		})
+	}
+	makeDeleteOut := func(urn, parent resource.URN, typ string) engine.Event {
+		return engine.NewEvent(engine.ResourceOutputsEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: urn,
+				Op:  deploy.OpDelete,
+				Old: &engine.StepEventStateMetadata{URN: urn, Type: tokens.Type(typ), Parent: parent},
+				Res: &engine.StepEventStateMetadata{URN: urn, Type: tokens.Type(typ), Parent: parent},
+			},
+		})
+	}
+
+	events := []engine.Event{
+		engine.NewEvent(engine.PreludeEventPayload{Config: map[string]string{}}),
+		// Stack
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: stackURN, Op: deploy.OpSame,
+				Old: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+				New: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+				Res: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+			},
+		}),
+		// Grandchild first (deepest)
+		makeDeletePre(grandchildURN, childURN, "my:component:Grandchild"),
+		makeDeleteOut(grandchildURN, childURN, "my:component:Grandchild"),
+		// Then child
+		makeDeletePre(childURN, parentURN, "my:component:Child"),
+		makeDeleteOut(childURN, parentURN, "my:component:Child"),
+		// Then parent
+		makeDeletePre(parentURN, stackURN, "my:component:Parent"),
+		makeDeleteOut(parentURN, stackURN, "my:component:Parent"),
+		// Stack outputs
+		engine.NewEvent(engine.ResourceOutputsEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN: stackURN, Op: deploy.OpSame,
+				Old: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+				New: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+				Res: &engine.StepEventStateMetadata{URN: stackURN, Type: "pulumi:pulumi:Stack"},
+			},
+		}),
+		engine.NewEvent(engine.SummaryEventPayload{
+			ResourceChanges: display.ResourceChanges{deploy.OpDelete: 3, deploy.OpSame: 1},
+			Duration:        5 * time.Second,
+		}),
+		engine.NewCancelEvent(),
+	}
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	go ShowProgressEvents(
+		"test", "destroy", tokens.MustParseStackName("stack"), "project", "",
+		eventChannel, doneChannel,
+		Options{
+			IsInteractive:       true,
+			Color:               colors.Raw,
+			ShowSameResources:   true,
+			DeterministicOutput: true,
+			RenderOnDirty:       true,
+			Stdout:              &stdout,
+			Stderr:              &stderr,
+			term:                terminal.NewMockTerminal(&stdout, 200, 80, true),
+		}, false)
+
+	for _, e := range events {
+		eventChannel <- e
+	}
+	<-doneChannel
+
+	output := stdout.String()
+	lines := strings.Split(output, "\n")
+
+	// Find the last rendered frame's lines for each resource (the final state).
+	// Look for lines containing tree characters and resource type names.
+	var lastParentLine, lastChildLine, lastGrandchildLine string
+	for _, line := range lines {
+		if strings.Contains(line, "my:component:Parent") && strings.Contains(line, "─") {
+			lastParentLine = line
+		}
+		if strings.Contains(line, "my:component:Child") && strings.Contains(line, "─") {
+			lastChildLine = line
+		}
+		if strings.Contains(line, "my:component:Grandchild") && strings.Contains(line, "─") {
+			lastGrandchildLine = line
+		}
+	}
+
+	require.NotEmpty(t, lastParentLine, "expected Parent in tree output")
+	require.NotEmpty(t, lastChildLine, "expected Child in tree output")
+	require.NotEmpty(t, lastGrandchildLine, "expected Grandchild in tree output")
+
+	// Verify nesting depth: grandchild > child > parent
+	parentTreePos := strings.Index(lastParentLine, "─")
+	childTreePos := strings.Index(lastChildLine, "─")
+	grandchildTreePos := strings.Index(lastGrandchildLine, "─")
+
+	assert.Greater(t, childTreePos, parentTreePos,
+		"Child should be nested deeper than Parent")
+	assert.Greater(t, grandchildTreePos, childTreePos,
+		"Grandchild should be nested deeper than Child")
 }
 
 func TestProgressPolicyPacks(t *testing.T) {
