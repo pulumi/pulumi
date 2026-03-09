@@ -406,6 +406,19 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		if err != nil && resp.Status != resource.StatusPartialFailure {
+			// If the error indicates the resource already exists externally,
+			// add a helpful hint about how to resolve it (issue #10313).
+			if strings.Contains(strings.ToLower(err.Error()), "already exists") {
+				err = fmt.Errorf("%w\n\n"+
+					"This error typically means the resource already exists in your cloud provider "+
+					"but is not tracked in your Pulumi state. To resolve this, you can:\n"+
+					"  1. Import the existing resource into your Pulumi state:\n"+
+					"     pulumi import '%s' '%s' <id>\n"+
+					"     Replace <id> with the actual ID of the existing resource in your cloud provider.\n"+
+					"  2. Delete the existing resource from your cloud provider and rerun the update.\n"+
+					"  3. Rename the resource in your Pulumi program to avoid the conflict.",
+					err, s.URN().Type(), s.URN().Name())
+			}
 			return resp.Status, nil, err
 		}
 

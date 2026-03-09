@@ -185,6 +185,56 @@ func TestCreateStep(t *testing.T) {
 				assert.True(t, createCalled)
 				assert.Equal(t, resource.StatusOK, status)
 			})
+			t.Run("already exists error includes import hint", func(t *testing.T) {
+				t.Parallel()
+				alreadyExistsErr := errors.New("resource my-bucket already exists")
+				s := &CreateStep{
+					new: &resource.State{
+						URN:    "urn:pulumi:stack::project::aws:s3/bucket:Bucket::my-bucket",
+						Custom: true,
+					},
+					deployment: &Deployment{
+						opts: &Options{
+							DryRun: true,
+						},
+					},
+					provider: &deploytest.Provider{
+						CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
+							return plugin.CreateResponse{}, alreadyExistsErr
+						},
+					},
+				}
+				status, _, err := s.Apply()
+				assert.ErrorContains(t, err, "already exists")
+				assert.ErrorContains(t, err, "pulumi import")
+				assert.ErrorContains(t, err, "aws:s3/bucket:Bucket")
+				assert.ErrorContains(t, err, "my-bucket")
+				assert.Equal(t, resource.StatusOK, status)
+			})
+			t.Run("non-already-exists error has no import hint", func(t *testing.T) {
+				t.Parallel()
+				otherErr := errors.New("some other provider error")
+				s := &CreateStep{
+					new: &resource.State{
+						URN:    "urn:pulumi:stack::project::aws:s3/bucket:Bucket::my-bucket",
+						Custom: true,
+					},
+					deployment: &Deployment{
+						opts: &Options{
+							DryRun: true,
+						},
+					},
+					provider: &deploytest.Provider{
+						CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
+							return plugin.CreateResponse{}, otherErr
+						},
+					},
+				}
+				status, _, err := s.Apply()
+				assert.ErrorIs(t, err, otherErr)
+				assert.NotContains(t, err.Error(), "pulumi import")
+				assert.Equal(t, resource.StatusOK, status)
+			})
 			t.Run("handle InitError", func(t *testing.T) {
 				t.Parallel()
 				s := &CreateStep{
