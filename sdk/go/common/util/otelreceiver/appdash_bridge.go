@@ -182,6 +182,7 @@ func convertAppDashToOTLP(
 	var name string
 	var serviceName string
 	var startTime, endTime time.Time
+	var hasError bool
 	var attributes []*commonpb.KeyValue
 
 	for _, ann := range anns {
@@ -197,6 +198,10 @@ func convertAppDashToOTLP(
 		case ann.Key == "Span.End":
 			if t, err := time.Parse(time.RFC3339Nano, string(ann.Value)); err == nil {
 				endTime = t
+			}
+		case ann.Key == "error":
+			if string(ann.Value) == "true" {
+				hasError = true
 			}
 		case strings.HasPrefix(ann.Key, "_schema:"):
 			// Schema markers — skip.
@@ -245,6 +250,12 @@ func convertAppDashToOTLP(
 		span.ParentSpanId = parentSpanID[:]
 	} else if otelParentSpanID != zeroSpanID {
 		span.ParentSpanId = otelParentSpanID[:]
+	}
+
+	if hasError {
+		span.Status = &tracepb.Status{
+			Code: tracepb.Status_STATUS_CODE_ERROR,
+		}
 	}
 
 	if !startTime.IsZero() {
