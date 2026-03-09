@@ -516,6 +516,7 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 		// If this is an output for a single URN and that URN is now the inner resource reference value then we can
 		// collapse this output into a resource reference directly.
 		if len(newOutput.Dependencies) == 1 &&
+			output.Known &&
 			!output.Element.IsResourceReference() &&
 			newOutput.Element.IsResourceReference() &&
 			newOutput.Element.ResourceReferenceValue().URN == newOutput.Dependencies[0] {
