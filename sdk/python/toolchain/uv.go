@@ -32,6 +32,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
@@ -285,11 +286,11 @@ func (u *uv) ValidateVenv(ctx context.Context) error {
 	return nil
 }
 
-func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
+func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
 	// We use `pip` instead of `uv pip` because `uv pip` does not respect the
 	// `-v` flag, which is required to get the package location.
 	// https://github.com/astral-sh/uv/issues/9838
-	args := []string{"list", "--format", "json", "-v"}
+	args := []string{"list", "--format", "json"}
 	if !transitive {
 		args = append(args, "--not-required")
 	}
@@ -309,7 +310,7 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 			// list the packages from that venv, instead of the isolated venv where
 			// uvx installs pip.
 			_, pythonPath := u.pythonExecutable()
-			args = []string{"pip", "--python", pythonPath, "list", "--format", "json", "-v"}
+			args = []string{"pip", "--python", pythonPath, "list", "--format", "json"}
 			if !transitive {
 				args = append(args, "--not-required")
 			}
@@ -326,11 +327,18 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 		return nil, errutil.ErrorWithStderr(err, "listing packages")
 	}
 
-	var packages []PythonPackage
-	if err := json.Unmarshal(output, &packages); err != nil {
+	var raw []struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(output, &raw); err != nil {
 		return nil, fmt.Errorf("parsing package list: %w", err)
 	}
 
+	packages := make([]plugin.DependencyInfo, len(raw))
+	for i, r := range raw {
+		packages[i] = plugin.DependencyInfo{Name: normalizePythonPackageName(r.Name), Version: r.Version}
+	}
 	return packages, nil
 }
 

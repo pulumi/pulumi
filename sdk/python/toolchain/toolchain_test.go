@@ -217,7 +217,7 @@ func TestListPackages(t *testing.T) {
 			for i, pkg := range packages {
 				packageNames[i] = pkg.Name
 			}
-			expectedPackages := append([]string{"pulumi_test_package"}, test.expectedPackages...)
+			expectedPackages := append([]string{"pulumi-test-package"}, test.expectedPackages...)
 			for _, pkg := range expectedPackages {
 				require.Contains(t, packageNames, pkg)
 			}
@@ -238,7 +238,7 @@ func TestListPackages(t *testing.T) {
 			for i, pkg := range packages {
 				packageNames[i] = pkg.Name
 			}
-			expectedPackages := append([]string{"pulumi_test_package"}, test.expectedPackages...)
+			expectedPackages := append([]string{"pulumi-test-package"}, test.expectedPackages...)
 			for _, pkg := range expectedPackages {
 				require.Contains(t, packageNames, pkg)
 			}
