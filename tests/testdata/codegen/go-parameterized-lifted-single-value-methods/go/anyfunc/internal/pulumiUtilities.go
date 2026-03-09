@@ -163,18 +163,17 @@ func callPlainInner(
 	return value, nil
 }
 
-var packageRef *string
-
 // PkgGetPackageRef returns the package reference for the current package.
+// The reference is cached per pulumi.Context so that concurrent inline
+// programs each register with their own engine and receive distinct refs.
 func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
-	if packageRef == nil {
-
+	return ctx.GetOrRegisterPackageRef("anyfunc:2.1.0", func() (*pulumirpc.RegisterPackageRequest, error) {
 		parameter, err := base64.StdEncoding.DecodeString("eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL25vcnRod29vZC1sYWJzL2NvcmVmdW5jIiwidmVyc2lvbiI6IjIuMS4wIn19")
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		resp, err := ctx.RegisterPackage(&pulumirpc.RegisterPackageRequest{
+		return &pulumirpc.RegisterPackageRequest{
 			Name:        "terraform-provider",
 			Version:     "0.0.0-dev",
 			DownloadUrl: "",
@@ -183,14 +182,8 @@ func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
 				Version: "2.1.0",
 				Value:   parameter,
 			},
-		})
-		if err != nil {
-			return "", err
-		}
-		packageRef = &resp.Ref
-	}
-
-	return *packageRef, nil
+		}, nil
+	})
 }
 
 // PkgResourceDefaultOpts provides package level defaults to pulumi.OptionResource.

@@ -5364,17 +5364,17 @@ func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 		versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
 
 		const packageRefTemplate string = `
-var packageRef *string
 // PkgGetPackageRef returns the package reference for the current package.
+// The reference is cached per pulumi.Context so that concurrent inline
+// programs each register with their own engine and receive distinct refs.
 func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
-	if packageRef == nil {
-
+	return ctx.GetOrRegisterPackageRef(%q, func() (*pulumirpc.RegisterPackageRequest, error) {
 		parameter, err := base64.StdEncoding.DecodeString(%q)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		resp, err := ctx.RegisterPackage(&pulumirpc.RegisterPackageRequest{
+		return &pulumirpc.RegisterPackageRequest{
 			Name: %q,
 			Version: %q,
 			DownloadUrl: %q,
@@ -5383,19 +5383,15 @@ func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
 				Version: %q,
 				Value: parameter,
 			},
-		})
-		if err != nil {
-			return "", err
-		}
-		packageRef = &resp.Ref
-	}
-
-	return *packageRef, nil
+		}, nil
+	})
 }
 `
 
 		value := base64.StdEncoding.EncodeToString(p.Parameterization.Parameter)
+		key := fmt.Sprintf("%s:%s", p.Name, p.Version.String())
 		_, err = fmt.Fprintf(w, packageRefTemplate,
+			key,
 			value,
 			p.Parameterization.BaseProvider.Name, p.Parameterization.BaseProvider.Version.String(), p.PluginDownloadURL,
 			p.Name, p.Version.String(),

@@ -85,6 +85,8 @@ type contextState struct {
 	registeredOutputs        map[URN]bool // tracks which resources have had outputs registered
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
+
+	packageRefs sync.Map // map[string]*packageRefEntry — per-context cache of parameterized provider package refs
 }
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
@@ -1979,6 +1981,42 @@ func (ctx *Context) RegisterPackage(
 		return nil, errors.New("the Pulumi CLI does not support parameterization. Please update the Pulumi CLI")
 	}
 	return ctx.state.monitor.RegisterPackage(ctx.ctx, in)
+}
+
+// packageRefEntry holds a cached package reference for a parameterized provider.
+// The sync.Once ensures exactly one RegisterPackage RPC per key per context.
+type packageRefEntry struct {
+	once sync.Once
+	ref  string
+	err  error
+}
+
+// GetOrRegisterPackageRef returns a cached package reference for the given key,
+// or registers the package and caches the result. The key should uniquely
+// identify the parameterized package (e.g., "name:version"). This method is
+// safe for concurrent use and ensures each Context registers its own package
+// reference, which is required because package references are scoped to the
+// engine/monitor connection and cannot be shared across contexts.
+func (ctx *Context) GetOrRegisterPackageRef(
+	key string,
+	req func() (*pulumirpc.RegisterPackageRequest, error),
+) (string, error) {
+	actual, _ := ctx.state.packageRefs.LoadOrStore(key, &packageRefEntry{})
+	entry := actual.(*packageRefEntry)
+	entry.once.Do(func() {
+		r, err := req()
+		if err != nil {
+			entry.err = err
+			return
+		}
+		resp, err := ctx.RegisterPackage(r)
+		if err != nil {
+			entry.err = err
+			return
+		}
+		entry.ref = resp.Ref
+	})
+	return entry.ref, entry.err
 }
 
 // resourceState contains the results of a resource registration operation.
