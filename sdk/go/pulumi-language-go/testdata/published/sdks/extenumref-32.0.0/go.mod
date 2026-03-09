@@ -1,6 +1,6 @@
 module example.com/pulumi-extenumref/sdk/go/v32
 
-go 1.20
+go 1.25
 
 require github.com/pulumi/pulumi/sdk/v3 v3.30.0
 

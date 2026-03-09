@@ -1,6 +1,6 @@
 module github.com/a-namespace/pulumi-namespaced/sdk/go/v16
 
-go 1.20
+go 1.25
 
 require github.com/pulumi/pulumi/sdk/v3 v3.30.0
 
