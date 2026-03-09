@@ -94,6 +94,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
+	"l2-failed-create-continue-on-error": "not yet supported: continue on error",
 	"l2-parameterized-resource-twice":    "dependency loading reports duplicate package definition for hipackage",
 	"l2-parameterized-invoke":            "dependency loading reports duplicate package definition for subpackage",
 	"l2-parameterized-resource":          "dependency loading reports duplicate package definition for subpackage",

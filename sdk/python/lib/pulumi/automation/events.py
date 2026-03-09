@@ -448,6 +448,7 @@ class StepEventMetadata(BaseEvent):
     def from_json(cls, data: dict) -> "StepEventMetadata":
         old = data.get("old")
         new = data.get("new")
+        detailed_diff = data.get("detailedDiff") or {}
         return cls(
             op=OpType(data.get("op", "")),
             urn=data.get("urn", ""),
@@ -458,8 +459,7 @@ class StepEventMetadata(BaseEvent):
             keys=data.get("keys"),
             diffs=data.get("diffs"),
             detailed_diff={
-                k: PropertyDiff.from_json(v)
-                for k, v in data.get("detailedDiff", {}).items()
+                k: PropertyDiff.from_json(v) for k, v in detailed_diff.items()
             },
             logical=data.get("logical"),
         )

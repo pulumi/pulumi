@@ -186,7 +186,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var logToStderr bool
 	var tracingFlag string
 	var tracingHeaderFlag string
-	var otelFlag string
+	var otelTracesFlag string
 	var profiling string
 	var verbose int
 	var color string
@@ -276,7 +276,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			logging.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
-			if err := cmdutil.InitOtelReceiver(otelFlag); err != nil {
+			if err := cmdutil.InitOtelReceiver(otelTracesFlag); err != nil {
 				logging.V(3).Infof("failed to initialize OTLP receiver: %v", err)
 			}
 
@@ -383,10 +383,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Disable interactive mode for all commands")
 	cmd.PersistentFlags().StringVar(&tracingFlag, "tracing", "",
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
-	cmd.PersistentFlags().StringVar(&otelFlag, "otel", "",
-		"Export OpenTelemetry data to the specified endpoint. "+
+	cmd.PersistentFlags().StringVar(&otelTracesFlag, "otel-traces", "",
+		"Export OpenTelemetry traces to the specified endpoint. "+
 			"Use file:// for local JSON files, grpc:// for remote collectors")
-	_ = cmd.PersistentFlags().MarkHidden("otel")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,
