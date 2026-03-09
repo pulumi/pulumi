@@ -631,6 +631,30 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	remoteArchiveFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "uri",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(archiveType),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if len(args) != 1 {
+				return cty.NilVal, errors.New("remoteArchive requires a uri argument")
+			}
+			if args[0].Type() != cty.String {
+				return cty.NilVal, errors.New("remoteArchive uri must be a string")
+			}
+			uri := args[0].AsString()
+			a, err := archive.FromURI(uri)
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("creating remote archive: %w", err)
+			}
+			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+		},
+	})
+
 	convertFn := function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -811,6 +835,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		"assetArchive":       assetArchiveFn,
 		"stringAsset":        stringAssetFn,
 		"remoteAsset":        remoteAssetFn,
+		"remoteArchive":      remoteArchiveFn,
 		"__convert":          convertFn,
 		"pulumiResourceType": pulumiResourceTypeFn,
 		"pulumiResourceName": pulumiResourceNameFn,

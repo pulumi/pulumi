@@ -11,3 +11,4 @@ const assarc = new asset_archive.ArchiveResource("assarc", {value: new pulumi.as
     archive: new pulumi.asset.FileArchive("../archive.tar"),
 })});
 const remoteass = new asset_archive.AssetResource("remoteass", {value: new pulumi.asset.RemoteAsset("https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/test.txt")});
+const remotearc = new asset_archive.ArchiveResource("remotearc", {value: new pulumi.asset.RemoteArchive("https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/archive.tar")});
