@@ -459,6 +459,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		// Issue seen in pulumi/pulumi#20744 and pulumi/pulumi-terraform-bridge#3247
 		Description:      "Testing Go parameterized SDK with a provider method with liftSingleValueMethodReturns",
 		Skip:             allLanguages.Except("go/any"),
+		// TODO: Re-enable compile check once GetOrRegisterPackageRef is in a released SDK version.
 		SkipCompileCheck: codegen.NewStringSet("go"),
 	},
 }
