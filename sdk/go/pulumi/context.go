@@ -34,6 +34,7 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
