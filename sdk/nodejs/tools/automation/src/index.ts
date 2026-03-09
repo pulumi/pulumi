@@ -28,21 +28,16 @@ import {
     WriterFunction,
 } from "ts-morph";
 
-import type {
-    Argument,
-    Arguments,
-    AutomationOverrides,
-    Flag,
-    FlagRule,
-    Structure,
-} from "./types";
+import type { Argument, Arguments, AutomationOverrides, Flag, FlagRule, Structure } from "./types";
 
 // Known collisions between the Pulumi CLI and the TypeScript keywords or globals.
 const reservedWords: string[] = ["options", "package"];
 
 (function main(): void {
     if (!process.argv[2]) {
-        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts] [path-to-automation-overrides.json]");
+        throw new Error(
+            "Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts] [path-to-automation-overrides.json]",
+        );
     }
 
     const specification: string = path.resolve(process.cwd(), process.argv[2]);
@@ -89,19 +84,22 @@ const reservedWords: string[] = ["options", "package"];
  * scope path is a strict prefix). Scopes are merged in path-length order so
  * deeper scopes override.
  */
-function getMergedFlagRules(
-    overrides: AutomationOverrides | null,
-    commandPath: string[],
-): Record<string, FlagRule> {
+function getMergedFlagRules(overrides: AutomationOverrides | null, commandPath: string[]): Record<string, FlagRule> {
     if (!overrides?.scopes?.length) {
         return {};
     }
     const applicable = overrides.scopes.filter((scope) => {
-        if (scope.path.length > commandPath.length) return false;
-        for (let i = 0; i < scope.path.length; i++) {
-            if (scope.path[i] !== commandPath[i]) return false;
+        if (scope.path.length > commandPath.length) {
+            return false;
         }
-        if (scope.path.length < commandPath.length && !scope.propagate) return false;
+        for (let i = 0; i < scope.path.length; i++) {
+            if (scope.path[i] !== commandPath[i]) {
+                return false;
+            }
+        }
+        if (scope.path.length < commandPath.length && !scope.propagate) {
+            return false;
+        }
         return true;
     });
     applicable.sort((a, b) => a.path.length - b.path.length);
@@ -231,7 +229,9 @@ function emitPresetFlag(
     omitFromOptions: boolean,
     optName?: string,
 ): void {
-    if (value === undefined) return;
+    if (value === undefined) {
+        return;
+    }
     const wrapCondition = !omitFromOptions && optName != null;
 
     function emit(): void {

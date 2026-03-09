@@ -21,28 +21,16 @@ describe("Command examples", () => {
 
     it("about", () => {
         const command = api.about({}); // Global presets: --non-interactive, --yes; about also has color preset "never"
-        assert.strictEqual(
-            command,
-            "pulumi about --color never --non-interactive --yes",
-        );
+        assert.strictEqual(command, "pulumi about --color never --non-interactive --yes");
     });
 
     it("about with user-provided color overrides preset", () => {
         // Preset for a non-omitted flag is only used when the option is not provided.
         const withoutColor = api.about({});
-        assert.ok(
-            withoutColor.includes("--color never"),
-            "without options.color we get preset --color never",
-        );
+        assert.ok(withoutColor.includes("--color never"), "without options.color we get preset --color never");
         const withColor = api.about({ color: "always" });
-        assert.ok(
-            withColor.includes("--color always"),
-            "with options.color we get user value",
-        );
-        assert.ok(
-            !withColor.includes("--color never"),
-            "with options.color we do not get the preset",
-        );
+        assert.ok(withColor.includes("--color always"), "with options.color we get user value");
+        assert.ok(!withColor.includes("--color never"), "with options.color we do not get the preset");
     });
 
     it("config env add", () => {
@@ -59,10 +47,7 @@ describe("Command examples", () => {
             ".", // Required flags
         );
 
-        assert.strictEqual(
-            command,
-            "pulumi template publish --non-interactive --yes --name test --version 1.0.0 -- .",
-        );
+        assert.strictEqual(command, "pulumi template publish --non-interactive --yes --name test --version 1.0.0 -- .");
     });
 
     it("import", () => {
