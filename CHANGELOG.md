@@ -5,6 +5,8 @@
 
 ### Bug Fixes
 
+- [sdk/go] Add per-context packageRef caching for parameterized providers to fix concurrent inline programs
+
 - [engine] Fix inheritence of default providers across resources of different packages
   [#22101](https://github.com/pulumi/pulumi/pull/22101)
 
