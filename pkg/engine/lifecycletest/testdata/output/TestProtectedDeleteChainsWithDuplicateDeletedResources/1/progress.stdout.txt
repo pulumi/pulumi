@@ -1,7 +1,6 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:modA:typA resA <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> 
  <{%fg 10%}>++<{%reset%}> pkgA:modA:typA resA <{%fg 10%}>created replacement<{%reset%}> 
  <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:modA:typA resA <{%bold%}><{%fg 13%}>replacing<{%reset%}> 

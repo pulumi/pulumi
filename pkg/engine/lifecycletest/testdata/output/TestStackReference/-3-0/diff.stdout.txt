@@ -1,8 +1,5 @@
-<{%reset%}>  pulumi:providers:pulumi: (same)
+<{%reset%}>  pulumi:pulumi:StackReference: (same)
 <{%reset%}>    [id=2]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
-<{%reset%}><{%reset%}>  pulumi:pulumi:StackReference: (same)
-<{%reset%}>    [id=1]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:StackReference::other]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    name             : <{%reset%}><{%reset%}>"other"<{%reset%}><{%reset%}>
