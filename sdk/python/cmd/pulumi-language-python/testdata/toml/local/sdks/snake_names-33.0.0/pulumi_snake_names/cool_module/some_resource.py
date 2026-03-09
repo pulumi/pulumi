@@ -21,7 +21,7 @@ __all__ = ['Some_resourceArgs', 'Some_resource']
 @pulumi.input_type
 class Some_resourceArgs:
     def __init__(__self__, *,
-                 nested: pulumi.Input['NestedInputArgs'],
+                 nested: pulumi.Input['Nested_inputArgs'],
                  the_input: pulumi.Input[_builtins.bool]):
         """
         The set of arguments for constructing a Some_resource resource.
@@ -31,11 +31,11 @@ class Some_resourceArgs:
 
     @_builtins.property
     @pulumi.getter
-    def nested(self) -> pulumi.Input['NestedInputArgs']:
+    def nested(self) -> pulumi.Input['Nested_inputArgs']:
         return pulumi.get(self, "nested")
 
     @nested.setter
-    def nested(self, value: pulumi.Input['NestedInputArgs']):
+    def nested(self, value: pulumi.Input['Nested_inputArgs']):
         pulumi.set(self, "nested", value)
 
     @_builtins.property
@@ -54,7 +54,7 @@ class Some_resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 nested: Optional[pulumi.Input[Union['NestedInputArgs', 'NestedInputArgsDict']]] = None,
+                 nested: Optional[pulumi.Input[Union['Nested_inputArgs', 'Nested_inputArgsDict']]] = None,
                  the_input: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         """
@@ -87,7 +87,7 @@ class Some_resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 nested: Optional[pulumi.Input[Union['NestedInputArgs', 'NestedInputArgsDict']]] = None,
+                 nested: Optional[pulumi.Input[Union['Nested_inputArgs', 'Nested_inputArgsDict']]] = None,
                  the_input: Optional[pulumi.Input[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -132,6 +132,6 @@ class Some_resource(pulumi.CustomResource):
 
     @_builtins.property
     @pulumi.getter
-    def the_output(self) -> pulumi.Output[Mapping[str, Sequence['outputs.OutputItem']]]:
+    def the_output(self) -> pulumi.Output[Mapping[str, Sequence['outputs.Output_item']]]:
         return pulumi.get(self, "the_output")
 

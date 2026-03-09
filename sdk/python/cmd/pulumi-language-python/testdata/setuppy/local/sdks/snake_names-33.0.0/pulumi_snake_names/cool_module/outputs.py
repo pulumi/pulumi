@@ -16,7 +16,7 @@ from .. import _utilities
 
 __all__ = [
     'Entry',
-    'OutputItem',
+    'Output_item',
 ]
 
 @pulumi.output_type
@@ -32,7 +32,7 @@ class Entry(dict):
 
 
 @pulumi.output_type
-class OutputItem(dict):
+class Output_item(dict):
     def __init__(__self__, *,
                  nested_output: _builtins.str):
         pulumi.set(__self__, "nested_output", nested_output)

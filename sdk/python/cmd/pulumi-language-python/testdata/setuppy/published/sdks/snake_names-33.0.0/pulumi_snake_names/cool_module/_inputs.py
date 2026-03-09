@@ -17,8 +17,8 @@ from .. import _utilities
 __all__ = [
     'Entry',
     'EntryDict',
-    'NestedInputArgs',
-    'NestedInputArgsDict',
+    'Nested_inputArgs',
+    'Nested_inputArgsDict',
 ]
 
 class EntryDict(TypedDict):
@@ -40,11 +40,11 @@ class Entry:
         pulumi.set(self, "value", value)
 
 
-class NestedInputArgsDict(TypedDict):
+class Nested_inputArgsDict(TypedDict):
     nested_value: pulumi.Input[_builtins.str]
 
 @pulumi.input_type
-class NestedInputArgs:
+class Nested_inputArgs:
     def __init__(__self__, *,
                  nested_value: pulumi.Input[_builtins.str]):
         pulumi.set(__self__, "nested_value", nested_value)

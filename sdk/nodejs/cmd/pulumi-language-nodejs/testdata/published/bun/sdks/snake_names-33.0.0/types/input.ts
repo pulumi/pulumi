@@ -14,7 +14,7 @@ export namespace cool_module {
         value: pulumi.Input<string>;
     }
 
-    export interface NestedInputArgs {
+    export interface Nested_inputArgs {
         nested_value: pulumi.Input<string>;
     }
 

@@ -10,7 +10,7 @@ export namespace cool_module {
         value: string;
     }
 
-    export interface OutputItem {
+    export interface Output_item {
         nested_output: string;
     }
 

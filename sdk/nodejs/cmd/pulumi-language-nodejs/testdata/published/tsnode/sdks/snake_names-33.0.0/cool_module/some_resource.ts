@@ -33,7 +33,7 @@ export class Some_resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Some_resource.__pulumiType;
     }
 
-    declare public /*out*/ readonly the_output: pulumi.Output<{[key: string]: outputs.cool_module.OutputItem[]}>;
+    declare public /*out*/ readonly the_output: pulumi.Output<{[key: string]: outputs.cool_module.Output_item[]}>;
 
     /**
      * Create a Some_resource resource with the given unique name, arguments, and options.
@@ -67,6 +67,6 @@ export class Some_resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Some_resource resource.
  */
 export interface Some_resourceArgs {
-    nested: pulumi.Input<inputs.cool_module.NestedInputArgs>;
+    nested: pulumi.Input<inputs.cool_module.Nested_inputArgs>;
     the_input: pulumi.Input<boolean>;
 }

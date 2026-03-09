@@ -57,7 +57,7 @@ func (p *SnakeNamesProvider) GetSchema(
 		Name:    "snake_names",
 		Version: "33.0.0",
 		Types: map[string]schema.ComplexTypeSpec{
-			"snake_names:cool_module:NestedInput": {
+			"snake_names:cool_module:nested_input": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -68,7 +68,7 @@ func (p *SnakeNamesProvider) GetSchema(
 					Required: []string{"nested_value"},
 				},
 			},
-			"snake_names:cool_module:OutputItem": {
+			"snake_names:cool_module:output_item": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -79,7 +79,7 @@ func (p *SnakeNamesProvider) GetSchema(
 					Required: []string{"nested_output"},
 				},
 			},
-			"snake_names:cool_module:Entry": {
+			"snake_names:cool_module:entry": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -102,7 +102,7 @@ func (p *SnakeNamesProvider) GetSchema(
 								AdditionalProperties: &schema.TypeSpec{
 									Type: "array",
 									Items: &schema.TypeSpec{
-										Ref: "#/types/snake_names:cool_module:OutputItem",
+										Ref: "#/types/snake_names:cool_module:output_item",
 									},
 								},
 							},
@@ -116,7 +116,7 @@ func (p *SnakeNamesProvider) GetSchema(
 					},
 					"nested": {
 						TypeSpec: schema.TypeSpec{
-							Ref: "#/types/snake_names:cool_module:NestedInput",
+							Ref: "#/types/snake_names:cool_module:nested_input",
 						},
 					},
 				},
@@ -152,7 +152,7 @@ func (p *SnakeNamesProvider) GetSchema(
 							TypeSpec: schema.TypeSpec{
 								Type: "array",
 								Items: &schema.TypeSpec{
-									Ref: "#/types/snake_names:cool_module:Entry",
+									Ref: "#/types/snake_names:cool_module:entry",
 								},
 							},
 						},
@@ -169,7 +169,7 @@ func (p *SnakeNamesProvider) GetSchema(
 									Items: &schema.TypeSpec{
 										Type: "object",
 										AdditionalProperties: &schema.TypeSpec{
-											Ref: "#/types/snake_names:cool_module:Entry",
+											Ref: "#/types/snake_names:cool_module:entry",
 										},
 									},
 								},
