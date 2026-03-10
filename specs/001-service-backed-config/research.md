@@ -87,21 +87,33 @@ memory is always in a valid state for its backend.
 **Decision**: Include `path bool` in the editor interface. Path handling
 is inseparable from `config.Map` in the local case.
 
-**Rationale**: `config.Map.Set(k, v, path=true)` internally calls
-`parseKeyPath(k)` → `resource.ParsePropertyPathStrict(k.Name())` →
-`resource.PropertyPath`, then uses the internal `object` type to navigate
-and set nested values. This logic is deeply embedded in `config.Map` and
-not easily extracted.
+**Rationale**: When `--path` is used, the CLI parsing preserves the full
+dotted path in the key's name. For example, `pulumi config set --path
+db.host localhost` produces `Key{namespace: "myproject", name: "db.host"}`
+with `path=true`. This key+flag pair flows through to `config.Map.Set`.
+
+Inside `config.Map.Set(k, v, path=true)`, two tightly-coupled operations
+happen:
+1. **Parse**: `parseKeyPath(k)` calls `resource.ParsePropertyPathStrict(k.Name())`
+   to split `"db.host"` into `PropertyPath{"db", "host"}`, and creates a
+   new root key `Key{myproject, "db"}`.
+2. **Navigate**: Uses the private `object` type to get/create nested
+   containers at the remaining path segments, then stores the value.
+
+Both `parseKeyPath` and `object` are **unexported** from
+`sdk/go/common/resource/config`. The `object` type wraps `any` and
+supports nested `map[string]object` / `[]object` structures, with methods
+like `object.Set(prefix, path PropertyPath, new object)` for navigation.
 
 For the local editor, the simplest implementation is to delegate directly
-to `config.Map.Set(k, v, path)` — which already handles everything. This
-means the editor must accept the `path` parameter.
+to `config.Map.Set(k, v, path)` — which handles all of this internally.
+This means the editor must accept the `path` parameter.
 
-For the ESC editor, the equivalent operation is translating the path into
-a nested YAML path within the `pulumiConfig` section. The ESC YAML
-structure mirrors config.Map's nested object model, so the translation is
-straightforward: `config.Map` path segments map to YAML path segments
-under `pulumiConfig`.
+For the ESC editor, the equivalent operation uses
+`resource.ParsePropertyPathStrict(k.Name())` (public API) to parse the
+path, then translates it to nested YAML navigation under `pulumiConfig`.
+The first path segment becomes the YAML key (e.g., `myproject:db`), and
+remaining segments navigate nested YAML maps.
 
 **Interface implication**:
 ```go
@@ -113,12 +125,29 @@ type ConfigEditor interface {
 ```
 
 **Alternatives considered**:
-- Resolve paths before the editor boundary: Rejected — path resolution
-  is tightly coupled to `config.Map` internals (`object.Set`, container
-  creation). Extracting it would require exposing private types.
-- Use `resource.PropertyPath` as the key type: Over-abstracted for this
-  use case. The editor should take the same inputs the command handler
-  already has (`config.Key` + `path bool`).
+
+- **Resolve paths before the editor boundary**: Rejected — the command
+  handler would need to call `parseKeyPath` (unexported) or reimplement
+  its logic. Then the local editor would need to reconstruct the original
+  key to call `config.Map.Set`, since `config.Map` has no public API
+  that accepts a pre-parsed `PropertyPath`.
+
+- **Use `resource.PropertyPath` as the interface key type**: Rejected.
+  The local editor delegates to `config.Map.Set(k, v, path)`, which
+  expects the **unsplit** key with the full dotted name and `path=true`.
+  There's no public API to pass `config.Map` a pre-parsed PropertyPath —
+  `object.Set` is private. To use PropertyPath at the boundary, the
+  local editor would need to either (a) reconstruct the original key
+  from path segments (lossy roundtrip), or (b) bypass `config.Map.Set`
+  and use private `object` APIs. Both are worse than the current design.
+  Additionally, the `path=false` case (the common case) has no
+  PropertyPath at all — the key is a literal string stored directly. A
+  PropertyPath parameter would need a sentinel or separate method for
+  this case.
+
+  `PropertyPath` is the right type for *navigating* nested structures
+  inside each editor implementation, but the wrong type for the interface
+  boundary because the primary consumer (`config.Map`) doesn't accept it.
 
 ## R5: Conflict Detection Strategy
 
