@@ -214,7 +214,7 @@ func (e CancelledError) Error() string {
 	if e.Operation == "" {
 		return "operation cancelled"
 	}
-	return fmt.Sprintf("%s cancelled", e.Operation)
+	return e.Operation + " cancelled"
 }
 
 // NoChangesExpectedError represents a failure of an operation that was run

@@ -72,9 +72,9 @@ func newStackSelectCmd() *cobra.Command {
 				stack = args[0]
 			}
 
-				if stack == "" && !cmdutil.Interactive() {
-					return backenderr.NoStackSelectedError{}
-				}
+			if stack == "" && !cmdutil.Interactive() {
+				return backenderr.NoStackSelectedError{}
+			}
 
 			if stack != "" {
 				// A stack was given, ask the backend about it.
