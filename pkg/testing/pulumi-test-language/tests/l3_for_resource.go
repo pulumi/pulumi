@@ -31,7 +31,7 @@ func init() {
 			{
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
-					require.Len(l, res.Snap.Resources, 5)
+					require.Len(l, res.Snap.Resources, 6)
 
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:nestedobject")
 
@@ -70,6 +70,15 @@ func init() {
 							resource.NewProperty("computed-c"),
 						}),
 					}, fromSimple.Inputs)
+
+					mapped := RequireSingleNamedResource(l, res.Snap.Resources, "mapped")
+					assert.Equal(l, resource.PropertyMap{
+						"tags": resource.NewProperty(resource.PropertyMap{
+							"a": resource.NewProperty("computed-a"),
+							"b": resource.NewProperty("computed-b"),
+							"c": resource.NewProperty("computed-c"),
+						}),
+					}, mapped.Inputs)
 				},
 			},
 		},

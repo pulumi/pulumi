@@ -1,5 +1,0 @@
-name: l3-for
-runtime:
-  name: nodejs
-  options:
-    typescript: false

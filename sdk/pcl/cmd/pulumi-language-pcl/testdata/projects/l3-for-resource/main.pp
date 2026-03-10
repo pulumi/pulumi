@@ -14,3 +14,8 @@ resource "receiver" "nestedobject:index:Receiver" {
 resource "fromSimple" "nestedobject:index:Container" {
     inputs = [for _, detail in source.details : detail.value]
 }
+
+# for producing a map
+resource "mapped" "nestedobject:index:MapContainer" {
+    tags = {for _, detail in source.details : detail.key => detail.value}
+}

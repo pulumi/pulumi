@@ -47,6 +47,19 @@ func init() {
 							resource.NewProperty("app=web"),
 							resource.NewProperty("env=prod"),
 						}),
+						"greetingMap": resource.NewProperty(resource.PropertyMap{
+							"a": resource.NewProperty("Hello, a!"),
+							"b": resource.NewProperty("Hello, b!"),
+							"c": resource.NewProperty("Hello, c!"),
+						}),
+						"filteredList": resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty("a"),
+							resource.NewProperty("c"),
+						}),
+						"filteredMap": resource.NewProperty(resource.PropertyMap{
+							"a": resource.NewProperty("Hello, a!"),
+							"c": resource.NewProperty("Hello, c!"),
+						}),
 					}, stack.Outputs)
 				},
 			},
