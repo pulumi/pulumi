@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -1089,6 +1091,31 @@ func TestSnapshotAutoRepairSucceedsForInvalidSnapshots(t *testing.T) {
 	require.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 	require.Len(t, sp.LastSnap().Resources, 1)
 	require.Empty(t, sp.LastSnap().Resources[0].Dependencies)
+	event := <-events
+	assert.Equal(t, engine.ErrorEvent, event.Type)
+}
+
+func TestSnapshotAutoRepairErrorIsSurfacedWhenRepairFails(t *testing.T) {
+	t.Parallel()
+
+	// A cyclic dependency (A→B, B→A) fails VerifyIntegrity (ordering violation) and also
+	// causes Repair to fail (Toposort detects the cycle). The returned error should include
+	// both the integrity error and the reason auto-repair failed, so the user knows that
+	// running `pulumi repair` manually will not help.
+	rA := NewResource("a", "b")
+	rB := NewResource("b", "a")
+	snap := NewSnapshot([]*resource.State{rA, rB})
+	sp := &MockStackPersister{}
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	events := make(chan engine.Event, 1)
+	sm.SetEvents(events)
+
+	err := sm.saveSnapshot()
+
+	require.ErrorContains(t, err, "failed to verify snapshot")
+	var sie *snapshot.SnapshotIntegrityError
+	require.True(t, errors.As(err, &sie))
+	require.NotNil(t, sie.AutoRepairErr)
 	event := <-events
 	assert.Equal(t, engine.ErrorEvent, event.Type)
 }

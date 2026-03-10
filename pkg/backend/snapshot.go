@@ -802,21 +802,25 @@ func (sm *SnapshotManager) saveSnapshot() error {
 
 	// If we detected a snapshot integrity error, and we have an events channel
 	// i.e. in the httpstate backend, try to repair the snapshot.
+	var autoRepairErr error
 	if integrityError != nil && !DisableIntegrityChecking && sm.events != nil {
 		sm.emitSnapshotIntegrityErrorEvent(integrityError)
 
-		if repairedDeployment, repairErr := sm.repairAndSerialize(); repairErr == nil {
-			if verifyErr := snapshot.VerifyIntegrity(repairedDeployment.Deployment); verifyErr == nil {
-				repairedDeployment.Deployment.Metadata.IntegrityErrorMetadata = nil
-				if err := sm.persister.Save(repairedDeployment); err != nil {
-					return fmt.Errorf("failed to save snapshot: %w", err)
-				}
-				logging.V(3).Infof("SnapshotManager: auto-repaired snapshot integrity error: %v", integrityError)
-				return nil
+		repairedDeployment, repairErr := sm.repairAndSerialize()
+		if repairErr != nil {
+			logging.V(3).Infof("SnapshotManager: failed to repair snapshot: %v", repairErr)
+			autoRepairErr = repairErr
+		} else if verifyErr := snapshot.VerifyIntegrity(repairedDeployment.Deployment); verifyErr != nil {
+			logging.V(3).Infof("SnapshotManager: repaired snapshot still invalid: %v", verifyErr)
+			autoRepairErr = verifyErr
+		} else {
+			repairedDeployment.Deployment.Metadata.IntegrityErrorMetadata = nil
+			if err := sm.persister.Save(repairedDeployment); err != nil {
+				return fmt.Errorf("failed to save snapshot: %w", err)
 			}
+			logging.V(3).Infof("SnapshotManager: auto-repaired snapshot integrity error: %v", integrityError)
+			return nil
 		}
-
-		logging.V(3).Infof("SnapshotManager: failed to auto-repair snapshot integrity error: %v", integrityError)
 	}
 
 	if integrityError == nil {
@@ -834,6 +838,12 @@ func (sm *SnapshotManager) saveSnapshot() error {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
 	if !DisableIntegrityChecking && integrityError != nil {
+		if autoRepairErr != nil {
+			var sie *snapshot.SnapshotIntegrityError
+			if errors.As(integrityError, &sie) {
+				sie.AutoRepairErr = autoRepairErr
+			}
+		}
 		return fmt.Errorf("failed to verify snapshot: %w", integrityError)
 	}
 	return nil
