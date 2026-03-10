@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pcl
+  description: Support resource ranges in PCL
