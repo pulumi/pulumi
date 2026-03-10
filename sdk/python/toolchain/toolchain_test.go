@@ -58,6 +58,7 @@ func TestValidateVenv(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(opts)
 			opts.Root = t.TempDir()
+			opts.ProgramDir = opts.Root
 			createVenv(t, opts)
 
 			tc, err := ResolveToolchain(opts)
@@ -91,6 +92,7 @@ func TestCommand(t *testing.T) {
 		t.Run("empty/"+Name(opts.Toolchain), func(t *testing.T) {
 			opts := copyOptions(opts)
 			opts.Root = t.TempDir()
+			opts.ProgramDir = opts.Root
 			createVenv(t, opts)
 
 			t.Setenv("MY_ENV_VAR", "HELLO")
@@ -185,6 +187,7 @@ func TestListPackages(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(test.opts)
 			opts.Root = t.TempDir()
+			opts.ProgramDir = opts.Root
 			createVenv(t, opts)
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
@@ -205,6 +208,7 @@ func TestListPackages(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(test.opts)
 			opts.Root = t.TempDir()
+			opts.ProgramDir = opts.Root
 			createVenv(t, opts, testPackageWheel)
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
@@ -226,6 +230,7 @@ func TestListPackages(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(test.opts)
 			opts.Root = t.TempDir()
+			opts.ProgramDir = opts.Root
 			createVenv(t, opts, testPackageWheel, "pip")
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
@@ -268,6 +273,7 @@ func TestAbout(t *testing.T) {
 			t.Parallel()
 			opts := copyOptions(opts)
 			opts.Root = t.TempDir()
+			opts.ProgramDir = opts.Root
 			createVenv(t, opts)
 
 			tc, err := ResolveToolchain(opts)
