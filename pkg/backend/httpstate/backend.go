@@ -1797,6 +1797,7 @@ func (b *cloudBackend) runEngineAction(
 				validationErrs = append(validationErrs, err)
 			}
 			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+			snapshotManager.SetEvents(engineEvents)
 			combinedManager = &engine.CombinedManager{
 				Managers:          []engine.SnapshotManager{snapshotManager, journalManager},
 				CollectErrorsOnly: []bool{false, true},

@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
@@ -1066,6 +1067,30 @@ func TestRecordingSameFailure(t *testing.T) {
 	require.Len(t, deployment.Resources, 1)
 	require.Len(t, deployment.PendingOperations, 0)
 	assert.Equal(t, resourceA.URN, deployment.Resources[0].URN)
+}
+
+func TestSnapshotAutoRepairSucceedsForInvalidSnapshots(t *testing.T) {
+	t.Parallel()
+
+	// The dependency "b" does not exist in the snapshot. With an events channel configured
+	// (as done by the cloud backend), the dangling dependency should be pruned and the
+	// snapshot saved successfully.
+	r := NewResource("a", "b")
+	snap := NewSnapshot([]*resource.State{r})
+	sp := &MockStackPersister{}
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	events := make(chan engine.Event, 1)
+	sm.SetEvents(events)
+
+	err := sm.saveSnapshot()
+
+	require.NoError(t, err)
+	require.NotEmpty(t, sp.SavedSnapshots)
+	require.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
+	require.Len(t, sp.LastSnap().Resources, 1)
+	require.Empty(t, sp.LastSnap().Resources[0].Dependencies)
+	event := <-events
+	assert.Equal(t, engine.ErrorEvent, event.Type)
 }
 
 func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T) {
