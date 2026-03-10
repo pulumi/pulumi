@@ -577,9 +577,7 @@ func NewUpCmd() *cobra.Command {
 
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return errors.New(
-					"--yes or --skip-preview must be passed in to proceed when running in non-interactive mode",
-				)
+				return backenderr.NoConfirmationInNonInteractiveError{}
 			}
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {

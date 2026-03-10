@@ -203,9 +203,9 @@ type NoChangesExpectedError struct {
 
 func (e NoChangesExpectedError) Error() string {
 	if e.Operation == "" {
-		return "no changes were expected but changes occurred"
+		return "no changes were expected but changes were proposed"
 	}
-	return fmt.Sprintf("no changes were expected for %s but changes occurred", e.Operation)
+	return fmt.Sprintf("no changes were expected for %s but changes were proposed", e.Operation)
 }
 
 func (LoginRequiredError) Is(other error) bool {
