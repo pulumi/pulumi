@@ -2,10 +2,14 @@ module github.com/pulumi/pulumi/sdk/pcl/v3
 
 go 1.25.6
 
+replace github.com/pulumi/pulumi/sdk/v3 => ../
+
+replace github.com/pulumi/pulumi/pkg/v3 => ../../pkg
+
 require (
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/pulumi/pulumi/pkg/v3 v3.225.0
-	github.com/pulumi/pulumi/sdk/v3 v3.225.0
+	github.com/pulumi/pulumi/sdk/v3 v3.225.1
 	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.11.1
 	github.com/zclconf/go-cty v1.13.2
