@@ -302,6 +302,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			if cmdutil.IsOTelEnabled() {
 				tracer := otel.Tracer("pulumi-cli")
 				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi")
+
+				// Remap legacy OpenTracing spans into this Otel trace, so everything appears in a single trace.
+				sc := rootSpan.SpanContext()
+				cmdutil.SetAppDashTraceParent(sc.TraceID(), sc.SpanID())
 			}
 			cmd.SetContext(ctx)
 
