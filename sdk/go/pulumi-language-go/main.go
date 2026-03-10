@@ -191,13 +191,19 @@ func main() {
 	}
 
 	logging.InitLogging(false, 0, false)
-	cmdutil.InitTracing("pulumi-language-go", "pulumi-language-go", p.tracing)
 
+	// Use OTel when the CLI provides an OTLP endpoint; fall back to
+	// OpenTracing otherwise.  Only one system should be active to avoid
+	// duplicate spans.
 	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	if err := cmdutil.InitOtelTracing("pulumi-language-go", otelEndpoint); err != nil {
-		logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+	if otelEndpoint == "" {
+		cmdutil.InitTracing("pulumi-language-go", "pulumi-language-go", p.tracing)
+	} else {
+		if err := cmdutil.InitOtelTracing("pulumi-language-go", otelEndpoint); err != nil {
+			logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+		}
+		defer cmdutil.CloseOtelTracing()
 	}
-	defer cmdutil.CloseOtelTracing()
 
 	var cmd mainCmd
 	if err := cmd.Run(p, otelEndpoint); err != nil {
