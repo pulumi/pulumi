@@ -810,6 +810,7 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
+	// can we implement an interface so this "just works"? Probably wishful thinking.
 	err = ps.Config.Set(key, v, c.Path)
 	if err != nil {
 		return fmt.Errorf("could not set config: %w", err)

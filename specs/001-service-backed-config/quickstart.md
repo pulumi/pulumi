@@ -43,8 +43,8 @@ pulumi config get aws:region
 
 # Set secret value
 pulumi config set --secret dbPassword hunter2
-pulumi config get --secret dbPassword
-# Expected: "hunter2" (decrypted)
+pulumi config get dbPassword
+# Expected: "[secret]" (or decrypted value if --show-secrets is passed)
 
 # List config
 pulumi config
@@ -60,7 +60,7 @@ pulumi config set-all --plaintext a=1 --plaintext b=2
 pulumi config rm-all a b
 
 # Error: config cp not supported
-pulumi config cp --stack other-stack
+pulumi config cp --dest other-stack
 # Expected: error about service-backed stacks
 
 # Error: --config-file not applicable

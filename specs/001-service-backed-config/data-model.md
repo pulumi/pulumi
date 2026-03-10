@@ -9,21 +9,27 @@
 
 Write-focused abstraction for mutating stack-owned config. Uses existing
 `config.Key` and `config.Value` types — no new value types needed.
-Encryption is handled by each implementation before persistence.
+Encryption is handled by each implementation **eagerly in `Set()`** —
+the buffered state always contains encrypted/wrapped values.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| Set | `(ctx, Key, Value, path bool) error` | Store a config value |
+| Set | `(ctx, Key, Value, path bool) error` | Encrypt (if secret) and store a config value |
 | Remove | `(ctx, Key, path bool) error` | Delete a config key |
 | Save | `(ctx) error` | Flush buffered mutations |
 
 **Location**: `pkg/cmd/pulumi/config/editor.go`
 
+**Obtained via factory**: `NewConfigEditor(ctx, stack, ps, encrypter)`
+in the same package. Switches on `stack.ConfigLocation().IsRemote`. See
+research.md R8 for why this is a factory, not a `backend.Stack` method.
+
 **Design note**: The `path bool` parameter is included because path
 resolution is inseparable from `config.Map` in the local case. See
 research.md R4 for rationale. The `config.Value` carries plaintext +
-`secure=true` for secrets; each editor encrypts on save (local via
-stack secrets manager, ESC via `fn::secret`).
+`secure=true` for secrets; `Set()` encrypts immediately (local via
+stack secrets manager, ESC via `fn::secret`) so the buffered state
+always holds valid ciphertext. See research.md R3 for rationale.
 
 ### LocalConfigEditor (NEW — struct, implements ConfigEditor)
 
@@ -65,13 +71,12 @@ Already exists at `pkg/backend/stack.go:36`.
 No schema changes needed. The `IsRemote` flag is already set by the
 cloud backend when a stack has a linked ESC environment.
 
-### Stack (EXISTING — extended interface)
+### Stack (EXISTING — no changes to interface)
 
-`backend.Stack` at `pkg/backend/stack.go:43` gains one method:
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| ConfigEditor | `(ctx, *ProjectStack) (ConfigEditor, error)` | Returns editor for the stack's config backend |
+`backend.Stack` at `pkg/backend/stack.go:43`. No new methods added.
+The `ConfigEditor` is obtained via a factory function in the config
+package, not via a `Stack` method (see research.md R8 — adding a
+method would create an import cycle).
 
 ### ProjectStack (EXISTING — no changes)
 
@@ -84,17 +89,16 @@ field (`*Environment`) are used as-is.
 ```
 backend.Stack
   ├── ConfigLocation() → StackConfigLocation{IsRemote, EscEnv}
-  ├── ConfigEditor()   → ConfigEditor (LocalConfigEditor or escConfigEditor)
   └── LoadRemoteConfig() → ProjectStack (existing, used by read path)
 
-ConfigEditor
-  ├── LocalConfigEditor → wraps ProjectStack.Config + file save
-  └── escConfigEditor   → wraps ESC YAML definition + API save
+NewConfigEditor(ctx, stack, ps, encrypter) → ConfigEditor
+  ├── if local  → LocalConfigEditor (wraps ProjectStack.Config + file save)
+  └── if remote → escConfigEditor (wraps ESC YAML definition + API save)
 
 Command Handler (config set/rm/set-all/rm-all)
   ├── Resolves --path flag
-  ├── Creates NormalizedValue{Plaintext, Secret}
-  ├── Calls editor.Set() / editor.Remove()
+  ├── Creates config.Value with plaintext + secure=true (for secrets)
+  ├── Calls editor.Set() (encrypts eagerly) / editor.Remove()
   └── Calls editor.Save()
 ```
 

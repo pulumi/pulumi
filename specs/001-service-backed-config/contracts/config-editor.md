@@ -17,19 +17,23 @@ type ConfigEditor interface {
 Uses existing `config.Key` and `config.Value` types. No new value types.
 For secrets, the command handler passes `config.Value` with `secure=true`
 and **plaintext** in the value field. Each editor implementation encrypts
-on `Save` using its backend's strategy.
+**eagerly in `Set()`** — the in-memory buffer always holds valid
+encrypted/wrapped values, never plaintext secrets.
 
 ## Behavioral Contract
 
 ### Set
 
-- MUST store the value under the given key.
-- If `path` is true, the key's name is treated as a property path
-  (e.g., `db.host` navigates nested objects).
-- If `value.Secure()` is true, the implementation encrypts before persisting:
+- MUST encrypt secret values **immediately** (not deferred to `Save()`):
   - `LocalConfigEditor`: encrypts via the stack's `config.Encrypter`,
     then delegates to `config.Map.Set(key, encryptedValue, path)`
-  - `escConfigEditor`: wraps in `fn::secret` in the ESC YAML definition
+  - `escConfigEditor`: wraps in `fn::secret` when buffering the YAML mutation
+- MUST store the (encrypted) value under the given key.
+- If `path` is true, the key's name is treated as a property path
+  (e.g., `db.host` navigates nested objects).
+- After `Set()` returns, the buffered state contains only valid
+  ciphertext for secure values. This maintains the existing
+  `config.Value` invariant that `secure=true` implies ciphertext.
 - Mutations are buffered in memory — not persisted until `Save()`.
 - Calling `Set` on the same key multiple times before `Save` uses the last value.
 
@@ -63,13 +67,15 @@ on `Save` using its backend's strategy.
 ## Obtaining an Editor
 
 ```go
-editor, err := stack.ConfigEditor(ctx, projectStack)
+editor, err := config.NewConfigEditor(ctx, stack, projectStack, encrypter)
 ```
 
-- `backend.Stack.ConfigEditor(ctx, ps)` returns the appropriate implementation.
-- DIY backend: always returns `LocalConfigEditor`.
-- Cloud backend: returns `escConfigEditor` when `ConfigLocation().IsRemote`,
-  otherwise `LocalConfigEditor`.
+- `NewConfigEditor` is a factory function in `pkg/cmd/pulumi/config`.
+- Switches on `stack.ConfigLocation().IsRemote`:
+  - Local: returns `LocalConfigEditor` wrapping `ps.Config` + file save
+  - Remote: returns `escConfigEditor` wrapping ESC YAML + API save
+- The factory lives in the config package (not on `backend.Stack`) to
+  avoid an import cycle — see research.md R8.
 
 ## Testing Contract
 

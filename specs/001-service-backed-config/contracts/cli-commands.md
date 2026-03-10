@@ -144,9 +144,28 @@ These commands MUST return hard errors for service-backed stacks:
 
 | Command | Error message includes |
 |---------|----------------------|
-| `config env add` | "Use `pulumi config edit` or `pulumi config web`" |
-| `config env rm` | "Use `pulumi config edit` or `pulumi config web`" |
+| `config env add <env>` | Actionable YAML snippet showing the import to add, with guidance to use `pulumi config edit` or `pulumi config web` |
+| `config env rm <env>` | Shows which import to remove, with guidance to use `pulumi config edit` or `pulumi config web` |
 | `config env ls` | "Use `pulumi config edit`, `pulumi config web`, or `pulumi env get`" |
 | `config cp` | "Not supported with service-backed stacks in v1" |
-| `config refresh` | "Config is read live from ESC. Use `pulumi config restore <rev>` to revert." |
+| `config refresh` | Deprecation-style message: "Configuration is read live from ESC — there is no local file to refresh. To revert to an older version, use `pulumi config restore <rev>`." |
 | Any with `--config-file` | "Not applicable for service-backed stacks" |
+
+### Error message for `config env add`
+
+```
+config env add is not supported for service-backed stacks.
+
+To add environment "myorg/shared/creds" as an import, add this to your
+environment definition via `pulumi config edit` or `pulumi config web`:
+
+  imports:
+    - myorg/shared/creds
+```
+
+### Secret values in error messages
+
+Error messages MUST NOT include user-provided secret values. For plaintext
+values, include the value only if it has passed the `looksLikeSecret` check
+(confirmed non-secret). For `--secret` values, always use `<secret-value>`
+as a placeholder.

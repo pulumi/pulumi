@@ -49,48 +49,38 @@ by another user. Please retry your command."
 
 ## R3: Value Type for ConfigEditor
 
-**Decision**: OPEN — needs design-time resolution.
+**Decision**: Use `config.Value` directly with **eager encryption in
+`Set()`**. No new value types.
 
-`config.Value` is structurally just `{value string, secure bool, object
-bool, typ Type}`. The `secure` flag marks intent; the `value` field holds
-whatever string you put in it. Today the command handler encrypts before
-creating the Value, but nothing in the type enforces this. Two viable
-options:
+**Rationale**: `config.Value` is structurally just `{value string, secure
+bool, object bool, typ Type}`. The `secure` flag marks intent; the `value`
+field holds whatever string you put in it. The command handler passes
+plaintext + `secure=true`; each editor implementation encrypts
+**immediately in `Set()`** — not lazily on `Save()`.
 
-**Option A — Use `config.Value` directly (with delayed encryption):**
-The command handler creates `config.Value` with plaintext + `secure=true`.
-Each editor encrypts on `Save`:
-- `LocalConfigEditor`: encrypts via stack's secrets manager
-- `escConfigEditor`: wraps in `fn::secret`
+This is critical because `config.Value` with `secure=true` is assumed by
+the serialization layer (`MarshalYAML`, `unmarshalObject`) to contain
+ciphertext. If a plaintext-secure Value is accidentally stored in
+`config.Map` and serialized, secrets leak silently. By encrypting eagerly
+in `Set()`, the `config.Map` always contains valid ciphertext for secure
+values, maintaining the existing invariant.
 
-Pros: No new type. Leverages existing `config.Map.Set(k, v, path)` for
-the local case, which handles all nested-object/path logic internally.
-Cons: A `config.Value` with `secure=true` and plaintext is an invalid
-state for serialization — if accidentally saved directly, secrets leak.
-
-**Option B — Introduce `NormalizedValue{Plaintext, Secret, Object}`:**
-Separate type that explicitly represents "pre-encryption" state.
-
-Pros: Can't accidentally serialize a plaintext secret as a `config.Value`.
-Cons: New type. Must reimplement path handling outside `config.Map`.
-
-**Key constraint**: `--path` resolution is inseparable from `config.Map`
-in the local case. `config.Map.Set(k, v, path=true)` calls
-`parseKeyPath` → `resource.PropertyPath` → `object.Set` internally. If
-the editor takes `NormalizedValue`, path logic must be duplicated or
-extracted.
-
-**Leaning**: Option A is simpler and avoids path duplication. The risk of
-accidental serialization can be mitigated by ensuring the editor is the
-only path to persistence (command handlers never call `ps.Config.Set`
-directly after refactor).
+For `LocalConfigEditor`, `Set()` encrypts via the stack's secrets manager
+and then delegates to `config.Map.Set(k, encryptedValue, path)`. For
+`escConfigEditor`, `Set()` wraps the plaintext in `fn::secret` when
+buffering the YAML mutation. In both cases, the `config.Value` held in
+memory is always in a valid state for its backend.
 
 **Alternatives considered**:
+- `NormalizedValue{Plaintext, Secret, Object}`: Separate pre-encryption
+  type. Rejected — introduces a new type and forces path handling to be
+  duplicated outside `config.Map` (see R4).
+- Delayed encryption on `Save()`: Rejected — leaves plaintext secrets
+  in `config.Map` during the buffer window. Any accidental serialization
+  (logging, error handling, concurrent save) would leak secrets.
 - `resource.PropertyValue` (`sdk/go/common/resource/properties.go:76`):
-  General-purpose value type with `Secret` wrapper and `V any`. Could
-  work but carries engine-level semantics (Computed, Output, Dependencies)
-  that don't apply to config. Heavier than needed.
-- `interface{}`: Loses type safety and secret intent.
+  General-purpose value type. Rejected — carries engine-level semantics
+  (Computed, Output, Dependencies) that don't apply to config.
 
 ## R4: Path Resolution and the Editor Boundary
 
@@ -139,8 +129,10 @@ contains meaningful config (non-empty `config:` map or environment imports).
 Metadata-only fields (`encryptionsalt`, `secretsprovider`) do not trigger
 conflict detection.
 
-**Rationale**: The conflict check runs in the config loading path
-(`io.go:LoadProjectStack` or the stack operation preamble). It compares:
+**Rationale**: The conflict check runs in the shared config loading path
+(`pkg/cmd/pulumi/stack/io.go:LoadProjectStack`). Today this function
+warns but continues when a local file exists alongside remote config
+(line 72). The change upgrades this to a hard error. It compares:
 1. `stack.ConfigLocation().IsRemote` — is this a service-backed stack?
 2. Does a local config file exist with meaningful content?
 
@@ -193,3 +185,84 @@ For local stacks: prints the config file path (e.g., `Pulumi.dev.yaml`).
   the bare command is available and follows existing convention.
 - Print "no linked environment" for local stacks: Rejected — confusing
   for stacks with ESC environment imports.
+
+## R8: Package Boundary for ConfigEditor
+
+**Decision**: Define `ConfigEditor` interface in `pkg/cmd/pulumi/config`
+with a factory function `NewConfigEditor(ctx, stack, ps, encrypter)`.
+Do NOT add a method to `backend.Stack`.
+
+**Rationale**: `pkg/cmd/pulumi/config` already imports `pkg/backend`. If
+`backend.Stack.ConfigEditor()` returned a type defined in
+`pkg/cmd/pulumi/config`, that would create an import cycle. The reverse
+direction (backend returning a config-package type) is not possible.
+
+The factory function lives in the config package alongside the interface
+and switches on `stack.ConfigLocation().IsRemote`:
+- If local: returns `LocalConfigEditor` (wraps `ps.Config` + file save)
+- If remote: returns `escConfigEditor` (wraps ESC YAML + API save)
+
+The `escConfigEditor` implementation also lives in the config package,
+using the existing ESC client that `config.go` already imports
+(`esc/cmd/esc/cli/client`). This is consistent with how config commands
+already interact with ESC — the CLI package owns the orchestration, the
+backend owns the transport.
+
+**Alternatives considered**:
+- `backend.Stack.ConfigEditor()` method: Creates import cycle. Would
+  require moving `ConfigEditor` to `pkg/backend` or a new shared package.
+- Define `ConfigEditor` in `pkg/backend`: Moves CLI-layer abstraction
+  into the backend. The interface is only used by 4 CLI commands — it
+  doesn't belong in the backend's public surface.
+- No interface (two explicit code paths): Simpler for Phase 1 but
+  doesn't scale to Phase 2. The interface is the minimal abstraction
+  needed for two implementations.
+
+## R9: Secret Exposure in Error Messages
+
+**Decision**: Never include user-provided secret values in error messages
+or guidance strings.
+
+**Rationale**: The current `IsRemote` error guard in `configSetCmd`
+(config.go:800-811) includes the plaintext value in the `pulumi env set`
+guidance when `!c.Secret`. While it skips the value for `--secret` args
+(uses `--secret <value>` placeholder), this pattern is fragile. A value
+that looks like a secret but was passed without `--secret` would still be
+echoed.
+
+The fix: always use a placeholder in guidance strings. For `--secret`
+values: `<secret-value>`. For plaintext values: include the value only
+if it passed the `looksLikeSecret` check (i.e., was explicitly confirmed
+as non-secret by the user).
+
+## R10: config env add/rm/ls on Service-Backed Stacks
+
+**Decision**: Return a hard error with an actionable YAML snippet, not
+just "use config edit".
+
+**Rationale**: `config env add <env>` is a structured operation that
+users understand. Telling them to "use config edit" to add an import is
+a UX regression — they'd need to know ESC YAML syntax for imports. The
+error message should include the exact YAML to add:
+
+```
+config env add is not supported for service-backed stacks.
+
+To add environment "myorg/shared/creds" as an import, add this to your
+environment definition via `pulumi config edit` or `pulumi config web`:
+
+  imports:
+    - myorg/shared/creds
+
+```
+
+Similarly, `config env rm <env>` should show what to remove, and
+`config env ls` should show how to view imports via `pulumi env get`.
+
+**Alternatives considered**:
+- Keep `config env add/rm/ls` working for service-backed stacks by
+  updating ESC YAML via API: Adds scope and complexity. Deferred — can
+  be added later as a convenience. The error-with-snippet approach is
+  sufficient for v1.
+- Plain error with no guidance: Rejected — too opaque for users who
+  don't know ESC YAML format.
