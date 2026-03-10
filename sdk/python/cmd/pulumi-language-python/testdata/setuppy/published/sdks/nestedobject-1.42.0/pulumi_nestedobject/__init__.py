@@ -8,7 +8,9 @@ import typing
 # Export this package's modules as members:
 from .container import *
 from .provider import *
+from .receiver import *
 from .target import *
+from ._inputs import *
 from . import outputs
 _utilities.register(
     resource_modules="""
@@ -19,6 +21,7 @@ _utilities.register(
   "fqn": "pulumi_nestedobject",
   "classes": {
    "nestedobject:index:Container": "Container",
+   "nestedobject:index:Receiver": "Receiver",
    "nestedobject:index:Target": "Target"
   }
  }

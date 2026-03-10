@@ -15,6 +15,11 @@ export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
+export { ReceiverArgs } from "./receiver";
+export type Receiver = import("./receiver").Receiver;
+export const Receiver: typeof import("./receiver").Receiver = null as any;
+utilities.lazyLoad(exports, ["Receiver"], () => require("./receiver"));
+
 export { TargetArgs } from "./target";
 export type Target = import("./target").Target;
 export const Target: typeof import("./target").Target = null as any;
@@ -34,6 +39,8 @@ const _module = {
         switch (type) {
             case "nestedobject:index:Container":
                 return new Container(name, <any>undefined, { urn })
+            case "nestedobject:index:Receiver":
+                return new Receiver(name, <any>undefined, { urn })
             case "nestedobject:index:Target":
                 return new Target(name, <any>undefined, { urn })
             default:

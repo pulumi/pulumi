@@ -99,6 +99,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
 	"l2-invoke-options-depends-on": "not implemented yet",
+	"l3-for":                       "for expressions are not yet supported in Node.js codegen",
+	"l3-for-resource":              "Property 'value' does not exist on type 'number | Detail'. Did you mean 'valueOf'",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").

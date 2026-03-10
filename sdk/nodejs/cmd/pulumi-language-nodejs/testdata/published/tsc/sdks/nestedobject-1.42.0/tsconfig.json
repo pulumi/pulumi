@@ -16,6 +16,7 @@
         "container.ts",
         "index.ts",
         "provider.ts",
+        "receiver.ts",
         "target.ts",
         "types/index.ts",
         "types/input.ts",
