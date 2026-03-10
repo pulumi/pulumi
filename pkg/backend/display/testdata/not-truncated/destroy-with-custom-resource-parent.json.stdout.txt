@@ -1,0 +1,14 @@
+<{%reset%}>Configuration:<{%reset%}>
+<{%reset%}>  pulumi:pulumi:Stack: (same)
+<{%reset%}>    [urn=urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev]
+<{%reset%}><{%reset%}><{%fg 1%}>- aws:s3/bucketObject:BucketObject: (delete)
+<{%fg 1%}>    [id=myobject-id]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:dev::myproject::aws:s3/bucketObject:BucketObject::myobject]
+<{%reset%}><{%reset%}>    <{%fg 1%}>- aws:s3/bucket:Bucket: (delete)
+<{%fg 1%}>        [id=mybucket-id]
+<{%reset%}><{%fg 1%}>        [urn=urn:pulumi:dev::myproject::aws:s3/bucket:Bucket::mybucket]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 7s
