@@ -80,18 +80,15 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
-      - name: Configure Go Cache Key
+      - name: Set tool versions from version-set
         env:
-          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
-        run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@v6
+          VERSION_SET: ${{ inputs.version-set }}
+        run: |
+          echo '[tools]' > .mise.local.toml
+          echo "go = \"$(echo "$VERSION_SET" | jq -r '.go' | sed 's/\.x$//')\"" >> .mise.local.toml
+      - uses: jdx/mise-action@v2
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
-          cache: true
-          cache-dependency-path: |
-            pkg/go.sum
-            .gocache.tmp
+          experimental: true
       - name: Setup versioning env vars
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
