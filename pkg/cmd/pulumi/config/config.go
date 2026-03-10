@@ -67,8 +67,9 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 		Use:   "config",
 		Short: "Manage configuration",
 		Long: "Lists all configuration values for a specific stack. To add a new configuration value, run\n" +
-			"`pulumi config set`. To remove an existing value run `pulumi config rm`. To get the value of\n" +
-			"for a specific configuration key, use `pulumi config get <key-name>`.",
+			"`pulumi config set`. To remove an existing value run `pulumi config rm`. To get the value for\n" +
+			"a specific configuration key, use `pulumi config get <key-name>`. To edit the full\n" +
+			"configuration document in your editor, use `pulumi config edit`.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -149,6 +150,7 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.AddCommand(newConfigSetCmd(ws, &stack))
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &ssml))
+	cmd.AddCommand(newConfigEditCmd(ws, &stack))
 	cmd.AddCommand(newConfigRefreshCmd(ws, &stack))
 	cmd.AddCommand(newConfigCopyCmd(ws, &stack))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack))
