@@ -48,6 +48,7 @@ func TestValidateVenv(t *testing.T) {
 			opts := copyOptions(opts)
 
 			opts.Root = t.TempDir()
+			opts.ProgramDir = opts.Root
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 

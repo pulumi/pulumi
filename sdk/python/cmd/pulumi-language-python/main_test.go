@@ -135,16 +135,19 @@ func getOptions(t *testing.T, name, cwd string) toolchain.PythonOptions {
 			Toolchain:  toolchain.Pip,
 			Virtualenv: ".venv",
 			Root:       cwd,
+			ProgramDir: cwd,
 		}
 	case "poetry":
 		return toolchain.PythonOptions{
-			Toolchain: toolchain.Poetry,
-			Root:      cwd,
+			Toolchain:  toolchain.Poetry,
+			Root:       cwd,
+			ProgramDir: cwd,
 		}
 	case "uv":
 		return toolchain.PythonOptions{
-			Toolchain: toolchain.Uv,
-			Root:      cwd,
+			Toolchain:  toolchain.Uv,
+			Root:       cwd,
+			ProgramDir: cwd,
 		}
 	}
 	t.Fatalf("unknown toolchain: %s", name)
