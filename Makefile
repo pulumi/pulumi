@@ -294,5 +294,5 @@ work:
 		sdk/nodejs/cmd/pulumi-language-nodejs \
 		sdk/nodejs/cmd/pulumi-language-bun \
 		sdk/python/cmd/pulumi-language-python \
-		sdk/pcl/cmd/pulumi-language-pcl \
+		sdk/pcl \
 		tests
