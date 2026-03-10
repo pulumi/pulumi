@@ -54,6 +54,16 @@ type generator struct {
 	quotes                  map[model.Expression]string
 	isComponent             bool
 	deferredOutputVariables []*pcl.DeferredOutputVariable
+
+	// insideApplyLambda is set while generating the body of an __apply callback.
+	insideApplyLambda bool
+	// applyLambdaType holds the destination type for the current resource input.
+	// It is set at the resource input level (outside apply) and read inside
+	// genObjectConsExpression when insideApplyLambda is true, allowing it to
+	// resolve schema type information and generate Args class form instead of
+	// dict literals (which pyright cannot infer as TypedDicts inside lambda
+	// return expressions).
+	applyLambdaType model.Type
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -939,11 +949,14 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 		g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 	}
 
+	inputDestTypes := map[string]model.Type{}
 	if r.Schema != nil {
 		for _, input := range r.Inputs {
 			destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 			g.diagnostics = append(g.diagnostics, diagnostics...)
-			value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))
+			dt := destType.(model.Type)
+			inputDestTypes[input.Name] = dt
+			value, valueTemps := g.lowerExpression(input.Value, dt)
 			temps = append(temps, valueTemps...)
 			input.Value = value
 		}
@@ -964,11 +977,19 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				if qualifiedMemberName == stackRefQualifiedName && propertyName == "name" {
 					propertyName = "stack_name"
 				}
+
+				prev := g.applyLambdaType
+				if dt, ok := inputDestTypes[attr.Name]; ok {
+					g.applyLambdaType = dt
+				}
+
 				if len(r.Inputs) == 1 {
 					g.Fgenf(w, ", %s=%.v", propertyName, attr.Value)
 				} else {
 					g.Fgenf(w, ",\n%s%s=%.v", g.Indent, propertyName, attr.Value)
 				}
+
+				g.applyLambdaType = prev
 			}
 			g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0)
 		})
