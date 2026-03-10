@@ -124,9 +124,9 @@ func ExitError(msg string) {
 // contract for automation and agent integrations and must be treated as
 // stable once released.
 const (
-	ExitSuccess            = 0
-	ExitCodeError          = 1 // generic/unclassified error
-	ExitConfigurationError = 2 // invalid flags, config, or invocation
+	ExitSuccess             = 0
+	ExitCodeError           = 1 // generic/unclassified error
+	ExitConfigurationError  = 2 // invalid flags, config, or invocation
 	ExitAuthenticationError = 3
 	ExitResourceError       = 4
 	ExitPolicyViolation     = 5
@@ -156,30 +156,6 @@ func ExitCodeFor(err error) int {
 		errors.As(err, &backenderr.ForbiddenError{}),
 		errors.As(err, &backenderr.MissingEnvVarForNonInteractiveError{}):
 		return ExitAuthenticationError
-	}
-
-	// Stack context problems.
-	switch {
-	case errors.As(err, &backenderr.StackNotFoundError{}),
-		errors.As(err, &backenderr.NoStacksError{}),
-		errors.As(err, &backenderr.NoStackSelectedError{}),
-		errors.As(err, &backenderr.StackStateNotFoundError{}):
-		return ExitStackNotFound
-	}
-
-	// User-initiated cancellation.
-	if errors.As(err, &backenderr.CancelledError{}) {
-		return ExitCancelled
-	}
-
-	// Expectation / invariant failures like --expect-no-changes.
-	if errors.As(err, &backenderr.NoChangesExpectedError{}) {
-		return ExitNoChanges
-	}
-
-	// Non-interactive mode without confirmation flags.
-	if errors.As(err, &backenderr.NoConfirmationInNonInteractiveError{}) {
-		return ExitConfigurationError
 	}
 
 	// TODO: Wire policy, timeout, and resource-specific errors as they gain
