@@ -1,0 +1,13 @@
+<{%reset%}>Configuration:<{%reset%}>
+<{%reset%}>  pulumi:pulumi:Stack: (same)
+<{%reset%}>    [urn=urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev]
+<{%reset%}><{%reset%}><{%fg 1%}>- my:component:Child: (delete)
+<{%fg 1%}>    [id=mychild-id]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:dev::myproject::my:component:Child::mychild]
+<{%reset%}><{%reset%}>    <{%fg 1%}>- my:component:Component: (delete)
+<{%fg 1%}>        [urn=urn:pulumi:dev::myproject::my:component:Component::mycomponent]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 7s
