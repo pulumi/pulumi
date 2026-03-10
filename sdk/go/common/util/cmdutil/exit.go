@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -40,7 +40,7 @@ func DetailedError(err error) string {
 
 	for {
 		if stackerr, ok := err.(interface {
-			StackTrace() errors.StackTrace
+			StackTrace() pkgerrors.StackTrace
 		}); ok {
 			msg.WriteString("\n")
 			if hasstack {
@@ -54,7 +54,7 @@ func DetailedError(err error) string {
 			}
 
 			// Keep going up the causer chain, if any.
-			cause := errors.Cause(err)
+			cause := pkgerrors.Cause(err)
 			if cause == err || cause == nil {
 				break
 			}
