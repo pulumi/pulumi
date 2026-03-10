@@ -29,10 +29,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
@@ -62,7 +62,7 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 	require.NoError(t, err)
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap), sp
+	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap, nil), sp
 }
 
 func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
@@ -1080,9 +1080,8 @@ func TestSnapshotAutoRepairSucceedsForInvalidSnapshots(t *testing.T) {
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
 	events := make(chan engine.Event, 1)
-	sm.SetEvents(events)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events)
 
 	err := sm.saveSnapshot()
 
@@ -1106,9 +1105,8 @@ func TestSnapshotAutoRepairErrorIsSurfacedWhenRepairFails(t *testing.T) {
 	rB := NewResource("b", "a")
 	snap := NewSnapshot([]*resource.State{rA, rB})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
 	events := make(chan engine.Event, 1)
-	sm.SetEvents(events)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events)
 
 	err := sm.saveSnapshot()
 
@@ -1130,7 +1128,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1150,7 +1148,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) 
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1173,7 +1171,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1196,7 +1194,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(
 	r := NewResource("a")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()

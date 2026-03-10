@@ -884,11 +884,6 @@ func (sm *SnapshotManager) emitSnapshotIntegrityErrorEvent(integrityError error)
 	})
 }
 
-// SetEvents configures an engine event channel on the snapshot manager.
-func (sm *SnapshotManager) SetEvents(events chan<- engine.Event) {
-	sm.events = events
-}
-
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
 func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequest, done chan error) {
 	// True if we have elided writes since the last actual write.
@@ -947,6 +942,7 @@ func NewSnapshotManager(
 	persister SnapshotPersister,
 	secretsManager secrets.Manager,
 	baseSnap *deploy.Snapshot,
+	events chan<- engine.Event,
 ) *SnapshotManager {
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
@@ -959,6 +955,7 @@ func NewSnapshotManager(
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
+		events:           events,
 	}
 
 	serviceLoop := manager.defaultServiceLoop
