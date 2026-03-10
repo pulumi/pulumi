@@ -3,6 +3,11 @@
 ## 3.225.1 (2026-03-05)
 
 
+### Features
+
+- [cli/display] Add `--urns` flag to display full resource URNs instead of short names in preview, up, destroy, refresh, import, and watch commands
+  [#22007](https://github.com/pulumi/pulumi/pull/22007)
+
 ### Bug Fixes
 
 - [engine] Fix inheritence of default providers across resources of different packages
