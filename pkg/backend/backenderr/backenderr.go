@@ -124,6 +124,28 @@ func (NoConfirmationInNonInteractiveError) Error() string {
 	return "confirmation flag (for example --yes or --skip-preview) must be passed when running in non-interactive mode"
 }
 
+// NonInteractiveRequiresYesError represents a non-interactive execution that
+// requires a --yes flag (or equivalent) in order to proceed.
+type NonInteractiveRequiresYesError struct{}
+
+func (NonInteractiveRequiresYesError) Error() string {
+	return "non-interactive mode requires --yes flag"
+}
+
+// NonInteractiveInputRequiredError represents a non-interactive execution where
+// a required piece of input (such as a template, runtime option, or config
+// value) was not provided on the command line.
+type NonInteractiveInputRequiredError struct {
+	Detail string
+}
+
+func (e NonInteractiveInputRequiredError) Error() string {
+	if e.Detail != "" {
+		return e.Detail
+	}
+	return "required input must be specified when running in non-interactive mode"
+}
+
 // NotFoundError wraps another error, indicating that the underlying problem was that a
 // resource was not found.
 type NotFoundError struct {
