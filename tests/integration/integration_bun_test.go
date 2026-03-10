@@ -85,5 +85,14 @@ outer:
 	require.NoError(t, ws.Close())
 
 	// Verify the program completed successfully.
-	wg.Wait()
+	waitDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(waitDone)
+	}()
+	select {
+	case <-waitDone:
+	case <-time.After(60 * time.Second):
+		t.Fatal("timed out waiting for program to complete")
+	}
 }
