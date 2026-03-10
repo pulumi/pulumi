@@ -3,7 +3,6 @@
 
  <{%bold%}><{%reset%}>  <{%reset%}> prog:index:myStandardType resA <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> prog:index:myType resB <{%bold%}><{%reset%}><{%reset%}> 
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resC <{%bold%}><{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> prog:index:myType resB <{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> prog:index:myStandardType resA <{%reset%}><{%reset%}> 

@@ -608,6 +608,13 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 
 	events = fixupEventIDs(events)
 
+	filteredEvents := make([]engine.Event, 0, len(events))
+	for _, e := range events {
+		if !e.Internal() {
+			filteredEvents = append(filteredEvents, e)
+		}
+	}
+
 	var expectedEvents []engine.Event
 	if accept {
 		// Write out the events to a file for acceptance testing.
@@ -619,7 +626,7 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 		defer f.Close()
 
 		enc := json.NewEncoder(f)
-		for _, e := range events {
+		for _, e := range filteredEvents {
 			apiEvent, err := bdisplay.ConvertEngineEvent(e, false)
 			require.NoError(t, err)
 
@@ -627,16 +634,14 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 			require.NoError(t, err)
 		}
 
-		expectedEvents = events
+		expectedEvents = filteredEvents
 	} else {
 		var err error
 		expectedEvents, err = loadEvents(filepath.Join(path, "eventstream.json"))
 		require.NoError(t, err)
 
-		compareEvents(t, expectedEvents, events)
+		compareEvents(t, expectedEvents, filteredEvents)
 	}
-
-	// ShowProgressEvents
 
 	go bdisplay.ShowDiffEvents("test", eventChannel, doneChannel, bdisplay.Options{
 		Color:                colors.Raw,
