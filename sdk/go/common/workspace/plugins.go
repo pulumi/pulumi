@@ -1080,11 +1080,14 @@ type PluginDescriptor struct {
 type PluginVersionNotFoundError error
 
 var urlRegex = sync.OnceValue(func() *regexp.Regexp {
-	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-_/]*[a-zA-Z0-9/](@.*)?$`)
+	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-_\./]*[a-zA-Z0-9/](@.*)?$`)
 })
 
 func IsExternalURL(source string) bool {
-	return strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "git://") || urlRegex().MatchString(source)
+	return strings.HasPrefix(source, "https://") ||
+		strings.HasPrefix(source, "http://") ||
+		strings.HasPrefix(source, "git://") ||
+		urlRegex().MatchString(source)
 }
 
 // Allow sha1 and sha256 hashes.

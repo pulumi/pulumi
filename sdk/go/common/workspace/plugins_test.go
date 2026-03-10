@@ -2239,3 +2239,37 @@ func TestLocalName(t *testing.T) {
 		})
 	}
 }
+
+func TestIsExternalURL(t *testing.T) {
+	t.Parallel()
+
+	is := func(source string) { t.Helper(); assert.Truef(t, IsExternalURL(source), "source = %q", source) }
+	isnot := func(source string) { t.Helper(); assert.Falsef(t, IsExternalURL(source), "source = %q", source) }
+
+	is("git://anything")
+	is("https://anything")
+	is("gitlab.com/project/subgroup/component-test")
+	is("gitlab.com/project/subgroup/component-test.git")
+	is("gitlab.com/project/subgroup/component-test@v4.0.0")
+	is("gitlab.com/project/subgroup/component-test.git@v4.0.0")
+	is("github.com/pulumi/pulumi-aws")
+	is("github.com/org/repo@deadbeef")
+	is("example.com/a")
+	is("registry.io/org/plugin/")
+	is("my-registry.com/org/repo")
+	is("https://example.com/path")
+	is("git://example.com/repo")
+	is("a.co/x")
+	is("http://example.com")
+
+	isnot("word")
+	isnot("")
+	isnot("./relative/path")
+	isnot("/absolute/path")
+	isnot("../parent/path")
+	isnot("just-a-name")
+	isnot("pulumi-aws")
+	isnot("name@v1.0.0")
+	isnot(".hidden")
+	isnot("local.exe")
+}
