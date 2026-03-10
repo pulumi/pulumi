@@ -53,6 +53,7 @@ func NewWatchCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var showURNs bool
 	var secretsProvider string
 
 	cmd := &cobra.Command{
@@ -83,6 +84,7 @@ func NewWatchCmd() *cobra.Command {
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
+				ShowURNs:             showURNs,
 				SuppressOutputs:      true,
 				SuppressProgress:     true,
 				SuppressPermalink:    false,
@@ -232,6 +234,9 @@ func NewWatchCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&showURNs, "urns", false,
+		"Display full URNs instead of short resource names")
 
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist
