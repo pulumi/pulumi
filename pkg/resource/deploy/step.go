@@ -1779,7 +1779,11 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		contract.Assertf(s.cts == nil, "planned import should not have a completion source")
 
 		if _, ok := s.deployment.olds[s.new.URN]; ok {
-			return resource.StatusOK, nil, fmt.Errorf("resource '%v' already exists", s.new.URN)
+			return resource.StatusOK, nil, fmt.Errorf(
+				"resource '%v' already exists; "+
+					"to import this existing resource into your stack, run: "+
+					"pulumi import %v %v <resource-id>",
+				s.new.URN, s.new.URN.Type(), s.new.URN.Name())
 		}
 		if s.new.Parent.QualifiedType() != resource.RootStackType {
 			_, ok := s.deployment.news.Load(s.new.Parent)
