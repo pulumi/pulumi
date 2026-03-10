@@ -1,7 +1,4 @@
-<{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=1]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
-<{%reset%}><{%reset%}><{%fg 10%}>++pkgA:m:typA: (create-replacement)
+<{%fg 10%}>++pkgA:m:typA: (create-replacement)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>  ~ b: <{%reset%}><{%fg 3%}>{
