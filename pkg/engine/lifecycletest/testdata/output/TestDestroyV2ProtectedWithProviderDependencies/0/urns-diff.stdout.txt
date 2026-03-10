@@ -1,0 +1,13 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::prov: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resA: (same) 🔒
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::prov::prov]
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pkgA:m:typA::resA: (delete) 🔒
+<{%fg 1%}>    [id=3]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::prov::prov]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged
+    <{%fg 1%}>1 errored<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

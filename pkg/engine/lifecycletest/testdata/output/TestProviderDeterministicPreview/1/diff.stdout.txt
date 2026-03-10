@@ -2,20 +2,20 @@
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>  ~ foo : <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
-<{%reset%}><{%fg 3%}>  ~ name: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>resA<{%reset%}><{%fg 1%}>c3ab89b<{%reset%}><{%reset%}>9<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>resA<{%reset%}><{%reset%}>9<{%reset%}><{%fg 2%}>2c0175f<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>  ~ name: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>resA<{%reset%}><{%fg 1%}>08bce3e7<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>resA<{%reset%}><{%fg 2%}>a87b1596<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}>+-pkgA:m:typA: (replace)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 3%}>  ~ foo : <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
-<{%reset%}><{%fg 3%}>  ~ name: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>resA<{%reset%}><{%fg 1%}>c3ab89b<{%reset%}><{%reset%}>9<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>resA<{%reset%}><{%reset%}>9<{%reset%}><{%fg 2%}>2c0175f<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>  ~ name: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>resA<{%reset%}><{%fg 1%}>08bce3e7<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>resA<{%reset%}><{%fg 2%}>a87b1596<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 9%}>--pkgA:m:typA: (delete-replaced)
 <{%fg 9%}>    [id=3]
 <{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%fg 9%}>    foo : <{%reset%}><{%fg 9%}>"bar"<{%reset%}><{%fg 9%}>
-<{%reset%}><{%fg 9%}>    name: <{%reset%}><{%fg 9%}>"resAc3ab89b9"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%fg 9%}>    name: <{%reset%}><{%fg 9%}>"resA08bce3e7"<{%reset%}><{%fg 9%}>
 <{%reset%}><{%reset%}><{%fg 9%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo : <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>  - name: <{%reset%}><{%fg 1%}>"resAc3ab89b9"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>  - name: <{%reset%}><{%fg 1%}>"resA08bce3e7"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 13%}>+-1 replaced<{%reset%}>
 

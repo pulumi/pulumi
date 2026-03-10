@@ -1,0 +1,5 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:pulumi:Stack::test: (create)
+<{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
+<{%fg 2%}>    second: <{%reset%}><{%fg 2%}>"def"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>
