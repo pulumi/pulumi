@@ -3470,7 +3470,7 @@ func getNodeInspectorWSURL(t *testing.T, port int) string {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatal("timed out waiting for Node.js inspector WebSocket URL")
+	require.Fail(t, "timed out waiting for Node.js inspector WebSocket URL")
 	return ""
 }
 
