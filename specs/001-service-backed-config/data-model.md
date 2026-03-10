@@ -57,7 +57,7 @@ Translates `config.Key` + path to ESC YAML paths under `pulumiConfig`.
 | envDef | `[]byte` | Mutable YAML definition |
 | revision | `string` | Etag for optimistic concurrency |
 
-**Location**: `pkg/backend/httpstate/config_editor.go`
+**Location**: `pkg/cmd/pulumi/config/editor.go`
 
 ### StackConfigLocation (EXISTING — extended context)
 

@@ -101,6 +101,7 @@
 
 - [ ] T020 [US5] Create config_env_eject.go with eject command: show confirmation prompt listing actions, resolve all config values from ESC environment, prompt for local secrets provider when secrets exist, write resolved values to Pulumi.<stack>.yaml in pkg/cmd/pulumi/config/config_env_eject.go
 - [ ] T021 [US5] Implement service-backed link removal, ESC environment deletion (default) with --keep-env flag to preserve, non-interactive mode (require --secrets-provider when secrets exist, proceed without prompts), and edge case handling: deletion-protected env preserved with message, stale/deleted env cleaned up with warning, deletion failure still completes eject with warning in pkg/cmd/pulumi/config/config_env_eject.go
+- [ ] T032 [P] [US5] Add unit tests for eject command: confirmation prompt flow, secrets provider prompt when secrets exist, --keep-env preserves environment, --non-interactive without --secrets-provider fails when secrets exist, deletion-protected env preserved with message, stale env cleaned up with warning in pkg/cmd/pulumi/config/config_env_eject_test.go
 
 **Checkpoint**: Users can safely leave service-backed config with no data loss.
 
@@ -116,6 +117,7 @@
 
 - [ ] T022 [P] [US6] Create config_pin.go with pin command: accept revision number, tag name, or "latest" keyword (unpin); update stack environment reference with @version suffix; validate against retracted revisions and deleted tags; no-op with message for local stacks in pkg/cmd/pulumi/config/config_pin.go
 - [ ] T024 [US6] Add mutation rejection for pinned stacks: before creating ConfigEditor in set/rm/set-all/rm-all handlers, check if stack is pinned (revision or tag) and return "unpin first" error; also reject config edit on pinned stacks in pkg/cmd/pulumi/config/config.go
+- [ ] T033 [P] [US6] Add unit tests for pin command: pin to revision, pin to tag, unpin with latest, reject retracted revision, reject deleted tag, no-op for local stacks, mutation rejection when pinned (set/rm/edit all return error) in pkg/cmd/pulumi/config/config_pin_test.go
 
 **Checkpoint**: Config pinning and version selection work for service-backed stacks.
 
@@ -133,12 +135,15 @@
 - [ ] T026 [P] [US7] Create config_edit.go: download ESC environment YAML, open in $EDITOR (fall back to vi/notepad), upload modified YAML with etag conflict detection on save; --show-secrets flag (default false); for local stacks open Pulumi.<stack>.yaml in $EDITOR; reject on pinned stacks in pkg/cmd/pulumi/config/config_edit.go
 - [ ] T027 [P] [US7] Create config_web.go: construct Pulumi Cloud console URL for the ESC environment and open in default browser; return error for local stacks in pkg/cmd/pulumi/config/config_web.go
 - [ ] T028 [US7] Add service-backed error guards with actionable YAML snippets for config env add (show imports: syntax), config env rm (show which import to remove), and config env ls (point to config edit/web/env get) in pkg/cmd/pulumi/config/config_env_add.go and pkg/cmd/pulumi/config/config_env.go
+- [ ] T034 [P] [US7] Add unit tests for edit and web commands: config edit downloads/uploads YAML with etag conflict detection, config edit opens local file for local stacks, config edit rejects pinned stacks, config web constructs correct URL, config web returns error for local stacks in pkg/cmd/pulumi/config/config_edit_test.go and config_web_test.go
 
 **Checkpoint**: Full inspection and editing UX available for service-backed stacks.
 
 ---
 
 ## Phase 9: User Story 4 — Migrate Existing Stack to Service-Backed Config (Priority: P3)
+
+**Priority Note**: Downgraded from P2 to P3. Migration requires an existing local config file, so it only benefits existing users — not the initial launch audience. Eject (US5, P2) takes priority because reversibility is a guiding principle.
 
 **Goal**: Users migrate local config to service-backed via `pulumi config env init --migrate`. All values and imports are preserved.
 
@@ -148,6 +153,7 @@
 
 - [ ] T018 [US4] Add --migrate flag to config env init command; implement migration: decrypt all secrets upfront (fail fast if any decryption fails), create ESC environment `<project>/<stack>`, write all config values to pulumiConfig section, carry over environment imports, link stack to environment in pkg/cmd/pulumi/config/config_env_init.go
 - [ ] T019 [US4] Implement idempotent merge for existing ESC environments (local pulumiConfig values overwrite with warnings for each overwritten key), add post-migration prompt to delete local config file, and guard against already-service-backed stacks in pkg/cmd/pulumi/config/config_env_init.go
+- [ ] T035 [P] [US4] Add unit tests for migration: all secrets decrypted before env creation, decryption failure aborts with no partial state, idempotent merge overwrites with warnings, already-service-backed stack returns error, post-migration prompt to delete local file in pkg/cmd/pulumi/config/config_env_init_test.go
 
 **Checkpoint**: Existing stacks can be migrated to service-backed config.
 
@@ -162,6 +168,7 @@
 ### Implementation for User Story 6 (Restore)
 
 - [ ] T023 [US6] Create config_restore.go with restore command: read environment content from specified revision, create new revision with that content via etag-based update (fail with concurrency error if env modified between read and write); error for local stacks in pkg/cmd/pulumi/config/config_restore.go
+- [ ] T036 [P] [US6] Add unit tests for restore command: creates new revision with old content, etag conflict returns error on concurrent modification, error for local stacks in pkg/cmd/pulumi/config/config_restore_test.go
 
 **Checkpoint**: Config rollback via restore works for service-backed stacks.
 
@@ -230,8 +237,11 @@
 - **Phase 3**: T008 (new.go) and T009 (stack_init_test.go) parallel with each other and with T006–T007 (stack_init.go)
 - **Phase 4**: T015 (editor_test.go) parallel with T012–T014 (config.go changes)
 - **Phase 5**: T017 (io_test.go) parallel with T016 (io.go)
-- **Phase 7**: T022 (config_pin.go) parallel with other phase work
-- **Phase 8**: T026 (config_edit.go) and T027 (config_web.go) parallel — different new files
+- **Phase 6**: T032 (eject tests) parallel with T020–T021 (eject implementation)
+- **Phase 7**: T022 (config_pin.go) parallel with other phase work; T033 (pin tests) parallel with T022/T024
+- **Phase 8**: T026 (config_edit.go) and T027 (config_web.go) parallel — different new files; T034 (edit/web tests) parallel with T026–T028
+- **Phase 9**: T035 (migration tests) parallel with T018–T019 (migration implementation)
+- **Phase 10**: T036 (restore tests) parallel with T023 (restore implementation)
 - **P2 stories**: US5, US6-pin, US7 can proceed in parallel across different developers
 - **P3 stories**: US4, US6-restore, US8 can proceed in parallel
 

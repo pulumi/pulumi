@@ -153,7 +153,7 @@ a local config file also exists.
 
 ---
 
-### User Story 4 - Migrate Existing Stack to Service-Backed Config (Priority: P2)
+### User Story 4 - Migrate Existing Stack to Service-Backed Config (Priority: P3)
 
 A developer with an existing stack using local config files migrates to
 service-backed configuration. All config values and environment imports
