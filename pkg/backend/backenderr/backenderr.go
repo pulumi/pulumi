@@ -32,6 +32,47 @@ var (
 	ErrForbidden     ForbiddenError
 )
 
+// StackNotFoundError is returned when a named stack cannot be found in the backend.
+type StackNotFoundError struct {
+	StackName string
+}
+
+func (e StackNotFoundError) Error() string {
+	if e.StackName == "" {
+		return "stack not found"
+	}
+	return fmt.Sprintf("no stack named '%s' found", e.StackName)
+}
+
+// NoStacksError is returned when an operation requires at least one stack in a backend,
+// but none are present.
+type NoStacksError struct{}
+
+func (NoStacksError) Error() string {
+	return "this command requires a stack, but there are none"
+}
+
+// NoStackSelectedError is returned when a stack is required but none has been specified
+// or selected in a non-interactive context.
+type NoStackSelectedError struct{}
+
+func (NoStackSelectedError) Error() string {
+	return "no stack selected; specify a stack name with --stack"
+}
+
+// StackStateNotFoundError is returned when a stack exists but its state / snapshot
+// cannot be located.
+type StackStateNotFoundError struct {
+	StackName string
+}
+
+func (e StackStateNotFoundError) Error() string {
+	if e.StackName == "" {
+		return "failed to find the stack snapshot. Are you in a stack?"
+	}
+	return fmt.Sprintf("failed to find the stack snapshot for stack %s. Are you in a stack?", e.StackName)
+}
+
 // StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
 type StackAlreadyExistsError struct {
 	StackName string
@@ -72,6 +113,15 @@ type MissingEnvVarForNonInteractiveError struct {
 
 func (err MissingEnvVarForNonInteractiveError) Error() string {
 	return err.Var.Name() + " must be set for login during non-interactive CLI sessions"
+}
+
+// NoConfirmationInNonInteractiveError represents a situation where the CLI is run
+// non-interactively and no confirmation flag (such as --yes or --skip-preview) was
+// provided for a destructive or mutating operation.
+type NoConfirmationInNonInteractiveError struct{}
+
+func (NoConfirmationInNonInteractiveError) Error() string {
+	return "confirmation flag (for example --yes or --skip-preview) must be passed when running in non-interactive mode"
 }
 
 // NotFoundError wraps another error, indicating that the underlying problem was that a
@@ -130,6 +180,32 @@ type LoginRequiredError struct{}
 
 func (LoginRequiredError) Error() string {
 	return "this command requires logging in; try running `pulumi login` first"
+}
+
+// CancelledError represents a user-initiated cancellation of an operation
+// such as an update or destroy.
+type CancelledError struct {
+	Operation string
+}
+
+func (e CancelledError) Error() string {
+	if e.Operation == "" {
+		return "operation cancelled"
+	}
+	return fmt.Sprintf("%s cancelled", e.Operation)
+}
+
+// NoChangesExpectedError represents a failure of an operation that was run
+// with an expectation that no changes would occur (e.g. --expect-no-changes).
+type NoChangesExpectedError struct {
+	Operation string
+}
+
+func (e NoChangesExpectedError) Error() string {
+	if e.Operation == "" {
+		return "no changes were expected but changes occurred"
+	}
+	return fmt.Sprintf("no changes were expected for %s but changes occurred", e.Operation)
 }
 
 func (LoginRequiredError) Is(other error) bool {
