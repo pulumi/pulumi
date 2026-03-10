@@ -189,6 +189,9 @@ var (
 
 	DIYBackendParallel = env.Int("DIY_BACKEND_PARALLEL",
 		"Number of parallel operations when fetching stacks and resources from the DIY backend.")
+
+	DIYBackendJournaling = env.Bool("DIY_BACKEND_JOURNALING",
+		"Enable opt-in journaling for the DIY backend (file://, s3://, gs://, azblob://).")
 )
 
 // Environment variables which affect Pulumi AI integrations
