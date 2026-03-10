@@ -26,7 +26,7 @@ scopes:
   pkg: [testing]
   programgen: [dotnet, go, java, nodejs, python, yaml, pcl]
   protobuf: []
-  sdk: [dotnet, go, java, nodejs, python]
+  sdk: [dotnet, go, java, nodejs, bun, python]
   sdkgen: [dotnet, go, java, nodejs, python, yaml, pcl, docs]
   yaml: []
   pcl: []
