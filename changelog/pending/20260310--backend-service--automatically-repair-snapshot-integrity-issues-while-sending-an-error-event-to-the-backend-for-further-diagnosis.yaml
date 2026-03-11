@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/service
+  description: Automatically repair snapshot integrity issues, while sending an error event to the backend for further diagnosis

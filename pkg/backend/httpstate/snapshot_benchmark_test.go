@@ -689,7 +689,7 @@ func BenchmarkSnapshot(b *testing.B) {
 
 	p := newServerPersister(b)
 	getManager := func(t testing.TB, base *deploy.Snapshot) engine.SnapshotManager {
-		return backend.NewSnapshotManager(p, base.SecretsManager, base)
+		return backend.NewSnapshotManager(p, base.SecretsManager, base, nil)
 	}
 	if useJournal {
 		getManager = func(t testing.TB, base *deploy.Snapshot) engine.SnapshotManager {
