@@ -271,12 +271,12 @@ jobs:
           ./.github/scripts/set-output build-targets "${BUILD_TARGETS}"
           echo "::endgroup::"
     outputs:
-      unit-test-matrix: "${{ fromJson(steps.matrix.outputs.unit-test-matrix) }}"
-      integration-test-matrix: "${{ fromJson(steps.matrix.outputs.integration-test-matrix) }}"
-      acceptance-test-matrix-win: "${{ fromJson(steps.matrix.outputs.acceptance-test-matrix-win) }}"
-      acceptance-test-matrix-macos: "${{ fromJson(steps.matrix.outputs.acceptance-test-matrix-macos) }}"
-      version-set: "${{ fromJson(steps.matrix.outputs.version-set) }}"
-      build-targets: "${{ fromJson(steps.matrix.outputs.build-targets) }}"
+      unit-test-matrix: ${{ steps.matrix.outputs.unit-test-matrix }}
+      integration-test-matrix: ${{ steps.matrix.outputs.integration-test-matrix }}
+      acceptance-test-matrix-win: ${{ steps.matrix.outputs.acceptance-test-matrix-win }}
+      acceptance-test-matrix-macos: ${{ steps.matrix.outputs.acceptance-test-matrix-macos }}
+      version-set: ${{ steps.matrix.outputs.version-set }}
+      build-targets: ${{ steps.matrix.outputs.build-targets }}
 
   lint:
     name: Lint
