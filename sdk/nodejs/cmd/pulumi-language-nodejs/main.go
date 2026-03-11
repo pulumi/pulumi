@@ -1495,7 +1495,11 @@ func (host *nodeLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	nodeBin, err := exec.LookPath("node")
+	runtimeExec := host.runtime
+	if runtimeExec == "nodejs" {
+		runtimeExec = "node"
+	}
+	runtimeBin, err := exec.LookPath(runtimeExec)
 	if err != nil {
 		return err
 	}
@@ -1527,20 +1531,26 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, true)
+	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, true)
 	if err != nil {
 		return err
 	}
 
-	args := []string{}
+	var args []string
 	var port int
+	var ready <-chan error
 	if req.GetAttachDebugger() {
-		var debugArgs []string
-		port, debugArgs, _, _, err = getDebuggerSetup("nodejs")
+		var debugArgs, debugEnv []string
+		port, debugArgs, debugEnv, ready, err = getDebuggerSetup(host.runtime)
 		if err != nil {
 			return err
 		}
 		args = append(args, debugArgs...)
+		env = append(env, debugEnv...)
+	}
+
+	if host.runtime == "bun" {
+		args = append([]string{"run"}, args...)
 	}
 
 	args = append(args, runPath)
@@ -1596,7 +1606,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.CommandContext(ctx, nodeBin, args...)
+	cmd := exec.CommandContext(ctx, runtimeBin, args...)
 	// node policy packs used to always run with the working directory set to the policy pack directory, not
 	// the main working directory. We need to continue that for backwards compatibility.
 	if req.Kind == string(apitype.AnalyzerPlugin) {
@@ -1614,7 +1624,17 @@ func (host *nodeLanguageHost) RunPlugin(
 			return err
 		}
 		if req.GetAttachDebugger() {
-			err := startDebugging(ctx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name), "node")
+			if ready != nil {
+				select {
+				case err := <-ready:
+					if err != nil {
+						return err
+					}
+				case <-time.After(10 * time.Second):
+					return errors.New("timed out waiting for bun inspector to be ready")
+				}
+			}
+			err := startDebugging(ctx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name), host.runtime)
 			if err != nil {
 				return err
 			}
