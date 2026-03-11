@@ -883,6 +883,10 @@ func newConfigSetAllCmd(
 			if err != nil {
 				return err
 			}
+			if cmdStack.ConfigFile != "" && stack.ConfigLocation().IsRemote {
+				return errors.New("--config-file is not supported for service-backed stacks; " +
+					"configuration is stored in Pulumi Cloud")
+			}
 
 			// We only want to fetch the stack encrypter once, and then only if we actually have one or more secrets to
 			// encrypt. We thus set up a little helper function to encrypt a value, caching the crypter once we've initially

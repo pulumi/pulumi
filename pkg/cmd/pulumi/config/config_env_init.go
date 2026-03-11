@@ -136,7 +136,10 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	orgName := stack.(interface{ OrgName() string }).OrgName()
+	orgName, err := stackOrgName(stack)
+	if err != nil {
+		return err
+	}
 
 	// Parse given environment name
 	// Try to split the given envName into project/env
@@ -243,7 +246,10 @@ func (cmd *configEnvInitCmd) runMigrate(ctx context.Context) error {
 		return fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	orgName := stack.(interface{ OrgName() string }).OrgName()
+	orgName, err := stackOrgName(stack)
+	if err != nil {
+		return err
+	}
 
 	envProject := project.Name.String()
 	envName := stack.Ref().Name().String()
@@ -302,7 +308,7 @@ func (cmd *configEnvInitCmd) runMigrate(ctx context.Context) error {
 	fullEnvName := fmt.Sprintf("%s/%s", envProject, envName)
 
 	existingYAML, etag, _, getErr := envBackend.GetEnvironment(ctx, orgName, envProject, envName, "", false)
-	envExists := getErr == nil && len(existingYAML) > 0
+	envExists := getErr == nil
 
 	if envExists {
 		var existingDef map[string]any

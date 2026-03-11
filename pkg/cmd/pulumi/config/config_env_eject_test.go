@@ -16,6 +16,8 @@ package config
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"testing"
 
@@ -23,7 +25,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // --- extractPulumiConfig unit tests ---
@@ -203,4 +213,134 @@ func TestEject_GetEnvironment_NonNotFound_ReturnsError(t *testing.T) {
 	require.Error(t, getErr)
 	assert.False(t, isHTTPNotFound(getErr),
 		"a 500 must not be treated as not-found; eject should abort, not strip config and unlink")
+}
+
+func TestConfigEnvEject_WritesLocalConfigBeforeUnlinking(t *testing.T) {
+	t.Parallel()
+
+	project := &workspace.Project{Name: tokens.PackageName("myproject")}
+	stackRef := "dev"
+	escEnv := "myproject/dev"
+
+	var callOrder []string
+	var savedStack *workspace.ProjectStack
+
+	stack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &escEnv}
+		},
+		BackendF: func() backend.Backend {
+			return &backend.MockEnvironmentsBackend{
+				GetEnvironmentF: func(_ context.Context, _, _, _, _ string, _ bool) ([]byte, string, int, error) {
+					return []byte("values:\n  pulumiConfig:\n    myproject:name: value\n"), "etag", 1, nil
+				},
+				DeleteEnvironmentWithProjectF: func(_ context.Context, _, _, _ string) error {
+					callOrder = append(callOrder, "delete-env")
+					return nil
+				},
+			}
+		},
+	}
+	stack.OrgNameF = func() string { return "myorg" }
+	stack.RemoveRemoteConfigF = func(context.Context) error {
+		callOrder = append(callOrder, "unlink")
+		return nil
+	}
+
+	parent := &configEnvCmd{
+		stdout:      io.Discard,
+		interactive: true,
+		ws: &pkgWorkspace.MockContext{
+			ReadProjectF: func() (*workspace.Project, string, error) {
+				return project, "", nil
+			},
+		},
+		requireStack: func(
+			context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager, string, cmdStack.LoadOption, display.Options,
+		) (backend.Stack, error) {
+			return stack, nil
+		},
+		stackRef: &stackRef,
+	}
+
+	cmd := &configEnvEjectCmd{
+		parent: parent,
+		yes:    true,
+		saveLocalProjectStack: func(_ tokens.QName, ps *workspace.ProjectStack) error {
+			callOrder = append(callOrder, "save")
+			savedStack = ps
+			return nil
+		},
+	}
+
+	err := cmd.run(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, []string{"save", "unlink", "delete-env"}, callOrder)
+	require.NotNil(t, savedStack)
+	value, err := savedStack.Config[config.MustMakeKey("myproject", "name")].Value(config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, "value", value)
+}
+
+func TestConfigEnvEject_SaveFailureDoesNotUnlink(t *testing.T) {
+	t.Parallel()
+
+	project := &workspace.Project{Name: tokens.PackageName("myproject")}
+	stackRef := "dev"
+	escEnv := "myproject/dev"
+
+	unlinked := false
+
+	stack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &escEnv}
+		},
+		BackendF: func() backend.Backend {
+			return &backend.MockEnvironmentsBackend{
+				GetEnvironmentF: func(_ context.Context, _, _, _, _ string, _ bool) ([]byte, string, int, error) {
+					return []byte("values:\n  pulumiConfig:\n    myproject:name: value\n"), "etag", 1, nil
+				},
+			}
+		},
+	}
+	stack.OrgNameF = func() string { return "myorg" }
+	stack.RemoveRemoteConfigF = func(context.Context) error {
+		unlinked = true
+		return nil
+	}
+
+	parent := &configEnvCmd{
+		stdout:      io.Discard,
+		interactive: true,
+		ws: &pkgWorkspace.MockContext{
+			ReadProjectF: func() (*workspace.Project, string, error) {
+				return project, "", nil
+			},
+		},
+		requireStack: func(
+			context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager, string, cmdStack.LoadOption, display.Options,
+		) (backend.Stack, error) {
+			return stack, nil
+		},
+		stackRef: &stackRef,
+	}
+
+	cmd := &configEnvEjectCmd{
+		parent: parent,
+		yes:    true,
+		saveLocalProjectStack: func(tokens.QName, *workspace.ProjectStack) error {
+			return errors.New("disk full")
+		},
+	}
+
+	err := cmd.run(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "writing local config file: disk full")
+	assert.False(t, unlinked)
 }

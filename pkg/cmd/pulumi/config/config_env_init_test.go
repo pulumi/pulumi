@@ -407,9 +407,9 @@ func newConfigEnvCmdForMigrateTest(
 
 type failingSecretsManager struct{}
 
-func (f *failingSecretsManager) Type() string                         { return "failing" }
-func (f *failingSecretsManager) State() json.RawMessage               { return nil }
-func (f *failingSecretsManager) Encrypter() config.Encrypter          { return config.NopEncrypter }
+func (f *failingSecretsManager) Type() string                { return "failing" }
+func (f *failingSecretsManager) State() json.RawMessage      { return nil }
+func (f *failingSecretsManager) Encrypter() config.Encrypter { return config.NopEncrypter }
 func (f *failingSecretsManager) Decrypter() config.Decrypter {
 	return config.NewErrorCrypter("invalid passphrase")
 }
@@ -495,8 +495,8 @@ func TestConfigEnvInit_Migrate_IdempotentMerge(t *testing.T) {
 
 	projectYAML := "name: myapp\nruntime: yaml"
 	cfg := config.Map{
-		config.MustMakeKey("myapp", "region"):  config.NewValue("us-west-2"),
-		config.MustMakeKey("myapp", "newkey"):  config.NewValue("newval"),
+		config.MustMakeKey("myapp", "region"): config.NewValue("us-west-2"),
+		config.MustMakeKey("myapp", "newkey"): config.NewValue("newval"),
 	}
 	stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{Config: cfg})
 	require.NoError(t, err)
@@ -539,6 +539,39 @@ func TestConfigEnvInit_Migrate_IdempotentMerge(t *testing.T) {
 	assert.Equal(t, "newval", pc["myapp:newkey"], "new key should be added")
 
 	assert.Contains(t, stdout.String(), `overwriting existing key "myapp:region"`)
+}
+
+func TestConfigEnvInit_Migrate_EmptyExistingEnvironmentUpdates(t *testing.T) {
+	t.Parallel()
+
+	projectYAML := "name: myapp\nruntime: yaml"
+	cfg := config.Map{
+		config.MustMakeKey("myapp", "region"): config.NewValue("us-west-2"),
+	}
+	stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{Config: cfg})
+	require.NoError(t, err)
+
+	var newStackYAML string
+	var stdout bytes.Buffer
+	tb := &migrateTestBackend{
+		existingYAML: []byte{},
+		existingEtag: "etag-1",
+	}
+	parent := newConfigEnvCmdForMigrateTest(
+		strings.NewReader(""), &stdout,
+		projectYAML, string(stackYAML), &newStackYAML,
+		backend.StackConfigLocation{},
+		tb,
+		b64.NewBase64SecretsManager(),
+	)
+
+	cmd := &configEnvInitCmd{parent: parent, migrate: true, yes: true}
+	err = cmd.run(context.Background(), nil)
+	require.NoError(t, err)
+
+	require.NotNil(t, tb.updatedYAML, "empty existing environments should be updated, not recreated")
+	assert.Nil(t, tb.createdYAML)
+	assert.Contains(t, newStackYAML, "myapp/dev")
 }
 
 func TestConfigEnvInit_Migrate_AlreadyServiceBacked(t *testing.T) {

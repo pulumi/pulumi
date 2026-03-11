@@ -25,9 +25,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -66,6 +67,8 @@ type configEnvEjectCmd struct {
 	keepEnv         bool
 	secretsProvider string
 	yes             bool
+
+	saveLocalProjectStack func(stackName tokens.QName, ps *workspace.ProjectStack) error
 }
 
 func (cmd *configEnvEjectCmd) run(ctx context.Context) error {
@@ -191,16 +194,19 @@ func (cmd *configEnvEjectCmd) run(ctx context.Context) error {
 		}
 	}
 
-	// Remove the service-backed link before writing the local file so that a
-	// successful RemoveRemoteConfig + failed disk write never leaves the stack in a
-	// state where conflict detection blocks all subsequent commands.
-	if removeErr := stack.RemoveRemoteConfig(ctx); removeErr != nil {
-		return fmt.Errorf("removing service-backed config link: %w", removeErr)
+	saveLocalProjectStack := cmd.saveLocalProjectStack
+	if saveLocalProjectStack == nil {
+		saveLocalProjectStack = workspace.SaveProjectStack
 	}
 
-	// Write the local config file. Bypass cmdStack.SaveProjectStack to avoid the IsRemote redirect.
-	if saveErr := workspace.SaveProjectStack(stack.Ref().Name().Q(), ps); saveErr != nil {
+	// Write the local config file before unlinking from ESC. If the disk write fails,
+	// keeping the remote link intact is safer than leaving the stack detached from both.
+	if saveErr := saveLocalProjectStack(stack.Ref().Name().Q(), ps); saveErr != nil {
 		return fmt.Errorf("writing local config file: %w", saveErr)
+	}
+
+	if removeErr := stack.RemoveRemoteConfig(ctx); removeErr != nil {
+		return fmt.Errorf("removing service-backed config link: %w", removeErr)
 	}
 
 	fmt.Fprintf(cmd.parent.stdout, "Ejected stack %q from service-backed config.\n", stack.Ref().Name())
