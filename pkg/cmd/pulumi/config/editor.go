@@ -223,24 +223,32 @@ func (e *escConfigEditor) Set(_ context.Context, k config.Key, v config.Value, p
 	}
 
 	rootKey := k.Namespace() + ":" + fmt.Sprint(segments[0])
-	setNestedYAMLValue(pc, rootKey, segments[1:], yamlValue)
-	return nil
+	return setNestedYAMLValue(pc, rootKey, segments[1:], yamlValue)
 }
 
 // setNestedYAMLValue sets a value at rootKey[remainingPath] inside parent,
-// creating intermediate maps as needed.
-func setNestedYAMLValue(parent map[string]any, rootKey string, remainingPath resource.PropertyPath, value any) {
+// creating intermediate maps as needed. Returns an error if any path segment
+// is an integer (array index), which is not supported for service-backed stacks.
+func setNestedYAMLValue(parent map[string]any, rootKey string, remainingPath resource.PropertyPath, value any) error {
 	if len(remainingPath) == 0 {
 		parent[rootKey] = value
-		return
+		return nil
+	}
+	if _, isInt := remainingPath[0].(int); isInt {
+		return fmt.Errorf(
+			"array index paths are not supported for service-backed config; " +
+				"use `pulumi config edit` to modify array values directly")
 	}
 	existing, _ := parent[rootKey].(map[string]any)
 	if existing == nil {
 		existing = map[string]any{}
 	}
 	nextKey := fmt.Sprint(remainingPath[0])
-	setNestedYAMLValue(existing, nextKey, remainingPath[1:], value)
+	if err := setNestedYAMLValue(existing, nextKey, remainingPath[1:], value); err != nil {
+		return err
+	}
 	parent[rootKey] = existing
+	return nil
 }
 
 // Remove deletes a config key from the ESC environment YAML buffer.
@@ -264,22 +272,28 @@ func (e *escConfigEditor) Remove(_ context.Context, k config.Key, path bool) err
 	}
 
 	rootKey := k.Namespace() + ":" + fmt.Sprint(segments[0])
-	deleteNestedYAMLValue(pc, rootKey, segments[1:])
-	return nil
+	return deleteNestedYAMLValue(pc, rootKey, segments[1:])
 }
 
 // deleteNestedYAMLValue deletes the leaf value at rootKey[remainingPath] inside parent.
-func deleteNestedYAMLValue(parent map[string]any, rootKey string, remainingPath resource.PropertyPath) {
+// Returns an error if any path segment is an integer (array index), which is not
+// supported for service-backed stacks.
+func deleteNestedYAMLValue(parent map[string]any, rootKey string, remainingPath resource.PropertyPath) error {
 	if len(remainingPath) == 0 {
 		delete(parent, rootKey)
-		return
+		return nil
+	}
+	if _, isInt := remainingPath[0].(int); isInt {
+		return fmt.Errorf(
+			"array index paths are not supported for service-backed config; " +
+				"use `pulumi config edit` to modify array values directly")
 	}
 	nested, _ := parent[rootKey].(map[string]any)
 	if nested == nil {
-		return // path does not exist; no-op
+		return nil // path does not exist; no-op
 	}
 	nextKey := fmt.Sprint(remainingPath[0])
-	deleteNestedYAMLValue(nested, nextKey, remainingPath[1:])
+	return deleteNestedYAMLValue(nested, nextKey, remainingPath[1:])
 }
 
 // Save serialises the modified environment definition and persists it via the ESC API.
@@ -320,6 +334,14 @@ func isHTTPConflict(err error) bool {
 	}
 	// Fallback: check the error message string for "409" (defensive).
 	return strings.Contains(err.Error(), "409")
+}
+
+// isHTTPNotFound reports whether err is an HTTP 404 Not Found response.
+func isHTTPNotFound(err error) bool {
+	if r, ok := err.(*apitype.ErrorResponse); ok {
+		return r.Code == http.StatusNotFound
+	}
+	return strings.Contains(err.Error(), "404")
 }
 
 // formatEnvDiags formats ESC environment diagnostics into a human-readable string.

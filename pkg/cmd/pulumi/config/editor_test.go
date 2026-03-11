@@ -495,3 +495,33 @@ func TestNewConfigEditor_ReturnsESCEditorForRemoteStack(t *testing.T) {
 	_, ok := editor.(*escConfigEditor)
 	assert.True(t, ok, fmt.Sprintf("expected *escConfigEditor, got %T", editor))
 }
+
+func TestESCConfigEditor_SetPath_ArrayIndexReturnsError(t *testing.T) {
+	t.Parallel()
+
+	e := newESCEditor(t, nil, "etag1", nil, nil)
+
+	// foo[0] produces path segments ["foo", 0] — the integer index should be rejected.
+	key := config.MustMakeKey("myproject", "foo[0]")
+	err := e.Set(context.Background(), key, config.NewValue("bar"), true /*path*/)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "array index paths are not supported")
+}
+
+func TestESCConfigEditor_RemovePath_ArrayIndexReturnsError(t *testing.T) {
+	t.Parallel()
+
+	initial := map[string]any{
+		"values": map[string]any{
+			"pulumiConfig": map[string]any{
+				"myproject:foo": []any{"a", "b"},
+			},
+		},
+	}
+	e := newESCEditor(t, initial, "etag1", nil, nil)
+
+	key := config.MustMakeKey("myproject", "foo[0]")
+	err := e.Remove(context.Background(), key, true /*path*/)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "array index paths are not supported")
+}

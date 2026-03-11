@@ -16,6 +16,7 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -99,10 +100,13 @@ func (cmd *configEnvEjectCmd) run(ctx context.Context) error {
 	// Load the ESC environment YAML with decryption to get plaintext secret values.
 	yamlBytes, _, _, getErr := envBackend.GetEnvironment(ctx, orgName, envProject, envName, "", true)
 	if getErr != nil {
-		// If the environment is gone, continue — we still remove the link.
+		if !isHTTPNotFound(getErr) {
+			return fmt.Errorf("loading ESC environment %s: %w", *loc.EscEnv, getErr)
+		}
+		// Environment has already been deleted externally — continue with link removal only (spec AC8).
 		fmt.Fprintf(cmd.parent.stdout,
-			"Warning: could not load ESC environment %s: %v\nProceeding with link removal only.\n",
-			*loc.EscEnv, getErr)
+			"Warning: ESC environment %s not found; proceeding with link removal only.\n",
+			*loc.EscEnv)
 		yamlBytes = nil
 	}
 
@@ -253,18 +257,43 @@ func extractPulumiConfig(yamlBytes []byte) (map[string]ejectedConfigValue, bool,
 		case string:
 			result[k] = ejectedConfigValue{plaintext: val}
 		case map[string]any:
-			if plaintext, hasFnSecret := val["fn::secret"]; hasFnSecret {
-				if s, ok := plaintext.(string); ok {
-					result[k] = ejectedConfigValue{plaintext: s, secret: true}
-					hasSecrets = true
+			if inner, hasFnSecret := val["fn::secret"]; hasFnSecret {
+				s, err := toJSONString(inner)
+				if err != nil {
+					return nil, false, fmt.Errorf("serialising secret config value %q: %w", k, err)
 				}
+				result[k] = ejectedConfigValue{plaintext: s, secret: true}
+				hasSecrets = true
+			} else {
+				// Non-secret nested map — JSON-serialize so it can round-trip through local config.
+				s, err := toJSONString(val)
+				if err != nil {
+					return nil, false, fmt.Errorf("serialising config value %q: %w", k, err)
+				}
+				result[k] = ejectedConfigValue{plaintext: s}
 			}
-			// Nested map values (non-secret objects) are not representable as flat config — skip.
 		default:
-			// int, float, bool — convert to string.
-			result[k] = ejectedConfigValue{plaintext: fmt.Sprintf("%v", v)}
+			// Scalar (int, float, bool) or array — JSON-serialize for faithful round-tripping.
+			s, err := toJSONString(v)
+			if err != nil {
+				return nil, false, fmt.Errorf("serialising config value %q: %w", k, err)
+			}
+			result[k] = ejectedConfigValue{plaintext: s}
 		}
 	}
 
 	return result, hasSecrets, nil
+}
+
+// toJSONString converts a value to its JSON string representation.
+// Strings are returned as-is (no JSON quoting).
+func toJSONString(v any) (string, error) {
+	if s, ok := v.(string); ok {
+		return s, nil
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
