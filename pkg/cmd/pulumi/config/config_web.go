@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,13 +18,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	neturl "net/url"
+	"os"
 	"path"
 	"strings"
 
 	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -33,10 +34,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// cloudURLProvider is the subset of the Pulumi Cloud backend interface needed
+// to construct the console URL. Keeping it local avoids importing the httpstate package.
+type cloudURLProvider interface {
+	CloudURL() string
+}
+
 func newConfigWebCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 	impl := &configWebCmd{
 		ws:       ws,
 		stackRef: stackRef,
+		stdout:   os.Stdout,
 	}
 
 	cmd := &cobra.Command{
@@ -58,6 +66,7 @@ This command is only supported for service-backed stacks.`,
 type configWebCmd struct {
 	ws       pkgWorkspace.Context
 	stackRef *string
+	stdout   io.Writer
 
 	// openURL is overridable for testing.
 	openURL func(url string) error
@@ -85,28 +94,34 @@ func (cmd *configWebCmd) run(ctx context.Context) error {
 			"  use `pulumi config` to view local stack configuration")
 	}
 
-	cloudBe, ok := stack.Backend().(httpstate.Backend)
+	cloudBe, ok := stack.Backend().(cloudURLProvider)
 	if !ok {
 		return errors.New("config web requires a Pulumi Cloud backend")
 	}
 
-	orgName := stack.(interface{ OrgName() string }).OrgName()
-	envProject, envName, _ := strings.Cut(*loc.EscEnv, "/")
+	orgName, err := stackOrgName(stack)
+	if err != nil {
+		return err
+	}
+	envProject, envName, err := parseEscEnvRef(*loc.EscEnv)
+	if err != nil {
+		return err
+	}
 
 	consoleURL := escEnvironmentConsoleURL(cloudBe.CloudURL(), orgName, envProject, envName)
 	if consoleURL == "" {
 		return errors.New("could not determine Pulumi Cloud console URL")
 	}
 
-	fmt.Println(consoleURL)
-
 	openFn := cmd.openURL
 	if openFn == nil {
 		openFn = browser.OpenURL
 	}
 	if err := openFn(consoleURL); err != nil {
-		// Not a fatal error — we already printed the URL.
-		fmt.Printf("Could not open browser: %v\nPlease visit: %s\n", err, consoleURL)
+		// Browser open failed — print URL so the user can open it manually.
+		fmt.Fprintf(cmd.stdout, "Could not open browser: %v\n%s\n", err, consoleURL)
+	} else {
+		fmt.Fprintln(cmd.stdout, consoleURL)
 	}
 
 	return nil

@@ -16,6 +16,7 @@ package config
 
 import (
 	"context"
+	"io"
 	"os"
 	"testing"
 
@@ -60,7 +61,7 @@ func TestConfigEdit_RemoteStack_NoChanges(t *testing.T) {
 	}
 
 	stack := newTestRemoteStackForEdit(t, eb, "myproject/dev")
-	cmd := &configEditCmd{}
+	cmd := &configEditCmd{stdout: io.Discard}
 
 	// openEditor does nothing — file content remains identical to what was written.
 	noopEditor := func(filename string) error { return nil }
@@ -92,7 +93,7 @@ func TestConfigEdit_RemoteStack_WithChanges(t *testing.T) {
 	}
 
 	stack := newTestRemoteStackForEdit(t, eb, "myproject/dev")
-	cmd := &configEditCmd{}
+	cmd := &configEditCmd{stdout: io.Discard}
 
 	// Simulate user editing: overwrite the temp file with new content.
 	editingEditor := func(filename string) error {

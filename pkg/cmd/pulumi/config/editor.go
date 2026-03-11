@@ -17,6 +17,7 @@ package config
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -329,19 +330,35 @@ func (e *escConfigEditor) Save(ctx context.Context) error {
 
 // isHTTPConflict reports whether err is an HTTP 409 Conflict response.
 func isHTTPConflict(err error) bool {
-	if r, ok := err.(*apitype.ErrorResponse); ok {
-		return r.Code == http.StatusConflict
-	}
-	// Fallback: check the error message string for "409" (defensive).
-	return strings.Contains(err.Error(), "409")
+	var r *apitype.ErrorResponse
+	return errors.As(err, &r) && r.Code == http.StatusConflict
 }
 
 // isHTTPNotFound reports whether err is an HTTP 404 Not Found response.
 func isHTTPNotFound(err error) bool {
-	if r, ok := err.(*apitype.ErrorResponse); ok {
-		return r.Code == http.StatusNotFound
+	var r *apitype.ErrorResponse
+	return errors.As(err, &r) && r.Code == http.StatusNotFound
+}
+
+// stackOrgName returns the organization name for a stack using the optional OrgName() interface.
+// Returns an error if the stack implementation does not expose one.
+func stackOrgName(s backend.Stack) (string, error) {
+	type orgNamer interface{ OrgName() string }
+	on, ok := s.(orgNamer)
+	if !ok {
+		return "", fmt.Errorf("stack %q does not expose an organization name", s.Ref().Name())
 	}
-	return strings.Contains(err.Error(), "404")
+	return on.OrgName(), nil
+}
+
+// parseEscEnvRef splits an ESC environment reference in "<project>/<name>" format.
+// Returns an error for malformed references.
+func parseEscEnvRef(ref string) (project, name string, err error) {
+	project, name, found := strings.Cut(ref, "/")
+	if !found {
+		return "", "", fmt.Errorf("malformed ESC environment reference %q: expected \"<project>/<name>\"", ref)
+	}
+	return project, name, nil
 }
 
 // formatEnvDiags formats ESC environment diagnostics into a human-readable string.

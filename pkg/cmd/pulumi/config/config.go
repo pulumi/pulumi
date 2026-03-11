@@ -531,9 +531,9 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 			if cmdStack.ConfigFile != "" {
 				configPath = cmdStack.ConfigFile
 			} else if s.ConfigLocation().IsRemote {
-					return errors.New(
+				return errors.New(
 					"config refresh is not supported for service-backed stacks; " +
-						"use `pulumi config restore <revision>` to restore a previous revision")
+						"use `pulumi config edit` to view and edit the environment definition")
 			} else {
 				_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
 				if err != nil {

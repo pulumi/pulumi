@@ -51,7 +51,7 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "env",
-		Short: "Manage ESC environments for a stack",
+		Short: "Show config source or manage ESC environment imports",
 		Long: "Manages the ESC environment associated with a specific stack. To create a new environment\n" +
 			"from a stack's configuration, use `pulumi config env init`.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -165,7 +165,10 @@ func (cmd *configEnvCmd) showConfigSource(ctx context.Context, jsonOut bool) err
 
 	loc := stack.ConfigLocation()
 	if loc.IsRemote && loc.EscEnv != nil {
-		orgName := stack.(interface{ OrgName() string }).OrgName()
+		orgName, orgErr := stackOrgName(stack)
+		if orgErr != nil {
+			return orgErr
+		}
 		if jsonOut {
 			return ui.FprintJSON(cmd.stdout, map[string]string{
 				"sourceType":   "service-backed",

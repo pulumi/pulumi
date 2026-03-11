@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,8 +94,14 @@ func (cmd *configEnvEjectCmd) run(ctx context.Context) error {
 		return fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	orgName := stack.(interface{ OrgName() string }).OrgName()
-	envProject, envName, _ := strings.Cut(*loc.EscEnv, "/")
+	orgName, err := stackOrgName(stack)
+	if err != nil {
+		return err
+	}
+	envProject, envName, err := parseEscEnvRef(*loc.EscEnv)
+	if err != nil {
+		return err
+	}
 
 	// Load the ESC environment YAML with decryption to get plaintext secret values.
 	yamlBytes, _, _, getErr := envBackend.GetEnvironment(ctx, orgName, envProject, envName, "", true)
@@ -135,17 +141,17 @@ func (cmd *configEnvEjectCmd) run(ctx context.Context) error {
 		fmt.Fprintf(cmd.parent.stdout, "This will eject stack %q from service-backed config:\n",
 			stack.Ref().Name())
 		if len(configValues) > 0 {
-			fmt.Fprintf(cmd.parent.stdout, "  • %d config value(s) will be written to Pulumi.%s.yaml\n",
+			fmt.Fprintf(cmd.parent.stdout, "  - %d config value(s) will be written to Pulumi.%s.yaml\n",
 				len(configValues), stack.Ref().Name())
 		} else {
-			fmt.Fprintf(cmd.parent.stdout, "  • No config values to write (empty environment)\n")
+			fmt.Fprintf(cmd.parent.stdout, "  - No config values to write (empty environment)\n")
 		}
-		fmt.Fprintf(cmd.parent.stdout, "  • Stack will be unlinked from ESC environment %s\n", *loc.EscEnv)
+		fmt.Fprintf(cmd.parent.stdout, "  - Stack will be unlinked from ESC environment %s\n", *loc.EscEnv)
 		if !cmd.keepEnv {
-			fmt.Fprintf(cmd.parent.stdout, "  • ESC environment %s will be deleted\n", *loc.EscEnv)
+			fmt.Fprintf(cmd.parent.stdout, "  - ESC environment %s will be deleted\n", *loc.EscEnv)
 		}
-		response := ui.PromptUser("Proceed?", []string{"yes", "no"}, "yes", cmd.parent.color)
-		if response == "no" {
+		response := ui.PromptUser("Proceed?", []string{"yes", "no"}, "no", cmd.parent.color)
+		if response != "yes" {
 			return errors.New("canceled")
 		}
 	}
@@ -155,7 +161,7 @@ func (cmd *configEnvEjectCmd) run(ctx context.Context) error {
 		Config: make(config.Map),
 	}
 
-	var encrypter config.Encrypter
+	encrypter := config.NopEncrypter
 	if hasSecrets {
 		ps.SecretsProvider = cmd.secretsProvider
 		enc, _, encErr := cmd.parent.ssml.GetEncrypter(ctx, stack, ps)
@@ -185,14 +191,16 @@ func (cmd *configEnvEjectCmd) run(ctx context.Context) error {
 		}
 	}
 
+	// Remove the service-backed link before writing the local file so that a
+	// successful RemoveRemoteConfig + failed disk write never leaves the stack in a
+	// state where conflict detection blocks all subsequent commands.
+	if removeErr := stack.RemoveRemoteConfig(ctx); removeErr != nil {
+		return fmt.Errorf("removing service-backed config link: %w", removeErr)
+	}
+
 	// Write the local config file. Bypass cmdStack.SaveProjectStack to avoid the IsRemote redirect.
 	if saveErr := workspace.SaveProjectStack(stack.Ref().Name().Q(), ps); saveErr != nil {
 		return fmt.Errorf("writing local config file: %w", saveErr)
-	}
-
-	// Remove the service-backed link from the stack.
-	if removeErr := stack.RemoveRemoteConfig(ctx); removeErr != nil {
-		return fmt.Errorf("removing service-backed config link: %w", removeErr)
 	}
 
 	fmt.Fprintf(cmd.parent.stdout, "Ejected stack %q from service-backed config.\n", stack.Ref().Name())

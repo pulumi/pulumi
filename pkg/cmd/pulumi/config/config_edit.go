@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/google/shlex"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -39,6 +39,7 @@ func newConfigEditCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command 
 	impl := &configEditCmd{
 		ws:       ws,
 		stackRef: stackRef,
+		stdout:   os.Stdout,
 	}
 
 	cmd := &cobra.Command{
@@ -69,8 +70,9 @@ type configEditCmd struct {
 	stackRef    *string
 	showSecrets bool
 
-	// openEditor is overridable for testing.
+	// openEditor and stdout are overridable for testing.
 	openEditor func(filename string) error
+	stdout     io.Writer
 }
 
 func (cmd *configEditCmd) run(ctx context.Context) error {
@@ -107,9 +109,15 @@ func (cmd *configEditCmd) editRemote(ctx context.Context, stack backend.Stack, o
 		return fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	orgName := stack.(interface{ OrgName() string }).OrgName()
+	orgName, err := stackOrgName(stack)
+	if err != nil {
+		return err
+	}
 	loc := stack.ConfigLocation()
-	envProject, envName, _ := strings.Cut(*loc.EscEnv, "/")
+	envProject, envName, err := parseEscEnvRef(*loc.EscEnv)
+	if err != nil {
+		return err
+	}
 
 	yamlBytes, etag, _, err := envBackend.GetEnvironment(ctx, orgName, envProject, envName, "", cmd.showSecrets)
 	if err != nil {
@@ -140,13 +148,19 @@ func (cmd *configEditCmd) editRemote(ctx context.Context, stack backend.Stack, o
 	}
 
 	if bytes.Equal(yamlBytes, modified) {
-		fmt.Println("No changes made.")
+		fmt.Fprintln(cmd.stdout, "No changes made.")
 		return nil
+	}
+
+	if cmd.showSecrets {
+		return errors.New(
+			"--show-secrets downloads plaintext secrets; saving a decrypted session " +
+				"would upload secrets without encryption\n" +
+				"  Re-run without --show-secrets to edit the environment definition")
 	}
 
 	diags, err := envBackend.UpdateEnvironmentWithProject(ctx, orgName, envProject, envName, modified, etag)
 	if err != nil {
-		// Surface etag conflict as a human-readable error.
 		if isHTTPConflict(err) {
 			return errors.New("the ESC environment was modified concurrently; please re-run `pulumi config edit` to retry")
 		}
@@ -156,7 +170,7 @@ func (cmd *configEditCmd) editRemote(ctx context.Context, stack backend.Stack, o
 		return fmt.Errorf("ESC environment has errors:\n%s", formatEnvDiags(diags))
 	}
 
-	fmt.Printf("Saved changes to ESC environment %s.\n", *stack.ConfigLocation().EscEnv)
+	fmt.Fprintf(cmd.stdout, "Saved changes to ESC environment %s.\n", *stack.ConfigLocation().EscEnv)
 	return nil
 }
 
@@ -172,7 +186,7 @@ func (cmd *configEditCmd) editLocal(stack backend.Stack, openFn func(string) err
 func openInEditorFromEnv(filename string) error {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
-		return errors.New("no EDITOR environment variable set")
+		return errors.New("no EDITOR environment variable set\n  Set EDITOR to your preferred editor (e.g. EDITOR=vim)")
 	}
 
 	args, err := shlex.Split(editor)
@@ -188,4 +202,3 @@ func openInEditorFromEnv(filename string) error {
 	c.Stderr = os.Stderr
 	return c.Run()
 }
-
