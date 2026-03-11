@@ -208,6 +208,14 @@ func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspa
 	return err
 }
 
+func (s *cloudStack) RemoveRemoteConfig(ctx context.Context) error {
+	stackID, err := s.b.getCloudStackIdentifier(s.ref)
+	if err != nil {
+		return err
+	}
+	return s.b.client.DeleteStackConfig(ctx, stackID)
+}
+
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
 func (s *cloudStack) OrgName() string                            { return s.orgName }
 func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }

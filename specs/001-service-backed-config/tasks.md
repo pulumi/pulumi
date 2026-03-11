@@ -19,7 +19,7 @@
 
 **Purpose**: Create the ConfigEditor abstraction that all subsequent work builds on
 
-- [ ] T001 Create editor.go with ConfigEditor interface (Set, Remove, Save methods), LocalConfigEditor struct, and NewConfigEditor factory stub that always returns LocalConfigEditor in pkg/cmd/pulumi/config/editor.go
+- [X] T001 Create editor.go with ConfigEditor interface (Set, Remove, Save methods), LocalConfigEditor struct, and NewConfigEditor factory stub that always returns LocalConfigEditor in pkg/cmd/pulumi/config/editor.go
 
 ---
 
@@ -29,10 +29,10 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Implement LocalConfigEditor: Set() with eager encryption via config.Encrypter then config.Map.Set(), Remove() delegating to config.Map.Delete(), Save() via workspace.SaveProjectStack in pkg/cmd/pulumi/config/editor.go
-- [ ] T003 Refactor configSetCmd and configRmCmd to obtain a ConfigEditor via NewConfigEditor and call editor.Set()/Remove()/Save() for local stacks, keeping all IsRemote error guards intact in pkg/cmd/pulumi/config/config.go
-- [ ] T004 Refactor configSetAllCmd and configRmAllCmd to use ConfigEditor for local stacks (loop of Set/Remove calls, single Save), keeping all IsRemote error guards intact in pkg/cmd/pulumi/config/config.go
-- [ ] T005 [P] Add behavior-preserving unit tests for LocalConfigEditor: plain value set, secret set with encryption verification, --path set, remove existing key, remove nonexistent key (no-op), set-all batch, rm-all batch in pkg/cmd/pulumi/config/editor_test.go
+- [X] T002 Implement LocalConfigEditor: Set() with eager encryption via config.Encrypter then config.Map.Set(), Remove() delegating to config.Map.Delete(), Save() via workspace.SaveProjectStack in pkg/cmd/pulumi/config/editor.go
+- [X] T003 Refactor configSetCmd and configRmCmd to obtain a ConfigEditor via NewConfigEditor and call editor.Set()/Remove()/Save() for local stacks, keeping all IsRemote error guards intact in pkg/cmd/pulumi/config/config.go
+- [X] T004 Refactor configSetAllCmd and configRmAllCmd to use ConfigEditor for local stacks (loop of Set/Remove calls, single Save), keeping all IsRemote error guards intact in pkg/cmd/pulumi/config/config.go
+- [X] T005 [P] Add behavior-preserving unit tests for LocalConfigEditor: plain value set, secret set with encryption verification, --path set, remove existing key, remove nonexistent key (no-op), set-all batch, rm-all batch in pkg/cmd/pulumi/config/editor_test.go
 
 **Checkpoint**: Local config behavior unchanged. ConfigEditor abstraction ready for ESC implementation.
 
@@ -48,10 +48,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Unhide --remote-config flag and add interactive config-location prompt (service-backed vs local) when logged into Pulumi Cloud in pkg/cmd/pulumi/stack/stack_init.go
-- [ ] T007 [US1] Add non-interactive default to local config (no prompt for --non-interactive, no TTY, or --yes), backend validation error for self-hosted/filestate backends, and flag conflict errors for --remote-config + --secrets-provider and --remote-config + --copy-config-from in pkg/cmd/pulumi/stack/stack_init.go
-- [ ] T008 [P] [US1] Add --remote-config flag and --remote-stack-config alias to pulumi new with interactive prompt for Pulumi Cloud backends and --yes defaulting to local config in pkg/cmd/pulumi/newcmd/new.go
-- [ ] T009 [P] [US1] Add unit tests for stack init --remote-config: interactive prompt shown, non-interactive defaults to local, self-hosted backend returns error, --secrets-provider conflict error, --copy-config-from conflict error in pkg/cmd/pulumi/stack/stack_init_test.go
+- [X] T006 [US1] Unhide --remote-config flag and add interactive config-location prompt (service-backed vs local) when logged into Pulumi Cloud in pkg/cmd/pulumi/stack/stack_init.go
+- [X] T007 [US1] Add non-interactive default to local config (no prompt for --non-interactive, no TTY, or --yes), backend validation error for self-hosted/filestate backends, and flag conflict errors for --remote-config + --secrets-provider and --remote-config + --copy-config-from in pkg/cmd/pulumi/stack/stack_init.go
+- [X] T008 [P] [US1] Add --remote-config flag and --remote-stack-config alias to pulumi new with interactive prompt for Pulumi Cloud backends and --yes defaulting to local config in pkg/cmd/pulumi/newcmd/new.go
+- [X] T009 [P] [US1] Add unit tests for stack init --remote-config: interactive prompt shown, non-interactive defaults to local, self-hosted backend returns error, --secrets-provider conflict error, --copy-config-from conflict error in pkg/cmd/pulumi/stack/stack_init_test.go
 
 **Checkpoint**: Service-backed stacks can be created. Config read/write depends on US2.
 
@@ -65,12 +65,12 @@
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Implement escConfigEditor struct with Set() (translate config.Key to pulumiConfig YAML path, wrap secrets in fn::secret, handle --path via resource.ParsePropertyPathStrict), Remove() (delete from YAML), and Save() (UpdateEnvironmentWithProject with revision etag for optimistic concurrency) in pkg/cmd/pulumi/config/editor.go
-- [ ] T011 [US2] Update NewConfigEditor factory to return escConfigEditor when stack.ConfigLocation().IsRemote, loading the environment definition YAML and current revision from the ESC API in pkg/cmd/pulumi/config/editor.go
-- [ ] T012 [US2] Remove IsRemote error guards from configSetCmd, configRmCmd, configSetAllCmd, and configRmAllCmd — these commands now transparently use the ConfigEditor returned by the factory in pkg/cmd/pulumi/config/config.go
-- [ ] T013 [US2] Add config source annotation header to config list output showing ESC environment name, revision number, and tag name (if pinned) for service-backed stacks in pkg/cmd/pulumi/config/config.go
-- [ ] T014 [US2] Add error guards for service-backed stacks: --config-file flag returns error, config cp returns "not supported in v1" error, config refresh prints deprecation message pointing to `config restore <rev>` in pkg/cmd/pulumi/config/config.go
-- [ ] T015 [P] [US2] Add unit tests for escConfigEditor: set plain value under pulumiConfig, set secret value with fn::secret wrapping, remove key, --path nested navigation, etag conflict error on Save, permission error handling in pkg/cmd/pulumi/config/editor_test.go
+- [X] T010 [US2] Implement escConfigEditor struct with Set() (translate config.Key to pulumiConfig YAML path, wrap secrets in fn::secret, handle --path via resource.ParsePropertyPathStrict), Remove() (delete from YAML), and Save() (UpdateEnvironmentWithProject with revision etag for optimistic concurrency) in pkg/cmd/pulumi/config/editor.go
+- [X] T011 [US2] Update NewConfigEditor factory to return escConfigEditor when stack.ConfigLocation().IsRemote, loading the environment definition YAML and current revision from the ESC API in pkg/cmd/pulumi/config/editor.go
+- [X] T012 [US2] Remove IsRemote error guards from configSetCmd, configRmCmd, configSetAllCmd, and configRmAllCmd — these commands now transparently use the ConfigEditor returned by the factory in pkg/cmd/pulumi/config/config.go
+- [X] T013 [US2] Add config source annotation header to config list output showing ESC environment name, revision number, and tag name (if pinned) for service-backed stacks in pkg/cmd/pulumi/config/config.go
+- [X] T014 [US2] Add error guards for service-backed stacks: --config-file flag returns error, config cp returns "not supported in v1" error, config refresh prints deprecation message pointing to `config restore <rev>` in pkg/cmd/pulumi/config/config.go
+- [X] T015 [P] [US2] Add unit tests for escConfigEditor: set plain value under pulumiConfig, set secret value with fn::secret wrapping, remove key, --path nested navigation, etag conflict error on Save, permission error handling in pkg/cmd/pulumi/config/editor_test.go
 
 **Checkpoint**: All P1 config operations work transparently on service-backed stacks.
 
@@ -84,8 +84,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Upgrade conflict detection from warning to hard error in LoadProjectStack when stack.ConfigLocation().IsRemote and local Pulumi.<stack>.yaml contains non-empty config: map or environment imports; exempt metadata-only files (encryptionsalt, secretsprovider without config data) in pkg/cmd/pulumi/stack/io.go
-- [ ] T017 [P] [US3] Add conflict detection unit tests: hard error when local file has config values, hard error when local file has environment imports, no error for metadata-only local file, no error when no local file exists in pkg/cmd/pulumi/stack/io_test.go
+- [X] T016 [US3] Upgrade conflict detection from warning to hard error in LoadProjectStack when stack.ConfigLocation().IsRemote and local Pulumi.<stack>.yaml contains non-empty config: map or environment imports; exempt metadata-only files (encryptionsalt, secretsprovider without config data) in pkg/cmd/pulumi/stack/io.go
+- [X] T017 [P] [US3] Add conflict detection unit tests: hard error when local file has config values, hard error when local file has environment imports, no error for metadata-only local file, no error when no local file exists in pkg/cmd/pulumi/stack/io_test.go
 
 **Checkpoint**: All P1 stories complete. Service-backed stacks can be created, configured, and deployed.
 
@@ -99,9 +99,9 @@
 
 ### Implementation for User Story 5
 
-- [ ] T020 [US5] Create config_env_eject.go with eject command: show confirmation prompt listing actions, resolve all config values from ESC environment, prompt for local secrets provider when secrets exist, write resolved values to Pulumi.<stack>.yaml in pkg/cmd/pulumi/config/config_env_eject.go
-- [ ] T021 [US5] Implement service-backed link removal, ESC environment deletion (default) with --keep-env flag to preserve, non-interactive mode (require --secrets-provider when secrets exist, proceed without prompts), and edge case handling: deletion-protected env preserved with message, stale/deleted env cleaned up with warning, deletion failure still completes eject with warning in pkg/cmd/pulumi/config/config_env_eject.go
-- [ ] T032 [P] [US5] Add unit tests for eject command: confirmation prompt flow, secrets provider prompt when secrets exist, --keep-env preserves environment, --non-interactive without --secrets-provider fails when secrets exist, deletion-protected env preserved with message, stale env cleaned up with warning in pkg/cmd/pulumi/config/config_env_eject_test.go
+- [X] T020 [US5] Create config_env_eject.go with eject command: show confirmation prompt listing actions, resolve all config values from ESC environment, prompt for local secrets provider when secrets exist, write resolved values to Pulumi.<stack>.yaml in pkg/cmd/pulumi/config/config_env_eject.go
+- [X] T021 [US5] Implement service-backed link removal, ESC environment deletion (default) with --keep-env flag to preserve, non-interactive mode (require --secrets-provider when secrets exist, proceed without prompts), and edge case handling: deletion-protected env preserved with message, stale/deleted env cleaned up with warning, deletion failure still completes eject with warning in pkg/cmd/pulumi/config/config_env_eject.go
+- [X] T032 [P] [US5] Add unit tests for eject command: confirmation prompt flow, secrets provider prompt when secrets exist, --keep-env preserves environment, --non-interactive without --secrets-provider fails when secrets exist, deletion-protected env preserved with message, stale env cleaned up with warning in pkg/cmd/pulumi/config/config_env_eject_test.go
 
 **Checkpoint**: Users can safely leave service-backed config with no data loss.
 
@@ -131,11 +131,11 @@
 
 ### Implementation for User Story 7
 
-- [ ] T025 [US7] Add config env (bare) handler: for service-backed stacks print ESC environment name with pin info (revision/tag), for local stacks print config file path; add --json flag with source type, environment, organization, project, version, pinned, tag fields in pkg/cmd/pulumi/config/config_env.go
-- [ ] T026 [P] [US7] Create config_edit.go: download ESC environment YAML, open in $EDITOR (fall back to vi/notepad), upload modified YAML with etag conflict detection on save; --show-secrets flag (default false); for local stacks open Pulumi.<stack>.yaml in $EDITOR; reject on pinned stacks in pkg/cmd/pulumi/config/config_edit.go
-- [ ] T027 [P] [US7] Create config_web.go: construct Pulumi Cloud console URL for the ESC environment and open in default browser; return error for local stacks in pkg/cmd/pulumi/config/config_web.go
-- [ ] T028 [US7] Add service-backed error guards with actionable YAML snippets for config env add (show imports: syntax), config env rm (show which import to remove), and config env ls (point to config edit/web/env get) in pkg/cmd/pulumi/config/config_env_add.go and pkg/cmd/pulumi/config/config_env.go
-- [ ] T034 [P] [US7] Add unit tests for edit and web commands: config edit downloads/uploads YAML with etag conflict detection, config edit opens local file for local stacks, config edit rejects pinned stacks, config web constructs correct URL, config web returns error for local stacks in pkg/cmd/pulumi/config/config_edit_test.go and config_web_test.go
+- [X] T025 [US7] Add config env (bare) handler: for service-backed stacks print ESC environment name with pin info (revision/tag), for local stacks print config file path; add --json flag with source type, environment, organization, project, version, pinned, tag fields in pkg/cmd/pulumi/config/config_env.go
+- [X] T026 [P] [US7] Create config_edit.go: download ESC environment YAML, open in $EDITOR (fall back to vi/notepad), upload modified YAML with etag conflict detection on save; --show-secrets flag (default false); for local stacks open Pulumi.<stack>.yaml in $EDITOR; reject on pinned stacks in pkg/cmd/pulumi/config/config_edit.go
+- [X] T027 [P] [US7] Create config_web.go: construct Pulumi Cloud console URL for the ESC environment and open in default browser; return error for local stacks in pkg/cmd/pulumi/config/config_web.go
+- [X] T028 [US7] Add service-backed error guards with actionable YAML snippets for config env add (show imports: syntax), config env rm (show which import to remove), and config env ls (point to config edit/web/env get) in pkg/cmd/pulumi/config/config_env_add.go and pkg/cmd/pulumi/config/config_env.go
+- [X] T034 [P] [US7] Add unit tests for edit and web commands: config edit downloads/uploads YAML with etag conflict detection, config edit opens local file for local stacks, config edit rejects pinned stacks, config web constructs correct URL, config web returns error for local stacks in pkg/cmd/pulumi/config/config_edit_test.go and config_web_test.go
 
 **Checkpoint**: Full inspection and editing UX available for service-backed stacks.
 

@@ -93,6 +93,11 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 
+			if cmdStack.ConfigFile != "" && stack.ConfigLocation().IsRemote {
+				return errors.New("--config-file is not supported for service-backed stacks; " +
+					"configuration is stored in Pulumi Cloud")
+			}
+
 			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, stack)
 			if err != nil {
 				return err
@@ -152,6 +157,8 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.AddCommand(newConfigRefreshCmd(ws, &stack))
 	cmd.AddCommand(newConfigCopyCmd(ws, &stack))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack))
+	cmd.AddCommand(newConfigEditCmd(ws, &stack))
+	cmd.AddCommand(newConfigWebCmd(ws, &stack))
 
 	return cmd
 }
@@ -215,13 +222,13 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 				return err
 			}
 
-			if configLocation := destinationStack.ConfigLocation(); configLocation.IsRemote {
-				err := errors.New("config copy destination not supported for remote stack config")
-				if configLocation.EscEnv != nil {
-					return fmt.Errorf("%w: use `pulumi env set %s pulumiConfig.<key>`",
-						err, *configLocation.EscEnv)
-				}
-				return err
+			if currentStack.ConfigLocation().IsRemote {
+				return errors.New("config cp is not supported in v1 for service-backed stacks; " +
+					"use `pulumi config env eject` first to return to local config")
+			}
+			if destinationStack.ConfigLocation().IsRemote {
+				return errors.New("config cp is not supported in v1 for service-backed stacks; " +
+					"use `pulumi stack init` with the destination stack and set config manually")
 			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -391,21 +398,14 @@ func newConfigRmCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 				return err
 			}
 
-			if configLocation := stack.ConfigLocation(); configLocation.IsRemote {
-				err := errors.New("config rm not supported for remote stack config")
-				if configLocation.EscEnv != nil {
-					return fmt.Errorf("%w: use `pulumi env rm %s pulumiConfig.%s` to update config environment",
-						err, *configLocation.EscEnv, key.String())
-				}
-				return err
-			}
-
-			err = ps.Config.Remove(key, path)
+			editor, err := NewConfigEditor(ctx, stack, ps, config.NopEncrypter)
 			if err != nil {
 				return err
 			}
-
-			return cmdStack.SaveProjectStack(ctx, stack, ps)
+			if err = editor.Remove(ctx, key, path); err != nil {
+				return err
+			}
+			return editor.Save(ctx)
 		},
 	}
 	constrictor.AttachArguments(rmCmd, &constrictor.Arguments{
@@ -463,12 +463,8 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 				return err
 			}
 
-			if configLocation := stack.ConfigLocation(); configLocation.IsRemote {
-				err := errors.New("config rm-all not supported for remote stack config")
-				if configLocation.EscEnv != nil {
-					return fmt.Errorf("%w: use `pulumi env rm %s pulumiConfig.<key>` to update config environment",
-						err, *configLocation.EscEnv)
-				}
+			editor, err := NewConfigEditor(ctx, stack, ps, config.NopEncrypter)
+			if err != nil {
 				return err
 			}
 
@@ -478,13 +474,12 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 					return fmt.Errorf("invalid configuration key: %w", err)
 				}
 
-				err = ps.Config.Remove(key, path)
-				if err != nil {
+				if err = editor.Remove(ctx, key, path); err != nil {
 					return err
 				}
 			}
 
-			return cmdStack.SaveProjectStack(ctx, stack, ps)
+			return editor.Save(ctx)
 		},
 	}
 	constrictor.AttachArguments(rmAllCmd, &constrictor.Arguments{
@@ -536,9 +531,9 @@ func newConfigRefreshCmd(ws pkgWorkspace.Context, stk *string) *cobra.Command {
 			if cmdStack.ConfigFile != "" {
 				configPath = cmdStack.ConfigFile
 			} else if s.ConfigLocation().IsRemote {
-				// TODO: This should be possible in the future to reset the remote config back to previous used config.
-				// See: https://github.com/pulumi/pulumi/issues/19557
-				return errors.New("cannot refresh stacks with remote config")
+					return errors.New(
+					"config refresh is not supported for service-backed stacks; " +
+						"use `pulumi config restore <revision>` to restore a previous revision")
 			} else {
 				_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
 				if err != nil {
@@ -750,27 +745,33 @@ func (c *configSetCmd) Run(
 		}
 	}
 
+	if cmdStack.ConfigFile != "" && s.ConfigLocation().IsRemote {
+		return errors.New("--config-file is not supported for service-backed stacks; " +
+			"configuration is stored in Pulumi Cloud")
+	}
+
 	ps, err := c.LoadProjectStack(ctx, cmdutil.Diag(), project, s)
 	if err != nil {
 		return err
 	}
 
-	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-
-	// Encrypt the config value if needed.
+	// Build the config value and collect the encrypter if needed.
 	var v config.Value
+	var encrypter config.Encrypter = config.NopEncrypter
 	if c.Secret {
-		// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
-		// config data.
-		c, _, cerr := ssml.GetEncrypter(ctx, s, ps)
-		if cerr != nil {
-			return cerr
+		// For remote stacks the escConfigEditor handles secret wrapping (fn::secret);
+		// the local secrets manager is not applicable.
+		if !s.ConfigLocation().IsRemote {
+			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+			// GetEncrypter may update ps (e.g. initialise a new encryption salt).
+			// We ignore the state bool because Save() will persist ps unconditionally.
+			encrypter, _, err = ssml.GetEncrypter(ctx, s, ps)
+			if err != nil {
+				return err
+			}
 		}
-		enc, eerr := c.EncryptValue(ctx, value)
-		if eerr != nil {
-			return eerr
-		}
-		v = config.NewSecureValue(enc)
+		// Pass the plaintext; the editor encrypts eagerly (local: via encrypter, remote: fn::secret).
+		v = config.NewSecureValue(value)
 	} else {
 		var t config.Type
 		switch c.Type {
@@ -797,26 +798,14 @@ func (c *configSetCmd) Run(
 		}
 	}
 
-	if configLocation := s.ConfigLocation(); configLocation.IsRemote {
-		err := errors.New("config set not supported for remote stack config")
-		if configLocation.EscEnv != nil {
-			exampleValue := "--secret <value>"
-			if !c.Secret {
-				exampleValue = value
-			}
-			return fmt.Errorf("%w: use `pulumi env set %s pulumiConfig.%s %s`",
-				err, *configLocation.EscEnv, key.String(), exampleValue)
-		}
+	editor, err := NewConfigEditor(ctx, s, ps, encrypter)
+	if err != nil {
 		return err
 	}
-
-	// can we implement an interface so this "just works"? Probably wishful thinking.
-	err = ps.Config.Set(key, v, c.Path)
-	if err != nil {
+	if err = editor.Set(ctx, key, v, c.Path); err != nil {
 		return fmt.Errorf("could not set config: %w", err)
 	}
-
-	return cmdStack.SaveProjectStack(ctx, s, ps)
+	return editor.Save(ctx)
 }
 
 func newConfigSetAllCmd(
@@ -881,6 +870,39 @@ func newConfigSetAllCmd(
 				return err
 			}
 
+			// We only want to fetch the stack encrypter once, and then only if we actually have one or more secrets to
+			// encrypt. We thus set up a little helper function to encrypt a value, caching the crypter once we've initially
+			// loaded it.
+			// For remote stacks the escConfigEditor wraps secrets in fn::secret; local encryption is not applicable.
+			var encrypterCached config.Encrypter
+			encrypt := func(plaintext string) (string, error) {
+				if stack.ConfigLocation().IsRemote {
+					// Pass plaintext through; escConfigEditor.Set() wraps it in fn::secret.
+					return plaintext, nil
+				}
+				var err error
+				if encrypterCached == nil {
+					// We're always going to save, so can ignore the bool for if GetEncrypter changed the config data.
+					encrypterCached, _, err = ssml.GetEncrypter(ctx, stack, ps)
+					if err != nil {
+						return "", err
+					}
+				}
+
+				enc, err := encrypterCached.EncryptValue(ctx, plaintext)
+				if err != nil {
+					return "", err
+				}
+
+				return enc, nil
+			}
+
+			// editor uses NopEncrypter because set-all pre-encrypts values via the encrypt closure above.
+			editor, err := NewConfigEditor(ctx, stack, ps, config.NopEncrypter)
+			if err != nil {
+				return err
+			}
+
 			for _, ptArg := range plaintextArgs {
 				key, value, err := parseKeyValuePair(ptArg, path)
 				if err != nil {
@@ -888,32 +910,9 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewValue(value)
 
-				err = ps.Config.Set(key, v, path)
-				if err != nil {
+				if err = editor.Set(ctx, key, v, path); err != nil {
 					return err
 				}
-			}
-
-			// We only want to fetch the stack encrypter once, and then only if we actually have one or more secrets to
-			// encrypt. We thus set up a little helper function to encrypt a value, caching the crypter once we've initially
-			// loaded it.
-			var c config.Encrypter
-			encrypt := func(plaintext string) (string, error) {
-				var err error
-				if c == nil {
-					// We're always going to save, so can ignore the bool for if GetEncrypter changed the config data.
-					c, _, err = ssml.GetEncrypter(ctx, stack, ps)
-					if err != nil {
-						return "", err
-					}
-				}
-
-				enc, err := c.EncryptValue(ctx, plaintext)
-				if err != nil {
-					return "", err
-				}
-
-				return enc, nil
 			}
 
 			for _, sArg := range secretArgs {
@@ -928,8 +927,7 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewSecureValue(enc)
 
-				err = ps.Config.Set(key, v, path)
-				if err != nil {
+				if err = editor.Set(ctx, key, v, path); err != nil {
 					return err
 				}
 			}
@@ -981,14 +979,13 @@ func newConfigSetAllCmd(
 						value = config.NewValue(*jsonValue.Value)
 					}
 
-					err = ps.Config.Set(key, value, path)
-					if err != nil {
+					if err = editor.Set(ctx, key, value, path); err != nil {
 						return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
 					}
 				}
 			}
 
-			return cmdStack.SaveProjectStack(ctx, stack, ps)
+			return editor.Save(ctx)
 		},
 	}
 
@@ -1144,6 +1141,11 @@ func listConfig(
 			return err
 		}
 	} else {
+		// For service-backed stacks, print a header showing the config source.
+		if loc := stack.ConfigLocation(); loc.IsRemote && loc.EscEnv != nil {
+			fmt.Fprintf(stdout, "Config source: ESC environment %s\n\n", *loc.EscEnv)
+		}
+
 		rows := []cmdutil.TableRow{}
 		for _, key := range keys {
 			decrypted := decryptedCfg[key]
