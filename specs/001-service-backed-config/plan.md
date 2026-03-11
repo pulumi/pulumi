@@ -76,7 +76,8 @@ pkg/cmd/pulumi/stack/
 └── stack_init_test.go    # MODIFY — test interactive prompt and flag behavior
 
 pkg/cmd/pulumi/newcmd/
-└── new.go                # MODIFY — add --remote-config flag (alias --remote-stack-config), prompt
+├── new.go                # MODIFY — add --remote-config flag (alias --remote-stack-config), prompt
+└── config.go             # MODIFY — route template config values through ConfigEditor (local vs ESC)
 
 pkg/backend/
 └── mock.go               # MODIFY — add mock ConfigEditor for tests (if needed)
@@ -217,7 +218,13 @@ Keep all `IsRemote` error guards intact. Only refactor local code paths.
 5. Upgrade conflict detection in `pkg/cmd/pulumi/stack/io.go` from warning
    to hard error.
 6. Unhide `--remote-config` in `stack init` and `new`, add interactive prompt.
-7. Add service-backed error guards with YAML snippets for `config env add/rm/ls`.
+7. Route `pulumi new` template config through `ConfigEditor` so that
+   template-prompted values (e.g. `aws:region`) are saved to the ESC
+   environment — not to a local file — when service-backed config is selected.
+   `HandleConfig`/`promptForConfig` in `newcmd/config.go` must defer
+   encryption to the editor (plaintext secure values) and `SaveConfig` must
+   be config-location-aware for the `operations/io.go` caller.
+8. Add service-backed error guards with YAML snippets for `config env add/rm/ls`.
 
 **Phase 3: New commands + extended operations (separate effort)**
 

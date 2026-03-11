@@ -71,6 +71,7 @@
 - [X] T013 [US2] Add config source annotation header to config list output showing ESC environment name, revision number, and tag name (if pinned) for service-backed stacks in pkg/cmd/pulumi/config/config.go
 - [X] T014 [US2] Add error guards for service-backed stacks: --config-file flag returns error, config cp returns "not supported in v1" error, config refresh prints deprecation message pointing to `config restore <rev>` in pkg/cmd/pulumi/config/config.go
 - [X] T015 [P] [US2] Add unit tests for escConfigEditor: set plain value under pulumiConfig, set secret value with fn::secret wrapping, remove key, --path nested navigation, etag conflict error on Save, permission error handling in pkg/cmd/pulumi/config/editor_test.go
+- [X] T015a [US1+US2] Route `pulumi new` template config through ConfigEditor: refactor HandleConfig to use ConfigEditor for saving (local → LocalConfigEditor, service-backed → escConfigEditor), refactor promptForConfig to defer encryption to the editor (plaintext secure values), make SaveConfig config-location-aware for the operations/io.go caller in pkg/cmd/pulumi/newcmd/config.go
 
 **Checkpoint**: All P1 config operations work transparently on service-backed stacks.
 
