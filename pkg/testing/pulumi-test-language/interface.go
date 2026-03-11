@@ -1706,12 +1706,7 @@ func (rtc roundTripClient) GenerateProject(
 	sourceDirectory, targetDirectory, project string,
 	strict bool, loaderTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
-	pclFiles, err := rtc.dirToMap(sourceDirectory)
-	if err != nil {
-		return nil, err
-	}
-
-	pclDir, diags, err := rtc.roundTrip(context.TODO(), pclFiles, loaderTarget, strict)
+	pclDir, diags, err := rtc.roundTrip(context.TODO(), sourceDirectory, project, loaderTarget, strict)
 	if err != nil || diags.HasErrors() {
 		return diags, err
 	}
@@ -1744,32 +1739,32 @@ func (rtc roundTripClient) GenerateProject(
 	return diags.Extend(diags2), err
 }
 
-func (rtc roundTripClient) dirToMap(dir string) (map[string]string, error) {
-	files := map[string]string{}
-	walk := func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-
-		files[strings.TrimPrefix(path, dir)] = string(content)
-		return nil
-	}
-	return files, filepath.WalkDir(dir, walk)
-}
-
 func (rtc roundTripClient) GenerateProgram(
 	program map[string]string, loaderTarget string, strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
-	pclDir, diags, err := rtc.roundTrip(context.TODO(), program, loaderTarget, strict)
+	sourceDir, err := os.MkdirTemp("", "lang-to-pcl-source-*")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { contract.IgnoreError(os.RemoveAll(sourceDir)) }()
+
+	for p, f := range program {
+		p = filepath.Join(sourceDir, p)
+		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+			return nil, nil, err
+		}
+		if err := os.WriteFile(p, []byte(f), 0o600); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	project := "{\"name\": \"roundtrip\"}"
+	pclDir, diags, err := rtc.roundTrip(context.TODO(), sourceDir, project, loaderTarget, strict)
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}
-	pclFiles := map[string]string{}
 
+	pclFiles := map[string]string{}
 	walk := func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
@@ -1792,30 +1787,22 @@ func (rtc roundTripClient) GenerateProgram(
 
 func (rtc roundTripClient) roundTrip(
 	ctx context.Context,
-	program map[string]string, loaderTarget string, strict bool,
+	sourceDirectory, project, loaderTarget string, strict bool,
 ) (string, hcl.Diagnostics, error) {
-	lang, diags, err := rtc.LanguageRuntime.GenerateProgram(program, loaderTarget, strict)
+	tmpDir, err := os.MkdirTemp("", "pcl-to-lang-1-*")
+	if err != nil {
+		return "", nil, err
+	}
+	defer func() { contract.IgnoreError(os.RemoveAll(tmpDir)) }()
+
+	diags, err := rtc.LanguageRuntime.GenerateProject(
+		sourceDirectory, tmpDir, project, strict, loaderTarget, nil)
 	if err != nil || diags.HasErrors() {
 		return "", diags, err
 	}
 
-	tmpDir, err := os.MkdirTemp("", "pcl-to-lang-1-*")
-	if err != nil {
-		return "", diags, err
-	}
-	defer func() { contract.IgnoreError(os.RemoveAll(tmpDir)) }()
-	for p, f := range lang {
-		p = filepath.Join(tmpDir, p)
-		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
-			return "", diags, err
-		}
-		if err := os.WriteFile(p, f, 0o600); err != nil {
-			return "", diags, err
-		}
-	}
-
 	// Some converters (e.g. YAML eject) need a Pulumi.yaml project file to locate the project root.
-	// If GenerateProgram didn't produce one, write a minimal placeholder.
+	// If GenerateProject didn't produce one, write a minimal placeholder.
 	projFile := filepath.Join(tmpDir, "Pulumi.yaml")
 	if _, statErr := os.Stat(projFile); os.IsNotExist(statErr) {
 		if err := os.WriteFile(projFile, []byte("name: roundtrip\nruntime: pcl\n"), 0o600); err != nil {
