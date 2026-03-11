@@ -317,8 +317,8 @@ func TestRunCanceled(t *testing.T) {
 	}
 	_, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
 	if runtime.GOOS == "windows" {
-		require.ErrorContains(t, err, "exit status 0xffffffff")
-		require.Equal(t, 4294967295, code)
+		require.ErrorContains(t, err, "exit status 1")
+		require.Equal(t, 1, code)
 	} else {
 		require.ErrorContains(t, err, "exit status 255")
 		require.Equal(t, 255, code)

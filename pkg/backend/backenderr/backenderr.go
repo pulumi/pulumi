@@ -121,7 +121,7 @@ func (err MissingEnvVarForNonInteractiveError) Error() string {
 type NoConfirmationInNonInteractiveError struct{}
 
 func (NoConfirmationInNonInteractiveError) Error() string {
-	return "confirmation flag (for example --yes or --skip-preview) must be passed when running in non-interactive mode"
+	return "--yes or --skip-preview or --preview-only must be passed in to proceed when running in non-interactive mode"
 }
 
 // NonInteractiveRequiresYesError represents a non-interactive execution that
