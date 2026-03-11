@@ -265,7 +265,7 @@ func TestPostgresBackend(t *testing.T) {
 		// It's okay if there's no previous deployment
 		assert.Contains(t, err.Error(), "no previous deployment", "Error should be about no previous deployment")
 	} else {
-		require.NotNil(t, latestConfig, "Latest config should not be nil if no error")
+		require.NotNil(t, latestConfig.Config, "Latest config should not be nil if no error")
 	}
 
 	// Test secrets management and configuration

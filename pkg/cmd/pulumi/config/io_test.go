@@ -83,9 +83,9 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 			},
 			BackendF: func() backend.Backend {
 				return &backend.MockBackend{
-					GetLatestConfigurationF: func(context.Context, backend.Stack) (config.Map, error) {
+					GetLatestConfigurationF: func(context.Context, backend.Stack) (backend.LatestConfiguration, error) {
 						t.Fatalf("GetLatestConfiguration should not be called in typical getStackConfiguration calls.")
-						return config.Map{}, nil
+						return backend.LatestConfiguration{}, nil
 					},
 				}
 			},
@@ -119,9 +119,9 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 			},
 			BackendF: func() backend.Backend {
 				return &backend.MockBackend{
-					GetLatestConfigurationF: func(context.Context, backend.Stack) (config.Map, error) {
+					GetLatestConfigurationF: func(context.Context, backend.Stack) (backend.LatestConfiguration, error) {
 						called = true
-						return config.Map{}, nil
+						return backend.LatestConfiguration{}, nil
 					},
 				}
 			},
