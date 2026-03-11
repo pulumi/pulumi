@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -182,7 +183,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	edit func(stack *workspace.ProjectStack) error,
 ) error {
 	if !yes && !cmd.interactive {
-		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
+		return backenderr.NonInteractiveRequiresYesError{}
 	}
 
 	projectStack, project, stack, err := cmd.loadEnvPreamble(ctx)
