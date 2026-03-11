@@ -92,9 +92,9 @@ func newStackRmCmd() *cobra.Command {
 				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
-			hasResources, err := backend.RemoveStack(ctx, s, force, removeBackups)
+			result, err := backend.RemoveStack(ctx, s, force, removeBackups)
 			if err != nil {
-				if hasResources {
+				if result.HasResources {
 					return fmt.Errorf(
 						"'%s' still has resources; removal rejected. Possible actions:\n"+
 							"- Make sure that '%[1]s' is the stack that you want to destroy\n"+
@@ -120,6 +120,11 @@ func newStackRmCmd() *cobra.Command {
 
 			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Ref(), colors.Reset)
 			fmt.Println(opts.Color.Colorize(msg))
+
+			for _, warning := range result.Warnings {
+				fmt.Println(opts.Color.Colorize(
+					fmt.Sprintf("%swarning: %s%s", colors.SpecWarning, warning, colors.Reset)))
+			}
 
 			contract.IgnoreError(state.SetCurrentStack(ws, ""))
 			return nil

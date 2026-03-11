@@ -185,7 +185,7 @@
 
 ### Implementation for User Story 8
 
-- [ ] T029 [US8] Surface ESC environment cleanup warnings from service API response when deleting service-backed stacks via stack rm: display message when environment preserved due to deletion protection or cross-references in pkg/cmd/pulumi/stack/ stack removal commands
+- [X] T029 [US8] Surface ESC environment cleanup warnings from service API response when deleting service-backed stacks via stack rm: display message when environment preserved due to deletion protection or cross-references in pkg/cmd/pulumi/stack/ stack removal commands
 
 **Checkpoint**: Stack deletion is clean — no orphaned environments, no naming collisions on recreation.
 

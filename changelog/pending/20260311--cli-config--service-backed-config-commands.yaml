@@ -19,3 +19,8 @@ changes:
   description: >-
     Reject config mutations (set, rm, set-all, rm-all, edit) on pinned
     service-backed stacks with actionable error message
+- type: feat
+  scope: cli/stack
+  description: >-
+    Surface ESC environment cleanup warnings when deleting service-backed stacks
+    via `pulumi stack rm` or `pulumi destroy --remove`
