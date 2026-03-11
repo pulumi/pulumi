@@ -88,7 +88,7 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pgavlin/fx v0.1.6
-	github.com/pgavlin/fx/v2 v2.0.10
+	github.com/pgavlin/fx/v2 v2.0.12
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/esc v0.17.0
