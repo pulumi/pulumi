@@ -124,6 +124,49 @@ type DocRef struct {
 	Property string
 }
 
+// tokenString extracts the token string from a DocRef.
+// For bound refs (from InterpretPulumiRefs), it uses the bound Type or Function.
+// For generator-constructed self refs, it falls back to parsing the Ref string.
+func (r DocRef) tokenString() string {
+	if rt, ok := r.Type.(*ResourceType); ok {
+		return rt.Token
+	}
+	if r.Type != nil {
+		return r.Type.String()
+	}
+	if r.Function != nil {
+		return r.Function.Token
+	}
+	if r.Ref != "" {
+		parts := strings.Split(r.Ref, "/")
+		if len(parts) >= 3 {
+			tok, _ := url.PathUnescape(parts[2])
+			return tok
+		}
+	}
+	return ""
+}
+
+// IsWithin returns true if r is a property ref within the entity described by other.
+// This is used during doc ref interpretation to determine if a referenced property
+// belongs to the entity currently being documented (selfRef).
+func (r DocRef) IsWithin(other DocRef) bool {
+	rTok := r.tokenString()
+	oTok := other.tokenString()
+	if rTok == "" || oTok == "" {
+		return false
+	}
+	switch r.Kind {
+	case DocRefKindResourceProperty, DocRefKindResourceInputProperty:
+		return other.Kind == DocRefKindResource && rTok == oTok
+	case DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
+		return other.Kind == DocRefKindFunction && rTok == oTok
+	case DocRefKindTypeProperty:
+		return other.Kind == DocRefKindType && rTok == oTok
+	}
+	return false
+}
+
 type internalDocRef struct {
 	// Original parsed ref
 	Ref string

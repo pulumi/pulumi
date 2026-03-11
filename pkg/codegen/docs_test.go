@@ -17,6 +17,8 @@ package codegen
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -124,23 +126,53 @@ func fakeFunc() {
 	})
 }
 
+// bindTestPackage binds a small package spec suitable for testing InterpretPulumiRefs.
+// It includes a resource test:s3:Bucket (with output property "region") and a resource
+// test:mod:Resource (with output property "myProperty").
+func bindTestPackage(t *testing.T) *schema.Package {
+	t.Helper()
+	spec := schema.PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]schema.ResourceSpec{
+			"test:s3:Bucket": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"region": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+			},
+			"test:mod:Resource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"myProperty": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+			},
+		},
+	}
+	pkg, err := schema.ImportSpec(spec, nil, schema.ValidationOptions{})
+	require.NoError(t, err)
+	return pkg
+}
+
 func TestInterpretPulumiRefs(t *testing.T) {
 	t.Parallel()
 
 	t.Run("ResolvesKnownRefs", func(t *testing.T) {
 		t.Parallel()
 
-		description := "This is a reference to {{% ref #/resources/aws:s3:bucket %}} and one to the " +
-			"{{% ref #/resources/azure:storage:storageAccount/properties/region %}} property."
-		expected := "This is a reference to s3.bucket and one to the region property.\n"
-		result, err := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
-			//nolint:exhaustive
-			switch ref.Type {
-			case DocRefTypeResource:
-				return ref.Token.Module().Name().String() + "." + ref.Token.Name().String(), true
-			default:
-				return "", false
+		pkg := bindTestPackage(t)
+		description := "This is a reference to {{% ref #/resources/test:s3:Bucket %}} and one to the " +
+			"{{% ref #/resources/test:s3:Bucket/properties/region %}} property."
+		expected := "This is a reference to s3.Bucket and one to the region property.\n"
+		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+			if ref.Kind == schema.DocRefKindResource {
+				rt := ref.Type.(*schema.ResourceType)
+				tok := tokens.Type(rt.Token)
+				return tok.Module().Name().String() + "." + tok.Name().String(), true
 			}
+			return "", false
 		})
 		require.NoError(t, err)
 		assert.Equal(t, expected, result, "expected resolved references")
@@ -149,10 +181,11 @@ func TestInterpretPulumiRefs(t *testing.T) {
 	t.Run("FallsBackWhenNotMapped", func(t *testing.T) {
 		t.Parallel()
 
-		description := "This is a reference to {{% ref #/resources/unknown:resource:type/properties/myProperty %}}" +
-			" and to {{% ref #/resources/unknown:resource:type %}}."
-		expected := "This is a reference to myProperty and to unknown:resource:type.\n"
-		result, err := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
+		pkg := bindTestPackage(t)
+		description := "This is a reference to {{% ref #/resources/test:mod:Resource/properties/myProperty %}}" +
+			" and to {{% ref #/resources/test:mod:Resource %}}."
+		expected := "This is a reference to myProperty and to test:mod:Resource.\n"
+		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
 			return "", false
 		})
 		require.NoError(t, err)
@@ -162,289 +195,35 @@ func TestInterpretPulumiRefs(t *testing.T) {
 	t.Run("HandlesEmptyDescription", func(t *testing.T) {
 		t.Parallel()
 
-		description := ""
-		expected := ""
-		result, err := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
+		pkg := bindTestPackage(t)
+		result, err := pkg.InterpretPulumiRefs("", func(ref schema.DocRef) (string, bool) {
 			return "ResolvedName", true
 		})
 		require.NoError(t, err)
-		assert.Equal(t, expected, result, "expected empty result for empty description")
+		assert.Equal(t, "", result, "expected empty result for empty description")
 	})
 
 	t.Run("HandlesNoRefsInDescription", func(t *testing.T) {
 		t.Parallel()
 
+		pkg := bindTestPackage(t)
 		description := "This description has no Pulumi references."
 		expected := "This description has no Pulumi references.\n"
-		result, err := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
+		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
 			return "ResolvedName", true
 		})
 		require.NoError(t, err)
 		assert.Equal(t, expected, result, "expected unchanged description when no refs are present")
 	})
 
-	t.Run("ErrorsIfRefIsMalformd", func(t *testing.T) {
+	t.Run("ErrorsIfRefIsMalformed", func(t *testing.T) {
 		t.Parallel()
 
+		pkg := bindTestPackage(t)
 		description := "This is a {{% ref bad %}} reference."
-		_, err := InterpretPulumiRefs(description, func(ref DocRef) (string, bool) {
+		_, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
 			return "ResolvedName", true
 		})
 		require.ErrorContains(t, err, "invalid doc ref: bad")
-	})
-}
-
-func TestParseDocRef(t *testing.T) {
-	t.Parallel()
-
-	t.Run("InvalidUnknownTopLevelType", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/unknown/aws:s3:bucket"
-		expected := DocRef{
-			Ref:  ref,
-			Type: DocRefTypeUnknown,
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("InvalidTopLevelOnly", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/resources"
-		expected := DocRef{
-			Ref:  ref,
-			Type: DocRefTypeUnknown,
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("InvalidMissingToken", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/resources/"
-		expected := DocRef{
-			Ref:  ref,
-			Type: DocRefTypeUnknown,
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("ResourceRef", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/resources/aws:s3:bucket"
-		expected := DocRef{
-			Ref:   ref,
-			Type:  DocRefTypeResource,
-			Token: "aws:s3:bucket",
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("ResourceRefWithSlashInToken", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/resources/aws:s3%2Fbucket:Bucket"
-		expected := DocRef{
-			Ref:   ref,
-			Type:  DocRefTypeResource,
-			Token: "aws:s3/bucket:Bucket",
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("FunctionRef", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/functions/aws:ec2:getInstance"
-		expected := DocRef{
-			Ref:   ref,
-			Type:  DocRefTypeFunction,
-			Token: "aws:ec2:getInstance",
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("TypeRef", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/types/aws:s3:BucketPolicy"
-		expected := DocRef{
-			Ref:   ref,
-			Type:  DocRefTypeType,
-			Token: "aws:s3:BucketPolicy",
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("InvalidUnknownPropertyKind", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/resources/aws:s3:bucket/unknown/acl"
-		expected := DocRef{
-			Ref:  ref,
-			Type: DocRefTypeUnknown,
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("InvalidPropertiesOnly", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/resources/aws:s3:bucket/properties"
-		expected := DocRef{
-			Ref:  ref,
-			Type: DocRefTypeUnknown,
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("InvalidMissingPropertyName", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/resources/aws:s3:bucket/properties/"
-		expected := DocRef{
-			Ref:  ref,
-			Type: DocRefTypeUnknown,
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("ResourcePropertyRef", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/resources/aws:s3:bucket/properties/acl"
-		expected := DocRef{
-			Ref:      ref,
-			Type:     DocRefTypeResourceProperty,
-			Token:    "aws:s3:bucket",
-			Property: "acl",
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("ResourceInputPropertyRef", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/resources/aws:s3:bucket/inputProperties/acl"
-		expected := DocRef{
-			Ref:      ref,
-			Type:     DocRefTypeResourceInputProperty,
-			Token:    "aws:s3:bucket",
-			Property: "acl",
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("FunctionInputPropertyRef", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/functions/aws:ec2:getInstance/inputs/properties/instanceId"
-		expected := DocRef{
-			Ref:      ref,
-			Type:     DocRefTypeFunctionInputProperty,
-			Token:    "aws:ec2:getInstance",
-			Property: "instanceId",
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("FunctionOutputPropertyRef", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/functions/aws:ec2:getInstance/outputs/properties/publicIp"
-		expected := DocRef{
-			Ref:      ref,
-			Type:     DocRefTypeFunctionOutputProperty,
-			Token:    "aws:ec2:getInstance",
-			Property: "publicIp",
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("InvalidMissingHashPrefix", func(t *testing.T) {
-		t.Parallel()
-		ref := "/resources/aws:s3:bucket"
-		expected := DocRef{
-			Ref:  ref,
-			Type: DocRefTypeUnknown,
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("InvalidSubProperty", func(t *testing.T) {
-		t.Parallel()
-		ref := "#/resources/aws:s3:bucket/properties/acl/invalid"
-		expected := DocRef{
-			Ref:  ref,
-			Type: DocRefTypeUnknown,
-		}
-		result := parseDocRef(ref)
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("NewResource", func(t *testing.T) {
-		t.Parallel()
-		docRef := NewDocRef(DocRefTypeResource, "aws:s3:bucket", "")
-		assert.Equal(t, "#/resources/aws:s3:bucket", docRef.Ref)
-		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
-	})
-
-	t.Run("NewFunction", func(t *testing.T) {
-		t.Parallel()
-		docRef := NewDocRef(DocRefTypeFunction, "aws:ec2:getInstance", "")
-		assert.Equal(t, "#/functions/aws:ec2:getInstance", docRef.Ref)
-		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
-	})
-
-	t.Run("NewType", func(t *testing.T) {
-		t.Parallel()
-		docRef := NewDocRef(DocRefTypeType, "aws:s3:BucketPolicy", "")
-		assert.Equal(t, "#/types/aws:s3:BucketPolicy", docRef.Ref)
-		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
-	})
-
-	t.Run("NewResourceProperty", func(t *testing.T) {
-		t.Parallel()
-		docRef := NewDocRef(DocRefTypeResourceProperty, "aws:s3:bucket", "acl")
-		assert.Equal(t, "#/resources/aws:s3:bucket/properties/acl", docRef.Ref)
-		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
-	})
-
-	t.Run("NewResourceInputProperty", func(t *testing.T) {
-		t.Parallel()
-		docRef := NewDocRef(DocRefTypeResourceInputProperty, "aws:s3:bucket", "acl")
-		assert.Equal(t, "#/resources/aws:s3:bucket/inputProperties/acl", docRef.Ref)
-		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
-	})
-
-	t.Run("NewFunctionInputProperty", func(t *testing.T) {
-		t.Parallel()
-		docRef := NewDocRef(DocRefTypeFunctionInputProperty, "aws:ec2:getInstance", "instanceId")
-		assert.Equal(t, "#/functions/aws:ec2:getInstance/inputs/properties/instanceId", docRef.Ref)
-		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
-	})
-
-	t.Run("NewFunctionOutputProperty", func(t *testing.T) {
-		t.Parallel()
-		docRef := NewDocRef(DocRefTypeFunctionOutputProperty, "aws:ec2:getInstance", "publicIp")
-		assert.Equal(t, "#/functions/aws:ec2:getInstance/outputs/properties/publicIp", docRef.Ref)
-		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
-	})
-
-	t.Run("NewTypeProperty", func(t *testing.T) {
-		t.Parallel()
-		docRef := NewDocRef(DocRefTypeTypeProperty, "aws:s3:BucketPolicy", "policy")
-		assert.Equal(t, "#/types/aws:s3:BucketPolicy/properties/policy", docRef.Ref)
-		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
-	})
-
-	t.Run("NewResourceWithSlashInToken", func(t *testing.T) {
-		t.Parallel()
-		docRef := NewDocRef(DocRefTypeResource, "aws:s3/bucket:Bucket", "")
-		assert.Equal(t, "#/resources/aws:s3%2Fbucket:Bucket", docRef.Ref)
-		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
 	})
 }

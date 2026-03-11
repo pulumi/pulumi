@@ -73,9 +73,13 @@ func memberPath(section, token string, rest ...string) string {
 }
 
 func errorf(path, message string, args ...any) *hcl.Diagnostic {
-	contract.Requiref(path != "", "path", "must not be empty")
-
-	summary := path + ": " + fmt.Sprintf(message, args...)
+	msg := fmt.Sprintf(message, args...)
+	var summary string
+	if path != "" {
+		summary = path + ": " + msg
+	} else {
+		summary = msg
+	}
 	return &hcl.Diagnostic{
 		Severity: hcl.DiagError,
 		Summary:  summary,

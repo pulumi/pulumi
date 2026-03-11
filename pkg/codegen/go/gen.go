@@ -1126,31 +1126,45 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 	return "To" + outputTypeName
 }
 
+// tokenOfRef extracts the token string from a bound schema.DocRef.
+func tokenOfRef(ref schema.DocRef) string {
+	if rt, ok := ref.Type.(*schema.ResourceType); ok {
+		return rt.Token
+	}
+	if ref.Type != nil {
+		return ref.Type.String()
+	}
+	if ref.Function != nil {
+		return ref.Function.Token
+	}
+	return ""
+}
+
 // printComment filters examples for the Go languages and prepends double forward slash to each line in the given
 // comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
 // resulting comment. It guarantees that each line is terminated with newline character.
-func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef codegen.DocRef, indent bool) (int, error) {
+func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.DocRef, indent bool) (int, error) {
 	if comment == "" {
 		return 0, nil
 	}
 	comment = codegen.FilterExamples(comment, "go")
 
-	comment, err := codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
+	comment, err := pkg.pkg.InterpretPulumiRefs(comment, func(ref schema.DocRef) (string, bool) {
 		var base string
-		switch ref.Type {
-		case codegen.DocRefTypeResource, codegen.DocRefTypeResourceProperty:
-			base = pkg.tokenToResource(ref.Token.String())
-		case codegen.DocRefTypeResourceInputProperty:
-			base = pkg.tokenToResource(ref.Token.String()) + "Args"
-		case codegen.DocRefTypeFunction:
-			base = tokenToName(ref.Token.String())
-		case codegen.DocRefTypeFunctionInputProperty:
-			base = tokenToName(ref.Token.String()) + "Args"
-		case codegen.DocRefTypeFunctionOutputProperty:
-			base = tokenToName(ref.Token.String())
-		case codegen.DocRefTypeType, codegen.DocRefTypeTypeProperty:
-			base = pkg.tokenToType(ref.Token.String())
-		case codegen.DocRefTypeUnknown:
+		switch ref.Kind {
+		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
+			base = pkg.tokenToResource(tokenOfRef(ref))
+		case schema.DocRefKindResourceInputProperty:
+			base = pkg.tokenToResource(tokenOfRef(ref)) + "Args"
+		case schema.DocRefKindFunction:
+			base = tokenToName(tokenOfRef(ref))
+		case schema.DocRefKindFunctionInputProperty:
+			base = tokenToName(tokenOfRef(ref)) + "Args"
+		case schema.DocRefKindFunctionOutputProperty:
+			base = tokenToName(tokenOfRef(ref))
+		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
+			base = pkg.tokenToType(tokenOfRef(ref))
+		case schema.DocRefKindUnknown:
 			return "", false
 		}
 
@@ -1159,10 +1173,10 @@ func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef codegen
 		}
 
 		var property string
-		switch ref.Type {
-		case codegen.DocRefTypeResource, codegen.DocRefTypeFunction, codegen.DocRefTypeType:
+		switch ref.Kind {
+		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType:
 			return base, true
-		case codegen.DocRefTypeUnknown, codegen.DocRefTypeResourceProperty, codegen.DocRefTypeResourceInputProperty, codegen.DocRefTypeFunctionInputProperty, codegen.DocRefTypeFunctionOutputProperty, codegen.DocRefTypeTypeProperty:
+		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty:
 			property = Title(ref.Property)
 		}
 
@@ -1200,7 +1214,7 @@ func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef codegen
 func (pkg *pkgContext) printCommentWithDeprecationMessage(
 	w io.Writer,
 	comment, deprecationMessage string,
-	selfRef codegen.DocRef,
+	selfRef schema.DocRef,
 	indent bool,
 ) (int, error) {
 	lines, err := pkg.printComment(w, comment, selfRef, indent)
@@ -1220,7 +1234,7 @@ func (pkg *pkgContext) printCommentWithDeprecationMessage(
 }
 
 func (pkg *pkgContext) genInputInterface(w io.Writer, name string) error {
-	ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+	ref := schema.DocRef{}
 	_, err := pkg.printComment(w, pkg.getInputUsage(name), ref, false)
 	if err != nil {
 		return err
@@ -1251,7 +1265,7 @@ func (pkg *pkgContext) genEnumInputInterface(w io.Writer, name string, enumType 
 		" ",
 	}, "\n")
 
-	_, err := pkg.printComment(w, enumUsage, codegen.NewDocRef(codegen.DocRefTypeUnknown, "", ""), false)
+	_, err := pkg.printComment(w, enumUsage, schema.DocRef{}, false)
 	if err != nil {
 		return err
 	}
@@ -1520,7 +1534,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType, usingGene
 	modPkg, ok := pkg.packages[mod]
 	contract.Assertf(ok, "Context for module %q not found", mod)
 
-	enumDocRef := codegen.NewDocRef(codegen.DocRefTypeType, enumType.Token, "")
+	enumDocRef := schema.DocRef{Kind: schema.DocRefKindType, Ref: "#/types/" + url.PathEscape(enumType.Token)}
 	if _, err := pkg.printCommentWithDeprecationMessage(w, enumType.Comment, "", enumDocRef, false); err != nil {
 		return err
 	}
@@ -1533,7 +1547,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType, usingGene
 
 	fmt.Fprintln(w, "const (")
 	for _, e := range enumType.Elements {
-		enumElemRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+		enumElemRef := schema.DocRef{}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, e.Comment, e.DeprecationMessage, enumElemRef, true); err != nil {
 			return err
 		}
@@ -1809,13 +1823,13 @@ func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) str
 func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
 	properties []*schema.Property,
 ) error {
-	typeRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+	typeRef := schema.DocRef{}
 	if _, err := pkg.printCommentWithDeprecationMessage(w, comment, deprecationMessage, typeRef, false); err != nil {
 		return err
 	}
 	fmt.Fprintf(w, "type %s struct {\n", name)
 	for _, p := range properties {
-		propRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", p.Name)
+		propRef := schema.DocRef{}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
 			return err
 		}
@@ -1830,13 +1844,13 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 func (pkg *pkgContext) genGenericPlainType(w io.Writer, name, comment, deprecationMessage string,
 	properties []*schema.Property,
 ) error {
-	typeRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+	typeRef := schema.DocRef{}
 	if _, err := pkg.printCommentWithDeprecationMessage(w, comment, deprecationMessage, typeRef, false); err != nil {
 		return err
 	}
 	fmt.Fprintf(w, "type %s struct {\n", name)
 	for _, p := range properties {
-		propRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", p.Name)
+		propRef := schema.DocRef{}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
 			return err
 		}
@@ -1862,7 +1876,7 @@ func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
 		return nil
 	}
 
-	ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+	ref := schema.DocRef{}
 	if _, err := pkg.printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s", ProvideDefaultsMethodName, name), ref, false); err != nil {
 		return err
 	}
@@ -1997,13 +2011,13 @@ func (pkg *pkgContext) genInputArgsStruct(
 ) error {
 	contract.Assertf(t.IsInputShape(), "Object type must have input shape")
 
-	docRef := codegen.NewDocRef(codegen.DocRefTypeType, t.Token, "")
+	docRef := schema.DocRef{Kind: schema.DocRefKindType, Ref: "#/types/" + url.PathEscape(t.Token)}
 	if _, err := pkg.printComment(w, t.Comment, docRef, false); err != nil {
 		return err
 	}
 	fmt.Fprintf(w, "type %s struct {\n", typeName)
 	for _, p := range t.Properties {
-		propRef := codegen.NewDocRef(codegen.DocRefTypeTypeProperty, t.Token, p.Name)
+		propRef := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(t.Token) + "/properties/" + url.PathEscape(p.Name)}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
 			return err
 		}
@@ -2042,7 +2056,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 	}
 
 	if details.output || genArgs.output {
-		docRef := codegen.NewDocRef(codegen.DocRefTypeType, t.Token, "")
+		docRef := schema.DocRef{Kind: schema.DocRefKindType, Ref: "#/types/" + url.PathEscape(t.Token)}
 		if _, err := pkg.printComment(w, t.Comment, docRef, false); err != nil {
 			return err
 		}
@@ -2054,7 +2068,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 		)
 
 		for _, p := range t.Properties {
-			propRef := codegen.NewDocRef(codegen.DocRefTypeTypeProperty, t.Token, p.Name)
+			propRef := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(t.Token) + "/properties/" + url.PathEscape(p.Name)}
 			if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, false); err != nil {
 				return err
 			}
@@ -2092,7 +2106,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 		pkg.genPtrOutput(w, name, name)
 
 		for _, p := range t.Properties {
-			propRef := codegen.NewDocRef(codegen.DocRefTypeTypeProperty, t.Token, p.Name)
+			propRef := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(t.Token) + "/properties/" + url.PathEscape(p.Name)}
 			if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, false); err != nil {
 				return err
 			}
@@ -2272,7 +2286,7 @@ func (pkg *pkgContext) genResource(
 	useGenericVariant bool,
 ) error {
 	name := disambiguatedResourceName(r, pkg)
-	resRef := codegen.NewDocRef(codegen.DocRefTypeResource, r.Token, "")
+	resRef := schema.DocRef{Kind: schema.DocRefKindResource, Ref: "#/resources/" + url.PathEscape(r.Token)}
 	if _, err := pkg.printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, resRef, false); err != nil {
 		return err
 	}
@@ -2291,7 +2305,7 @@ func (pkg *pkgContext) genResource(
 	var secretInputProps []*schema.Property
 
 	for _, p := range r.Properties {
-		propRef := codegen.NewDocRef(codegen.DocRefTypeResourceProperty, r.Token, p.Name)
+		propRef := schema.DocRef{Kind: schema.DocRefKindResourceProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/properties/" + url.PathEscape(p.Name)}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
 			return err
 		}
@@ -2566,7 +2580,7 @@ func (pkg *pkgContext) genResource(
 		fmt.Fprintf(w, "type %sState struct {\n", cgstrings.Camel(name))
 		if r.StateInputs != nil {
 			for _, p := range r.StateInputs.Properties {
-				propRef := codegen.NewDocRef(codegen.DocRefTypeResourceInputProperty, r.Token, p.Name)
+				propRef := schema.DocRef{Kind: schema.DocRefKindResourceInputProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/inputProperties/" + url.PathEscape(p.Name)}
 				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
 					return err
 				}
@@ -2578,7 +2592,7 @@ func (pkg *pkgContext) genResource(
 		fmt.Fprintf(w, "type %sState struct {\n", name)
 		if r.StateInputs != nil {
 			for _, p := range r.StateInputs.Properties {
-				propRef := codegen.NewDocRef(codegen.DocRefTypeResourceInputProperty, r.Token, p.Name)
+				propRef := schema.DocRef{Kind: schema.DocRefKindResourceInputProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/inputProperties/" + url.PathEscape(p.Name)}
 				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
 					return err
 				}
@@ -2599,7 +2613,7 @@ func (pkg *pkgContext) genResource(
 	// Emit the args types.
 	fmt.Fprintf(w, "type %sArgs struct {\n", cgstrings.Camel(name))
 	for _, p := range r.InputProperties {
-		propRef := codegen.NewDocRef(codegen.DocRefTypeResourceInputProperty, r.Token, p.Name)
+		propRef := schema.DocRef{Kind: schema.DocRefKindResourceInputProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/inputProperties/" + url.PathEscape(p.Name)}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
 			return err
 		}
@@ -2634,7 +2648,7 @@ func (pkg *pkgContext) genResource(
 			}
 		}
 
-		ref := codegen.NewDocRef(codegen.DocRefTypeResourceInputProperty, r.Token, p.Name)
+		ref := schema.DocRef{Kind: schema.DocRefKindResourceInputProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/inputProperties/" + url.PathEscape(p.Name)}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, true); err != nil {
 			return err
 		}
@@ -2695,7 +2709,7 @@ func (pkg *pkgContext) genResource(
 			retty = fmt.Sprintf("(%s%sResultOutput, error)", name, methodName)
 		}
 		fmt.Fprintf(w, "\n")
-		ref := codegen.NewDocRef(codegen.DocRefTypeFunction, r.Token, "")
+		ref := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(r.Token)}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, ref, false); err != nil {
 			return err
 		}
@@ -2787,7 +2801,7 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "type %s%sArgs struct {\n", cgstrings.Camel(name), methodName)
 			for _, p := range args {
-				ref := codegen.NewDocRef(codegen.DocRefTypeTypeProperty, f.Token, p.Name)
+				ref := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(f.Token) + "/properties/" + url.PathEscape(p.Name)}
 				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, true); err != nil {
 					return err
 				}
@@ -2802,7 +2816,7 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "// The set of arguments for the %s method of the %s resource.\n", methodName, name)
 			fmt.Fprintf(w, "type %s%sArgs struct {\n", name, methodName)
 			for _, p := range args {
-				ref := codegen.NewDocRef(codegen.DocRefTypeTypeProperty, f.Token, p.Name)
+				ref := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(f.Token) + "/properties/" + url.PathEscape(p.Name)}
 				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, true); err != nil {
 					return err
 				}
@@ -2859,7 +2873,7 @@ func (pkg *pkgContext) genResource(
 				if useGenericVariant {
 					outputTypeName = pkg.genericOutputType(p.Type)
 				}
-				ref := codegen.NewDocRef(codegen.DocRefTypeTypeProperty, f.Token, p.Name)
+				ref := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(f.Token) + "/properties/" + url.PathEscape(p.Name)}
 				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, false); err != nil {
 					return err
 				}
@@ -2914,7 +2928,7 @@ func (pkg *pkgContext) genResource(
 
 	// Emit chaining methods for the resource output type.
 	for _, p := range r.Properties {
-		ref := codegen.NewDocRef(codegen.DocRefTypeResourceProperty, r.Token, p.Name)
+		ref := schema.DocRef{Kind: schema.DocRefKindResourceProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/properties/" + url.PathEscape(p.Name)}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, false); err != nil {
 			return err
 		}
@@ -3074,7 +3088,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	objectReturnType, _ := returnType.(*schema.ObjectType)
 
 	if f.Plain {
-		ref := codegen.NewDocRef(codegen.DocRefTypeFunction, f.Token, "")
+		ref := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(f.Token)}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, ref, false); err != nil {
 			return err
 		}
@@ -4257,7 +4271,7 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 			getType, funcType = "string", ""
 		}
 
-		ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+		ref := schema.DocRef{}
 		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, false); err != nil {
 			return err
 		}
@@ -5093,7 +5107,7 @@ func GeneratePackage(tool string,
 		case "":
 			buffer := &bytes.Buffer{}
 			if pkg.pkg.Description() != "" {
-				ref := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+				ref := schema.DocRef{}
 				if _, err := pkg.printComment(buffer, pkg.pkg.Description(), ref, false); err != nil {
 					return nil, err
 				}

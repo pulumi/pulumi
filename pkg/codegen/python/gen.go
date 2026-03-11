@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -49,6 +50,20 @@ const (
 	InputTypesSettingClasses         = "classes"
 	InputTypesSettingClassesAndDicts = "classes-and-dicts"
 )
+
+// tokenOfRef extracts the token string from a bound schema.DocRef.
+func tokenOfRef(ref schema.DocRef) string {
+	if rt, ok := ref.Type.(*schema.ResourceType); ok {
+		return rt.Token
+	}
+	if ref.Type != nil {
+		return ref.Type.String()
+	}
+	if ref.Function != nil {
+		return ref.Function.Token
+	}
+	return ""
+}
 
 func typedDictEnabled(setting string) bool {
 	return setting != InputTypesSettingClasses
@@ -1035,7 +1050,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), typeString)
 		dblIndent := strings.Repeat(indent, 2)
 
-		selfRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+		selfRef := schema.DocRef{}
 		comment, err := mod.genComment(p.Comment, selfRef, false /*filterExamples*/)
 		if err != nil {
 			return "", err
@@ -1106,7 +1121,7 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 	for _, p := range variables {
 		typeString := genConfigVarType(p)
 		fmt.Fprintf(w, "%s: %s\n", p.Name, typeString)
-		selfRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+		selfRef := schema.DocRef{}
 		comment, err := mod.genComment(p.Comment, selfRef, false /*filterExamples*/)
 		if err != nil {
 			return "", err
@@ -1228,7 +1243,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) (st
 	// Produce a class definition with optional """ comment.
 	fmt.Fprint(w, "@pulumi.output_type\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
-	selfRef := codegen.NewDocRef(codegen.DocRefTypeFunction, obj.Token, "")
+	selfRef := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(obj.Token)}
 	comment, err := mod.genComment(obj.Comment, selfRef, false /*filterExamples*/)
 	if err != nil {
 		return "", err
@@ -1682,7 +1697,7 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 		}
 		fmt.Fprintf(w, "%s    def %s(self) -> %s:\n", indent, pname, ty)
 		if prop.Comment != "" {
-			selfRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+			selfRef := schema.DocRef{}
 			comment, err := mod.genComment(prop.Comment, selfRef, false /* allowExample */)
 			if err != nil {
 				return err
@@ -1706,7 +1721,7 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) (
 
 	if obj := returnTypeObject(method.Function); obj != nil {
 		properties = obj.Properties
-		docRef := codegen.NewDocRef(codegen.DocRefTypeFunction, method.Function.Token, "")
+		docRef := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(method.Function.Token)}
 		var err error
 		comment, err = mod.genComment(obj.Comment, docRef, false /*filterExamples*/)
 		if err != nil {
@@ -1842,7 +1857,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) error {
 		// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 		docs := &bytes.Buffer{}
 		if fun.Comment != "" {
-			docRef := codegen.NewDocRef(codegen.DocRefTypeFunction, fun.Token, "")
+			docRef := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(fun.Token)}
 			comment, err := mod.genComment(fun.Comment, docRef, true /*filterExamples*/)
 			if err != nil {
 				return err
@@ -1852,7 +1867,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) error {
 		if len(args) > 0 {
 			fmt.Fprintln(docs, "")
 			for _, arg := range args {
-				docRef := codegen.NewDocRef(codegen.DocRefTypeFunctionInputProperty, fun.Token, arg.Name)
+				docRef := schema.DocRef{Kind: schema.DocRefKindFunctionInputProperty, Ref: "#/functions/" + url.PathEscape(fun.Token) + "/inputs/properties/" + url.PathEscape(arg.Name)}
 				if err := mod.genPropDocstring(docs, PyName(arg.Name), docRef, arg, false /*acceptMapping*/); err != nil {
 					return err
 				}
@@ -2115,7 +2130,7 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) error 
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
 	if fun.Comment != "" {
-		docRef := codegen.NewDocRef(codegen.DocRefTypeFunction, fun.Token, "")
+		docRef := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(fun.Token)}
 		comment, err := mod.genComment(fun.Comment, docRef, true /*filterExamples*/)
 		if err != nil {
 			return err
@@ -2127,7 +2142,7 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) error 
 	if len(args) > 0 {
 		fmt.Fprintln(docs, "")
 		for _, arg := range args {
-			docRef := codegen.NewDocRef(codegen.DocRefTypeFunctionInputProperty, fun.Token, arg.Name)
+			docRef := schema.DocRef{Kind: schema.DocRefKindFunctionInputProperty, Ref: "#/functions/" + url.PathEscape(fun.Token) + "/inputs/properties/" + url.PathEscape(arg.Name)}
 			if err := mod.genPropDocstring(docs, PyName(arg.Name), docRef, arg, true /*acceptMapping*/); err != nil {
 				return err
 			}
@@ -2230,7 +2245,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	case schema.StringType, schema.IntType, schema.NumberType:
 		fmt.Fprintf(w, "@pulumi.type_token(\"%s\")\n", enum.Token)
 		fmt.Fprintf(w, "class %s(%s, Enum):\n", enumName, underlyingType)
-		docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+		docRef := schema.DocRef{}
 		comment, err := mod.genComment(enum.Comment, docRef, true /*filterExamples*/)
 		if err != nil {
 			return err
@@ -2255,7 +2270,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 				fmt.Fprintf(w, "%v\n", e.Value)
 			}
 			if e.Comment != "" {
-				docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+				docRef := schema.DocRef{}
 				comment, err := mod.genComment(e.Comment, docRef, true /*filterExamples*/)
 				if err != nil {
 					return err
@@ -2487,7 +2502,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	if res.Comment != "" {
-		docRef := codegen.NewDocRef(codegen.DocRefTypeResource, res.Token, "")
+		docRef := schema.DocRef{Kind: schema.DocRefKindResource, Ref: "#/resources/" + url.PathEscape(res.Token)}
 		comment, err := mod.genComment(res.Comment, docRef, true /*filterExamples*/)
 		if err != nil {
 			return err
@@ -2507,7 +2522,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if !argOverload {
 		for _, prop := range res.InputProperties {
-			docRef := codegen.NewDocRef(codegen.DocRefTypeResourceInputProperty, res.Token, prop.Name)
+			docRef := schema.DocRef{Kind: schema.DocRefKindResourceInputProperty, Ref: "#/resources/" + url.PathEscape(res.Token) + "/inputProperties/" + url.PathEscape(prop.Name)}
 			if err := mod.genPropDocstring(b, InitParamName(prop.Name), docRef, prop, true /*acceptMapping*/); err != nil {
 				return err
 			}
@@ -2519,29 +2534,29 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	return nil
 }
 
-func (mod *modContext) genComment(comment string, selfRef codegen.DocRef, filterExamples bool) (string, error) {
+func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterExamples bool) (string, error) {
 	if comment == "" {
 		return "", nil
 	}
 	if filterExamples {
 		comment = codegen.FilterExamples(comment, "python")
 	}
-	comment, err := codegen.InterpretPulumiRefs(comment, func(ref codegen.DocRef) (string, bool) {
+	comment, err := mod.pkg.InterpretPulumiRefs(comment, func(ref schema.DocRef) (string, bool) {
 		var base string
-		switch ref.Type {
-		case codegen.DocRefTypeResource, codegen.DocRefTypeResourceProperty:
-			base = mod.tokenToResource(ref.Token.String())
-		case codegen.DocRefTypeResourceInputProperty:
-			base = mod.tokenToResource(ref.Token.String()) + "Args"
-		case codegen.DocRefTypeFunction:
-			base = PyName(tokenToName(ref.Token.String()))
-		case codegen.DocRefTypeFunctionInputProperty:
-			base = title(PyName(tokenToName(ref.Token.String()))) + "Args"
-		case codegen.DocRefTypeFunctionOutputProperty:
-			base = title(PyName(tokenToName(ref.Token.String()))) + "Result"
-		case codegen.DocRefTypeType, codegen.DocRefTypeTypeProperty:
-			base = title(PyName(ref.Token.String()))
-		case codegen.DocRefTypeUnknown:
+		switch ref.Kind {
+		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
+			base = mod.tokenToResource(tokenOfRef(ref))
+		case schema.DocRefKindResourceInputProperty:
+			base = mod.tokenToResource(tokenOfRef(ref)) + "Args"
+		case schema.DocRefKindFunction:
+			base = PyName(tokenToName(tokenOfRef(ref)))
+		case schema.DocRefKindFunctionInputProperty:
+			base = title(PyName(tokenToName(tokenOfRef(ref)))) + "Args"
+		case schema.DocRefKindFunctionOutputProperty:
+			base = title(PyName(tokenToName(tokenOfRef(ref)))) + "Result"
+		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
+			base = title(PyName(tokenOfRef(ref)))
+		case schema.DocRefKindUnknown:
 			return "", false
 		}
 
@@ -2550,10 +2565,10 @@ func (mod *modContext) genComment(comment string, selfRef codegen.DocRef, filter
 		}
 
 		var property string
-		switch ref.Type {
-		case codegen.DocRefTypeResource, codegen.DocRefTypeFunction, codegen.DocRefTypeType:
+		switch ref.Kind {
+		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType:
 			return base, true
-		case codegen.DocRefTypeUnknown, codegen.DocRefTypeResourceProperty, codegen.DocRefTypeResourceInputProperty, codegen.DocRefTypeFunctionInputProperty, codegen.DocRefTypeFunctionOutputProperty, codegen.DocRefTypeTypeProperty:
+		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty:
 			property = PyName(ref.Property)
 		}
 
@@ -2586,7 +2601,7 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) error 
 	fmt.Fprintln(b, ":param pulumi.Input[str] id: The unique provider ID of the resource to lookup.")
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if res.StateInputs != nil {
-		resourceDocRef := codegen.NewDocRef(codegen.DocRefTypeResource, res.Token, "")
+		resourceDocRef := schema.DocRef{Kind: schema.DocRefKindResource, Ref: "#/resources/" + url.PathEscape(res.Token)}
 		for _, prop := range res.StateInputs.Properties {
 			if err := mod.genPropDocstring(b, InitParamName(prop.Name), resourceDocRef, prop, true /*acceptMapping*/); err != nil {
 				return err
@@ -2610,7 +2625,7 @@ func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties 
 	}
 
 	for _, prop := range properties {
-		docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+		docRef := schema.DocRef{}
 		if err := mod.genPropDocstring(b, PyName(prop.Name), docRef, prop, false /*acceptMapping*/); err != nil {
 			return err
 		}
@@ -2621,7 +2636,7 @@ func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties 
 	return nil
 }
 
-func (mod *modContext) genPropDocstring(w io.Writer, name string, docRef codegen.DocRef, prop *schema.Property, acceptMapping bool) error {
+func (mod *modContext) genPropDocstring(w io.Writer, name string, docRef schema.DocRef, prop *schema.Property, acceptMapping bool) error {
 	if prop.Comment == "" {
 		return nil
 	}
@@ -2891,7 +2906,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	fmt.Fprintf(w, "%s\n", decorator)
 	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
 	if !input && comment != "" {
-		docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+		docRef := schema.DocRef{}
 		classComment, err := mod.genComment(comment, docRef, false /*filterExamples*/)
 		if err != nil {
 			return err
@@ -2959,7 +2974,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
 	}
 	fmt.Fprintf(w, "):\n")
-	docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+	docRef := schema.DocRef{}
 	initComment, err := mod.genComment(comment, docRef, false /*filterExamples*/)
 	if err != nil {
 		return err
@@ -3044,7 +3059,7 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 
 	indent := "    "
 
-	docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
+	docRef := schema.DocRef{}
 	if comment != "" {
 		typeComment, err := mod.genComment(comment, docRef, false /*filterExamples*/)
 		if err != nil {
