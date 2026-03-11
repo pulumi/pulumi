@@ -24,6 +24,11 @@ protoc = "29.5"
 "go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.8.0"
 "github:WebAssembly/wabt" = "1.0.37"
 dotnet = "8"
+java = "temurin-11"
+gradle = "7.6"
+"github:gotestyourself/gotestsum" = "1.8.1"
+"github:pulumi/goteststats" = "0.0.7"
 
 [plugins]
 protoc = "https://github.com/paxosglobal/asdf-protoc"
+gradle = "https://github.com/rfrancis/asdf-gradle"

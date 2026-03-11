@@ -80,11 +80,13 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ inputs.ref }}
-      - name: Configure Go Cache Key
+      - name: Set tool versions from version-set
         env:
-          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
-        run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+          VERSION_SET: ${{ inputs.version-set }}
+        run: |
+          echo '[tools]' > .mise.local.toml
+          echo "go = \"$(echo "$VERSION_SET" | jq -r '.go' | sed 's/\.x$//')\"" >> .mise.local.toml
+      - uses: jdx/mise-action@v2
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           check-latest: true
