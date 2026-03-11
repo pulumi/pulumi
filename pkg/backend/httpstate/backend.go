@@ -1975,20 +1975,20 @@ func (b *cloudBackend) GetHistory(
 
 func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack,
-) (config.Map, error) {
+) (backend.LatestConfiguration, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
-		return nil, err
+		return backend.LatestConfiguration{}, err
 	}
 
 	cfg, err := b.client.GetLatestConfiguration(ctx, stackID)
 	switch {
 	case err == client.ErrNoPreviousDeployment:
-		return nil, backenderr.ErrNoPreviousDeployment
+		return backend.LatestConfiguration{}, backenderr.ErrNoPreviousDeployment
 	case err != nil:
-		return nil, err
+		return backend.LatestConfiguration{}, err
 	default:
-		return cfg, nil
+		return backend.LatestConfiguration(cfg), nil
 	}
 }
 

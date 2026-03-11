@@ -53,10 +53,11 @@ func HandleConfig(
 	opts display.Options,
 ) error {
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
-	stackConfig, err := backend.GetLatestConfiguration(ctx, s)
+	latest, err := backend.GetLatestConfiguration(ctx, s)
 	if err != nil && err != backenderr.ErrNoPreviousDeployment {
 		return err
 	}
+	stackConfig := latest.Config
 
 	// Get the existing snapshot.
 	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)

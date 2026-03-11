@@ -118,7 +118,7 @@ func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
-func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
+func GetLatestConfiguration(ctx context.Context, s Stack) (LatestConfiguration, error) {
 	return s.Backend().GetLatestConfiguration(ctx, s)
 }
 
