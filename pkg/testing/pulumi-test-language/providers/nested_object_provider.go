@@ -121,6 +121,56 @@ func (p *NestedObjectProvider) GetSchema(
 				},
 				RequiredInputs: []string{"name"},
 			},
+			"nestedobject:index:MapContainer": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"tags": {
+							TypeSpec: schema.TypeSpec{
+								Type:                 "object",
+								AdditionalProperties: &schema.TypeSpec{Type: "string"},
+							},
+						},
+					},
+					Required: []string{"tags"},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"tags": {
+						TypeSpec: schema.TypeSpec{
+							Type:                 "object",
+							AdditionalProperties: &schema.TypeSpec{Type: "string"},
+						},
+					},
+				},
+				RequiredInputs: []string{"tags"},
+			},
+			"nestedobject:index:Receiver": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"details": {
+							TypeSpec: schema.TypeSpec{
+								Type: "array",
+								Items: &schema.TypeSpec{
+									Ref: "#/types/nestedobject:index:Detail",
+								},
+							},
+						},
+					},
+					Required: []string{"details"},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"details": {
+						TypeSpec: schema.TypeSpec{
+							Type: "array",
+							Items: &schema.TypeSpec{
+								Ref: "#/types/nestedobject:index:Detail",
+							},
+						},
+					},
+				},
+				RequiredInputs: []string{"details"},
+			},
 		},
 	}
 
