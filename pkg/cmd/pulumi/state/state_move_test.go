@@ -1495,6 +1495,8 @@ func TestMoveBreaksCopiedProviderDependenciesToRemainingSourceResources(t *testi
 		destSnapshot.Resources[1].URN)
 	assert.Empty(t, destSnapshot.Resources[1].Dependencies)
 	assert.Contains(t, stdout.String(),
-		"The following resources being moved to organization/test/destStack have dependencies on resources in organization/test/sourceStack:\n\n"+
-			"  - urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0 has a dependency on urn:pulumi:sourceStack::test::a:b:c::remaining")
+		"The following resources being moved to organization/test/destStack have "+
+			"dependencies on resources in organization/test/sourceStack:\n\n"+
+			"  - urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0 has "+
+			"a dependency on urn:pulumi:sourceStack::test::a:b:c::remaining")
 }
