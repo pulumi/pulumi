@@ -43,29 +43,25 @@ func interpretPulumiRefs(path string, types *types, options ValidationOptions, n
 			if iref.Kind == DocRefKindUnknown {
 				subdiags = hcl.Diagnostics{errorf(path, "invalid doc ref: %s", c.Destination)}
 			} else {
-				// This could be function or type
-				ref = DocRef{Ref: iref.Ref, Kind: iref.Kind}
-				if iref.Kind == DocRefKindResource || iref.Kind == DocRefKindType ||
-					iref.Kind == DocRefKindResourceProperty || iref.Kind == DocRefKindResourceInputProperty || iref.Kind == DocRefKindTypeProperty {
-					spec := TypeSpec{Ref: string(iref.Token)}
-					var bound Type
-					var err error
-					bound, subdiags, err = types.bindTypeSpecRef(path, spec, false, options)
-					if err != nil {
-						subdiags = append(subdiags, errorf(path, "%s", err.Error()))
+				ref = DocRef{Ref: iref.Ref, Kind: iref.Kind, Property: iref.Property}
+				switch iref.Kind {
+				case DocRefKindResource, DocRefKindResourceProperty, DocRefKindResourceInputProperty:
+					res, ok := types.resources[string(iref.Token)]
+					if !ok {
+						subdiags = hcl.Diagnostics{errorf(path, "reference to resource '%s' not found in package %s",
+							iref.Ref[1:], types.pkg.Name)}
+					} else {
+						ref.Type = res
 					}
-					// bindTypeSpecRef returns diagnostics with "/$ref" added to the path, that's not appropriate
-					// here since the ref isn't a JSON child, its just part of the doc comment text. So we rewrite
-					// them.
-					refPrefix := path + "/$ref: "
-					pathPrefix := path + ": "
-					for _, d := range subdiags {
-						if d != nil && strings.HasPrefix(d.Summary, refPrefix) {
-							d.Summary = pathPrefix + d.Summary[len(refPrefix):]
-						}
+				case DocRefKindType, DocRefKindTypeProperty:
+					typ, ok := types.typeDefs[string(iref.Token)]
+					if !ok {
+						subdiags = hcl.Diagnostics{errorf(path, "reference to type '%s' not found in package %s",
+							iref.Ref[1:], types.pkg.Name)}
+					} else {
+						ref.Type = typ
 					}
-					ref.Type = bound
-				} else {
+				case DocRefKindFunction, DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
 					fun, has := types.functionDefs[string(iref.Token)]
 					if !has {
 						subdiags = hcl.Diagnostics{errorf(path, "function %s not found", iref.Token)}
