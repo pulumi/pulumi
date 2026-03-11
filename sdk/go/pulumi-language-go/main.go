@@ -195,7 +195,7 @@ func main() {
 	// Use OTel when the CLI provides an OTLP endpoint; fall back to
 	// OpenTracing otherwise.  Only one system should be active to avoid
 	// duplicate spans.
-	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	otelEndpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otelEndpoint == "" {
 		cmdutil.InitTracing("pulumi-language-go", "pulumi-language-go", p.tracing)
 	} else {
@@ -1048,7 +1048,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		env = append(env, "TRACEPARENT="+traceparent)
 	}
 	if host.otelEndpoint != "" {
-		env = append(env, "OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
+		env = append(env, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
 	}
 
 	// the user can explicitly opt in to using a binary executable by specifying

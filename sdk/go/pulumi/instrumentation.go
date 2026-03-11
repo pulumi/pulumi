@@ -32,7 +32,7 @@ import (
 var tracerProvider *sdktrace.TracerProvider
 
 // initTracing initializes OpenTelemetry tracing when TRACEPARENT and
-// OTEL_EXPORTER_OTLP_ENDPOINT environment variables are present.
+// PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT environment variables are present.
 // Returns a context with the extracted trace parent.
 func initTracing(ctx context.Context) context.Context {
 	traceparent := os.Getenv("TRACEPARENT")
@@ -40,7 +40,7 @@ func initTracing(ctx context.Context) context.Context {
 		return ctx
 	}
 
-	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	otlpEndpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otlpEndpoint == "" {
 		return ctx
 	}
