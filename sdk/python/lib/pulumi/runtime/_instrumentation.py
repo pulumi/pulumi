@@ -53,7 +53,7 @@ def _initialize_tracing() -> None:
     global _root_context, _tracer_provider  # noqa: PLW0603
 
     traceparent = os.environ.get("TRACEPARENT")
-    otlp_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+    otlp_endpoint = os.environ.get("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
 
     if not traceparent:
         return

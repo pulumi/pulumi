@@ -38,7 +38,7 @@ if (process.env.TRACEPARENT) {
         }),
     });
 
-    const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+    const otlpEndpoint = process.env.PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT;
     if (otlpEndpoint) {
         const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-grpc");
         process.env.OTEL_EXPORTER_OTLP_INSECURE = "true";

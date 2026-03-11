@@ -472,7 +472,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}
 
 	if otelEndpoint := cmdutil.OTelEndpoint(); otelEndpoint != "" {
-		environment = append(environment, "OTEL_EXPORTER_OTLP_ENDPOINT="+otelEndpoint)
+		environment = append(environment, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+otelEndpoint)
 	}
 
 	// Check to see if we have a binary we can invoke directly

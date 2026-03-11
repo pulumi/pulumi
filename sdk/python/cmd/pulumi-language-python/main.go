@@ -134,7 +134,7 @@ func main() {
 	// Use OTel when the CLI provides an OTLP endpoint; fall back to
 	// OpenTracing otherwise.  Only one system should be active to avoid
 	// duplicate spans.
-	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	otelEndpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otelEndpoint == "" {
 		cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
 	} else {
@@ -1052,7 +1052,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 
 	if host.otelEndpoint != "" {
-		env = append(env, "OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
+		env = append(env, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
 	}
 	cmd.Env = env
 
