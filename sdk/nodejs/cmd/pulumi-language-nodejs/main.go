@@ -150,7 +150,7 @@ func main() {
 		engineAddress = args[0]
 	}
 
-	if runtimeName != "nodejs" && runtimeName != "bun" {
+	if runtimeName != "nodejs" && runtimeName != "bun" && runtimeName != "deno" {
 		cmdutil.Exit(fmt.Errorf("unsupported runtime: %s", runtimeName))
 	}
 
@@ -315,8 +315,10 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 				nodeOptions.packagemanager = npm.PnpmPackageManager
 			case "bun":
 				nodeOptions.packagemanager = npm.BunPackageManager
+			case "deno":
+				nodeOptions.packagemanager = npm.DenoPackageManager
 			default:
-				return nodeOptions, fmt.Errorf("packagemanager option must be one of auto, npm, yarn, pnpm or bun, got %q", pm)
+				return nodeOptions, fmt.Errorf("packagemanager option must be one of auto, npm, yarn, pnpm, bun or deno, got %q", pm)
 			}
 		} else {
 			return nodeOptions, errors.New("packagemanager option must be a string")
@@ -346,6 +348,29 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 			logging.V(6).Info("bun runtime: ignoring 'packagemanager' option (bun always uses bun as package manager)")
 		}
 		nodeOptions.packagemanager = npm.BunPackageManager
+	}
+
+	if runtime == "deno" {
+		// Deno handles TypeScript natively; ts-node is not used, so PULUMI_NODEJS_TYPESCRIPT must not be set.
+		if nodeOptions.typescript {
+			logging.V(6).Info("deno runtime: ignoring 'typescript' option (deno handles TypeScript natively)")
+		}
+		nodeOptions.typescript = false
+		// Deno resolves tsconfig itself; PULUMI_NODEJS_TSCONFIG_PATH must not be set.
+		if nodeOptions.tsconfigpath != "" {
+			logging.V(6).Infof("deno runtime: ignoring 'tsconfig' option %q (deno resolves tsconfig itself)",
+				nodeOptions.tsconfigpath)
+		}
+		nodeOptions.tsconfigpath = ""
+		if nodeOptions.nodeargs != "" {
+			logging.V(6).Infof("deno runtime: ignoring 'nodeargs' option %q (not supported for deno)",
+				nodeOptions.nodeargs)
+		}
+		nodeOptions.nodeargs = ""
+		if nodeOptions.packagemanager != npm.DenoPackageManager {
+			logging.V(6).Info("deno runtime: ignoring 'packagemanager' option (deno always uses deno as package manager)")
+		}
+		nodeOptions.packagemanager = npm.DenoPackageManager
 	}
 
 	return nodeOptions, nil
@@ -775,9 +800,21 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		req.Info.EntryPoint = "bin"
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, false)
-	if err != nil {
-		return &pulumirpc.RunResponse{Error: err.Error()}, nil
+	if host.runtime == "deno" {
+		// Deno supports npm: specifiers and relative paths as the entry point.
+		// Convert bare package paths (e.g. "@pulumi/pulumi/cmd/run") to npm: specifiers.
+		// Leave npm:, file:, and relative paths (./...) untouched.
+		if !strings.HasPrefix(runPath, "npm:") &&
+			!strings.HasPrefix(runPath, "file:") &&
+			!strings.HasPrefix(runPath, "./") &&
+			!strings.HasPrefix(runPath, "/") {
+			runPath = "npm:" + runPath
+		}
+	} else {
+		runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, false)
+		if err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}, nil
+		}
 	}
 
 	// Channel producing the final response we want to issue to our caller. Will get the result of
@@ -852,6 +889,22 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 	if host.runtime == "bun" {
 		runtimeArgs = append([]string{"run"}, runtimeArgs...)
 	}
+	if host.runtime == "deno" {
+		// Deno requires explicit permission flags and the "run" subcommand.
+		// --unstable-detect-cjs: auto-detect CJS modules by inspecting the file
+		// (needed because the runner is compiled CommonJS, not ESM).
+		denoFlags := []string{
+			"run",
+			"--unstable-detect-cjs",
+			"--allow-read",
+			"--allow-env",
+			"--allow-net",
+			"--allow-run",
+			"--allow-sys",
+			"--allow-write",
+		}
+		runtimeArgs = append(denoFlags, runtimeArgs...)
+	}
 
 	var port int
 	if req.GetAttachDebugger() {
@@ -900,6 +953,11 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 	var errResult string
 	// #nosec G204
 	cmd := exec.CommandContext(ctx, runtimeBin, runtimeArgs...)
+	// For Deno, start the process in the program directory so Deno discovers deno.json
+	// (and its import map / nodeModulesDir settings) at startup, before any JS runs.
+	if host.runtime == "deno" {
+		cmd.Dir = req.Info.ProgramDirectory
+	}
 
 	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
 
@@ -1116,9 +1174,21 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
-	_, err = npm.Install(ctx, opts.packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
-	if err != nil {
-		return err
+	if host.runtime == "deno" {
+		// Deno caches packages to a global store; there is no local node_modules directory.
+		// Bypass the npm.Install wrapper (which checks for node_modules) and call Install directly.
+		pm, pmErr := npm.ResolvePackageManager(opts.packagemanager, workspaceRoot)
+		if pmErr != nil {
+			return fmt.Errorf("could not resolve package manager: %w", pmErr)
+		}
+		if err = pm.Install(ctx, workspaceRoot, false /*production*/, stdout, stderr); err != nil {
+			return err
+		}
+	} else {
+		_, err = npm.Install(ctx, opts.packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
+		if err != nil {
+			return err
+		}
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
@@ -1232,8 +1302,8 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 ) (*pulumirpc.RuntimeOptionsResponse, error) {
 	var prompts []*pulumirpc.RuntimeOptionPrompt
 
-	// When using bun the package manager is always bun; no prompt is needed.
-	if host.runtime != "bun" {
+	// When using bun or deno the package manager is always fixed; no prompt is needed.
+	if host.runtime != "bun" && host.runtime != "deno" {
 		rawOpts := req.Info.Options.AsMap()
 		if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
 			prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{

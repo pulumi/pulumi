@@ -1,0 +1,3 @@
+name: deno
+description: Tests a simple program with deno as a runtime
+runtime: deno

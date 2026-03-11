@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Deno is not declared in @types/node; declare it here so TypeScript doesn't complain.
+// It will be undefined when running under Node.js or Bun.
+declare const Deno: unknown | undefined;
+
 // The tsnode import is used for type-checking only. Do not reference it in the emitted code.
 import * as tsnode from "ts-node";
 import * as fs from "fs";
@@ -532,6 +536,22 @@ ${defaultErrorMessage(err)}`,
                     }
                     programExport = programExport.default;
                 }
+            } else if (typeof Deno !== "undefined") {
+                // Deno handles TypeScript natively. Resolve the entry point and use dynamic import.
+                const programStats = await fs.promises.lstat(program);
+                if (programStats.isDirectory()) {
+                    // Prefer index.ts, fall back to index.js.
+                    const tsEntry = path.join(program, "index.ts");
+                    const jsEntry = path.join(program, "index.js");
+                    if (fs.existsSync(tsEntry)) {
+                        program = tsEntry;
+                    } else if (fs.existsSync(jsEntry)) {
+                        program = jsEntry;
+                    } else {
+                        throw new Error(`No entrypoint found in ${program}: expected index.ts or index.js`);
+                    }
+                }
+                programExport = await dynamicImport(url.pathToFileURL(program).href);
             } else {
                 // It's a CommonJS module, so require the module and capture any module outputs it exported.
 

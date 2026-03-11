@@ -40,6 +40,7 @@ const (
 	YarnPackageManager PackageManagerType = "yarn"
 	PnpmPackageManager PackageManagerType = "pnpm"
 	BunPackageManager  PackageManagerType = "bun"
+	DenoPackageManager PackageManagerType = "deno"
 )
 
 // A `PackageManager` is responsible for installing dependencies,
@@ -167,6 +168,11 @@ func Install(ctx context.Context, packagemanager PackageManagerType, dir string,
 		return name, err
 	}
 
+	// Deno caches packages to a global store and does not create node_modules by default.
+	if pkgManager.Name() == "deno" {
+		return name, nil
+	}
+
 	// Ensure the "node_modules" directory exists.
 	nodeModulesPath, err := searchup(dir, "node_modules")
 	if nodeModulesPath == "" {
@@ -202,6 +208,8 @@ func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (Packa
 			return newPnpm()
 		case BunPackageManager:
 			return newBun()
+		case DenoPackageManager:
+			return newDeno()
 		default:
 			return nil, fmt.Errorf("unknown package manager: %s", packagemanager)
 		}
@@ -235,6 +243,15 @@ func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (Packa
 			return bun, nil
 		}
 		logging.Warningf("could not find bun on the $PATH, trying npm instead: %v", err)
+	}
+
+	// Prefer deno if deno.json or deno.jsonc exists
+	if checkDenoConfig(pwd) {
+		deno, err := newDeno()
+		if err == nil {
+			return deno, nil
+		}
+		logging.Warningf("could not find deno on the $PATH, trying npm instead: %v", err)
 	}
 
 	// Finally, fall back to npm.

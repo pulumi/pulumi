@@ -1,0 +1,3 @@
+name: deno-callbacks
+description: Tests resource hooks (callbacks) in the deno runtime.
+runtime: deno

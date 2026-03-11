@@ -64,6 +64,7 @@ const (
 	PythonRuntime = "python"
 	NodeJSRuntime = "nodejs"
 	BunRuntime    = "bun"
+	DenoRuntime   = "deno"
 	GoRuntime     = "go"
 	DotNetRuntime = "dotnet"
 	YAMLRuntime   = "yaml"
@@ -298,6 +299,8 @@ type ProgramTestOptions struct {
 	YarnBin string
 	// BunBin is a location of a `bun` executable to be run.  Taken from the $PATH if missing.
 	BunBin string
+	// DenoBin is a location of a `deno` executable to be run.  Taken from the $PATH if missing.
+	DenoBin string
 	// GoBin is a location of a `go` executable to be run.  Taken from the $PATH if missing.
 	GoBin string
 	// PythonBin is a location of a `python` executable to be run.  Taken from the $PATH if missing.
@@ -879,6 +882,7 @@ type ProgramTester struct {
 	bin            string              // the `pulumi` binary we are using.
 	yarnBin        string              // the `yarn` binary we are using.
 	bunBin         string              // the `bun` binary we are using.
+	denoBin        string              // the `deno` binary we are using.
 	goBin          string              // the `go` binary we are using.
 	pythonBin      string              // the `python` binary we are using.
 	pipenvBin      string              // The `pipenv` binary we are using.
@@ -1012,6 +1016,44 @@ func (pt *ProgramTester) bunCmd(args []string) ([]string, error) {
 	result := slice.Prealloc[string](1 + len(args))
 	result = append(result, bin)
 	return append(result, args...), nil
+}
+
+func (pt *ProgramTester) getDenoBin() (string, error) {
+	return getCmdBin(&pt.denoBin, "deno", pt.opts.DenoBin)
+}
+
+func (pt *ProgramTester) denoCmd(args []string) ([]string, error) {
+	bin, err := pt.getDenoBin()
+	if err != nil {
+		return nil, err
+	}
+	result := slice.Prealloc[string](1 + len(args))
+	result = append(result, bin)
+	return append(result, args...), nil
+}
+
+func (pt *ProgramTester) runDenoCommand(name string, args []string, wd string) error {
+	cmd, err := pt.denoCmd(args)
+	if err != nil {
+		return err
+	}
+	_, _, err = retry.Until(context.Background(), retry.Acceptor{
+		Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
+			runerr := pt.runCommand(name, cmd, wd)
+			if runerr == nil {
+				return true, nil, nil
+			} else if _, ok := runerr.(*exec.ExitError); ok {
+				// deno failed, let's try again, assuming we haven't failed a few times.
+				if try+1 >= 3 {
+					return false, nil, fmt.Errorf("%v did not complete after %v tries", cmd, try+1)
+				}
+				return false, nil, nil
+			}
+			// some other error, fail
+			return false, nil, runerr
+		},
+	})
+	return err
 }
 
 func (pt *ProgramTester) pythonCmd(args []string) ([]string, error) {
@@ -1380,6 +1422,10 @@ func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 		}
 	case BunRuntime:
 		if err = pt.bunLinkPackageDeps(projectDir); err != nil {
+			return err
+		}
+	case DenoRuntime:
+		if err = pt.denoLinkPackageDeps(projectDir); err != nil {
 			return err
 		}
 	case PythonRuntime:
@@ -2385,6 +2431,37 @@ func (pt *ProgramTester) prepareBunProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
+// prepareDenoProject runs setup necessary to get a Deno project ready for `pulumi` commands.
+func (pt *ProgramTester) prepareDenoProject(projinfo *engine.Projinfo) error {
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+
+	// If dev versions were requested, use the dev release from the npm registry.
+	if pt.opts.InstallDevReleases {
+		if err := pt.runDenoCommand("deno-add", []string{"add", "npm:@pulumi/pulumi@dev"}, cwd); err != nil {
+			return err
+		}
+	}
+
+	// Link local dependencies first so that deno install creates the node_modules symlinks.
+	if !pt.opts.RunUpdateTest {
+		if err = pt.denoLinkPackageDeps(cwd); err != nil {
+			return err
+		}
+	}
+
+	// Install dependencies (including linked local packages) into Deno's cache/node_modules.
+	if err = pt.runDenoCommand("deno-install", []string{"install"}, cwd); err != nil {
+		return err
+	}
+
+	// Deno handles TypeScript natively; no build step is needed.
+
+	return nil
+}
+
 // readPackageJSON unmarshals the package.json file located in pathToPackage.
 func readPackageJSON(pathToPackage string) (map[string]any, error) {
 	f, err := os.Open(filepath.Join(pathToPackage, "package.json"))
@@ -2525,6 +2602,78 @@ func (pt *ProgramTester) bunLinkPackageDeps(cwd string) error {
 	}
 
 	return nil
+}
+
+// denoLinkPackageDeps links package dependencies for Deno projects by adding them to the
+// "links" field in deno.json. Deno 2.3+ supports the "links" field as an array of local
+// directory paths; Deno reads the package name from each linked directory's own package.json.
+// The local path is found by searching for sdk/nodejs/bin relative to the test's source dir.
+func (pt *ProgramTester) denoLinkPackageDeps(cwd string) error {
+	// Resolve the test source dir to an absolute path so we can walk up to the repo root.
+	testDir := pt.opts.Dir
+	if !filepath.IsAbs(testDir) {
+		abs, err := filepath.Abs(testDir)
+		if err != nil {
+			return fmt.Errorf("could not resolve test dir: %w", err)
+		}
+		testDir = abs
+	}
+
+	for _, dependency := range pt.opts.Dependencies {
+		depPath, err := resolveDenoDepPath(dependency, testDir)
+		if err != nil {
+			return fmt.Errorf("could not resolve path for dependency %s: %w", dependency, err)
+		}
+		if err := npm.LinkDenoLocalPackage(cwd, dependency, depPath); err != nil {
+			return fmt.Errorf("could not add deno link for %s: %w", dependency, err)
+		}
+		// Point the runner at the local SDK's cmd/run/index.js using the absolute real path.
+		// Using the absolute path (not a symlink) ensures Deno's CJS require() resolution
+		// finds the SDK's own node_modules (with the correct @grpc/grpc-js version) rather
+		// than Deno's internal npm cache.
+		if dependency == "@pulumi/pulumi" {
+			runnerPath := filepath.Join(depPath, "cmd", "run", "index.js")
+			pt.opts.Env = append(pt.opts.Env,
+				"PULUMI_LANGUAGE_NODEJS_RUN_PATH="+runnerPath)
+		}
+	}
+	return nil
+}
+
+// resolveDenoDepPath finds the local filesystem path for a package by name.
+// Deno has no global link registry (unlike yarn/bun); its native mechanism is the
+// "links" field in deno.json, which takes a direct path. We find the path by walking
+// up from startDir to locate the repo root, then checking sdk/nodejs/bin.
+func resolveDenoDepPath(packageName, startDir string) (string, error) {
+	// Walk up from startDir looking for sdk/nodejs/bin whose package.json name matches.
+	dir := startDir
+	for {
+		candidate := filepath.Join(dir, "sdk", "nodejs", "bin")
+		if name, err := readPackageJSONName(candidate); err == nil && name == packageName {
+			return candidate, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", fmt.Errorf("could not locate package %q: no sdk/nodejs/bin found above %s", packageName, startDir)
+}
+
+// readPackageJSONName reads the "name" field from the package.json in dir.
+func readPackageJSONName(dir string) (string, error) {
+	content, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		return "", err
+	}
+	var pkg struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(content, &pkg); err != nil {
+		return "", err
+	}
+	return pkg.Name, nil
 }
 
 // InstallPipPackageDeps brings in package dependencies via pip install
@@ -2843,6 +2992,8 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 		return pt.prepareNodeJSProject(projinfo)
 	case BunRuntime:
 		return pt.prepareBunProject(projinfo)
+	case DenoRuntime:
+		return pt.prepareDenoProject(projinfo)
 	case PythonRuntime:
 		return pt.preparePythonProject(projinfo)
 	case GoRuntime:
