@@ -29,7 +29,6 @@ dependencies = [
     'semver~=3.0',
     'pyyaml~=6.0',
     'debugpy~=1.8.7',
-    'pip>=24.3.1',
     "packaging>=26.0",
     # OpenTelemetry dependencies for tracing
     'opentelemetry-api>=1.20.0',

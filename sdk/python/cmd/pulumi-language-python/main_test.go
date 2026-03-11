@@ -135,16 +135,19 @@ func getOptions(t *testing.T, name, cwd string) toolchain.PythonOptions {
 			Toolchain:  toolchain.Pip,
 			Virtualenv: ".venv",
 			Root:       cwd,
+			ProgramDir: cwd,
 		}
 	case "poetry":
 		return toolchain.PythonOptions{
-			Toolchain: toolchain.Poetry,
-			Root:      cwd,
+			Toolchain:  toolchain.Poetry,
+			Root:       cwd,
+			ProgramDir: cwd,
 		}
 	case "uv":
 		return toolchain.PythonOptions{
-			Toolchain: toolchain.Uv,
-			Root:      cwd,
+			Toolchain:  toolchain.Uv,
+			Root:       cwd,
+			ProgramDir: cwd,
 		}
 	}
 	t.Fatalf("unknown toolchain: %s", name)
@@ -187,38 +190,38 @@ func createVenv(t *testing.T, cwd, toolchainName string, opts toolchain.PythonOp
 in-project = true
 `
 
-	poetryPyprojectToml := `[tool]
-[tool.poetry]
-package-mode = false
-`
 	switch toolchainName {
 	case "poetry":
 		// Create poetry config file that ensures venvs are created in the local folder
-		file, err := os.Create(filepath.Join(cwd, "poetry.toml"))
+		err := os.WriteFile(filepath.Join(cwd, "poetry.toml"), []byte(poetryToml), 0o600)
 		require.NoError(t, err)
-		defer file.Close()
-		_, err = file.WriteString(poetryToml)
-		require.NoError(t, err)
-		// Create a pyproject.timl file for poetry
-		cmd := exec.Command("poetry", "init", "--no-interaction")
-		cmd.Dir = cwd
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, string(out))
-		// Poetry init creates a buildable package, but we need to disable that, since we don't have any source code.
-		file, err = os.OpenFile(filepath.Join(cwd, "pyproject.toml"), os.O_APPEND|os.O_WRONLY, 0o600)
-		require.NoError(t, err)
-		defer file.Close()
-		_, err = file.WriteString(poetryPyprojectToml)
+		err = os.WriteFile(filepath.Join(cwd, "pyproject.toml"), []byte(`[tool.poetry]
+name = "test"
+version = "0.1.0"
+description = ""
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+`), 0o600)
 		require.NoError(t, err)
 		// Create the venv
-		cmd = exec.Command("poetry", "install")
+		cmd := exec.Command("poetry", "install")
 		cmd.Dir = cwd
-		out, err = cmd.CombinedOutput()
+		out, err := cmd.CombinedOutput()
 		require.NoError(t, err, string(out))
 	case "uv":
 		cmd := exec.Command("uv", "init")
 		cmd.Dir = cwd
 		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
+		cmd = exec.Command("uv", "sync")
+		cmd.Dir = cwd
+		out, err = cmd.CombinedOutput()
 		require.NoError(t, err, string(out))
 	case "pip":
 		cmd := exec.Command("python3", "-m", "venv", ".venv")
