@@ -44,8 +44,11 @@ func newConfigEditCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command 
 
 	cmd := &cobra.Command{
 		Use:   "edit",
-		Short: "Edit stack config in $EDITOR",
-		Long: `Opens the stack's configuration in $EDITOR.
+		Short: "Edit stack config in your editor",
+		Long: `Opens the stack's configuration for editing.
+
+The editor defaults to the value of $VISUAL, then $EDITOR. If neither is set,
+it falls back to vi. Use --editor to override.
 
 For service-backed stacks, the ESC environment definition YAML is downloaded,
 opened for editing, and uploaded on save. Changes are rejected if the environment
@@ -62,6 +65,9 @@ For local stacks, the Pulumi.<stack>.yaml file is opened directly.`,
 	cmd.Flags().BoolVar(&impl.showSecrets, "show-secrets", false,
 		"Decrypt secrets in plaintext when downloading the ESC environment (service-backed stacks only)")
 
+	cmd.Flags().StringVar(&impl.editorFlag, "editor", "",
+		"the command to use to edit the configuration")
+
 	return cmd
 }
 
@@ -69,6 +75,7 @@ type configEditCmd struct {
 	ws          pkgWorkspace.Context
 	stackRef    *string
 	showSecrets bool
+	editorFlag  string
 
 	// openEditor and stdout are overridable for testing.
 	openEditor func(filename string) error
@@ -93,7 +100,7 @@ func (cmd *configEditCmd) run(ctx context.Context) error {
 
 	openFn := cmd.openEditor
 	if openFn == nil {
-		openFn = openInEditorFromEnv
+		openFn = newEditorOpener(cmd.editorFlag)
 	}
 
 	loc := stack.ConfigLocation()
@@ -182,23 +189,49 @@ func (cmd *configEditCmd) editLocal(stack backend.Stack, openFn func(string) err
 	return openFn(configFilePath)
 }
 
-// openInEditorFromEnv opens the given file in the editor specified by $EDITOR.
-func openInEditorFromEnv(filename string) error {
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		return errors.New("no EDITOR environment variable set\n  Set EDITOR to your preferred editor (e.g. EDITOR=vim)")
-	}
+// newEditorOpener returns an opener that resolves the editor using:
+// --editor flag > $VISUAL > $EDITOR > vi on $PATH.
+// This matches the resolution order used by `pulumi env edit`.
+func newEditorOpener(editorFlag string) func(string) error {
+	return func(filename string) error {
+		editor := editorFlag
+		if editor == "" {
+			editor = os.Getenv("VISUAL")
+			if editor == "" {
+				editor = os.Getenv("EDITOR")
+			}
+		}
 
-	args, err := shlex.Split(editor)
-	if err != nil {
-		return fmt.Errorf("parsing EDITOR: %w", err)
-	}
-	args = append(args, filename)
+		var args []string
+		if editor != "" {
+			var err error
+			args, err = shlex.Split(editor)
+			if err != nil {
+				return fmt.Errorf("parsing editor command: %w", err)
+			}
+		}
 
-	//nolint:gosec
-	c := exec.Command(args[0], args[1:]...)
-	c.Stdin = os.Stdin
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	return c.Run()
+		if len(args) == 0 {
+			path, err := exec.LookPath("vi")
+			if err != nil {
+				return errors.New("no available editor: use --editor or set the VISUAL or EDITOR " +
+					"environment variable (e.g. EDITOR=vim)")
+			}
+			args = []string{path}
+		}
+
+		// VS Code needs -w (--wait) to block until the file is closed.
+		if args[0] == "code" && len(args) == 1 {
+			args = append(args, "-w")
+		}
+
+		args = append(args, filename)
+
+		//nolint:gosec
+		c := exec.Command(args[0], args[1:]...)
+		c.Stdin = os.Stdin
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+		return c.Run()
+	}
 }
