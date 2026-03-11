@@ -648,6 +648,7 @@ func (pc *Client) CreateStack(
 		ProjectName: stackID.Project,
 		OrgName:     stackID.Owner,
 		Tags:        tags,
+		Config:      config,
 	}
 	createStackReq := apitype.CreateStackRequest{
 		StackName: stackID.Stack.String(),
