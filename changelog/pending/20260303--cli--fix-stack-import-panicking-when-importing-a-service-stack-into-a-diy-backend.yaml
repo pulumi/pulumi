@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix `stack import` panicking when importing a service stack into a DIY backend

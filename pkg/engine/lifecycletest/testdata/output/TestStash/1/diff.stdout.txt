@@ -1,7 +1,4 @@
-<{%reset%}>  pulumi:providers:pulumi: (same)
-<{%reset%}>    [id=1]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
-<{%reset%}><{%reset%}><{%fg 3%}>~ pulumi:index:Stash: (update)
+<{%fg 3%}>~ pulumi:index:Stash: (update)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:index:Stash::stash]
 <{%reset%}><{%fg 3%}>  ~ input: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>first<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>second<{%reset%}><{%fg 3%}>"

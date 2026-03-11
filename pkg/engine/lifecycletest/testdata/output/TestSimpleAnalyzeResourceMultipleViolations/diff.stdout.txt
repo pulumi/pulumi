@@ -1,6 +1,4 @@
-<{%fg 2%}>+ pulumi:providers:pkgA: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
-<{%reset%}><{%reset%}>    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory]  always-fails-advisory-unspecified<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory]  always-fails-advisory-unspecified<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
     <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory] [severity: low]  always-fails-advisory-low<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
     <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory] [severity: medium]  always-fails-advisory-medium<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
     <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory] [severity: high]  always-fails-advisory-high<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>

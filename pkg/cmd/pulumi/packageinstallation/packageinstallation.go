@@ -665,7 +665,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	case packageresolution.PathResolution:
 		*step.resolvedSpec = result.Spec
 		projectDir := result.Path
-		if !filepath.IsAbs(projectDir) {
+		if !filepath.IsAbs(projectDir) && step.parentProj.projectDir != "" {
 			projectDir = filepath.Join(step.parentProj.projectDir, result.Path)
 		}
 

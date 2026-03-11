@@ -20,10 +20,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -47,42 +49,52 @@ type L2ResourceSimpleLanguageHost struct {
 	skipRequiredPlugins bool
 	// Used by the language info test to assert we see language info in the schema.
 	expectLanguageInfo bool
+	// When set, directory/path assertions in each method are skipped so the host
+	// can serve both the normal run and the eject round-trip run.
+	skipPathChecks bool
+
+	mu                    sync.Mutex
+	generateProgramCalled bool
+	generateProjectCalls  []string // target directories in call order
 }
 
 func (h *L2ResourceSimpleLanguageHost) Pack(
 	ctx context.Context, req *pulumirpc.PackRequest,
 ) (*pulumirpc.PackResponse, error) {
-	if req.DestinationDirectory != filepath.Join(h.tempDir, "artifacts") {
+	if !h.skipPathChecks && req.DestinationDirectory != filepath.Join(h.tempDir, "artifacts") {
 		return nil, fmt.Errorf("unexpected destination directory %s", req.DestinationDirectory)
 	}
 
-	if req.PackageDirectory == filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
+	if filepath.Base(req.PackageDirectory) == "simple-2.0.0" {
 		return &pulumirpc.PackResponse{
 			ArtifactPath: filepath.Join(req.DestinationDirectory, "simple-2.0.0.sdk"),
 		}, nil
-	} else if req.PackageDirectory != filepath.Join(h.tempDir, "sdks", "core") {
-		return &pulumirpc.PackResponse{
-			ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
-		}, nil
 	}
-
-	return nil, fmt.Errorf("unexpected package directory %s", req.PackageDirectory)
+	return &pulumirpc.PackResponse{
+		ArtifactPath: filepath.Join(req.DestinationDirectory, "core.sdk"),
+	}, nil
 }
 
 func (h *L2ResourceSimpleLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
-	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
-		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
-	}
-	if req.LocalDependencies["simple"] != filepath.Join(h.tempDir, "artifacts", "simple-2.0.0.sdk") {
-		return nil, fmt.Errorf("unexpected simple sdk %s", req.LocalDependencies["simple"])
+	h.mu.Lock()
+	h.generateProjectCalls = append(h.generateProjectCalls, req.TargetDirectory)
+	h.mu.Unlock()
+
+	if !h.skipPathChecks {
+		if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
+			return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
+		}
+		if req.LocalDependencies["simple"] != filepath.Join(h.tempDir, "artifacts", "simple-2.0.0.sdk") {
+			return nil, fmt.Errorf("unexpected simple sdk %s", req.LocalDependencies["simple"])
+		}
+		if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+			return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)
+		}
 	}
 	if !req.Strict {
 		return nil, errors.New("expected strict to be true")
-	}
-	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
-		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)
 	}
 	var project workspace.Project
 	if err := json.Unmarshal([]byte(req.Project), &project); err != nil {
@@ -108,11 +120,13 @@ func (h *L2ResourceSimpleLanguageHost) GenerateProject(
 func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
-	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
-		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
-	}
-	if req.Directory != filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
-		return nil, fmt.Errorf("unexpected directory %s", req.Directory)
+	if !h.skipPathChecks {
+		if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
+			return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
+		}
+		if req.Directory != filepath.Join(h.tempDir, "sdks", "simple-2.0.0") {
+			return nil, fmt.Errorf("unexpected directory %s", req.Directory)
+		}
 	}
 
 	if h.expectLanguageInfo {
@@ -154,7 +168,7 @@ func (h *L2ResourceSimpleLanguageHost) GeneratePackage(
 func (h *L2ResourceSimpleLanguageHost) GetRequiredPlugins(
 	ctx context.Context, req *pulumirpc.GetRequiredPluginsRequest,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+	if !h.skipPathChecks && req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
 		return nil, fmt.Errorf("unexpected directory to get required plugins %s", req.Info.ProgramDirectory)
 	}
 
@@ -176,7 +190,7 @@ func (h *L2ResourceSimpleLanguageHost) GetRequiredPlugins(
 func (h *L2ResourceSimpleLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+	if !h.skipPathChecks && req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
 		return nil, fmt.Errorf("unexpected directory to get program dependencies %s", req.Info.ProgramDirectory)
 	}
 
@@ -197,7 +211,7 @@ func (h *L2ResourceSimpleLanguageHost) GetProgramDependencies(
 func (h *L2ResourceSimpleLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
-	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+	if !h.skipPathChecks && req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
 		return fmt.Errorf("unexpected root directory to install dependencies %s", req.Info.RootDirectory)
 	}
 	if req.Info.ProgramDirectory != req.Info.RootDirectory {
@@ -212,7 +226,7 @@ func (h *L2ResourceSimpleLanguageHost) InstallDependencies(
 func (h *L2ResourceSimpleLanguageHost) Run(
 	ctx context.Context, req *pulumirpc.RunRequest,
 ) (*pulumirpc.RunResponse, error) {
-	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
+	if !h.skipPathChecks && req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-resource-simple") {
 		return nil, fmt.Errorf("unexpected root directory to run %s", req.Info.RootDirectory)
 	}
 	if req.Info.ProgramDirectory != req.Info.RootDirectory {
@@ -259,6 +273,19 @@ func (h *L2ResourceSimpleLanguageHost) Run(
 	}
 
 	return &pulumirpc.RunResponse{}, nil
+}
+
+func (h *L2ResourceSimpleLanguageHost) GenerateProgram(
+	_ context.Context, _ *pulumirpc.GenerateProgramRequest,
+) (*pulumirpc.GenerateProgramResponse, error) {
+	h.mu.Lock()
+	h.generateProgramCalled = true
+	h.mu.Unlock()
+	return &pulumirpc.GenerateProgramResponse{
+		Source: map[string][]byte{
+			"program.mock": []byte("mock program content"),
+		},
+	}, nil
 }
 
 // Run a simple successful test with a mocked runtime.
@@ -509,4 +536,84 @@ func TestL2ResourceLanguageInfo(t *testing.T) {
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.Empty(t, runResponse.Messages)
 	assert.True(t, runResponse.Success)
+}
+
+// convertTestConverter is a minimal plugin.Converter for testing the PCL→Language→PCL round-trip.
+type convertTestConverter struct{}
+
+func (c *convertTestConverter) Close() error { return nil }
+
+func (c *convertTestConverter) ConvertState(
+	_ context.Context, _ *plugin.ConvertStateRequest,
+) (*plugin.ConvertStateResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (c *convertTestConverter) ConvertProgram(
+	_ context.Context, req *plugin.ConvertProgramRequest,
+) (*plugin.ConvertProgramResponse, error) {
+	err := os.WriteFile(
+		filepath.Join(req.TargetDirectory, "main.pp"),
+		[]byte("resource \"res\" \"simple:index:Resource\" {\n    value = true\n}\n"),
+		0o600,
+	)
+	return &plugin.ConvertProgramResponse{}, err
+}
+
+// TestL2ResourceSimple_ConvertPath verifies that when ConverterPluginTarget is set, the engine
+// performs the PCL→Language→PCL→Language round-trip (eject) and writes snapshots to isolated
+// directories without affecting the normal project snapshot directory.
+func TestL2ResourceSimple_ConvertPath(t *testing.T) {
+	t.Setenv("PULUMI_ACCEPT", "1")
+
+	tempDir := t.TempDir()
+	snapshotDir := t.TempDir()
+	engine := newLanguageTestServer()
+	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir, skipPathChecks: true}
+	conv := &convertTestConverter{}
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, runtime)
+			pulumirpc.RegisterConverterServer(srv, plugin.NewConverterServer(conv))
+			return nil
+		},
+	})
+	require.NoError(t, err)
+
+	prepareResponse, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
+		LanguagePluginName:    "mock",
+		LanguagePluginTarget:  fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		TemporaryDirectory:    tempDir,
+		SnapshotDirectory:     snapshotDir,
+		ConverterPluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		CoreSdkDirectory:      "sdk/dir",
+		CoreSdkVersion:        "1.0.1",
+	})
+	require.NoError(t, err)
+	assert.NotEmpty(t, prepareResponse.Token)
+
+	runResponse, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
+		Token: prepareResponse.Token,
+		Test:  "l2-resource-simple",
+	})
+	require.NoError(t, err)
+	t.Logf("stdout: %s", runResponse.Stdout)
+	t.Logf("stderr: %s", runResponse.Stderr)
+	assert.Empty(t, runResponse.Messages)
+	assert.True(t, runResponse.Success)
+
+	// Verify the convert path was exercised.
+	assert.True(t, runtime.generateProgramCalled,
+		"expected GenerateProgram to be called for the eject round-trip")
+
+	// GenerateProject is called once for the normal run and once for the eject round-trip.
+	assert.Equal(t, []string{
+		filepath.Join(tempDir, "projects", "l2-resource-simple"),
+		filepath.Join(tempDir, "eject", "round-tripped-project", "l2-resource-simple"),
+	}, runtime.generateProjectCalls)
+
+	// Verify snapshots were written to the correct isolated directories.
+	assert.FileExists(t, filepath.Join(snapshotDir, "projects", "l2-resource-simple", "Pulumi.yaml"))
+	assert.FileExists(t, filepath.Join(snapshotDir, "eject-pcl", "l2-resource-simple", "main.pp"))
+	assert.FileExists(t, filepath.Join(snapshotDir, "round-tripped-project", "l2-resource-simple", "Pulumi.yaml"))
 }

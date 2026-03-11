@@ -49,19 +49,36 @@ type generator struct {
 	program     *pcl.Program
 	diagnostics hcl.Diagnostics
 
+	// Generate ESM (ECMAScript modules) output instead of CJS (CommonJS), see https://nodejs.org/api/esm.html
+	esm                     bool
 	asyncMain               bool
 	configCreated           bool
 	isComponent             bool
 	deferredOutputVariables []*pcl.DeferredOutputVariable
 }
 
+// ProgramOptions controls optional code generation behaviour for GenerateProgramWithOptions.
+type ProgramOptions struct {
+	// The runtime we are generating code for ("nodejs", "bun").
+	Runtime string
+}
+
+// GenerateProgram generates a Node.js program from a PCL program using default options.
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	return GenerateProgramWithOptions(program, ProgramOptions{
+		Runtime: "nodejs",
+	})
+}
+
+// GenerateProgramWithOptions generates a TypeScript program from a PCL program.
+func GenerateProgramWithOptions(program *pcl.Program, opts ProgramOptions) (map[string][]byte, hcl.Diagnostics, error) {
 	pcl.MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
 	g := &generator{
 		program: program,
+		esm:     opts.Runtime == "bun",
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -115,7 +132,11 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	indenter := func(f func()) { f() }
 	if g.asyncMain {
 		indenter = g.Indented
-		g.Fgenf(&index, "export = async () => {\n")
+		if g.esm {
+			g.Fgenf(&index, "export default async () => {\n")
+		} else {
+			g.Fgenf(&index, "export = async () => {\n")
+		}
 	}
 
 	indenter(func() {
@@ -173,10 +194,24 @@ func generatePackageJSON(
 	program *pcl.Program,
 	projectName string,
 	localDependencies map[string]string,
+	runtimeName string,
 ) ([]byte, error) {
-	// Build the package.json
 	var packageJSON bytes.Buffer
-	fmt.Fprintf(&packageJSON, `{
+	if runtimeName == "bun" {
+		fmt.Fprintf(&packageJSON, `{
+	"name": "%s",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		`, projectName)
+	} else {
+		fmt.Fprintf(&packageJSON, `{
 	"name": "%s",
 	"devDependencies": {
 		"@types/node": "%s"
@@ -184,6 +219,7 @@ func generatePackageJSON(
 	"dependencies": {
 		"typescript": "^4.0.0",
 		`, projectName, MinimumNodeTypesVersion)
+	}
 
 	// Check if pulumi is a local dependency, else add it as a normal range dependency
 	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
@@ -262,60 +298,40 @@ func generatePackageJSON(
 	return packageJSON.Bytes(), nil
 }
 
-func GenerateProject(
-	directory string, project workspace.Project,
-	program *pcl.Program, localDependencies map[string]string,
-	forceTsc bool,
-) error {
-	files, diagnostics, err := GenerateProgram(program)
-	if err != nil {
-		return err
-	}
-	if diagnostics.HasErrors() {
-		return diagnostics
-	}
-
-	// Check the project for "main" as that changes where we write out files and some relative paths.
-	rootDirectory := directory
-	if project.Main != "" {
-		directory = filepath.Join(rootDirectory, project.Main)
-		// mkdir -p the subdirectory
-		err = os.MkdirAll(directory, 0o700)
-		if err != nil {
-			return fmt.Errorf("create main directory: %w", err)
-		}
-	}
-
-	// Set the runtime to "nodejs" then marshal to Pulumi.yaml
-	runtime := workspace.NewProjectRuntimeInfo("nodejs", nil)
-	if forceTsc {
-		runtime.SetOption("typescript", false)
-	}
-	project.Runtime = runtime
-
-	projectBytes, err := encoding.YAML.Marshal(project)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
-	if err != nil {
-		return fmt.Errorf("write Pulumi.yaml: %w", err)
-	}
-
-	packageJSON, err := generatePackageJSON(program, project.Name.String(), localDependencies)
-	if err != nil {
-		return err
-	}
-	files["package.json"] = packageJSON
-
-	// Add the language specific .gitignore
-	files[".gitignore"] = []byte(`/bin/
-/node_modules/
-`)
-
-	// Add the basic tsconfig
+func generateTSConfig(runtimeName string, files map[string][]byte) []byte {
 	var tsConfig bytes.Buffer
-	tsConfig.WriteString(`{
+
+	if runtimeName == "bun" {
+		// https://bun.sh/docs/typescript#suggested-compileroptions
+		tsConfig.WriteString(`{
+	"compilerOptions": {
+		// Environment setup & latest features
+		"lib": ["ESNext"],
+		"target": "ESNext",
+		"module": "Preserve",
+		"moduleDetection": "force",
+		"jsx": "react-jsx",
+		"allowJs": true,
+		// Bundler mode
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"noEmit": true,
+		// Best practices
+		"strict": true,
+		"skipLibCheck": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		// Some stricter flags (disabled by default)
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"noPropertyAccessFromIndexSignature": false
+	},
+	"files": [
+`)
+	} else {
+		tsConfig.WriteString(`{
 	"compilerOptions": {
 		"strict": true,
 		"outDir": "bin",
@@ -331,6 +347,7 @@ func GenerateProject(
 	},
 	"files": [
 `)
+	}
 
 	fileNames := make([]string, 0, len(files))
 	for file := range files {
@@ -353,7 +370,64 @@ func GenerateProject(
 	tsConfig.WriteString(`	]
 }
 `)
-	files["tsconfig.json"] = tsConfig.Bytes()
+	return tsConfig.Bytes()
+}
+
+func GenerateProject(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+	forceTsc bool, runtimeName string,
+) error {
+	files, diagnostics, err := GenerateProgramWithOptions(program, ProgramOptions{Runtime: runtimeName})
+	if err != nil {
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
+
+	// Check the project for "main" as that changes where we write out files and some relative paths.
+	rootDirectory := directory
+	if project.Main != "" {
+		directory = filepath.Join(rootDirectory, project.Main)
+		// mkdir -p the subdirectory
+		err = os.MkdirAll(directory, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+	}
+
+	// Set the runtime then marshal to Pulumi.yaml
+	if runtimeName == "" {
+		runtimeName = "nodejs"
+	}
+	runtime := workspace.NewProjectRuntimeInfo(runtimeName, nil)
+	if runtimeName == "nodejs" && forceTsc {
+		runtime.SetOption("typescript", false)
+	}
+	project.Runtime = runtime
+
+	projectBytes, err := encoding.YAML.Marshal(project)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("write Pulumi.yaml: %w", err)
+	}
+
+	packageJSON, err := generatePackageJSON(program, project.Name.String(), localDependencies, runtimeName)
+	if err != nil {
+		return err
+	}
+	files["package.json"] = packageJSON
+
+	// Add the language specific .gitignore
+	files[".gitignore"] = []byte(`/bin/
+/node_modules/
+`)
+
+	files["tsconfig.json"] = generateTSConfig(runtimeName, files)
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)

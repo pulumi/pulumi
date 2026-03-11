@@ -101,7 +101,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
 		SchemaProvider{"aws", "5.4.0"},
 		SchemaProvider{"eks", "0.40.0"},
-		SchemaProvider{"docker", "4.0.0-alpha.0"},
 		SchemaProvider{"awsx", "1.0.0-beta.5"},
 		SchemaProvider{"kubernetes", "3.0.0"},
 

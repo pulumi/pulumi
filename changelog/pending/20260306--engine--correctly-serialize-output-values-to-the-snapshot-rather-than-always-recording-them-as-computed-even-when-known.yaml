@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Correctly serialize output values to the snapshot rather than always recording them as computed even when known

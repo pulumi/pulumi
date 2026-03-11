@@ -609,8 +609,23 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 	// A computed value marks something that will be determined at a later time. (e.g. the result of
 	// a computation that we don't perform during a preview operation.) We serialize a magic constant
 	// to record its existence.
-	if prop.IsComputed() || prop.IsOutput() {
+	if prop.IsComputed() {
 		return computedValuePlaceholder, nil
+	}
+
+	// We can't currently serialize output values fully, we lose the dependency information. But we can
+	// at least serialize the inner value so that we can preserve the shape of the data.
+	if prop.IsOutput() {
+		o := prop.OutputValue()
+
+		element := o.Element
+		if !o.Known {
+			element = resource.MakeComputed(element)
+		}
+		if o.Secret {
+			element = resource.MakeSecret(element)
+		}
+		return SerializePropertyValue(ctx, element, enc, showSecrets)
 	}
 
 	// For arrays, make sure to recurse.

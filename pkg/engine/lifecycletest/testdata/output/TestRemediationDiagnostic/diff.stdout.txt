@@ -1,7 +1,5 @@
     <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory]  warning<{%reset%}>  (pulumi:providers:pkgA: default)<{%reset%}>warning - could not run due to unknowns<{%reset%}>
-<{%fg 2%}>+ pulumi:providers:pkgA: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
-<{%reset%}><{%reset%}>    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory]  warning<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>warning - could not run due to unknowns<{%reset%}>
+    <{%fg 5%}>analyzerA@v1.0.0 <{%reset%}><{%fg 3%}>[advisory]  warning<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>warning - could not run due to unknowns<{%reset%}>
 <{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

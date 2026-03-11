@@ -8,10 +8,7 @@
 <{%reset%}><{%fg 1%}>      - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>    }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>  - secretOutputNames: <{%reset%}><{%fg 1%}>[]<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>- pulumi:providers:pulumi: (delete)
-<{%fg 1%}>    [id=2]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 1 deleted<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

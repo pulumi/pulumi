@@ -1952,6 +1952,28 @@ func TestAboutNodeJS(t *testing.T) {
 	assert.Regexp(t, regexp.MustCompile(`packagemanagerVersion='\d+\.\d+.\d+'`), stdout)
 }
 
+func TestAboutBun(t *testing.T) {
+	t.Parallel()
+
+	dir := filepath.Join("about", "bun")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+
+	e.RunCommandWithRetry("bun", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("bun", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "about-bun")
+	e.RunCommand("pulumi", "stack", "select", "about-bun")
+	stdout, stderr := e.RunCommand("pulumi", "about")
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
+	// Assert we parsed the language plugin and bun version
+	assert.Regexp(t, regexp.MustCompile(`language\W+bun\W+\d+\.\d+`), stdout,
+		"Did not contain expected output. stderr: \n%q", stderr)
+	assert.Contains(t, stdout, "packagemanager='bun'")
+	assert.Regexp(t, regexp.MustCompile(`packagemanagerVersion='\d+\.\d+\.\d+'`), stdout)
+}
+
 func TestConstructOutputValuesNode(t *testing.T) {
 	t.Parallel()
 	testConstructOutputValues(t, "nodejs", "@pulumi/pulumi")

@@ -675,18 +675,18 @@ func TestGetProgramDependencies(t *testing.T) {
 func TestParseOptions(t *testing.T) {
 	t.Parallel()
 
-	opts, err := parseOptions(nil)
+	opts, err := parseOptions(nil, "nodejs")
 	require.NoError(t, err)
 	require.Equal(t, npm.AutoPackageManager, opts.packagemanager)
 
 	_, err = parseOptions(map[string]any{
 		"typescript": 123,
-	})
+	}, "nodejs")
 	require.ErrorContains(t, err, "typescript option must be a boolean")
 
 	_, err = parseOptions(map[string]any{
 		"packagemanager": "poetry",
-	})
+	}, "nodejs")
 	require.ErrorContains(t, err, "packagemanager option must be one of")
 
 	for _, tt := range []struct {
@@ -701,7 +701,7 @@ func TestParseOptions(t *testing.T) {
 	} {
 		opts, err = parseOptions(map[string]any{
 			"packagemanager": tt.input,
-		})
+		}, "nodejs")
 		require.NoError(t, err)
 		require.Equal(t, tt.expected, opts.packagemanager)
 	}

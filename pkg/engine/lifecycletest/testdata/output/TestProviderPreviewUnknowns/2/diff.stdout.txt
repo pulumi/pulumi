@@ -19,9 +19,6 @@
 <{%reset%}><{%reset%}>    <{%fg 1%}>- pkgA:m:typB: (delete)
 <{%fg 1%}>        [id=3]
 <{%reset%}><{%fg 1%}>        [urn=urn:pulumi:test::test::pkgA:m:typB$pkgA:m:typB::resB-resB]
-<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
-<{%fg 1%}>    [id=4]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 2 to update<{%reset%}>
     <{%fg 1%}>- 1 to delete<{%reset%}>

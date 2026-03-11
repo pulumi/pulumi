@@ -1,0 +1,11 @@
+{
+	"name": "l2-snake-names",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/snake_names": "ROOT/artifacts/pulumi-snake_names-33.0.0.tgz"
+	}
+}
