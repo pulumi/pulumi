@@ -213,6 +213,15 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	if err := pkg.ImportLanguages(languages); err != nil {
 		return nil, nil, err
 	}
+	pkg.interpretPulumiRefs = func(description string, resolver PulumiRefResolver) (string, error) {
+		source := []byte(description)
+		parsed := ParseDocs(source)
+		err := interpretPulumiRefs("", types, ValidationOptions{}, parsed, resolver)
+		if err != nil {
+			return "", err
+		}
+		return RenderDocsToString(source, parsed), nil
+	}
 	return pkg, diags, nil
 }
 

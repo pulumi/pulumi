@@ -754,7 +754,7 @@ func (p *PartialPackage) InterpretPulumiRefs(description string, resolver Pulumi
 
 	source := []byte(description)
 	parsed := ParseDocs(source)
-	err := interpretPulumiRefs("#/description", p.types, ValidationOptions{}, parsed, resolver)
+	err := interpretPulumiRefs("", p.types, ValidationOptions{}, parsed, resolver)
 	if err != nil {
 		return "", err
 	}
