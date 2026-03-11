@@ -124,6 +124,15 @@ jobs:
           INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
           INPUT_ACCEPTANCE_TEST_PLATFORMS: ${{ inputs.acceptance-test-platforms }}
         run: |
+          echo "::group::Ensure gotestsum is on PATH"
+          export PATH="$HOME/go/bin:$PATH"
+          if ! command -v gotestsum >/dev/null 2>&1; then
+            echo "gotestsum not found on PATH; expected it to be installed by the earlier go install step." >&2
+            exit 1
+          fi
+          gotestsum --version || true
+          echo "::endgroup::"
+
           echo "::group::Prime test timing data"
           mkdir -p test-results
           find test-results -type f -empty -print -delete || true
