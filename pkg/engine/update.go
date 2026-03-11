@@ -26,11 +26,14 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -330,6 +333,39 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
+// loadPolicyAnalyzer attempts to load a policy analyzer plugin. If the plugin is missing, it attempts
+// to automatically install it and retry, similar to how resource provider plugins are auto-installed
+// in loadProvider (pkg/resource/deploy/providers/registry.go).
+func loadPolicyAnalyzer(
+	ctx context.Context, plugctx *plugin.Context,
+	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
+) (plugin.Analyzer, error) {
+	analyzer, err := plugctx.Host.PolicyAnalyzer(name, path, opts)
+	if err == nil {
+		return analyzer, nil
+	}
+
+	var me *workspace.MissingError
+	if !errors.As(err, &me) {
+		return nil, err
+	}
+
+	if env.DisableAutomaticPluginAcquisition.Value() {
+		return nil, err
+	}
+
+	log := func(sev diag.Severity, msg string) {
+		plugctx.Host.Log(sev, "", msg, 0)
+	}
+
+	_, installErr := pkgWorkspace.InstallPlugin(ctx, me.Spec(), log, schema.NewLoaderServerFromHost)
+	if installErr != nil {
+		return nil, err
+	}
+
+	return plugctx.Host.PolicyAnalyzer(name, path, opts)
+}
+
 // loadPolicyPlugins loads all required policy plugins and packages as well as any
 // local policy packs. It returns fully populated metadata about those policy plugins.
 func loadPolicyPlugins(plugctx *plugin.Context,
@@ -361,7 +397,8 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, analyzerOpts)
+			analyzer, err := loadPolicyAnalyzer(
+				plugctx.Base(), plugctx, tokens.QName(policy.Name()), policyPath, analyzerOpts)
 			if err != nil {
 				errs <- err
 				return
@@ -411,7 +448,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), pack.Path, analyzerOpts)
+			analyzer, err := loadPolicyAnalyzer(plugctx.Base(), plugctx, tokens.QName(abs), pack.Path, analyzerOpts)
 			if err != nil {
 				errs <- err
 				return
