@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/bun
+  description: Add debugger support for the bun runtime

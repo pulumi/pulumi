@@ -19,12 +19,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -46,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/websocket"
 )
 
 // TestPrintfNodeJS tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
@@ -1952,6 +1955,28 @@ func TestAboutNodeJS(t *testing.T) {
 	assert.Regexp(t, regexp.MustCompile(`packagemanagerVersion='\d+\.\d+.\d+'`), stdout)
 }
 
+func TestAboutBun(t *testing.T) {
+	t.Parallel()
+
+	dir := filepath.Join("about", "bun")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+
+	e.RunCommandWithRetry("bun", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("bun", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "about-bun")
+	e.RunCommand("pulumi", "stack", "select", "about-bun")
+	stdout, stderr := e.RunCommand("pulumi", "about")
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
+	// Assert we parsed the language plugin and bun version
+	assert.Regexp(t, regexp.MustCompile(`language\W+bun\W+\d+\.\d+`), stdout,
+		"Did not contain expected output. stderr: \n%q", stderr)
+	assert.Contains(t, stdout, "packagemanager='bun'")
+	assert.Regexp(t, regexp.MustCompile(`packagemanagerVersion='\d+\.\d+\.\d+'`), stdout)
+}
+
 func TestConstructOutputValuesNode(t *testing.T) {
 	t.Parallel()
 	testConstructOutputValues(t, "nodejs", "@pulumi/pulumi")
@@ -3423,4 +3448,99 @@ func TestTsExecute(t *testing.T) {
 		SkipPreview: true,
 		SkipUpdate:  true,
 	})
+}
+
+// getNodeInspectorWSURL polls the Node.js inspector HTTP endpoint until a webSocketDebuggerUrl is available, or fails
+// after ~3 seconds.
+func getNodeInspectorWSURL(t *testing.T, port int) string {
+	t.Helper()
+	url := fmt.Sprintf("http://127.0.0.1:%d/json", port)
+	for i := 0; i < 30; i++ {
+		resp, err := http.Get(url) //nolint:gosec
+		if err == nil {
+			var targets []struct {
+				WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&targets) == nil && len(targets) > 0 &&
+				targets[0].WebSocketDebuggerURL != "" {
+				resp.Body.Close()
+				return targets[0].WebSocketDebuggerURL
+			}
+			resp.Body.Close()
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	require.Fail(t, "timed out waiting for Node.js inspector WebSocket URL")
+	return ""
+}
+
+// Test that we can run a program, attach a debugger to it, and send debugging commands using Chrome DevTools Protocol
+// and finally that the program terminates successfully after the debugger is detached.
+func TestDebuggerAttachNodejs(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("nodejs", "debugger"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "install")
+
+	e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
+	e.RunCommand("pulumi", "stack", "init", "debugger-test")
+	e.RunCommand("pulumi", "stack", "select", "debugger-test")
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		e.RunCommand("pulumi", "preview", "--attach-debugger",
+			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
+	}()
+
+	// Wait for the debugging event
+	wait := 20 * time.Millisecond
+	var debugEvent *apitype.StartDebuggingEvent
+outer:
+	for i := 0; i < 50; i++ {
+		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
+		require.NoError(t, err)
+		for _, event := range events {
+			if event.StartDebuggingEvent != nil {
+				debugEvent = event.StartDebuggingEvent
+				break outer
+			}
+		}
+		time.Sleep(wait)
+		if wait < 500*time.Millisecond {
+			wait *= 2
+		}
+	}
+	require.NotNil(t, debugEvent)
+
+	// Port defaults to 9229, but if it's already in use the config will specify a different port.
+	port := 9229
+	if p, ok := debugEvent.Config["port"]; ok {
+		port = int(p.(float64))
+	}
+
+	wsURL := getNodeInspectorWSURL(t, port)
+
+	// Use the Chrome DevTools Protocol to resume the paused program.
+	ws, err := websocket.Dial(wsURL, "", "http://localhost")
+	require.NoError(t, err)
+	require.NoError(t, websocket.Message.Send(ws, `{"id":1,"method":"Runtime.runIfWaitingForDebugger"}`))
+	require.NoError(t, ws.Close())
+
+	// Verify the program completed successfully.
+	waitDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(waitDone)
+	}()
+	select {
+	case <-waitDone:
+	case <-time.After(60 * time.Second):
+		t.Fatal("timed out waiting for program to complete")
+	}
 }

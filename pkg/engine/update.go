@@ -237,7 +237,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "update", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "update", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}

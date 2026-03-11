@@ -162,10 +162,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Webserver",
 	},
 	{
-		Directory:   "simple-range",
-		Description: "Simple range as int expression translation",
-	},
-	{
 		Directory:   "azure-native-v2-eventgrid",
 		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
 		// Specifically use a simplified azure-native v2.x schema when testing this program
@@ -202,10 +198,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "K8s Template with quoted string property keys to ensure that resource binding works here",
 	},
 	{
-		Directory:   "random-pet",
-		Description: "Random Pet",
-	},
-	{
 		Directory:   "aws-secret",
 		Description: "Secret",
 	},
@@ -235,10 +227,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "invalid-go-sprintf",
 		Description: "Regress invalid Go",
 		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
-	},
-	{
-		Directory:   "pulumi-stack-reference",
-		Description: "StackReference as resource",
 	},
 	{
 		Directory:   "logical-name",
@@ -281,21 +269,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
-		Directory:   "entries-function",
-		Description: "Using the entries function",
-		// go and dotnet do fully not support GenForExpression yet
-		// Todo: https://github.com/pulumi/pulumi/issues/12606
-		SkipCompile: allProgLanguages.Except(TestNodeJS).Except(TestPython),
-	},
-	{
-		Directory:   "depends-on-array",
-		Description: "Using DependsOn resource option with an array of resources",
-	},
-	{
-		Directory:   "multiline-string",
-		Description: "Multiline string literals",
-	},
-	{
 		Directory:   "config-variables",
 		Description: "Basic program with a bunch of config variables",
 		// TODO[https://github.com/pulumi/pulumi/issues/14957] - object config variables are broken here
@@ -322,10 +295,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip: allProgLanguages.Except(TestNodeJS).Except(TestPython),
 		// We are using a synthetic schema defined in range-1.0.0.json so we can't compile all the way
 		SkipCompile: allProgLanguages,
-	},
-	{
-		Directory:   "output-literals",
-		Description: "Tests that we can return various literal values via stack outputs",
 	},
 	{
 		Directory:   "dynamic-entries",

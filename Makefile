@@ -1,5 +1,5 @@
 PROJECT_NAME := Pulumi SDK
-SDKS         ?= nodejs python go
+SDKS         ?= nodejs python go pcl
 SUB_PROJECTS := $(SDKS:%=sdk/%)
 
 include build/common.mk
@@ -21,7 +21,7 @@ TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/
 VERSION         = $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
-LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python
+LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python sdk/pcl
 
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
@@ -48,27 +48,21 @@ ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 .PHONY: build-proto build_proto
-PROTO_FILES := $(sort $(shell find proto -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
-PROTO_CKSUM = cksum ${PROTO_FILES} | LC_ALL=C sort --key=3
+PROTO_SOURCES := $(sort $(shell find proto -name '*.proto')) proto/generate.sh
 build-proto: build_proto
-build_proto: proto/.checksum.txt
-proto/.checksum.txt: ${PROTO_FILES}
-	@printf "Protobuffer interfaces are ....... "
-	@if [ "$$(cat proto/.checksum.txt)" = "`${PROTO_CKSUM}`" ]; then \
-		printf "\033[0;32malready up to date\033[0m\n"; \
-	else \
-		printf "\033[0;34mout of date: REBUILDING\033[0m\n"; \
-		cd proto && ./generate.sh || exit 1; \
-		cd ../ && ${PROTO_CKSUM} > $@; \
-		printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"; \
-	fi
+build_proto: .make/proto
+.make/proto: $(PROTO_SOURCES)
+	cd proto && ./generate.sh
+	@mkdir -p .make && touch $@
 
 .PHONY: check-proto check_proto
 check-proto: check_proto
-check_proto:
-	@if [ "$$(cat proto/.checksum.txt)" != "`${PROTO_CKSUM}`" ]; then \
-		echo "Protobuf checksum doesn't match. Run \`make build_proto\` to rebuild."; \
-		${PROTO_CKSUM} | diff - proto/.checksum.txt; \
+check_proto: .make/proto
+	@if ! git diff --quiet -- sdk/proto/go sdk/nodejs/proto \
+	    sdk/python/lib/pulumi/runtime/proto proto/grpc_version.txt; then \
+		echo "Proto output is out of date. Run 'make build_proto' and commit."; \
+		git diff -- sdk/proto/go sdk/nodejs/proto \
+		    sdk/python/lib/pulumi/runtime/proto proto/grpc_version.txt; \
 		exit 1; \
 	fi
 
@@ -79,14 +73,25 @@ generate::
 
 .PHONY: generate-cli-spec
 generate-cli-spec::
-	go run -C pkg ./cmd/pulumi generate-cli-spec
+	go run -C pkg ./cmd/pulumi generate-cli-spec > specification.json
 
-bin/pulumi: proto/.checksum.txt .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
-	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+.PHONY: generate-nodejs-automation-api
+generate-nodejs-automation-api:: generate-cli-spec
+	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../specification.json boilerplate/standard.ts
+
+.PHONY: test-nodejs-automation-api
+test-nodejs-automation-api:: generate-cli-spec
+	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../specification.json boilerplate/testing.ts && npm test
+
+# For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
+# dead code elimation due to the usage of certain reflection methods.
+bin/pulumi: GO_BUILD_TAGS =
+bin/pulumi: .make/proto .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
+	go build -C pkg -o ../$@ -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: bin/pulumi-display.wasm
 bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display/wasm/gold-size.txt
-	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" -trimpath ./backend/display/wasm
+	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -tags="${GO_BUILD_TAGS}" -ldflags "-w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" -trimpath ./backend/display/wasm
 	python3 scripts/wasm-size-check.py bin/pulumi-display.wasm pkg/backend/display/wasm/gold-size.txt
 
 .PHONY: build
@@ -101,6 +106,7 @@ build_debug::
 
 build_cover::
 	cd pkg && go build -cover -o ../bin/pulumi \
+		-tags="${GO_BUILD_TAGS}" \
 		-coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/... \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
@@ -111,7 +117,7 @@ developer_docs::
 	cd developer-docs && make html
 
 dist::
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: brew
 # NOTE: the brew target intentionally avoids the dependency on `build`, as each language SDK has its own brew target
@@ -181,7 +187,6 @@ test_lifecycle_fuzz:
 	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzz$$' \
 		-tags all \
-		-timeout 1h \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 test_lifecycle_fuzz_from_state_file: GO_TEST_RACE = false
@@ -189,7 +194,6 @@ test_lifecycle_fuzz_from_state_file:
 	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzzFromStateFile$$' \
 		-tags all \
-		-timeout 1h \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 lang=$(subst test_codegen_,,$(word 1,$(subst !, ,$@)))
@@ -288,5 +292,7 @@ work:
 		sdk \
 		sdk/go/pulumi-language-go \
 		sdk/nodejs/cmd/pulumi-language-nodejs \
+		sdk/nodejs/cmd/pulumi-language-bun \
 		sdk/python/cmd/pulumi-language-python \
+		sdk/pcl \
 		tests

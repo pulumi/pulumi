@@ -15,8 +15,15 @@ bun = "latest"
 python = '3.11'
 uv = "0.10.0"
 "go:github.com/mitranim/gow" = "latest"
+protoc = "29.5"
+"go:google.golang.org/protobuf/cmd/protoc-gen-go" = "v1.36.6"
+"go:google.golang.org/grpc/cmd/protoc-gen-go-grpc" = "v1.5.1"
+"npm:grpc-tools" = "1.13.0"
+"npm:grpc_tools_node_protoc_ts" = "5.3.3"
+"npm:protoc-gen-js" = "3.21.4"
 "go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.8.0"
 "github:WebAssembly/wabt" = "1.0.37"
 dotnet = "8"
 
 [plugins]
+protoc = "https://github.com/paxosglobal/asdf-protoc"

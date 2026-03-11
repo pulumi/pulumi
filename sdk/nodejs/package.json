@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/pulumi",
-    "version": "3.225.0",
+    "version": "3.226.0",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
     "repository": {
@@ -13,6 +13,7 @@
         "@logdna/tail-file": "^2.0.6",
         "@npmcli/arborist": "^9.0.0",
         "@opentelemetry/api": "^1.9",
+        "@opentelemetry/exporter-trace-otlp-grpc": "^0.55",
         "@opentelemetry/exporter-zipkin": "^1.28",
         "@opentelemetry/instrumentation": "^0.55",
         "@opentelemetry/instrumentation-grpc": "^0.55",

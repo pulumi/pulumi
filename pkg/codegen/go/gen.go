@@ -104,6 +104,8 @@ func (d *typeDetails) markMap(input, output bool) {
 // Title converts the input string to a title case
 // where only the initial letter is upper-cased.
 // It also removes $-prefix if any.
+// If the result doesn't start with a legal Go identifier character, it is
+// prefixed with "_" to produce a valid Go identifier.
 func Title(s string) string {
 	if s == "" {
 		return ""
@@ -113,6 +115,9 @@ func Title(s string) string {
 	}
 	s = cgstrings.UppercaseFirst(s)
 	s = cgstrings.Unhyphenate(s)
+	if len(s) > 0 && !isLegalIdentifierStart(rune(s[0])) {
+		s = "_" + s
+	}
 	return s
 }
 
@@ -5391,7 +5396,7 @@ func GeneratePackage(tool string,
 		var gomod modfile.File
 		err = gomod.AddModuleStmt(modulePath)
 		contract.AssertNoErrorf(err, "could not add module statement to go.mod")
-		err = gomod.AddGoStmt("1.20")
+		err = gomod.AddGoStmt("1.25")
 		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
 		pulumiVersion := "v3.30.0"

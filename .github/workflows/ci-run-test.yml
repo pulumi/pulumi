@@ -47,11 +47,6 @@ on:
         default: 0
         required: false
         type: number
-      enable-journaling:
-        description: "Whether journaling is enabled for running the tests"
-        required: false
-        default: true
-        type: boolean
 
       version-set:
         required: false
@@ -84,7 +79,6 @@ env:
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
   # We're hitting a lot of github limits because of deploytest trying to auto install plugins, skip that for now.
   PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION: "true"
-  PULUMI_ENABLE_JOURNALING: "${{ inputs.enable-journaling }}"
   PYTHON: python
   GO_TEST_PARALLELISM: 8
   GO_TEST_PKG_PARALLELISM: 2
@@ -257,8 +251,6 @@ jobs:
           npm install -g yarn pnpm
       - name: Install bun
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
-        with:
-          bun-version: 1.2.23
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
@@ -366,6 +358,7 @@ jobs:
           make build_package
           cd bin
           yarn link
+          bun link
       - name: Ensure dependencies for the Python SDK
         run: |
           cd sdk/python

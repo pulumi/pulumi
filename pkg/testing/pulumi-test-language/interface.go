@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -40,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -446,18 +448,19 @@ type programOverride struct {
 }
 
 type testToken struct {
-	LanguagePluginName   string
-	LanguagePluginTarget string
-	TemporaryDirectory   string
-	SnapshotDirectory    string
-	CoreArtifact         string
-	CoreVersion          string
-	SnapshotEdits        []replacement
-	LanguageInfo         string
-	ProgramOverrides     map[string]programOverride
-	PolicyPackDirectory  string
-	Local                bool
-	ProvidersDirectory   string
+	LanguagePluginName    string
+	LanguagePluginTarget  string
+	TemporaryDirectory    string
+	SnapshotDirectory     string
+	CoreArtifact          string
+	CoreVersion           string
+	SnapshotEdits         []replacement
+	LanguageInfo          string
+	ProgramOverrides      map[string]programOverride
+	PolicyPackDirectory   string
+	Local                 bool
+	ProvidersDirectory    string
+	ConverterPluginTarget string
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -579,18 +582,19 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	}
 
 	tokenBytes, err := json.Marshal(&testToken{
-		LanguagePluginName:   req.LanguagePluginName,
-		LanguagePluginTarget: req.LanguagePluginTarget,
-		TemporaryDirectory:   req.TemporaryDirectory,
-		SnapshotDirectory:    req.SnapshotDirectory,
-		CoreArtifact:         coreArtifact,
-		CoreVersion:          req.CoreSdkVersion,
-		SnapshotEdits:        edits,
-		LanguageInfo:         req.LanguageInfo,
-		ProgramOverrides:     programOverrides,
-		PolicyPackDirectory:  policyPackDirectory,
-		Local:                req.Local,
-		ProvidersDirectory:   providersDirectory,
+		LanguagePluginName:    req.LanguagePluginName,
+		LanguagePluginTarget:  req.LanguagePluginTarget,
+		TemporaryDirectory:    req.TemporaryDirectory,
+		SnapshotDirectory:     req.SnapshotDirectory,
+		CoreArtifact:          coreArtifact,
+		CoreVersion:           req.CoreSdkVersion,
+		SnapshotEdits:         edits,
+		LanguageInfo:          req.LanguageInfo,
+		ProgramOverrides:      programOverrides,
+		PolicyPackDirectory:   policyPackDirectory,
+		Local:                 req.Local,
+		ProvidersDirectory:    providersDirectory,
+		ConverterPluginTarget: req.ConverterPluginTarget,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -992,7 +996,6 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// Just use base64 "secrets" for these tests
 	sm := b64secrets.NewBase64SecretsManager()
-	dec := sm.Decrypter()
 
 	// Create a temp dir for the a diy backend to run in for the test
 	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
@@ -1006,31 +1009,89 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	// Create any stack references needed for the test
-	for name, outputs := range test.StackReferences {
-		ref, err := testBackend.ParseStackReference(name)
+	if err := createStackReferences(ctx, sm, testBackend, test.StackReferences); err != nil {
+		return nil, err
+	}
+
+	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
+		sdks, localDependencies, languageClient, grpcServer,
+		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
+	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
+		return languageTestResult, err
+	}
+
+	// Now that normal language tests have run successfully, we want to run the converter test
+
+	converterConn, err := grpc.NewClient(token.ConverterPluginTarget,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("dial converter plugin: %w", err)
+	}
+
+	// Use isolated temp and snapshot directories for the eject run so it doesn't overwrite the
+	// normal project dir or project snapshots.
+
+	ejectToken := token
+	ejectToken.TemporaryDirectory = filepath.Join(token.TemporaryDirectory, "eject")
+	if err := os.MkdirAll(ejectToken.TemporaryDirectory, 0o755); err != nil {
+		return nil, fmt.Errorf("create eject temporary dir: %w", err)
+	}
+
+	ejectTestingClient := roundTripClient{
+		LanguageRuntime:        languageClient,
+		converter:              pulumirpc.NewConverterClient(converterConn),
+		disableSnapshotWriting: eng.DisableSnapshotWriting,
+		snapshotEdits:          snapshotEdits,
+		projectsBaseDir:        filepath.Join(ejectToken.TemporaryDirectory, "round-tripped-project"),
+		ejectSnapshotBaseDir:   filepath.Join(token.SnapshotDirectory, "eject-pcl"),
+	}
+
+	// Use a fresh backend dir so the eject run doesn't collide with the stack from the first run.
+	ejectBackendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test+"-eject")
+	if err := os.MkdirAll(ejectBackendDir, 0o755); err != nil {
+		return nil, fmt.Errorf("create eject backend dir: %w", err)
+	}
+	ejectTestBackend, err := diy.New(ctx, snk, "file://"+ejectBackendDir, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create eject diy backend: %w", err)
+	}
+	if err := createStackReferences(ctx, sm, ejectTestBackend, test.StackReferences); err != nil {
+		return nil, err
+	}
+
+	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
+		sdks, localDependencies, ejectTestingClient, grpcServer,
+		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
+}
+
+func createStackReferences(
+	ctx context.Context, sm secrets.Manager, b diy.Backend, stackRefs map[string]resource.PropertyMap,
+) error {
+	for name, outputs := range stackRefs {
+		ref, err := b.ParseStackReference(name)
 		if err != nil {
-			return nil, fmt.Errorf("parse test stack reference: %w", err)
+			return fmt.Errorf("parse test stack reference: %w", err)
 		}
 
-		s, err := testBackend.CreateStack(ctx, ref, "", nil, nil)
+		s, err := b.CreateStack(ctx, ref, "", nil, nil)
 		if err != nil {
-			return nil, fmt.Errorf("create test stack reference: %w", err)
+			return fmt.Errorf("create test stack reference: %w", err)
 		}
 
 		stackName := ref.Name()
 		projectName, has := ref.Project()
 		if !has {
-			return nil, fmt.Errorf("stack reference %s has no project", ref)
+			return fmt.Errorf("stack reference %s has no project", ref)
 		}
-		name := fmt.Sprintf("%s-%s", projectName, stackName)
+		resourceName := fmt.Sprintf("%s-%s", projectName, stackName)
 
-		// Import the deployment for the stack reference
 		snap := &deploy.Snapshot{
 			SecretsManager: sm,
 			Resources: []*resource.State{
 				{
-					Type:    resource.RootStackType,
-					URN:     resource.CreateURN(name, string(resource.RootStackType), "", string(projectName), stackName.String()),
+					Type: resource.RootStackType,
+					URN: resource.CreateURN(resourceName, string(resource.RootStackType), "",
+						string(projectName), stackName.String()),
 					Outputs: outputs,
 				},
 			},
@@ -1038,36 +1099,51 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		untypedDeployment, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 		if err != nil {
-			return nil, fmt.Errorf("serialize deployment: %w", err)
+			return fmt.Errorf("serialize deployment: %w", err)
 		}
 
-		err = backend.ImportStackDeployment(ctx, s, untypedDeployment)
-		if err != nil {
-			return nil, fmt.Errorf("import deployment: %w", err)
+		if err := backend.ImportStackDeployment(ctx, s, untypedDeployment); err != nil {
+			return fmt.Errorf("import deployment: %w", err)
 		}
 	}
+	return nil
+}
+
+func runLanguageTests(
+	ctx context.Context, token testToken, testName string, test tests.LanguageTest,
+	loader schema.ReferenceLoader, packages []*schema.Package, sdks, localDependencies map[string]string,
+	languageClient plugin.LanguageRuntime, grpcServer *plugin.GrpcServer,
+	disableSnapshotWriting bool, snapshotEdits []compiledReplacement,
+	testBackend diy.Backend,
+	stdout, stderr *bytes.Buffer,
+	pctx *plugin.Context,
+	projectDir string,
+) (*testingrpc.RunLanguageTestResponse, error) {
+	sm := b64secrets.NewBase64SecretsManager()
+	dec := sm.Decrypter()
 
 	var result tests.LResult
 	for i, run := range test.Runs {
-		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
+		sourceDir := filepath.Join(token.TemporaryDirectory, "source", testName)
+		projectSubDir := projectDir
+		projectDir := filepath.Join(token.TemporaryDirectory, projectDir, testName)
 		if i == 0 || !test.RunsShareSource {
 			// Create a source directory for the test
 			if len(test.Runs) > 1 && !test.RunsShareSource {
 				sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 			}
-			err = os.MkdirAll(sourceDir, 0o700)
-			if err != nil {
+
+			if err := os.MkdirAll(sourceDir, 0o700); err != nil {
 				return nil, fmt.Errorf("create source dir: %w", err)
 			}
 
 			// Find and copy the tests PCL code to the source dir
-			pclDir := filepath.Join("testdata", req.Test)
+			pclDir := filepath.Join("testdata", testName)
 			if len(test.Runs) > 1 && !test.RunsShareSource {
 				pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 			}
-			err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
-			if err != nil {
+
+			if err := copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil); err != nil {
 				return nil, fmt.Errorf("copy source test data: %w", err)
 			}
 
@@ -1075,8 +1151,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			if len(test.Runs) > 1 && !test.RunsShareSource {
 				projectDir = filepath.Join(projectDir, strconv.Itoa(i))
 			}
-			err = os.MkdirAll(projectDir, 0o755)
-			if err != nil {
+
+			if err := os.MkdirAll(projectDir, 0o755); err != nil {
 				return nil, fmt.Errorf("create project dir: %w", err)
 			}
 		}
@@ -1085,10 +1161,10 @@ func (eng *languageTestServer) RunLanguageTest(
 		rootDirectory := sourceDir
 		projectJSON := func() string {
 			if run.Main == "" {
-				return fmt.Sprintf(`{"name": "%s"}`, req.Test)
+				return fmt.Sprintf(`{"name": "%s"}`, testName)
 			}
 			sourceDir = filepath.Join(sourceDir, run.Main)
-			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.Main)
+			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, testName, run.Main)
 		}()
 
 		// Check the PCL is valid and get the list of packages it reports
@@ -1132,7 +1208,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 			// If an override has been supplied for the given test, we'll just copy that over as-is, instead of calling
 			// GenerateProject to generate a program for testing.
-			if programOverride, ok := token.ProgramOverrides[req.Test]; ok {
+			if programOverride, ok := token.ProgramOverrides[testName]; ok {
 				err = copyDirectory(os.DirFS(programOverride.Paths[i]), ".", projectDir, nil, nil)
 				if err != nil {
 					return nil, fmt.Errorf("copy override testdata: %w", err)
@@ -1154,7 +1230,7 @@ func (eng *languageTestServer) RunLanguageTest(
 					return nil, fmt.Errorf("copy testdata: %w", err)
 				}
 
-				snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
+				snapshotDir := filepath.Join(token.SnapshotDirectory, projectSubDir, testName)
 				if len(test.Runs) > 1 && !test.RunsShareSource {
 					snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 				}
@@ -1162,7 +1238,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				if err != nil {
 					return nil, fmt.Errorf("program snapshot creation: %w", err)
 				}
-				validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
+				validations, err := doSnapshot(disableSnapshotWriting, projectDirSnapshot, snapshotDir)
 				if err != nil {
 					return nil, fmt.Errorf("program snapshot validation: %w", err)
 				}
@@ -1611,4 +1687,159 @@ func (eng *languageTestServer) RunLanguageTest(
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
 	}, nil
+}
+
+type roundTripClient struct {
+	plugin.LanguageRuntime
+	converter              pulumirpc.ConverterClient
+	disableSnapshotWriting bool
+	snapshotEdits          []compiledReplacement
+	// projectsBaseDir is the base directory under which per-test project dirs live.
+	// It is used to derive the relative path when constructing the eject PCL snapshot path.
+	projectsBaseDir string
+	// ejectSnapshotBaseDir is the root under which ejected-PCL snapshots are stored
+	// (e.g. {SnapshotDirectory}/eject-pcl).
+	ejectSnapshotBaseDir string
+}
+
+func (rtc roundTripClient) GenerateProject(
+	sourceDirectory, targetDirectory, project string,
+	strict bool, loaderTarget string, localDependencies map[string]string,
+) (hcl.Diagnostics, error) {
+	pclFiles, err := rtc.dirToMap(sourceDirectory)
+	if err != nil {
+		return nil, err
+	}
+
+	pclDir, diags, err := rtc.roundTrip(context.TODO(), pclFiles, loaderTarget, strict)
+	if err != nil || diags.HasErrors() {
+		return diags, err
+	}
+	defer func() { contract.IgnoreError(os.RemoveAll(pclDir)) }()
+
+	if rtc.ejectSnapshotBaseDir != "" && rtc.projectsBaseDir != "" {
+		rel, relErr := filepath.Rel(rtc.projectsBaseDir, targetDirectory)
+		if relErr == nil {
+			ejectSnapshotDir := filepath.Join(rtc.ejectSnapshotBaseDir, rel)
+			pclDirSnapshot, snapErr := editSnapshot(pclDir, rtc.snapshotEdits)
+			if snapErr != nil {
+				return diags, fmt.Errorf("eject PCL snapshot creation: %w", snapErr)
+			}
+			validations, snapErr := doSnapshot(rtc.disableSnapshotWriting, pclDirSnapshot, ejectSnapshotDir)
+			if pclDirSnapshot != pclDir {
+				contract.IgnoreError(os.RemoveAll(pclDirSnapshot))
+			}
+			if snapErr != nil {
+				return diags, fmt.Errorf("eject PCL snapshot validation: %w", snapErr)
+			}
+			if len(validations) > 0 {
+				return diags, fmt.Errorf("eject PCL snapshot validation failed:\n%s",
+					strings.Join(validations, "\n"))
+			}
+		}
+	}
+
+	diags2, err := rtc.LanguageRuntime.GenerateProject(pclDir, targetDirectory, project,
+		strict, loaderTarget, localDependencies)
+	return diags.Extend(diags2), err
+}
+
+func (rtc roundTripClient) dirToMap(dir string) (map[string]string, error) {
+	files := map[string]string{}
+	walk := func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		files[strings.TrimPrefix(path, dir)] = string(content)
+		return nil
+	}
+	return files, filepath.WalkDir(dir, walk)
+}
+
+func (rtc roundTripClient) GenerateProgram(
+	program map[string]string, loaderTarget string, strict bool,
+) (map[string][]byte, hcl.Diagnostics, error) {
+	pclDir, diags, err := rtc.roundTrip(context.TODO(), program, loaderTarget, strict)
+	if err != nil || diags.HasErrors() {
+		return nil, diags, err
+	}
+	pclFiles := map[string]string{}
+
+	walk := func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		pclFiles[strings.TrimPrefix(path, pclDir)] = string(content)
+		return nil
+	}
+	if err := filepath.WalkDir(pclDir, walk); err != nil {
+		return nil, diags, err
+	}
+	// TODO: Snapshot files
+	lang, diags2, err := rtc.LanguageRuntime.GenerateProgram(pclFiles, loaderTarget, strict)
+	return lang, diags.Extend(diags2), err
+}
+
+func (rtc roundTripClient) roundTrip(
+	ctx context.Context,
+	program map[string]string, loaderTarget string, strict bool,
+) (string, hcl.Diagnostics, error) {
+	lang, diags, err := rtc.LanguageRuntime.GenerateProgram(program, loaderTarget, strict)
+	if err != nil || diags.HasErrors() {
+		return "", diags, err
+	}
+
+	tmpDir, err := os.MkdirTemp("", "pcl-to-lang-1-*")
+	if err != nil {
+		return "", diags, err
+	}
+	defer func() { contract.IgnoreError(os.RemoveAll(tmpDir)) }()
+	for p, f := range lang {
+		p = filepath.Join(tmpDir, p)
+		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+			return "", diags, err
+		}
+		if err := os.WriteFile(p, f, 0o600); err != nil {
+			return "", diags, err
+		}
+	}
+
+	// Some converters (e.g. YAML eject) need a Pulumi.yaml project file to locate the project root.
+	// If GenerateProgram didn't produce one, write a minimal placeholder.
+	projFile := filepath.Join(tmpDir, "Pulumi.yaml")
+	if _, statErr := os.Stat(projFile); os.IsNotExist(statErr) {
+		if err := os.WriteFile(projFile, []byte("name: roundtrip\nruntime: pcl\n"), 0o600); err != nil {
+			return "", diags, err
+		}
+	}
+
+	ejectDir, err := os.MkdirTemp("", "lang-to-pcl-1-*")
+	if err != nil {
+		return "", diags, err
+	}
+
+	resp, err := rtc.converter.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
+		SourceDirectory: tmpDir,
+		TargetDirectory: ejectDir,
+		LoaderTarget:    loaderTarget,
+	})
+	for _, diag := range resp.GetDiagnostics() {
+		diags = append(diags, plugin.RPCDiagnosticToHclDiagnostic(diag))
+	}
+	if err != nil || diags.HasErrors() {
+		contract.IgnoreError(os.RemoveAll(tmpDir))
+		return "", diags, err
+	}
+
+	return ejectDir, diags, nil
 }

@@ -16,7 +16,6 @@ package toolchain
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -31,7 +30,9 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
@@ -285,53 +286,49 @@ func (u *uv) ValidateVenv(ctx context.Context) error {
 	return nil
 }
 
-func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
-	// We use `pip` instead of `uv pip` because `uv pip` does not respect the
-	// `-v` flag, which is required to get the package location.
-	// https://github.com/astral-sh/uv/issues/9838
-	args := []string{"list", "--format", "json", "-v"}
-	if !transitive {
-		args = append(args, "--not-required")
-	}
-	pipCmd, err := u.ModuleCommand(ctx, "pip", args...)
+func (u *uv) ListPackages(_ context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
+	lockDir, err := searchup(u.root, "uv.lock")
 	if err != nil {
-		return nil, fmt.Errorf("preparing pip list command: %w", err)
+		return nil, fmt.Errorf("could not find uv.lock: %w", err)
 	}
-	// Check if pip is installed, if not, we'll fallback to `uvx pip`, which will install an
-	// isolated pip for us.
-	cmd, err := u.ModuleCommand(ctx, "pip")
+	lockFilePath := filepath.Join(lockDir, "uv.lock")
+	content, err := os.ReadFile(lockFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("preparing check pip command: %w", err)
+		return nil, fmt.Errorf("could not read %s: %w", lockFilePath, err)
 	}
-	if out, err := cmd.CombinedOutput(); err != nil {
-		if strings.Contains(string(out), "No module named pip") {
-			// Use the python executable of our virtual environment so that pip will
-			// list the packages from that venv, instead of the isolated venv where
-			// uvx installs pip.
-			_, pythonPath := u.pythonExecutable()
-			args = []string{"pip", "--python", pythonPath, "list", "--format", "json", "-v"}
-			if !transitive {
-				args = append(args, "--not-required")
-			}
-			cmd := exec.CommandContext(ctx, "uvx", args...)
-			cmd.Dir = u.root
-			pipCmd = cmd
-		} else {
-			return nil, errutil.ErrorWithStderr(err, "checking for pip")
+	virtual, err := uvVirtualPackages(content)
+	if err != nil {
+		return nil, fmt.Errorf("could not identify virtual packages in %s: %w", lockFilePath, err)
+	}
+	return listPackagesFromLockFile(lockFilePath, transitive, virtual)
+}
+
+// uvLockFile is a minimal representation of uv.lock for identifying virtual packages.
+type uvLockFile struct {
+	Package []uvLockPackage `toml:"package"`
+}
+
+type uvLockPackage struct {
+	Name   string `toml:"name"`
+	Source struct {
+		Virtual string `toml:"virtual"`
+	} `toml:"source"`
+}
+
+// uvVirtualPackages returns the names of packages that are virtual (i.e. the project root or workspace members) in a
+// uv.lock file. Virtual packages have source = { virtual = "..." } and are not real installable packages.
+func uvVirtualPackages(content []byte) (map[string]bool, error) {
+	var lock uvLockFile
+	if _, err := toml.Decode(string(content), &lock); err != nil {
+		return nil, err
+	}
+	virtual := make(map[string]bool)
+	for _, pkg := range lock.Package {
+		if pkg.Source.Virtual != "" {
+			virtual[normalizePythonPackageName(pkg.Name)] = true
 		}
 	}
-
-	output, err := pipCmd.Output()
-	if err != nil {
-		return nil, errutil.ErrorWithStderr(err, "listing packages")
-	}
-
-	var packages []PythonPackage
-	if err := json.Unmarshal(output, &packages); err != nil {
-		return nil, fmt.Errorf("parsing package list: %w", err)
-	}
-
-	return packages, nil
+	return virtual, nil
 }
 
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {

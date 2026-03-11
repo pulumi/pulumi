@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -98,8 +99,7 @@ func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*works
 func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (backend.UpdateOptions, error) {
 	switch {
 	case !interactive && !yes && !skipPreview && !previewOnly:
-		return backend.UpdateOptions{},
-			errors.New("one of --yes, --skip-preview, or --preview-only must be specified in non-interactive mode")
+		return backend.UpdateOptions{}, backenderr.NoConfirmationInNonInteractiveError{}
 	case skipPreview && previewOnly:
 		return backend.UpdateOptions{},
 			errors.New("--skip-preview and --preview-only cannot be used together")
@@ -165,4 +165,16 @@ func configureNeoOptions(neoEnabledFlag bool, cmd *cobra.Command, displayOpts *d
 	displayOpts.ShowNeoFeatures = showNeoFeatures
 	displayOpts.NeoSummaryModel = env.NeoSummaryModel.Value()
 	displayOpts.NeoSummaryMaxLen = env.NeoSummaryMaxLen.Value()
+}
+
+// configureNeoTaskOption configures the display option for starting a Neo task on error.
+func configureNeoTaskOption(neoTaskOnFailureFlag bool, cmd *cobra.Command, displayOpts *display.Options,
+	isDIYBackend bool,
+) {
+	if neoTaskOnFailureFlag && isDIYBackend {
+		logging.Warningf("Neo task creation is not available with DIY backends.")
+		return
+	}
+
+	displayOpts.StartNeoTaskOnError = neoTaskOnFailureFlag
 }

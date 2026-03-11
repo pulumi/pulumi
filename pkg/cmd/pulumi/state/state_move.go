@@ -341,12 +341,16 @@ func (cmd *stateMoveCmd) Run(
 		destResMap[res.URN] = res
 	}
 
+	var brokenDestDependencies []brokenDependency
 	rewriteMap := make(map[string]string)
 	for _, res := range providers {
 		// Providers stay in the source stack, so we need a copy of the provider to be able to
 		// rewrite the URNs of the resource.
 		originalProviderRef := fmt.Sprintf("%s::%s", res.URN, res.ID)
 		r := res.Copy()
+		// Copied providers must not depend on resources that remain in the source stack,
+		// otherwise destination snapshot integrity verification fails.
+		brokenDestDependencies = append(brokenDestDependencies, breakDependencies(r, remainingResources)...)
 		if _, ok := resourcesToMove[string(r.Parent)]; !ok {
 			rootStack, err := stack.GetRootStackResource(destSnapshot)
 			if err != nil {
@@ -389,7 +393,6 @@ func (cmd *stateMoveCmd) Run(
 	}
 	fmt.Fprintf(cmd.Stdout, "\n")
 
-	var brokenDestDependencies []brokenDependency
 	for _, res := range resourcesToMoveOrdered {
 		// We need the original resources URNs later in case of errors, so make a copy here before modifying them.
 		r := res.Copy()

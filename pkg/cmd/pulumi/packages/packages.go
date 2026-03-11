@@ -44,6 +44,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/yaml.v2"
 )
 
@@ -95,6 +98,7 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 	pkg.SupportPack = true
 
 	diags, err := GenSDK(
+		pctx.Request(),
 		language,
 		tempOut,
 		pkg,
@@ -147,7 +151,17 @@ func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, 
 	return pkg, specOverride, diags, nil
 }
 
-func GenSDK(language, out string, pkg *schema.Package, overlays string, local bool) (hcl.Diagnostics, error) {
+func GenSDK(
+	ctx context.Context, language, out string, pkg *schema.Package, overlays string, local bool,
+) (hcl.Diagnostics, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	_, span := cmdutil.StartSpan(ctx, tracer, "generate-sdk",
+		trace.WithAttributes(
+			attribute.String("language", language),
+			attribute.String("package", pkg.Name),
+		))
+	defer span.End()
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("get current working directory: %w", err)
@@ -396,7 +410,11 @@ func SchemaFromSchemaSource(
 		}
 	}
 
+	tracer := otel.Tracer("pulumi-cli")
+	_, schemaSpan := cmdutil.StartSpan(pctx.Request(), tracer, "get-schema",
+		trace.WithAttributes(attribute.String("source", packageSource)))
 	schema, err := p.GetSchema(pctx.Request(), request)
+	schemaSpan.End()
 	if err != nil {
 		return nil, nil, err
 	}

@@ -27,7 +27,7 @@ import (
 // hasReferenceTo returns true if the source node has a reference to the target node.
 // In other words, if the target node is a dependency of the source node.
 func hasReferenceTo(source Node, target Node) bool {
-	for _, dep := range source.getDependencies() {
+	for _, dep := range source.GetDependencies() {
 		if dep.Name() == target.Name() {
 			return true
 		}
@@ -201,6 +201,19 @@ func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
 		} else {
 			node.Nullable = nullable
 		}
+	}
+
+	if secretAttr, ok := block.Body.Attribute("secret"); ok {
+		secret, diags := getBooleanAttributeValue(secretAttr)
+		if diags != nil {
+			diagnostics = diagnostics.Append(diags)
+		} else {
+			node.Secret = secret
+		}
+	}
+
+	if node.Secret {
+		node.typ = model.NewOutputType(node.typ)
 	}
 
 	node.Definition = block

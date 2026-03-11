@@ -3502,9 +3502,13 @@ func genPyprojectTOML(tool string,
 	// • Description and License: These fields are populated the same
 	//   way as in setup.py.
 	description := sanitizePackageDescription(pkg.Description)
-	schema.Project.Description = &description
-	schema.Project.License = &License{
-		Text: pkg.License,
+	if description != "" {
+		schema.Project.Description = &description
+	}
+	if pkg.License != "" {
+		schema.Project.License = &License{
+			Text: pkg.License,
+		}
 	}
 
 	// • Next, we set the version field.

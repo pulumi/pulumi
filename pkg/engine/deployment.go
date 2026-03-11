@@ -21,6 +21,9 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -31,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -86,7 +90,12 @@ func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Hos
 
 // newDeploymentContext creates a context for a subsequent deployment. Callers must call Close on the context after the
 // associated deployment completes.
-func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.SpanContext) (*deploymentContext, error) {
+func newDeploymentContext(
+	ctx context.Context,
+	u UpdateInfo,
+	opName string,
+	parentSpan opentracing.SpanContext,
+) (*deploymentContext, error) {
 	// Create a root span for the operation
 	opts := []opentracing.StartSpanOption{}
 	if opName != "" {
@@ -97,19 +106,31 @@ func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.Sp
 	}
 	tracingSpan := opentracing.StartSpan("pulumi-plan", opts...)
 
+	tracer := otel.Tracer("pulumi-cli")
+	var otelOpts []trace.SpanStartOption
+	if opName != "" {
+		otelOpts = append(otelOpts, trace.WithAttributes(attribute.String("operation", opName)))
+	}
+	_, otelSpan := cmdutil.StartSpan(ctx, tracer, "pulumi-plan", otelOpts...)
+
 	return &deploymentContext{
 		Update:      u,
 		TracingSpan: tracingSpan,
+		otelSpan:    otelSpan,
 	}, nil
 }
 
 type deploymentContext struct {
 	Update      UpdateInfo       // The update being processed.
 	TracingSpan opentracing.Span // An OpenTracing span to parent deployment operations within.
+	otelSpan    trace.Span
 }
 
 func (ctx *deploymentContext) Close() {
 	ctx.TracingSpan.Finish()
+	if ctx.otelSpan != nil {
+		ctx.otelSpan.End()
+	}
 }
 
 // deploymentOptions includes a full suite of options for performing a deployment.

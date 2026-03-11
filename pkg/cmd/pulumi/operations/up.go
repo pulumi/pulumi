@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
@@ -130,6 +131,7 @@ func NewUpCmd() *cobra.Command {
 
 	// Flags for Neo.
 	var neoEnabled bool
+	var neoTaskOnFailure bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -270,11 +272,11 @@ func NewUpCmd() *cobra.Command {
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
-			return errors.New("update cancelled")
+			return backenderr.CancelledError{Operation: "update"}
 		case err != nil:
 			return err
 		case expectNop && changes != nil && engine.HasChanges(changes):
-			return errors.New("no changes were expected but changes occurred")
+			return backenderr.NoChangesExpectedError{Operation: "update"}
 		default:
 			return nil
 		}
@@ -575,9 +577,7 @@ func NewUpCmd() *cobra.Command {
 
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return errors.New(
-					"--yes or --skip-preview must be passed in to proceed when running in non-interactive mode",
-				)
+				return backenderr.NoConfirmationInNonInteractiveError{}
 			}
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
@@ -662,6 +662,7 @@ func NewUpCmd() *cobra.Command {
 			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
+			configureNeoTaskOption(neoTaskOnFailure, cmd, &opts.Display, isDIYBackend)
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
@@ -843,6 +844,15 @@ func NewUpCmd() *cobra.Command {
 		&neoEnabled, "neo", false,
 		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_NEO environment variable)")
+
+	cmd.PersistentFlags().BoolVar(
+		&neoTaskOnFailure, "neo-task-on-failure", false,
+		"Start a Neo task to help debug errors that occur during the operation")
+	if !env.Experimental.Value() {
+		contract.AssertNoErrorf(
+			cmd.PersistentFlags().MarkHidden("neo-task-on-failure"),
+			`Could not mark "neo-task-on-failure" as hidden`)
+	}
 
 	// Keep --copilot flag for backwards compatibility, but hide it
 	cmd.PersistentFlags().BoolVar(

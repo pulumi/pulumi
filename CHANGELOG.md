@@ -1,5 +1,102 @@
 # Changelog
 
+## 3.225.1 (2026-03-05)
+
+
+### Bug Fixes
+
+- [engine] Fix inheritence of default providers across resources of different packages
+  [#22101](https://github.com/pulumi/pulumi/pull/22101)
+
+- [programgen/go] Fix panic on digit-prefixed schema properties in Go code generation
+  [#21917](https://github.com/pulumi/pulumi/pull/21917)
+
+- [programgen/go] Fix plain values not always being lifted to input/output values when needed
+  [#22084](https://github.com/pulumi/pulumi/pull/22084)
+
+- [programgen/python] Fix generation of `entries` and `lookup` calls
+  [#22086](https://github.com/pulumi/pulumi/pull/22086)
+
+## 3.225.0 (2026-03-04)
+
+
+### Features
+
+- [engine] Automatically make invoke outputs secret when there is a secret input, and the invoke provider does not support secrets
+  [#21959](https://github.com/pulumi/pulumi/pull/21959)
+
+- [engine] The engine now handles the inheritance of the `provider` option in resource registrations
+  [#21999](https://github.com/pulumi/pulumi/pull/21999)
+
+- [engine] Enable journaling by default. It can still be turned off using the PULUMI_DISABLE_JOURNALING env variable
+  [#22041](https://github.com/pulumi/pulumi/pull/22041)
+
+- [programgen] PCL can now express config values should be read as secrets
+  [#22066](https://github.com/pulumi/pulumi/pull/22066)
+
+- [yaml] Update yaml to v1.30.0
+
+- [cli/engine] Add a flag for automatically opening a Neo task on preview/up failure
+  [#21960](https://github.com/pulumi/pulumi/pull/21960)
+
+- [cli/package] Support source-based packages in `pulumi schema check`, not just schema files
+  [#21897](https://github.com/pulumi/pulumi/pull/21897)
+
+
+### Bug Fixes
+
+- [cli] Fix `stack import` panicking when importing a service stack into a DIY backend
+  [#22076](https://github.com/pulumi/pulumi/pull/22076)
+
+- [engine] Fix panic when a new component resource in the program is not targeted
+  [#21957](https://github.com/pulumi/pulumi/pull/21957)
+
+- [sdk/nodejs] Implement GetProgramDependencies for bun and pnpm
+  [#22065](https://github.com/pulumi/pulumi/pull/22065)
+
+
+### Miscellaneous
+
+- [cli] Build language plugins with the grpcnotrace tag to reduce the binary size
+  [#22012](https://github.com/pulumi/pulumi/pull/22012)
+
+## 3.224.0 (2026-02-26)
+
+
+### Features
+
+- [backend/diy] Add zstd compression option for DIY backend state files
+  [#21877](https://github.com/pulumi/pulumi/pull/21877)
+
+
+### Bug Fixes
+
+- [cli/state] `state move` now correctly handles reparenting of resources
+
+- [pkg] Correct the schema for "pulumi:pulumi:StackReference"
+  [#21895](https://github.com/pulumi/pulumi/pull/21895)
+
+- [programgen/nodejs] Correct the semantics of singleOrNone in generated files
+  [#21947](https://github.com/pulumi/pulumi/pull/21947)
+
+- [sdk/python] Fix `StepEventMetadata.from_json` reading `detailed_diff` (snake_case) instead of `detailedDiff` (camelCase), and `PolicyEvent.from_json` reading `resource_urn` instead of `resourceUrn`, causing both fields to always be `None`
+  [#21714](https://github.com/pulumi/pulumi/pull/21714)
+
+- [sdk/python] Convert integer component inputs to `int`
+  [#21944](https://github.com/pulumi/pulumi/pull/21944)
+
+- [sdk/python] Fix crash in forked processes using automation API
+  [#21937](https://github.com/pulumi/pulumi/pull/21937)
+
+
+### Miscellaneous
+
+- [sdk] Update java, dotnet & yaml
+  [#21961](https://github.com/pulumi/pulumi/pull/21961)
+
+- [sdk/python] Improve the performance of `contains_unknowns` for large objects
+  [#21893](https://github.com/pulumi/pulumi/pull/21893)
+
 ## 3.223.0 (2026-02-19)
 
 

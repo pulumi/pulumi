@@ -733,7 +733,7 @@ type resmon struct {
 	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
 	grpcDialOptions           DialOptions
 
-	packageRefLock sync.Mutex
+	packageRefLock sync.RWMutex
 	// A map of UUIDs to the description of a provider package they correspond to
 	packageRefMap map[string]providers.ProviderRequest
 }
@@ -1030,6 +1030,15 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 	return &pulumirpc.RegisterPackageResponse{Ref: uuid}, nil
 }
 
+// lookupPackageRef returns the provider request for the given package ref,
+// holding the read lock for thread safety.
+func (rm *resmon) lookupPackageRef(ref string) (providers.ProviderRequest, bool) {
+	rm.packageRefLock.RLock()
+	defer rm.packageRefLock.RUnlock()
+	req, has := rm.packageRefMap[ref]
+	return req, has
+}
+
 func (rm *resmon) SupportsFeature(ctx context.Context,
 	req *pulumirpc.SupportsFeatureRequest,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
@@ -1137,7 +1146,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	packageRef := req.GetPackageRef()
 	if packageRef != "" {
 		var has bool
-		providerReq, has = rm.packageRefMap[packageRef]
+		providerReq, has = rm.lookupPackageRef(packageRef)
 		if !has {
 			return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 		}
@@ -1234,12 +1243,45 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		}
 
 		rawProviderRef = fmt.Sprintf("%s::%s", provURN.GetStringValue(), provID.GetStringValue())
-	} else {
-		providerReq, err = parseProviderRequest(
-			tok.Package(), req.GetVersion(),
-			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
-
+	} else if req.Provider != "" {
 		rawProviderRef = req.GetProvider()
+	} else {
+		// Use the provider information from __self__
+		args := req.GetArgs()
+		if args == nil {
+			args = &structpb.Struct{}
+		}
+
+		self, ok := args.Fields["__self__"]
+		if ok {
+			selfFields := self.GetStructValue().Fields
+			if selfFields == nil {
+				return nil, errors.New("missing __self__ argument properties for method call")
+			}
+
+			urn, has := self.GetStructValue().Fields["urn"]
+			if !has {
+				return nil, errors.New("missing __self__.urn for method call")
+			}
+
+			goal, has := func() (resource.Goal, bool) {
+				rm.resGoalsLock.Lock()
+				defer rm.resGoalsLock.Unlock()
+				g, ok := rm.resGoals[resource.URN(urn.GetStringValue())]
+				return g, ok
+			}()
+			if !has {
+				return nil, fmt.Errorf("unknown resource %v", urn.GetStringValue())
+			}
+
+			rawProviderRef = goal.Provider
+		}
+
+		if rawProviderRef == "" {
+			providerReq, err = parseProviderRequest(
+				tok.Package(), req.GetVersion(),
+				req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -1249,7 +1291,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	packageRef := req.GetPackageRef()
 	if packageRef != "" {
 		var has bool
-		providerReq, has = rm.packageRefMap[packageRef]
+		providerReq, has = rm.lookupPackageRef(packageRef)
 		if !has {
 			return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 		}
@@ -1399,7 +1441,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		packageRef := req.GetPackageRef()
 		if packageRef != "" {
 			var has bool
-			providerReq, has = rm.packageRefMap[packageRef]
+			providerReq, has = rm.lookupPackageRef(packageRef)
 			if !has {
 				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 			}
@@ -1882,19 +1924,25 @@ func (rm *resmon) RegisterErrorHook(
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
-// Currently only inherits DeletedWith, Protect, and RetainOnDelete from parent.
-func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
-	goal := child
-	if goal.DeletedWith == "" {
-		goal.DeletedWith = parent.DeletedWith
+// Currently only inherits DeletedWith, Protect, RetainOnDelete, and Provider from parent.
+func inheritFromParent(child *pulumirpc.RegisterResourceRequest, parent resource.Goal) {
+	if child.DeletedWith == "" {
+		child.DeletedWith = string(parent.DeletedWith)
 	}
-	if goal.Protect == nil {
-		goal.Protect = parent.Protect
+	if child.Protect == nil {
+		child.Protect = parent.Protect
 	}
-	if goal.RetainOnDelete == nil {
-		goal.RetainOnDelete = parent.RetainOnDelete
+	if child.RetainOnDelete == nil {
+		child.RetainOnDelete = parent.RetainOnDelete
 	}
-	return &goal
+	if child.Provider == "" {
+		// We only inherit the provider if it matches our package, or we're a non-remote component resource.
+		ref, err := sdkproviders.ParseReference(parent.Provider)
+		if (!child.Remote && !child.Custom) ||
+			(err == nil && ref.URN().Type().Name() == tokens.TypeName(tokens.Type(child.Type).Package())) {
+			child.Provider = parent.Provider
+		}
+	}
 }
 
 type stackTrace = []resource.StackFrame
@@ -2166,6 +2214,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
 
+	if parent != "" {
+		rm.resGoalsLock.Lock()
+		parentGoal, ok := rm.resGoals[parent]
+		if ok {
+			inheritFromParent(req, parentGoal)
+		}
+		rm.resGoalsLock.Unlock()
+	}
+
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).
 	var t tokens.Type
@@ -2403,7 +2460,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		packageRef := req.GetPackageRef()
 		if packageRef != "" {
 			var has bool
-			providerReq, has = rm.packageRefMap[packageRef]
+			providerReq, has = rm.lookupPackageRef(packageRef)
 			if !has {
 				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 			}
@@ -2515,7 +2572,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			// If the provider resource has a package ref then we need to set all it's input fields as in
 			// newRegisterDefaultProviderEvent.
 			packageRef := req.GetPackageRef()
-			providerReq, has := rm.packageRefMap[packageRef]
+			providerReq, has := rm.lookupPackageRef(packageRef)
 			if !has {
 				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
 			}
@@ -2811,14 +2868,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
 		}.Make()
-		if goal.Parent != "" {
-			rm.resGoalsLock.Lock()
-			parentGoal, ok := rm.resGoals[goal.Parent]
-			if ok {
-				goal = inheritFromParent(*goal, parentGoal)
-			}
-			rm.resGoalsLock.Unlock()
-		}
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{
 			goal: goal,

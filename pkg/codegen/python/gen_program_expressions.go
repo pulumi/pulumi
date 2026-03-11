@@ -309,7 +309,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "element":
 		g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
-		g.Fgenf(w, `[{"key": k, "value": v} for k, v in %.v]`, expr.Args[0])
+		g.Fgenf(w, `[{"key": k, "value": v} for k, v in %.v.items()]`, expr.Args[0])
 	case "fileArchive":
 		g.Fgenf(w, "pulumi.FileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":
@@ -461,12 +461,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "length":
 		g.Fgenf(w, "len(%.v)", expr.Args[0])
 	case "lookup":
-		if len(expr.Args) == 3 {
-			g.Fgenf(w, "(lambda v, def: v if v is not None else def)(%.16v[%.v], %.v)",
-				expr.Args[0], expr.Args[1], expr.Args[2])
-		} else {
-			g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
-		}
+		g.Fgenf(w, "%.16v.get(%.v, %.v)",
+			expr.Args[0], expr.Args[1], expr.Args[2])
 	case "range":
 		g.Fprint(w, "range(")
 		for i, arg := range expr.Args {

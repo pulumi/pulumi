@@ -392,11 +392,11 @@ func (p *OutputProvider) makeOutputs(
 	} else if !p.elideUnknowns {
 		switch typ { //nolint:exhaustive
 		case "output:index:Resource":
-			properties["output"] = resource.NewProperty(resource.Computed{})
+			properties["output"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
 		case "output:index:ComplexResource":
-			properties["outputArray"] = resource.NewProperty(resource.Computed{})
-			properties["outputMap"] = resource.NewProperty(resource.Computed{})
-			properties["outputObject"] = resource.NewProperty(resource.Computed{})
+			properties["outputArray"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+			properties["outputMap"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+			properties["outputObject"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
 		}
 	}
 

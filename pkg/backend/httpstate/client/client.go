@@ -34,6 +34,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
@@ -43,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -51,6 +53,38 @@ const (
 	// 20s before we give up on a copilot request
 	NeoRequestTimeout = 20 * time.Second
 )
+
+// NeoTaskRequest represents a request to create a Neo task.
+type NeoTaskRequest struct {
+	Message NeoTaskMessage `json:"message"`
+}
+
+// NeoTaskMessage represents the message content for a Neo task.
+type NeoTaskMessage struct {
+	Type       string             `json:"type"`
+	Content    string             `json:"content"`
+	Timestamp  string             `json:"timestamp"`
+	EntityDiff *NeoTaskEntityDiff `json:"entity_diff,omitempty"`
+}
+
+// NeoTaskEntityDiff represents entities to add or remove from the agent context.
+type NeoTaskEntityDiff struct {
+	Add    []NeoTaskEntity `json:"add,omitempty"`
+	Remove []NeoTaskEntity `json:"remove,omitempty"`
+}
+
+// NeoTaskEntity represents an entity (like a stack) that the agent can work with.
+type NeoTaskEntity struct {
+	// Type can be "stack", "repository", "pull_request" or "policy_issue"
+	Type    string `json:"type"`
+	Name    string `json:"name"`
+	Project string `json:"project"`
+}
+
+// NeoTaskResponse represents the response from creating a Neo task.
+type NeoTaskResponse struct {
+	TaskID string `json:"taskId"`
+}
 
 // TemplatePublishOperationID uniquely identifies a template publish operation.
 type TemplatePublishOperationID string
@@ -536,24 +570,29 @@ type getLatestConfigurationResponse struct {
 	Info apitype.UpdateInfo `json:"info,omitempty"`
 }
 
+type LatestConfiguration struct {
+	Config       config.Map // The stack config
+	Environments []string   // The environments the stack is configured with
+}
+
 // GetLatestConfiguration returns the configuration for the latest deployment of a given stack.
-func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
-	latest := getLatestConfigurationResponse{}
+func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (LatestConfiguration, error) {
+	var latest getLatestConfigurationResponse
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {
 		if restErr, ok := err.(*apitype.ErrorResponse); ok {
 			if restErr.Code == http.StatusNotFound {
-				return nil, ErrNoPreviousDeployment
+				return LatestConfiguration{}, ErrNoPreviousDeployment
 			}
 		}
 
-		return nil, err
+		return LatestConfiguration{}, err
 	}
 
-	cfg := make(config.Map)
+	cfg := make(config.Map, len(latest.Info.Config))
 	for k, v := range latest.Info.Config {
 		newKey, err := config.ParseKey(k)
 		if err != nil {
-			return nil, err
+			return LatestConfiguration{}, err
 		}
 		if v.Object {
 			if v.Secret {
@@ -570,7 +609,26 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 		}
 	}
 
-	return cfg, nil
+	const stackEnvironments = "stack.environments"
+
+	var environments []string
+	if envs, ok := latest.Info.Environment[stackEnvironments]; ok {
+		var parsedEnvs []struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal([]byte(envs), &parsedEnvs); err != nil {
+			return LatestConfiguration{}, err
+		}
+		environments = make([]string, len(parsedEnvs))
+		for i, v := range parsedEnvs {
+			if v.ID == "" {
+				return LatestConfiguration{}, fmt.Errorf(`%s[%d] missing "id" property`, stackEnvironments, i)
+			}
+			environments[i] = v.ID
+		}
+	}
+
+	return LatestConfiguration{Config: cfg, Environments: environments}, nil
 }
 
 // DoesProjectExist returns true if a project with the given name exists, or false otherwise.
@@ -760,6 +818,10 @@ func (pc *Client) ExportStackDeployment(
 	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "ExportStackDeployment")
 	defer tracingSpan.Finish()
 
+	tracer := otel.Tracer("pulumi-cli")
+	childCtx, otelSpan := cmdutil.StartSpan(childCtx, tracer, "ExportStackDeployment")
+	defer otelSpan.End()
+
 	path := getStackPath(stack, "export")
 
 	// Tack on a specific version as desired.
@@ -899,7 +961,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 		Tags: tags,
 	}
 
-	if env.EnableJournaling.Value() {
+	if !env.DisableJournaling.Value() {
 		req.JournalVersion = 1
 	}
 
@@ -1586,6 +1648,44 @@ func (pc *Client) ExplainPreviewWithNeo(
 ) (string, error) {
 	request := createExplainPreviewRequest(content, orgID, kind, maxCopilotExplainPreviewContentLength)
 	return pc.callCopilot(ctx, request)
+}
+
+// CreateNeoTask creates a new Neo agent task via the Neo Tasks API.
+// This is used to start an AI-assisted debugging session when errors occur.
+func (pc *Client) CreateNeoTask(
+	ctx context.Context,
+	orgName string,
+	content string,
+	stackName string,
+	projectName string,
+) (*NeoTaskResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	request := NeoTaskRequest{
+		Message: NeoTaskMessage{
+			Type:      "user_message",
+			Content:   content,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			EntityDiff: &NeoTaskEntityDiff{
+				Add: []NeoTaskEntity{
+					{
+						Type:    "stack",
+						Name:    stackName,
+						Project: projectName,
+					},
+				},
+			},
+		},
+	}
+
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks", orgName)
+	var resp NeoTaskResponse
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, request, &resp); err != nil {
+		return nil, fmt.Errorf("creating Neo task: %w", err)
+	}
+
+	return &resp, nil
 }
 
 func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, error) {

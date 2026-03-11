@@ -288,8 +288,13 @@ func (p *SimpleInvokeProvider) Invoke(
 			}, nil
 		}
 
+		valueIsSecret := value.IsSecret()
+		if valueIsSecret {
+			value = value.SecretValue().Element
+		}
+
 		if !value.IsString() {
-			reason := fmt.Sprintf("value is not a string: %v", value)
+			reason := fmt.Sprintf("value is not a string: %#v", value)
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", reason),
 			}, nil
@@ -309,7 +314,7 @@ func (p *SimpleInvokeProvider) Invoke(
 
 		// if the secretResponse is true, wrap the response as a secret
 		response := resource.NewProperty(value.StringValue() + " world")
-		if secretResponse.BoolValue() {
+		if secretResponse.BoolValue() || valueIsSecret {
 			response = resource.MakeSecret(response)
 		}
 		return plugin.InvokeResponse{

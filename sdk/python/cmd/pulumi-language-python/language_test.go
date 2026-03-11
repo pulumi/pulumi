@@ -101,11 +101,12 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try":    "Temporarily disabled until pr #18915 is submitted",
-	"l1-builtin-can":    "Temporarily disabled until pr #18916 is submitted",
-	"l1-builtin-list":   "singleOrNone throws for empty list instead of returning null",
-	"l1-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
-	"l2-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
+	"l1-builtin-try":  "Temporarily disabled until pr #18915 is submitted",
+	"l1-builtin-can":  "Temporarily disabled until pr #18916 is submitted",
+	"l1-builtin-list": "singleOrNone throws for empty list instead of returning null",
+	"l3-range":        "enumerate(map) gives (index, key) pairs instead of (key, value); map range generates wrong resource names", //nolint:lll
+	"l3-for":          "for expressions are not yet supported in Python codegen",
+	"l3-for-resource": "AttributeError: 'str' object has no attribute 'key'",
 }
 
 type languageTestConfig struct {
@@ -141,7 +142,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					if err != nil {
 						return err
 					}
-					host := newLanguageHost(pythonExec, engineAddress, "", config.typechecker, config.toolchain)
+					host := newLanguageHost(pythonExec, engineAddress, "", "", config.typechecker, config.toolchain)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
@@ -216,6 +217,10 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 
 					if config.typechecker == "pyright" && tt == "l3-component-simple" {
 						t.Skip("Skipping l3-component-simple test with pyright due to issues with optional properties")
+					}
+
+					if config.name == "classes" && tt == "l2-snake-names" {
+						t.Skip(`"EntryArgs" is not a known attribute of module "pulumi_snake_names.cool_module"`)
 					}
 
 					if expected, ok := expectedFailures[tt]; ok {

@@ -214,6 +214,16 @@ type PruneResult struct {
 	RemovedDependencies []resource.StateDependency
 }
 
+// Repair attempts to repair this snapshot by sorting resources topologically and pruning dangling dependencies.
+// It returns the set of changes made by pruning, or an error if sorting fails (e.g. due to cycles). If sorting
+// fails the snapshot may be left in a partially sorted state.
+func (snap *Snapshot) Repair() ([]PruneResult, error) {
+	if err := snap.Toposort(); err != nil {
+		return nil, err
+	}
+	return snap.Prune(), nil
+}
+
 // Toposort attempts sorts this snapshot so that it is topologically sorted with respect to dependencies (where a
 // dependency could be a provider, parent-child relationship, dependency, and so on). Resources in the resulting
 // snapshot will appear in an order such that all dependencies of a resource will appear before the resource itself.

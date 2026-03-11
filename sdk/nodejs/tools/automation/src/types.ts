@@ -1,4 +1,4 @@
-// Copyright 2026-2026, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A single flag on a command or menu.
+/** A single flag on a command or menu. */
 export interface Flag {
     /** The canonical flag name (for example, "stack"). */
     name: string;
+
+    /** True if this flag is required. */
+    required?: boolean;
 
     /** A primitive logical type: "string", "boolean", "int", etc. */
     type: string;
@@ -27,7 +30,7 @@ export interface Flag {
     repeatable?: boolean;
 }
 
-// A positional argument to a command.
+/** A positional argument to a command. */
 export interface Argument {
     /** The human-readable name for the argument. */
     name: string;
@@ -42,7 +45,7 @@ export interface Argument {
     usage?: string;
 }
 
-// The full positional argument specification for a command.
+/** The full positional argument specification for a command. */
 export interface Arguments {
     /** All positional arguments (in order). */
     arguments: Argument[];
@@ -54,27 +57,33 @@ export interface Arguments {
     variadic?: boolean;
 }
 
-// Base shape shared by menus and commands.
+/** Base shape shared by menus and commands. */
 interface NodeBase {
-    /** The node type discriminator. */
+    /**
+     * The node type discriminator.
+     * This is either "menu" or "command".
+     */
     type: string;
 
     /**
-     * Flags available at this level of the hierarchy, keyed by their
-     * canonical flag name.
+     * Flags available at this level of the hierarchy, keyed by their canonical
+     * flag name.
      */
     flags?: Record<string, Flag>;
 }
 
-// A menu is a command that groups other commands.
+/** A menu is a command that groups other commands. */
 export interface Menu extends NodeBase {
     type: "menu";
+
+    /** True if this menu can also be executed directly as a command. */
+    executable?: boolean;
 
     /** Subcommands in this menu. */
     commands?: Record<string, Structure>;
 }
 
-// A leaf command that can be executed.
+/** A leaf command that can be executed. */
 export interface Command extends NodeBase {
     type: "command";
 
@@ -85,5 +94,5 @@ export interface Command extends NodeBase {
     description?: string;
 }
 
-// A node in the CLI tree.
+/** A node in the CLI tree. */
 export type Structure = Menu | Command;

@@ -37,6 +37,9 @@ import (
 	"github.com/blang/semver"
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -270,6 +273,15 @@ func newPlugin[T any](
 	tracingSpan := opentracing.StartSpan("newPlugin", opts...)
 	defer tracingSpan.Finish()
 
+	tracer := otel.Tracer("pulumi-cli")
+	_, otelSpan := cmdutil.StartSpan(context.Background(), tracer, "newPlugin",
+		trace.WithAttributes(
+			attribute.String("prefix", prefix),
+			attribute.String("bin", bin),
+			attribute.String("pulumi-decorator", prefix+":"+bin),
+		))
+	defer otelSpan.End()
+
 	// Try to execute the binary.
 	plug, err := ExecPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
 	if err != nil {
@@ -460,7 +472,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}
 
 	if otelEndpoint := cmdutil.OTelEndpoint(); otelEndpoint != "" {
-		environment = append(environment, "OTEL_EXPORTER_OTLP_ENDPOINT="+otelEndpoint)
+		environment = append(environment, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+otelEndpoint)
 	}
 
 	// Check to see if we have a binary we can invoke directly

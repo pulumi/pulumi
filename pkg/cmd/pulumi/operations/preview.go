@@ -27,6 +27,7 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
@@ -295,6 +296,7 @@ func NewPreviewCmd() *cobra.Command {
 
 	// Flags for Neo.
 	var neoEnabled bool
+	var neoTaskOnFailure bool
 
 	cmd := &cobra.Command{
 		Use:        "preview",
@@ -396,6 +398,7 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
+			configureNeoTaskOption(neoTaskOnFailure, cmd, &displayOpts, isDIYBackend)
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
@@ -537,7 +540,7 @@ func NewPreviewCmd() *cobra.Command {
 			case res != nil:
 				return res
 			case expectNop && changes != nil && engine.HasChanges(changes):
-				return errors.New("error: no changes were expected but changes were proposed")
+				return backenderr.NoChangesExpectedError{Operation: "preview"}
 			default:
 				if planFilePath != "" {
 					encrypter := sm.Encrypter()
@@ -714,6 +717,15 @@ func NewPreviewCmd() *cobra.Command {
 		&neoEnabled, "neo", false,
 		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_NEO environment variable)")
+
+	cmd.PersistentFlags().BoolVar(
+		&neoTaskOnFailure, "neo-task-on-failure", false,
+		"Start a Neo task to help debug errors that occur during the operation")
+	if !env.Experimental.Value() {
+		contract.AssertNoErrorf(
+			cmd.PersistentFlags().MarkHidden("neo-task-on-failure"),
+			`Could not mark "neo-task-on-failure" as hidden`)
+	}
 
 	// Keep --copilot flag for backwards compatibility, but hide it
 	cmd.PersistentFlags().BoolVar(

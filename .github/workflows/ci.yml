@@ -40,11 +40,6 @@ on:
         default: false
         required: false
         type: boolean
-      enable-journaling:
-        description: "Whether journaling is enabled in tests"
-        default: true
-        required: false
-        type: boolean
       fail-fast:
         required: false
         default: false
@@ -117,6 +112,9 @@ jobs:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
@@ -177,6 +175,8 @@ jobs:
             --partition-module pkg 1 \
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
+            --partition-package github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl \
+                sdk/pcl/cmd/pulumi-language-pcl 2 \
             --partition-package github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3 \
                 sdk/nodejs/cmd/pulumi-language-nodejs 2 \
             --partition-package github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 \
@@ -361,7 +361,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: false
       enable-coverage: ${{ inputs.enable-coverage }}
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -388,7 +387,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -416,7 +414,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -444,7 +441,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -463,7 +459,6 @@ jobs:
       test-command: make test_lifecycle_fuzz
       is-integration-test: false
       enable-coverage: false
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       version-set: ${{ needs.matrix.outputs.version-set }}
       continue-on-error: ${{ inputs.fuzz-test-optional }}

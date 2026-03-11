@@ -24,6 +24,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -60,12 +61,16 @@ var TracingRootSpan opentracing.Span
 
 var traceCloser io.Closer
 
+// otelMu protects otelEndpoint, otelReceiver, and otelTracerProvider from concurrent access.
+var otelMu sync.RWMutex
+
 // otelEndpoint is the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
 var otelEndpoint string
 
 var (
 	otelReceiver       *otelreceiver.Receiver
 	otelTracerProvider *sdktrace.TracerProvider
+	appdashBridge      *otelreceiver.AppDashBridge
 )
 
 type localStore struct {
@@ -191,16 +196,22 @@ func CloseTracing() {
 		TracingRootSpan.Finish()
 	}
 
-	contract.IgnoreClose(traceCloser)
+	if traceCloser != nil {
+		contract.IgnoreClose(traceCloser)
+	}
 }
 
 // IsOTelEnabled returns true if OTEL is enabled via environment variable or endpoint is set.
 func IsOTelEnabled() bool {
+	otelMu.RLock()
+	defer otelMu.RUnlock()
 	return otelEndpoint != ""
 }
 
 // OTelEndpoint returns the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
 func OTelEndpoint() string {
+	otelMu.RLock()
+	defer otelMu.RUnlock()
 	return otelEndpoint
 }
 
@@ -215,18 +226,45 @@ func InitOtelReceiver(endpoint string) error {
 		return fmt.Errorf("failed to create OTLP exporter: %w", err)
 	}
 
-	otelReceiver, err = otelreceiver.Start(exporter)
+	receiver, err := otelreceiver.Start(exporter)
 	if err != nil {
 		_ = exporter.Shutdown(context.Background())
 		return fmt.Errorf("failed to start OTLP receiver: %w", err)
 	}
 
-	otelEndpoint = otelReceiver.Endpoint()
-	logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", otelEndpoint, endpoint)
+	ep := receiver.Endpoint()
+
+	// Start the AppDash bridge so that legacy OpenTracing plugins can send
+	// spans that get converted to OTLP and forwarded to the same exporter.
+	bridge, err := otelreceiver.StartAppDashBridge(exporter)
+	if err != nil {
+		_ = receiver.Shutdown(context.Background())
+		_ = exporter.Shutdown(context.Background())
+		return fmt.Errorf("failed to start AppDash bridge: %w", err)
+	}
+
+	otelMu.Lock()
+	otelReceiver = receiver
+	otelEndpoint = ep
+	appdashBridge = bridge
+	otelMu.Unlock()
+
+	// Set TracingEndpoint to the AppDash bridge so legacy plugins
+	// (providers that only speak OpenTracing) send their spans through
+	// it.  We intentionally do NOT call InitTracing() here: the CLI
+	// uses OTel for its own spans and does not need an OpenTracing
+	// tracer.  Keeping the global tracer as a no-op avoids duplicate
+	// spans on the engine's gRPC server interceptors while still
+	// letting provider plugins connect via --tracing.  Root provider
+	// spans are grafted onto the OTel trace via SetTraceParent().
+	TracingEndpoint = bridge.Endpoint()
+
+	logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", ep, endpoint)
+	logging.V(5).Infof("Started AppDash bridge at %s for legacy OpenTracing plugins", bridge.Endpoint())
 
 	// Set up Otel TracerProvider for CLI's own spans
 	// The CLI sends its spans to the local receiver, which forwards to the configured exporter
-	if err := InitOtelTracing("pulumi-cli", otelEndpoint); err != nil {
+	if err := InitOtelTracing("pulumi-cli", ep); err != nil {
 		logging.V(3).Infof("failed to initialize OTel tracer provider: %v", err)
 	}
 
@@ -257,12 +295,16 @@ func InitOtelTracing(serviceName, endpoint string) error {
 		semconv.ServiceName(serviceName),
 	)
 
-	otelTracerProvider = sdktrace.NewTracerProvider(
+	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithResource(res),
 	)
 
-	otel.SetTracerProvider(otelTracerProvider)
+	otelMu.Lock()
+	otelTracerProvider = tp
+	otelMu.Unlock()
+
+	otel.SetTracerProvider(tp)
 
 	// Set up W3C Trace Context propagator for context propagation across process boundaries
 	otel.SetTextMapPropagator(propagation.TraceContext{})
@@ -270,25 +312,51 @@ func InitOtelTracing(serviceName, endpoint string) error {
 	return nil
 }
 
+// SetAppDashTraceParent tells the AppDash bridge to remap all incoming
+// AppDash trace IDs to the given OTel trace ID, and to parent root AppDash
+// spans under the given OTel span ID.  This grafts legacy OpenTracing spans
+// onto the CLI's native OTel trace.
+func SetAppDashTraceParent(traceID [16]byte, spanID [8]byte) {
+	otelMu.RLock()
+	b := appdashBridge
+	otelMu.RUnlock()
+
+	if b != nil {
+		b.SetTraceParent(traceID, spanID)
+	}
+}
+
 func CloseOtelTracing() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if otelTracerProvider != nil {
-		if err := otelTracerProvider.Shutdown(ctx); err != nil {
+	otelMu.Lock()
+	tp := otelTracerProvider
+	otelTracerProvider = nil
+	recv := otelReceiver
+	otelReceiver = nil
+	bridge := appdashBridge
+	appdashBridge = nil
+	otelEndpoint = ""
+	otelMu.Unlock()
+
+	if tp != nil {
+		if err := tp.Shutdown(ctx); err != nil {
 			logging.V(3).Infof("error closing OTel tracer provider: %v", err)
 		}
-		otelTracerProvider = nil
 	}
 
-	if otelReceiver != nil {
-		if err := otelReceiver.Shutdown(ctx); err != nil {
+	if bridge != nil {
+		if err := bridge.Shutdown(ctx); err != nil {
+			logging.V(3).Infof("error closing AppDash bridge: %v", err)
+		}
+	}
+
+	if recv != nil {
+		if err := recv.Shutdown(ctx); err != nil {
 			logging.V(3).Infof("error closing OTLP receiver: %v", err)
 		}
-		otelReceiver = nil
 	}
-
-	otelEndpoint = ""
 }
 
 // StartSpan starts a new OTel span with a stack trace attribute.
