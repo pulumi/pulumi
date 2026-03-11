@@ -105,6 +105,9 @@ func (cmd *configEditCmd) run(ctx context.Context) error {
 
 	loc := stack.ConfigLocation()
 	if loc.IsRemote && loc.EscEnv != nil {
+		if err := rejectIfPinned(stack); err != nil {
+			return err
+		}
 		return cmd.editRemote(ctx, stack, openFn)
 	}
 	return cmd.editLocal(stack, openFn)

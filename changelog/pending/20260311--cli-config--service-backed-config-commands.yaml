@@ -1,0 +1,21 @@
+changes:
+- type: feat
+  scope: cli/config
+  description: >-
+    Add `pulumi config pin` command to pin service-backed stacks to a specific
+    ESC environment revision or tag, and unpin with `latest`
+- type: feat
+  scope: cli/config
+  description: >-
+    Add `pulumi config restore` command to restore config to a previous ESC
+    environment revision (creates a new revision with old content)
+- type: feat
+  scope: cli/config
+  description: >-
+    Add `--migrate` flag to `pulumi config env init` to migrate local config
+    to a service-backed ESC environment with secret decryption and idempotent merge
+- type: feat
+  scope: cli/config
+  description: >-
+    Reject config mutations (set, rm, set-all, rm-all, edit) on pinned
+    service-backed stacks with actionable error message

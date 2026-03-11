@@ -159,6 +159,8 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack))
 	cmd.AddCommand(newConfigEditCmd(ws, &stack))
 	cmd.AddCommand(newConfigWebCmd(ws, &stack))
+	cmd.AddCommand(newConfigPinCmd(ws, &stack))
+	cmd.AddCommand(newConfigRestoreCmd(ws, &stack))
 
 	return cmd
 }
@@ -398,6 +400,10 @@ func newConfigRmCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 				return err
 			}
 
+			if err := rejectIfPinned(stack); err != nil {
+				return err
+			}
+
 			editor, err := NewConfigEditor(ctx, stack, ps, config.NopEncrypter)
 			if err != nil {
 				return err
@@ -460,6 +466,10 @@ func newConfigRmAllCmd(ws pkgWorkspace.Context, stack *string) *cobra.Command {
 
 			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, stack)
 			if err != nil {
+				return err
+			}
+
+			if err := rejectIfPinned(stack); err != nil {
 				return err
 			}
 
@@ -798,6 +808,10 @@ func (c *configSetCmd) Run(
 		}
 	}
 
+	if err := rejectIfPinned(s); err != nil {
+		return err
+	}
+
 	editor, err := NewConfigEditor(ctx, s, ps, encrypter)
 	if err != nil {
 		return err
@@ -895,6 +909,10 @@ func newConfigSetAllCmd(
 				}
 
 				return enc, nil
+			}
+
+			if err := rejectIfPinned(stack); err != nil {
+				return err
 			}
 
 			// editor uses NopEncrypter because set-all pre-encrypts values via the encrypt closure above.

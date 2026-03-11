@@ -116,9 +116,9 @@
 
 ### Implementation for User Story 6 (Pin)
 
-- [ ] T022 [P] [US6] Create config_pin.go with pin command: accept revision number, tag name, or "latest" keyword (unpin); update stack environment reference with @version suffix; validate against retracted revisions and deleted tags; no-op with message for local stacks in pkg/cmd/pulumi/config/config_pin.go
-- [ ] T024 [US6] Add mutation rejection for pinned stacks: before creating ConfigEditor in set/rm/set-all/rm-all handlers, check if stack is pinned (revision or tag) and return "unpin first" error; also reject config edit on pinned stacks in pkg/cmd/pulumi/config/config.go
-- [ ] T033 [P] [US6] Add unit tests for pin command: pin to revision, pin to tag, unpin with latest, reject retracted revision, reject deleted tag, no-op for local stacks, mutation rejection when pinned (set/rm/edit all return error) in pkg/cmd/pulumi/config/config_pin_test.go
+- [X] T022 [P] [US6] Create config_pin.go with pin command: accept revision number, tag name, or "latest" keyword (unpin); update stack environment reference with @version suffix; validate against retracted revisions and deleted tags; no-op with message for local stacks in pkg/cmd/pulumi/config/config_pin.go
+- [X] T024 [US6] Add mutation rejection for pinned stacks: before creating ConfigEditor in set/rm/set-all/rm-all handlers, check if stack is pinned (revision or tag) and return "unpin first" error; also reject config edit on pinned stacks in pkg/cmd/pulumi/config/config.go
+- [X] T033 [P] [US6] Add unit tests for pin command: pin to revision, pin to tag, unpin with latest, reject retracted revision, reject deleted tag, no-op for local stacks, mutation rejection when pinned (set/rm/edit all return error) in pkg/cmd/pulumi/config/config_pin_test.go
 
 **Checkpoint**: Config pinning and version selection work for service-backed stacks.
 
@@ -152,9 +152,9 @@
 
 ### Implementation for User Story 4
 
-- [ ] T018 [US4] Add --migrate flag to config env init command; implement migration: decrypt all secrets upfront (fail fast if any decryption fails), create ESC environment `<project>/<stack>`, write all config values to pulumiConfig section, carry over environment imports, link stack to environment in pkg/cmd/pulumi/config/config_env_init.go
-- [ ] T019 [US4] Implement idempotent merge for existing ESC environments (local pulumiConfig values overwrite with warnings for each overwritten key), add post-migration prompt to delete local config file, and guard against already-service-backed stacks in pkg/cmd/pulumi/config/config_env_init.go
-- [ ] T035 [P] [US4] Add unit tests for migration: all secrets decrypted before env creation, decryption failure aborts with no partial state, idempotent merge overwrites with warnings, already-service-backed stack returns error, post-migration prompt to delete local file in pkg/cmd/pulumi/config/config_env_init_test.go
+- [X] T018 [US4] Add --migrate flag to config env init command; implement migration: decrypt all secrets upfront (fail fast if any decryption fails), create ESC environment `<project>/<stack>`, write all config values to pulumiConfig section, carry over environment imports, link stack to environment in pkg/cmd/pulumi/config/config_env_init.go
+- [X] T019 [US4] Implement idempotent merge for existing ESC environments (local pulumiConfig values overwrite with warnings for each overwritten key), add post-migration prompt to delete local config file, and guard against already-service-backed stacks in pkg/cmd/pulumi/config/config_env_init.go
+- [X] T035 [P] [US4] Add unit tests for migration: all secrets decrypted before env creation, decryption failure aborts with no partial state, idempotent merge overwrites with warnings, already-service-backed stack returns error, post-migration prompt to delete local file in pkg/cmd/pulumi/config/config_env_init_test.go
 
 **Checkpoint**: Existing stacks can be migrated to service-backed config.
 
@@ -168,8 +168,8 @@
 
 ### Implementation for User Story 6 (Restore)
 
-- [ ] T023 [US6] Create config_restore.go with restore command: read environment content from specified revision, create new revision with that content via etag-based update (fail with concurrency error if env modified between read and write); error for local stacks in pkg/cmd/pulumi/config/config_restore.go
-- [ ] T036 [P] [US6] Add unit tests for restore command: creates new revision with old content, etag conflict returns error on concurrent modification, error for local stacks in pkg/cmd/pulumi/config/config_restore_test.go
+- [X] T023 [US6] Create config_restore.go with restore command: read environment content from specified revision, create new revision with that content via etag-based update (fail with concurrency error if env modified between read and write); error for local stacks in pkg/cmd/pulumi/config/config_restore.go
+- [X] T036 [P] [US6] Add unit tests for restore command: creates new revision with old content, etag conflict returns error on concurrent modification, error for local stacks in pkg/cmd/pulumi/config/config_restore_test.go
 
 **Checkpoint**: Config rollback via restore works for service-backed stacks.
 
@@ -195,7 +195,7 @@
 
 **Purpose**: Finalization tasks that span multiple stories
 
-- [ ] T030 [P] Add changelog entries for new commands (config edit, config web, config pin, config restore, config env eject, config env init --migrate) and behavior changes (config env add/rm/ls guards, conflict detection upgrade, --remote-config prompt)
+- [X] T030 [P] Add changelog entries for new commands (config edit, config web, config pin, config restore, config env eject, config env init --migrate) and behavior changes (config env add/rm/ls guards, conflict detection upgrade, --remote-config prompt)
 - [ ] T031 Run quickstart.md validation scenarios end-to-end against a built CLI
 
 ---
