@@ -91,7 +91,7 @@ works against the remote environment.
 8. **Given** a user is logged into a self-hosted or local (filestate) backend, **When** they run `pulumi stack init dev --remote-config`, **Then** the CLI returns an error explaining that service-backed config requires Pulumi Cloud.
 9. **Given** a user runs `pulumi stack init dev --remote-config` and an ESC environment `<project>/dev` already exists, **When** the service detects the collision, **Then** the CLI returns a clear error indicating the environment already exists.
 10. **Given** the service does not yet support service-backed configuration for this organization, **When** a user runs `pulumi stack init dev --remote-config`, **Then** the CLI surfaces the service's rejection clearly (e.g., "Service-backed configuration is not yet available for this organization").
-11. **Given** a user runs `pulumi new --remote-stack-config`, **When** the template creates a stack, **Then** the flag is accepted as an alias for `--remote-config` and service-backed configuration is enabled.
+11. **Given** a user runs `pulumi new --remote-stack-config`, **When** the template creates a stack, **Then** the flag is accepted as a hidden alias for `--remote-config` and service-backed configuration is enabled.
 12. **Given** a user runs `pulumi stack init dev --remote-config --secrets-provider passphrase`, **When** the command is evaluated, **Then** it fails with a clear error explaining that local secrets providers cannot be used with service-backed configuration during stack creation.
 13. **Given** a user runs `pulumi stack init dev --remote-config --copy-config-from other-stack`, **When** the command is evaluated, **Then** it fails with a clear error explaining that `--copy-config-from` is not yet supported with service-backed configuration.
 
@@ -329,7 +329,7 @@ For local-config stacks, their behavior is unchanged.
 - **FR-003**: In non-interactive mode (including `pulumi new --yes` and no-TTY sessions), the CLI MUST default to local config unless `--remote-config` is explicitly passed.
 - **FR-024**: ESC environments created for service-backed stacks MUST follow the naming convention `<project>/<stack-name>`.
 - **FR-025**: The ESC environment MUST be initialized with `pulumiConfig` and `environmentVariables` sections at creation time.
-- **FR-027**: The `--remote-stack-config` flag on `pulumi new` MUST remain supported as an alias, with `--remote-config` as the preferred name.
+- **FR-027**: The `--remote-stack-config` flag on `pulumi new` MUST remain supported as a hidden alias (not shown in help output), with `--remote-config` as the visible, preferred name.
 - **FR-028**: `--copy-config-from` on `stack init` MUST return a clear error when used alongside `--remote-config` or when service-backed config is selected interactively.
 - **FR-029**: `--remote-config` on unsupported backends (self-hosted, local/filestate) MUST return a clear error.
 

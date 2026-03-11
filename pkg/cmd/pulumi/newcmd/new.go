@@ -674,6 +674,7 @@ func NewNewCmd() *cobra.Command {
 		&args.remoteStackConfig, "remote-stack-config", false,
 		"Store stack configuration in Pulumi Cloud (service-backed config). "+
 			"Only valid for stacks on the Pulumi Cloud backend.")
+	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
 	// --remote-config is the canonical name; --remote-stack-config kept for compatibility.
 	cmd.PersistentFlags().BoolVar(
 		&args.remoteStackConfig, "remote-config", false,
