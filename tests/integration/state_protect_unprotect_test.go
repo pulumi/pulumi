@@ -123,9 +123,9 @@ description: A test for protecting and unprotecting resources
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy after protect")
 	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 0xffffffff")
+		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 
 	// STEP 2: Unprotect a subset of resources to verify partial unprotect works

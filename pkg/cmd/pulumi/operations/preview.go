@@ -27,6 +27,7 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
@@ -541,7 +542,7 @@ func NewPreviewCmd() *cobra.Command {
 			case res != nil:
 				return res
 			case expectNop && changes != nil && engine.HasChanges(changes):
-				return errors.New("error: no changes were expected but changes were proposed")
+				return backenderr.NoChangesExpectedError{Operation: "preview"}
 			default:
 				if planFilePath != "" {
 					encrypter := sm.Encrypter()

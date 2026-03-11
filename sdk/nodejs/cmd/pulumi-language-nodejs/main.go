@@ -37,6 +37,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -134,7 +135,7 @@ func main() {
 	// Use OTel when the CLI provides an OTLP endpoint; fall back to
 	// OpenTracing otherwise.  Only one system should be active to avoid
 	// duplicate spans.
-	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	otelEndpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otelEndpoint == "" {
 		cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
 	} else {
@@ -849,18 +850,21 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
-	if host.runtime == "bun" {
-		runtimeArgs = append([]string{"run"}, runtimeArgs...)
-	}
 
 	var port int
+	var ready <-chan error // non-nil for bun debug; receives nil (or an error) when inspector is ready
 	if req.GetAttachDebugger() {
-		var debugArgs []string
-		port, debugArgs, err = getDebuggerPortAndFlags()
+		var debugArgs, debugEnv []string
+		port, debugArgs, debugEnv, ready, err = getDebuggerSetup(host.runtime)
 		if err != nil {
 			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
 		runtimeArgs = append(runtimeArgs, debugArgs...)
+		env = append(env, debugEnv...)
+	}
+
+	if host.runtime == "bun" {
+		runtimeArgs = append([]string{"run"}, runtimeArgs...)
 	}
 
 	runtimeArgs = append(runtimeArgs, args...)
@@ -893,7 +897,7 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 	}
 
 	if host.otelEndpoint != "" {
-		env = append(env, "OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
+		env = append(env, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
@@ -922,7 +926,18 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 			return err
 		}
 		if req.GetAttachDebugger() {
-			err := startDebugging(ctx, engineClient, cmd, port, "Pulumi: Program (Node.js)")
+			if ready != nil {
+				select {
+				case err := <-ready:
+					if err != nil {
+						return err
+					}
+				case <-time.After(10 * time.Second):
+					return errors.New("timed out waiting for bun inspector to be ready")
+				}
+			}
+			err := startDebugging(ctx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Program (%s)", host.runtime),
+				host.runtime)
 			if err != nil {
 				return err
 			}
@@ -1375,16 +1390,43 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	}, nil
 }
 
-func getDebuggerPortAndFlags() (int, []string, error) {
-	port, err := netutil.FindNextAvailablePort(preferredPort)
+func getDebuggerSetup(runtime string) (
+	port int, flags []string, env []string, ready <-chan error, err error,
+) {
+	port, err = netutil.FindNextAvailablePort(preferredPort)
 	if err != nil {
-		return 0, nil, fmt.Errorf("failed to find available port for debugger: %w", err)
+		return 0, nil, nil, nil, fmt.Errorf("failed to find available port for debugger: %w", err)
+	}
+	if runtime == "bun" {
+		// BUN_INSPECT sets the inspector WebSocket address and mode (wait=1 starts execution and waits for the debugger
+		// to attach).
+		// BUN_INSPECT_NOTIFY is a TCP address bun connects to once the inspector is ready.
+		ln, lnErr := net.Listen("tcp", "127.0.0.1:0")
+		if lnErr != nil {
+			return 0, nil, nil, nil, fmt.Errorf("failed to create bun inspect notify listener: %w", lnErr)
+		}
+		notifyPort := ln.Addr().(*net.TCPAddr).Port
+		ch := make(chan error, 1)
+		go func() {
+			conn, connErr := ln.Accept()
+			if connErr != nil {
+				ch <- fmt.Errorf("bun inspect notify listener failed: %w", connErr)
+			} else {
+				contract.IgnoreClose(conn)
+				close(ch)
+			}
+			contract.IgnoreClose(ln)
+		}()
+		return port, nil, []string{
+			fmt.Sprintf("BUN_INSPECT=ws://127.0.0.1:%d?wait=1", port),
+			fmt.Sprintf("BUN_INSPECT_NOTIFY=tcp://127.0.0.1:%d", notifyPort),
+		}, ch, nil
 	}
 	return port, []string{
 		fmt.Sprintf("--inspect-brk=%d", port),
 		// suppress the console output "Debugger listening on..."
 		"--inspect-publish-uid=http",
-	}, nil
+	}, nil, nil, nil
 }
 
 func startDebugging(
@@ -1393,17 +1435,28 @@ func startDebugging(
 	cmd *exec.Cmd,
 	port int,
 	name string,
+	runtime string,
 ) error {
-	cfg := map[string]any{
-		"name":             name,
-		"type":             "node",
-		"request":          "attach",
-		"processId":        cmd.Process.Pid,
-		"continueOnAttach": true,
-		"skipFiles":        []any{"<node_internals>/**"},
-	}
-	if port != preferredPort {
-		cfg["port"] = port
+	var cfg map[string]any
+	if runtime == "bun" {
+		cfg = map[string]any{
+			"name":    name,
+			"type":    "bun",
+			"request": "attach",
+			"url":     fmt.Sprintf("ws://127.0.0.1:%d", port),
+		}
+	} else {
+		cfg = map[string]any{
+			"name":             name,
+			"type":             "node",
+			"request":          "attach",
+			"processId":        cmd.Process.Pid,
+			"continueOnAttach": true,
+			"skipFiles":        []any{"<node_internals>/**"},
+		}
+		if port != preferredPort {
+			cfg["port"] = port
+		}
 	}
 	debugConfig, err := structpb.NewStruct(cfg)
 	if err != nil {
@@ -1442,7 +1495,11 @@ func (host *nodeLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	nodeBin, err := exec.LookPath("node")
+	runtimeExec := host.runtime
+	if runtimeExec == "nodejs" {
+		runtimeExec = "node"
+	}
+	runtimeBin, err := exec.LookPath(runtimeExec)
 	if err != nil {
 		return err
 	}
@@ -1474,20 +1531,26 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, true)
+	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, true)
 	if err != nil {
 		return err
 	}
 
-	args := []string{}
+	var args []string
 	var port int
+	var ready <-chan error
 	if req.GetAttachDebugger() {
-		var debugArgs []string
-		port, debugArgs, err = getDebuggerPortAndFlags()
+		var debugArgs, debugEnv []string
+		port, debugArgs, debugEnv, ready, err = getDebuggerSetup(host.runtime)
 		if err != nil {
 			return err
 		}
 		args = append(args, debugArgs...)
+		env = append(env, debugEnv...)
+	}
+
+	if host.runtime == "bun" {
+		args = append([]string{"run"}, args...)
 	}
 
 	args = append(args, runPath)
@@ -1543,7 +1606,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.CommandContext(ctx, nodeBin, args...)
+	cmd := exec.CommandContext(ctx, runtimeBin, args...)
 	// node policy packs used to always run with the working directory set to the policy pack directory, not
 	// the main working directory. We need to continue that for backwards compatibility.
 	if req.Kind == string(apitype.AnalyzerPlugin) {
@@ -1561,7 +1624,17 @@ func (host *nodeLanguageHost) RunPlugin(
 			return err
 		}
 		if req.GetAttachDebugger() {
-			err := startDebugging(ctx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
+			if ready != nil {
+				select {
+				case err := <-ready:
+					if err != nil {
+						return err
+					}
+				case <-time.After(10 * time.Second):
+					return errors.New("timed out waiting for bun inspector to be ready")
+				}
+			}
+			err := startDebugging(ctx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name), host.runtime)
 			if err != nil {
 				return err
 			}

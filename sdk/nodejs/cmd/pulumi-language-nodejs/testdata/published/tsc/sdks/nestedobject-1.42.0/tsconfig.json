@@ -15,7 +15,9 @@
     "files": [
         "container.ts",
         "index.ts",
+        "mapContainer.ts",
         "provider.ts",
+        "receiver.ts",
         "target.ts",
         "types/index.ts",
         "types/input.ts",

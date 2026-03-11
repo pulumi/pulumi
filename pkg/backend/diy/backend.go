@@ -60,7 +60,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -1029,16 +1028,16 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 
 func (b *diyBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack,
-) (config.Map, error) {
+) (backend.LatestConfiguration, error) {
 	hist, err := b.GetHistory(ctx, stack.Ref(), 1 /*pageSize*/, 1 /*page*/)
 	if err != nil {
-		return nil, err
+		return backend.LatestConfiguration{}, err
 	}
 	if len(hist) == 0 {
-		return nil, backenderr.ErrNoPreviousDeployment
+		return backend.LatestConfiguration{}, backenderr.ErrNoPreviousDeployment
 	}
 
-	return hist[0].Config, nil
+	return backend.LatestConfiguration{Config: hist[0].Config}, nil
 }
 
 func (b *diyBackend) PackPolicies(
@@ -1223,7 +1222,7 @@ func (b *diyBackend) apply(
 	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
+		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot, nil)
 		engineCtx.SnapshotManager = manager
 	}
 

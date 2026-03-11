@@ -121,6 +121,8 @@ var expectedFailures = map[string]string{
 	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                                                   //nolint:lll
 	"l3-range":                            "list(string) and map(string) config values decoded as raw JSON strings by cfg.Require; cannot range over string as list/map", //nolint:lll
 	"l3-range-resource-output-traversal":  "pulumi#21678: cannot range over an ArrayOutput",
+	"l3-for":                              "syntax errors",
+	"l3-for-resource":                     "syntax errors",
 	"l2-resource-order":                   "cannot convert localVar (variable of struct type pulumi.BoolOutput) to type pulumi.Bool", //nolint:lll
 }
 

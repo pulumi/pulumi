@@ -570,24 +570,29 @@ type getLatestConfigurationResponse struct {
 	Info apitype.UpdateInfo `json:"info,omitempty"`
 }
 
+type LatestConfiguration struct {
+	Config       config.Map // The stack config
+	Environments []string   // The environments the stack is configured with
+}
+
 // GetLatestConfiguration returns the configuration for the latest deployment of a given stack.
-func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
-	latest := getLatestConfigurationResponse{}
+func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (LatestConfiguration, error) {
+	var latest getLatestConfigurationResponse
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {
 		if restErr, ok := err.(*apitype.ErrorResponse); ok {
 			if restErr.Code == http.StatusNotFound {
-				return nil, ErrNoPreviousDeployment
+				return LatestConfiguration{}, ErrNoPreviousDeployment
 			}
 		}
 
-		return nil, err
+		return LatestConfiguration{}, err
 	}
 
-	cfg := make(config.Map)
+	cfg := make(config.Map, len(latest.Info.Config))
 	for k, v := range latest.Info.Config {
 		newKey, err := config.ParseKey(k)
 		if err != nil {
-			return nil, err
+			return LatestConfiguration{}, err
 		}
 		if v.Object {
 			if v.Secret {
@@ -604,7 +609,26 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 		}
 	}
 
-	return cfg, nil
+	const stackEnvironments = "stack.environments"
+
+	var environments []string
+	if envs, ok := latest.Info.Environment[stackEnvironments]; ok {
+		var parsedEnvs []struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal([]byte(envs), &parsedEnvs); err != nil {
+			return LatestConfiguration{}, err
+		}
+		environments = make([]string, len(parsedEnvs))
+		for i, v := range parsedEnvs {
+			if v.ID == "" {
+				return LatestConfiguration{}, fmt.Errorf(`%s[%d] missing "id" property`, stackEnvironments, i)
+			}
+			environments[i] = v.ID
+		}
+	}
+
+	return LatestConfiguration{Config: cfg, Environments: environments}, nil
 }
 
 // DoesProjectExist returns true if a project with the given name exists, or false otherwise.

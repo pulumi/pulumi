@@ -31,6 +31,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
@@ -97,7 +98,7 @@ type newArgs struct {
 
 func runNew(ctx context.Context, args newArgs) error {
 	if !args.interactive && !args.yes {
-		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
+		return backenderr.NonInteractiveRequiresYesError{}
 	}
 
 	// Prepare options.

@@ -135,13 +135,13 @@ func TypeCheckerName(tc typeChecker) string {
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 	switch options.Toolchain { //nolint:exhaustive // golangci-lint v2 upgrade
 	case Poetry:
-		dir := options.ProgramDir
-		if dir == "" {
-			dir = options.Root
-		}
-		return newPoetry(dir)
+		return newPoetry(options.ProgramDir)
 	case Uv:
-		return newUv(options.Root, options.Virtualenv)
+		virtualenv := options.Virtualenv
+		if virtualenv != "" && !filepath.IsAbs(virtualenv) {
+			virtualenv = filepath.Join(options.Root, virtualenv)
+		}
+		return newUv(options.ProgramDir, virtualenv)
 	}
 	return newPip(options.Root, options.Virtualenv)
 }
