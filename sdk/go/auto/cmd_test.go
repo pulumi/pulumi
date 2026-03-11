@@ -317,8 +317,8 @@ func TestRunCanceled(t *testing.T) {
 	}
 	_, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
 	require.Error(t, err)
-	require.ErrorContains(t, err, "exit status")
-	require.NotEqual(t, 0, code)
+	require.ErrorContains(t, err, "exit status 1")
+	require.Equal(t, 1, code)
 
 	e.RunCommand("pulumi", "stack", "rm", "--yes", stackName)
 }
