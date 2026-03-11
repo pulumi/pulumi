@@ -15,7 +15,6 @@
 package cmdutil
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -24,7 +23,6 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -136,35 +134,6 @@ const (
 	ExitTimeout             = 9
 	ExitInternalError       = 255
 )
-
-// ExitCodeFor maps an error to a process exit code, based on its concrete or
-// wrapped type. This function is the single choke point for mapping errors
-// into the public exit code contract.
-func ExitCodeFor(err error) int {
-	if err == nil {
-		return ExitSuccess
-	}
-
-	// Respect bail semantics first – still a failure, but don't print anything.
-	if result.IsBail(err) {
-		return ExitCodeError
-	}
-
-	// Authentication / authorization problems.
-	switch {
-	case errors.As(err, &backenderr.LoginRequiredError{}),
-		errors.As(err, &backenderr.ForbiddenError{}),
-		errors.As(err, &backenderr.MissingEnvVarForNonInteractiveError{}):
-		return ExitAuthenticationError
-	}
-
-	// TODO: Wire policy, timeout, and resource-specific errors as they gain
-	// concrete types in engine/backend layers.
-
-	// Internal/unexpected errors can be identified here in future; for now,
-	// fall back to the generic error exit code.
-	return ExitCodeError
-}
 
 // errorMessage returns a message, possibly cleaning up the text if appropriate.
 func errorMessage(err error) string {
