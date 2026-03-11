@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -89,7 +90,7 @@ const (
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier, explainer Explainer,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, []engine.Event, error) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -128,7 +129,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	plan, changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
 	if err != nil {
 		close(eventsChannel)
-		return plan, changes, err
+		return plan, changes, events, err
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
@@ -139,7 +140,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		if !op.Opts.Engine.Strict {
 			plan = nil
 		}
-		return plan, changes, nil
+		return plan, changes, events, nil
 	}
 
 	stats := computeUpdateStats(events)
@@ -168,7 +169,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// Otherwise, ensure the user wants to proceed.
 	plan, err = confirmBeforeUpdating(ctx, kind, stack.Ref(), op, events, plan, explainer)
 	close(eventsChannel)
-	return plan, changes, err
+	return plan, changes, events, err
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
@@ -279,8 +280,14 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier, explainer Explainer, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
+	var previewEvents []engine.Event
+
+	// When delete-before-create is enabled we always need a preview to determine
+	// which resources must be deleted before the update, even if --skip-preview is set.
+	needsPreview := !op.Opts.SkipPreview || op.Opts.Engine.DeleteBeforeCreate
+
 	// Preview the operation to the user and ask them if they want to proceed.
-	if !op.Opts.SkipPreview {
+	if needsPreview {
 		// We want to run the preview with the given plan and then run the full update with the initial plan as well,
 		// but because plans are mutated as they're checked we need to clone it here.
 		// We want to use the original plan because a program could be non-deterministic and have a plan of
@@ -290,10 +297,11 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			originalPlan = op.Opts.Engine.Plan.Clone()
 		}
 
-		plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply, explainer)
+		plan, changes, pevents, err := PreviewThenPrompt(ctx, kind, stack, op, apply, explainer)
 		if err != nil || kind == apitype.PreviewUpdate {
 			return changes, err
 		}
+		previewEvents = pevents
 
 		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the
 		// newly generated plan
@@ -303,6 +311,28 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			op.Opts.Engine.Plan = plan
 		} else {
 			op.Opts.Engine.Plan = nil
+		}
+	}
+
+	// When delete-before-create is enabled, execute a targeted destroy of all
+	// resources that the preview identified for deletion/replacement before
+	// running the actual update. This guarantees that every delete completes
+	// before any create begins.
+	if op.Opts.Engine.DeleteBeforeCreate {
+		deleteURNs := collectDeleteURNs(previewEvents)
+		if len(deleteURNs) > 0 {
+			destroyOp := op
+			destroyOp.Opts.Engine.Targets = deploy.NewUrnTargets(deleteURNs)
+			destroyOp.Opts.Engine.TargetDependents = true
+			destroyOp.Opts.Engine.GeneratePlan = false
+			destroyOpts := ApplierOptions{
+				DryRun:   false,
+				ShowLink: false,
+			}
+			_, _, err := apply(ctx, apitype.DestroyUpdate, stack, destroyOp, destroyOpts, events)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -322,6 +352,36 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 type updateStats struct {
 	numNonStackResources int
 	retainedResources    []engine.StepEventMetadata
+}
+
+// collectDeleteURNs extracts URNs of resources that will be deleted or replaced
+// from the preview events. Provider resources are excluded because they are needed
+// during the subsequent update phase.
+func collectDeleteURNs(events []engine.Event) []string {
+	seen := map[string]bool{}
+	var urns []string
+	for _, e := range events {
+		if e.Type != engine.ResourcePreEvent {
+			continue
+		}
+		p, ok := e.Payload().(engine.ResourcePreEventPayload)
+		if !ok {
+			continue
+		}
+		switch p.Metadata.Op {
+		case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReplace:
+			urn := string(p.Metadata.URN)
+			if seen[urn] {
+				continue
+			}
+			if sdkproviders.IsProviderType(p.Metadata.Type) {
+				continue
+			}
+			seen[urn] = true
+			urns = append(urns, urn)
+		}
+	}
+	return urns
 }
 
 func computeUpdateStats(events []engine.Event) updateStats {
