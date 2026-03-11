@@ -1,0 +1,3 @@
+name: bun-debugger
+runtime: bun
+description: Minimal bun program for debugger attachment test
