@@ -1,0 +1,16 @@
+{
+	"name": "provider-resource-component",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/conformance-component": "ROOT/artifacts/pulumi-conformance-component-22.0.0.tgz",
+		"@pulumi/simple": "ROOT/artifacts/pulumi-simple-2.0.0.tgz"
+	}
+}

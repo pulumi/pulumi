@@ -146,6 +146,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 			rootDir, err := filepath.Abs(t.TempDir())
 			require.NoError(t, err)
 
+			providersDir := "testdata/providers"
 			snapshotDir := "./testdata"
 			if local {
 				snapshotDir += "/local"
@@ -155,6 +156,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 			switch runtime {
 			case "bun":
 				snapshotDir += "/bun"
+				providersDir = "testdata/providers-bun"
 			case "nodejs":
 				if forceTsc {
 					snapshotDir += "/tsc"
@@ -185,7 +187,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 						Replacement: "ROOT/artifacts",
 					},
 				},
-				ProvidersDirectory: "testdata/providers",
+				ProvidersDirectory: providersDir,
 			})
 			require.NoError(t, err)
 
@@ -201,9 +203,6 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 					if runtime == "bun" {
 						if strings.HasPrefix(tt, "policy-") {
 							t.Skip("Skipping policy tests - TODO: https://github.com/pulumi/pulumi/issues/22078")
-						}
-						if strings.HasPrefix(tt, "provider-") {
-							t.Skip("Skipping provider tests - TODO: https://github.com/pulumi/pulumi/issues/22037")
 						}
 						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" {
 							t.Skip(
