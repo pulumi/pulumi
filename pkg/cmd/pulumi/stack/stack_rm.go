@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -83,7 +84,7 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			if !cmdutil.Interactive() && !yes {
-				return errors.New("non-interactive mode requires --yes flag")
+				return backenderr.NonInteractiveRequiresYesError{}
 			}
 
 			// Ensure the user really wants to do this.

@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -829,8 +830,7 @@ func NewImportCmd() *cobra.Command {
 			yes = yes || skipPreview || env.SkipConfirmations.Value()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes && !previewOnly {
-				return errors.New("--yes or --skip-preview or --preview-only" +
-					" must be passed in to proceed when running in non-interactive mode")
+				return backenderr.NoConfirmationInNonInteractiveError{}
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)

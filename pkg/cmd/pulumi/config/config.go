@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -746,7 +747,7 @@ func (c *configSetCmd) Run(
 		}
 		value = cmdutil.RemoveTrailingNewline(string(b))
 	case !cmdutil.Interactive():
-		return errors.New("config value must be specified in non-interactive mode")
+		return backenderr.NonInteractiveInputRequiredError{Detail: "config value must be specified in non-interactive mode"}
 	case c.Secret:
 		value, err = cmdutil.ReadConsoleNoEcho("value")
 		if err != nil {

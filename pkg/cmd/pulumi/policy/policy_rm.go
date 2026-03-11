@@ -15,11 +15,11 @@
 package policy
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -58,7 +58,7 @@ func newPolicyRmCmd() *cobra.Command {
 			}
 
 			if !cmdutil.Interactive() && !yes {
-				return errors.New("non-interactive mode requires --yes flag")
+				return backenderr.NonInteractiveRequiresYesError{}
 			}
 
 			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])

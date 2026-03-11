@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -38,7 +38,7 @@ func DetailedError(err error) string {
 
 	for {
 		if stackerr, ok := err.(interface {
-			StackTrace() errors.StackTrace
+			StackTrace() pkgerrors.StackTrace
 		}); ok {
 			msg.WriteString("\n")
 			if hasstack {
@@ -52,7 +52,7 @@ func DetailedError(err error) string {
 			}
 
 			// Keep going up the causer chain, if any.
-			cause := errors.Cause(err)
+			cause := pkgerrors.Cause(err)
 			if cause == err || cause == nil {
 				break
 			}
@@ -115,8 +115,25 @@ func Exit(err error) {
 // ExitError issues an error and exits with a standard error exit code.
 func ExitError(msg string) {
 	Diag().Errorf(diag.Message("", "%s"), msg)
-	os.Exit(-1)
+	os.Exit(ExitCodeError)
 }
+
+// Exit code taxonomy for the Pulumi CLI. These values form part of the
+// contract for automation and agent integrations and must be treated as
+// stable once released.
+const (
+	ExitSuccess             = 0
+	ExitCodeError           = 1 // generic/unclassified error
+	ExitConfigurationError  = 2 // invalid flags, config, or invocation
+	ExitAuthenticationError = 3
+	ExitResourceError       = 4
+	ExitPolicyViolation     = 5
+	ExitStackNotFound       = 6
+	ExitNoChanges           = 7
+	ExitCancelled           = 8
+	ExitTimeout             = 9
+	ExitInternalError       = 255
+)
 
 // errorMessage returns a message, possibly cleaning up the text if appropriate.
 func errorMessage(err error) string {

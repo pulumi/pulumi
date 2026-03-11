@@ -14,7 +14,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/pulumi/pulumi/pkg/v3 v3.156.0
+	github.com/pulumi/pulumi/pkg/v3 v3.225.1
 	github.com/pulumi/pulumi/sdk/v3 v3.225.1
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.41.0

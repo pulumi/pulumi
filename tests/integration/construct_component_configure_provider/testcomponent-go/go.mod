@@ -5,7 +5,7 @@ go 1.25.6
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.10.0
-	github.com/pulumi/pulumi/pkg/v3 v3.156.0
+	github.com/pulumi/pulumi/pkg/v3 v3.225.1
 	github.com/pulumi/pulumi/sdk/v3 v3.225.1
 )
 

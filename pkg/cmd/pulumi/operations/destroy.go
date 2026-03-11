@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -122,8 +123,7 @@ func NewDestroyCmd() *cobra.Command {
 			yes = yes || skipPreview || env.SkipConfirmations.Value()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes && !previewOnly {
-				return errors.New("--yes or --skip-preview or --preview-only " +
-					"must be passed in to proceed when running in non-interactive mode")
+				return backenderr.NoConfirmationInNonInteractiveError{}
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
@@ -281,7 +281,7 @@ func NewDestroyCmd() *cobra.Command {
 				if err != nil {
 					return err
 				} else if snapshot == nil {
-					return errors.New("failed to find the stack snapshot. Are you in a stack?")
+					return backenderr.StackStateNotFoundError{StackName: s.Ref().Name().String()}
 				}
 
 				protected, err := getProtectedExcludes(snapshot.Resources)
@@ -358,7 +358,7 @@ func NewDestroyCmd() *cobra.Command {
 					}
 				}
 			} else if destroyErr == context.Canceled {
-				return errors.New("destroy cancelled")
+				return backenderr.CancelledError{Operation: "destroy"}
 			}
 			return destroyErr
 		},
