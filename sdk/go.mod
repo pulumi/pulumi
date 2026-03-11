@@ -53,7 +53,7 @@ require (
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/esc v0.17.0
-	github.com/pulumi/pulumi/pkg/v3 v3.225.1
+	github.com/pulumi/pulumi/pkg/v3 v3.220.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	go.opentelemetry.io/collector/pdata v1.53.0
 	go.opentelemetry.io/otel v1.41.0
@@ -63,13 +63,14 @@ require (
 	go.opentelemetry.io/proto/otlp v1.9.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/term v0.40.0
-	lukechampine.com/frand v1.5.1
+	lukechampine.com/frand v1.4.2
 )
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
+	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
