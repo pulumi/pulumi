@@ -23,6 +23,7 @@ class ResourceData(dict):
         """
         Docs_index__resource_data is a basic type used in Resource.
 
+
         :param _builtins.str state: A property of Docs_index__resource_data.
         """
         pulumi.set(__self__, "state", state)

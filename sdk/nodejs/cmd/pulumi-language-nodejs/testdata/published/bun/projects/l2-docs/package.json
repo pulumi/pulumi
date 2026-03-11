@@ -1,10 +1,14 @@
 {
 	"name": "l2-docs",
+	"main": "index.ts",
+	"type": "module",
 	"devDependencies": {
-		"@types/node": "^18"
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
 	},
 	"dependencies": {
-		"typescript": "^4.0.0",
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
 		"@pulumi/docs": "ROOT/artifacts/pulumi-docs-28.0.0.tgz"
 	}

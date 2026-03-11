@@ -24,6 +24,7 @@ class ResourceArgs:
         """
         The set of arguments for constructing a Resource resource.
 
+
         :param pulumi.Input[_builtins.bool] in_: Will be used to set ResourceArgs.in_ and Resource.out.
         """
         pulumi.set(__self__, "in_", in_)
@@ -52,6 +53,7 @@ class Resource(pulumi.CustomResource):
         """
         Resource is a basic resource. Use fun to set in_ using FunResult.out.
 
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[_builtins.bool] in_: Will be used to set ResourceArgs.in_ and Resource.out.
@@ -64,6 +66,7 @@ class Resource(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Resource is a basic resource. Use fun to set in_ using FunResult.out.
+
 
         :param str resource_name: The name of the resource.
         :param ResourceArgs args: The arguments to use to populate this resource's properties.
