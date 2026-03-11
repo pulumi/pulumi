@@ -125,7 +125,7 @@ description: A test for protecting and unprotecting resources
 	if runtime.GOOS == "windows" {
 		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 
 	// STEP 2: Unprotect a subset of resources to verify partial unprotect works

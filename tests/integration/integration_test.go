@@ -437,7 +437,7 @@ func TestUnprotect(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
@@ -464,7 +464,7 @@ func TestUnprotectProtect(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
@@ -475,7 +475,7 @@ func TestUnprotectProtect(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 }
 
