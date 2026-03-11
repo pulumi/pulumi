@@ -1867,6 +1867,9 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			if goal.DeleteBeforeReplace != nil {
 				deleteBeforeReplace = *goal.DeleteBeforeReplace
 			}
+			if sg.deployment.opts.DeleteBeforeCreate {
+				deleteBeforeReplace = true
+			}
 			if deleteBeforeReplace {
 				logging.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
 				contract.Assertf(sg.deployment.depGraph != nil,
