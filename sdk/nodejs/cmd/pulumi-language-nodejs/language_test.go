@@ -147,6 +147,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 			require.NoError(t, err)
 
 			providersDir := "testdata/providers"
+			policyPackDir := "testdata/policies"
 			snapshotDir := "./testdata"
 			if local {
 				snapshotDir += "/local"
@@ -157,6 +158,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 			case "bun":
 				snapshotDir += "/bun"
 				providersDir = "testdata/providers-bun"
+				policyPackDir = "testdata/policies-bun"
 			case "nodejs":
 				if forceTsc {
 					snapshotDir += "/tsc"
@@ -173,7 +175,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 				SnapshotDirectory:    snapshotDir,
 				CoreSdkDirectory:     "../..",
 				CoreSdkVersion:       sdk.Version.String(),
-				PolicyPackDirectory:  "testdata/policies",
+				PolicyPackDirectory:  policyPackDir,
 				Local:                local,
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
@@ -201,9 +203,6 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 					}
 
 					if runtime == "bun" {
-						if strings.HasPrefix(tt, "policy-") {
-							t.Skip("Skipping policy tests - TODO: https://github.com/pulumi/pulumi/issues/22078")
-						}
 						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" {
 							t.Skip(
 								"On linux bun has trouble resolving indirect dependencies that point to a local file" +
