@@ -73,6 +73,13 @@ type CreateStackRequest struct {
 // CreateStackResponse is the response from a create Stack request.
 type CreateStackResponse struct{}
 
+// DeleteStackResponse is the response from a delete Stack request.
+type DeleteStackResponse struct {
+	// Warnings contains any non-fatal warnings from the deletion, such as when a linked
+	// ESC environment could not be cleaned up due to deletion protection or cross-references.
+	Warnings []string `json:"warnings,omitempty"`
+}
+
 // EncryptValueRequest defines the request body for encrypting a value.
 type EncryptValueRequest struct {
 	// The value to encrypt.

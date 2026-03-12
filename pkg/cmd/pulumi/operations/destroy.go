@@ -343,7 +343,7 @@ func NewDestroyCmd() *cobra.Command {
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
 						"completely, run `pulumi stack rm %s`.\n", s.Ref())
 				} else if remove {
-					_, err = backend.RemoveStack(ctx, s, false /*force*/, false /*removeBackups*/)
+					removeResult, err := backend.RemoveStack(ctx, s, false /*force*/, false /*removeBackups*/)
 					if err != nil {
 						return err
 					}
@@ -355,6 +355,9 @@ func NewDestroyCmd() *cobra.Command {
 							fmt.Printf("The resources in the stack have been deleted, and the history and " +
 								"configuration removed.\n")
 						}
+					}
+					for _, warning := range removeResult.Warnings {
+						fmt.Printf("warning: %s\n", warning)
 					}
 				}
 			} else if destroyErr == context.Canceled {
