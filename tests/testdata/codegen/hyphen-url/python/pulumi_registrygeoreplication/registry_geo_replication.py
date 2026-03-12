@@ -24,7 +24,6 @@ class RegistryGeoReplicationArgs:
         """
         The set of arguments for constructing a RegistryGeoReplication resource.
 
-
         :param pulumi.Input['pulumi_using_dashes.Dash'] resource_group: The resource group that hosts the component resource
         """
         pulumi.set(__self__, "resource_group", resource_group)

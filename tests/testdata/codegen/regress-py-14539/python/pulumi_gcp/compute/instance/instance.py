@@ -24,7 +24,6 @@ class InstanceArgs:
         """
         The set of arguments for constructing a Instance resource.
 
-
         :param pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs'] boot_disk: The boot disk for the instance.
                Structure is documented below.
         """
@@ -50,7 +49,6 @@ class _InstanceState:
                  boot_disk: Optional[pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs']] = None):
         """
         Input properties used for looking up and filtering Instance resources.
-
 
         :param pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs'] boot_disk: The boot disk for the instance.
                Structure is documented below.
