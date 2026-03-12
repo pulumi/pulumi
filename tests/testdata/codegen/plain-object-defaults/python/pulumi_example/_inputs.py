@@ -55,6 +55,7 @@ class HelmReleaseSettings:
         """
         BETA FEATURE - Options to configure the Helm Release resource.
 
+
         :param _builtins.str required_arg: to test required args
         :param _builtins.str driver: The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
         :param _builtins.str plugins_path: The path to the helm plugins directory.
@@ -132,6 +133,7 @@ class HelmReleaseSettingsArgs:
         """
         BETA FEATURE - Options to configure the Helm Release resource.
 
+
         :param pulumi.Input[_builtins.str] required_arg: to test required args
         :param pulumi.Input[_builtins.str] driver: The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
         :param pulumi.Input[_builtins.str] plugins_path: The path to the helm plugins directory.
@@ -205,6 +207,7 @@ class KubeClientSettingsArgs:
                  rec_test: Optional[pulumi.Input['KubeClientSettingsArgs']] = None):
         """
         Options for tuning the Kubernetes client used by a Provider.
+
 
         :param pulumi.Input[_builtins.int] burst: Maximum burst for throttle. Default value is 10.
         :param pulumi.Input[_builtins.float] qps: Maximum queries per second (QPS) to the API server from this client. Default value is 5.
@@ -288,6 +291,7 @@ class LayeredTypeArgs:
                  recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None):
         """
         Make sure that defaults propagate through types
+
 
         :param pulumi.Input[_builtins.str] thinker: To ask and answer
         :param pulumi.Input[_builtins.float] answer: The answer to the question

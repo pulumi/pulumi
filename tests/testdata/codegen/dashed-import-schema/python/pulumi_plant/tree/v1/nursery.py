@@ -25,6 +25,7 @@ class NurseryArgs:
         """
         The set of arguments for constructing a Nursery resource.
 
+
         :param pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]] varieties: The varieties available
         :param pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]] sizes: The sizes of trees available
         """

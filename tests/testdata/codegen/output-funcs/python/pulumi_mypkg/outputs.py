@@ -39,6 +39,7 @@ class SsisEnvironmentReferenceResponse(dict):
         """
         Ssis environment reference.
 
+
         :param _builtins.str environment_folder_name: Environment folder name.
         :param _builtins.str environment_name: Environment name.
         :param _builtins.float id: Environment reference id.
@@ -100,6 +101,7 @@ class SsisEnvironmentResponse(dict):
                  variables: Optional[Sequence['outputs.SsisVariableResponse']] = None):
         """
         Ssis environment.
+
 
         :param _builtins.str type: The type of SSIS object metadata.
                Expected value is 'Environment'.
@@ -184,6 +186,7 @@ class SsisFolderResponse(dict):
         """
         Ssis folder.
 
+
         :param _builtins.str type: The type of SSIS object metadata.
                Expected value is 'Folder'.
         :param _builtins.str description: Metadata description.
@@ -248,6 +251,7 @@ class SsisPackageResponse(dict):
                  project_version: Optional[_builtins.float] = None):
         """
         Ssis Package.
+
 
         :param _builtins.str type: The type of SSIS object metadata.
                Expected value is 'Package'.
@@ -361,6 +365,7 @@ class SsisParameterResponse(dict):
                  variable: Optional[_builtins.str] = None):
         """
         Ssis parameter.
+
 
         :param _builtins.str data_type: Parameter type.
         :param _builtins.str default_value: Default value of parameter.
@@ -514,6 +519,7 @@ class SsisProjectResponse(dict):
         """
         Ssis project.
 
+
         :param _builtins.str type: The type of SSIS object metadata.
                Expected value is 'Project'.
         :param _builtins.str description: Metadata description.
@@ -622,6 +628,7 @@ class SsisVariableResponse(dict):
         """
         Ssis variable.
 
+
         :param _builtins.str data_type: Variable type.
         :param _builtins.str description: Variable description.
         :param _builtins.float id: Variable id.
@@ -714,6 +721,7 @@ class StorageAccountKeyResponse(dict):
                  value: _builtins.str):
         """
         An access key for the storage account.
+
 
         :param _builtins.str creation_time: Creation time of the key, in round trip date format.
         :param _builtins.str key_name: Name of the key.

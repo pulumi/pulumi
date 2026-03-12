@@ -26,6 +26,7 @@ class StaticPageArgs:
         """
         The set of arguments for constructing a StaticPage resource.
 
+
         :param pulumi.Input[_builtins.str] index_content: The HTML content for index.html.
         """
         pulumi.set(__self__, "index_content", index_content)
