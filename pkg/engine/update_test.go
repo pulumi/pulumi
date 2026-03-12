@@ -177,6 +177,33 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		var me *workspace.MissingError
 		assert.True(t, errors.As(err, &me))
 	})
+
+	t.Run("MissingError with auto-install retries and succeeds", func(t *testing.T) {
+		// auto-install is enabled by default. The first call to PolicyAnalyzer
+		// returns MissingError; after the install attempt the second call succeeds.
+		calls := 0
+		host := &plugin.MockHost{
+			PolicyAnalyzerF: func(name tokens.QName, _ string, _ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+				calls++
+				if calls == 1 {
+					return nil, workspace.NewMissingError(workspace.PluginDescriptor{
+						Name: "policy-opa",
+						Kind: apitype.AnalyzerPlugin,
+					}, false)
+				}
+				return &mockAnalyzer{name: name}, nil
+			},
+		}
+		plugctx, err := plugin.NewContextWithRoot(
+			context.Background(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+		require.NoError(t, err)
+		defer plugctx.Close()
+
+		analyzer, err := loadPolicyAnalyzer(context.Background(), plugctx, "my-policy", "/path", nil)
+		require.NoError(t, err)
+		assert.Equal(t, tokens.QName("my-policy"), analyzer.Name())
+		assert.Equal(t, 2, calls, "expected two calls: first fails, second succeeds after install")
+	})
 }
 
 type mockAnalyzer struct {
