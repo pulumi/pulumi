@@ -114,6 +114,7 @@ type mockSnapshotMutation struct{}
 
 func (msm *mockSnapshotMutation) End(step deploy.Step, successful bool) error { return nil }
 
+//nolint:paralleltest // subtests use t.Setenv
 func TestLoadPolicyAnalyzer(t *testing.T) {
 	t.Run("successful load", func(t *testing.T) {
 		t.Parallel()
