@@ -182,7 +182,8 @@ func (cmd *configEnvCmd) showConfigSource(ctx context.Context, jsonOut bool) err
 		fmt.Fprintf(cmd.stdout, "Source type:     remote\n")
 		fmt.Fprintf(cmd.stdout, "ESC environment: %s (org: %s)\n", *loc.EscEnv, orgName)
 		fmt.Fprintf(cmd.stdout,
-			"\nRun `pulumi config env console` to view in the console, or `pulumi config env eject` to return to local config.\n")
+			"\nRun `pulumi config env console` to view in the console,"+
+			" or `pulumi config env eject` to return to local config.\n")
 		return nil
 	}
 
