@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -114,4 +117,107 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 
 	// Assert.
 	assert.Equal(t, expectedSm.State(), actualDeployment.SecretsProviders.State)
+}
+
+// --- Conflict detection tests ---
+
+// newRemoteStack returns a MockStack configured as a remote config stack.
+// It calls LoadRemoteConfig to return an empty ProjectStack (no local config).
+func newRemoteStack(t *testing.T, stackName string, escEnv string) *backend.MockStack {
+	t.Helper()
+	return &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{NameV: tokens.MustParseStackName(stackName)}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &escEnv}
+		},
+		LoadRemoteF: func(_ context.Context, _ *workspace.Project) (*workspace.ProjectStack, error) {
+			return &workspace.ProjectStack{}, nil
+		},
+	}
+}
+
+// writePulumiYaml writes a minimal Pulumi.yaml project file to dir so that
+// workspace.DetectProjectStackPath can locate the project root.
+func writePulumiYaml(t *testing.T, dir string, projectName string) {
+	t.Helper()
+	content := "name: " + projectName + "\nruntime: go\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(content), 0o600))
+}
+
+// writeConfigFile writes a Pulumi.<stack>.yaml to dir and chdirs into the temp dir
+// so workspace.DetectProjectStackPath resolves there.
+func writeConfigFile(t *testing.T, dir string, stackName string, content string) {
+	t.Helper()
+	name := "Pulumi." + stackName + ".yaml"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600))
+}
+
+//nolint:paralleltest // t.Chdir cannot be used with t.Parallel
+func TestLoadProjectStack_ConflictDetection_HardErrorWithConfigValues(t *testing.T) {
+	dir := t.TempDir()
+	writePulumiYaml(t, dir, "myproject")
+	// Write a local config file with a non-empty config map.
+	writeConfigFile(t, dir, "dev", "config:\n  myproject:host: localhost\n")
+
+	t.Chdir(dir)
+
+	s := newRemoteStack(t, "dev", "myproject/dev")
+	project := &workspace.Project{Name: "myproject"}
+
+	_, err := LoadProjectStack(context.Background(), cmdutil.Diag(), project, s)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "both remote and local configuration exist")
+}
+
+//nolint:paralleltest // t.Chdir cannot be used with t.Parallel
+func TestLoadProjectStack_ConflictDetection_HardErrorWithEnvironmentImports(t *testing.T) {
+	dir := t.TempDir()
+	writePulumiYaml(t, dir, "myproject")
+	// Write a local config file that has ESC environment imports.
+	writeConfigFile(t, dir, "dev", "environment:\n  - myorg/shared/creds\n")
+
+	t.Chdir(dir)
+
+	s := newRemoteStack(t, "dev", "myproject/dev")
+	project := &workspace.Project{Name: "myproject"}
+
+	_, err := LoadProjectStack(context.Background(), cmdutil.Diag(), project, s)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "both remote and local configuration exist")
+}
+
+//nolint:paralleltest // t.Chdir cannot be used with t.Parallel
+func TestLoadProjectStack_ConflictDetection_NoErrorForMetadataOnlyFile(t *testing.T) {
+	dir := t.TempDir()
+	writePulumiYaml(t, dir, "myproject")
+	// Write a local config file with only encryption metadata (no config values).
+	writeConfigFile(t, dir, "dev", "secretsprovider: passphrase\nencryptionsalt: v1:abc:def\n")
+
+	t.Chdir(dir)
+
+	s := newRemoteStack(t, "dev", "myproject/dev")
+	project := &workspace.Project{Name: "myproject"}
+
+	// Should succeed: metadata-only file does not conflict with remote config.
+	ps, err := LoadProjectStack(context.Background(), cmdutil.Diag(), project, s)
+	require.NoError(t, err)
+	require.NotNil(t, ps)
+}
+
+//nolint:paralleltest // t.Chdir cannot be used with t.Parallel
+func TestLoadProjectStack_ConflictDetection_NoErrorWhenNoLocalFile(t *testing.T) {
+	dir := t.TempDir()
+	writePulumiYaml(t, dir, "myproject")
+	// No local config file written.
+	t.Chdir(dir)
+
+	s := newRemoteStack(t, "dev", "myproject/dev")
+	project := &workspace.Project{Name: "myproject"}
+
+	// Should succeed: no local file, no conflict.
+	ps, err := LoadProjectStack(context.Background(), cmdutil.Diag(), project, s)
+	require.NoError(t, err)
+	require.NotNil(t, ps)
 }

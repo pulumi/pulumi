@@ -37,6 +37,8 @@ import (
 )
 
 // HandleConfig handles prompting for config values (as needed) and saving config.
+// Config values are collected with plaintext secrets and then saved via ConfigEditor,
+// which handles encryption (local) or fn::secret wrapping (ESC) transparently.
 func HandleConfig(
 	ctx context.Context,
 	sink diag.Sink,
@@ -65,14 +67,33 @@ func HandleConfig(
 		return err
 	}
 
+	// Load the project stack and secrets manager — needed for both prompting (decrypter
+	// for existing defaults) and saving (encrypter for the ConfigEditor).
+	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, s)
+	if err != nil {
+		return fmt.Errorf("loading stack config: %w", err)
+	}
+
+	sm, state, err := ssml.GetSecretsManager(ctx, s, ps)
+	if err != nil {
+		return err
+	}
+	if state != cmdStack.SecretsManagerUnchanged {
+		if err = cmdStack.SaveProjectStack(ctx, s, ps); err != nil {
+			return fmt.Errorf("saving stack config: %w", err)
+		}
+	}
+
 	// Handle config.
 	// If this is an initial preconfigured empty stack (i.e. configured in the Pulumi Console),
 	// use its config without prompting.
 	// Otherwise, use the values specified on the command line and prompt for new values.
 	// If the stack already existed and had previous config, those values will be used as the defaults.
 	var c config.Map
+	var preconfigured bool
 	if isPreconfiguredEmptyStack(templateNameOrURL, template.Config, stackConfig, snap) {
 		c = stackConfig
+		preconfigured = true
 		// TODO[pulumi/pulumi#1894] consider warning if templateNameOrURL is different from
 		// the stack's `pulumi:template` config value.
 	} else {
@@ -82,11 +103,11 @@ func HandleConfig(
 			return parseErr
 		}
 
-		// Prompt for config as needed.
+		// Prompt for config as needed. Values are returned with plaintext secrets
+		// (marked Secure but not encrypted) so the ConfigEditor can handle
+		// encryption/wrapping for the appropriate backend.
 		c, err = promptForConfig(
 			ctx,
-			sink,
-			ssml,
 			prompt,
 			project,
 			s,
@@ -94,6 +115,7 @@ func HandleConfig(
 			commandLineConfig,
 			stackConfig,
 			yes,
+			sm.Decrypter(),
 			opts,
 		)
 		if err != nil {
@@ -101,10 +123,26 @@ func HandleConfig(
 		}
 	}
 
-	// Save the config.
+	// Save the config via ConfigEditor, which routes to the local file or ESC
+	// environment based on the stack's config location.
 	if len(c) > 0 {
-		if err = SaveConfig(ctx, sink, ws, s, c); err != nil {
-			return fmt.Errorf("saving config: %w", err)
+		// For preconfigured stacks with remote config, the values are already
+		// stored in the ESC environment — no need to re-save them.
+		if preconfigured && s.ConfigLocation().IsRemote {
+			return nil
+		}
+
+		editor, editorErr := cmdConfig.NewConfigEditor(ctx, s, ps, sm.Encrypter())
+		if editorErr != nil {
+			return fmt.Errorf("creating config editor: %w", editorErr)
+		}
+		for k, v := range c {
+			if setErr := editor.Set(ctx, k, v, false); setErr != nil {
+				return fmt.Errorf("setting config %v: %w", k, setErr)
+			}
+		}
+		if saveErr := editor.Save(ctx); saveErr != nil {
+			return fmt.Errorf("saving config: %w", saveErr)
 		}
 
 		fmt.Println("Saved config")
@@ -177,10 +215,11 @@ var templateKey = config.MustMakeKey("pulumi", "template")
 // If a config value exists in commandLineConfig, it will be used without prompting.
 // If stackConfig is non-nil and a config value exists in stackConfig, it will be used as the default
 // value when prompting instead of the default value specified in templateConfig.
+//
+// Secret values are returned as config.NewSecureValue(plaintext) — encryption is deferred
+// to the ConfigEditor so it can handle both local encryption and ESC fn::secret wrapping.
 func promptForConfig(
 	ctx context.Context,
-	sink diag.Sink,
-	ssml cmdStack.SecretsManagerLoader,
 	prompt promptForValueFunc,
 	project *workspace.Project,
 	stack backend.Stack,
@@ -188,6 +227,7 @@ func promptForConfig(
 	commandLineConfig config.Map,
 	stackConfig config.Map,
 	yes bool,
+	decrypter config.Decrypter,
 	opts display.Options,
 ) (config.Map, error) {
 	// Convert `string` keys to `config.Key`. If a string key is missing a delimiter,
@@ -208,24 +248,6 @@ func promptForConfig(
 		keys = append(keys, k)
 	}
 	sort.Sort(keys)
-
-	// We need to load the stack config here for the secret manager
-	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack)
-	if err != nil {
-		return nil, fmt.Errorf("loading stack config: %w", err)
-	}
-
-	sm, state, err := ssml.GetSecretsManager(ctx, stack, ps)
-	if err != nil {
-		return nil, err
-	}
-	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
-			return nil, fmt.Errorf("saving stack config: %w", err)
-		}
-	}
-	encrypter := sm.Encrypter()
-	decrypter := sm.Decrypter()
 
 	c := make(config.Map)
 
@@ -276,19 +298,15 @@ func promptForConfig(
 			continue
 		}
 
-		// Encrypt the value if needed.
+		// Store the value. Secrets are stored as plaintext secure values —
+		// the ConfigEditor handles encryption/wrapping on save.
 		var v config.Value
 		if secret {
-			enc, err := encrypter.EncryptValue(ctx, value)
-			if err != nil {
-				return nil, err
-			}
-			v = config.NewSecureValue(enc)
+			v = config.NewSecureValue(value)
 		} else {
 			v = config.NewValue(value)
 		}
 
-		// Save it.
 		c[k] = v
 	}
 
@@ -328,7 +346,10 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 	return configMap, nil
 }
 
-// SaveConfig saves the config for the stack.
+// SaveConfig saves the config for the stack. For remote stacks, values are
+// written to the ESC environment via ConfigEditor. For local stacks, values are written
+// to the Pulumi.<stack>.yaml file directly (values are assumed to be non-secret or
+// already encrypted).
 func SaveConfig(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {
@@ -338,6 +359,19 @@ func SaveConfig(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, st
 	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack)
 	if err != nil {
 		return err
+	}
+
+	if stack.ConfigLocation().IsRemote {
+		editor, editorErr := cmdConfig.NewConfigEditor(ctx, stack, ps, config.NopEncrypter)
+		if editorErr != nil {
+			return editorErr
+		}
+		for k, v := range c {
+			if setErr := editor.Set(ctx, k, v, false); setErr != nil {
+				return fmt.Errorf("setting config %v: %w", k, setErr)
+			}
+		}
+		return editor.Save(ctx)
 	}
 
 	for k, v := range c {
