@@ -900,3 +900,75 @@ func TestCreateNeoTask(t *testing.T) {
 		require.Nil(t, resp)
 	})
 }
+
+func TestDeleteStack(t *testing.T) {
+	t.Parallel()
+
+	t.Run("SuccessNoWarnings", func(t *testing.T) {
+		t.Parallel()
+
+		server := newMockServer(200, `{}`)
+		defer server.Close()
+
+		client := newMockClient(server)
+		hasResources, resp, err := client.DeleteStack(t.Context(), StackIdentifier{
+			Owner:   "org",
+			Project: "proj",
+			Stack:   tokens.MustParseStackName("dev"),
+		}, false)
+
+		require.NoError(t, err)
+		assert.False(t, hasResources)
+		assert.Empty(t, resp.Warnings)
+	})
+
+	t.Run("SuccessWithWarnings", func(t *testing.T) {
+		t.Parallel()
+
+		server := newMockServer(200, `{
+			"warnings": [
+				"The linked ESC environment 'org/proj/dev' was not deleted: deletion protection is enabled",
+				"Run 'pulumi env rm org/proj/dev' to manually remove it"
+			]
+		}`)
+		defer server.Close()
+
+		client := newMockClient(server)
+		hasResources, resp, err := client.DeleteStack(t.Context(), StackIdentifier{
+			Owner:   "org",
+			Project: "proj",
+			Stack:   tokens.MustParseStackName("dev"),
+		}, false)
+
+		require.NoError(t, err)
+		assert.False(t, hasResources)
+		assert.Equal(t, []string{
+			"The linked ESC environment 'org/proj/dev' was not deleted: deletion protection is enabled",
+			"Run 'pulumi env rm org/proj/dev' to manually remove it",
+		}, resp.Warnings)
+	})
+
+	t.Run("HasResources", func(t *testing.T) {
+		t.Parallel()
+
+		errResp := apitype.ErrorResponse{
+			Code:    400,
+			Message: "Bad Request: Stack still contains resources.",
+		}
+		body, err := json.Marshal(errResp)
+		require.NoError(t, err)
+
+		server := newMockServer(400, string(body))
+		defer server.Close()
+
+		client := newMockClient(server)
+		hasResources, _, deleteErr := client.DeleteStack(t.Context(), StackIdentifier{
+			Owner:   "org",
+			Project: "proj",
+			Stack:   tokens.MustParseStackName("dev"),
+		}, false)
+
+		require.Error(t, deleteErr)
+		assert.True(t, hasResources)
+	})
+}

@@ -66,7 +66,7 @@ type MockBackend struct {
 		*apitype.UntypedDeployment,
 		*CreateStackOptions,
 	) (Stack, error)
-	RemoveStackF func(context.Context, Stack, bool, bool) (bool, error)
+	RemoveStackF func(context.Context, Stack, bool, bool) (RemoveStackResult, error)
 	ListStacksF  func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
 	ListStackNamesF func(context.Context, ListStackNamesFilter, ContinuationToken) (
@@ -263,7 +263,7 @@ func (be *MockBackend) CreateStack(
 	panic("not implemented")
 }
 
-func (be *MockBackend) RemoveStack(ctx context.Context, stack Stack, force, removeBackups bool) (bool, error) {
+func (be *MockBackend) RemoveStack(ctx context.Context, stack Stack, force, removeBackups bool) (RemoveStackResult, error) {
 	if be.RemoveStackF != nil {
 		return be.RemoveStackF(ctx, stack, force, removeBackups)
 	}
