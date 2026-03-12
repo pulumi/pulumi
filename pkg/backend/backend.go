@@ -313,6 +313,38 @@ type EnvironmentsBackend interface {
 		yaml []byte,
 		duration time.Duration,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+
+	// GetEnvironment returns the YAML definition and etag for the named environment.
+	// Pass version="" to get the latest revision. If decrypt is true, encrypted
+	// secrets in the YAML are returned in plaintext form.
+	GetEnvironment(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+		version string,
+		decrypt bool,
+	) (yaml []byte, etag string, revision int, err error)
+
+	// UpdateEnvironmentWithProject updates the YAML definition for the named environment.
+	// When etag is non-empty the update is rejected with a conflict error if the
+	// current server revision does not match, enabling optimistic concurrency.
+	UpdateEnvironmentWithProject(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+		yaml []byte,
+		etag string,
+	) (apitype.EnvironmentDiagnostics, error)
+
+	// DeleteEnvironmentWithProject deletes the named environment.
+	DeleteEnvironmentWithProject(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+	) error
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the

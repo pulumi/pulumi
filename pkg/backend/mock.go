@@ -538,6 +538,31 @@ type MockEnvironmentsBackend struct {
 		yaml []byte,
 		duration time.Duration,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+
+	GetEnvironmentF func(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+		version string,
+		decrypt bool,
+	) (yaml []byte, etag string, revision int, err error)
+
+	UpdateEnvironmentWithProjectF func(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+		yaml []byte,
+		etag string,
+	) (apitype.EnvironmentDiagnostics, error)
+
+	DeleteEnvironmentWithProjectF func(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+	) error
 }
 
 func (be *MockEnvironmentsBackend) CreateEnvironment(
@@ -576,6 +601,46 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 	panic("not implemented")
 }
 
+func (be *MockEnvironmentsBackend) GetEnvironment(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+	version string,
+	decrypt bool,
+) ([]byte, string, int, error) {
+	if be.GetEnvironmentF != nil {
+		return be.GetEnvironmentF(ctx, org, projectName, envName, version, decrypt)
+	}
+	panic("not implemented")
+}
+
+func (be *MockEnvironmentsBackend) UpdateEnvironmentWithProject(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+	yaml []byte,
+	etag string,
+) (apitype.EnvironmentDiagnostics, error) {
+	if be.UpdateEnvironmentWithProjectF != nil {
+		return be.UpdateEnvironmentWithProjectF(ctx, org, projectName, envName, yaml, etag)
+	}
+	panic("not implemented")
+}
+
+func (be *MockEnvironmentsBackend) DeleteEnvironmentWithProject(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+) error {
+	if be.DeleteEnvironmentWithProjectF != nil {
+		return be.DeleteEnvironmentWithProjectF(ctx, org, projectName, envName)
+	}
+	panic("not implemented")
+}
+
 //
 // Mock stack.
 //
@@ -585,6 +650,7 @@ type MockStack struct {
 	ConfigLocationF       func() StackConfigLocation
 	LoadRemoteF           func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
 	SaveRemoteF           func(ctx context.Context, project *workspace.ProjectStack) error
+	RemoveRemoteConfigF   func(ctx context.Context) error
 	OrgNameF              func() string
 	ConfigF               func() config.Map
 	SnapshotF             func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
@@ -622,6 +688,13 @@ func (ms *MockStack) SaveRemoteConfig(ctx context.Context, project *workspace.Pr
 		return ms.SaveRemoteF(ctx, project)
 	}
 	panic("not implemented: MockStack.SaveRemote")
+}
+
+func (ms *MockStack) RemoveRemoteConfig(ctx context.Context) error {
+	if ms.RemoveRemoteConfigF != nil {
+		return ms.RemoveRemoteConfigF(ctx)
+	}
+	panic("not implemented: MockStack.RemoveRemoteConfig")
 }
 
 func (ms *MockStack) OrgName() string {
