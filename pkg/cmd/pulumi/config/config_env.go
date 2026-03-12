@@ -47,12 +47,20 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 		stackRef:         stackRef,
 	}
 
+	var jsonOut bool
+
 	cmd := &cobra.Command{
 		Use:   "env",
-		Short: "Manage ESC environments for a stack",
+		Short: "Show config source or manage ESC environment imports",
 		Long: "Manages the ESC environment associated with a specific stack. To create a new environment\n" +
 			"from a stack's configuration, use `pulumi config env init`.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			impl.initArgs()
+			return impl.showConfigSource(cmd.Context(), jsonOut)
+		},
 	}
+
+	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "Emit output as JSON")
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
@@ -60,6 +68,7 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 	cmd.AddCommand(newConfigEnvAddCmd(&impl))
 	cmd.AddCommand(newConfigEnvRmCmd(&impl))
 	cmd.AddCommand(newConfigEnvLsCmd(&impl))
+	cmd.AddCommand(newConfigEnvEjectCmd(&impl))
 
 	return cmd
 }
@@ -139,11 +148,74 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 	return projectStack, project, &stack, nil
 }
 
-func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool) error {
-	projectStack, _, _, err := cmd.loadEnvPreamble(ctx)
+// showConfigSource prints the config source for the stack (T025).
+func (cmd *configEnvCmd) showConfigSource(ctx context.Context, jsonOut bool) error {
+	opts := display.Options{Color: cmd.color}
+
+	stack, err := cmd.requireStack(
+		ctx, cmd.diags, cmd.ws,
+		cmdBackend.DefaultLoginManager,
+		*cmd.stackRef,
+		cmdStack.OfferNew|cmdStack.SetCurrent,
+		opts,
+	)
 	if err != nil {
 		return err
 	}
+
+	loc := stack.ConfigLocation()
+	if loc.IsRemote && loc.EscEnv != nil {
+		orgName, orgErr := stackOrgName(stack)
+		if orgErr != nil {
+			return orgErr
+		}
+		if jsonOut {
+			return ui.FprintJSON(cmd.stdout, map[string]string{
+				"sourceType":   "service-backed",
+				"environment":  *loc.EscEnv,
+				"organization": orgName,
+			})
+		}
+		fmt.Fprintf(cmd.stdout, "Source type:     service-backed\n")
+		fmt.Fprintf(cmd.stdout, "ESC environment: %s (org: %s)\n", *loc.EscEnv, orgName)
+		fmt.Fprintf(cmd.stdout, "\nRun `pulumi config web` to view in the console, or `pulumi config env eject` to return to local config.\n")
+		return nil
+	}
+
+	_, configFilePath, pathErr := workspace.DetectProjectStackPath(stack.Ref().Name().Q())
+	if pathErr != nil {
+		return pathErr
+	}
+	if jsonOut {
+		return ui.FprintJSON(cmd.stdout, map[string]string{
+			"sourceType": "local",
+			"configFile": configFilePath,
+		})
+	}
+	fmt.Fprintf(cmd.stdout, "Source type:  local\n")
+	fmt.Fprintf(cmd.stdout, "Config file:  %s\n", configFilePath)
+	return nil
+}
+
+func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool) error {
+	projectStack, _, stack, err := cmd.loadEnvPreamble(ctx)
+	if err != nil {
+		return err
+	}
+
+	// For service-backed stacks, the environment is managed via ESC — direct to better command.
+	if (*stack).ConfigLocation().IsRemote {
+		loc := (*stack).ConfigLocation()
+		if jsonOut {
+			return ui.FprintJSON(cmd.stdout, map[string]string{"environment": *loc.EscEnv})
+		}
+		fmt.Fprintf(cmd.stdout,
+			"This stack uses a single ESC environment for all config: %s\n"+
+				"Run `pulumi config env` to inspect it, or `pulumi config web` to view in the console.\n",
+			*loc.EscEnv)
+		return nil
+	}
+
 	imports := projectStack.Environment.Imports()
 
 	if jsonOut {
@@ -188,6 +260,14 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	projectStack, project, stack, err := cmd.loadEnvPreamble(ctx)
 	if err != nil {
 		return err
+	}
+
+	// config env add/rm modify local environment imports, which are not applicable to service-backed stacks.
+	if (*stack).ConfigLocation().IsRemote {
+		return errors.New(
+			"config env add/rm is not supported for service-backed stacks\n" +
+				"  To manage imports within the ESC environment, use `pulumi config edit`\n" +
+				"  To return to local config, use `pulumi config env eject`")
 	}
 
 	if err := edit(projectStack); err != nil {
