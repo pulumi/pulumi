@@ -1,0 +1,126 @@
+{
+    "version": 1,
+    "scopes": [
+        {
+            "path": [],
+            "propagate": true,
+            "flags": {
+                "non-interactive": { "omit": true, "preset": true },
+                "yes": { "omit": true, "preset": true },
+                "emoji": { "omit": true }
+            }
+        },
+        {
+            "path": ["about"],
+            "propagate": false,
+            "flags": {
+                "color": { "preset": "never", "omit": false }
+            }
+        },
+        {
+            "path": ["up"],
+            "propagate": false,
+            "flags": {
+                "skip-preview": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["refresh"],
+            "propagate": false,
+            "flags": {
+                "skip-preview": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["destroy"],
+            "propagate": false,
+            "flags": {
+                "skip-preview": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["import"],
+            "propagate": false,
+            "flags": {
+                "skip-preview": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["stack", "ls"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["stack", "output"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["stack", "history"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["stack", "tag", "ls"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "get"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "set-all"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "env", "ls"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "refresh"],
+            "propagate": false,
+            "flags": {
+                "force": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["whoami"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["plugin", "ls"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        }
+    ]
+}

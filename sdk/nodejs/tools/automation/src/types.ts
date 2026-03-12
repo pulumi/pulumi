@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/** Preset value for a flag when invoking the CLI. */
+export type PresetValue = boolean | string | number | string[];
+
 /** A single flag on a command or menu. */
 export interface Flag {
     /** The canonical flag name (for example, "stack"). */
@@ -28,6 +31,12 @@ export interface Flag {
 
     /** True if the flag may appear multiple times (for example, string arrays). */
     repeatable?: boolean;
+
+    /** If true, this flag should be omitted from generated options types. */
+    omit?: boolean;
+
+    /** If set, this flag should be preset to this value when invoking the CLI. */
+    preset?: PresetValue;
 }
 
 /** A positional argument to a command. */
