@@ -186,11 +186,12 @@ type Backend interface {
 		opts *CreateStackOptions,
 	) (Stack, error)
 
-	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
-	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
-	// first boolean return value will be set to true. If removeBackups is true, any backups associated with the
-	// the stack will also be removed if the backend supports it.
-	RemoveStack(ctx context.Context, stack Stack, force, removeBackups bool) (bool, error)
+	// RemoveStack removes a stack with the given name. If force is true, the stack will be removed even
+	// if it still contains resources. Otherwise, if the stack contains resources, a non-nil error is
+	// returned and RemoveStackResult.HasResources will be true. If removeBackups is true, any backups
+	// associated with the stack will also be removed if the backend supports it.
+	// The result may contain warnings (e.g. when a linked ESC environment could not be cleaned up).
+	RemoveStack(ctx context.Context, stack Stack, force, removeBackups bool) (RemoveStackResult, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)

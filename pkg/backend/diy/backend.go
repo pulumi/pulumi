@@ -917,32 +917,35 @@ func (b *diyBackend) ListStackNames(
 	return filteredStacks, nil, nil
 }
 
-func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force, removeBackups bool) (bool, error) {
+func (b *diyBackend) RemoveStack(
+	ctx context.Context, stack backend.Stack, force, removeBackups bool,
+) (backend.RemoveStackResult, error) {
 	diyStackRef, err := b.getReference(stack.Ref())
 	if err != nil {
-		return false, err
+		return backend.RemoveStackResult{}, err
 	}
 
 	err = b.Lock(ctx, diyStackRef)
 	if err != nil {
-		return false, err
+		return backend.RemoveStackResult{}, err
 	}
 	defer b.Unlock(ctx, diyStackRef)
 
 	checkpoint, _, _, err := b.getCheckpoint(ctx, diyStackRef)
 	if err != nil {
-		return false, err
+		return backend.RemoveStackResult{}, err
 	}
 
 	// Don't remove stacks that still have resources.
 	if !force && checkpoint != nil && checkpoint.Latest != nil && len(checkpoint.Latest.Resources) > 0 {
 		// If the one and only resource is the root stack we can carry on, the cloud backend allows removal from this state.
 		if len(checkpoint.Latest.Resources) > 1 || checkpoint.Latest.Resources[0].Type != tokens.RootStackType {
-			return true, errors.New("refusing to remove stack because it still contains resources")
+			return backend.RemoveStackResult{HasResources: true},
+				errors.New("refusing to remove stack because it still contains resources")
 		}
 	}
 
-	return false, b.removeStack(ctx, diyStackRef, removeBackups)
+	return backend.RemoveStackResult{}, b.removeStack(ctx, diyStackRef, removeBackups)
 }
 
 func (b *diyBackend) RenameStack(ctx context.Context, stack backend.Stack,
