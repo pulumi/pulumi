@@ -607,7 +607,7 @@ func TestL2ResourceSimple_ConvertPath(t *testing.T) {
 
 	// GenerateProject is called once for the normal run and twice for the eject round-trip. Can't test the exact path
 	// for the eject call since the engine creates a temp directory for it.
-	assert.Len(t, runtime.generateProjectCalls, 3)
+	require.Len(t, runtime.generateProjectCalls, 3)
 	assert.Equal(t,
 		filepath.Join(tempDir, "projects", "l2-resource-simple"),
 		runtime.generateProjectCalls[0])
