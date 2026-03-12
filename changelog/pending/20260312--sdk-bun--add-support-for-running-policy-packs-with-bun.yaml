@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/bun
+  description: Add support for running policy packs with bun
