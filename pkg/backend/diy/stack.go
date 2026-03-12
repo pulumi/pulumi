@@ -70,6 +70,10 @@ func (s *diyStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace
 	return fmt.Errorf("%w for the DIY backend", backend.ErrConfigNotSupported)
 }
 
+func (s *diyStack) RemoveRemoteConfig(ctx context.Context) error {
+	return fmt.Errorf("%w for the DIY backend", backend.ErrConfigNotSupported)
+}
+
 func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 	if v := s.snapshot.Load(); v != nil {
 		return *v, nil
