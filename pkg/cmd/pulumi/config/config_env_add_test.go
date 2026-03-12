@@ -26,6 +26,45 @@ import (
 )
 
 //nolint:paralleltest // the underlying survey library is not parallel-safe
+func TestConfigEnvAddCmd_ServiceBacked(t *testing.T) {
+	t.Run("add import to ESC env", func(t *testing.T) {
+		const envYAML = `imports:
+  - myorg/base-env
+values:
+  pulumiConfig:
+    aws:region: us-west-2
+`
+		var savedYAML string
+		stdin := strings.NewReader("y")
+		var stdout bytes.Buffer
+		parent := newServiceBackedConfigEnvCmd(stdin, &stdout, envYAML, &savedYAML)
+		add := &configEnvAddCmd{parent: parent}
+		err := add.run(context.Background(), []string{"myorg/new-env"})
+		require.NoError(t, err)
+
+		assert.Contains(t, savedYAML, "myorg/base-env")
+		assert.Contains(t, savedYAML, "myorg/new-env")
+		// pulumiConfig should be preserved
+		assert.Contains(t, savedYAML, "aws:region")
+	})
+
+	t.Run("add import with --yes", func(t *testing.T) {
+		const envYAML = `values:
+  pulumiConfig:
+    aws:region: us-west-2
+`
+		var savedYAML string
+		var stdout bytes.Buffer
+		parent := newServiceBackedConfigEnvCmd(nil, &stdout, envYAML, &savedYAML)
+		add := &configEnvAddCmd{parent: parent, yes: true}
+		err := add.run(context.Background(), []string{"myorg/new-env"})
+		require.NoError(t, err)
+
+		assert.Contains(t, savedYAML, "myorg/new-env")
+	})
+}
+
+//nolint:paralleltest // the underlying survey library is not parallel-safe
 func TestConfigEnvAddCmd(t *testing.T) {
 	projectYAML := `name: test
 runtime: yaml`
