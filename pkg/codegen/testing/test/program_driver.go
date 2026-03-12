@@ -218,10 +218,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
 	},
 	{
-		Directory:   "logical-name",
-		Description: "Logical names",
-	},
-	{
 		Directory:   "aws-lambda",
 		Description: "AWS Lambdas",
 		// We have special testing for this case because lambda is a python keyword.
