@@ -87,11 +87,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Assets and archives",
 	},
 	{
-		Directory:   "synthetic-resource-properties",
-		Description: "Synthetic resource properties",
-		SkipCompile: codegen.NewStringSet(TestNodeJS, TestDotnet, TestGo), // not a real package
-	},
-	{
 		Directory:   "aws-s3-folder",
 		Description: "AWS S3 Folder",
 		SkipCompile: codegen.NewStringSet(TestGo),
