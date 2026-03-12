@@ -602,15 +602,18 @@ func TestL2ResourceSimple_ConvertPath(t *testing.T) {
 	assert.Empty(t, runResponse.Messages)
 	assert.True(t, runResponse.Success)
 
-	// Verify the convert path was exercised.
-	assert.True(t, runtime.generateProgramCalled,
-		"expected GenerateProgram to be called for the eject round-trip")
+	assert.False(t, runtime.generateProgramCalled,
+		"expected GenerateProgram to not be called for the eject round-trip")
 
-	// GenerateProject is called once for the normal run and once for the eject round-trip.
-	assert.Equal(t, []string{
+	// GenerateProject is called once for the normal run and twice for the eject round-trip. Can't test the exact path
+	// for the eject call since the engine creates a temp directory for it.
+	require.Len(t, runtime.generateProjectCalls, 3)
+	assert.Equal(t,
 		filepath.Join(tempDir, "projects", "l2-resource-simple"),
+		runtime.generateProjectCalls[0])
+	assert.Equal(t,
 		filepath.Join(tempDir, "eject", "round-tripped-project", "l2-resource-simple"),
-	}, runtime.generateProjectCalls)
+		runtime.generateProjectCalls[2])
 
 	// Verify snapshots were written to the correct isolated directories.
 	assert.FileExists(t, filepath.Join(snapshotDir, "projects", "l2-resource-simple", "Pulumi.yaml"))
