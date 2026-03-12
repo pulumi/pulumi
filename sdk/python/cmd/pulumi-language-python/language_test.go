@@ -105,8 +105,6 @@ var expectedFailures = map[string]string{
 	"l1-builtin-can":  "Temporarily disabled until pr #18916 is submitted",
 	"l1-builtin-list": "singleOrNone throws for empty list instead of returning null",
 	"l3-range":        "enumerate(map) gives (index, key) pairs instead of (key, value); map range generates wrong resource names", //nolint:lll
-	"l3-for":          "for expressions are not yet supported in Python codegen",
-	"l3-for-resource": "AttributeError: 'str' object has no attribute 'key'",
 }
 
 type languageTestConfig struct {
