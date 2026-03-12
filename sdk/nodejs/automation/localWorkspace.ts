@@ -19,6 +19,7 @@ import * as semver from "semver";
 import * as upath from "upath";
 
 import { CommandResult, PulumiCommand } from "./cmd";
+import * as CLI from "./interface";
 import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { ExecutorImage, RemoteGitProgramArgs } from "./remoteWorkspace";
@@ -67,6 +68,7 @@ export class LocalWorkspace implements Workspace {
     readonly secretsProvider?: string;
 
     private _pulumiCommand?: PulumiCommand;
+    private _cliApi?: CLI.API;
 
     /**
      * The underlying Pulumi CLI.
@@ -107,6 +109,18 @@ export class LocalWorkspace implements Workspace {
             throw new Error(`Failed to get Pulumi version`);
         }
         return this._pulumiVersion.toString();
+    }
+
+    /**
+     * The low-level Pulumi CLI API.
+     *
+     * @internal
+     */
+    get cliApi(): CLI.API {
+        if (this._cliApi === undefined) {
+            throw new Error("Failed to get Pulumi CLI API");
+        }
+        return this._cliApi;
     }
 
     private ready: Promise<any[]>;
@@ -381,6 +395,7 @@ export class LocalWorkspace implements Workspace {
         const readinessPromises: Promise<any>[] = [
             pulumiCommand.then((p) => {
                 this._pulumiCommand = p;
+                this._cliApi = new CLI.API(p);
                 if (p.version) {
                     this._pulumiVersion = p.version;
                 }

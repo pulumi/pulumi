@@ -35,12 +35,12 @@ const reservedWords: string[] = ["options", "package"];
 
 (function main(): void {
     if (!process.argv[2]) {
-        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts]");
+        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts] [output-dir]");
     }
 
     const specification: string = path.resolve(process.cwd(), process.argv[2]);
     const boilerplate: string = path.resolve(process.cwd(), process.argv[3] ?? path.join("boilerplate", "testing.ts"));
-    const output: string = path.join(process.cwd(), "output");
+    const output: string = path.resolve(process.cwd(), process.argv[4] ?? "output");
 
     const spec: Structure = JSON.parse(fs.readFileSync(specification, "utf-8")) as Structure;
     fs.mkdirSync(output, { recursive: true });
