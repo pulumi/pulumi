@@ -16,6 +16,7 @@ package ints
 
 import (
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -79,9 +80,19 @@ outer:
 	// Use the JavaScriptCore Debug Protocol to resume the paused program.
 	ws, err := websocket.Dial(wsURL, "", "http://localhost")
 	require.NoError(t, err)
+	require.NoError(t, ws.SetDeadline(time.Now().Add(30*time.Second)))
 	require.NoError(t, websocket.Message.Send(ws, `{"id":1,"method":"Runtime.enable"}`))
 	require.NoError(t, websocket.Message.Send(ws, `{"id":2,"method":"Inspector.initialized"}`))
 	require.NoError(t, websocket.Message.Send(ws, `{"id":3,"method":"Debugger.resume"}`))
+	// Wait for bun to acknowledge Debugger.resume before closing. If we close the WebSocket
+	// before bun processes the resume, the program can remain paused indefinitely.
+	for {
+		var msg string
+		require.NoError(t, websocket.Message.Receive(ws, &msg))
+		if strings.Contains(msg, `"id":3`) {
+			break
+		}
+	}
 	require.NoError(t, ws.Close())
 
 	// Verify the program completed successfully.
