@@ -29,6 +29,65 @@ func boolPtr(v bool) *bool {
 	return &v
 }
 
+func TestConfigEnvLsCmd_ServiceBacked(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no imports", func(t *testing.T) {
+		t.Parallel()
+
+		const envYAML = `values:
+  pulumiConfig:
+    aws:region: us-west-2
+`
+		var stdout bytes.Buffer
+		parent := newServiceBackedConfigEnvCmd(strings.NewReader(""), &stdout, envYAML, nil)
+		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
+		err := ls.run(context.Background(), nil)
+		require.NoError(t, err)
+		assert.Contains(t, stdout.String(), "no environments listed")
+	})
+
+	t.Run("with imports", func(t *testing.T) {
+		t.Parallel()
+
+		const envYAML = `imports:
+  - myorg/base-env
+  - myorg/aws-creds
+values:
+  pulumiConfig:
+    aws:region: us-west-2
+`
+		var stdout bytes.Buffer
+		parent := newServiceBackedConfigEnvCmd(strings.NewReader(""), &stdout, envYAML, nil)
+		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
+		err := ls.run(context.Background(), nil)
+		require.NoError(t, err)
+
+		out := cleanStdoutIncludingPrompt(stdout.String())
+		assert.Contains(t, out, "myorg/base-env")
+		assert.Contains(t, out, "myorg/aws-creds")
+	})
+
+	t.Run("with imports json", func(t *testing.T) {
+		t.Parallel()
+
+		const envYAML = `imports:
+  - myorg/base-env
+values:
+  pulumiConfig:
+    aws:region: us-west-2
+`
+		var stdout bytes.Buffer
+		parent := newServiceBackedConfigEnvCmd(strings.NewReader(""), &stdout, envYAML, nil)
+		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
+		err := ls.run(context.Background(), nil)
+		require.NoError(t, err)
+
+		expected := "[\n  \"myorg/base-env\"\n]\n"
+		assert.Equal(t, expected, stdout.String())
+	})
+}
+
 func TestConfigEnvLsCmd(t *testing.T) {
 	t.Parallel()
 

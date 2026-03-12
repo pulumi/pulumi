@@ -25,6 +25,53 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestConfigEnvRmCmd_ServiceBacked(t *testing.T) {
+	t.Parallel()
+
+	t.Run("remove import from ESC env", func(t *testing.T) {
+		t.Parallel()
+
+		const envYAML = `imports:
+  - myorg/base-env
+  - myorg/extra-env
+values:
+  pulumiConfig:
+    aws:region: us-west-2
+`
+		var savedYAML string
+		var stdout bytes.Buffer
+		parent := newServiceBackedConfigEnvCmd(nil, &stdout, envYAML, &savedYAML)
+		rm := &configEnvRmCmd{parent: parent, yes: true}
+		err := rm.run(context.Background(), []string{"myorg/extra-env"})
+		require.NoError(t, err)
+
+		assert.Contains(t, savedYAML, "myorg/base-env")
+		assert.NotContains(t, savedYAML, "myorg/extra-env")
+		// pulumiConfig should be preserved
+		assert.Contains(t, savedYAML, "aws:region")
+	})
+
+	t.Run("remove last import", func(t *testing.T) {
+		t.Parallel()
+
+		const envYAML = `imports:
+  - myorg/only-env
+values:
+  pulumiConfig:
+    aws:region: us-west-2
+`
+		var savedYAML string
+		var stdout bytes.Buffer
+		parent := newServiceBackedConfigEnvCmd(nil, &stdout, envYAML, &savedYAML)
+		rm := &configEnvRmCmd{parent: parent, yes: true}
+		err := rm.run(context.Background(), []string{"myorg/only-env"})
+		require.NoError(t, err)
+
+		assert.NotContains(t, savedYAML, "imports")
+		assert.Contains(t, savedYAML, "aws:region")
+	})
+}
+
 func TestConfigEnvRmCmd(t *testing.T) {
 	t.Parallel()
 
