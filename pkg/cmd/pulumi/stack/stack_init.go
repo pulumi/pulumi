@@ -96,9 +96,9 @@ func newStackInitCmd() *cobra.Command {
 		"names that should have permission to read and update this stack,"+
 		" once created")
 	cmd.PersistentFlags().BoolVar(
-		&sicmd.remoteConfig, "remote-config", false, "Store stack configuration remotely",
-	)
-	_ = cmd.PersistentFlags().MarkHidden("remote-config")
+		&sicmd.remoteConfig, "remote-config", false,
+		"Store stack configuration in Pulumi Cloud (service-backed config). "+
+			"Only valid for stacks on the Pulumi Cloud backend.")
 	return cmd
 }
 
@@ -143,6 +143,39 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	b, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
 	if err != nil {
 		return err
+	}
+
+	// Validate --remote-config flag conflicts and eligibility.
+	if cmd.remoteConfig {
+		if _, ok := b.(backend.EnvironmentsBackend); !ok {
+			return fmt.Errorf(
+				"--remote-config is not supported by the %s backend; "+
+					"it requires Pulumi Cloud", b.Name())
+		}
+		if cmd.secretsProvider != "" && cmd.secretsProvider != "default" {
+			return errors.New("--remote-config cannot be used with --secrets-provider; " +
+				"service-backed stacks manage secrets through Pulumi Cloud")
+		}
+		if cmd.stackToCopy != "" {
+			return errors.New("--remote-config cannot be used with --copy-config-from; " +
+				"use `pulumi config env init --migrate` to migrate config after stack creation")
+		}
+	} else if !cmd.remoteConfig && cmdutil.Interactive() {
+		// When interactive and logged into a backend that supports service-backed config,
+		// ask the user where to store stack configuration.
+		if _, ok := b.(backend.EnvironmentsBackend); ok {
+			const (
+				optLocal = "Local file (Pulumi.<stack>.yaml)"
+				optCloud = "Pulumi Cloud (service-backed)"
+			)
+			choice := ui.PromptUser(
+				"Where should this stack's configuration be stored?",
+				[]string{optLocal, optCloud},
+				optLocal,
+				opts.Color,
+			)
+			cmd.remoteConfig = choice == optCloud
+		}
 	}
 
 	if len(args) > 0 {
