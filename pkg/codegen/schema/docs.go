@@ -25,7 +25,10 @@ import (
 
 type PulumiRefResolver func(ref DocRef) (string, bool)
 
-func interpretPulumiRefs(path string, types *types, options ValidationOptions, node ast.Node, resolveRefToName PulumiRefResolver) hcl.Diagnostics {
+func interpretPulumiRefs(
+	path string, types *types, options ValidationOptions,
+	node ast.Node, resolveRefToName PulumiRefResolver,
+) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 
 	var c, next ast.Node
@@ -40,34 +43,32 @@ func interpretPulumiRefs(path string, types *types, options ValidationOptions, n
 			var ref DocRef
 
 			iref := parseDocRef(c.Destination)
-			if iref.Kind == DocRefKindUnknown {
+			ref = DocRef{Ref: iref.Ref, Kind: iref.Kind, Property: iref.Property}
+			switch iref.Kind {
+			case DocRefKindUnknown:
 				subdiags = hcl.Diagnostics{errorf(path, "invalid doc ref: %s", c.Destination)}
-			} else {
-				ref = DocRef{Ref: iref.Ref, Kind: iref.Kind, Property: iref.Property}
-				switch iref.Kind {
-				case DocRefKindResource, DocRefKindResourceProperty, DocRefKindResourceInputProperty:
-					res, ok := types.resources[string(iref.Token)]
-					if !ok {
-						subdiags = hcl.Diagnostics{errorf(path, "reference to resource '%s' not found in package %s",
-							iref.Ref[1:], types.pkg.Name)}
-					} else {
-						ref.Type = res
-					}
-				case DocRefKindType, DocRefKindTypeProperty:
-					typ, ok := types.typeDefs[string(iref.Token)]
-					if !ok {
-						subdiags = hcl.Diagnostics{errorf(path, "reference to type '%s' not found in package %s",
-							iref.Ref[1:], types.pkg.Name)}
-					} else {
-						ref.Type = typ
-					}
-				case DocRefKindFunction, DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
-					fun, has := types.functionDefs[string(iref.Token)]
-					if !has {
-						subdiags = hcl.Diagnostics{errorf(path, "function %s not found", iref.Token)}
-					}
-					ref.Function = fun
+			case DocRefKindResource, DocRefKindResourceProperty, DocRefKindResourceInputProperty:
+				res, ok := types.resources[string(iref.Token)]
+				if !ok {
+					subdiags = hcl.Diagnostics{errorf(path, "reference to resource '%s' not found in package %s",
+						iref.Ref[1:], types.pkg.Name)}
+				} else {
+					ref.Type = res
 				}
+			case DocRefKindType, DocRefKindTypeProperty:
+				typ, ok := types.typeDefs[string(iref.Token)]
+				if !ok {
+					subdiags = hcl.Diagnostics{errorf(path, "reference to type '%s' not found in package %s",
+						iref.Ref[1:], types.pkg.Name)}
+				} else {
+					ref.Type = typ
+				}
+			case DocRefKindFunction, DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
+				fun, has := types.functionDefs[string(iref.Token)]
+				if !has {
+					subdiags = hcl.Diagnostics{errorf(path, "function %s not found", iref.Token)}
+				}
+				ref.Function = fun
 			}
 
 			var name string
@@ -157,6 +158,8 @@ func (r DocRef) IsWithin(other DocRef) bool {
 		return false
 	}
 	switch r.Kind {
+	case DocRefKindUnknown, DocRefKindResource, DocRefKindFunction, DocRefKindType:
+		return false
 	case DocRefKindResourceProperty, DocRefKindResourceInputProperty:
 		return other.Kind == DocRefKindResource && rTok == oTok
 	case DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
