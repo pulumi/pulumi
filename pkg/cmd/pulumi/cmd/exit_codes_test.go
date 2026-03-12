@@ -107,4 +107,3 @@ func TestExitCodeFor_KnownErrors(t *testing.T) {
 func wrap(outer error, inner error) error {
 	return errors.Join(outer, inner)
 }
-
