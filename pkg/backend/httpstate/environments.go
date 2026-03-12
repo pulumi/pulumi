@@ -77,3 +77,35 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 	env, err := b.escClient.GetAnonymousOpenEnvironment(ctx, org, id)
 	return env, nil, err
 }
+
+func (b *cloudBackend) GetEnvironment(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+	version string,
+	decrypt bool,
+) ([]byte, string, int, error) {
+	return b.escClient.GetEnvironment(ctx, org, projectName, envName, version, decrypt)
+}
+
+func (b *cloudBackend) UpdateEnvironmentWithProject(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+	yaml []byte,
+	etag string,
+) (apitype.EnvironmentDiagnostics, error) {
+	diags, err := b.escClient.UpdateEnvironmentWithProject(ctx, org, projectName, envName, yaml, etag)
+	return convertESCDiags(diags), err
+}
+
+func (b *cloudBackend) DeleteEnvironmentWithProject(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+) error {
+	return b.escClient.DeleteEnvironment(ctx, org, projectName, envName)
+}

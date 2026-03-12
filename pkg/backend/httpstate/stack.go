@@ -181,7 +181,7 @@ func (s *cloudStack) LoadRemoteConfig(ctx context.Context, project *workspace.Pr
 		SecretsProvider: stack.Config.SecretsProvider,
 		EncryptedKey:    stack.Config.EncryptedKey,
 		EncryptionSalt:  stack.Config.EncryptionSalt,
-		Config:          config.Map{},
+		Config:          make(config.Map),
 	}
 	return projectStack, nil
 }
@@ -206,6 +206,14 @@ func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspa
 		EncryptionSalt:  projectStack.EncryptionSalt,
 	})
 	return err
+}
+
+func (s *cloudStack) RemoveRemoteConfig(ctx context.Context) error {
+	stackID, err := s.b.getCloudStackIdentifier(s.ref)
+	if err != nil {
+		return err
+	}
+	return s.b.client.DeleteStackConfig(ctx, stackID)
 }
 
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
