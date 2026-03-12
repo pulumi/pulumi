@@ -30,6 +30,13 @@ func TestExitCode_StackNotFound(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
+	// Create a minimal project so the DIY file backend can infer the
+	// current project name when parsing stack references.
+	e.WriteTestFile("Pulumi.yaml", `
+name: exit-code-stack-not-found
+runtime: nodejs
+`)
+
 	// Use a local file backend so we don't depend on external services.
 	e.Backend = e.LocalURL()
 
