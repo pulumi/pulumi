@@ -351,7 +351,7 @@ func loadPolicyAnalyzer(
 	}
 
 	if env.DisableAutomaticPluginAcquisition.Value() {
-		return nil, err
+		return nil, policyAnalyzerMissingError(name, me)
 	}
 
 	log := func(sev diag.Severity, msg string) {
@@ -360,10 +360,18 @@ func loadPolicyAnalyzer(
 
 	_, installErr := pkgWorkspace.InstallPlugin(ctx, me.Spec(), log, schema.NewLoaderServerFromHost)
 	if installErr != nil {
-		return nil, err
+		return nil, policyAnalyzerMissingError(name, me)
 	}
 
 	return plugctx.Host.PolicyAnalyzer(name, path, opts)
+}
+
+func policyAnalyzerMissingError(name tokens.QName, me *workspace.MissingError) error {
+	return fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
+		"plugin that runs policy plugins is missing. This might occur when the plugin "+
+		"directory is not on your $PATH, when the installed version of the Pulumi SDK "+
+		"does not support resource policies, or when the required analyzer plugin "+
+		"has not been installed: %w", string(name), me)
 }
 
 // loadPolicyPlugins loads all required policy plugins and packages as well as any
