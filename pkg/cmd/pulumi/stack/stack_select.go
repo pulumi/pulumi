@@ -85,6 +85,10 @@ func newStackSelectCmd() *cobra.Command {
 
 				s, stackErr := b.GetStack(ctx, stackRef)
 				if stackErr != nil {
+					var notFound backenderr.NotFoundError
+					if errors.As(stackErr, &notFound) {
+						return backenderr.StackNotFoundError{StackName: stackRef.String()}
+					}
 					return stackErr
 				} else if s != nil {
 					return state.SetCurrentStack(ws, stackRef.FullyQualifiedName().String())
