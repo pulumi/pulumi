@@ -67,6 +67,9 @@ pulumi config cp --dest other-stack
 pulumi config set foo bar --config-file custom.yaml
 # Expected: error about service-backed stacks
 
+pulumi config set-all --plaintext foo=bar --config-file custom.yaml
+# Expected: error about service-backed stacks
+
 pulumi stack rm dev --yes
 ```
 
@@ -115,6 +118,10 @@ pulumi config get --secret dbPass
 # Verify ESC environment linked
 pulumi config env
 # Expected: shows ESC environment name
+
+# Retry against an existing environment should merge rather than fail
+pulumi config env init --migrate
+# Expected: local values are merged into the existing ESC environment with overwrite warnings as needed
 
 pulumi stack rm dev --yes
 ```
