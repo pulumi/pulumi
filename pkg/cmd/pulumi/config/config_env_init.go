@@ -74,6 +74,9 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&impl.yes, "yes", "y", false,
 		"True to save the created environment without prompting")
+	cmd.Flags().BoolVar(
+		&impl.migrate, "migrate", false,
+		"Migrate local config to a service-backed ESC environment")
 
 	return cmd
 }
@@ -96,9 +99,14 @@ type configEnvInitCmd struct {
 	showSecrets bool
 	keepConfig  bool
 	yes         bool
+	migrate     bool
 }
 
 func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
+	if cmd.migrate {
+		return cmd.runMigrate(ctx)
+	}
+
 	if !cmd.yes && !cmd.parent.interactive {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
@@ -128,7 +136,10 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	orgName := stack.(interface{ OrgName() string }).OrgName()
+	orgName, err := stackOrgName(stack)
+	if err != nil {
+		return err
+	}
 
 	// Parse given environment name
 	// Try to split the given envName into project/env
@@ -199,6 +210,219 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil
+}
+
+func (cmd *configEnvInitCmd) runMigrate(ctx context.Context) error {
+	if !cmd.yes && !cmd.parent.interactive {
+		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
+	}
+
+	opts := display.Options{Color: cmd.parent.color}
+
+	project, _, err := cmd.parent.ws.ReadProject()
+	if err != nil {
+		return err
+	}
+
+	stack, err := cmd.parent.requireStack(
+		ctx,
+		cmd.parent.diags,
+		cmd.parent.ws,
+		cmdBackend.DefaultLoginManager,
+		*cmd.parent.stackRef,
+		cmdStack.OfferNew|cmdStack.SetCurrent,
+		opts,
+	)
+	if err != nil {
+		return err
+	}
+
+	if loc := stack.ConfigLocation(); loc.IsRemote {
+		return errors.New("this stack already uses service-backed configuration; migration is not needed")
+	}
+
+	envBackend, ok := stack.Backend().(backend.EnvironmentsBackend)
+	if !ok {
+		return fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
+	}
+
+	orgName, err := stackOrgName(stack)
+	if err != nil {
+		return err
+	}
+
+	envProject := project.Name.String()
+	envName := stack.Ref().Name().String()
+	first, second, found := strings.Cut(cmd.envName, "/")
+	if found {
+		envProject = first
+		envName = second
+	} else if first != "" {
+		envName = first
+	}
+
+	ps, err := cmd.parent.loadProjectStack(ctx, cmdutil.Diag(), project, stack)
+	if err != nil {
+		return err
+	}
+
+	decrypter, state, err := cmd.parent.ssml.GetDecrypter(ctx, stack, ps)
+	if err != nil {
+		return err
+	}
+	if state != cmdStack.SecretsManagerUnchanged {
+		if err = cmd.parent.saveProjectStack(ctx, stack, ps); err != nil {
+			return fmt.Errorf("saving stack config: %w", err)
+		}
+	}
+
+	decrypted, err := ps.Config.Decrypt(decrypter)
+	if err != nil {
+		return fmt.Errorf("decrypting config: %w", err)
+	}
+
+	pulumiConfig := make(map[string]any, len(decrypted))
+	secureKeys := make(map[config.Key]bool)
+	for _, k := range ps.Config.SecureKeys() {
+		secureKeys[k] = true
+	}
+	for k, v := range decrypted {
+		if secureKeys[k] {
+			pulumiConfig[k.String()] = map[string]any{"fn::secret": v}
+		} else {
+			pulumiConfig[k.String()] = v
+		}
+	}
+
+	envDef := map[string]any{
+		"values": map[string]any{
+			"pulumiConfig": pulumiConfig,
+		},
+	}
+
+	existingImports := ps.Environment.Imports()
+	if len(existingImports) > 0 {
+		envDef["imports"] = existingImports
+	}
+
+	fullEnvName := fmt.Sprintf("%s/%s", envProject, envName)
+
+	existingYAML, etag, _, getErr := envBackend.GetEnvironment(ctx, orgName, envProject, envName, "", false)
+	envExists := getErr == nil
+
+	if envExists {
+		var existingDef map[string]any
+		if err := yaml.Unmarshal(existingYAML, &existingDef); err != nil {
+			return fmt.Errorf("parsing existing environment %s: %w", fullEnvName, err)
+		}
+
+		existingPC := extractPulumiConfigMap(existingDef)
+
+		for key := range pulumiConfig {
+			if _, exists := existingPC[key]; exists {
+				fmt.Fprintf(cmd.parent.stdout, "Warning: overwriting existing key %q in environment %s\n", key, fullEnvName)
+			}
+		}
+
+		mergedDef := mergeMigrateEnvDefs(existingDef, envDef)
+
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		enc.SetIndent(2)
+		if err := enc.Encode(mergedDef); err != nil {
+			return fmt.Errorf("serialising environment: %w", err)
+		}
+		if err := enc.Close(); err != nil {
+			return fmt.Errorf("serialising environment: %w", err)
+		}
+
+		diags, updateErr := envBackend.UpdateEnvironmentWithProject(ctx, orgName, envProject, envName, buf.Bytes(), etag)
+		if updateErr != nil {
+			return fmt.Errorf("updating environment %s: %w", fullEnvName, updateErr)
+		}
+		if len(diags) != 0 {
+			return fmt.Errorf("environment validation failed: %w", diags)
+		}
+	} else {
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		enc.SetIndent(2)
+		if err := enc.Encode(envDef); err != nil {
+			return fmt.Errorf("serialising environment: %w", err)
+		}
+		if err := enc.Close(); err != nil {
+			return fmt.Errorf("serialising environment: %w", err)
+		}
+
+		diags, createErr := envBackend.CreateEnvironment(ctx, orgName, envProject, envName, buf.Bytes())
+		if createErr != nil {
+			return fmt.Errorf("creating environment: %w", createErr)
+		}
+		if len(diags) != 0 {
+			return fmt.Errorf("environment validation failed: %w", diags)
+		}
+	}
+
+	ps.Environment = ps.Environment.Append(fullEnvName)
+	ps.Config = nil
+	if err = cmd.parent.saveProjectStack(ctx, stack, ps); err != nil {
+		return fmt.Errorf("saving stack config: %w", err)
+	}
+
+	fmt.Fprintf(cmd.parent.stdout, "Migrated config to environment %s.\n", fullEnvName)
+
+	if cmd.parent.interactive && !cmd.yes {
+		response := ui.PromptUser(
+			"Delete the local config file?",
+			[]string{"yes", "no"}, "no",
+			cmdutil.GetGlobalColorization(),
+		)
+		if response == "yes" {
+			fmt.Fprintf(cmd.parent.stdout, "Local config file retained (deletion not yet implemented).\n")
+		}
+	}
+
+	return nil
+}
+
+func extractPulumiConfigMap(envDef map[string]any) map[string]any {
+	values, _ := envDef["values"].(map[string]any)
+	if values == nil {
+		return nil
+	}
+	pc, _ := values["pulumiConfig"].(map[string]any)
+	return pc
+}
+
+func mergeMigrateEnvDefs(existing, incoming map[string]any) map[string]any {
+	result := make(map[string]any, len(existing))
+	for k, v := range existing {
+		result[k] = v
+	}
+
+	incomingValues, _ := incoming["values"].(map[string]any)
+	incomingPC, _ := incomingValues["pulumiConfig"].(map[string]any)
+
+	existingValues, _ := result["values"].(map[string]any)
+	if existingValues == nil {
+		existingValues = map[string]any{}
+	}
+	existingPC, _ := existingValues["pulumiConfig"].(map[string]any)
+	if existingPC == nil {
+		existingPC = map[string]any{}
+	}
+
+	for k, v := range incomingPC {
+		existingPC[k] = v
+	}
+	existingValues["pulumiConfig"] = existingPC
+	result["values"] = existingValues
+
+	if imports, ok := incoming["imports"]; ok {
+		result["imports"] = imports
+	}
+
+	return result
 }
 
 func (cmd *configEnvInitCmd) getStackConfig(
