@@ -171,7 +171,6 @@ func NewPolicyAnalyzer(
 		pluginPath, err = workspace.GetPluginPath(
 			ctx.baseContext, ctx.Diag,
 			workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, host.GetProjectPlugins())
-
 		if err != nil {
 			return nil, err
 		}
