@@ -692,7 +692,10 @@ func (pc *Client) CreateStack(
 }
 
 // DeleteStack deletes the indicated stack. If force is true, the stack is deleted even if it contains resources.
-func (pc *Client) DeleteStack(ctx context.Context, stack StackIdentifier, force bool) (bool, error) {
+// Returns whether the stack has resources, the API response (which may contain warnings), and any error.
+func (pc *Client) DeleteStack(
+	ctx context.Context, stack StackIdentifier, force bool,
+) (bool, apitype.DeleteStackResponse, error) {
 	path := getStackPath(stack)
 	queryObj := struct {
 		Force bool `url:"force"`
@@ -700,8 +703,9 @@ func (pc *Client) DeleteStack(ctx context.Context, stack StackIdentifier, force 
 		Force: force,
 	}
 
-	err := pc.restCall(ctx, "DELETE", path, queryObj, nil, nil)
-	return isStackHasResourcesError(err), err
+	var resp apitype.DeleteStackResponse
+	err := pc.restCall(ctx, "DELETE", path, queryObj, nil, &resp)
+	return isStackHasResourcesError(err), resp, err
 }
 
 func isStackHasResourcesError(err error) bool {

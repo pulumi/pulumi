@@ -429,9 +429,9 @@ func TestRemoveMakesBackups(t *testing.T) {
 	assert.False(t, backupFileExists)
 
 	// Now remove the stack
-	removed, err := b.RemoveStack(ctx, aStack, false /*force*/, false /*removeBackups*/)
+	result, err := b.RemoveStack(ctx, aStack, false /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
-	assert.False(t, removed)
+	assert.False(t, result.HasResources)
 
 	// Check the stack file is now gone, but the backup file exists
 	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef))
@@ -510,9 +510,9 @@ func TestRemoveBackups(t *testing.T) {
 	requireDirNotEmpty(lb, aStackRef.BackupDir())
 
 	// Now remove the stack, removing backups
-	removed, err := b.RemoveStack(ctx, aStack, false /*force*/, true /*removeBackups*/)
+	result, err := b.RemoveStack(ctx, aStack, false /*force*/, true /*removeBackups*/)
 	require.NoError(t, err)
-	assert.False(t, removed)
+	assert.False(t, result.HasResources)
 
 	// Check the stack file and backup files are both gone
 	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef))

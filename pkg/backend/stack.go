@@ -67,8 +67,17 @@ type Stack interface {
 	DefaultSecretManager(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error)
 }
 
+// RemoveStackResult contains the result of a stack removal operation.
+type RemoveStackResult struct {
+	// HasResources is true if the stack still contains resources and removal was rejected.
+	HasResources bool
+	// Warnings contains non-fatal warnings from the removal, such as when a linked ESC
+	// environment could not be cleaned up due to deletion protection or cross-references.
+	Warnings []string
+}
+
 // RemoveStack returns the stack, or returns an error if it cannot.
-func RemoveStack(ctx context.Context, s Stack, force, removeBackups bool) (bool, error) {
+func RemoveStack(ctx context.Context, s Stack, force, removeBackups bool) (RemoveStackResult, error) {
 	return s.Backend().RemoveStack(ctx, s, force, removeBackups)
 }
 
