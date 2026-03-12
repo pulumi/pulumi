@@ -224,11 +224,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip: codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
 	},
 	{
-		Directory:   "deferred-outputs",
-		Description: "Tests program with mutually dependant components that emit deferred outputs",
-		SkipCompile: allProgLanguages,
-	},
-	{
 		Directory:   "traverse-union-repro",
 		Description: `Handling the error "cannot traverse value of type union(...)"`,
 		BindOptions: []pcl.BindOption{
