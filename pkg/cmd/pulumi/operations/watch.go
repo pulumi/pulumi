@@ -171,7 +171,7 @@ func NewWatchCmd() *cobra.Command {
 
 			switch {
 			case err == context.Canceled:
-				return errors.New("update cancelled")
+				return backenderr.CancelledError{Operation: "update"}
 			case err != nil:
 				return err
 			default:
