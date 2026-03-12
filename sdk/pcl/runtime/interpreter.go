@@ -325,7 +325,7 @@ func (i *Interpreter) bindConfigVariables(ctx context.Context) hcl.Diagnostics {
 				if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
 					value = resource.MakeSecret(value)
 				}
-				if diags.HasErrors() {
+				if !diags.HasErrors() {
 					if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
 						diagnostics = append(diagnostics, &hcl.Diagnostic{
 							Severity: hcl.DiagError,

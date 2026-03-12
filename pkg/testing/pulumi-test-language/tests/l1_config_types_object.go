@@ -17,7 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -39,13 +39,19 @@ func init() {
 
 					outputs := stack.Outputs
 
-					require.Len(l, outputs, 3, "expected 3 outputs")
-					AssertPropertyMapMember(l, outputs, "theMap", resource.NewProperty(resource.PropertyMap{
-						"a": resource.NewProperty(2.0),
-						"b": resource.NewProperty(3.0),
-					}))
-					AssertPropertyMapMember(l, outputs, "theObject", resource.NewProperty(true))
-					AssertPropertyMapMember(l, outputs, "theThing", resource.NewProperty(30.0))
+					assert.Equal(l, resource.PropertyMap{
+						"theMap": resource.NewProperty(resource.PropertyMap{
+							"a": resource.NewProperty(2.0),
+							"b": resource.NewProperty(3.0),
+						}),
+						"theObject": resource.NewProperty(true),
+						"theThing":  resource.NewProperty(30.0),
+
+						// Default values
+						"defaultUntypedObject": resource.NewProperty(resource.PropertyMap{
+							"key": resource.NewProperty("value"),
+						}),
+					}, outputs)
 				},
 			},
 		},
