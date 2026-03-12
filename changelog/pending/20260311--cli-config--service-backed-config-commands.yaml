@@ -1,0 +1,26 @@
+changes:
+- type: feat
+  scope: cli/config
+  description: >-
+    Add `pulumi config pin` command to pin remote config stacks to a specific
+    ESC environment revision or tag, and unpin with `latest`
+- type: feat
+  scope: cli/config
+  description: >-
+    Add `pulumi config restore` command to restore config to a previous ESC
+    environment revision (creates a new revision with old content)
+- type: feat
+  scope: cli/config
+  description: >-
+    Add `--migrate` flag to `pulumi config env init` to migrate local config
+    to a remote config ESC environment with secret decryption and idempotent merge
+- type: feat
+  scope: cli/config
+  description: >-
+    Reject config mutations (set, rm, set-all, rm-all, edit) on pinned
+    remote config stacks with actionable error message
+- type: feat
+  scope: cli/stack
+  description: >-
+    Surface ESC environment cleanup warnings when deleting remote config stacks
+    via `pulumi stack rm` or `pulumi destroy --remove`
