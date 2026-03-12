@@ -183,20 +183,24 @@ type mockAnalyzer struct {
 	name tokens.QName
 }
 
-func (a *mockAnalyzer) Close() error                                       { return nil }
-func (a *mockAnalyzer) Name() tokens.QName                                 { return a.name }
+func (a *mockAnalyzer) Close() error       { return nil }
+func (a *mockAnalyzer) Name() tokens.QName { return a.name }
 func (a *mockAnalyzer) Analyze(plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 	return plugin.AnalyzeResponse{}, nil
 }
+
 func (a *mockAnalyzer) AnalyzeStack([]plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 	return plugin.AnalyzeResponse{}, nil
 }
+
 func (a *mockAnalyzer) Remediate(plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 	return plugin.RemediateResponse{}, nil
 }
+
 func (a *mockAnalyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
 	return plugin.AnalyzerInfo{}, nil
 }
+
 func (a *mockAnalyzer) GetPluginInfo() (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{}, nil
 }
