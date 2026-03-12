@@ -48,12 +48,20 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 		stackRef:         stackRef,
 	}
 
+	var jsonOut bool
+
 	cmd := &cobra.Command{
 		Use:   "env",
-		Short: "Manage ESC environments for a stack",
+		Short: "Show config source or manage ESC environment imports",
 		Long: "Manages the ESC environment associated with a specific stack. To create a new environment\n" +
 			"from a stack's configuration, use `pulumi config env init`.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			impl.initArgs()
+			return impl.showConfigSource(cmd.Context(), jsonOut)
+		},
 	}
+
+	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "Emit output as JSON")
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
@@ -61,6 +69,9 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string) *cobra.Command {
 	cmd.AddCommand(newConfigEnvAddCmd(&impl))
 	cmd.AddCommand(newConfigEnvRmCmd(&impl))
 	cmd.AddCommand(newConfigEnvLsCmd(&impl))
+	cmd.AddCommand(newConfigEnvEjectCmd(&impl))
+	cmd.AddCommand(newConfigEnvConsoleCmd(ws, stackRef))
+	cmd.AddCommand(newConfigEnvPinCmd(ws, stackRef))
 
 	return cmd
 }
@@ -140,12 +151,72 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 	return projectStack, project, &stack, nil
 }
 
-func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool) error {
-	projectStack, _, _, err := cmd.loadEnvPreamble(ctx)
+// showConfigSource prints the config source for the stack.
+func (cmd *configEnvCmd) showConfigSource(ctx context.Context, jsonOut bool) error {
+	opts := display.Options{Color: cmd.color}
+
+	stack, err := cmd.requireStack(
+		ctx, cmd.diags, cmd.ws,
+		cmdBackend.DefaultLoginManager,
+		*cmd.stackRef,
+		cmdStack.OfferNew|cmdStack.SetCurrent,
+		opts,
+	)
 	if err != nil {
 		return err
 	}
-	imports := projectStack.Environment.Imports()
+
+	loc := stack.ConfigLocation()
+	if loc.IsRemote && loc.EscEnv != nil {
+		orgName, orgErr := stackOrgName(stack)
+		if orgErr != nil {
+			return orgErr
+		}
+		if jsonOut {
+			return ui.FprintJSON(cmd.stdout, map[string]string{
+				"sourceType":   "remote",
+				"environment":  *loc.EscEnv,
+				"organization": orgName,
+			})
+		}
+		fmt.Fprintf(cmd.stdout, "Source type:     remote\n")
+		fmt.Fprintf(cmd.stdout, "ESC environment: %s (org: %s)\n", *loc.EscEnv, orgName)
+		fmt.Fprintf(cmd.stdout,
+			"\nRun `pulumi config env console` to view in the console, or `pulumi config env eject` to return to local config.\n")
+		return nil
+	}
+
+	_, configFilePath, pathErr := workspace.DetectProjectStackPath(stack.Ref().Name().Q())
+	if pathErr != nil {
+		return pathErr
+	}
+	if jsonOut {
+		return ui.FprintJSON(cmd.stdout, map[string]string{
+			"sourceType": "local",
+			"configFile": configFilePath,
+		})
+	}
+	fmt.Fprintf(cmd.stdout, "Source type:  local\n")
+	fmt.Fprintf(cmd.stdout, "Config file:  %s\n", configFilePath)
+	return nil
+}
+
+func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool) error {
+	projectStack, _, stack, err := cmd.loadEnvPreamble(ctx)
+	if err != nil {
+		return err
+	}
+
+	var imports []string
+	if (*stack).ConfigLocation().IsRemote {
+		state, loadErr := loadESCEnvState(ctx, *stack)
+		if loadErr != nil {
+			return loadErr
+		}
+		imports = state.imports()
+	} else {
+		imports = projectStack.Environment.Imports()
+	}
 
 	if jsonOut {
 		if len(imports) == 0 {
@@ -191,6 +262,10 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		return err
 	}
 
+	if (*stack).ConfigLocation().IsRemote {
+		return cmd.editESCEnvironmentImports(ctx, *stack, yes, edit)
+	}
+
 	if err := edit(projectStack); err != nil {
 		return err
 	}
@@ -224,4 +299,47 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil
+}
+
+// editESCEnvironmentImports modifies the imports section of a remote config
+// stack's ESC environment. The edit closure is applied to a temporary
+// ProjectStack whose Environment.Imports reflect the ESC env's imports list,
+// then the modified imports are written back to the ESC environment.
+func (cmd *configEnvCmd) editESCEnvironmentImports(
+	ctx context.Context,
+	stack backend.Stack,
+	yes bool,
+	edit func(stack *workspace.ProjectStack) error,
+) error {
+	state, err := loadESCEnvState(ctx, stack)
+	if err != nil {
+		return err
+	}
+
+	// Build a temporary ProjectStack so the edit closure (Append/Remove) works unchanged.
+	currentImports := state.imports()
+	tempPS := &workspace.ProjectStack{}
+	tempPS.Environment = workspace.NewEnvironment(currentImports)
+
+	if err := edit(tempPS); err != nil {
+		return err
+	}
+
+	newImports := tempPS.Environment.Imports()
+
+	// Show what changed and confirm.
+	fmt.Fprintf(cmd.stdout, "ESC environment: %s/%s\n", state.envProject, state.envName)
+	fmt.Fprintf(cmd.stdout, "Imports before:  %v\n", currentImports)
+	fmt.Fprintf(cmd.stdout, "Imports after:   %v\n", newImports)
+
+	if !yes {
+		fmt.Fprintln(cmd.stdout)
+		response := ui.PromptUser("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
+		if response == "no" {
+			return errors.New("canceled")
+		}
+	}
+
+	state.setImports(newImports)
+	return state.save(ctx)
 }

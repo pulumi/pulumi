@@ -251,3 +251,81 @@ func newConfigEnvCmdForInitTest(
 func cleanStdoutIncludingPrompt(stdout string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(stripansi.Strip(stdout), "\r", ""), "Save? ▸Yes  No", "")
 }
+
+// newRemoteConfigEnvCmd creates a configEnvCmd backed by a mock
+// remote config stack. envYAML holds the current ESC environment definition;
+// savedYAML captures what was written on save.
+func newRemoteConfigEnvCmd(
+	stdin io.Reader,
+	stdout io.Writer,
+	envYAML string,
+	savedYAML *string,
+) *configEnvCmd {
+	escEnv := "proj/myenv"
+	stackRef := "stack"
+	return &configEnvCmd{
+		stdin:       stdin,
+		stdout:      stdout,
+		interactive: true,
+		ws: &pkgWorkspace.MockContext{
+			ReadProjectF: func() (*workspace.Project, string, error) {
+				p, err := workspace.LoadProjectBytes(
+					[]byte("name: test-project\nruntime: go\n"), "Pulumi.yaml", encoding.YAML)
+				return p, "", err
+			},
+		},
+		requireStack: func(
+			ctx context.Context,
+			sink diag.Sink,
+			ws pkgWorkspace.Context,
+			lm cmdBackend.LoginManager,
+			stackName string,
+			lopt cmdStack.LoadOption,
+			opts display.Options,
+		) (backend.Stack, error) {
+			return &backend.MockStack{
+				RefF: func() backend.StackReference {
+					return &backend.MockStackReference{
+						StringV:             "org/stack",
+						NameV:               tokens.MustParseStackName("stack"),
+						ProjectV:            "project",
+						FullyQualifiedNameV: "org/stack",
+					}
+				},
+				OrgNameF: func() string { return "org" },
+				ConfigLocationF: func() backend.StackConfigLocation {
+					return backend.StackConfigLocation{IsRemote: true, EscEnv: &escEnv}
+				},
+				BackendF: func() backend.Backend {
+					return &backend.MockEnvironmentsBackend{
+						GetEnvironmentF: func(
+							ctx context.Context, org, projectName, envName, version string, decrypt bool,
+						) ([]byte, string, int, error) {
+							return []byte(envYAML), "etag-1", 1, nil
+						},
+						UpdateEnvironmentWithProjectF: func(
+							ctx context.Context, org, projectName, envName string, yaml []byte, etag string,
+						) (apitype.EnvironmentDiagnostics, error) {
+							if savedYAML != nil {
+								*savedYAML = string(yaml)
+							}
+							return nil, nil
+						},
+					}
+				},
+				DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
+					return b64.NewBase64SecretsManager(), nil
+				},
+			}, nil
+		},
+		loadProjectStack: func(
+			_ context.Context, d diag.Sink, p *workspace.Project, _ backend.Stack,
+		) (*workspace.ProjectStack, error) {
+			return workspace.LoadProjectStackBytes(d, p, []byte(""), "Pulumi.stack.yaml", encoding.YAML)
+		},
+		saveProjectStack: func(_ context.Context, _ backend.Stack, ps *workspace.ProjectStack) error {
+			return nil
+		},
+		stackRef: &stackRef,
+	}
+}
