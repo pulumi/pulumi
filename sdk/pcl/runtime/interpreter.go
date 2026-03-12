@@ -587,19 +587,20 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 }
 
 func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) error {
-	baseName := res.LogicalName()
+	lexicalBaseName := res.Name()
+	logicalBaseName := res.LogicalName()
 	if res.Options == nil || res.Options.Range == nil {
-		result, err := i.registerResourceWith(ctx, res, i.evalContext, baseName)
+		result, err := i.registerResourceWith(ctx, res, i.evalContext, logicalBaseName)
 		if err != nil {
 			return err
 		}
-		i.setRawVariable(ctx, baseName, result)
+		i.setRawVariable(ctx, lexicalBaseName, result)
 		return nil
 	}
 
 	rangeValue, poison, diags := i.evalExpression(res.Options.Range)
 	if poison != nil {
-		i.setRawVariable(ctx, baseName, makePoisonValue(*poison))
+		i.setRawVariable(ctx, lexicalBaseName, makePoisonValue(*poison))
 	}
 	if diags.HasErrors() {
 		return diags
@@ -615,11 +616,11 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		if !rangeValue.BoolValue() {
 			return nil
 		}
-		result, err := i.registerResourceWith(ctx, res, i.evalContext, baseName)
+		result, err := i.registerResourceWith(ctx, res, i.evalContext, logicalBaseName)
 		if err != nil {
 			return err
 		}
-		i.setRawVariable(ctx, baseName, result)
+		i.setRawVariable(ctx, lexicalBaseName, result)
 		return nil
 	}
 
@@ -642,7 +643,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	) error {
 		results := make([]cty.Value, 0, len(items))
 		for _, item := range items {
-			name := fmt.Sprintf("%s-%s", baseName, item.suffix)
+			name := fmt.Sprintf("%s-%s", logicalBaseName, item.suffix)
 			result, err := i.registerResourceWith(ctx, res, item.evalCtx, name)
 			if err != nil {
 				return err
@@ -650,10 +651,10 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			results = append(results, result)
 		}
 		if len(results) == 0 {
-			i.setRawVariable(ctx, baseName, cty.ListValEmpty(cty.DynamicPseudoType))
+			i.setRawVariable(ctx, lexicalBaseName, cty.ListValEmpty(cty.DynamicPseudoType))
 			return nil
 		}
-		i.setRawVariable(ctx, baseName, cty.ListVal(results))
+		i.setRawVariable(ctx, lexicalBaseName, cty.ListVal(results))
 		return nil
 	}
 
