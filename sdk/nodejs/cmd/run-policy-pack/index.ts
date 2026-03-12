@@ -73,13 +73,6 @@ process.on("exit", (code: number) => {
     }
 });
 
-// As the second thing we do, ensure that we're connected to v8's inspector API.  We need to do
-// this as some information is only sent out as events, without any way to query for it after the
-// fact.  For example, we want to keep track of ScriptId->FileNames so that we can appropriately
-// report errors for Functions we cannot serialize.  This can only be done (up to Node11 at least)
-// by register to hear about scripts being parsed.
-import * as v8Hooks from "../../runtime/closure/v8Hooks";
-
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
 import minimist from "minimist";
 
@@ -105,7 +98,19 @@ function main(args: string[]): void {
     argv._.shift();
 
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
-    v8Hooks.isInitializedAsync().then(() => {
+    const initializeHooks = async (): Promise<void> => {
+        if (process.versions.bun) {
+            return;
+        }
+        // Ensure that we're connected to v8's inspector API. We need to do this as some information is only sent out as
+        // events, without any way to query for it after the fact. For example, we want to keep track of
+        // ScriptId->FileNames so that we can appropriately report errors for Functions we cannot serialize. This can
+        // only be done (up to Node11 at least) by registering to hear about scripts being parsed.
+        const v8Hooks = require("../../runtime/closure/v8Hooks");
+        return v8Hooks.isInitializedAsync();
+    };
+
+    initializeHooks().then(() => {
         const promise: Promise<void> = require("./run").run({
             argv,
             programStarted: () => {
@@ -113,7 +118,7 @@ function main(args: string[]): void {
             },
             reportLoggedError: (err: Error) => loggedErrors.add(err),
             runInStack: false,
-            typeScript: true, // Should have no deleterious impact on JS codebases.
+            typeScript: !process.versions.bun, // bun handles TypeScript natively
         });
 
         // when the user's program completes successfully, set programRunning back to false.  That
