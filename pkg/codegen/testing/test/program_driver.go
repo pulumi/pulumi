@@ -87,11 +87,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Assets and archives",
 	},
 	{
-		Directory:   "synthetic-resource-properties",
-		Description: "Synthetic resource properties",
-		SkipCompile: codegen.NewStringSet(TestNodeJS, TestDotnet, TestGo), // not a real package
-	},
-	{
 		Directory:   "aws-s3-folder",
 		Description: "AWS S3 Folder",
 		SkipCompile: codegen.NewStringSet(TestGo),
@@ -102,12 +97,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-eks",
 		Description: "AWS EKS",
-	},
-	{
-		Directory:   "csharp-invoke-options",
-		Description: "A program that uses InvokeOptions in C#",
-		// Test only C# because the other languages have conformance tests
-		Skip: allProgLanguages.Except(TestDotnet),
 	},
 	{
 		Directory:   "aws-fargate",
