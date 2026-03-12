@@ -17,6 +17,7 @@ package clispec
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -41,6 +42,13 @@ type Flag struct {
 
 	// Allows for arrays to be passed by flags.
 	Repeatable bool `json:"repeatable,omitempty"`
+
+	// If true, this flag should be omitted from generated options types.
+	Omit bool `json:"omit,omitempty"`
+
+	// If set, this flag should be preset to this value when invoking the CLI.
+	// The type depends on the flag type: boolean, string, number, or []string.
+	Preset any `json:"preset,omitempty"`
 }
 
 // A set of subcommands.
@@ -73,13 +81,48 @@ type Command struct {
 	Description string `json:"description,omitempty"`
 }
 
+// Overrides types
+
+// FlagRule describes an override for a single flag.
+type FlagRule struct {
+	Omit   *bool `json:"omit,omitempty"`
+	Preset any   `json:"preset,omitempty"`
+}
+
+// OverridesScope describes overrides for a command path.
+type OverridesScope struct {
+	Path      []string            `json:"path"`
+	Propagate bool                `json:"propagate"`
+	Flags     map[string]FlagRule `json:"flags"`
+}
+
+// Overrides is the top-level automation overrides file.
+type Overrides struct {
+	Version int              `json:"version"`
+	Scopes  []OverridesScope `json:"scopes"`
+}
+
 func NewGenCLISpecCmd(root *cobra.Command) *cobra.Command {
+	var overridesPath string
+
 	cmd := &cobra.Command{
 		Use:    "generate-cli-spec",
 		Short:  "Generate a Pulumi CLI specification as JSON",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			spec := buildStructure(root)
+			var overrides *Overrides
+			if overridesPath != "" {
+				data, err := os.ReadFile(overridesPath)
+				if err != nil {
+					return fmt.Errorf("failed to read overrides file: %w", err)
+				}
+				overrides = &Overrides{}
+				if err := json.Unmarshal(data, overrides); err != nil {
+					return fmt.Errorf("failed to parse overrides file: %w", err)
+				}
+			}
+
+			spec := buildStructure(root, overrides, nil, nil)
 
 			encoder := json.NewEncoder(cmd.OutOrStdout())
 			encoder.SetIndent("", "  ")
@@ -91,26 +134,147 @@ func NewGenCLISpecCmd(root *cobra.Command) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&overridesPath, "overrides", "",
+		"Path to an automation-overrides.json file to merge into the spec")
+
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	return cmd
 }
 
-func buildStructure(cmd *cobra.Command) any {
+// getMergedRules collects all applicable scopes for a command path and merges
+// their flag rules. Deeper scopes override shallower ones per-flag.
+func getMergedRules(overrides *Overrides, commandPath []string) map[string]FlagRule {
+	if overrides == nil || len(overrides.Scopes) == 0 {
+		return nil
+	}
+
+	type scored struct {
+		depth int
+		scope OverridesScope
+	}
+	var applicable []scored
+	for _, scope := range overrides.Scopes {
+		if len(scope.Path) > len(commandPath) {
+			continue
+		}
+		match := true
+		for i := 0; i < len(scope.Path); i++ {
+			if scope.Path[i] != commandPath[i] {
+				match = false
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		if len(scope.Path) < len(commandPath) && !scope.Propagate {
+			continue
+		}
+		applicable = append(applicable, scored{depth: len(scope.Path), scope: scope})
+	}
+
+	if len(applicable) == 0 {
+		return nil
+	}
+
+	// Stable sort by depth ascending.
+	for i := 1; i < len(applicable); i++ {
+		for j := i; j > 0 && applicable[j-1].depth > applicable[j].depth; j-- {
+			applicable[j-1], applicable[j] = applicable[j], applicable[j-1]
+		}
+	}
+
+	merged := make(map[string]FlagRule)
+	for _, s := range applicable {
+		for name, rule := range s.scope.Flags {
+			existing := merged[name]
+			if rule.Omit != nil {
+				existing.Omit = rule.Omit
+			}
+			if rule.Preset != nil {
+				existing.Preset = rule.Preset
+			}
+			merged[name] = existing
+		}
+	}
+	return merged
+}
+
+// applyOverrides merges overrides into a flags map for a given command path.
+// inherited is the accumulated set of flags from parent nodes, used so that
+// command-specific overrides can target inherited flags.
+func applyOverrides(
+	flags map[string]Flag, inherited map[string]Flag, overrides *Overrides, commandPath []string,
+) map[string]Flag {
+	rules := getMergedRules(overrides, commandPath)
+	if len(rules) == 0 {
+		return flags
+	}
+
+	result := make(map[string]Flag, len(flags))
+	for name, flag := range flags {
+		if rule, ok := rules[name]; ok {
+			if rule.Omit != nil && *rule.Omit {
+				flag.Omit = true
+			}
+			if rule.Preset != nil {
+				flag.Preset = rule.Preset
+			}
+		}
+		result[name] = flag
+	}
+
+	// For rules targeting inherited flags not redefined locally, copy the
+	// inherited flag and apply the override so it appears in the spec at this level.
+	for name, rule := range rules {
+		if _, exists := result[name]; exists {
+			continue
+		}
+		base, ok := inherited[name]
+		if !ok {
+			continue
+		}
+		if rule.Omit != nil && *rule.Omit {
+			base.Omit = true
+		}
+		if rule.Preset != nil {
+			base.Preset = rule.Preset
+		}
+		result[name] = base
+	}
+
+	return result
+}
+
+func buildStructure(
+	cmd *cobra.Command, overrides *Overrides, breadcrumbs []string, inherited map[string]Flag,
+) any {
+	localFlags := collectFlags(cmd)
+	merged := applyOverrides(localFlags, inherited, overrides, breadcrumbs)
+
+	// Accumulated flags for children = inherited + this node's local flags (unmodified).
+	childInherited := make(map[string]Flag, len(inherited)+len(localFlags))
+	for k, v := range inherited {
+		childInherited[k] = v
+	}
+	for k, v := range merged {
+		childInherited[k] = v
+	}
+
 	subcommands := cmd.Commands()
 	if len(subcommands) > 0 {
 		menu := Menu{
 			Type:       "menu",
 			Executable: isExecutable(cmd),
-			Flags:      collectFlags(cmd),
+			Flags:      merged,
 		}
 
-		if len(subcommands) > 0 {
-			menu.Commands = make(map[string]any)
-			for _, subcmd := range subcommands {
-				processed := buildStructure(subcmd)
-				if processed != nil {
-					menu.Commands[subcmd.Name()] = processed
-				}
+		menu.Commands = make(map[string]any)
+		for _, subcmd := range subcommands {
+			childPath := append(append([]string{}, breadcrumbs...), subcmd.Name())
+			processed := buildStructure(subcmd, overrides, childPath, childInherited)
+			if processed != nil {
+				menu.Commands[subcmd.Name()] = processed
 			}
 		}
 
@@ -124,7 +288,7 @@ func buildStructure(cmd *cobra.Command) any {
 
 	command := Command{
 		Type:        "command",
-		Flags:       collectFlags(cmd),
+		Flags:       merged,
 		Arguments:   extractArguments(cmd),
 		Description: strings.TrimSpace(description),
 	}

@@ -28,10 +28,20 @@ import {
     WriterFunction,
 } from "ts-morph";
 
-import type { Argument, Arguments, Command, Flag, Structure } from "./types";
+import type { Argument, Arguments, Command, Flag, PresetValue, Structure } from "./types";
 
 // Known collisions between the Pulumi CLI and the TypeScript keywords or globals.
 const reservedWords: string[] = ["options", "package"];
+
+/**
+ * Strip omit/preset fields from a flag so that override information doesn't
+ * leak from parent to child via inheritance. Each node re-introduces overrides
+ * via its own spec flags.
+ */
+function baseFlag(flag: Flag): Flag {
+    const { omit, preset, ...rest } = flag;
+    return rest;
+}
 
 (function main(): void {
     if (!process.argv[2]) {
@@ -73,6 +83,7 @@ const reservedWords: string[] = ["options", "package"];
  * Every command and menu may add some flags to the pool of available flags.
  * This means that, as we descend the command tree, we need to collect all the
  * flags that have been defined and add them to an options object.
+ * Flags with omit: true in the spec are excluded from the options type.
  */
 function generateOptionsTypes(
     structure: Structure,
@@ -81,7 +92,8 @@ function generateOptionsTypes(
     inherited: Record<string, Flag> = {},
 ): void {
     const command: string = createCommandName(breadcrumbs);
-    const flags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
+    const allFlags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
+    const visibleFlags = Object.values(allFlags).filter((f) => !f.omit);
 
     source.addInterface({
         kind: StructureKind.Interface,
@@ -89,12 +101,13 @@ function generateOptionsTypes(
         extends: ["BaseOptions"],
         docs: ["Options for the `" + command + "` command."],
         isExported: true,
-        properties: Object.values(flags).map(flagToPropertySignature),
+        properties: visibleFlags.map(flagToPropertySignature),
     });
 
     if (structure.type === "menu" && structure.commands) {
+        const childInherited = Object.fromEntries(Object.entries(allFlags).map(([k, v]) => [k, baseFlag(v)]));
         for (const [name, child] of Object.entries(structure.commands)) {
-            generateOptionsTypes(child, source, [...breadcrumbs, name]);
+            generateOptionsTypes(child, source, [...breadcrumbs, name], childInherited);
         }
     }
 }
@@ -108,17 +121,19 @@ function generateCommands(
     container: ClassDeclaration,
     returnType: string,
     breadcrumbs: string[] = [],
+    inherited: Record<string, Flag> = {},
 ): void {
-    if (structure.type === "menu") {
-        if (structure.commands) {
-            for (const [name, child] of Object.entries(structure.commands)) {
-                generateCommands(child, container, returnType, [...breadcrumbs, name]);
-            }
-        }
+    const allFlags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
 
-        if (!structure.executable) {
-            return;
+    if (structure.type === "menu" && structure.commands) {
+        const childInherited = Object.fromEntries(Object.entries(allFlags).map(([k, v]) => [k, baseFlag(v)]));
+        for (const [name, child] of Object.entries(structure.commands)) {
+            generateCommands(child, container, returnType, [...breadcrumbs, name], childInherited);
         }
+    }
+
+    if (structure.type === "menu" && !structure.executable) {
+        return;
     }
 
     const parameters: ParameterDeclarationStructure[] = [];
@@ -150,13 +165,56 @@ function generateCommands(
     container.addMethod({
         name: sanitiseValueName(breadcrumbs.join("_")),
         parameters,
-        statements: generateBody(structure, breadcrumbs),
+        statements: generateBody(structure, breadcrumbs, allFlags),
         returnType,
     });
 }
 
+/**
+ * Emit code that pushes a preset flag value onto __flags.
+ * When the flag is not omitted, wrap in a condition so we only add the preset
+ * when the user did not provide the option (options.<optName> == null).
+ */
+function emitPresetFlag(
+    writer: { writeLine: (s: string) => void; indent: (fn: () => void) => void },
+    flag: Flag,
+): void {
+    if (flag.preset === undefined) {
+        return;
+    }
+    const wrapCondition = !flag.omit;
+    const value: PresetValue = flag.preset;
+
+    function emit(): void {
+        if (typeof value === "boolean") {
+            if (value) {
+                writer.writeLine(`__flags.push('--${flag.name}');`);
+            }
+            return;
+        }
+        if (typeof value === "string" || typeof value === "number") {
+            writer.writeLine(`__flags.push('--${flag.name}', '' + ${JSON.stringify(value)});`);
+            return;
+        }
+        if (Array.isArray(value)) {
+            writer.writeLine(`for (const __preset of ${JSON.stringify(value)}) {`);
+            writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}', __preset);`));
+            writer.writeLine(`}`);
+            return;
+        }
+    }
+
+    if (wrapCondition) {
+        writer.writeLine(`if (options.${sanitiseValueName(flag.name)} == null) {`);
+        writer.indent(emit);
+        writer.writeLine(`}`);
+    } else {
+        emit();
+    }
+}
+
 /** Generate the body of the commands. */
-function generateBody(structure: Structure, breadcrumbs: string[]): WriterFunction {
+function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Record<string, Flag>): WriterFunction {
     return (writer) => {
         writer.writeLine("const __final: string[] = [];");
         for (const breadcrumb of breadcrumbs) {
@@ -219,7 +277,20 @@ function generateBody(structure: Structure, breadcrumbs: string[]): WriterFuncti
         writer.writeLine("const __flags: string[] = [];");
         writer.blankLine();
 
-        Object.values(structure.flags ?? {}).forEach((flag) => option(flag));
+        // Preset flags (sorted by name for determinism).
+        const presetFlags = Object.values(allFlags)
+            .filter((f) => f.preset !== undefined)
+            .sort((a, b) => a.name.localeCompare(b.name));
+        for (const flag of presetFlags) {
+            emitPresetFlag(writer, flag);
+        }
+        if (presetFlags.length > 0) {
+            writer.blankLine();
+        }
+
+        // Flags from options (only those not omitted).
+        const optionFlags = Object.values(allFlags).filter((f) => !f.omit);
+        optionFlags.forEach((flag) => option(flag));
 
         writer.writeLine("__final.push(... __flags);");
         writer.blankLine();
