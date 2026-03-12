@@ -27,6 +27,7 @@ class ResourceArgs:
         """
         The set of arguments for constructing a Resource resource.
 
+
         :param pulumi.Input['DataArgs'] non_plain_data: A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
         """
         pulumi.set(__self__, "data", data)
