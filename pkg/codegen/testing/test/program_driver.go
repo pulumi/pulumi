@@ -282,12 +282,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages,
 	},
 	{
-		Directory:   "simple-splat",
-		Description: "An example that shows we can compile splat expressions from array of objects",
-		// Skip compiling because we are using a test schema without a corresponding real package
-		SkipCompile: allProgLanguages,
-	},
-	{
 		Directory:   "invoke-inside-conditional-range",
 		Description: "Using the result of an invoke inside a conditional range expression of a resource",
 		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestDotnet),
