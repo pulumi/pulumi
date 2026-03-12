@@ -1184,6 +1184,34 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
 }
 
+func TestBunMandatoryPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("single_resource")
+	e.ImportDirectory("policy")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	stackName, err := resource.NewUniqueHex("bun-mandatory-policy-pack", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "bun_mandatory_policy_pack"), "bun", "install")
+	require.NoError(t, err)
+
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "install")
+
+	stdout, _, err := e.GetCommandResults(
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "bun_mandatory_policy_pack")
+	assert.Error(t, err)
+	assert.Contains(t, stdout, "error: update failed")
+	assert.Contains(t, stdout, "❌ bun@v0.0.1 (local: bun_mandatory_policy_pack)")
+}
+
 func TestMultiplePolicyPacks(t *testing.T) {
 	t.Parallel()
 
