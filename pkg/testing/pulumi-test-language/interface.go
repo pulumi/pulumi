@@ -1706,7 +1706,7 @@ func (rtc roundTripClient) GenerateProject(
 	sourceDirectory, targetDirectory, project string,
 	strict bool, loaderTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
-	pclDir, diags, err := rtc.roundTrip(context.TODO(), sourceDirectory, project, loaderTarget, strict)
+	pclDir, diags, err := rtc.roundTrip(context.TODO(), sourceDirectory, project, loaderTarget, strict, localDependencies)
 	if err != nil || diags.HasErrors() {
 		return diags, err
 	}
@@ -1759,7 +1759,7 @@ func (rtc roundTripClient) GenerateProgram(
 	}
 
 	project := "{\"name\": \"roundtrip\"}"
-	pclDir, diags, err := rtc.roundTrip(context.TODO(), sourceDir, project, loaderTarget, strict)
+	pclDir, diags, err := rtc.roundTrip(context.TODO(), sourceDir, project, loaderTarget, strict, nil)
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}
@@ -1788,6 +1788,7 @@ func (rtc roundTripClient) GenerateProgram(
 func (rtc roundTripClient) roundTrip(
 	ctx context.Context,
 	sourceDirectory, project, loaderTarget string, strict bool,
+	localDependencies map[string]string,
 ) (string, hcl.Diagnostics, error) {
 	tmpDir, err := os.MkdirTemp("", "pcl-to-lang-1-*")
 	if err != nil {
@@ -1796,7 +1797,7 @@ func (rtc roundTripClient) roundTrip(
 	defer func() { contract.IgnoreError(os.RemoveAll(tmpDir)) }()
 
 	diags, err := rtc.LanguageRuntime.GenerateProject(
-		sourceDirectory, tmpDir, project, strict, loaderTarget, nil)
+		sourceDirectory, tmpDir, project, strict, loaderTarget, localDependencies)
 	if err != nil || diags.HasErrors() {
 		return "", diags, err
 	}
