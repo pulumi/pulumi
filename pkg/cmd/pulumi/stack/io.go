@@ -63,19 +63,47 @@ func LoadProjectStack(
 		return nil, fmt.Errorf("could not detect project stack path: %w", err)
 	}
 	if stack.ConfigLocation().IsRemote {
-		// Check if the config file also exists and warn if it does.
-		_, err = os.Stat(configFilePath)
-		if err != nil && !os.IsNotExist(err) {
-			return nil, fmt.Errorf("checking if config file %s exists: %v", configFilePath, err)
+		// Check if a local config file also exists. A file with meaningful config alongside a
+		// service-backed stack is ambiguous, so we fail hard to prevent silent data loss.
+		_, statErr := os.Stat(configFilePath)
+		if statErr != nil && !os.IsNotExist(statErr) {
+			return nil, fmt.Errorf("checking if config file %s exists: %v", configFilePath, statErr)
 		}
-		if err == nil {
-			sink.Warningf(
-				diag.Message("", "config file %s exists but will be ignored because this stack uses remote config"),
-				configFilePath)
+		if statErr == nil {
+			// The file exists — check whether it contains meaningful config.
+			localPS, loadErr := workspace.LoadProjectStack(sink, project, configFilePath)
+			if loadErr == nil && hasMeaningfulConfig(localPS) {
+				return nil, fmt.Errorf(
+					"both service-backed and local configuration exist for stack %s\n"+
+						"  local file:       %s\n"+
+						"  remote config:    ESC environment %s\n\n"+
+						"Delete the local config file to use service-backed config, or run\n"+
+						"`pulumi config env eject` to return to local config.",
+					stack.Ref().Name(),
+					configFilePath,
+					*stack.ConfigLocation().EscEnv,
+				)
+			}
 		}
 		return stack.LoadRemoteConfig(ctx, project)
 	}
 	return workspace.LoadProjectStack(sink, project, configFilePath)
+}
+
+// hasMeaningfulConfig reports whether a ProjectStack contains user-visible configuration
+// (a non-empty config map or environment imports). Metadata-only fields (encryption salt,
+// secrets provider) are not considered meaningful for conflict detection purposes.
+func hasMeaningfulConfig(ps *workspace.ProjectStack) bool {
+	if ps == nil {
+		return false
+	}
+	if len(ps.Config) > 0 {
+		return true
+	}
+	if ps.Environment != nil && len(ps.Environment.Imports()) > 0 {
+		return true
+	}
+	return false
 }
 
 func SaveProjectStack(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) error {

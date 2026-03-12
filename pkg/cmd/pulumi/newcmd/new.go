@@ -352,6 +352,25 @@ func runNew(ctx context.Context, args newArgs) error {
 		return err
 	}
 
+	// When interactive (and --yes not passed), ask where to store stack config if the user
+	// hasn't already opted in via --remote-config / --remote-stack-config.
+	if !args.generateOnly && !args.remoteStackConfig && !args.yes && args.interactive {
+		if _, ok := b.(backend.EnvironmentsBackend); ok {
+			const (
+				optYes = "Yes (recommended)"
+				optNo  = "No, use local config files"
+			)
+			choice := ui.PromptUser(
+				"Would you like to use Service Backed Configuration?\n"+
+					"  This stores your stack's config in a Pulumi ESC environment managed by Pulumi Cloud.",
+				[]string{optYes, optNo},
+				optYes,
+				opts.Color,
+			)
+			args.remoteStackConfig = choice == optYes
+		}
+	}
+
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
 		if s, err = PromptAndCreateStack(ctx, cmdutil.Diag(), ws, b, args.prompt,
@@ -655,9 +674,14 @@ func NewNewCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(
 		&args.remoteStackConfig, "remote-stack-config", false,
-		"Store stack configuration remotely",
-	)
+		"Store stack configuration in Pulumi Cloud (service-backed config). "+
+			"Only valid for stacks on the Pulumi Cloud backend.")
 	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
+	// --remote-config is the canonical name; --remote-stack-config kept for compatibility.
+	cmd.PersistentFlags().BoolVar(
+		&args.remoteStackConfig, "remote-config", false,
+		"Store stack configuration in Pulumi Cloud (service-backed config). "+
+			"Only valid for stacks on the Pulumi Cloud backend.")
 
 	return cmd
 }

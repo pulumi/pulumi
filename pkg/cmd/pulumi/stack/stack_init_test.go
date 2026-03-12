@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +24,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // When a backend doesn't support the --teams flag,
@@ -79,6 +81,147 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 // To keep the codebase DRY, we pass along team names as-is to the Pulumi Cloud,
 // with the exception of trimming whitespace, and allow the Pulumi Cloud to
 // validate them.
+// TestStackInit_RemoteConfig_NonCloudBackend verifies that --remote-config errors
+// when the backend does not implement EnvironmentsBackend (e.g. filestate/self-hosted).
+func TestStackInit_RemoteConfig_NonCloudBackend(t *testing.T) {
+	t.Parallel()
+
+	plainBackend := &backend.MockBackend{
+		NameF:              func() string { return "filestate" },
+		ValidateStackNameF: func(name string) error { return nil },
+		ParseStackReferenceF: func(ref string) (backend.StackReference, error) {
+			return &backend.MockStackReference{}, nil
+		},
+	}
+	cmd := &stackInitCmd{
+		stackName:    "dev",
+		remoteConfig: true,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return plainBackend, nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--remote-config is not supported by the filestate backend")
+}
+
+// TestStackInit_RemoteConfig_SecretsProviderConflict verifies that combining
+// --remote-config and --secrets-provider returns a clear error.
+func TestStackInit_RemoteConfig_SecretsProviderConflict(t *testing.T) {
+	t.Parallel()
+
+	cloudBackend := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF:              func() string { return "pulumi.com" },
+			ValidateStackNameF: func(name string) error { return nil },
+			ParseStackReferenceF: func(ref string) (backend.StackReference, error) {
+				return &backend.MockStackReference{}, nil
+			},
+		},
+	}
+	cmd := &stackInitCmd{
+		stackName:       "dev",
+		secretsProvider: "awskms://alias/MyKey",
+		remoteConfig:    true,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return cloudBackend, nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--remote-config cannot be used with --secrets-provider")
+}
+
+// TestStackInit_RemoteConfig_CopyConfigConflict verifies that combining
+// --remote-config and --copy-config-from returns a clear error.
+func TestStackInit_RemoteConfig_CopyConfigConflict(t *testing.T) {
+	t.Parallel()
+
+	cloudBackend := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF:              func() string { return "pulumi.com" },
+			ValidateStackNameF: func(name string) error { return nil },
+			ParseStackReferenceF: func(ref string) (backend.StackReference, error) {
+				return &backend.MockStackReference{}, nil
+			},
+		},
+	}
+	cmd := &stackInitCmd{
+		stackName:    "dev",
+		stackToCopy:  "staging",
+		remoteConfig: true,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return cloudBackend, nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--remote-config cannot be used with --copy-config-from")
+}
+
+// TestStackInit_NonInteractive_DefaultsToLocalConfig verifies that in non-interactive mode
+// (which is the default in tests since there is no TTY), the stack is created with local config.
+func TestStackInit_NonInteractive_DefaultsToLocalConfig(t *testing.T) {
+	t.Parallel()
+
+	var capturedUseRemoteConfig bool
+	mockStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				NameV: tokens.MustParseStackName("dev"),
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{}
+		},
+	}
+	cloudBackend := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF:              func() string { return "pulumi.com" },
+			ValidateStackNameF: func(name string) error { return nil },
+			ParseStackReferenceF: func(ref string) (backend.StackReference, error) {
+				return &backend.MockStackReference{}, nil
+			},
+			CreateStackF: func(
+				ctx context.Context,
+				ref backend.StackReference,
+				projectRoot string,
+				initialState *apitype.UntypedDeployment,
+				opts *backend.CreateStackOptions,
+			) (backend.Stack, error) {
+				capturedUseRemoteConfig = opts.Config != nil
+				return mockStack, nil
+			},
+			DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+				return nil, nil
+			},
+		},
+	}
+	cmd := &stackInitCmd{
+		stackName: "dev",
+		noSelect:  true, // skip state.SetCurrentStack which needs a real workspace
+		// remoteConfig is false (default) and we're not interactive
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return cloudBackend, nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), nil)
+	require.NoError(t, err)
+	assert.False(t, capturedUseRemoteConfig, "non-interactive should default to local config")
+}
+
 func TestNewCreateStackOptsFiltersWhitespace(t *testing.T) {
 	t.Parallel()
 

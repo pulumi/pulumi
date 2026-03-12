@@ -1035,6 +1035,81 @@ config:
 }
 
 //nolint:paralleltest // changes global ConfigFile variable
+func TestConfigSetAllRejectsConfigFileForRemoteStacks(t *testing.T) {
+	ctx := context.Background()
+	stackName := "testStack"
+	escEnv := "testProject/dev"
+
+	s := backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				NameV: tokens.MustParseStackName("testStack"),
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{IsRemote: true, EscEnv: &escEnv}
+		},
+		LoadRemoteF: func(context.Context, *workspace.Project) (*workspace.ProjectStack, error) {
+			return &workspace.ProjectStack{}, nil
+		},
+	}
+
+	tmpdir := t.TempDir()
+	cmdStack.ConfigFile = filepath.Join(tmpdir, "Pulumi.stack.yaml")
+	defer func() {
+		cmdStack.ConfigFile = ""
+	}()
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "testProject"}, "", nil
+		},
+	}
+
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			ctx context.Context,
+			ws pkgWorkspace.Context,
+			sink diag.Sink,
+			url string,
+			project *workspace.Project,
+			setCurrent bool,
+		) (backend.Backend, error) {
+			return &backend.MockBackend{
+				GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return &s, nil
+				},
+			}, nil
+		},
+		LoginF: func(
+			ctx context.Context,
+			ws pkgWorkspace.Context,
+			sink diag.Sink,
+			url string,
+			project *workspace.Project,
+			setCurrent bool,
+			insecure bool,
+			color colors.Colorization,
+		) (backend.Backend, error) {
+			return &backend.MockBackend{
+				GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return &s, nil
+				},
+			}, nil
+		},
+	}
+
+	cmd := newConfigSetAllCmd(ws, &stackName, lm, &mockEncrypterFactory{encrypter: config.NopEncrypter})
+	cmd.SetContext(ctx)
+	err := cmd.PersistentFlags().Set("plaintext", "testProject:key=value")
+	require.NoError(t, err)
+
+	err = cmd.RunE(cmd, []string{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--config-file is not supported for service-backed stacks")
+}
+
+//nolint:paralleltest // changes global ConfigFile variable
 func TestConfigPathOperations(t *testing.T) {
 	type testArgs struct {
 		Key                   string
