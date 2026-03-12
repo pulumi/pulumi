@@ -648,6 +648,7 @@ func (pc *Client) CreateStack(
 		ProjectName: stackID.Project,
 		OrgName:     stackID.Owner,
 		Tags:        tags,
+		Config:      config,
 	}
 	createStackReq := apitype.CreateStackRequest{
 		StackName: stackID.Stack.String(),
@@ -1427,6 +1428,10 @@ func (pc *Client) UpdateStackConfig(
 	ctx context.Context, stack StackIdentifier, config *apitype.StackConfig,
 ) error {
 	return pc.restCall(ctx, "PUT", getStackPath(stack, "config"), nil, config, nil)
+}
+
+func (pc *Client) DeleteStackConfig(ctx context.Context, stack StackIdentifier) error {
+	return pc.restCall(ctx, "DELETE", getStackPath(stack, "config"), nil, nil, nil)
 }
 
 func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
