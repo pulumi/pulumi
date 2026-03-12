@@ -228,6 +228,12 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			resource.SigKey: resource.NewProperty(resource.ResourceReferenceSig),
 			"urn":           resource.NewProperty(string(ref.URN)),
 		}
+		if ref.Name != "" {
+			m["name"] = resource.NewProperty(ref.Name)
+		}
+		if ref.Type != "" {
+			m["type"] = resource.NewProperty(ref.Type)
+		}
 		if id, hasID := ref.IDString(); hasID {
 			m["id"] = resource.NewProperty(id)
 		}
@@ -438,6 +444,22 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 				return nil, fmt.Errorf("malformed resource reference for %q: urn not a string", key)
 			}
 
+			name := ""
+			if nameProp, ok := obj["name"]; ok {
+				if !nameProp.IsString() {
+					return nil, fmt.Errorf("malformed resource reference for %q: name not a string", key)
+				}
+				name = nameProp.StringValue()
+			}
+
+			typ := ""
+			if typeProp, ok := obj["type"]; ok {
+				if !typeProp.IsString() {
+					return nil, fmt.Errorf("malformed resource reference for %q: type not a string", key)
+				}
+				typ = typeProp.StringValue()
+			}
+
 			id, hasID := "", false
 			if idProp, ok := obj["id"]; ok {
 				hasID = true
@@ -482,12 +504,28 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 				return &r, nil
 			}
 
-			var ref resource.PropertyValue
-			if hasID {
-				ref = resource.MakeCustomResourceReference(resource.URN(urn.StringValue()), resource.ID(id), packageVersion)
-			} else {
-				ref = resource.MakeComponentResourceReference(resource.URN(urn.StringValue()), packageVersion)
+			urnValue := resource.URN(urn.StringValue())
+			if name == "" && urnValue.IsValid() {
+				name = urnValue.Name()
 			}
+			if typ == "" && urnValue.IsValid() {
+				typ = string(urnValue.Type())
+			}
+
+			refID := resource.PropertyValue{}
+			if hasID {
+				refID = resource.NewProperty(id)
+				if id == "" {
+					refID = resource.MakeComputed(resource.NewProperty(""))
+				}
+			}
+			ref := resource.NewProperty(resource.ResourceReference{
+				URN:            urnValue,
+				Name:           name,
+				Type:           typ,
+				ID:             refID,
+				PackageVersion: packageVersion,
+			})
 			return &ref, nil
 		case resource.OutputValueSig:
 			value, known := obj["value"]
