@@ -49,6 +49,7 @@ type value struct {
 	unknown    bool
 	rotateOnly bool
 	secret     bool // true if the value is secret
+	final      bool // true if the value is final and cannot be overridden by child environments
 
 	repr any // nil | bool | json.Number | string | []*value | map[string]*value
 }
@@ -493,6 +494,7 @@ func (c copier) copy(v *value) *value {
 		schema:  v.schema,
 		unknown: v.unknown,
 		secret:  v.secret,
+		final:   v.final,
 		repr:    repr,
 	}
 	return copy

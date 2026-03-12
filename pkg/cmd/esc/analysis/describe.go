@@ -54,6 +54,8 @@ func (a *Analysis) Describe(pos esc.Pos) (string, bool) {
 
 func (a *Analysis) describeBuiltin(builtin *esc.BuiltinExpr) (string, bool) {
 	switch builtin.Name {
+	case "fn::final":
+		return "Marks a value as final. Final values cannot be overridden in child environments.", true
 	case "fn::fromJSON":
 		return "Decodes a value from its JSON representation.", true
 	case "fn::fromBase64":

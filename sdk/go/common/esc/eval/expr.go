@@ -320,6 +320,13 @@ func (x *expr) export(environment string) esc.Expr {
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
+	case *finalExpr:
+		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
+			ArgSchema: schema.Always().Schema(),
+			Arg:       repr.value.export(environment),
+		}
 	case *arrayExpr:
 		ex.List = make([]esc.Expr, len(repr.elements))
 		for i, el := range repr.elements {
@@ -565,6 +572,17 @@ type fromBase64Expr struct {
 }
 
 func (x *fromBase64Expr) syntax() ast.Expr {
+	return x.node
+}
+
+// finalExpr represents a call to the fn::final builtin.
+type finalExpr struct {
+	node *ast.FinalExpr
+
+	value *expr
+}
+
+func (x *finalExpr) syntax() ast.Expr {
 	return x.node
 }
 

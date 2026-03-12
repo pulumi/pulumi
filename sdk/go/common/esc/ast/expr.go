@@ -671,6 +671,25 @@ func FromBase64(value Expr) *FromBase64Expr {
 	return FromBase64Syntax(nil, name, value)
 }
 
+// FinalExpr marks a value as final, preventing child environments from overriding it.
+type FinalExpr struct {
+	builtinNode
+
+	Value Expr
+}
+
+func FinalSyntax(node *syntax.ObjectNode, name *StringExpr, args Expr) *FinalExpr {
+	return &FinalExpr{
+		builtinNode: builtin(node, name, args),
+		Value:       args,
+	}
+}
+
+func Final(value Expr) *FinalExpr {
+	name := String("fn::final")
+	return FinalSyntax(nil, name, value)
+}
+
 // ValidateExpr validates a value against a JSON schema.
 type ValidateExpr struct {
 	builtinNode
@@ -717,6 +736,8 @@ func tryParseFunction(node *syntax.ObjectNode) (Expr, syntax.Diagnostics, bool) 
 	switch kvp.Key.Value() {
 	case "fn::concat":
 		parse = parseConcat
+	case "fn::final":
+		parse = parseFinal
 	case "fn::validate":
 		parse = parseValidate
 	case "fn::fromJSON":
@@ -946,6 +967,10 @@ func parseFromJSON(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, 
 
 func parseToString(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
 	return ToStringSyntax(node, name, args), nil
+}
+
+func parseFinal(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {
+	return FinalSyntax(node, name, args), nil
 }
 
 func parseToBase64(node *syntax.ObjectNode, name *StringExpr, args Expr) (Expr, syntax.Diagnostics) {

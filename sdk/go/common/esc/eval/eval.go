@@ -26,6 +26,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/ast"
 	"github.com/pulumi/esc/internal/spell"
@@ -340,6 +341,9 @@ func declare[Expr exprNode](e *evalContext, path string, x Expr, base *value) *e
 		}
 		// Output schema is dynamic - will be determined during evaluation
 		return newExpr(path, repr, schema.Always().Schema(), base)
+	case *ast.FinalExpr:
+		repr := &finalExpr{node: x, value: declare(e, "", x.Value, nil)}
+		return newExpr(path, repr, schema.Always().Schema(), base)
 	case *ast.FromJSONExpr:
 		repr := &fromJSONExpr{node: x, string: declare(e, "", x.String, nil)}
 		return newExpr(path, repr, schema.Always(), base)
@@ -588,6 +592,17 @@ func (e *evalContext) evaluateExpr(x *expr, accept *schema.Schema) *value {
 		return val
 	}
 
+	// Check if the base value is final. If so, the child cannot override it.
+	if x.base != nil && x.base.final {
+		diag := ast.ExprError(x.repr.syntax(), "cannot override final value")
+		diag.Severity = hcl.DiagWarning
+		e.diags.Extend(diag)
+		val := x.base
+		x.schema = val.schema
+		x.value = val
+		return val
+	}
+
 	val := (*value)(nil)
 	switch repr := x.repr.(type) {
 	case *missingExpr:
@@ -611,6 +626,8 @@ func (e *evalContext) evaluateExpr(x *expr, accept *schema.Schema) *value {
 		val = e.evaluateBuiltinConcat(x, repr)
 	case *fromBase64Expr:
 		val = e.evaluateBuiltinFromBase64(x, repr)
+	case *finalExpr:
+		val = e.evaluateBuiltinFinal(x, repr)
 	case *validateExpr:
 		val = e.evaluateBuiltinValidate(x, repr)
 	case *fromJSONExpr:
@@ -1421,6 +1438,17 @@ func (e *evalContext) valueToSchema(v *value) (*schema.Schema, error) {
 	}
 
 	return &s, nil
+}
+
+// evaluateBuiltinFinal evaluates a call to the fn::final builtin. The inner value is evaluated
+// normally, and the result is wrapped with the final flag to prevent overrides in child environments.
+func (e *evalContext) evaluateBuiltinFinal(x *expr, repr *finalExpr) *value {
+	val := e.evaluateExpr(repr.value, schema.Always())
+	v := &value{def: x, final: true}
+	v.schema = val.schema
+	v.repr = val.repr
+	v.combine(val)
+	return v
 }
 
 // evaluateBuiltinFromJSON evaluates a call from the fn::fromJSON builtin.
