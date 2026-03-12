@@ -41,4 +41,3 @@ func TestExitCode_StackNotFound(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, 6, exitErr.ExitCode())
 }
-
