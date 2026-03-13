@@ -37,7 +37,10 @@ generate:: generate-proto generate-metaschema generate-deployment-schema
 # whereby the READTHEDOCS_OUTPUT environment variable will be set to a
 # destination that Read the Docs expects to be populated with the generated
 # documentation.
-build: ensure generate
+# generate-metaschema and generate-deployment-schema require Go, which is not
+# available on Read the Docs; their outputs are committed to the repository
+# instead and updated locally when the underlying schemas change.
+build: ensure generate-proto
 	mkdir -p $$READTHEDOCS_OUTPUT/html
 	. $(VENV)/*/activate && python -m sphinx \
 		-T \
