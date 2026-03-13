@@ -835,6 +835,8 @@ func filterPropertyValue(v resource.PropertyValue, debug bool, showSecrets bool)
 		ref := v.ResourceReferenceValue()
 		return resource.NewProperty(resource.ResourceReference{
 			URN:            resource.URN(logging.FilterString(string(ref.URN))),
+			Name:           logging.FilterString(ref.Name),
+			Type:           logging.FilterString(ref.Type),
 			ID:             filterPropertyValue(ref.ID, debug, showSecrets),
 			PackageVersion: logging.FilterString(ref.PackageVersion),
 		})

@@ -3227,6 +3227,8 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 			return resource.NewProperty(
 				resource.ResourceReference{
 					URN:            ref.URN,
+					Name:           ref.Name,
+					Type:           ref.Type,
 					ID:             downgradeOutputPropertyValue(ref.ID),
 					PackageVersion: ref.PackageVersion,
 				})
