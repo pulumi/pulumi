@@ -312,7 +312,6 @@ func FilterRefreshDeletes(
 					// exists, we set r.Parent as r.Parent.Parent.
 					newParent = availableParents[res.Parent]
 					availableParents[res.URN] = newParent
-					newParent = dep.URN
 					filtered = true
 				}
 			case resource.ResourceDependency:
