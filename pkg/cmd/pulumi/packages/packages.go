@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -337,10 +336,11 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	return pluginCtx, nil
 }
 
-func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescriptor) {
-	if spec.Namespace == "" && pluginSpec.IsGitPlugin() {
-		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
-		matches := namespaceRegex.FindStringSubmatch(pluginSpec.PluginDownloadURL)
+var namespaceRegex = regexp.MustCompile(`git://[^/]+/([^/]+)/`)
+
+func setSpecNamespace(spec *schema.PackageSpec) {
+	if spec.Namespace == "" && spec.PluginDownloadURL != "" {
+		matches := namespaceRegex.FindStringSubmatch(spec.PluginDownloadURL)
 		if len(matches) == 2 {
 			spec.Namespace = strings.ToLower(matches[1])
 		}
@@ -422,14 +422,8 @@ func SchemaFromSchemaSource(
 	if err != nil {
 		return nil, nil, err
 	}
-	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	if pluginSpec.PluginDownloadURL != "" {
-		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
-	}
-	setSpecNamespace(&spec, pluginSpec)
+
+	setSpecNamespace(&spec)
 	return &spec, &packageSpec, nil
 }
 
