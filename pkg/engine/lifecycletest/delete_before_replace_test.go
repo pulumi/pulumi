@@ -989,7 +989,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.2.1"), func() (plugin.Provider, error) {
 			return newPkgAProvider(), nil
 		}),
-		// Provider B has a resource where changing "length" triggers delete-before-replace
+		// Provider B has a resource where changing "length" triggers replace
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
