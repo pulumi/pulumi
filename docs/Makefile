@@ -19,7 +19,19 @@ ensure:: ensure-proto ensure-python
 generate-proto: ensure
 	. $(VENV)/*/activate && python make.py generate-proto
 
-generate:: generate-proto
+generate-metaschema:
+	cd utils && go run ./jsonschema2md.go \
+		< ../../pkg/codegen/schema/pulumi.json \
+		> ../references/metaschema.md
+
+generate-deployment-schema:
+	cd utils && go run ./jsonschema2md.go \
+		-title "Deployment Schema" \
+		-ids "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/deployments.json=-,https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/resources.json=../../sdk/go/common/apitype/resources.json,https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/property-values.json=../../sdk/go/common/apitype/property-values.json" \
+		< ../../sdk/go/common/apitype/deployments.json \
+		> ../references/deployment-schema.md
+
+generate:: generate-proto generate-metaschema generate-deployment-schema
 
 # This target is intended to be called by Read the Docs as part of deployment,
 # whereby the READTHEDOCS_OUTPUT environment variable will be set to a
