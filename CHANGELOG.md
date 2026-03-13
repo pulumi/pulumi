@@ -1,5 +1,77 @@
 # Changelog
 
+## 3.226.0 (2026-03-11)
+
+
+### Features
+
+- [backend/service] Automatically repair snapshot integrity issues, while sending an error event to the backend for further diagnosis
+  [#22179](https://github.com/pulumi/pulumi/pull/22179)
+
+- [cli] Add a --otel-traces flag, that allows writing otel traces to a file, or directly to a grpc interface
+  [#22129](https://github.com/pulumi/pulumi/pull/22129)
+
+- [engine] Engine will use provider references from `__self__` arguments to calls
+  [#22114](https://github.com/pulumi/pulumi/pull/22114)
+
+- [sdk/bun] Support bun as a runtime
+  [#22177](https://github.com/pulumi/pulumi/pull/22177)
+  [#22049](https://github.com/pulumi/pulumi/pull/22049)
+
+- [sdk/bun] Add debugger support for the bun runtime
+  [#22177](https://github.com/pulumi/pulumi/pull/22177)
+
+- [sdk/bun] Add support for Bun as a plugin runtime
+  [#22189](https://github.com/pulumi/pulumi/pull/22189)
+
+
+### Bug Fixes
+
+- [engine] Fix ReplacementTrigger firing due to dependency changes
+  [#22119](https://github.com/pulumi/pulumi/pull/22119)
+
+- [engine] Correctly serialize output values to the snapshot rather than always recording them as computed even when known
+  [#22120](https://github.com/pulumi/pulumi/pull/22120)
+
+- [pcl] Support resource ranges in PCL
+  [#22144](https://github.com/pulumi/pulumi/pull/22144)
+
+- [cli/config] Include environments used when refreshing a stack's config
+  [#22103](https://github.com/pulumi/pulumi/pull/22103)
+
+- [cli/display] Fix `pulumi destroy` not showing parent resource hierarchy
+  [#22148](https://github.com/pulumi/pulumi/pull/22148)
+
+- [cli/package] Correctly parse package URLs with .git in them
+  [#22174](https://github.com/pulumi/pulumi/pull/22174)
+
+- [cli/plugin] Fix package get-schema for binary providers at relative paths
+  [#22107](https://github.com/pulumi/pulumi/pull/22107)
+
+- [sdk/python] Handle null detailedDiff in automation StepEventMetadata JSON parsing
+  [#22140](https://github.com/pulumi/pulumi/pull/22140)
+
+- [cli/state] Fix state move integrity errors when copied providers depend on resources left in source stack
+  [#22141](https://github.com/pulumi/pulumi/pull/22141)
+
+
+### Miscellaneous
+
+- [cli/about] Show bun information in `pulumi about`
+  [#22121](https://github.com/pulumi/pulumi/pull/22121)
+
+- [programgen/go] Target go 1.25 for generated go.mod files (instead of go 1.23)
+  [#22070](https://github.com/pulumi/pulumi/pull/22070)
+
+- [sdkgen/go] Target go 1.25 for generated go.mod files for SDKs (instead of go 1.20)
+  [#22131](https://github.com/pulumi/pulumi/pull/22131)
+
+- [sdk/python] Read Poetry and uv lockfiles to determine program dependencies
+  [#22072](https://github.com/pulumi/pulumi/pull/22072)
+
+- [sdk/python] Use importlib to find pulumi-plugin.json for installed packages
+  [#22127](https://github.com/pulumi/pulumi/pull/22127)
+
 ## 3.225.1 (2026-03-05)
 
 

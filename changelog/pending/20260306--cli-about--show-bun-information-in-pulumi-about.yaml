@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli/about
-  description: Show bun information in `pulumi about`
