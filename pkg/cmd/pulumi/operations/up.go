@@ -43,6 +43,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -142,6 +143,7 @@ func NewUpCmd() *cobra.Command {
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
 		meta *promise.Promise[map[string]string],
+		summary *ui.OperationSummarySink,
 	) error {
 		s, err := cmdStack.RequireStack(
 			ctx,
@@ -260,6 +262,10 @@ func NewUpCmd() *cobra.Command {
 			maps.Copy(m.Environment, metadata)
 		}
 
+		if summary != nil && summary.StartTime.IsZero() {
+			summary.StartTime = time.Now()
+		}
+
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
@@ -270,6 +276,16 @@ func NewUpCmd() *cobra.Command {
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 		}, nil /* events */)
+		if summary != nil {
+			summary.EndTime = time.Now()
+			summary.ChangeSummary = display.ResourceChanges(changes)
+			if err == context.Canceled {
+				summary.Canceled = true
+			} else {
+				summary.Err = err
+			}
+		}
+
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}
@@ -292,6 +308,7 @@ func NewUpCmd() *cobra.Command {
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
 		meta *promise.Promise[map[string]string],
+		summary *ui.OperationSummarySink,
 	) error {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
@@ -504,6 +521,10 @@ func NewUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
+		if summary != nil && summary.StartTime.IsZero() {
+			summary.StartTime = time.Now()
+		}
+
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
@@ -514,6 +535,16 @@ func NewUpCmd() *cobra.Command {
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 		}, nil /* events */)
+		if summary != nil {
+			summary.EndTime = time.Now()
+			summary.ChangeSummary = display.ResourceChanges(changes)
+			if err == context.Canceled {
+				summary.Canceled = true
+			} else {
+				summary.Err = err
+			}
+		}
+
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}
@@ -664,6 +695,8 @@ func NewUpCmd() *cobra.Command {
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
 			configureNeoTaskOption(neoTaskOnFailure, cmd, &opts.Display, isDIYBackend)
 
+			summary := &ui.OperationSummarySink{}
+
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
 					ctx,
@@ -674,10 +707,11 @@ func NewUpCmd() *cobra.Command {
 					opts,
 					cmd,
 					meta,
+					summary,
 				)
 			}
 
-			return upWorkingDirectory(
+			err := upWorkingDirectory(
 				ctx,
 				ssml,
 				ws,
@@ -685,7 +719,16 @@ func NewUpCmd() *cobra.Command {
 				opts,
 				cmd,
 				meta,
+				summary,
 			)
+
+			var perr error
+			if opts.Display.JSONDisplay {
+				perr = ui.PrintOperationSummaryJSON(summary)
+			}
+
+      if err != nil { return err }
+			return perr
 		},
 	}
 
