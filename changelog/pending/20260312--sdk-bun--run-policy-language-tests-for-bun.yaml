@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/bun
+  description: Run policy language tests for bun

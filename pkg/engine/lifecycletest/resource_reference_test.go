@@ -354,3 +354,114 @@ func TestResourceReferences_GetResource(t *testing.T) {
 	}
 	p.Run(t, nil)
 }
+
+// TestResourceReferences_NameAndTypeFilledByEngine tests that Name and Type are filled in by the engine before
+// passing resource references to Construct calls and program code, even when the originating side omitted them.
+func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
+	t.Parallel()
+
+	var sourceURN resource.URN
+	var sourceID resource.ID
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := "created-id"
+					if req.Preview {
+						id = ""
+					}
+					return plugin.CreateResponse{
+						ID:         resource.ID(id),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					ref := req.Inputs["ref"].ResourceReferenceValue()
+					assert.Equal(t, sourceURN, ref.URN)
+					assert.Equal(t, sourceURN.Name(), ref.Name)
+					assert.Equal(t, string(sourceURN.Type()), ref.Type)
+
+					component, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					// Echo the reference back while intentionally omitting Name/Type to validate
+					// the engine fills them before they reach the program.
+					outputs := resource.PropertyMap{
+						"echo": resource.NewProperty(resource.ResourceReference{
+							URN: ref.URN,
+							ID:  ref.ID,
+						}),
+					}
+					err = monitor.RegisterResourceOutputs(component.URN, outputs)
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{
+						URN:     component.URN,
+						Outputs: outputs,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		sourceResp, err := monitor.RegisterResource("pkgA:m:source", "source", true)
+		require.NoError(t, err)
+		sourceURN, sourceID = sourceResp.URN, sourceResp.ID
+
+		refID := resource.NewProperty(string(sourceID))
+		if sourceID == "" {
+			refID = resource.MakeComputed(resource.NewProperty(""))
+		}
+		inputRef := resource.NewProperty(resource.ResourceReference{
+			URN: sourceURN,
+			ID:  refID,
+		})
+		assert.Empty(t, inputRef.ResourceReferenceValue().Name)
+		assert.Empty(t, inputRef.ResourceReferenceValue().Type)
+
+		componentResp, err := monitor.RegisterResource("pkgA:m:component", "component", false, deploytest.ResourceOptions{
+			Remote: true,
+			Inputs: resource.PropertyMap{
+				"ref": inputRef,
+			},
+		})
+		require.NoError(t, err)
+
+		echo := componentResp.Outputs["echo"].ResourceReferenceValue()
+		assert.Equal(t, sourceURN, echo.URN)
+		assert.Equal(t, sourceURN.Name(), echo.Name)
+		assert.Equal(t, string(sourceURN.Type()), echo.Type)
+		assert.True(t, echo.ID.DeepEquals(refID))
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	snap, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil),
+		p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	var componentState *resource.State
+	for _, res := range snap.Resources {
+		if res.URN.Name() == "component" && res.Type == "pkgA:m:component" {
+			componentState = res
+			break
+		}
+	}
+	require.NotNil(t, componentState)
+
+	echo := componentState.Outputs["echo"]
+	assert.True(t, echo.IsResourceReference())
+}
