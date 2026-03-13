@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/bun
+  description: Add a test for the function serialization error message when using bun
