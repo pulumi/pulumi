@@ -686,6 +686,9 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		if r.IsProvider {
 			name = "provider"
 		}
+		if mod.conflictsWithChildModule(name) {
+			name = name + "_"
+		}
 		addFile(name+".py", res)
 	}
 
@@ -705,7 +708,11 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		if err != nil {
 			return err
 		}
-		addFile(PyName(tokenToName(f.Token))+".py", fun)
+		fnName := PyName(tokenToName(f.Token))
+		if mod.conflictsWithChildModule(fnName) {
+			fnName = fnName + "_"
+		}
+		addFile(fnName+".py", fun)
 	}
 
 	// Nested types
@@ -759,6 +766,18 @@ func (mod *modContext) isEmpty() bool {
 		}
 	}
 	return true
+}
+
+// conflictsWithChildModule returns true if the given file name (without extension)
+// would conflict with a child module directory name. In Python, a package directory
+// takes precedence over a module file with the same name.
+func (mod *modContext) conflictsWithChildModule(name string) bool {
+	for _, child := range mod.children {
+		if child.unqualifiedImportName() == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (mod *modContext) submodulesExist() bool {
@@ -984,6 +1003,9 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 		}
 		if r.Resource != nil && r.Resource.IsProvider {
 			name = "provider"
+		}
+		if mod.conflictsWithChildModule(name) {
+			name = name + "_"
 		}
 
 		if strings.HasSuffix(importPath, ".") {

@@ -32,6 +32,7 @@ export class SomeResource extends pulumi.CustomResource {
     }
 
     declare public readonly builtins: pulumi.Output<string>;
+    declare public readonly lambda: pulumi.Output<string>;
     declare public readonly property: pulumi.Output<string>;
 
     /**
@@ -48,13 +49,18 @@ export class SomeResource extends pulumi.CustomResource {
             if (args?.builtins === undefined && !opts.urn) {
                 throw new Error("Missing required property 'builtins'");
             }
+            if (args?.lambda === undefined && !opts.urn) {
+                throw new Error("Missing required property 'lambda'");
+            }
             if (args?.property === undefined && !opts.urn) {
                 throw new Error("Missing required property 'property'");
             }
             resourceInputs["builtins"] = args?.builtins;
+            resourceInputs["lambda"] = args?.lambda;
             resourceInputs["property"] = args?.property;
         } else {
             resourceInputs["builtins"] = undefined /*out*/;
+            resourceInputs["lambda"] = undefined /*out*/;
             resourceInputs["property"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
@@ -67,5 +73,6 @@ export class SomeResource extends pulumi.CustomResource {
  */
 export interface SomeResourceArgs {
     builtins: pulumi.Input<string>;
+    lambda: pulumi.Input<string>;
     property: pulumi.Input<string>;
 }
