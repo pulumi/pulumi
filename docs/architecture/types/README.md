@@ -487,3 +487,16 @@ resource; this is necessary as resource shapes may change between SDK versions.
 
 Resource references are hydrated using the [built-in
 provider](built-in-provider)'s `getResource` invoke.
+
+:::{note}
+`getResource` can only be called when there is an active connection to the
+engine's resource monitor — that is, within the scope of a
+[](pulumirpc.ResourceProvider.Construct) call. Resource references therefore
+cannot be resolved inside CRUD methods
+([](pulumirpc.ResourceProvider.Create), [](pulumirpc.ResourceProvider.Read),
+[](pulumirpc.ResourceProvider.Update), [](pulumirpc.ResourceProvider.Delete)),
+[](pulumirpc.ResourceProvider.Configure), or
+[](pulumirpc.ResourceProvider.Invoke). Code in those contexts should treat a
+resource reference as its `ID` if present, falling back to its `URN`; an empty
+`ID` should be treated as [unknown](unknowns).
+:::

@@ -49,6 +49,20 @@ of operations:
 If all of these steps succeed, the user is left with a definition for `R` in
 their Pulumi program that matches that in the stack's state exactly.
 
+:::{note}
+Although the "no diffs" requirement is intended to prevent surprise, it also
+accommodates a technical constraint. In order to compute the diff, the engine
+must first fetch the resource's current inputs and state from its provider. For
+this fetched state to influence which steps the engine issues, it would need to
+be available either *during* or *before* step generation. Fetching during step
+generation would cause the engine to spend an unacceptable amount of time in
+the [step generator](step-generation), which processes resource registration
+events serially. Fetching before step generation would produce a poor user
+experience, as the CLI only displays progress once steps begin executing. The
+fetch is therefore deferred to a dedicated `ImportStep`, which runs in the step
+executor alongside all other steps.
+:::
+
 ```mermaid
 :caption: Importing a resource using the `import` resource option
 :zoom:
@@ -182,3 +196,17 @@ A few other approaches might be:
 It is likely that some mix of approaches is necessary in order to arrive at a
 satisfactory solution, as none of the above solutions seems universally
 "correct".
+
+### Error handling
+
+When using `pulumi import --file=...`, the engine runs a preview before making
+any changes. If errors are detected during the preview (e.g. a resource is not
+found), the command fails before writing anything to state. When `--skip-preview`
+is specified, the engine instead imports as many resources as possible, writing
+successful imports to state immediately and collecting any errors for display in
+the final output.
+
+Both approaches are safe to retry: importing a resource that already exists in
+state is a no-op. However, it is possible to accidentally import the same
+physical resource under two different logical names, which creates an implicit
+aliasing situation where the stack tracks the same underlying resource twice.
