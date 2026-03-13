@@ -170,6 +170,11 @@ func NewMissingError(
 	}
 }
 
+// Spec returns the descriptor of the plugin that is missing.
+func (err *MissingError) Spec() PluginDescriptor {
+	return err.spec
+}
+
 func (err *MissingError) Error() string {
 	includePath := ""
 	if err.includeAmbient {
