@@ -1100,7 +1100,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		require.NotNil(t, r)
 
 		// Same the provider
-		err := r.Same(context.Background(), old)
+		err := r.Same(context.Background(), old, true)
 		require.NoError(t, err)
 
 		// Verify provider is registered
@@ -1266,8 +1266,6 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 	assert.Equal(t, targetValue, customValue, "PROVIDER_VAR should have CUSTOM_VAR's value")
 }
 
-
-<<<<<<< HEAD
 // closableTestProvider is a testProvider that tracks when Close is called.
 type closableTestProvider struct {
 	testProvider
@@ -1304,10 +1302,14 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 				testProvider: testProvider{
 					pkg:     "pkgA",
 					version: semver.MustParse("1.0.0"),
-					checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					checkConfig: func(
+						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
+					) (resource.PropertyMap, []plugin.CheckFailure, error) {
 						return news, nil, nil
 					},
-					diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+					diffConfig: func(
+						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string,
+					) (plugin.DiffResult, error) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					},
 					config: func(resource.PropertyMap) error { return nil },
@@ -1354,7 +1356,7 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 
 	// Only one provider should have been created (from Check).
 	providersMu.Lock()
-	assert.Len(t, createdProviders, 1, "Only one provider should be created from Check/Update flow")
+	require.Len(t, createdProviders, 1, "Only one provider should be created from Check/Update flow")
 	providersMu.Unlock()
 
 	// Now call Same (as EnsureProvider would) with old state.
@@ -1365,7 +1367,7 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 
 	// Still only one provider should exist - Same should NOT have created a new one.
 	providersMu.Lock()
-	assert.Len(t, createdProviders, 1, "Same should not create a new provider when one already exists")
+	require.Len(t, createdProviders, 1, "Same should not create a new provider when one already exists")
 	providersMu.Unlock()
 
 	// The existing provider should not be closed.
@@ -1388,10 +1390,14 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 				testProvider: testProvider{
 					pkg:     "pkgA",
 					version: semver.MustParse("1.0.0"),
-					checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					checkConfig: func(
+						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
+					) (resource.PropertyMap, []plugin.CheckFailure, error) {
 						return news, nil, nil
 					},
-					diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+					diffConfig: func(
+						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string,
+					) (plugin.DiffResult, error) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					},
 					config: func(resource.PropertyMap) error { return nil },
@@ -1420,7 +1426,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 
 	// One provider should be created from Same.
 	providersMu.Lock()
-	assert.Len(t, createdProviders, 1, "Same should create one provider")
+	require.Len(t, createdProviders, 1, "Same should create one provider")
 	sameProvider := createdProviders[0]
 	providersMu.Unlock()
 
@@ -1442,7 +1448,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 
 	// Two providers now: one from Same, one from Check.
 	providersMu.Lock()
-	assert.Len(t, createdProviders, 2, "Check should create another provider")
+	require.Len(t, createdProviders, 2, "Check should create another provider")
 	providersMu.Unlock()
 
 	// Update should close Same's provider because it's overwriting it.
@@ -1483,10 +1489,14 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 						testProvider: testProvider{
 							pkg:     "pkgA",
 							version: semver.MustParse("1.0.0"),
-							checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+							checkConfig: func(
+								urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
+							) (resource.PropertyMap, []plugin.CheckFailure, error) {
 								return news, nil, nil
 							},
-							diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+							diffConfig: func(
+								urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string,
+							) (plugin.DiffResult, error) {
 								return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 							},
 							config: func(resource.PropertyMap) error { return nil },
@@ -1560,8 +1570,10 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 
 			// We should have exactly one provider that is NOT closed (the winner).
 			// All other providers should be closed.
-			assert.Equal(t, 1, numOpen, "Exactly one provider should remain open (iteration %d, total=%d, closed=%d)", i, numProviders, numClosed)
-			assert.Equal(t, numProviders-1, numClosed, "All other providers should be closed (iteration %d)", i)
+			assert.Equal(t, 1, numOpen,
+				"Exactly one provider should remain open (iteration %d, total=%d, closed=%d)", i, numProviders, numClosed)
+			assert.Equal(t, numProviders-1, numClosed,
+				"All other providers should be closed (iteration %d)", i)
 		}()
 	}
 }
