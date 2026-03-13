@@ -91,8 +91,8 @@ type FlagRule struct {
 
 // OverridesScope describes overrides for a command path.
 type OverridesScope struct {
-	Path      []string            `json:"path"`
-	Propagate bool                `json:"propagate"`
+	Path      []string `json:"path"`
+	Propagate bool     `json:"propagate"`
 	// Exclude, when true, removes this command (and, when Propagate is true, its
 	// descendants) from the generated specification.
 	Exclude bool                `json:"exclude,omitempty"`
