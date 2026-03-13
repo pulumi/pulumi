@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Add context about projects and stacks when prompting in pulumi new
