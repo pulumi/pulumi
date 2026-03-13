@@ -15,11 +15,11 @@
 // The tsnode import is used for type-checking only. Do not reference it in the emitted code.
 import * as tsnode from "ts-node";
 import * as fs from "fs";
-import * as util from "util";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
+import { defaultErrorMessage } from "../run/error";
 import * as log from "../../log";
 import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
@@ -207,15 +207,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
 
         errorSet.add(err);
 
-        // colorize stack trace if exists
-        const stackMessage = err.stack && util.inspect(err, { colors: true });
-
-        // Default message should be to include the full stack (which includes the message), or
-        // fallback to just the message if we can't get the stack.
-        //
-        // If both the stack and message are empty, then just stringify the err object itself. This
-        // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        const defaultMessage = stackMessage || err.message || "" + err;
+        const defaultMessage = defaultErrorMessage(err);
 
         // First, log the error.
         if (RunError.isInstance(err)) {

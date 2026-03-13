@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/nodejs,bun
+  description: Use defaultErrorMessage in run-plugin and run-policy-pack
