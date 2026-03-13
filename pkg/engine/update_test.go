@@ -182,6 +182,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 	})
 
 	t.Run("MissingError with auto-install retries and succeeds", func(t *testing.T) {
+		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 		// auto-install is enabled by default. The first call to PolicyAnalyzer
 		// returns MissingError; after the install attempt the second call succeeds.
 		origInstall := installPluginFunc
@@ -218,6 +219,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 	})
 
 	t.Run("MissingError with auto-install failure includes install error", func(t *testing.T) {
+		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 		origInstall := installPluginFunc
 		installErr := errors.New("network timeout")
 		installPluginFunc = func(
@@ -251,6 +253,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 	})
 
 	t.Run("MissingError after successful install wraps retry error", func(t *testing.T) {
+		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 		origInstall := installPluginFunc
 		installPluginFunc = func(
 			_ context.Context, _ workspace.PluginDescriptor,
