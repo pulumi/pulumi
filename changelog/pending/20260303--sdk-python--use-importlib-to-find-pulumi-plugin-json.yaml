@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/python
-  description: Use importlib to find pulumi-plugin.json for installed packages
