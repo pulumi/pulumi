@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: docs
+  description: Move remaining content from /developer-docs to /docs
