@@ -411,7 +411,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), pack.Path, analyzerOpts)
+			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(abs), abs, analyzerOpts)
 			if err != nil {
 				errs <- err
 				return
