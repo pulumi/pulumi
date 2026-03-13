@@ -184,15 +184,24 @@ func (g *generator) GenConditionalExpression(w io.Writer, expr *model.Conditiona
 }
 
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
+	// Check if the key variable is actually accessed in any sub-expression.
+	// If not, we can skip the intermediate tuple creation for lists, which
+	// avoids TypeScript type inference issues where [k, v] becomes (number | T)[]
+	// instead of a properly typed tuple.
+	keyUsed := expr.KeyVariable != nil &&
+		(pcl.VariableAccessed(expr.KeyVariable.Name, expr.Value) ||
+			pcl.VariableAccessed(expr.KeyVariable.Name, expr.Key) ||
+			pcl.VariableAccessed(expr.KeyVariable.Name, expr.Condition))
+
 	switch expr.Collection.Type().(type) {
 	case *model.ListType, *model.TupleType:
-		if expr.KeyVariable == nil {
-			g.Fgenf(w, "%.20v", expr.Collection)
+		if keyUsed {
+			g.Fgenf(w, "%.20v.map((v, k) => [k, v] as const)", expr.Collection)
 		} else {
-			g.Fgenf(w, "%.20v.map((v, k) => [k, v])", expr.Collection)
+			g.Fgenf(w, "%.20v", expr.Collection)
 		}
 	case *model.MapType, *model.ObjectType:
-		if expr.KeyVariable == nil {
+		if !keyUsed {
 			g.Fgenf(w, "Object.values(%.v)", expr.Collection)
 		} else {
 			g.Fgenf(w, "Object.entries(%.v)", expr.Collection)
@@ -200,7 +209,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 	}
 
 	fnParams, reduceParams := expr.ValueVariable.Name, expr.ValueVariable.Name
-	if expr.KeyVariable != nil {
+	if keyUsed {
 		reduceParams = fmt.Sprintf("[%s, %s]", expr.KeyVariable.Name, expr.ValueVariable.Name)
 		fnParams = fmt.Sprintf("(%s)", reduceParams)
 	}
@@ -211,7 +220,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 
 	if expr.Key != nil {
 		// TODO(pdg): grouping
-		g.Fgenf(w, ".reduce((__obj, %s) => ({ ...__obj, [%.v]: %.v }))", reduceParams, expr.Key, expr.Value)
+		g.Fgenf(w, ".reduce((__obj, %s) => ({ ...__obj, [%.v]: %.v }), {})", reduceParams, expr.Key, expr.Value)
 	} else {
 		g.Fgenf(w, ".map(%s => (%.v))", fnParams, expr.Value)
 	}
