@@ -107,7 +107,9 @@ computation. Promises which don't capture metadata (and thus qualify as
 [outputs](outputs)) are not all that common -- plain
 [](pulumirpc.ResourceProvider.Invoke)s (that is, provider function calls which
 do not accept [`Input`](inputs)s or return [`Output`](outputs)) are perhaps the
-primary example of their use.
+primary example of their use. Note that although the underlying computation may
+fail, failures cannot be handled at runtime and cause a hard stop when
+attempting to access a `Promise<T>`'s concrete value.
 
 (resources)=
 ## Resources
@@ -385,6 +387,15 @@ outputShape(T) = Output<
 Resource output properties often use `outputShape`d types. While values of these
 types track metadata at a granular level, accessing their values often requires
 a great deal of unwrapping as nesting depth increases.
+
+Rather than projecting these types in their fully-elaborated form, language SDKs
+typically simplify them to a plain `Output<T>` while using an internal
+representation that includes distinguished unknown values. This lets SDKs
+support lifted property and element access into partially-known composite
+values. For example, the Node.js SDK allows accessing an element of an
+`Output<string[]>` via a proxied index operator even when some elements are
+unknown, though it will not allow accessing the entire concrete value via
+`apply`.
 
 (plainshape)=
 #### `plainShape`
