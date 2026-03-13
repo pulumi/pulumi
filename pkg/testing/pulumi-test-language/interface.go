@@ -1802,15 +1802,6 @@ func (rtc roundTripClient) roundTrip(
 		return "", diags, err
 	}
 
-	// Some converters (e.g. YAML eject) need a Pulumi.yaml project file to locate the project root.
-	// If GenerateProject didn't produce one, write a minimal placeholder.
-	projFile := filepath.Join(tmpDir, "Pulumi.yaml")
-	if _, statErr := os.Stat(projFile); os.IsNotExist(statErr) {
-		if err := os.WriteFile(projFile, []byte("name: roundtrip\nruntime: pcl\n"), 0o600); err != nil {
-			return "", diags, err
-		}
-	}
-
 	ejectDir, err := os.MkdirTemp("", "lang-to-pcl-1-*")
 	if err != nil {
 		return "", diags, err
@@ -1827,6 +1818,15 @@ func (rtc roundTripClient) roundTrip(
 	if err != nil || diags.HasErrors() {
 		contract.IgnoreError(os.RemoveAll(tmpDir))
 		return "", diags, err
+	}
+
+	// If the Pulumi.yaml has `main` set return the subpath
+	proj, err := workspace.LoadProject(filepath.Join(ejectDir, "Pulumi.yaml"))
+	if err != nil {
+		return "", diags, fmt.Errorf("load ejected project: %w", err)
+	}
+	if proj.Main != "" {
+		ejectDir = filepath.Join(ejectDir, proj.Main)
 	}
 
 	return ejectDir, diags, nil
