@@ -35,7 +35,9 @@ func newConverterHost(engineAddress string) pulumirpc.ConverterServer {
 	}
 }
 
-func (h *pclConverterHost) ConvertProgram(ctx context.Context, req *pulumirpc.ConvertProgramRequest) (*pulumirpc.ConvertProgramResponse, error) {
+func (h *pclConverterHost) ConvertProgram(
+	ctx context.Context, req *pulumirpc.ConvertProgramRequest,
+) (*pulumirpc.ConvertProgramResponse, error) {
 	err := fsutil.CopyFile(req.TargetDirectory, req.SourceDirectory, nil)
 	if err != nil {
 		return nil, err
@@ -43,6 +45,8 @@ func (h *pclConverterHost) ConvertProgram(ctx context.Context, req *pulumirpc.Co
 	return &pulumirpc.ConvertProgramResponse{}, nil
 }
 
-func (h *pclConverterHost) ConvertState(context.Context, *pulumirpc.ConvertStateRequest) (*pulumirpc.ConvertStateResponse, error) {
+func (h *pclConverterHost) ConvertState(
+	context.Context, *pulumirpc.ConvertStateRequest,
+) (*pulumirpc.ConvertStateResponse, error) {
 	return nil, errors.New("not implemented")
 }
