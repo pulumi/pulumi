@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdkgen/go
-  description: Target go 1.25 for generated go.mod files for SDKs (instead of go 1.20)
