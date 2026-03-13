@@ -288,7 +288,7 @@ func TestRootDirectoryFailsWithArguments(t *testing.T) {
 
 func TestBindingPulumiResourceTypeName(t *testing.T) {
 	t.Parallel()
-	source := `resource "res" "range:index:Root" { }
+	source := `resource "res" "other:index:Thing" { }
 type = pulumiResourceType(res)
 name = pulumiResourceName(res)`
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
