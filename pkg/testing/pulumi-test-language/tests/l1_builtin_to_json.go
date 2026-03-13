@@ -31,7 +31,7 @@ func assertJSONOutput(l *L, props resource.PropertyMap, key string, secret bool,
 	if !assert.True(l, ok, "expected output %q to be present", key) {
 		return
 	}
-	if assert.Equal(l, secret, pv.IsSecret(), "expected output %q to not be secret", key) {
+	if assert.Equal(l, secret, pv.IsSecret(), "expected output %q secret to be %v", key, secret) {
 		return
 	}
 	if pv.IsSecret() {
@@ -40,10 +40,11 @@ func assertJSONOutput(l *L, props resource.PropertyMap, key string, secret bool,
 	if !assert.True(l, pv.IsString(), "expected output %q to be a JSON string, got %v", key, pv) {
 		return
 	}
-	var got any
-	require.NoErrorf(l, json.Unmarshal([]byte(pv.StringValue()), &got),
-		"output %q is not valid JSON: %q", key, pv.StringValue())
-	assert.Equal(l, want, got, "output %q: parsed JSON does not match", key)
+	wantJSON, err := json.Marshal(want)
+	if !assert.NoError(l, err) {
+		return
+	}
+	assert.JSONEq(l, string(wantJSON), pv.StringValue(), "output %q: parsed JSON does not match", key)
 }
 
 func init() {
@@ -62,7 +63,7 @@ func init() {
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 6, "expected 6 outputs")
+					require.Len(l, outputs, 6, "expected 6 outputs")
 
 					// Scalar types
 					assertJSONOutput(l, outputs, "stringOutput", false, "hello")
@@ -80,8 +81,10 @@ func init() {
 
 					// Nested object built from config values including secrets, result must remain secret.
 					assertJSONOutput(l, outputs, "nestedOutput", true, map[string]any{
-						"name":     "hello",
-						"items":    []any{"one", "two", "three"},
+						"anObject": map[string]any{
+							"name":  "hello",
+							"items": []any{"one", "two", "three"},
+						},
 						"a_secret": "secretvalue",
 					})
 				},

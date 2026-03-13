@@ -5,21 +5,6 @@ config "aSecret" "string" {
   secret = true
 }
 
-# Literal data shapes built as locals
-literalBool = true
-literalArray = ["x", "y", "z"]
-literalObject = {
-  "key": "value",
-  "count": 1
-}
-
-# Nested object using config values
-nestedObject = {
-  "name": aString,
-  "items": aList,
-  "a_secret": aSecret,
-}
-
 output "stringOutput" {
   value = toJSON(aString)
 }
@@ -29,15 +14,27 @@ output "numberOutput" {
 }
 
 output "boolOutput" {
-  value = toJSON(literalBool)
+  value = toJSON(true)
 }
 
 output "arrayOutput" {
-  value = toJSON(literalArray)
+  value = toJSON(["x", "y", "z"])
 }
 
 output "objectOutput" {
-  value = toJSON(literalObject)
+  value = toJSON({
+    "key": "value",
+    "count": 1
+  })
+}
+
+# Nested object using config values
+nestedObject = {
+  "anObject": { 
+    "name": aString,
+    "items": aList,
+  },
+  "a_secret": aSecret,
 }
 
 output "nestedOutput" {
