@@ -3,12 +3,13 @@ module github.com/pulumi/pulumi/sdk/pcl/v3
 go 1.25.6
 
 require (
-	github.com/hashicorp/hcl/v2 v2.22.0
+	github.com/blang/semver v3.5.1+incompatible
+	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/pulumi/pulumi/pkg/v3 v3.225.0
 	github.com/pulumi/pulumi/sdk/v3 v3.225.0
 	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.11.1
-	github.com/zclconf/go-cty v1.13.2
+	github.com/zclconf/go-cty v1.16.3
 	google.golang.org/grpc v1.79.1
 	google.golang.org/protobuf v1.36.11
 )
@@ -18,11 +19,9 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
-	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/bubbles v1.0.0 // indirect
