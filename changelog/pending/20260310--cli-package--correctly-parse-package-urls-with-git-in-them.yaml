@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Correctly parse package URLs with .git in them

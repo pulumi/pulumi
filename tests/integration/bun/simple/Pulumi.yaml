@@ -1,0 +1,3 @@
+name: bun
+description: Tests a simple program with bun as a runtime
+runtime: bun

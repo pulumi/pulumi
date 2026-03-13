@@ -23,7 +23,9 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -39,8 +41,7 @@ func newPackageDeleteCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "delete <source>/<publisher>/<name>@<version>",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "delete",
 		Short: "Delete a package version from the registry",
 		Long: `Delete a package version from the Pulumi Registry.
 
@@ -66,7 +67,7 @@ You must have publish permissions for the package to delete it.`,
 			}
 
 			if !cmdutil.Interactive() && !yes {
-				return errors.New("non-interactive mode requires --yes flag")
+				return backenderr.NonInteractiveRequiresYesError{}
 			}
 
 			project, _, err := pkgWorkspace.Instance.ReadProject()
@@ -145,6 +146,13 @@ You must have publish permissions for the package to delete it.`,
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "package", Usage: "<source>/<publisher>/<name>@<version>"},
+		},
+		Required: 1,
+	})
 
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,

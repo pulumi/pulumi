@@ -17,7 +17,8 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Optional, TypeVar, Any, cast
+from typing import Optional, TypeVar, Any, cast, Union
+import types
 import argparse
 import asyncio
 import sys
@@ -41,6 +42,7 @@ from pulumi.runtime.proto import (
     ResourceProviderServicer,
     status_pb2,
     errors_pb2,
+    alias_pb2,
 )
 from pulumi.runtime.resource_hooks import _binding_from_proto
 from pulumi.runtime.stack import wait_for_rpcs
@@ -238,6 +240,38 @@ class ProviderServicer(ResourceProviderServicer):
         )
 
     @staticmethod
+    def _alias_from_proto(alias: alias_pb2.Alias) -> Union[str | pulumi.Alias]:
+        if alias.urn:
+            return alias.urn
+        else:
+            spec = alias.spec
+            name: Union[str, types.EllipsisType] = ...
+            resource_type: Union[str, types.EllipsisType] = ...
+            parent_urn: Union[str, types.EllipsisType] = ...
+            stack: Union[str, types.EllipsisType] = ...
+            project: Union[str, types.EllipsisType] = ...
+
+            if spec.name:
+                name = spec.name
+            if spec.type:
+                resource_type = spec.type
+            if spec.parentUrn:
+                parent_urn = spec.parentUrn
+            if spec.stack:
+                stack = spec.stack
+            if spec.project:
+                project = spec.project
+            no_parent = spec.noParent
+
+            return pulumi.Alias(
+                name=name,  # type: ignore
+                type_=resource_type,  # type: ignore
+                parent=None if no_parent else parent_urn,  # type: ignore
+                stack=stack,  # type: ignore
+                project=project,  # type: ignore
+            )
+
+    @staticmethod
     def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:
         parent = None
         if request.parent:
@@ -253,6 +287,12 @@ class ProviderServicer(ResourceProviderServicer):
                 _create_provider_resource(urn) for urn in request.replace_with
             ]
 
+        replacement_trigger: Optional[Any] = None
+        if request.HasField("replacement_trigger"):
+            from pulumi.runtime.resource import _struct_value_to_python
+
+            replacement_trigger = _struct_value_to_python(request.replacement_trigger)
+
         custom_timeouts = None
         if request.customTimeouts:
             pulumi.resource.CustomTimeouts(
@@ -264,7 +304,7 @@ class ProviderServicer(ResourceProviderServicer):
         resource_hooks = _binding_from_proto(request.resource_hooks)
 
         return pulumi.ResourceOptions(
-            aliases=list(request.aliases),
+            aliases=[ProviderServicer._alias_from_proto(a) for a in request.aliases],
             depends_on=[DependencyResource(urn) for urn in request.dependencies],
             protect=request.protect,
             providers={
@@ -278,6 +318,7 @@ class ProviderServicer(ResourceProviderServicer):
             retain_on_delete=request.retainOnDelete,
             deleted_with=deleted_with,
             replace_with=replace_with,
+            replacement_trigger=replacement_trigger,
             hooks=resource_hooks,
         )
 

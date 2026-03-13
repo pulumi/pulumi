@@ -27,9 +27,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -149,12 +149,17 @@ by passing the --no-auto-submit flag.
 Example:
   pulumi ai web "Create an S3 bucket in Python"
 `,
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return aiwebcmd.Run(ctx, args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "prompt"}},
+		Required:  0,
+	})
+
 	cmd.PersistentFlags().BoolVar(
 		&aiwebcmd.disableAutoSubmit, "no-auto-submit", false,
 		"Opt-out of automatically submitting the prompt to Pulumi AI",

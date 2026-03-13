@@ -3,6 +3,7 @@ package main
 import (
 	other "git.example.org/thirdparty/sdk/go/pkg"
 	"git.example.org/thirdparty/sdk/go/pkg/module"
+	"git.example.org/thirdparty/sdk/go/pkg/module/sub"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -20,7 +21,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = module.NewObject(ctx, "Question2", &module.ObjectArgs{
+		_, err = sub.NewObject(ctx, "Question2", &sub.ObjectArgs{
 			Answer: pulumi.Float64(24),
 		})
 		if err != nil {

@@ -29,27 +29,22 @@ __all__ = [
     'TypArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class HelmReleaseSettingsDict(TypedDict):
-        """
-        BETA FEATURE - Options to configure the Helm Release resource.
-        """
-        required_arg: _builtins.str
-        """
-        to test required args
-        """
-        driver: NotRequired[_builtins.str]
-        """
-        The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
-        """
-        plugins_path: NotRequired[_builtins.str]
-        """
-        The path to the helm plugins directory.
-        """
-elif False:
-    HelmReleaseSettingsDict: TypeAlias = Mapping[str, Any]
+class HelmReleaseSettingsDict(TypedDict):
+    """
+    BETA FEATURE - Options to configure the Helm Release resource.
+    """
+    required_arg: _builtins.str
+    """
+    to test required args
+    """
+    driver: NotRequired[_builtins.str]
+    """
+    The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
+    """
+    plugins_path: NotRequired[_builtins.str]
+    """
+    The path to the helm plugins directory.
+    """
 
 @pulumi.input_type
 class HelmReleaseSettings:
@@ -59,6 +54,7 @@ class HelmReleaseSettings:
                  plugins_path: Optional[_builtins.str] = None):
         """
         BETA FEATURE - Options to configure the Helm Release resource.
+
         :param _builtins.str required_arg: to test required args
         :param _builtins.str driver: The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
         :param _builtins.str plugins_path: The path to the helm plugins directory.
@@ -110,25 +106,22 @@ class HelmReleaseSettings:
         pulumi.set(self, "plugins_path", value)
 
 
-if not MYPY:
-    class HelmReleaseSettingsArgsDict(TypedDict):
-        """
-        BETA FEATURE - Options to configure the Helm Release resource.
-        """
-        required_arg: pulumi.Input[_builtins.str]
-        """
-        to test required args
-        """
-        driver: NotRequired[pulumi.Input[_builtins.str]]
-        """
-        The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
-        """
-        plugins_path: NotRequired[pulumi.Input[_builtins.str]]
-        """
-        The path to the helm plugins directory.
-        """
-elif False:
-    HelmReleaseSettingsArgsDict: TypeAlias = Mapping[str, Any]
+class HelmReleaseSettingsArgsDict(TypedDict):
+    """
+    BETA FEATURE - Options to configure the Helm Release resource.
+    """
+    required_arg: pulumi.Input[_builtins.str]
+    """
+    to test required args
+    """
+    driver: NotRequired[pulumi.Input[_builtins.str]]
+    """
+    The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
+    """
+    plugins_path: NotRequired[pulumi.Input[_builtins.str]]
+    """
+    The path to the helm plugins directory.
+    """
 
 @pulumi.input_type
 class HelmReleaseSettingsArgs:
@@ -138,6 +131,7 @@ class HelmReleaseSettingsArgs:
                  plugins_path: Optional[pulumi.Input[_builtins.str]] = None):
         """
         BETA FEATURE - Options to configure the Helm Release resource.
+
         :param pulumi.Input[_builtins.str] required_arg: to test required args
         :param pulumi.Input[_builtins.str] driver: The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
         :param pulumi.Input[_builtins.str] plugins_path: The path to the helm plugins directory.
@@ -189,22 +183,19 @@ class HelmReleaseSettingsArgs:
         pulumi.set(self, "plugins_path", value)
 
 
-if not MYPY:
-    class KubeClientSettingsArgsDict(TypedDict):
-        """
-        Options for tuning the Kubernetes client used by a Provider.
-        """
-        burst: NotRequired[pulumi.Input[_builtins.int]]
-        """
-        Maximum burst for throttle. Default value is 10.
-        """
-        qps: NotRequired[pulumi.Input[_builtins.float]]
-        """
-        Maximum queries per second (QPS) to the API server from this client. Default value is 5.
-        """
-        rec_test: NotRequired[pulumi.Input['KubeClientSettingsArgsDict']]
-elif False:
-    KubeClientSettingsArgsDict: TypeAlias = Mapping[str, Any]
+class KubeClientSettingsArgsDict(TypedDict):
+    """
+    Options for tuning the Kubernetes client used by a Provider.
+    """
+    burst: NotRequired[pulumi.Input[_builtins.int]]
+    """
+    Maximum burst for throttle. Default value is 10.
+    """
+    qps: NotRequired[pulumi.Input[_builtins.float]]
+    """
+    Maximum queries per second (QPS) to the API server from this client. Default value is 5.
+    """
+    rec_test: NotRequired[pulumi.Input['KubeClientSettingsArgsDict']]
 
 @pulumi.input_type
 class KubeClientSettingsArgs:
@@ -214,6 +205,7 @@ class KubeClientSettingsArgs:
                  rec_test: Optional[pulumi.Input['KubeClientSettingsArgs']] = None):
         """
         Options for tuning the Kubernetes client used by a Provider.
+
         :param pulumi.Input[_builtins.int] burst: Maximum burst for throttle. Default value is 10.
         :param pulumi.Input[_builtins.float] qps: Maximum queries per second (QPS) to the API server from this client. Default value is 5.
         """
@@ -262,31 +254,28 @@ class KubeClientSettingsArgs:
         pulumi.set(self, "rec_test", value)
 
 
-if not MYPY:
-    class LayeredTypeArgsDict(TypedDict):
-        """
-        Make sure that defaults propagate through types
-        """
-        other: pulumi.Input['HelmReleaseSettingsArgsDict']
-        thinker: pulumi.Input[_builtins.str]
-        """
-        To ask and answer
-        """
-        answer: NotRequired[pulumi.Input[_builtins.float]]
-        """
-        The answer to the question
-        """
-        plain_other: NotRequired['HelmReleaseSettingsArgsDict']
-        """
-        Test how plain types interact
-        """
-        question: NotRequired[pulumi.Input[_builtins.str]]
-        """
-        The question already answered
-        """
-        recursive: NotRequired[pulumi.Input['LayeredTypeArgsDict']]
-elif False:
-    LayeredTypeArgsDict: TypeAlias = Mapping[str, Any]
+class LayeredTypeArgsDict(TypedDict):
+    """
+    Make sure that defaults propagate through types
+    """
+    other: pulumi.Input['HelmReleaseSettingsArgsDict']
+    thinker: pulumi.Input[_builtins.str]
+    """
+    To ask and answer
+    """
+    answer: NotRequired[pulumi.Input[_builtins.float]]
+    """
+    The answer to the question
+    """
+    plain_other: NotRequired['HelmReleaseSettingsArgsDict']
+    """
+    Test how plain types interact
+    """
+    question: NotRequired[pulumi.Input[_builtins.str]]
+    """
+    The question already answered
+    """
+    recursive: NotRequired[pulumi.Input['LayeredTypeArgsDict']]
 
 @pulumi.input_type
 class LayeredTypeArgs:
@@ -299,6 +288,7 @@ class LayeredTypeArgs:
                  recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None):
         """
         Make sure that defaults propagate through types
+
         :param pulumi.Input[_builtins.str] thinker: To ask and answer
         :param pulumi.Input[_builtins.float] answer: The answer to the question
         :param 'HelmReleaseSettingsArgs' plain_other: Test how plain types interact
@@ -388,16 +378,13 @@ class LayeredTypeArgs:
         pulumi.set(self, "recursive", value)
 
 
-if not MYPY:
-    class TypArgsDict(TypedDict):
-        """
-        A test for namespaces (mod main)
-        """
-        mod1: NotRequired[pulumi.Input['_mod1.TypArgsDict']]
-        mod2: NotRequired[pulumi.Input['_mod2.TypArgsDict']]
-        val: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    TypArgsDict: TypeAlias = Mapping[str, Any]
+class TypArgsDict(TypedDict):
+    """
+    A test for namespaces (mod main)
+    """
+    mod1: NotRequired[pulumi.Input['_mod1.TypArgsDict']]
+    mod2: NotRequired[pulumi.Input['_mod2.TypArgsDict']]
+    val: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class TypArgs:

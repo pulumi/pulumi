@@ -155,8 +155,8 @@ describe("output", () => {
             },
         ];
         for (const { name, block } of asyncCases) {
-            it(name, () => {
-                assert.rejects(block, /Cannot create an Output from a circular structure/);
+            it(name, async () => {
+                await assert.rejects(block, /Cannot create an Output from a circular structure/);
             });
         }
     });

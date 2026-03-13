@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -35,8 +36,7 @@ func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var yes bool
 	var stack string
 	cmd := &cobra.Command{
-		Use:   "cancel [<stack-name>]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "cancel",
 		Short: "Cancel a stack's currently running update, if any",
 		Long: "Cancel a stack's currently running update, if any.\n" +
 			"\n" +
@@ -94,7 +94,10 @@ func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 			return nil
 		},
 	}
-
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "stack-name"}},
+		Required:  0,
+	})
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with cancellation anyway")

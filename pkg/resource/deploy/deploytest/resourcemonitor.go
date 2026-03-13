@@ -61,12 +61,12 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 	// Check feature support.
 	supportsSecrets, err := supportsFeature(ctx, resmon, "secrets")
 	if err != nil {
-		contract.IgnoreError(conn.Close())
+		contract.IgnoreClose(conn)
 		return nil, fmt.Errorf("could not determine whether secrets are supported: %w", err)
 	}
 	supportsResourceReferences, err := supportsFeature(ctx, resmon, "resourceReferences")
 	if err != nil {
-		contract.IgnoreError(conn.Close())
+		contract.IgnoreClose(conn)
 		return nil, fmt.Errorf("could not determine whether resource references are supported: %w", err)
 	}
 
@@ -189,7 +189,7 @@ type ErrorHookFunc func(
 	id resource.ID,
 	name string,
 	typ tokens.Type,
-	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	newInputs, oldInputs, oldOutputs resource.PropertyMap,
 	failedOperation string,
 	errors []string,
 ) (retry bool, err error)
@@ -332,7 +332,7 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
-		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
+		var newInputs, oldInputs, oldOutputs resource.PropertyMap
 		var failedOperation string
 		mOpts := plugin.MarshalOptions{
 			KeepUnknowns:     true,
@@ -352,12 +352,6 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
 			}
 		}
-		if req.NewOutputs != nil {
-			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, mOpts)
-			if err != nil {
-				return nil, fmt.Errorf("unmarshaling new outputs: %w", err)
-			}
-		}
 		if req.OldOutputs != nil {
 			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
 			if err != nil {
@@ -374,7 +368,7 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 		}
 
 		retry, err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
-			newInputs, oldInputs, newOutputs, oldOutputs, failedOperation, req.Errors)
+			newInputs, oldInputs, oldOutputs, failedOperation, req.Errors)
 		if err != nil {
 			return &pulumirpc.ErrorHookResponse{
 				Error: err.Error(),
@@ -436,6 +430,7 @@ type ResourceOptions struct {
 
 	SupportsResultReporting bool
 	PackageRef              string
+	EnvVarMappings          map[string]string
 }
 
 func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
@@ -481,9 +476,10 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	}
 
 	trigger, err := plugin.MarshalPropertyValue("replacementTrigger", opts.ReplacementTrigger, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   rm.supportsSecrets,
-		KeepResources: rm.supportsResourceReferences,
+		KeepUnknowns:     true,
+		KeepSecrets:      rm.supportsSecrets,
+		KeepResources:    rm.supportsResourceReferences,
+		KeepOutputValues: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling replacement trigger: %w", err)
@@ -591,6 +587,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SupportsResultReporting:    opts.SupportsResultReporting,
 		PackageRef:                 opts.PackageRef,
 		Hooks:                      resourceHooks,
+		EnvVarMappings:             opts.EnvVarMappings,
 	}
 
 	ctx := context.Background()
@@ -706,6 +703,7 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
 		KeepUnknowns:  true,
 		KeepResources: true,
+		KeepSecrets:   true,
 	})
 	if err != nil {
 		return nil, nil, err

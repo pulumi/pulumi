@@ -19,12 +19,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -38,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -45,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/websocket"
 )
 
 // TestPrintfNodeJS tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
@@ -144,7 +148,7 @@ func TestProjectMainNodejs(t *testing.T) {
 			return
 		}
 
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		e.RunCommand("pulumi", "preview")
@@ -159,7 +163,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 
 		// yarn link first
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		// then virtually change directory to the location of the nested Pulumi.yaml
 		e.CWD = filepath.Join(e.RootPath, "foo", "bar")
 
@@ -197,7 +201,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 
 	e.ImportDirectory("single_resource")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
 	assert.Contains(t, stderr, "--force")
@@ -326,7 +330,7 @@ func TestStackOutputsJSON(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
@@ -336,6 +340,36 @@ func TestStackOutputsJSON(t *testing.T) {
   "xyz": "ABC"
 }
 `, stdout)
+}
+
+func TestStrictFlag(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	integration.CreateBasicPulumiRepo(e)
+	e.ImportDirectory("iterative-constraints")
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.18.3")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "stack", "init", "strict-flag")
+
+	_, stderr := e.RunCommandExpectError("pulumi", "up", "--skip-preview", "--strict")
+	assert.Equal(t,
+		"error: --strict cannot be used with --skip-preview; strict requires a preview",
+		strings.Trim(stderr, "\r\n"))
+
+	logs, _ := e.RunCommandExpectError("pulumi", "up", "--strict", "--yes")
+	assert.Contains(t, logs,
+		"error: create is not allowed by the plan: no steps were expected for this resource")
+
+	logs, _ = e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+	assert.Contains(t, logs, " created\n") // Some number of resources will be created.
+
+	// Clean up.
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "strict-flag", "--yes")
 }
 
 // TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
@@ -1879,7 +1913,7 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "negative-timings")
@@ -1905,7 +1939,7 @@ func TestAboutNodeJS(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
@@ -1919,6 +1953,28 @@ func TestAboutNodeJS(t *testing.T) {
 	assert.Regexp(t, regexp.MustCompile(`language\W+nodejs\W+3\.`), stdout)
 	assert.Contains(t, stdout, "packagemanager='yarn'")
 	assert.Regexp(t, regexp.MustCompile(`packagemanagerVersion='\d+\.\d+.\d+'`), stdout)
+}
+
+func TestAboutBun(t *testing.T) {
+	t.Parallel()
+
+	dir := filepath.Join("about", "bun")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+
+	e.RunCommandWithRetry("bun", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("bun", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "about-bun")
+	e.RunCommand("pulumi", "stack", "select", "about-bun")
+	stdout, stderr := e.RunCommand("pulumi", "about")
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
+	// Assert we parsed the language plugin and bun version
+	assert.Regexp(t, regexp.MustCompile(`language\W+bun\W+\d+\.\d+`), stdout,
+		"Did not contain expected output. stderr: \n%q", stderr)
+	assert.Contains(t, stdout, "packagemanager='bun'")
+	assert.Regexp(t, regexp.MustCompile(`packagemanagerVersion='\d+\.\d+\.\d+'`), stdout)
 }
 
 func TestConstructOutputValuesNode(t *testing.T) {
@@ -1936,7 +1992,7 @@ func TestTSConfigOption(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("tsconfig")
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
@@ -2123,7 +2179,7 @@ func TestRegression12301Node(t *testing.T) {
 			jsonPath := filepath.Join(project.Root, "regression-12301.json")
 			dirName := filepath.Base(project.Root)
 			newPath := filepath.Join(project.Root, "..", dirName+".json")
-			return os.Rename(jsonPath, newPath)
+			return os.Rename(jsonPath, newPath) //nolint:forbidigo // os.Rename is OK for tests
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.Len(t, stack.Outputs, 1)
@@ -2616,7 +2672,7 @@ func TestAutonaming(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		orderedConfig := []integration.ConfigValue{}
+		orderedConfig := slice.Prealloc[integration.ConfigValue](len(tc.config))
 		for k, v := range tc.config {
 			orderedConfig = append(orderedConfig, integration.ConfigValue{Key: k, Value: v, Path: true})
 		}
@@ -2735,7 +2791,7 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/component-test-providers/test-provider@d47cf0910e0450400775594609ee82566d1fb355")
 
-	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
+	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
@@ -2771,7 +2827,7 @@ func TestPackagesInstall(t *testing.T) {
 	// This command should install the referenced package from the remote source.
 	e.RunCommand("pulumi", "install")
 
-	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
+	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
@@ -2849,7 +2905,8 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 	// The install command should detect and report this cycle.
 	stdout, stderr := e.RunCommandExpectError("pulumi", "install")
 	require.Containsf(t, stderr,
-		"Cycle found: typescript-a -> typescript-b -> typescript-a\n",
+		"installing `packages` from Pulumi.yaml: cycle found: "+filepath.Join("..", "ts-provider-a")+" -> "+
+			filepath.Join("..", "ts-provider-b")+" -> "+filepath.Join("..", "ts-provider-a")+"\n",
 		"Stdout is %q", stdout)
 }
 
@@ -2877,7 +2934,8 @@ func TestInstallMultiComponentGitRepo(t *testing.T) {
 	// TODO[https://github.com/pulumi/pulumi/issues/20963]: Remove the need for this
 	// install.
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"}
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v5.3.0")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "4.11.1")
 
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 
@@ -2925,7 +2983,7 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 		"tls-self-signed-cert: github.com/pulumi/component-test-providers/test-provider@"+
 			"52a8a71555d964542b308da197755c64dbe63352")
 
-	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
+	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
@@ -2951,8 +3009,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	// Run the command from a different, sibling, directory. This ensures that
 	// get-package does not rely on the current working directory.
 	e.CWD = t.TempDir()
-	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
-	require.Empty(t, stderr)
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
@@ -2984,9 +3041,12 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"aComplexTypeInput": {
 				"$ref": "#/types/nodejs-component-provider:index:Complex"
+			},
+			"enumInput": {
+				"$ref": "#/types/nodejs-component-provider:index:MyEnum"
 			}
 		},
-		"requiredInputs": ["aBooleanInput", "aComplexTypeInput", "aNumber"],
+		"requiredInputs": ["aBooleanInput", "aComplexTypeInput", "aNumber", "enumInput"],
 		"properties": {
 			"aNumberOutput": {
 				"type": "number"
@@ -3005,9 +3065,14 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"aString": {
 				"type": "string"
+			},
+			"enumOutput": {
+				"$ref": "#/types/nodejs-component-provider:index:MyConstEnum"
 			}
 		},
-		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput", "aResourceOutput", "aString"]
+		"required": [
+			"aBooleanOutput", "aComplexTypeOutput", "aNumberOutput", "aResourceOutput", "aString", "enumOutput"
+		]
 	}
 	`
 	expected := make(map[string]any)
@@ -3040,12 +3105,44 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"type": "object",
 			"required": ["aNumber"]
+		},
+		"nodejs-component-provider:index:MyEnum": {
+			"type": "string",
+			"enum": [
+				{ "name": "A", "value": "a" },
+				{ "name": "B", "value": "b" }
+			]
+		},
+		"nodejs-component-provider:index:MyConstEnum": {
+			"type": "string",
+			"enum": [
+				{ "name": "C", "value": "c" },
+				{ "name": "D", "value": "d" }
+			]
 		}
 	}`
 	expectedTypes := make(map[string]any)
 	types := schema["types"].(map[string]any)
 	require.NoError(t, json.Unmarshal([]byte(expectedTypesJSON), &expectedTypes))
 	require.Equal(t, expectedTypes, types)
+}
+
+// Tests that NodeJS correctly generates imports for components sourced from other GitHub orgs.
+func TestNodejsComponentInjectNamespace(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("github_component", "nodejs"))
+	installNodejsProviderDependencies(t, e.RootPath)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "select", "github_component", "--create")
+	_, stderr := e.RunCommand("pulumi", "install")
+	assert.Contains(t, stderr, `import * as testComponent from "@moolumi/test-component";`)
+	e.RunCommand("pulumi", "up", "--yes")
+	stdout, _ := e.RunCommand("pulumi", "stack", "output", "output")
+	assert.Equal(t, "the-output", strings.TrimSpace(stdout))
 }
 
 // Tests that we can run a Node.js component provider using component_provider_host
@@ -3097,6 +3194,7 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					aComplexTypeOutput := stack.Outputs["aComplexTypeOutput"].(map[string]any)
 					require.Contains(t, stack.Outputs["aResourceOutputUrn"], "RandomPet::comp-pet")
 					require.Equal(t, "hello", stack.Outputs["aString"].(string))
+					require.Equal(t, "d", stack.Outputs["enumOutput"].(string))
 					if runtime == "python" {
 						// The output is stored in the stack as a plain object,
 						// but that means for Python the keys are snake_case.
@@ -3350,4 +3448,99 @@ func TestTsExecute(t *testing.T) {
 		SkipPreview: true,
 		SkipUpdate:  true,
 	})
+}
+
+// getNodeInspectorWSURL polls the Node.js inspector HTTP endpoint until a webSocketDebuggerUrl is available, or fails
+// after ~3 seconds.
+func getNodeInspectorWSURL(t *testing.T, port int) string {
+	t.Helper()
+	url := fmt.Sprintf("http://127.0.0.1:%d/json", port)
+	for i := 0; i < 30; i++ {
+		resp, err := http.Get(url) //nolint:gosec
+		if err == nil {
+			var targets []struct {
+				WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&targets) == nil && len(targets) > 0 &&
+				targets[0].WebSocketDebuggerURL != "" {
+				resp.Body.Close()
+				return targets[0].WebSocketDebuggerURL
+			}
+			resp.Body.Close()
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	require.Fail(t, "timed out waiting for Node.js inspector WebSocket URL")
+	return ""
+}
+
+// Test that we can run a program, attach a debugger to it, and send debugging commands using Chrome DevTools Protocol
+// and finally that the program terminates successfully after the debugger is detached.
+func TestDebuggerAttachNodejs(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("nodejs", "debugger"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "install")
+
+	e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
+	e.RunCommand("pulumi", "stack", "init", "debugger-test")
+	e.RunCommand("pulumi", "stack", "select", "debugger-test")
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		e.RunCommand("pulumi", "preview", "--attach-debugger",
+			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
+	}()
+
+	// Wait for the debugging event
+	wait := 20 * time.Millisecond
+	var debugEvent *apitype.StartDebuggingEvent
+outer:
+	for i := 0; i < 50; i++ {
+		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
+		require.NoError(t, err)
+		for _, event := range events {
+			if event.StartDebuggingEvent != nil {
+				debugEvent = event.StartDebuggingEvent
+				break outer
+			}
+		}
+		time.Sleep(wait)
+		if wait < 500*time.Millisecond {
+			wait *= 2
+		}
+	}
+	require.NotNil(t, debugEvent)
+
+	// Port defaults to 9229, but if it's already in use the config will specify a different port.
+	port := 9229
+	if p, ok := debugEvent.Config["port"]; ok {
+		port = int(p.(float64))
+	}
+
+	wsURL := getNodeInspectorWSURL(t, port)
+
+	// Use the Chrome DevTools Protocol to resume the paused program.
+	ws, err := websocket.Dial(wsURL, "", "http://localhost")
+	require.NoError(t, err)
+	require.NoError(t, websocket.Message.Send(ws, `{"id":1,"method":"Runtime.runIfWaitingForDebugger"}`))
+	require.NoError(t, ws.Close())
+
+	// Verify the program completed successfully.
+	waitDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(waitDone)
+	}()
+	select {
+	case <-waitDone:
+	case <-time.After(60 * time.Second):
+		t.Fatal("timed out waiting for program to complete")
+	}
 }

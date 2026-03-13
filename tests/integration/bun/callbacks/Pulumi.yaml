@@ -1,0 +1,3 @@
+name: bun-callbacks
+description: Tests resource hooks (callbacks) in the bun runtime.
+runtime: bun

@@ -42,9 +42,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -98,11 +100,12 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	var monitorConn *grpc.ClientConn
 	var monitor pulumirpc.ResourceMonitorClient
 	if addr := info.MonitorAddr; addr != "" {
-		conn, err := grpc.NewClient(
-			info.MonitorAddr,
+		dialOpts := append(
+			rpcutil.TracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
+		conn, err := grpc.NewClient(info.MonitorAddr, dialOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("connecting to resource monitor over RPC: %w", err)
 		}
@@ -116,11 +119,12 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		engineConn = info.engineConn
 		engine = pulumirpc.NewEngineClient(engineConn)
 	} else if addr := info.EngineAddr; addr != "" {
-		conn, err := grpc.NewClient(
-			info.EngineAddr,
+		dialOpts := append(
+			rpcutil.TracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
+		conn, err := grpc.NewClient(info.EngineAddr, dialOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("connecting to engine over RPC: %w", err)
 		}
@@ -450,6 +454,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				opts.Hooks.AfterUpdate = makeStubHooks(rpcReq.Options.Hooks.GetAfterUpdate())
 				opts.Hooks.BeforeDelete = makeStubHooks(rpcReq.Options.Hooks.GetBeforeDelete())
 				opts.Hooks.AfterDelete = makeStubHooks(rpcReq.Options.Hooks.GetAfterDelete())
+				opts.Hooks.OnError = makeStubErrorHooks(rpcReq.Options.Hooks.GetOnError())
 			}
 		}
 
@@ -1579,6 +1584,90 @@ func (ctx *Context) registerResourceHook(f ResourceHookFunction) (*pulumirpc.Cal
 	return cb, nil
 }
 
+// registerErrorHook starts up a callback server if not already running and registers the given hook function.
+func (ctx *Context) registerErrorHook(f ErrorHookFunction) (*pulumirpc.Callback, error) {
+	if !ctx.state.supportsErrorHooks {
+		return nil, errors.New("the Pulumi CLI does not support error hooks. Please update the Pulumi CLI")
+	}
+
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, request []byte) (proto.Message, error) {
+		var req pulumirpc.ErrorHookRequest
+		err := proto.Unmarshal(request, &req)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		var newInputs, oldInputs, oldOutputs resource.PropertyMap
+		mOpts := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if req.NewInputs != nil {
+			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling new inputs: %w", err)
+			}
+		}
+		if req.OldInputs != nil {
+			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
+			}
+		}
+		if req.OldOutputs != nil {
+			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
+			}
+		}
+		args := &ErrorHookArgs{
+			URN:             URN(req.Urn),
+			ID:              ID(req.Id),
+			Name:            req.Name,
+			Type:            tokens.Type(req.Type),
+			NewInputs:       newInputs,
+			OldInputs:       oldInputs,
+			OldOutputs:      oldOutputs,
+			FailedOperation: req.FailedOperation,
+			Errors:          req.Errors,
+		}
+		retry, err := f(args)
+		if err != nil {
+			return &pulumirpc.ErrorHookResponse{
+				Error: err.Error(),
+			}, nil
+		}
+		return &pulumirpc.ErrorHookResponse{
+			Retry: retry,
+		}, nil
+	}
+
+	err := func() error {
+		ctx.state.callbacksLock.Lock()
+		defer ctx.state.callbacksLock.Unlock()
+		if ctx.state.callbacks == nil {
+			c, err := newCallbackServer()
+			if err != nil {
+				return fmt.Errorf("creating callback server: %w", err)
+			}
+			ctx.state.callbacks = c
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	cb, err := ctx.state.callbacks.RegisterCallback(callback)
+	if err != nil {
+		return nil, fmt.Errorf("registering callback: %w", err)
+	}
+
+	return cb, nil
+}
+
 func (ctx *Context) registerResource(
 	t, name string, props Input, resource Resource, remote bool, packageRef string, opts ...ResourceOption,
 ) error {
@@ -1796,6 +1885,7 @@ func (ctx *Context) registerResource(
 				SupportsResultReporting:    true,
 				PackageRef:                 packageRef,
 				Hooks:                      hooks,
+				EnvVarMappings:             inputs.envVarMappings,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -2265,6 +2355,7 @@ type resourceInputs struct {
 	hideDiffs               []string
 	replaceWith             []string
 	replacementTrigger      *structpb.Value
+	envVarMappings          map[string]string
 }
 
 func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) error {
@@ -2589,6 +2680,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		deletedWith:             string(deletedWithURN),
 		replaceWith:             replaceWithURNs,
 		replacementTrigger:      replacementTriggerValue,
+		envVarMappings:          opts.EnvVarMappings,
 	}, nil
 }
 
@@ -2879,6 +2971,35 @@ func (ctx *Context) RegisterResourceHook(
 	return hook, nil
 }
 
+func (ctx *Context) RegisterErrorHook(
+	name string, callback ErrorHookFunction,
+) (*ErrorHook, error) {
+	registered := &promise.CompletionSource[struct{}]{}
+	go func() {
+		cb, err := ctx.registerErrorHook(callback)
+		if err != nil {
+			registered.Reject(err)
+			return
+		}
+		req := &pulumirpc.RegisterErrorHookRequest{
+			Name:     name,
+			Callback: cb,
+		}
+		_, err = ctx.state.monitor.RegisterErrorHook(ctx.ctx, req)
+		if err != nil {
+			registered.Reject(err)
+		} else {
+			registered.Fulfill(struct{}{})
+		}
+	}()
+	hook := &ErrorHook{
+		Name:       name,
+		Callback:   callback,
+		registered: registered.Promise(),
+	}
+	return hook, nil
+}
+
 func (ctx *Context) newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
 	return internal.NewOutputState(&ctx.state.join, elementType, resourcesToInternal(deps)...)
 }
@@ -2949,4 +3070,28 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	frames := runtime.CallersFrames(pcs[:])
 	frame, _ := frames.Next()
 	return ctx.getSourcePositionForFrame(frame)
+}
+
+// RequirePulumiVersion validates that the engine we are connected to is compatible with the passed in version range. If
+// the version is not compatible with the specified range, an error is returned.
+//
+// The supported syntax for the range is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example
+// ">=3.0.0", or "!3.1.2". Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning
+// greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
+// meaning less-than 3.4.0 or greater-than 3.8.0.
+func (ctx *Context) RequirePulumiVersion(rg string) error {
+	_, err := ctx.state.engine.RequirePulumiVersion(ctx.Context(), &pulumirpc.RequirePulumiVersionRequest{
+		PulumiVersionRange: rg,
+	})
+	if err != nil {
+		if rpcError, ok := rpcerror.FromError(err); ok {
+			if rpcError.Code() == codes.Unimplemented {
+				return errors.New("The installed version of the CLI does not support the `RequirePulumiVersion` RPC. " +
+					"Please upgrade the Pulumi CLI.")
+			}
+			return rpcError
+		}
+		return err
+	}
+	return nil
 }

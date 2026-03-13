@@ -44,7 +44,7 @@ func NewServer(ctx *Context, registrations ...func(server *grpc.Server)) (*GrpcS
 			}
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
+		Options: rpcutil.TracingServerInterceptorOptions(ctx.tracingSpan),
 	})
 	if err != nil {
 		return nil, err

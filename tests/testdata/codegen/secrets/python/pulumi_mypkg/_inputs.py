@@ -19,13 +19,8 @@ __all__ = [
     'ConfigArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class ConfigArgsDict(TypedDict):
-        foo: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    ConfigArgsDict: TypeAlias = Mapping[str, Any]
+class ConfigArgsDict(TypedDict):
+    foo: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class ConfigArgs:

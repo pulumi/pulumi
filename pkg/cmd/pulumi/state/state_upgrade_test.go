@@ -56,7 +56,7 @@ func TestStateUpgradeCommand_parseArgsErrors(t *testing.T) {
 		{
 			desc:    "unexpected argument",
 			give:    []string{"arg"},
-			wantErr: `unknown command "arg" for "upgrade"`,
+			wantErr: `accepts 0 arg(s), received 1`,
 		},
 	}
 

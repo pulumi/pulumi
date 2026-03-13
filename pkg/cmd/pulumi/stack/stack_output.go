@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -45,8 +46,7 @@ import (
 func newStackOutputCmd() *cobra.Command {
 	var socmd stackOutputCmd
 	cmd := &cobra.Command{
-		Use:   "output [property-name]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "output",
 		Short: "Show a stack's output properties",
 		Long: "Show a stack's output properties.\n" +
 			"\n" +
@@ -56,6 +56,13 @@ func newStackOutputCmd() *cobra.Command {
 			return socmd.Run(cmd.Context(), args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "property-name"},
+		},
+		Required: 0,
+	})
 
 	cmd.PersistentFlags().BoolVarP(
 		&socmd.jsonOut, "json", "j", false, "Emit output as JSON")

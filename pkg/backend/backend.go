@@ -148,6 +148,9 @@ type Backend interface {
 	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
 		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 
+	// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
+	GetStackPolicyPacks(ctx context.Context, stackRef StackReference) ([]engine.RequiredPolicy, error)
+
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
 
@@ -224,7 +227,7 @@ type Backend interface {
 	GetLogs(ctx context.Context, secretsProvider secrets.Provider, stack Stack, cfg StackConfiguration,
 		query operations.LogQuery) ([]operations.LogEntry, error)
 	// Get the configuration from the most recent deployment of the stack.
-	GetLatestConfiguration(ctx context.Context, stack Stack) (config.Map, error)
+	GetLatestConfiguration(ctx context.Context, stack Stack) (LatestConfiguration, error)
 
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
@@ -262,7 +265,7 @@ type Backend interface {
 	//
 	// When a stack has been instantiated, you should favor using the Stack.DefaultSecretManager method to get a default
 	// secrets manager for that stack.
-	DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManager(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error)
 
 	// SupportsTemplates checks if the backend supports listing and downloading templates.
 	SupportsTemplates() bool
@@ -344,6 +347,12 @@ type StackConfiguration struct {
 	Environment esc.Value
 	Config      config.Map
 	Decrypter   config.Decrypter
+}
+
+// LatestConfiguration holds the configuration retrieved from the most recent deployment.
+type LatestConfiguration struct {
+	Config       config.Map
+	Environments []string
 }
 
 // UpdateOptions is the full set of update options, including backend and engine options.
@@ -445,9 +454,9 @@ func (c *backendClient) GetStackResourceOutputs(
 	return property.NewMap(pm), nil
 }
 
-// ErrTeamsNotSupported is returned by backends
-// which do not support the teams feature.
 var (
+	// ErrTeamsNotSupported is returned by backends
+	// which do not support the teams feature.
 	ErrTeamsNotSupported  = errors.New("teams are not supported")
 	ErrConfigNotSupported = errors.New("remote config is not supported")
 )

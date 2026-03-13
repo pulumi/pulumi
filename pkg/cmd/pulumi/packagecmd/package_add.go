@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -40,8 +40,7 @@ import (
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <provider|schema|path> [provider-parameter...]",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "add",
 		Short: "Add a package to your Pulumi project or plugin",
 		Long: `Add a package to your Pulumi project or plugin.
 
@@ -97,13 +96,12 @@ from the parameters, as in:
 			}
 
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, pluginOrProject.installRoot, nil, false, nil)
+			pctx, err := plugin.NewContext(cmd.Context(),
+				sink, sink, nil, nil, pluginOrProject.installRoot, nil, false, nil, schema.NewLoaderServerFromHost)
 			if err != nil {
 				return err
 			}
-			defer func() {
-				contract.IgnoreError(pctx.Close())
-			}()
+			defer contract.IgnoreClose(pctx)
 
 			pluginSource := args[0]
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
@@ -117,6 +115,7 @@ from the parameters, as in:
 				parameters,
 				pluginOrProject.reg,
 				env.Global(),
+				0, /* unbounded concurrency */
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
@@ -172,6 +171,19 @@ from the parameters, as in:
 		},
 	}
 
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "provider", Usage: "<provider|schema|path>"},
+			{Name: "provider-parameter"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "add <provider|schema|path> [flags] [--] [provider-parameter]..."
+
 	return cmd
 }
 
@@ -213,8 +225,8 @@ func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrPro
 			projectFilePath: filePath,
 			proj:            baseProject,
 			// Cloud registry is linked to a backend, but we don't have one
-			// available in a plugin. Use the unauthenticated registry.
-			reg: unauthenticatedregistry.New(cmdutil.Diag(), env.Global()),
+			// available in a plugin. Use the default backend.
+			reg: cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
 		}, nil
 	default:
 		panic(fmt.Sprintf("workspace.LoadBaseProjectFrom promises that it will return "+

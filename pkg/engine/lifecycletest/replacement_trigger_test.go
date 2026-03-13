@@ -409,3 +409,88 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
+
+// TestReplacementTriggerOutputWrappedPlainValue tests that when a snapshot contains a plain value
+// and the new program sends an output-wrapped value with the same inner element, it does NOT
+// trigger a replacement. This covers the case where language runtimes (e.g. PCL) send
+// output-typed values for resource options that reference other resource outputs.
+func TestReplacementTriggerOutputWrappedPlainValue(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("id123"),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	// First run: plain "first" value (no output wrapper).
+	value := resource.NewPropertyValue("first")
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+			ReplacementTrigger: value,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
+
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+	// The snapshot stores the plain string.
+	assert.Equal(t, resource.NewPropertyValue("first"), snap.Resources[1].ReplacementTrigger)
+
+	// Second run: same inner value wrapped in a known output. This should NOT trigger a replacement because the
+	// underlying value is identical.
+	value = resource.NewProperty(resource.Output{
+		Element:      resource.NewPropertyValue("first"),
+		Known:        true,
+		Dependencies: []resource.URN{},
+	})
+
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
+			for _, e := range events {
+				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
+					assert.Equal(t, deploy.OpSame, e.Payload().(ResourcePreEventPayload).Metadata.Op)
+				}
+			}
+			return nil
+		}, "1")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+
+	// Third run: a different value wrapped in a known output -- should trigger a replace.
+	value = resource.NewProperty(resource.Output{
+		Element:      resource.NewPropertyValue("second"),
+		Known:        true,
+		Dependencies: []resource.URN{},
+	})
+
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
+			operations := []display.StepOp{}
+			for _, e := range events {
+				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
+					operations = append(operations, e.Payload().(ResourcePreEventPayload).Metadata.Op)
+				}
+			}
+			assert.Contains(t, operations, deploy.OpReplace)
+			return nil
+		}, "2")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+	_ = snap
+}

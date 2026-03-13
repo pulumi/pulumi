@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +30,7 @@ func createSnapshot() Snapshot {
 		resource.NewURN("stack", "test", "typ", "aws:resource", "aname"),
 		resource.NewURN("stack", "test", "typ", "azure:resource", "bar"),
 	}
-	resources := []*resource.State{}
+	resources := slice.Prealloc[*resource.State](len(resourceUrns))
 	for _, u := range resourceUrns {
 		resources = append(resources, &resource.State{URN: u, Type: "pulumi:pulumi:Stack"})
 	}

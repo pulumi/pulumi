@@ -1,0 +1,7 @@
+name: l3-range-resource-output-traversal
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

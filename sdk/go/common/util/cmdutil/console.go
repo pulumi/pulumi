@@ -257,11 +257,12 @@ func (table Table) Render(opts *TableRenderOptions) string {
 	// any item in that column.
 	preferredColumnWidths := make([]int, columnCount)
 
-	allRows := []TableRow{{
+	normalizedRows := table.normalizedRows()
+	allRows := slice.Prealloc[TableRow](1 + len(normalizedRows))
+	allRows = append(allRows, TableRow{
 		Columns: table.Headers,
-	}}
-
-	allRows = append(allRows, table.normalizedRows()...)
+	})
+	allRows = append(allRows, normalizedRows...)
 
 	for rowIndex, row := range allRows {
 		columns := row.Columns

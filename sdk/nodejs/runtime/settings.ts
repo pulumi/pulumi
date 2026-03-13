@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,8 @@ import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 
+import * as opentelemetry from "@opentelemetry/api";
+
 /*
   Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
  */
@@ -38,11 +40,50 @@ const maxRPCMessageSize: number = 1024 * 1024 * 400;
 */
 const serverMaxUnrequestedTimeInServer = 30 * 60; // half an hour in seconds
 /**
+ * Create a gRPC interceptor that injects OpenTelemetry trace context into outgoing calls.
+ * This is needed because the automatic instrumentation doesn't work with generated gRPC clients
+ * that capture prototype method references at module load time.
+ */
+function createTraceContextInterceptor(): grpc.Interceptor {
+    return (opts, nextCall) => {
+        return new grpc.InterceptingCall(nextCall(opts), {
+            start: (metadata, listener, next) => {
+                const carrier = {
+                    get(key: string): string | undefined {
+                        return metadata.get(key)?.[0]?.toString();
+                    },
+                    set(key: string, value: string): void {
+                        metadata.set(key, value);
+                    },
+                    keys(): string[] {
+                        return metadata.getMap() ? Object.keys(metadata.getMap()) : [];
+                    },
+                };
+
+                opentelemetry.propagation.inject(opentelemetry.context.active(), carrier);
+
+                next(metadata, listener);
+            },
+        });
+    };
+}
+
+/**
+ * Base gRPC channel options used for both clients and servers.
  * @internal
  */
-export const grpcChannelOptions = {
+export const grpcChannelOptions: grpc.ChannelOptions = {
     "grpc.max_receive_message_length": maxRPCMessageSize,
     "grpc.server_max_unrequested_time_in_server": serverMaxUnrequestedTimeInServer,
+};
+
+/**
+ * gRPC client options with trace context propagation interceptor.
+ * @internal
+ */
+export const grpcClientOptions: grpc.ClientOptions = {
+    ...grpcChannelOptions,
+    interceptors: [createTraceContextInterceptor()],
 };
 
 /**
@@ -267,6 +308,7 @@ export async function awaitFeatureSupport(): Promise<void> {
             invokeTransforms,
             parameterization,
             resourceHooks,
+            errorHooks,
         ] = await Promise.all(
             [
                 "secrets",
@@ -279,6 +321,7 @@ export async function awaitFeatureSupport(): Promise<void> {
                 "invokeTransforms",
                 "parameterization",
                 "resourceHooks",
+                "errorHooks",
             ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
         );
 
@@ -292,6 +335,7 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsInvokeTransforms = invokeTransforms;
         store.supportsParameterization = parameterization;
         store.supportsResourceHooks = resourceHooks;
+        store.supportsErrorHooks = errorHooks;
     }
 }
 
@@ -388,6 +432,44 @@ export function _setStack(val: string | undefined) {
 }
 
 /**
+ * Checks if the engine we are connected to is compatible with the passed in version range. If the version is not
+ * compatible with the specified range, an exception is raised.
+ *
+ * @param range
+ *  The range to check. The supported syntax for the range is that of
+ *  https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
+ *  together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
+ *  Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
+ */
+export function requirePulumiVersion(range: string): Promise<void> {
+    const engineRef = getEngine();
+    if (!engineRef) {
+        return Promise.resolve(undefined);
+    }
+    const req = new engproto.RequirePulumiVersionRequest();
+    req.setPulumiVersionRange(range);
+    return new Promise<void>((resolve, reject) => {
+        engineRef.requirePulumiVersion(
+            req,
+            (err: grpc.ServiceError | null, resp: engproto.RequirePulumiVersionResponse | undefined) => {
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return reject(
+                        new Error(
+                            "The installed version of the CLI does not support the `RequirePulumiVersion` RPC. " +
+                                "Please upgrade the Pulumi CLI.",
+                        ),
+                    );
+                }
+                if (err) {
+                    return reject(err);
+                }
+                return resolve();
+            },
+        );
+    });
+}
+
+/**
  * Returns true if we are currently connected to a resource monitoring service.
  */
 export function hasMonitor(): boolean {
@@ -406,7 +488,7 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
         if (monitor === undefined) {
             if (addr) {
                 // Lazily initialize the RPC connection to the monitor.
-                monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
+                monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure(), grpcClientOptions);
                 settings.options.monitorAddr = addr;
             }
         }
@@ -418,7 +500,7 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
                 settings.monitor = new resrpc.ResourceMonitorClient(
                     addr,
                     grpc.credentials.createInsecure(),
-                    grpcChannelOptions,
+                    grpcClientOptions,
                 );
                 settings.options.monitorAddr = addr;
             }
@@ -501,7 +583,7 @@ export function getEngine(): engrpc.IEngineClient | undefined {
             const addr = options().engineAddr;
             if (addr) {
                 // Lazily initialize the RPC connection to the engine.
-                engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
+                engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcClientOptions);
             }
         }
         return engine;
@@ -510,7 +592,7 @@ export function getEngine(): engrpc.IEngineClient | undefined {
             const addr = options().engineAddr;
             if (addr) {
                 // Lazily initialize the RPC connection to the engine.
-                settings.engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
+                settings.engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcClientOptions);
             }
         }
         return settings.engine;

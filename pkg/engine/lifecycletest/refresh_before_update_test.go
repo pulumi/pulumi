@@ -92,7 +92,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithHandshake),
 	}
 
 	inputs := resource.PropertyMap{

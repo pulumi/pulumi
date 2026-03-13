@@ -1,0 +1,7 @@
+name: provider-alias-component
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: mypy
+    virtualenv: venv

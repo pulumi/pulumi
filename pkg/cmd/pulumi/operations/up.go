@@ -28,12 +28,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
@@ -47,10 +49,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -122,9 +127,11 @@ func NewUpCmd() *cobra.Command {
 	var excludeDependents bool
 	var planFilePath string
 	var attachDebugger []string
+	var strict bool
 
 	// Flags for Neo.
 	var neoEnabled bool
+	var neoTaskOnFailure bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -185,7 +192,9 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("validating stack config: %w", configErr)
 		}
 
-		targetURNs, replaceURNs, excludeURNs := []string{}, []string{}, []string{}
+		targetURNs := slice.Prealloc[string](len(targets) + len(targetReplaces))
+		replaceURNs := slice.Prealloc[string](len(replaces) + len(targetReplaces))
+		excludeURNs := slice.Prealloc[string](len(excludes))
 		targetURNs = append(targetURNs, targets...)
 		excludeURNs = append(excludeURNs, excludes...)
 		replaceURNs = append(replaceURNs, replaces...)
@@ -225,8 +234,9 @@ func NewUpCmd() *cobra.Command {
 			ExcludeDependents:         excludeDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan:    true,
+			GeneratePlan:    env.Experimental.Value() || strict,
 			Experimental:    env.Experimental.Value(),
+			Strict:          strict,
 			ContinueOnError: continueOnError,
 			AttachDebugger:  attachDebugger,
 			Autonamer:       autonamer,
@@ -262,11 +272,11 @@ func NewUpCmd() *cobra.Command {
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
-			return errors.New("update cancelled")
+			return backenderr.CancelledError{Operation: "update"}
 		case err != nil:
 			return err
 		case expectNop && changes != nil && engine.HasChanges(changes):
-			return errors.New("no changes were expected but changes occurred")
+			return backenderr.NoChangesExpectedError{Operation: "update"}
 		default:
 			return nil
 		}
@@ -287,9 +297,7 @@ func NewUpCmd() *cobra.Command {
 		templateSource := cmdTemplates.New(ctx,
 			templateNameOrURL, cmdTemplates.ScopeAll,
 			workspace.TemplateKindPulumiProject, env.Global())
-		defer func() {
-			contract.IgnoreError(templateSource.Close())
-		}()
+		defer contract.IgnoreClose(templateSource)
 
 		// List the templates from the repo.
 		templates, err := templateSource.Templates()
@@ -420,7 +428,8 @@ func NewUpCmd() *cobra.Command {
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		_, main, pctx, err := engine.ProjectInfoContext(
+			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
 		}
@@ -469,10 +478,11 @@ func NewUpCmd() *cobra.Command {
 			Refresh:          refreshOption,
 			RefreshProgram:   runProgram,
 			ShowSecrets:      showSecrets,
-			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
+			// If the user passed --plan (but no path) then trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
-			GeneratePlan: env.Experimental.Value(),
+			GeneratePlan: env.Experimental.Value() || strict,
 			Experimental: env.Experimental.Value(),
+			Strict:       strict,
 
 			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
@@ -506,18 +516,18 @@ func NewUpCmd() *cobra.Command {
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
-			return errors.New("update cancelled")
+			return backenderr.CancelledError{Operation: "update"}
 		case err != nil:
 			return err
 		case expectNop && changes != nil && engine.HasChanges(changes):
-			return errors.New("no changes were expected but changes occurred")
+			return backenderr.NoChangesExpectedError{Operation: "update"}
 		default:
 			return nil
 		}
 	}
 
 	cmd := &cobra.Command{
-		Use:        "up [template|url]",
+		Use:        "up",
 		Aliases:    []string{"update"},
 		SuggestFor: []string{"apply", "deploy", "push"},
 		Short:      "Create or update the resources in a stack",
@@ -535,7 +545,6 @@ func NewUpCmd() *cobra.Command {
 			"\n" +
 			"Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary\n" +
 			" project is created, deployed, and then deleted, leaving only the stack state.",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
@@ -545,7 +554,11 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 
-			meta := metadata.GetLanguageRuntimeMetadata(root, proj)
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
+
+			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
@@ -556,11 +569,15 @@ func NewUpCmd() *cobra.Command {
 
 			yes = yes || skipPreview || env.SkipConfirmations.Value()
 
+			// Validate that the user did not pass both --skip-preview and --plan.
+			// Plan requires a preview so these flags are mutually exclusive.
+			if skipPreview && strict {
+				return errors.New("--strict cannot be used with --skip-preview; strict requires a preview")
+			}
+
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return errors.New(
-					"--yes or --skip-preview must be passed in to proceed when running in non-interactive mode",
-				)
+				return backenderr.NoConfirmationInNonInteractiveError{}
 			}
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
@@ -645,6 +662,7 @@ func NewUpCmd() *cobra.Command {
 			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
 
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
+			configureNeoTaskOption(neoTaskOnFailure, cmd, &opts.Display, isDIYBackend)
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
@@ -670,6 +688,11 @@ func NewUpCmd() *cobra.Command {
 			)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "template-or-url", Usage: "[template|url]"}},
+		Required:  0,
+	})
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
@@ -813,9 +836,23 @@ func NewUpCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(
+		&strict, "strict", false,
+		"[EXPERIMENTAL] Enable strict plan behavior: generate a plan during preview and constrain the update "+
+			"to that plan (opt-in). Cannot be used with --skip-preview.")
+
+	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,
 		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_NEO environment variable)")
+
+	cmd.PersistentFlags().BoolVar(
+		&neoTaskOnFailure, "neo-task-on-failure", false,
+		"Start a Neo task to help debug errors that occur during the operation")
+	if !env.Experimental.Value() {
+		contract.AssertNoErrorf(
+			cmd.PersistentFlags().MarkHidden("neo-task-on-failure"),
+			`Could not mark "neo-task-on-failure" as hidden`)
+	}
 
 	// Keep --copilot flag for backwards compatibility, but hide it
 	cmd.PersistentFlags().BoolVar(

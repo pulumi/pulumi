@@ -34,6 +34,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
@@ -43,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -51,6 +53,38 @@ const (
 	// 20s before we give up on a copilot request
 	NeoRequestTimeout = 20 * time.Second
 )
+
+// NeoTaskRequest represents a request to create a Neo task.
+type NeoTaskRequest struct {
+	Message NeoTaskMessage `json:"message"`
+}
+
+// NeoTaskMessage represents the message content for a Neo task.
+type NeoTaskMessage struct {
+	Type       string             `json:"type"`
+	Content    string             `json:"content"`
+	Timestamp  string             `json:"timestamp"`
+	EntityDiff *NeoTaskEntityDiff `json:"entity_diff,omitempty"`
+}
+
+// NeoTaskEntityDiff represents entities to add or remove from the agent context.
+type NeoTaskEntityDiff struct {
+	Add    []NeoTaskEntity `json:"add,omitempty"`
+	Remove []NeoTaskEntity `json:"remove,omitempty"`
+}
+
+// NeoTaskEntity represents an entity (like a stack) that the agent can work with.
+type NeoTaskEntity struct {
+	// Type can be "stack", "repository", "pull_request" or "policy_issue"
+	Type    string `json:"type"`
+	Name    string `json:"name"`
+	Project string `json:"project"`
+}
+
+// NeoTaskResponse represents the response from creating a Neo task.
+type NeoTaskResponse struct {
+	TaskID string `json:"taskId"`
+}
 
 // TemplatePublishOperationID uniquely identifies a template publish operation.
 type TemplatePublishOperationID string
@@ -95,7 +129,6 @@ type Client struct {
 	diag       diag.Sink
 	insecure   bool
 	restClient restClient
-	httpClient *http.Client
 
 	// If true, do not probe the backend with GET /api/capabilities and assume no capabilities.
 	DisableCapabilityProbing bool
@@ -116,10 +149,9 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 	}
 
 	return &Client{
-		apiURL:     apiURL,
-		apiToken:   apiAccessToken(apiToken),
-		diag:       d,
-		httpClient: httpClient,
+		apiURL:   apiURL,
+		apiToken: apiAccessToken(apiToken),
+		diag:     d,
 		restClient: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: httpClient,
@@ -141,7 +173,6 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 // WithHTTPClient sets the HTTP client for the API client.
 // Useful for testing.
 func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
-	pc.httpClient = httpClient
 	pc.restClient = &defaultRESTClient{
 		client: &defaultHTTPClient{
 			client: httpClient,
@@ -153,11 +184,6 @@ func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *Client) URL() string {
 	return pc.apiURL
-}
-
-// do proxies the http client's Do method. This is a low-level construct and should be used sparingly
-func (pc *Client) do(ctx context.Context, req *http.Request) (*http.Response, error) {
-	return pc.httpClient.Do(req.WithContext(ctx))
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -317,7 +343,11 @@ const (
 )
 
 func (pc *Client) ExchangeOidcToken(
-	oidcToken string, org string, scope string, expiration time.Duration,
+	ctx context.Context,
+	oidcToken string,
+	org string,
+	scope string,
+	expiration time.Duration,
 ) (*apitype.TokenExchangeGrantResponse, error) {
 	requestedTokenType := pulumiAccessTokenTypeOrganization
 	if strings.HasPrefix(scope, "team:") {
@@ -326,7 +356,7 @@ func (pc *Client) ExchangeOidcToken(
 	if strings.HasPrefix(scope, "user:") {
 		requestedTokenType = pulumiAccessTokenTypePersonal
 	}
-	tokenUrl := pc.apiURL + "/api/oauth/token"
+	tokenURL := pc.apiURL + "/api/oauth/token"
 	data := url.Values{
 		"audience":             {"urn:pulumi:org:" + org},
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
@@ -336,7 +366,15 @@ func (pc *Client) ExchangeOidcToken(
 		"subject_token":        {oidcToken},
 		"expiration":           {strconv.Itoa(int(expiration.Seconds()))},
 	}
-	resp, err := pc.httpClient.PostForm(tokenUrl, data)
+	bodyReader := strings.NewReader(data.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("creating HTTP request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := pc.restClient.HTTPClient().Do(req, retryAllMethods)
 	if err != nil {
 		return nil, err
 	}
@@ -532,24 +570,29 @@ type getLatestConfigurationResponse struct {
 	Info apitype.UpdateInfo `json:"info,omitempty"`
 }
 
+type LatestConfiguration struct {
+	Config       config.Map // The stack config
+	Environments []string   // The environments the stack is configured with
+}
+
 // GetLatestConfiguration returns the configuration for the latest deployment of a given stack.
-func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
-	latest := getLatestConfigurationResponse{}
+func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (LatestConfiguration, error) {
+	var latest getLatestConfigurationResponse
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {
 		if restErr, ok := err.(*apitype.ErrorResponse); ok {
 			if restErr.Code == http.StatusNotFound {
-				return nil, ErrNoPreviousDeployment
+				return LatestConfiguration{}, ErrNoPreviousDeployment
 			}
 		}
 
-		return nil, err
+		return LatestConfiguration{}, err
 	}
 
-	cfg := make(config.Map)
+	cfg := make(config.Map, len(latest.Info.Config))
 	for k, v := range latest.Info.Config {
 		newKey, err := config.ParseKey(k)
 		if err != nil {
-			return nil, err
+			return LatestConfiguration{}, err
 		}
 		if v.Object {
 			if v.Secret {
@@ -566,7 +609,26 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 		}
 	}
 
-	return cfg, nil
+	const stackEnvironments = "stack.environments"
+
+	var environments []string
+	if envs, ok := latest.Info.Environment[stackEnvironments]; ok {
+		var parsedEnvs []struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal([]byte(envs), &parsedEnvs); err != nil {
+			return LatestConfiguration{}, err
+		}
+		environments = make([]string, len(parsedEnvs))
+		for i, v := range parsedEnvs {
+			if v.ID == "" {
+				return LatestConfiguration{}, fmt.Errorf(`%s[%d] missing "id" property`, stackEnvironments, i)
+			}
+			environments[i] = v.ID
+		}
+	}
+
+	return LatestConfiguration{Config: cfg, Environments: environments}, nil
 }
 
 // DoesProjectExist returns true if a project with the given name exists, or false otherwise.
@@ -756,6 +818,10 @@ func (pc *Client) ExportStackDeployment(
 	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "ExportStackDeployment")
 	defer tracingSpan.Finish()
 
+	tracer := otel.Tracer("pulumi-cli")
+	childCtx, otelSpan := cmdutil.StartSpan(childCtx, tracer, "ExportStackDeployment")
+	defer otelSpan.End()
+
 	path := getStackPath(stack, "export")
 
 	// Tack on a specific version as desired.
@@ -895,7 +961,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 		Tags: tags,
 	}
 
-	if env.EnableJournaling.Value() {
+	if !env.DisableJournaling.Value() {
 		req.JournalVersion = 1
 	}
 
@@ -1011,7 +1077,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		putReq.Header.Add(k, v)
 	}
 
-	_, err = pc.httpClient.Do(putReq)
+	_, err = pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
 	if err != nil {
 		return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
 	}
@@ -1171,23 +1237,35 @@ func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
 	return nil
 }
 
-// DownloadPolicyPack applies a `PolicyPack` to the Pulumi organization.
-func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCloser, error) {
+// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
+func (pc *Client) GetStackPolicyPacks(ctx context.Context,
+	stackID StackIdentifier,
+) (apitype.GetStackPolicyPacksResponse, error) {
+	var resp apitype.GetStackPolicyPacksResponse
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "policypacks"), nil, nil, &resp); err != nil {
+		return apitype.GetStackPolicyPacksResponse{}, err
+	}
+	return resp, nil
+}
+
+// DownloadPolicyPack downloads a `PolicyPack` from the given URL. It returns a ReadCloser to read
+// the PolicyPack and the content length. A content length of -1 indicates that the length is unknown.
+func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCloser, int64, error) {
 	getS3Req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
+		return nil, -1, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
 	}
 
-	resp, err := pc.httpClient.Do(getS3Req)
+	resp, err := pc.restClient.HTTPClient().Do(getS3Req, retryAllMethods)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
+		return nil, -1, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %s", resp.Status)
+		return nil, -1, fmt.Errorf("Failed to download compressed PolicyPack: %s", resp.Status)
 	}
 
-	return resp.Body, nil
+	return resp.Body, resp.ContentLength, nil
 }
 
 // GetUpdateEvents returns all events, taking an optional continuation token from a previous call.
@@ -1546,7 +1624,7 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody any) (*http.Re
 		return nil, err
 	}
 	request.Header.Add("Authorization", fmt.Sprintf("token %s", pc.apiToken))
-	res, err := pc.do(ctx, request)
+	res, err := pc.restClient.HTTPClient().Do(request, retryAllMethods)
 	return res, err
 }
 
@@ -1572,6 +1650,44 @@ func (pc *Client) ExplainPreviewWithNeo(
 	return pc.callCopilot(ctx, request)
 }
 
+// CreateNeoTask creates a new Neo agent task via the Neo Tasks API.
+// This is used to start an AI-assisted debugging session when errors occur.
+func (pc *Client) CreateNeoTask(
+	ctx context.Context,
+	orgName string,
+	content string,
+	stackName string,
+	projectName string,
+) (*NeoTaskResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	request := NeoTaskRequest{
+		Message: NeoTaskMessage{
+			Type:      "user_message",
+			Content:   content,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			EntityDiff: &NeoTaskEntityDiff{
+				Add: []NeoTaskEntity{
+					{
+						Type:    "stack",
+						Name:    stackName,
+						Project: projectName,
+					},
+				},
+			},
+		},
+	}
+
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks", orgName)
+	var resp NeoTaskResponse
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, request, &resp); err != nil {
+		return nil, fmt.Errorf("creating Neo task: %w", err)
+	}
+
+	return &resp, nil
+}
+
 func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, error) {
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
@@ -1593,7 +1709,7 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, err
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "token "+apiToken)
 
-	resp, err := pc.do(ctx, req)
+	resp, err := pc.restClient.HTTPClient().Do(req, retryAllMethods)
 	if err != nil {
 		return "", fmt.Errorf("making request: %w", err)
 	}
@@ -1644,7 +1760,7 @@ func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePubli
 	}
 
 	uploadFile := func(url string, reader io.Reader, fileType string) error {
-		putReq, err := http.NewRequest(http.MethodPut, url, reader)
+		putReq, err := http.NewRequestWithContext(ctx, http.MethodPut, url, reader)
 		if err != nil {
 			return fmt.Errorf("failed to upload %s: %w", fileType, err)
 		}
@@ -1652,7 +1768,7 @@ func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePubli
 			putReq.Header.Add(k, v)
 		}
 
-		uploadResp, err := pc.do(ctx, putReq)
+		uploadResp, err := pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
 		if err != nil {
 			return fmt.Errorf("failed to upload %s: %w", fileType, err)
 		} else if uploadResp.StatusCode >= 400 {
@@ -1741,13 +1857,13 @@ func (pc *Client) PublishTemplate(ctx context.Context, input apitype.TemplatePub
 		return fmt.Errorf("failed to start template publish: %w", err)
 	}
 
-	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURLs.Archive, input.Archive)
+	putReq, err := http.NewRequestWithContext(ctx, http.MethodPut, resp.UploadURLs.Archive, input.Archive)
 	if err != nil {
 		return fmt.Errorf("failed to create upload request: %w", err)
 	}
 	putReq.Header.Set("Content-Type", "application/gzip")
 
-	uploadResp, err := pc.do(ctx, putReq)
+	uploadResp, err := pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
 	if err != nil {
 		return fmt.Errorf("failed to upload archive: %w", err)
 	} else if uploadResp.StatusCode != http.StatusOK {
@@ -1841,7 +1957,7 @@ func (pc *Client) downloadWithRawClient(ctx context.Context, downloadURL string)
 		return nil, err
 	}
 
-	resp, err := pc.httpClient.Do(req)
+	resp, err := pc.restClient.HTTPClient().Do(req, retryAllMethods)
 	if err != nil {
 		return nil, err
 	}

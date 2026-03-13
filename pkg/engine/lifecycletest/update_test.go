@@ -15,6 +15,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -409,4 +410,228 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 
 	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
 	require.Error(t, err) // TODO: Change this to require.ErrorContains with the correct error message
+}
+
+func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21433]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping test due to underlying snapshot integrity issue")
+	// Note: this test might be testing an invalid scenario, and maybe we should try to prevent
+	// that scenario in the first place. It might not be possible to get into this scenario except via state edits
+	// though, you'd need a replace operation which failed to delete the old resource, and then you'd have to
+	// manually state edit to remove the newly replaced copy of the resource. Maybe we should just make that
+	// initial state an SIE? Check that all dependencies are pointing to existing resources, so
+	// you wouldn't even be able to import a state like that.
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	snap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		provA := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    p.NewProviderURN("pkgA", "provA", ""),
+			Custom: true,
+			ID:     "id1",
+		}
+		s.Resources = append(s.Resources, provA)
+
+		provRefA, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resA := &resource.State{
+			Type:     "pkgA:m:typA",
+			URN:      p.NewURN("pkgA:m:typA", "resA", ""),
+			Custom:   false,
+			Delete:   true,
+			Provider: provRefA.String(),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		provB := &resource.State{
+			Type:        "pulumi:providers:pkgB",
+			URN:         p.NewProviderURN("pkgB", "provB", ""),
+			Custom:      true,
+			ID:          "id2",
+			DeletedWith: resA.URN,
+		}
+		s.Resources = append(s.Resources, provB)
+
+		return s
+	}()
+	require.NoError(t, snap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pulumi:providers:pkgB", "provB", true, deploytest.ResourceOptions{
+			DeletedWith: p.NewURN("pkgA:m:typA", "resA", ""),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+	}
+
+	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21700]: Fix the underlying issue and re-enable this test. Note that this test is flaky,
+	// so you need to run it with `-count=1000` to make sure you see the failure.
+	t.Skip("Skipping test due to underlying panic")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		provA := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
+			Custom: true,
+			ID:     "id1",
+		}
+		s.Resources = append(s.Resources, provA)
+
+		provRef, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resA := &resource.State{
+			Type:               "pkgA:m:typA",
+			URN:                "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:             true,
+			ID:                 "id2",
+			PendingReplacement: true,
+			Provider:           provRef.String(),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh:        true,
+			RefreshProgram: true,
+		},
+	}
+
+	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+func TestUntargetedComponentResource(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					// This call to RegisterResourceOutputs triggers the panic when the component
+					// is filtered out by targeting. The panic occurs because findResourceInNewOrOld()
+					// cannot locate the resource in either the base snapshot or the new resources map.
+					outs := resource.PropertyMap{}
+					err = monitor.RegisterResourceOutputs(resp.URN, outs)
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{
+						URN:     resp.URN,
+						Outputs: outs,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	registerComponent := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "existingResource", true)
+		require.NoError(t, err)
+
+		if registerComponent {
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "newComponent", false, deploytest.ResourceOptions{
+				Remote: true,
+			})
+		}
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+	snap, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	existingResourceURN := p.NewURN("pkgA:m:typA", "existingResource", "")
+	opts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{existingResourceURN})
+	registerComponent = true
+
+	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	for _, res := range snap.Resources {
+		require.NotContains(t, res.URN, "newComponent",
+			"newComponent should not be in the snapshot because it's not being targeted")
+	}
 }

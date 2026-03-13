@@ -71,6 +71,53 @@ def test_map_inputs():
         assert e.reason == "Missing required input 'a.b.c' on 'MyComponent'"
 
 
+def test_map_inputs_integer():
+    class Nested(TypedDict):
+        n: Input[int]
+
+    class Args(TypedDict):
+        a: Optional[Input[int]]
+        b: Optional[Input[int]]
+        c: Optional[Input[float]]
+        d: Optional[Input[Nested]]
+        e: Optional[Input[list[int]]]
+
+    class MyComponent(ComponentResource):
+        def __init__(self, name: str, args: Args, opts: ResourceOptions):
+            super().__init__("component:index:MyComponent", name, {}, opts)
+            self.register_outputs({})
+
+    provider = ComponentProvider([MyComponent], "my-provider")
+    component_def = provider._component_defs["MyComponent"]  # type: ignore
+
+    inputs = provider.map_inputs(
+        {"a": 123, "b": 123.0, "c": 456.78, "d": {"n": 6}, "e": [1, 2.0]}, component_def
+    )
+    assert inputs["a"] == 123
+    assert inputs["b"] == 123
+    assert inputs["c"] == 456.78
+    assert inputs["d"] == {"n": 6}
+    assert inputs["e"] == [1, 2]
+
+    try:
+        provider.map_inputs({"a": "1.0"}, component_def)
+        assert False, "expected an error"
+    except InputPropertyError as e:
+        assert (
+            e.reason
+            == "Invalid value '1.0' of type <class 'str'> for integer property a"
+        )
+
+    try:
+        provider.map_inputs({"d": {"n": "3.2"}}, component_def)
+        assert False, "expected an error"
+    except InputPropertyError as e:
+        assert (
+            e.reason
+            == "Invalid value '3.2' of type <class 'str'> for integer property d.n"
+        )
+
+
 def test_map_complex_outputs():
     class Leaf(TypedDict):
         plain_arg: str

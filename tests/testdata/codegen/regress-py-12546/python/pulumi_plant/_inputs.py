@@ -20,16 +20,11 @@ __all__ = [
     'ContainerArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class ContainerArgsDict(TypedDict):
-        size: pulumi.Input['ContainerSize']
-        brightness: NotRequired[pulumi.Input['ContainerBrightness']]
-        color: NotRequired[pulumi.Input[Union['ContainerColor', _builtins.str]]]
-        material: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    ContainerArgsDict: TypeAlias = Mapping[str, Any]
+class ContainerArgsDict(TypedDict):
+    size: pulumi.Input['ContainerSize']
+    brightness: NotRequired[pulumi.Input['ContainerBrightness']]
+    color: NotRequired[pulumi.Input[Union['ContainerColor', _builtins.str]]]
+    material: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class ContainerArgs:

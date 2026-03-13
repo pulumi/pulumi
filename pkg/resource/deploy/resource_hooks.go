@@ -50,7 +50,6 @@ type ErrorHookFunction func(
 	typ tokens.Type,
 	newInputs resource.PropertyMap,
 	oldInputs resource.PropertyMap,
-	newOutputs resource.PropertyMap,
 	oldOutputs resource.PropertyMap,
 	failedOperation string,
 	errors []string,

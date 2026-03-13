@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -905,6 +906,135 @@ func (m *mockEncrypterFactory) GetEncrypter(
 }
 
 //nolint:paralleltest // changes global ConfigFile variable
+func TestConfigRefresh(t *testing.T) {
+	minimalDeployment := &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage(`{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""}}`),
+	}
+
+	setupBackend := func(latestConfig backend.LatestConfiguration) (cmdBackend.LoginManager, pkgWorkspace.Context) {
+		var mockBackend *backend.MockBackend
+		mockBackend = &backend.MockBackend{
+			GetLatestConfigurationF: func(_ context.Context, _ backend.Stack) (backend.LatestConfiguration, error) {
+				return latestConfig, nil
+			},
+			ExportDeploymentF: func(_ context.Context, _ backend.Stack) (*apitype.UntypedDeployment, error) {
+				return minimalDeployment, nil
+			},
+			GetStackF: func(_ context.Context, _ backend.StackReference) (backend.Stack, error) {
+				return &backend.MockStack{
+					RefF: func() backend.StackReference {
+						return &backend.MockStackReference{
+							NameV: tokens.MustParseStackName("testStack"),
+						}
+					},
+					ConfigLocationF: func() backend.StackConfigLocation {
+						return backend.StackConfigLocation{}
+					},
+					BackendF: func() backend.Backend {
+						return mockBackend
+					},
+				}, nil
+			},
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				return &backend.MockStackReference{
+					NameV: tokens.MustParseStackName(s),
+				}, nil
+			},
+		}
+		// Wire up the top-level mock stack's BackendF to return this backend.
+		// GetStackF returns a mock stack whose BackendF also returns this backend.
+
+		lm := &cmdBackend.MockLoginManager{
+			LoginF: func(
+				_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
+				_ string, _ *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			) (backend.Backend, error) {
+				return mockBackend, nil
+			},
+		}
+
+		ws := &pkgWorkspace.MockContext{
+			ReadProjectF: func() (*workspace.Project, string, error) {
+				return &workspace.Project{Name: "testProject"}, "", nil
+			},
+			GetStoredCredentialsF: func() (workspace.Credentials, error) {
+				return workspace.Credentials{Current: "https://api.pulumi.com"}, nil
+			},
+		}
+
+		return lm, ws
+	}
+
+	t.Run("environments from backend are written to config file", func(t *testing.T) {
+		tmpdir := t.TempDir()
+		configPath := filepath.Join(tmpdir, "Pulumi.testStack.yaml")
+		cmdStack.ConfigFile = configPath
+		defer func() { cmdStack.ConfigFile = "" }()
+
+		lm, ws := setupBackend(backend.LatestConfiguration{
+			Config: config.Map{
+				config.MustMakeKey("testProject", "key1"): config.NewValue("value1"),
+			},
+			Environments: []string{"env1", "env2"},
+		})
+
+		stackName := "testStack"
+		cmd := newConfigRefreshCmd(ws, &stackName, lm)
+		cmd.SetContext(t.Context())
+		require.NoError(t, cmd.PersistentFlags().Set("force", "true"))
+
+		err := cmd.RunE(cmd, []string{})
+		require.NoError(t, err)
+
+		data, err := os.ReadFile(configPath)
+		require.NoError(t, err)
+
+		require.EqualValues(t,
+			`config:
+  testProject:key1: value1
+environment:
+  - env1
+  - env2
+`,
+			data)
+	})
+
+	t.Run("nil environments do not overwrite existing environments", func(t *testing.T) {
+		tmpdir := t.TempDir()
+		configPath := filepath.Join(tmpdir, "Pulumi.testStack.yaml")
+		cmdStack.ConfigFile = configPath
+		defer func() { cmdStack.ConfigFile = "" }()
+
+		require.NoError(t, os.WriteFile(configPath,
+			[]byte("environment:\n  - existing-env\nconfig:\n  testProject:old: old-value\n"), 0o600))
+
+		lm, ws := setupBackend(backend.LatestConfiguration{
+			Config: config.Map{
+				config.MustMakeKey("testProject", "key1"): config.NewValue("value1"),
+			},
+		})
+
+		stackName := "testStack"
+		cmd := newConfigRefreshCmd(ws, &stackName, lm)
+		cmd.SetContext(t.Context())
+		require.NoError(t, cmd.PersistentFlags().Set("force", "true"))
+
+		err := cmd.RunE(cmd, []string{})
+		require.NoError(t, err)
+
+		data, err := os.ReadFile(configPath)
+		require.NoError(t, err)
+
+		require.EqualValues(t, `environment:
+  - existing-env
+config:
+  testProject:key1: value1
+`, data)
+	})
+}
+
+//nolint:paralleltest // changes global ConfigFile variable
 func TestConfigPathOperations(t *testing.T) {
 	type testArgs struct {
 		Key                   string
@@ -1267,7 +1397,7 @@ func TestConfigPathOperations(t *testing.T) {
 				ConfigLocationF: func() backend.StackConfigLocation {
 					return backend.StackConfigLocation{}
 				},
-				DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+				DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 					return &secrets.MockSecretsManager{
 						TypeF: func() string { return "mock" },
 						EncrypterF: func() config.Encrypter {
@@ -1346,7 +1476,7 @@ func TestConfigPathOperations(t *testing.T) {
 				// Decrypt if needed
 				var actualValue string
 				if v.Secure() {
-					secretsManager, err := s.DefaultSecretManager(ps)
+					secretsManager, err := s.DefaultSecretManager(t.Context(), ps)
 					require.NoError(t, err)
 					decrypter := secretsManager.Decrypter()
 					actualValue, err = v.Value(decrypter)

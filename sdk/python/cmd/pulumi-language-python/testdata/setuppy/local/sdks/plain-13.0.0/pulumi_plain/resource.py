@@ -22,12 +22,16 @@ __all__ = ['ResourceArgs', 'Resource']
 class ResourceArgs:
     def __init__(__self__, *,
                  data: 'DataArgs',
+                 data_list: Optional[Sequence['InnerDataArgs']] = None,
                  non_plain_data: Optional[pulumi.Input['DataArgs']] = None):
         """
         The set of arguments for constructing a Resource resource.
+
         :param pulumi.Input['DataArgs'] non_plain_data: A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
         """
         pulumi.set(__self__, "data", data)
+        if data_list is not None:
+            pulumi.set(__self__, "data_list", data_list)
         if non_plain_data is not None:
             pulumi.set(__self__, "non_plain_data", non_plain_data)
 
@@ -39,6 +43,15 @@ class ResourceArgs:
     @data.setter
     def data(self, value: 'DataArgs'):
         pulumi.set(self, "data", value)
+
+    @_builtins.property
+    @pulumi.getter(name="dataList")
+    def data_list(self) -> Optional[Sequence['InnerDataArgs']]:
+        return pulumi.get(self, "data_list")
+
+    @data_list.setter
+    def data_list(self, value: Optional[Sequence['InnerDataArgs']]):
+        pulumi.set(self, "data_list", value)
 
     @_builtins.property
     @pulumi.getter(name="nonPlainData")
@@ -60,10 +73,12 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  data: Optional[Union['DataArgs', 'DataArgsDict']] = None,
+                 data_list: Optional[Sequence[Union['InnerDataArgs', 'InnerDataArgsDict']]] = None,
                  non_plain_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union['DataArgs', 'DataArgsDict']] non_plain_data: A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
@@ -76,6 +91,7 @@ class Resource(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Resource resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param ResourceArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
@@ -92,6 +108,7 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  data: Optional[Union['DataArgs', 'DataArgsDict']] = None,
+                 data_list: Optional[Sequence[Union['InnerDataArgs', 'InnerDataArgsDict']]] = None,
                  non_plain_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -105,6 +122,7 @@ class Resource(pulumi.CustomResource):
             if data is None and not opts.urn:
                 raise TypeError("Missing required property 'data'")
             __props__.__dict__["data"] = data
+            __props__.__dict__["data_list"] = data_list
             __props__.__dict__["non_plain_data"] = non_plain_data
         super(Resource, __self__).__init__(
             'plain:index:Resource',
@@ -129,6 +147,7 @@ class Resource(pulumi.CustomResource):
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
         __props__.__dict__["data"] = None
+        __props__.__dict__["data_list"] = None
         __props__.__dict__["non_plain_data"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
@@ -136,6 +155,11 @@ class Resource(pulumi.CustomResource):
     @pulumi.getter
     def data(self) -> pulumi.Output['outputs.Data']:
         return pulumi.get(self, "data")
+
+    @_builtins.property
+    @pulumi.getter(name="dataList")
+    def data_list(self) -> pulumi.Output[Optional[Sequence['outputs.InnerData']]]:
+        return pulumi.get(self, "data_list")
 
     @_builtins.property
     @pulumi.getter(name="nonPlainData")

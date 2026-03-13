@@ -860,9 +860,19 @@ func TestWalk_CatchPanic(t *testing.T) {
 	_, done := dag.NewNode(1)
 	done()
 
-	assert.PanicsWithValue(t, "value", func() {
+	var panicValue any
+	func() {
+		defer func() {
+			panicValue = recover()
+		}()
 		_ = dag.Walk(t.Context(), func(_ context.Context, v int) error {
 			panic("value")
 		}, pdag.MaxProcs(8))
-	})
+	}()
+
+	require.NotNil(t, panicValue, "expected a panic to occur")
+	panicMsg := fmt.Sprintf("%v", panicValue)
+	assert.Contains(t, panicMsg, "panic in DAG processing: value")
+	assert.Contains(t, panicMsg, "Original stack trace:")
+	assert.Contains(t, panicMsg, "pdag_test.go")
 }

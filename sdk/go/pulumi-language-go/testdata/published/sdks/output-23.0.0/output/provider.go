@@ -32,10 +32,12 @@ func NewProvider(ctx *pulumi.Context,
 }
 
 type providerArgs struct {
+	ElideUnknowns *bool `pulumi:"elideUnknowns"`
 }
 
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
+	ElideUnknowns pulumi.BoolPtrInput
 }
 
 func (ProviderArgs) ElementType() reflect.Type {

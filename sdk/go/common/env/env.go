@@ -175,6 +175,10 @@ var (
 		"Enables gzip compression when writing state files.",
 		env.Alternative("SELF_MANAGED_STATE_GZIP"))
 
+	DIYBackendZstd = env.Bool("DIY_BACKEND_ZSTD",
+		"Enables zstd compression when writing state files.",
+		env.Alternative("SELF_MANAGED_STATE_ZSTD"))
+
 	DIYBackendRetainCheckpoints = env.Bool("DIY_BACKEND_RETAIN_CHECKPOINTS",
 		"If set every checkpoint will be duplicated to a timestamped file.",
 		env.Alternative("RETAIN_CHECKPOINTS"))
@@ -234,8 +238,8 @@ var (
 	PolicyTemplateBranch = env.String("POLICY_TEMPLATE_BRANCH", "Branch name for Pulumi Policy Pack templates repository.")
 )
 
-var EnableJournaling = env.Bool("ENABLE_JOURNALING",
-	"Enable journaling of engine operations to the backend (if the backend supports it)")
+var DisableJournaling = env.Bool("DISABLE_JOURNALING",
+	"Disable journaling of engine operations to the backend")
 
 var JournalingBatchSize = env.Int("JOURNALING_BATCH_SIZE", "Maximum batch size for journal entries")
 
@@ -244,3 +248,6 @@ var JournalingBatchPeriod = env.Int("JOURNALING_BATCH_PERIOD",
 
 var GoroutinePanicRecovery = env.Bool("GOROUTINE_PANIC_RECOVERY",
 	"Enable recovery from panics in goroutines to prevent the process from crashing.", env.Needs(Dev))
+
+var ParallelAnalyze = env.Int("PARALLEL_ANALYZE",
+	"(Experimental) Number of parallel analyze calls per resource (1 for no parallelism)")

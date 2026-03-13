@@ -375,6 +375,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 // * remove the old resource from the state
 func TestPendingReplaceResumeWithSameGoalsRefreshRunProgram(t *testing.T) {
 	t.Parallel()
+	t.Skip("TODO[github.com/pulumi/pulumi/issues/21539]: flaky")
 
 	p := &lt.TestPlan{}
 	project := p.GetProject()

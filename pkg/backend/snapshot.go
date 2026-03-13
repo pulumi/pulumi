@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
@@ -87,6 +88,10 @@ type SnapshotManager struct {
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
 	isRefresh bool // Whether or not the snapshot is part of a refresh
+
+	// events is an optional channel for emitting engine events. When set, the snapshot manager will emit
+	// ErrorEvents to this channel when it detects and auto-repairs snapshot integrity errors.
+	events chan<- engine.Event
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -769,10 +774,11 @@ func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {
 }
 
 // saveSnapshot persists the current snapshot. If integrity checking is enabled,
-// the snapshot's integrity is also verified. If the snapshot is invalid,
-// metadata about this write operation is added to the snapshot before it is
-// written, in order to aid debugging should future operations fail with an
-// error.
+// the snapshot's integrity is also verified. If the snapshot is invalid and we're using
+// the httpstate backend, we try to repair it and emit an ErrorEvent. If the snapshot
+// remains invalid after repair metadata about this write operation is added to the
+// snapshot before it is written, in order to aid debugging should future operations
+// fail with an error.
 func (sm *SnapshotManager) saveSnapshot() error {
 	deployment, err := sm.Deployment()
 	if err != nil {
@@ -793,6 +799,30 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	// Metadata will be cleared out by a successful operation (even if integrity
 	// checking is being enforced).
 	integrityError := snapshot.VerifyIntegrity(deployment.Deployment)
+
+	// If we detected a snapshot integrity error, and we have an events channel
+	// i.e. in the httpstate backend, try to repair the snapshot.
+	var autoRepairErr error
+	if integrityError != nil && !DisableIntegrityChecking && sm.events != nil {
+		sm.emitSnapshotIntegrityErrorEvent(integrityError)
+
+		repairedDeployment, repairErr := sm.repairAndSerialize()
+		if repairErr != nil {
+			logging.V(3).Infof("SnapshotManager: failed to repair snapshot: %v", repairErr)
+			autoRepairErr = repairErr
+		} else if verifyErr := snapshot.VerifyIntegrity(repairedDeployment.Deployment); verifyErr != nil {
+			logging.V(3).Infof("SnapshotManager: repaired snapshot still invalid: %v", verifyErr)
+			autoRepairErr = verifyErr
+		} else {
+			repairedDeployment.Deployment.Metadata.IntegrityErrorMetadata = nil
+			if err := sm.persister.Save(repairedDeployment); err != nil {
+				return fmt.Errorf("failed to save snapshot: %w", err)
+			}
+			logging.V(3).Infof("SnapshotManager: auto-repaired snapshot integrity error: %v", integrityError)
+			return nil
+		}
+	}
+
 	if integrityError == nil {
 		deployment.Deployment.Metadata.IntegrityErrorMetadata = nil
 	} else {
@@ -800,6 +830,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 			Version: strconv.FormatInt(int64(deployment.Version), 10),
 			Command: strings.Join(os.Args, " "),
 			Error:   integrityError.Error(),
+			EnvVars: utilenv.ConfiguredVariables(),
 		}
 	}
 
@@ -807,9 +838,50 @@ func (sm *SnapshotManager) saveSnapshot() error {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
 	if !DisableIntegrityChecking && integrityError != nil {
+		if autoRepairErr != nil {
+			var sie *snapshot.SnapshotIntegrityError
+			if errors.As(integrityError, &sie) {
+				sie.AutoRepairErr = autoRepairErr
+			}
+		}
 		return fmt.Errorf("failed to verify snapshot: %w", integrityError)
 	}
 	return nil
+}
+
+// repairAndSerialize attempts to repair the current snapshot by sorting resources
+// topologically and pruning dangling dependencies, then serializes the result.
+func (sm *SnapshotManager) repairAndSerialize() (apitype.TypedDeployment, error) {
+	snap := sm.Snap()
+
+	if _, err := snap.Repair(); err != nil {
+		return apitype.TypedDeployment{}, err
+	}
+
+	normalizedSnap, err := snap.NormalizeURNReferences()
+	if err != nil {
+		return apitype.TypedDeployment{}, fmt.Errorf("failed to normalize URN references: %w", err)
+	}
+
+	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(
+		context.TODO(), normalizedSnap, false /*showSecrets*/)
+	if err != nil {
+		return apitype.TypedDeployment{}, fmt.Errorf("failed to serialize repaired snapshot: %w", err)
+	}
+
+	return apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	}, nil
+}
+
+// emitSnapshotIntegrityErrorEvent sends an ErrorEvent to the configured events channel,
+// to notify the backend about a snapshot integrity error.
+func (sm *SnapshotManager) emitSnapshotIntegrityErrorEvent(integrityError error) {
+	sm.events <- engine.NewEvent(engine.ErrorEventPayload{
+		Error: fmt.Sprintf("snapshot integrity error (auto-repaired): %v", integrityError),
+	})
 }
 
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
@@ -870,6 +942,7 @@ func NewSnapshotManager(
 	persister SnapshotPersister,
 	secretsManager secrets.Manager,
 	baseSnap *deploy.Snapshot,
+	events chan<- engine.Event,
 ) *SnapshotManager {
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
@@ -882,6 +955,7 @@ func NewSnapshotManager(
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
+		events:           events,
 	}
 
 	serviceLoop := manager.defaultServiceLoop

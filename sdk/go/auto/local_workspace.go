@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -143,7 +144,8 @@ func (l *LocalWorkspace) AddEnvironments(ctx context.Context, stackName string, 
 	if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 95}) {
 		return errors.New("AddEnvironments requires Pulumi CLI version >= 3.95.0")
 	}
-	args := []string{"config", "env", "add"}
+	args := slice.Prealloc[string](6 + len(envs))
+	args = append(args, "config", "env", "add")
 	args = append(args, envs...)
 	args = append(args, "--yes", "--stack", stackName)
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)

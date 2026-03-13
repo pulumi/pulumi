@@ -266,7 +266,7 @@ func TestStackCommands(t *testing.T) {
 		e.ImportDirectory("../integration/stack_dependencies")
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		e.RunCommandWithRetry("yarn", "install")
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		// We're going to futz with the stack a little so that one of the resources we just created
@@ -336,7 +336,7 @@ func TestStackBackups(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		e.RunCommandWithRetry("yarn", "install")
 
 		// Now run pulumi up.
@@ -401,7 +401,7 @@ func TestDestroySetsEncryptionsalt(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 		e.RunCommandWithRetry("yarn", "install")
 
 		e.RunCommand("pulumi", "config", "set", "--secret", "token", "cookie")
@@ -610,7 +610,7 @@ func TestLocalStateLocking(t *testing.T) {
 	e.ImportDirectory("../integration/single_resource")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "foo")
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	count := 10
@@ -723,7 +723,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	e.ImportDirectory("../integration/stack_dependencies")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
@@ -853,7 +853,7 @@ func TestStackTags(t *testing.T) {
 	tags = lsTags()
 	assert.NotContains(t, tags, "tagA", "tagA should be removed")
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
@@ -956,7 +956,7 @@ func TestStackExportDoesNotEscapeHTML(t *testing.T) {
 	require.NoError(t, err)
 
 	e.RunCommand("pulumi", "stack", "init", stack)
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 

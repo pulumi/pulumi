@@ -249,7 +249,7 @@ func TestCollapseAliases(t *testing.T) {
 			urns, err := ctx.collapseAliases(testCase.childAliases, "test:resource:child", "myres-child", &res)
 			require.NoError(t, err)
 			require.Len(t, urns, testCase.totalAliasUrns)
-			var items []any
+			items := slice.Prealloc[any](len(urns))
 			for _, item := range urns {
 				items = append(items, item)
 			}

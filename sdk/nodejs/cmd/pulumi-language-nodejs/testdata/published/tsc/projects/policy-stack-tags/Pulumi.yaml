@@ -1,0 +1,5 @@
+name: policy-stack-tags
+runtime:
+  name: nodejs
+  options:
+    typescript: false

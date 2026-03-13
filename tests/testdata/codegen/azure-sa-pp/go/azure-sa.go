@@ -33,12 +33,12 @@ func main() {
 			storageAccountTypeReplicationParam = param
 		}
 		storageAccountResource, err := storage.NewAccount(ctx, "storageAccountResource", &storage.AccountArgs{
-			Name:                   pulumi.String(storageAccountNameParam),
+			Name:                   pulumi.String(pulumi.String(storageAccountNameParam)),
 			AccountKind:            pulumi.String("StorageV2"),
-			Location:               pulumi.String(locationParam),
-			ResourceGroupName:      pulumi.String(resourceGroupNameParam),
-			AccountTier:            pulumi.String(storageAccountTierParam),
-			AccountReplicationType: pulumi.String(storageAccountTypeReplicationParam),
+			Location:               pulumi.String(pulumi.String(locationParam)),
+			ResourceGroupName:      pulumi.String(pulumi.String(resourceGroupNameParam)),
+			AccountTier:            pulumi.String(pulumi.String(storageAccountTierParam)),
+			AccountReplicationType: pulumi.String(pulumi.String(storageAccountTypeReplicationParam)),
 		})
 		if err != nil {
 			return err

@@ -5,6 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { ComplexResourceArgs } from "./complexResource";
+export type ComplexResource = import("./complexResource").ComplexResource;
+export const ComplexResource: typeof import("./complexResource").ComplexResource = null as any;
+utilities.lazyLoad(exports, ["ComplexResource"], () => require("./complexResource"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
@@ -16,10 +21,19 @@ export const Resource: typeof import("./resource").Resource = null as any;
 utilities.lazyLoad(exports, ["Resource"], () => require("./resource"));
 
 
+// Export sub-modules:
+import * as types from "./types";
+
+export {
+    types,
+};
+
 const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "output:index:ComplexResource":
+                return new ComplexResource(name, <any>undefined, { urn })
             case "output:index:Resource":
                 return new Resource(name, <any>undefined, { urn })
             default:

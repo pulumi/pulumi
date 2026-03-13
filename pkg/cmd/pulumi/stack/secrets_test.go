@@ -139,7 +139,7 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	}
 
 	s := &backend.MockStack{
-		DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return sm, nil
 		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
@@ -247,7 +247,7 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	}
 
 	s := &backend.MockStack{
-		DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return sm, nil
 		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {

@@ -15,6 +15,7 @@
 package toolchain
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -158,4 +159,85 @@ func TestUvCommandSyncsEnvironmentCustomVenv(t *testing.T) {
 	out, err = cmd.CombinedOutput()
 	require.NoError(t, err)
 	require.True(t, strings.Contains(string(out), "wheel"), "unexpected output: %s", out)
+}
+
+// Test that we show the underlying error from `uv` when linking fails
+func TestUvLinkPackagesError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject := `[project]
+name = "my-project"
+version = "1.2.3"
+dependencies = []
+`
+	err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+	require.NoError(t, err)
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	err = uv.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
+
+	require.Regexp(t, "Distribution not found at:.*nope", err.Error())
+}
+
+// Test that we show the underlying error from `uv` when dependency installation fails
+func TestUvInstallDependenciesError(t *testing.T) {
+	t.Parallel()
+
+	pyproject := `[project]
+name = "my-project"
+version = "1.2.3"
+dependencies = ["fail-to-install"]
+[tool.uv.sources]
+fail-to-install = { path = "./fail-to-install" }
+`
+
+	t.Run("show output false", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+		require.NoError(t, err)
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+
+		err = uv.InstallDependencies(t.Context(), root, false, false /* showOutput */, nil, nil)
+		require.Regexp(t, "Distribution not found at:.*fail-to-install", err.Error())
+	})
+
+	t.Run("show output true", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+		require.NoError(t, err)
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+		stdout := &bytes.Buffer{}
+		stderr := &bytes.Buffer{}
+
+		err = uv.InstallDependencies(t.Context(), root, false, true /* showOutput */, stdout, stderr)
+
+		require.ErrorContains(t, err, "exit status")
+		require.Regexp(t, "Distribution not found at:.*fail-to-install", stderr)
+	})
+}
+
+// Test that link actually runs in the root directory.
+func TestUvLinkCorrectDirectory(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject := `[project]
+name = "my-project"
+version = "invalid"
+dependencies = []
+`
+	err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+	require.NoError(t, err)
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	err = uv.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
+
+	require.ErrorContains(t, err, "expected version to start with a number, but no leading ASCII digits were found")
 }

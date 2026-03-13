@@ -232,7 +232,7 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 	}
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
@@ -394,7 +394,7 @@ func TestExcludeProtected(t *testing.T) {
 
 	e.RunCommand("pulumi", "stack", "init", "dev")
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
@@ -435,9 +435,9 @@ func TestUnprotect(t *testing.T) {
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
 	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 0xffffffff")
+		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
@@ -462,9 +462,9 @@ func TestUnprotectProtect(t *testing.T) {
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
 	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 0xffffffff")
+		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
@@ -473,9 +473,9 @@ func TestUnprotectProtect(t *testing.T) {
 	_, _, err = e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
 	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 0xffffffff")
+		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 }
 
@@ -975,7 +975,7 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 	}
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
@@ -1147,7 +1147,7 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "advisory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults(
@@ -1174,7 +1174,7 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults(
@@ -1182,6 +1182,34 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
+}
+
+func TestBunMandatoryPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("single_resource")
+	e.ImportDirectory("policy")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	stackName, err := resource.NewUniqueHex("bun-mandatory-policy-pack", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "bun_mandatory_policy_pack"), "bun", "install")
+	require.NoError(t, err)
+
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "install")
+
+	stdout, _, err := e.GetCommandResults(
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "bun_mandatory_policy_pack")
+	assert.Error(t, err)
+	assert.Contains(t, stdout, "error: update failed")
+	assert.Contains(t, stdout, "❌ bun@v0.0.1 (local: bun_mandatory_policy_pack)")
 }
 
 func TestMultiplePolicyPacks(t *testing.T) {
@@ -1204,7 +1232,7 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 
 	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes",
@@ -1229,7 +1257,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	stackName, err := resource.NewUniqueHex("policy-plugin-extra-args", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommandWithRetry("yarn", "install")
 	require.NoError(t, err)
 	// Create a venv for the policy package and install the current python SDK into it
@@ -1664,7 +1692,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "dev")
 	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
 	e.RunCommand("pulumi", "install")
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.CWD = e.RootPath
 
@@ -1796,4 +1824,16 @@ func TestConfigFlag(t *testing.T) {
 	configContent, err = os.ReadFile(configPath)
 	require.NoError(t, err)
 	require.Contains(t, string(configContent), "config-flag:example: an-example")
+}
+
+func TestValidatePulumiVersionRange(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("required_pulumi_version")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
+
+	_, stderr := e.RunCommandExpectError("pulumi", "preview")
+	require.Regexp(t, "Pulumi CLI version .* does not satisfy the version range \"<1.0.0\"", stderr)
 }

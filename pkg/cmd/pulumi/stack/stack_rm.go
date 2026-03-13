@@ -20,7 +20,9 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -44,8 +46,7 @@ func newStackRmCmd() *cobra.Command {
 	var preserveConfig bool
 	var removeBackups bool
 	cmd := &cobra.Command{
-		Use:   "rm [<stack-name>]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "rm",
 		Short: "Remove a stack and its configuration",
 		Long: "Remove a stack and its configuration\n" +
 			"\n" +
@@ -83,7 +84,7 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			if !cmdutil.Interactive() && !yes {
-				return errors.New("non-interactive mode requires --yes flag")
+				return backenderr.NonInteractiveRequiresYesError{}
 			}
 
 			// Ensure the user really wants to do this.
@@ -125,6 +126,13 @@ func newStackRmCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "stack-name"},
+		},
+		Required: 0,
+	})
 
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,

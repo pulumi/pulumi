@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,6 +62,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -187,10 +191,22 @@ func main() {
 	}
 
 	logging.InitLogging(false, 0, false)
-	cmdutil.InitTracing("pulumi-language-go", "pulumi-language-go", p.tracing)
+
+	// Use OTel when the CLI provides an OTLP endpoint; fall back to
+	// OpenTracing otherwise.  Only one system should be active to avoid
+	// duplicate spans.
+	otelEndpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
+	if otelEndpoint == "" {
+		cmdutil.InitTracing("pulumi-language-go", "pulumi-language-go", p.tracing)
+	} else {
+		if err := cmdutil.InitOtelTracing("pulumi-language-go", otelEndpoint); err != nil {
+			logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+		}
+		defer cmdutil.CloseOtelTracing()
+	}
 
 	var cmd mainCmd
-	if err := cmd.Run(p); err != nil {
+	if err := cmd.Run(p, otelEndpoint); err != nil {
 		cmdutil.Exit(err)
 	}
 }
@@ -209,7 +225,7 @@ func (cmd *mainCmd) init() {
 	}
 }
 
-func (cmd *mainCmd) Run(p *runParams) error {
+func (cmd *mainCmd) Run(p *runParams, otelEndpoint string) error {
 	cmd.init()
 
 	cwd, err := cmd.Getwd()
@@ -237,11 +253,11 @@ func (cmd *mainCmd) Run(p *runParams) error {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(p.engineAddress, cwd, p.tracing)
+			host := newLanguageHost(p.engineAddress, cwd, p.tracing, otelEndpoint)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return fmt.Errorf("could not start language host RPC server: %w", err)
@@ -265,6 +281,7 @@ type goLanguageHost struct {
 	cwd           string
 	engineAddress string
 	tracing       string
+	otelEndpoint  string
 }
 
 type goOptions struct {
@@ -299,11 +316,12 @@ func parseOptions(root string, options map[string]any) (goOptions, error) {
 	return goOptions, nil
 }
 
-func newLanguageHost(engineAddress, cwd, tracing string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(engineAddress, cwd, tracing, otelEndpoint string) pulumirpc.LanguageRuntimeServer {
 	return &goLanguageHost{
 		engineAddress: engineAddress,
 		cwd:           cwd,
 		tracing:       tracing,
+		otelEndpoint:  otelEndpoint,
 	}
 }
 
@@ -484,6 +502,15 @@ func goListModules(ctx context.Context, gobin, dir string, modulePaths []string)
 		opentracing.Tag{Key: "args", Value: args})
 	defer span.Finish()
 
+	tracer := otel.Tracer("pulumi-language-go")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, "go-list-modules",
+		trace.WithAttributes(
+			attribute.String("component", "exec.Command"),
+			attribute.String("command", gobin),
+			attribute.StringSlice("args", args),
+		))
+	defer otelSpan.End()
+
 	cmd := exec.CommandContext(ctx, gobin, args...)
 	cmd.Dir = dir
 	cmd.Stderr = os.Stderr
@@ -526,6 +553,15 @@ func goModDownload(ctx context.Context, gobin, dir string, modulePaths []string)
 		opentracing.Tag{Key: "command", Value: gobin},
 		opentracing.Tag{Key: "args", Value: args})
 	defer span.Finish()
+
+	tracer := otel.Tracer("pulumi-language-go")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, "go-mod-download",
+		trace.WithAttributes(
+			attribute.String("component", "exec.Command"),
+			attribute.String("command", gobin),
+			attribute.StringSlice("args", args),
+		))
+	defer otelSpan.End()
 
 	cmd := exec.CommandContext(ctx, gobin, args...)
 	cmd.Dir = dir
@@ -631,13 +667,12 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 		return nil, fmt.Errorf("failed to load pulumi-plugin.json: %w", err)
 	}
 
-	if (!strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") && pulumiPlugin == nil) ||
-		(pulumiPlugin != nil && !pulumiPlugin.Resource) {
+	if pulumiPlugin == nil || !pulumiPlugin.Resource {
 		return nil, errors.New("module is not a pulumi provider")
 	}
 
 	var name string
-	if pulumiPlugin != nil && pulumiPlugin.Name != "" {
+	if pulumiPlugin.Name != "" {
 		name = pulumiPlugin.Name
 	} else {
 		// github.com/pulumi/pulumi-aws/sdk/... => aws
@@ -646,7 +681,7 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 	}
 
 	version := m.Version
-	if pulumiPlugin != nil && pulumiPlugin.Version != "" {
+	if pulumiPlugin.Version != "" {
 		version = pulumiPlugin.Version
 	}
 	version, err = normalizeVersion(version)
@@ -656,15 +691,12 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 
 	var server string
 	var parameterization *pulumirpc.PackageParameterization
-	if pulumiPlugin != nil {
-		// There is no way to specify server or parameterization without using `pulumi-plugin.json`.
-		server = pulumiPlugin.Server
-		if pulumiPlugin.Parameterization != nil {
-			parameterization = &pulumirpc.PackageParameterization{
-				Name:    pulumiPlugin.Parameterization.Name,
-				Version: pulumiPlugin.Parameterization.Version,
-				Value:   pulumiPlugin.Parameterization.Value,
-			}
+	server = pulumiPlugin.Server
+	if pulumiPlugin.Parameterization != nil {
+		parameterization = &pulumirpc.PackageParameterization{
+			Name:    pulumiPlugin.Parameterization.Name,
+			Version: pulumiPlugin.Parameterization.Version,
+			Value:   pulumiPlugin.Parameterization.Value,
 		}
 	}
 
@@ -1003,6 +1035,22 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, fmt.Errorf("failed to prepare environment: %w", err)
 	}
 
+	tracer := otel.Tracer("pulumi-language-go")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, "execGo",
+		trace.WithAttributes(
+			attribute.String("component", "exec.Command"),
+		))
+	defer otelSpan.End()
+
+	carrier := make(propagation.MapCarrier)
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	if traceparent := carrier.Get("traceparent"); traceparent != "" {
+		env = append(env, "TRACEPARENT="+traceparent)
+	}
+	if host.otelEndpoint != "" {
+		env = append(env, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
+	}
+
 	// the user can explicitly opt in to using a binary executable by specifying
 	// runtime.options.binary in the Pulumi.yaml
 	if opts.binary != "" {
@@ -1138,6 +1186,10 @@ func (host *goLanguageHost) InstallDependencies(
 	}
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
+
+	tracer := otel.Tracer("pulumi-language-go")
+	_, otelSpan := cmdutil.StartSpan(server.Context(), tracer, "go-mod-tidy")
+	defer otelSpan.End()
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 

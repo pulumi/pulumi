@@ -19,14 +19,9 @@ __all__ = [
     'ProviderCertmanagerArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class ProviderCertmanagerArgsDict(TypedDict):
-        mtls_cert_pem: pulumi.Input[_builtins.str]
-        mtls_key_pem: pulumi.Input[_builtins.str]
-elif False:
-    ProviderCertmanagerArgsDict: TypeAlias = Mapping[str, Any]
+class ProviderCertmanagerArgsDict(TypedDict):
+    mtls_cert_pem: pulumi.Input[_builtins.str]
+    mtls_key_pem: pulumi.Input[_builtins.str]
 
 @pulumi.input_type
 class ProviderCertmanagerArgs:

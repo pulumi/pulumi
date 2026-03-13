@@ -34,6 +34,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -41,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -228,7 +230,8 @@ func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin
 	statusSink := diagtest.LogSink(t)
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
-	return plugin.NewContext(context.Background(), sink, statusSink, host, nil, "", nil, false, nil)
+	return plugin.NewContext(context.Background(), sink, statusSink, host, nil, "", nil, false,
+		nil, schema.NewLoaderServerFromHost)
 }
 
 type testProviderSource struct {
@@ -1147,7 +1150,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 		hasExplicit    bool
 		expectFail     bool
 	}
-	cases := []TT{}
+	cases := slice.Prealloc[TT](4)
 	for _, disableDefault := range []bool{true, false} {
 		for _, hasExplicit := range []bool{true, false} {
 			cases = append(cases, TT{
@@ -1828,16 +1831,16 @@ func TestResourceInheritsOptionsFromParent(t *testing.T) {
 			}
 
 			childURN := resource.NewURN("a", "proj", "d:e:f", "a:b:c", "child")
-			goal := &resource.Goal{
-				Parent:      parentURN,
-				Type:        childURN.Type(),
+			request := &pulumirpc.RegisterResourceRequest{
+				Parent:      string(parentURN),
+				Type:        string(childURN.Type()),
 				Name:        childURN.Name(),
-				DeletedWith: test.childDeletedWith,
+				DeletedWith: string(test.childDeletedWith),
 			}
 
-			newGoal := inheritFromParent(*goal, *parentGoal)
+			inheritFromParent(request, *parentGoal)
 
-			assert.Equal(t, test.wantDeletedWith, newGoal.DeletedWith)
+			assert.Equal(t, string(test.wantDeletedWith), request.DeletedWith)
 		})
 	}
 }
@@ -2503,7 +2506,7 @@ func TestInvoke(t *testing.T) {
 		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -2560,7 +2563,7 @@ func TestInvoke(t *testing.T) {
 		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -2638,7 +2641,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -2709,7 +2712,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -2811,7 +2814,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -2876,7 +2879,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)

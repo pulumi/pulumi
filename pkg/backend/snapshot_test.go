@@ -15,12 +15,14 @@
 package backend
 
 import (
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
@@ -29,6 +31,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
@@ -58,7 +62,7 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 	require.NoError(t, err)
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap), sp
+	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap, nil), sp
 }
 
 func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
@@ -323,7 +327,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	resourceP := NewResource(aUniqueUrnResourceP)
 	resourceA := NewResource(aUniqueUrnResourceA)
 
-	var changes []*resource.State
+	changes := slice.Prealloc[*resource.State](4)
 
 	// Change the "custom" bit.
 	changes = append(changes, NewResource(resourceA.URN))
@@ -1067,6 +1071,53 @@ func TestRecordingSameFailure(t *testing.T) {
 	assert.Equal(t, resourceA.URN, deployment.Resources[0].URN)
 }
 
+func TestSnapshotAutoRepairSucceedsForInvalidSnapshots(t *testing.T) {
+	t.Parallel()
+
+	// The dependency "b" does not exist in the snapshot. With an events channel configured
+	// (as done by the cloud backend), the dangling dependency should be pruned and the
+	// snapshot saved successfully.
+	r := NewResource("a", "b")
+	snap := NewSnapshot([]*resource.State{r})
+	sp := &MockStackPersister{}
+	events := make(chan engine.Event, 1)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events)
+
+	err := sm.saveSnapshot()
+
+	require.NoError(t, err)
+	require.NotEmpty(t, sp.SavedSnapshots)
+	require.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
+	require.Len(t, sp.LastSnap().Resources, 1)
+	require.Empty(t, sp.LastSnap().Resources[0].Dependencies)
+	event := <-events
+	assert.Equal(t, engine.ErrorEvent, event.Type)
+}
+
+func TestSnapshotAutoRepairErrorIsSurfacedWhenRepairFails(t *testing.T) {
+	t.Parallel()
+
+	// A cyclic dependency (A→B, B→A) fails VerifyIntegrity (ordering violation) and also
+	// causes Repair to fail (Toposort detects the cycle). The returned error should include
+	// both the integrity error and the reason auto-repair failed, so the user knows that
+	// running `pulumi repair` manually will not help.
+	rA := NewResource("a", "b")
+	rB := NewResource("b", "a")
+	snap := NewSnapshot([]*resource.State{rA, rB})
+	sp := &MockStackPersister{}
+	events := make(chan engine.Event, 1)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events)
+
+	err := sm.saveSnapshot()
+
+	require.ErrorContains(t, err, "failed to verify snapshot")
+	var sie *snapshot.SnapshotIntegrityError
+	require.True(t, errors.As(err, &sie))
+	require.NotNil(t, sie.AutoRepairErr)
+	event := <-events
+	assert.Equal(t, engine.ErrorEvent, event.Type)
+}
+
 func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T) {
 	t.Parallel()
 
@@ -1077,7 +1128,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1097,7 +1148,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) 
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1120,7 +1171,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1143,7 +1194,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(
 	r := NewResource("a")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap)
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()

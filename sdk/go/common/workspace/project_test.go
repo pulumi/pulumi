@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -114,7 +115,7 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	assert.ErrorContains(t, err,
 		"The default value specified for configuration key 'instanceSize' is not of the expected type 'integer'")
 
-	invalidValues := make([]any, 0)
+	invalidValues := slice.Prealloc[any](1)
 	invalidValues = append(invalidValues, "hello")
 	// default value here has type array<string>
 	// config type specified is array<array<string>>
@@ -153,10 +154,10 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 	require.NoError(t, err, "There should be no validation error")
 
 	// validValues = ["hello"]
-	validValues := make([]any, 0)
+	validValues := slice.Prealloc[any](1)
 	validValues = append(validValues, "hello")
 	// validValuesArray = [["hello"]]
-	validValuesArray := make([]any, 0)
+	validValuesArray := slice.Prealloc[any](1)
 	validValuesArray = append(validValuesArray, validValues)
 
 	// default value here has type array<array<string>>
@@ -2064,6 +2065,17 @@ packages:
   tls-self-signed-cert: github.com/pulumi/component-test-providers@0.0.0-xd47cf0
 `, string(b))
 	})
+}
+
+func TestWorkspaceSpecString(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "fizz", PackageSpec{Source: "fizz"}.String())
+	assert.Equal(t, "fizz@1.2.3", PackageSpec{Source: "fizz", Version: "1.2.3"}.String())
+	assert.Equal(t, "{ Source: fizz, Version: 1.2.3, PluginDownloadURL: example.com }",
+		PackageSpec{Source: "fizz", Version: "1.2.3", PluginDownloadURL: "example.com"}.String())
+	assert.Equal(t, "{ Source: fizz, Parameters: p1 p2 }",
+		PackageSpec{Source: "fizz", Parameters: []string{"p1", "p2"}}.String())
 }
 
 func TestGetPackageSpecs(t *testing.T) {

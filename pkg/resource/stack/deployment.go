@@ -390,7 +390,7 @@ func DeserializeStackOutputs(
 		return nil, nil
 	}
 
-	secretsManager, err := initializeSecretsManager(deployment, secretsProv)
+	secretsManager, err := initializeSecretsManager(ctx, deployment, secretsProv)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +415,7 @@ func DeserializeDeploymentV3(
 		return nil, err
 	}
 
-	secretsManager, err := initializeSecretsManager(deployment, secretsProv)
+	secretsManager, err := initializeSecretsManager(ctx, deployment, secretsProv)
 	if err != nil {
 		return nil, err
 	}
@@ -468,6 +468,7 @@ func DeserializeDeploymentV3(
 
 // initializeSecretsManager initializes the secrets manager for a deployment.
 func initializeSecretsManager(
+	ctx context.Context,
 	deployment apitype.DeploymentV3,
 	secretsProv secrets.Provider,
 ) (secrets.Manager, error) {
@@ -477,7 +478,7 @@ func initializeSecretsManager(
 			return nil, errors.New("deployment uses a SecretsProvider but no SecretsProvider was provided")
 		}
 
-		sm, err := secretsProv.OfType(deployment.SecretsProviders.Type, deployment.SecretsProviders.State)
+		sm, err := secretsProv.OfType(ctx, deployment.SecretsProviders.Type, deployment.SecretsProviders.State)
 		if err != nil {
 			return nil, err
 		}
@@ -608,8 +609,23 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 	// A computed value marks something that will be determined at a later time. (e.g. the result of
 	// a computation that we don't perform during a preview operation.) We serialize a magic constant
 	// to record its existence.
-	if prop.IsComputed() || prop.IsOutput() {
+	if prop.IsComputed() {
 		return computedValuePlaceholder, nil
+	}
+
+	// We can't currently serialize output values fully, we lose the dependency information. But we can
+	// at least serialize the inner value so that we can preserve the shape of the data.
+	if prop.IsOutput() {
+		o := prop.OutputValue()
+
+		element := o.Element
+		if !o.Known {
+			element = resource.MakeComputed(element)
+		}
+		if o.Secret {
+			element = resource.MakeSecret(element)
+		}
+		return SerializePropertyValue(ctx, element, enc, showSecrets)
 	}
 
 	// For arrays, make sure to recurse.

@@ -162,10 +162,17 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		g.Fgenf(w, "[%.v", expr.Value)
 	}
 
-	if expr.KeyVariable == nil {
+	keyUsed := expr.KeyVariable != nil && expr.KeyVariable.Name != "_"
+
+	switch {
+	case !keyUsed && isMapType(expr.Collection.Type()):
+		g.Fgenf(w, " for %v in %.v.values()", expr.ValueVariable.Name, expr.Collection)
+	case !keyUsed:
 		g.Fgenf(w, " for %v in %.v", expr.ValueVariable.Name, expr.Collection)
-	} else {
-		g.Fgenf(w, " for %v, %v in %.v", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
+	case isMapType(expr.Collection.Type()):
+		g.Fgenf(w, " for %v, %v in %.v.items()", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
+	default:
+		g.Fgenf(w, " for %v, %v in enumerate(%.v)", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
 	}
 
 	if expr.Condition != nil {
@@ -175,9 +182,34 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 	g.Fprint(w, closedelim)
 }
 
+// listElementType extracts the element type from a list type,
+// unwrapping output, promise, and union wrappers.
+// Returns nil if the type is not a list type.
+func listElementType(t model.Type) model.Type {
+	if l, ok := pcl.UnwrapOption(model.ResolveOutputs(t)).(*model.ListType); ok {
+		return l.ElementType
+	}
+	return nil
+}
+
+// isMapType returns true if the given type is a map or object type,
+// unwrapping output, promise, and optional wrappers.
+func isMapType(t model.Type) bool {
+	switch pcl.UnwrapOption(model.ResolveOutputs(t)).(type) {
+	case *model.MapType, *model.ObjectType:
+		return true
+	default:
+		return false
+	}
+}
+
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
 	applyArgs, then := pcl.ParseApplyCall(expr)
+
+	prev := g.insideApplyLambda
+	g.insideApplyLambda = true
+	defer func() { g.insideApplyLambda = prev }()
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.apply`.
@@ -309,7 +341,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "element":
 		g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
-		g.Fgenf(w, `[{"key": k, "value": v} for k, v in %.v]`, expr.Args[0])
+		g.Fgenf(w, `[{"key": k, "value": v} for k, v in %.v.items()]`, expr.Args[0])
 	case "fileArchive":
 		g.Fgenf(w, "pulumi.FileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":
@@ -461,12 +493,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "length":
 		g.Fgenf(w, "len(%.v)", expr.Args[0])
 	case "lookup":
-		if len(expr.Args) == 3 {
-			g.Fgenf(w, "(lambda v, def: v if v is not None else def)(%.16v[%.v], %.v)",
-				expr.Args[0], expr.Args[1], expr.Args[2])
-		} else {
-			g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
-		}
+		g.Fgenf(w, "%.16v.get(%.v, %.v)",
+			expr.Args[0], expr.Args[1], expr.Args[2])
 	case "range":
 		g.Fprint(w, "range(")
 		for i, arg := range expr.Args {
@@ -688,8 +716,31 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	targetType := pcl.LowerConversion(expr, destType)
 	typeName := g.argumentTypeName(expr, targetType) // Example: aws.s3.BucketLoggingArgs
 	td := g.typedDictEnabled(expr, targetType)
-	if typeName != "" && !td {
-		// If a typeName exists, and it's not for a typedDict, treat this as an Input Class
+
+	// Inside apply lambda bodies, pyright infers dict literals as dict[str, str]
+	// rather than the expected TypedDict. The union in `Input[T] = T | Output[T]`
+	// at the call site prevents pyright from propagating downward type context
+	// through `apply` into the lambda body.
+	// See https://github.com/microsoft/pyright/issues/11324.
+	// When the resource input's destination type has typed dicts enabled, resolve
+	// the type name from that destination type so we generate Args class form
+	// instead.
+	useArgsInApply := false
+	if g.insideApplyLambda && g.applyLambdaType != nil {
+		if elemType := listElementType(g.applyLambdaType); elemType != nil {
+			elemTargetType := pcl.LowerConversion(expr, elemType)
+			if g.typedDictEnabled(expr, elemTargetType) {
+				if name := g.argumentTypeName(expr, elemTargetType); name != "" {
+					typeName = name
+					useArgsInApply = true
+				}
+			}
+		}
+	}
+
+	if typeName != "" && (!td || useArgsInApply) {
+		// If a typeName exists and we're not using TypedDicts (or we're inside
+		// an apply lambda where dicts don't type-check), generate an Input Class.
 		// e.g. aws.s3.BucketLoggingArgs(key="value", foo="bar", ...)
 		if len(expr.Items) == 0 {
 			g.Fgenf(w, "%s()", typeName)

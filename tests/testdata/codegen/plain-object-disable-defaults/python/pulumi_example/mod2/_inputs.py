@@ -20,17 +20,12 @@ __all__ = [
     'TypArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class TypArgsDict(TypedDict):
-        """
-        A test for namespaces (mod 2)
-        """
-        mod1: NotRequired[pulumi.Input['_mod1.TypArgsDict']]
-        val: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    TypArgsDict: TypeAlias = Mapping[str, Any]
+class TypArgsDict(TypedDict):
+    """
+    A test for namespaces (mod 2)
+    """
+    mod1: NotRequired[pulumi.Input['_mod1.TypArgsDict']]
+    val: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class TypArgs:

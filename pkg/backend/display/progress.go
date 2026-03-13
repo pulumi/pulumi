@@ -513,12 +513,12 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	display.eventMutex.RLock()
 	defer display.eventMutex.RUnlock()
 
-	result := []*treeNode{}
-
-	result = append(result, &treeNode{
-		row:              display.headerRow,
-		colorizedColumns: display.headerRow.ColorizedColumns(),
-	})
+	result := []*treeNode{
+		{
+			row:              display.headerRow,
+			colorizedColumns: display.headerRow.ColorizedColumns(),
+		},
+	}
 
 	urnToTreeNode := make(map[resource.URN]*treeNode)
 	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
@@ -1105,6 +1105,9 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	// If there's already a row for this URN, return it.
 	row, has := display.eventUrnToResourceRow[urn]
 	if has {
+		// Even for existing rows, ensure parent placeholder rows exist so the tree
+		// displays correct nesting when child events arrive before parent events.
+		display.ensureParentRow(metadata)
 		return row
 	}
 
@@ -1138,15 +1141,60 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 
 	display.eventUrnToResourceRow[urn] = row
 
+	display.ensureParentRow(metadata)
+
 	display.ensureHeaderAndStackRows()
 	display.resourceRows = append(display.resourceRows, row)
 	return row
 }
 
+// ensureParentRow pre-creates a placeholder row for the parent resource if it doesn't
+// exist yet. This ensures the tree displays correct parent-child nesting even when child
+// events arrive before parent events (e.g., during destroy). The placeholder is created
+// with hideRowIfUnnecessary=true and OpSame so it only shows if it has children. When
+// the parent's real event arrives later, getRowForURN finds the existing row and
+// processNormalEvent updates it with real metadata via SetStep.
+func (display *ProgressDisplay) ensureParentRow(metadata *engine.StepEventMetadata) {
+	if metadata == nil || metadata.Res == nil {
+		return
+	}
+	parentURN := metadata.Res.Parent
+	if parentURN == "" || parentURN == display.stackUrn {
+		return
+	}
+	if _, has := display.eventUrnToResourceRow[parentURN]; has {
+		return
+	}
+	parentStep := engine.StepEventMetadata{URN: parentURN, Op: deploy.OpSame}
+	parentRow := &resourceRowData{
+		display:              display,
+		tick:                 display.currentTick,
+		diagInfo:             &DiagInfo{},
+		policyPayloads:       policyPayloads,
+		step:                 parentStep,
+		hideRowIfUnnecessary: true,
+	}
+	display.eventUrnToResourceRow[parentURN] = parentRow
+	display.ensureHeaderAndStackRows()
+	display.resourceRows = append(display.resourceRows, parentRow)
+}
+
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
+	policyLoadingMessage := "Loading policy packs..."
+
 	//nolint:exhaustive // we are only interested in a subset of events
 	switch event.Type {
 	case engine.PreludeEvent:
+		// Dismiss the "Loading policy packs..." message now that loading is complete.
+		if display.shownPolicyLoadEvent {
+			display.handleProgressEvent(engine.ProgressEventPayload{
+				Type:    engine.PolicyPacksLoading,
+				ID:      "policy-loading",
+				Message: policyLoadingMessage,
+				Done:    true,
+			})
+		}
+
 		// A prelude event can just be printed out directly to the console.
 		// Note: we should probably make sure we don't get any prelude events
 		// once we start hearing about actual resource events.
@@ -1165,9 +1213,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		return
 	case engine.PolicyLoadEvent:
 		if !display.shownPolicyLoadEvent {
-			policyLoadEventString := colors.SpecInfo + "Loading policy packs..." + colors.Reset + "\n"
-			display.println(policyLoadEventString)
 			display.shownPolicyLoadEvent = true
+			display.handleProgressEvent(engine.ProgressEventPayload{
+				Type:    engine.PolicyPacksLoading,
+				ID:      "policy-loading",
+				Message: policyLoadingMessage,
+			})
 		}
 		return
 	case engine.SummaryEvent:

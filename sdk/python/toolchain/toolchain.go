@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -65,12 +66,6 @@ type PythonOptions struct {
 	Toolchain toolchain
 }
 
-type PythonPackage struct {
-	Name     string `json:"name"`
-	Version  string `json:"version"`
-	Location string `json:"location"`
-}
-
 type Info struct {
 	// The path to the python executable that's being used
 	PythonExecutable string
@@ -94,7 +89,7 @@ type Toolchain interface {
 	// ValidateVenv checks if the virtual environment of the toolchain is valid.
 	ValidateVenv(ctx context.Context) error
 	// ListPackages returns a list of Python packages installed in the toolchain.
-	ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error)
+	ListPackages(ctx context.Context, transitive bool) ([]plugin.DependencyInfo, error)
 	// Command returns an *exec.Cmd for running `python` using the configured toolchain.
 	Command(ctx context.Context, args ...string) (*exec.Cmd, error)
 	// ModuleCommand returns an *exec.Cmd for running an installed python module using the configured toolchain.
@@ -140,13 +135,13 @@ func TypeCheckerName(tc typeChecker) string {
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 	switch options.Toolchain { //nolint:exhaustive // golangci-lint v2 upgrade
 	case Poetry:
-		dir := options.ProgramDir
-		if dir == "" {
-			dir = options.Root
-		}
-		return newPoetry(dir)
+		return newPoetry(options.ProgramDir)
 	case Uv:
-		return newUv(options.Root, options.Virtualenv)
+		virtualenv := options.Virtualenv
+		if virtualenv != "" && !filepath.IsAbs(virtualenv) {
+			virtualenv = filepath.Join(options.Root, virtualenv)
+		}
+		return newUv(options.ProgramDir, virtualenv)
 	}
 	return newPip(options.Root, options.Virtualenv)
 }
@@ -337,4 +332,14 @@ func getPythonVersion(ctx context.Context,
 		return semver.Version{}, fmt.Errorf("failed to parse python version %q: %w", versionStr, err)
 	}
 	return pythonVersion, nil
+}
+
+// pythonNormRe matches runs of PEP 503 separator characters.
+var pythonNormRe = regexp.MustCompile(`[-_.]+`)
+
+// normalizePythonPackageName normalizes a Python package name to its canonical form per PEP 503:
+// lowercase, with runs of '-', '_', and '.' replaced by a single '-'.
+// https://peps.python.org/pep-0503/
+func normalizePythonPackageName(name string) string {
+	return pythonNormRe.ReplaceAllString(strings.ToLower(name), "-")
 }

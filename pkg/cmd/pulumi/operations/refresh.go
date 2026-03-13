@@ -26,10 +26,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -41,7 +43,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -87,13 +92,8 @@ func NewRefreshCmd() *cobra.Command {
 	// Flags for Neo.
 	var neoEnabled bool
 
-	use, cmdArgs := "refresh", cmdutil.NoArgs
-	if deployment.RemoteSupported() {
-		use, cmdArgs = "refresh [url]", cmdutil.MaximumNArgs(1)
-	}
-
 	cmd := &cobra.Command{
-		Use:   use,
+		Use:   "refresh",
 		Short: "Refresh the resources in a stack",
 		Long: "Refresh the resources in a stack.\n" +
 			"\n" +
@@ -104,11 +104,19 @@ func NewRefreshCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
+
+			proj, root, err := readProjectForUpdate(ws, client)
+			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
 
 			// Remote implies we're skipping previews.
 			if remoteArgs.Remote {
@@ -205,11 +213,6 @@ func NewRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
-
 			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
@@ -285,10 +288,10 @@ func NewRefreshCmd() *cobra.Command {
 				}
 			}
 
-			targetUrns := []string{}
+			targetUrns := slice.Prealloc[string](len(*targets))
 			targetUrns = append(targetUrns, *targets...)
 
-			excludeUrns := []string{}
+			excludeUrns := slice.Prealloc[string](len(*excludes))
 			excludeUrns = append(excludeUrns, *excludes...)
 
 			opts.Engine = engine.UpdateOptions{
@@ -322,15 +325,24 @@ func NewRefreshCmd() *cobra.Command {
 
 			switch {
 			case err == context.Canceled:
-				return errors.New("refresh cancelled")
+				return backenderr.CancelledError{Operation: "refresh"}
 			case err != nil:
 				return err
 			case expectNop && changes != nil && engine.HasChanges(changes):
-				return errors.New("no changes were expected but changes occurred")
+				return backenderr.NoChangesExpectedError{Operation: "refresh"}
 			default:
 				return nil
 			}
 		},
+	}
+
+	if deployment.RemoteSupported() {
+		constrictor.AttachArguments(cmd, &constrictor.Arguments{
+			Arguments: []constrictor.Argument{{Name: "url"}},
+			Required:  0,
+		})
+	} else {
+		constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	}
 
 	cmd.PersistentFlags().BoolVar(
@@ -464,7 +476,7 @@ func NewRefreshCmd() *cobra.Command {
 type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
 
 // filterMapPendingCreates applies f to each pending create. If f returns nil, then the op
-// is deleted. Otherwise is is replaced by the returned op.
+// is deleted. Otherwise is replaced by the returned op.
 func filterMapPendingCreates(
 	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
 ) error {

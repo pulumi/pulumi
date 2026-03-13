@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -72,7 +73,7 @@ func TestStackImport_ChangeServiceSecrets(t *testing.T) {
 			}
 		},
 		BackendF: func() backend.Backend { return be },
-		DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return newSm, nil
 		},
 	}
@@ -149,4 +150,142 @@ func TestStackImport_ChangeServiceSecrets(t *testing.T) {
 
 	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
+}
+
+// Repro for https://github.com/pulumi/pulumi/issues/21846.
+// Importing a deployment with service secrets should succeed even if the target
+// stack's default secrets manager mutates ProjectStack as a side effect.
+func TestStackImport_ServiceSecrets_DefaultSecretManagerMutatesProjectStack(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+
+	// Write out a minimal Pulumi.yaml to ensure we have a project to load.
+	err := os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600)
+	require.NoError(t, err)
+	// And write a minimal Pulumi.<stack>.yaml to ensure we have a stack to load.
+	err = os.WriteFile("Pulumi.stk.yaml", []byte("config:\n  proj:key: value"), 0o600)
+	require.NoError(t, err)
+
+	w := &pkgWorkspace.MockW{
+		SettingsF: func() *pkgWorkspace.Settings {
+			return &pkgWorkspace.Settings{Stack: "org/proj/stk"}
+		},
+	}
+
+	newSm := &secrets.MockSecretsManager{
+		TypeF:  func() string { return "passphrase" },
+		StateF: func() json.RawMessage { return nil },
+		DecrypterF: func() config.Decrypter {
+			return config.NopDecrypter
+		},
+		EncrypterF: func() config.Encrypter {
+			return config.NopEncrypter
+		},
+	}
+
+	var be *backend.MockBackend
+	stk := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				NameV: tokens.MustParseStackName("stk"),
+			}
+		},
+		BackendF: func() backend.Backend { return be },
+		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
+			// Simulate a backend that configures secrets in ProjectStack as a side effect.
+			info.SecretsProvider = "passphrase"
+			info.EncryptionSalt = "v1:dummy"
+			return newSm, nil
+		},
+	}
+	importCalled := false
+	be = &backend.MockBackend{
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "org/proj/stk", ref.String())
+			return stk, nil
+		},
+		ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
+			importCalled = true
+
+			v3deployment, err := stack.UnmarshalUntypedDeployment(ctx, deployment)
+			if err != nil {
+				return err
+			}
+
+			// Ensure the imported deployment was rewritten to use the stack's
+			// default secrets manager.
+			assert.Equal(t, "passphrase", v3deployment.SecretsProviders.Type)
+			assert.Nil(t, v3deployment.SecretsProviders.State)
+			return nil
+		},
+	}
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return w, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+	var smState json.RawMessage
+	sm := &secrets.MockSecretsManager{
+		TypeF: func() string { return "service" },
+		StateF: func() json.RawMessage {
+			return smState
+		},
+		DecrypterF: func() config.Decrypter {
+			return config.NopDecrypter
+		},
+		EncrypterF: func() config.Encrypter {
+			return config.NopEncrypter
+		},
+	}
+	sp := (&secrets.MockProvider{}).Add(
+		"service", func(state json.RawMessage) (secrets.Manager, error) {
+			smState = state
+			return sm, nil
+		})
+
+	cmd := newStackImportCmd(ws, lm, sp)
+
+	var stdinBuf bytes.Buffer
+	importDeployment := `{
+	"version": 3,
+	"deployment": {
+		"secrets_providers": {
+			"type": "service",
+			"state": {
+				"url": "https://api.pulumi.com",
+				"owner": "src-org",
+				"project": "proj",
+				"stack": "stk"
+			}
+		}
+	}
+}`
+	stdinBuf.WriteString(importDeployment)
+
+	var stdoutBuf bytes.Buffer
+	cmd.SetOut(&stdoutBuf)
+	cmd.SetIn(&stdinBuf)
+	cmd.SetArgs([]string{})
+
+	err = cmd.ExecuteContext(t.Context())
+	require.NoError(t, err)
+	require.True(t, importCalled)
+
+	// Assert the config file was updated
+	configBytes, err := os.ReadFile("Pulumi.stk.yaml")
+	require.NoError(t, err)
+	assert.Contains(t, string(configBytes), "secretsprovider: passphrase")
+	assert.Contains(t, string(configBytes), "encryptionsalt: v1:dummy")
+	assert.Contains(t, string(configBytes), "proj:key: value")
 }

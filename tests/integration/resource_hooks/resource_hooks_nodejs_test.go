@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,14 +35,14 @@ func TestNodejsResourceHooks(t *testing.T) {
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			requirePrinted(t, stack, "info", "beforeCreate was called with length = 10")
-			requirePrinted(t, stack, "info", "funComp was called with child")
+			testutil.RequirePrinted(t, stack, "info", "beforeCreate was called with length = 10")
+			testutil.RequirePrinted(t, stack, "info", "funComp was called with child")
 		},
 		EditDirs: []integration.EditDir{{
 			Additive: true,
 			Dir:      filepath.Join("nodejs", "step-2"),
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-				requirePrinted(t, stack, "info", "beforeDelete was called with length = 10")
+				testutil.RequirePrinted(t, stack, "info", "beforeDelete was called with length = 10")
 			},
 		}},
 	})
@@ -93,7 +94,7 @@ func TestNodejsResourceHooksSecrets(t *testing.T) {
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			requirePrinted(t, stack, "info", "hook called")
+			testutil.RequirePrinted(t, stack, "info", "hook called")
 		},
 	})
 }

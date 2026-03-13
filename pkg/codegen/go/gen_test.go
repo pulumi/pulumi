@@ -196,7 +196,7 @@ func TestGenerateTypeNames(t *testing.T) {
 		return func(t schema.Type) string {
 			return root.typeString(t)
 		}
-	})
+	}, filepath.FromSlash("../testing/test/testdata/"))
 }
 
 func readSchemaFile(file string) *schema.Package {
@@ -525,6 +525,10 @@ func TestTitle(t *testing.T) {
 	assert.Equal("WaldoThud_Fred", Title("waldo-Thud_Fred"))
 	assert.Equal("WaldoThud_Fred", Title("waldo-thud_Fred"))
 	assert.Equal("WaldoThud_Fred", Title("$waldo-thud_Fred"))
+	assert.Equal("_6to4Interface", Title("6to4Interface"))
+	assert.Equal("_3gppInfos", Title("3gppInfos"))
+	assert.Equal("_3gppRaw", Title("3gppRaw"))
+	assert.Equal("_0foo", Title("0foo"))
 }
 
 func TestRegressTypeDuplicatesInChunking(t *testing.T) {

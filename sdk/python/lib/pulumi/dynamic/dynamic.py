@@ -329,7 +329,9 @@ class Resource(CustomResource):
 
     _resource_type_name: ClassVar[str]
 
-    def __init_subclass__(cls, module: str = "", name: str = "Resource"):
+    def __init_subclass__(cls, module: str = "", name: str = "Resource", **kwargs):
+        super().__init_subclass__(**kwargs)
+
         if module:
             module = f"/{module}"
         cls._resource_type_name = f"dynamic{module}:{name}"

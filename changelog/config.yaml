@@ -20,12 +20,13 @@ scopes:
     - package
     - policy
     - state
-  components: [dotnet, go, java, nodejs, python, yaml]
+  components: [dotnet, go, java, nodejs, python, yaml, pcl]
   docs: []
   engine: []
   pkg: [testing]
-  programgen: [dotnet, go, java, nodejs, python, yaml]
+  programgen: [dotnet, go, java, nodejs, python, yaml, pcl]
   protobuf: []
-  sdk: [dotnet, go, java, nodejs, python, yaml]
-  sdkgen: [dotnet, go, java, nodejs, python, yaml, docs]
+  sdk: [dotnet, go, java, nodejs, bun, python]
+  sdkgen: [dotnet, go, java, nodejs, python, yaml, pcl, docs]
   yaml: []
+  pcl: []

@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -1026,7 +1027,7 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	e.ImportDirectory(filepath.Join("go", "regress-13301"))
 
 	// Rename go.mod.bad to go.mod so that the Go toolchain uses it.
-	require.NoError(t, os.Rename(
+	require.NoError(t, os.Rename( //nolint:forbidigo // os.Rename is OK for tests
 		filepath.Join(e.CWD, "go.mod.bad"),
 		filepath.Join(e.CWD, "go.mod"),
 	))
@@ -1365,7 +1366,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	require.NoError(t, err)
 
 	containsRename := false
-	containedRenames := make([]string, len(gomod.Replace))
+	containedRenames := slice.Prealloc[string](len(gomod.Replace))
 	for _, r := range gomod.Replace {
 		if filepath.ToSlash(r.New.Path) == "./sdks/netapp-cloudmanager" &&
 			r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/netapp-cloudmanager/v25" {

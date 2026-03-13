@@ -376,7 +376,8 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 		for _, el := range src.Elements {
 			values = append(values, buildEnumValue(el.Value))
 		}
-		return model.NewEnumType(src.Token, elType, values, enumSchemaType{src})
+		tk := canonicalizeToken(src.Token, src.PackageReference)
+		return model.NewEnumType(tk, elType, values, enumSchemaType{src})
 	case *schema.ObjectType:
 		if t, ok := b.schemaTypes[src]; ok {
 			return t

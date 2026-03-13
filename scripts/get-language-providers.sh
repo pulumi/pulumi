@@ -11,26 +11,45 @@ if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
   USE_GH=true
 fi
 
+retry_with_backoff() {
+    local max_attempts=3
+    local attempt=1
+    local exitcode=0
+
+    while [ ${attempt} -le ${max_attempts} ]; do
+        if "$@"; then
+            return 0
+        fi
+
+        exitcode=$?
+
+        if [ ${attempt} -lt ${max_attempts} ]; then
+            local backoff=$((2 ** (attempt - 1)))
+            sleep ${backoff}
+        fi
+
+        attempt=$((attempt + 1))
+    done
+
+    return ${exitcode}
+}
+
 download_release() {
   local lang="$1"
   local tag="$2"
   local filename="$3"
 
   if "${USE_GH}"; then
-    gh release download "${tag}" --repo "pulumi/pulumi-${lang}" -p "${filename}"
+    retry_with_backoff gh release download "${tag}" --repo "pulumi/pulumi-${lang}" -p "${filename}"
   else
     curl -OL --fail --retry 3 "https://github.com/pulumi/pulumi-${lang}/releases/download/${tag}/${filename}"
   fi
 }
 
-# Notes:
-#
-# * When updating .Net, you should also update PulumiDotnetSDKVersion in pkg/codegen/testing/test/helpers.go
-#
 LANGUAGES=(
-  "dotnet v3.97.0"
-  "java v1.20.0"
-  "yaml v1.26.1"
+  "dotnet v3.102.0"
+  "java v1.21.3"
+  "yaml v1.30.1"
 )
 
 for i in "${LANGUAGES[@]}"; do

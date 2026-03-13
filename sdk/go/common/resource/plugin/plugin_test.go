@@ -194,7 +194,7 @@ func TestHealthCheck(t *testing.T) {
 
 func TestStartupFailure(t *testing.T) {
 	d := diagtest.LogSink(t)
-	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/provider-language")
@@ -214,7 +214,7 @@ func TestStartupFailure(t *testing.T) {
 
 func TestNonZeroExitcode(t *testing.T) {
 	d := diagtest.LogSink(t)
-	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/provider-language")
@@ -266,7 +266,7 @@ func TestNonZeroExitcode(t *testing.T) {
 // Similar to TestNonZeroExitcode but with a zero exit code, but no port written so it's still an error.
 func TestZeroExitcode(t *testing.T) {
 	d := diagtest.LogSink(t)
-	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/provider-language")
@@ -397,7 +397,7 @@ func TestCheckVersionRange(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validatePulumiVersionRange(tt.pulumiVersionRange, tt.cliVersion)
+			err := ValidatePulumiVersionRange(tt.pulumiVersionRange, tt.cliVersion)
 
 			if tt.expectedError != "" {
 				require.ErrorContains(t, err, tt.expectedError)
@@ -413,7 +413,7 @@ func TestCheckVersionRange(t *testing.T) {
 //nolint:paralleltest // Modifying the global version.Version
 func TestPulumiVersionRangeYaml(t *testing.T) {
 	d := diagtest.LogSink(t)
-	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { ctx.Close() })
 

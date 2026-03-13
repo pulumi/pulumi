@@ -16,6 +16,7 @@ package metadata
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -62,10 +63,15 @@ func GetPolicyPublishMetadata(root string) map[string]string {
 }
 
 // Call `Language.About` to retrieve metadata about the project's runtime.
-func GetLanguageRuntimeMetadata(root string, proj *workspace.Project) *promise.Promise[map[string]string] {
+func GetLanguageRuntimeMetadata(
+	ctx context.Context,
+	root string,
+	proj *workspace.Project,
+) *promise.Promise[map[string]string] {
 	return promise.Run(func() (map[string]string, error) {
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		pwd, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		pwd, main, pctx, err := engine.ProjectInfoContext(
+			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return nil, err
 		}

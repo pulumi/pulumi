@@ -22,9 +22,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -57,7 +57,6 @@ func NewAICommand() *cobra.Command {
 		Short:  "Basic Pulumi AI CLI commands.",
 		Long:   "Contains the current set of supported CLI functionality for the Pulumi AI service.",
 		Hidden: !env.Experimental.Value(),
-		Args:   cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			if len(args) == 0 {
@@ -66,6 +65,9 @@ func NewAICommand() *cobra.Command {
 			return aiCommand.Run(ctx, args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.AddCommand(newAIWebCommand())
 	return cmd
 }

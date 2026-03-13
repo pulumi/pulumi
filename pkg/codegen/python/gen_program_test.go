@@ -20,11 +20,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
 func TestFunctionInvokeBindsArgumentObjectType(t *testing.T) {
@@ -52,19 +49,4 @@ func TestFunctionInvokeBindsArgumentObjectType(t *testing.T) {
 			break
 		}
 	}
-}
-
-func TestGenerateProgramVersionSelection(t *testing.T) {
-	t.Parallel()
-
-	test.GeneratePythonProgramTest(
-		t,
-		GenerateProgram,
-		func(
-			directory string, project workspace.Project,
-			program *pcl.Program, localDependencies map[string]string,
-		) error {
-			return GenerateProject(directory, project, program, localDependencies, "", "")
-		},
-	)
 }

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pulumi"
-version = "3.217.0"
+version = "3.226.1"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
@@ -22,14 +22,19 @@ dependencies = [
     # We deliberately allow older versions of protobuf and grpcio (3.20.3 and 1.68.1 respectively)
     # to support users who require older versions of these dependencies.
     # grpcio 1.75.1 is needed for Python 3.14.
-    'protobuf>=3.20.3,<6',
+    'protobuf>=3.20.3,<7',
     'grpcio>=1.68.1,<2; python_version < "3.14"',
     'grpcio>=1.75.1,<2; python_version >= "3.14"',
     'dill~=0.4',
     'semver~=3.0',
     'pyyaml~=6.0',
     'debugpy~=1.8.7',
-    'pip>=24.3.1,<26',
+    "packaging>=26.0",
+    # OpenTelemetry dependencies for tracing
+    'opentelemetry-api>=1.20.0',
+    'opentelemetry-sdk>=1.20.0',
+    'opentelemetry-exporter-otlp-proto-grpc>=1.20.0',
+    'opentelemetry-instrumentation-grpc>=0.41b0',
 ]
 
 [dependency-groups]
@@ -138,6 +143,7 @@ module = [
     "grpc.experimental.aio",
     "google.protobuf.pyext",
     "pulumi.runtime.proto.*",
+    "opentelemetry.*",
 ]
 ignore_missing_imports = true
 

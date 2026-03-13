@@ -286,6 +286,9 @@ export class RegisterResourceRequest extends jspb.Message {
     setHidediffsList(value: Array<string>): RegisterResourceRequest;
     addHidediffs(value: string, index?: number): string;
 
+    getEnvvarmappingsMap(): jspb.Map<string, string>;
+    clearEnvvarmappingsMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RegisterResourceRequest): RegisterResourceRequest.AsObject;
@@ -340,6 +343,8 @@ export namespace RegisterResourceRequest {
         packageref: string,
         hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
         hidediffsList: Array<string>,
+
+        envvarmappingsMap: Array<[string, string]>,
     }
 
 
@@ -1056,11 +1061,6 @@ export class ErrorHookRequest extends jspb.Message {
     getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldInputs(value?: google_protobuf_struct_pb.Struct): ErrorHookRequest;
 
-    hasNewOutputs(): boolean;
-    clearNewOutputs(): void;
-    getNewOutputs(): google_protobuf_struct_pb.Struct | undefined;
-    setNewOutputs(value?: google_protobuf_struct_pb.Struct): ErrorHookRequest;
-
     hasOldOutputs(): boolean;
     clearOldOutputs(): void;
     getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
@@ -1090,7 +1090,6 @@ export namespace ErrorHookRequest {
         type: string,
         newInputs?: google_protobuf_struct_pb.Struct.AsObject,
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
-        newOutputs?: google_protobuf_struct_pb.Struct.AsObject,
         oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
         failedOperation: string,
         errorsList: Array<string>,

@@ -23,6 +23,7 @@ import (
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -37,7 +38,6 @@ func NewOrgCmd() *cobra.Command {
 			"\n" +
 			"Use this command to manage organization configuration, " +
 			"e.g. setting the default organization for a backend",
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOpts := display.Options{
@@ -77,6 +77,8 @@ func NewOrgCmd() *cobra.Command {
 		},
 	}
 
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.AddCommand(newOrgSetDefaultCmd())
 	cmd.AddCommand(newOrgGetDefaultCmd())
 	cmd.AddCommand(newSearchCmd())
@@ -88,8 +90,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 	var orgName string
 
 	cmd := &cobra.Command{
-		Use:   "set-default [NAME]",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "set-default",
 		Short: "Set the local default organization for the current backend",
 		Long: "Set the local default organization for the current backend.\n" +
 			"\n" +
@@ -131,6 +132,13 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			return workspace.SetBackendConfigDefaultOrg(cloudURL, orgName)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "name"},
+		},
+		Required: 1,
+	})
 
 	return cmd
 }
@@ -181,6 +189,8 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	return cmd
 }

@@ -23,13 +23,14 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -39,7 +40,6 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 	var stackName string
 	cmd := &cobra.Command{
 		Use:   "import",
-		Args:  cmdutil.MaximumNArgs(0),
 		Short: "Import a deployment from standard in into an existing stack",
 		Long: "Import a deployment from standard in into an existing stack.\n" +
 			"\n" +
@@ -52,11 +52,12 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
+			diag := cmdutil.Diag()
 
 			// Fetch the current stack and import a deployment.
 			s, err := RequireStack(
 				ctx,
-				cmdutil.Diag(),
+				diag,
 				ws,
 				lm,
 				stackName,
@@ -94,18 +95,34 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 			// If this snapshot is using the service secret manager but for a _different_ stack, we need to
 			// reconfigure it for the target stack we're importing into.
 			if snapshot.SecretsManager != nil && snapshot.SecretsManager.Type() == service.Type {
-				// Pass a dummy ProjectStack here since DefaultSecretManger will want to write to it to say no
-				// encryption is in use, but for import purposes we don't care about that.
-				ps := workspace.ProjectStack{}
-				sm, err := s.DefaultSecretManager(&ps)
+				var loadErr error
+				project, _, loadErr := ws.ReadProject()
+				var ps *workspace.ProjectStack
+				if loadErr == nil {
+					ps, loadErr = LoadProjectStack(ctx, diag, project, s)
+				}
+				if loadErr != nil {
+					// Default to an empty ProjectStack if we fail to load the existing one
+					ps = &workspace.ProjectStack{}
+				}
+				oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
+
+				sm, err := s.DefaultSecretManager(ctx, ps)
 				if err != nil {
 					return fmt.Errorf("could not create service secrets manager for stack %q: %w",
 						s.Ref().String(), err)
 				}
-				contract.Assertf(
-					ps.EncryptedKey == "" && ps.EncryptionSalt == "" && ps.SecretsProvider == "",
-					"expected ProjectStack to remain unmodified")
 				snapshot.SecretsManager = sm
+
+				// Handle if the configuration changed any of EncryptedKey, etc
+				if needsSaveProjectStackAfterSecretManger(oldConfig, ps) {
+					if loadErr != nil {
+						return fmt.Errorf("could not load existing project stack to update secrets manager configuration: %w", loadErr)
+					}
+					if err = SaveProjectStack(ctx, s, ps); err != nil {
+						return fmt.Errorf("saving stack config: %w", err)
+					}
+				}
 			}
 
 			if err := SaveSnapshot(ctx, s, snapshot, force); err != nil {
@@ -115,6 +132,8 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")

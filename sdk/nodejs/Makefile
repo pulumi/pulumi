@@ -2,7 +2,8 @@ PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh javascript))
 
-LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
+LANGHOST_NODE_PKG := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
+LANGHOST_BUN_PKG  := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-bun/v3
 
 TEST_FAST_TIMEOUT := 2m
 
@@ -48,26 +49,37 @@ build_package:: ensure
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
-build_plugin: ../../bin/pulumi-language-nodejs
+build_plugin: ../../bin/pulumi-language-nodejs ../../bin/pulumi-language-bun
 	cp ./dist/pulumi-resource-pulumi-nodejs ../../bin
-	cp ./dist/pulumi-analyzer-policy ../../bin
 
 .PHONY: ../../bin/pulumi-language-nodejs
 ../../bin/pulumi-language-nodejs:
 	go build -C cmd/pulumi-language-nodejs \
 	-o ../../$@ \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
-		${LANGHOST_PKG}
+		${LANGHOST_NODE_PKG}
+
+.PHONY: ../../bin/pulumi-language-bun
+../../bin/pulumi-language-bun:
+	go build -C cmd/pulumi-language-bun \
+	-o ../../$@ \
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+		github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-bun/v3
 
 build:: build_package build_plugin
 
 install_package:: build
 	cp dist/pulumi-resource-pulumi-nodejs* "$(PULUMI_BIN)"
-	cp dist/pulumi-analyzer-policy* "$(PULUMI_BIN)"
 
 install_plugin:: build
 	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-nodejs \
-	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	   -tags="${GO_BUILD_TAGS}" \
+	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_NODE_PKG}
+	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-bun \
+	   -tags="${GO_BUILD_TAGS}" \
+	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_BUN_PKG}
 
 install:: install_package install_plugin
 
@@ -79,7 +91,7 @@ unit_tests:: $(TEST_ALL_DEPS)
 	yarn run nyc --no-clean -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
-	yarn run nyc --no-clean -s mocha --timeout 300000 'bin/tests/automation/**/*.spec.js'
+	yarn run nyc --no-clean -s mocha --timeout 300000 --parallel 'bin/tests/automation/**/*.spec.js'
 
 test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
@@ -133,16 +145,29 @@ test_watch::
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::
 	go install -C cmd/pulumi-language-nodejs \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_NODE_PKG}
+	go install -C cmd/pulumi-language-bun \
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_BUN_PKG}
+
 	cp dist/pulumi-resource-pulumi-nodejs "${GOBIN}"
-	cp dist/pulumi-analyzer-policy "${GOBIN}"
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -C cmd/pulumi-language-nodejs \
-	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_NODE_PKG}
+	go install -C cmd/pulumi-language-bun \
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_BUN_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
-	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
+
+clean::
+	rm -rf bin
+	rm -rf build
+	rm -rf .make
+	rm -rf .nyc_output
 
 publish::
 	bash -c ../../scripts/publish_npm.sh

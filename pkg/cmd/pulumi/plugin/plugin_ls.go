@@ -23,7 +23,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -34,17 +36,17 @@ func newPluginLsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List plugins",
-		Args:  cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Produce a list of plugins, sorted by name and version.
 			var plugins []workspace.PluginInfo
 			var err error
 			if projectOnly {
+				ctx := cmd.Context()
 				var pluginSpecs []workspace.PluginDescriptor
-				if pluginSpecs, err = getProjectPlugins(); err != nil {
+				if pluginSpecs, err = getProjectPlugins(ctx); err != nil {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}
-				plugins, err = resolvePlugins(pluginSpecs)
+				plugins, err = resolvePlugins(ctx, pluginSpecs)
 				if err != nil {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}
@@ -73,6 +75,8 @@ func newPluginLsCmd() *cobra.Command {
 			return formatPluginConsole(plugins)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.PersistentFlags().BoolVarP(
 		&projectOnly, "project", "p", false,
@@ -128,7 +132,7 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 func formatPluginConsole(plugins []workspace.PluginInfo) error {
 	var totalSize uint64
 
-	rows := []cmdutil.TableRow{}
+	rows := slice.Prealloc[cmdutil.TableRow](len(plugins))
 
 	for _, plugin := range plugins {
 		var version string

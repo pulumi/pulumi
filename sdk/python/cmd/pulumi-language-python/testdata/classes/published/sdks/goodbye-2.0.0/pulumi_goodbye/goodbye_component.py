@@ -29,6 +29,7 @@ class GoodbyeComponent(pulumi.ComponentResource):
                  __props__=None):
         """
         Create a GoodbyeComponent resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -40,6 +41,7 @@ class GoodbyeComponent(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a GoodbyeComponent resource with the given unique name, props, and options.
+
         :param str resource_name: The name of the resource.
         :param GoodbyeComponentArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.

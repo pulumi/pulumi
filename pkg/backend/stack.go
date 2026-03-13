@@ -61,7 +61,7 @@ type Stack interface {
 
 	// DefaultSecretManager returns the default secrets manager to use for this stack. This may be more specific than
 	// Backend.DefaultSecretManager.
-	DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManager(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error)
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.
@@ -118,7 +118,7 @@ func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
-func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
+func GetLatestConfiguration(ctx context.Context, s Stack) (LatestConfiguration, error) {
 	return s.Backend().GetLatestConfiguration(ctx, s)
 }
 

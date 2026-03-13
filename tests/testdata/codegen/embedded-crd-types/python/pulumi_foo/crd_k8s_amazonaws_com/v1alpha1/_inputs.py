@@ -19,14 +19,9 @@ __all__ = [
     'ENIConfigSpecArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class ENIConfigSpecArgsDict(TypedDict):
-        security_groups: NotRequired[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]]
-        subnet: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    ENIConfigSpecArgsDict: TypeAlias = Mapping[str, Any]
+class ENIConfigSpecArgsDict(TypedDict):
+    security_groups: NotRequired[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]]
+    subnet: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class ENIConfigSpecArgs:

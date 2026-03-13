@@ -18,6 +18,10 @@ providers and libraries in the Pulumi ecosystem use to create and manage
 resources.
 """
 
+# IMPORTANT: Import _instrumentation BEFORE any other modules to enable OTel tracing.
+# The instrumentation works by monkey-patching grpc, which must happen before it's loaded.
+from .runtime import _instrumentation  # noqa: F401 - imported for side effects
+
 # Make all module members inside of this package available as package members.
 from .asset import (
     Asset,
@@ -60,6 +64,7 @@ from .metadata import (
     get_project,
     get_stack,
     get_root_directory,
+    require_pulumi_version,
 )
 
 from .resource import (
@@ -92,6 +97,9 @@ from .output import (
 )
 
 from .resource_hooks import (
+    ErrorHook,
+    ErrorHookArgs,
+    ErrorHookFunction,
     ResourceHookArgs,
     ResourceHookFunction,
     ResourceHook,
@@ -161,6 +169,7 @@ __all__ = [
     "get_project",
     "get_stack",
     "get_root_directory",
+    "require_pulumi_version",
     # resource
     "Alias",
     "Resource",
@@ -187,6 +196,9 @@ __all__ = [
     "contains_unknowns",
     "deferred_output",
     # resource_hooks
+    "ErrorHook",
+    "ErrorHookArgs",
+    "ErrorHookFunction",
     "ResourceHookArgs",
     "ResourceHookFunction",
     "ResourceHook",

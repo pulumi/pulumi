@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 )
@@ -154,7 +155,7 @@ func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularRefere
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)
@@ -228,7 +229,7 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 		},
 	}
 
-	states := make([]*resource.State, 0)
+	states := slice.Prealloc[*resource.State](len(resources))
 	for _, r := range resources {
 		state, err := stack.DeserializeResource(r, config.NopDecrypter)
 		require.NoError(t, err)

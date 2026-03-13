@@ -23,9 +23,7 @@ import (
 	"slices"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
-	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -50,16 +48,14 @@ const (
 
 // A PluginManager handles plugin installation.
 type PluginManager interface {
+	pluginstorage.Context
 	GetPluginPath(
 		ctx context.Context,
 		d diag.Sink,
 		spec workspace.PluginDescriptor,
 		projectPlugins []workspace.ProjectPlugin,
 	) (string, error)
-	HasPlugin(spec workspace.PluginDescriptor) bool
-	HasPluginGTE(spec workspace.PluginDescriptor) (bool, error)
 
-	GetLatestPluginVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
 	DownloadPlugin(
 		ctx context.Context,
 		plugin workspace.PluginDescriptor,
@@ -90,7 +86,7 @@ func (f tempFile) Close() error {
 }
 
 // The defaultPluginManager is implemented using the standard workspace methods.
-type defaultPluginManager struct{}
+type defaultPluginManager struct{ pluginstorage.Context }
 
 func (defaultPluginManager) GetPluginPath(
 	ctx context.Context,
@@ -99,22 +95,6 @@ func (defaultPluginManager) GetPluginPath(
 	projectPlugins []workspace.ProjectPlugin,
 ) (string, error) {
 	return workspace.GetPluginPath(ctx, d, spec, projectPlugins)
-}
-
-func (defaultPluginManager) HasPlugin(spec workspace.PluginDescriptor) bool {
-	return workspace.HasPlugin(spec)
-}
-
-func (defaultPluginManager) HasPluginGTE(spec workspace.PluginDescriptor) (bool, error) {
-	has, _, err := workspace.HasPluginGTE(spec)
-	return has, err
-}
-
-func (defaultPluginManager) GetLatestPluginVersion(
-	ctx context.Context,
-	spec workspace.PluginDescriptor,
-) (*semver.Version, error) {
-	return spec.GetLatestVersion(ctx)
 }
 
 func (defaultPluginManager) DownloadPlugin(
@@ -138,7 +118,7 @@ func (defaultPluginManager) InstallPlugin(
 	content pluginstorage.Content,
 	reinstall bool,
 ) error {
-	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall)
+	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromHost)
 }
 
 // PluginSet represents a set of plugins.
@@ -435,16 +415,26 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
 	projectPlugins []workspace.ProjectPlugin, reinstall, explicitInstall bool,
 ) error {
+	manager := newInstallManager(true /*returnPluginErrors*/)
+	err := ensurePluginsAreInstalled(ctx, opts, d, plugins, projectPlugins, reinstall, explicitInstall, manager)
+	if err != nil {
+		return err
+	}
+	return manager.Wait()
+}
+
+func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
+	projectPlugins []workspace.ProjectPlugin, reinstall, explicitInstall bool, manager *installManager,
+) error {
 	var pluginManager PluginManager
 	if opts != nil {
 		pluginManager = opts.pluginManager
 	}
 	if pluginManager == nil {
-		pluginManager = defaultPluginManager{}
+		pluginManager = defaultPluginManager{pluginstorage.Instance}
 	}
 
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
-	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
 		if plug.Name == "pulumi" && plug.Kind == apitype.ResourcePlugin {
 			logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): pulumi is a builtin plugin")
@@ -465,12 +455,12 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 			// If the plugin already exists, don't download it unless `reinstall` was specified.
 			label := fmt.Sprintf("%s plugin %s", plug.Kind, plug)
 			if plug.Version != nil {
-				if pluginManager.HasPlugin(plug) {
+				if pluginManager.HasPlugin(ctx, plug) {
 					logging.V(1).Infof("%s skipping install (existing == match)", label)
 					continue
 				}
 			} else {
-				if has, _ := pluginManager.HasPluginGTE(plug); has {
+				if has, _, _ := pluginManager.HasPluginGTE(ctx, plug); has {
 					logging.V(1).Infof("%s skipping install (existing >= match)", label)
 					continue
 				}
@@ -490,23 +480,22 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 
 		// If DISABLE_AUTOMATIC_PLUGIN_ACQUISITION is set just add an error to the error group and continue.
 		if !explicitInstall && env.DisableAutomaticPluginAcquisition.Value() {
-			installTasks.Go(func() error {
+			manager.InstallPlugin(func() error {
 				return fmt.Errorf("plugin %s %s not installed", info.Name, info.Version)
 			})
 			continue
 		}
 
 		// Launch an install task asynchronously and add it to the current error group.
-		installTasks.Go(func() error {
+		manager.InstallPlugin(func() error {
 			logging.V(preparePluginLog).Infof(
 				"EnsurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
 			return installPlugin(ctx, opts, pluginManager, info)
 		})
 	}
 
-	err := installTasks.Wait()
 	logging.V(preparePluginLog).Infof("EnsurePluginsAreInstalled(): completed")
-	return err
+	return nil
 }
 
 // ensurePluginsAreLoaded ensures that all of the plugins in the given plugin set that match the given plugin flags are
@@ -529,7 +518,7 @@ func installPlugin(
 		logging.V(preparePluginVerboseLog).Infof(
 			"installPlugin(%s): version not specified, trying to lookup latest version", plugin.Name)
 
-		version, err := pluginManager.GetLatestPluginVersion(ctx, plugin)
+		version, err := pluginManager.GetLatestVersion(ctx, plugin)
 		if err != nil {
 			return fmt.Errorf("could not get latest version for plugin %s: %w", plugin.Name, err)
 		}

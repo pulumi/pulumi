@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// IMPORTANT: This must be imported FIRST, before any other modules that might load @grpc/grpc-js.
+// The OpenTelemetry instrumentation works by monkey-patching the gRPC module.
+import "./instrumentation";
+
 // Enable source map support so we get good stack traces.
 import "source-map-support/register";
 
@@ -143,17 +147,19 @@ async function beforeExitHandler(code: number) {
         return;
     }
     hasSignaled = true;
-    settings.signalAndWaitForShutdown().catch((err) => {
+    // Wrap in root context so the shutdown call is traced correctly
+    const { withRootContext, shutdownTracing } = require("./instrumentation");
+    try {
+        await withRootContext(() => settings.signalAndWaitForShutdown());
+    } catch (err) {
         console.error(`Error while signaling shutdown: ${err}`);
-    });
+    }
+    try {
+        await shutdownTracing();
+    } catch (err) {
+        console.error(`Error while shutting down tracing: ${err}`);
+    }
 }
-
-// As the second thing we do, ensure that we're connected to v8's inspector API.  We need to do
-// this as some information is only sent out as events, without any way to query for it after the
-// fact.  For example, we want to keep track of ScriptId->FileNames so that we can appropriately
-// report errors for Functions we cannot serialize.  This can only be done (up to Node11 at least)
-// by register to hear about scripts being parsed.
-import * as v8Hooks from "../../runtime/closure/v8Hooks";
 
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
 import minimist from "minimist";
@@ -241,15 +247,32 @@ function main(args: string[]): void {
     addToEnvIfDefined("PULUMI_NODEJS_ENGINE", argv["engine"]);
     addToEnvIfDefined("PULUMI_NODEJS_SYNC", argv["sync"]);
 
-    // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
-    v8Hooks.isInitializedAsync().then(() => {
-        const promise: Promise<void> = require("./run").run(
-            argv,
-            /*programStarted:   */ () => {
-                programRunning = true;
-            },
-            /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err),
-            /*isErrorReported:  */ (err: Error) => loggedErrors.has(err),
+    const initializeHooks = async (): Promise<void> => {
+        if (process.versions.bun) {
+            return;
+        }
+        // Ensure that we're connected to v8's inspector API. We need to do this as some information is only sent out as
+        // events, without any way to query for it after the fact. For example, we want to keep track of
+        // ScriptId->FileNames so that we can appropriately report errors for Functions we cannot serialize. This can
+        // only be done (up to Node11 at least) by register to hear about scripts being parsed.
+        const v8Hooks = require("../../runtime/closure/v8Hooks");
+        return v8Hooks.isInitializedAsync();
+    };
+
+    initializeHooks().then(() => {
+        const { withRootContext } = require("./instrumentation");
+
+        // Wrap the program execution within the root trace context so that
+        // all gRPC calls from the Node.js SDK propagate the trace context.
+        const promise: Promise<void> = withRootContext(() =>
+            require("./run").run(
+                argv,
+                /*programStarted:   */ () => {
+                    programRunning = true;
+                },
+                /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err),
+                /*isErrorReported:  */ (err: Error) => loggedErrors.has(err),
+            ),
         );
 
         // when the user's program completes successfully, set programRunning back to false.  That way, if the Pulumi
@@ -264,9 +287,10 @@ function main(args: string[]): void {
     });
 }
 
-function addToEnvIfDefined(key: string, value: string | undefined) {
+function addToEnvIfDefined(key: string, value: string | boolean | undefined) {
     if (value) {
-        process.env[key] = value;
+        // Some runtimes (e.g. bun) may not coerce non-string values in process.env assignments.
+        process.env[key] = `${value}`;
     }
 }
 

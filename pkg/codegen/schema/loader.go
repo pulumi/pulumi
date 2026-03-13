@@ -416,7 +416,7 @@ func (l *pluginLoader) loadSchemaBytes(
 			l.host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log)
+		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log, NewLoaderServerFromHost)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -472,7 +472,7 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 		Kind:              apitype.ResourcePlugin,
 	}
 
-	provider, err := l.host.Provider(wsDescriptor)
+	provider, err := l.host.Provider(wsDescriptor, env.Global())
 	if err != nil {
 		return nil, nil, err
 	}

@@ -17,7 +17,7 @@ package policy
 import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
 )
 
@@ -30,8 +30,7 @@ func newPolicyDisableCmd() *cobra.Command {
 	args := policyDisableArgs{}
 
 	cmd := &cobra.Command{
-		Use:   "disable <org-name>/<policy-pack-name>",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "disable",
 		Short: "Disable a Policy Pack for a Pulumi organization",
 		Long:  "Disable a Policy Pack for a Pulumi organization",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
@@ -49,6 +48,13 @@ func newPolicyDisableCmd() *cobra.Command {
 			})
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "policy-pack", Usage: "<org-name>/<policy-pack-name>"},
+		},
+		Required: 1,
+	})
 
 	cmd.PersistentFlags().StringVar(
 		&args.policyGroup, "policy-group", "",

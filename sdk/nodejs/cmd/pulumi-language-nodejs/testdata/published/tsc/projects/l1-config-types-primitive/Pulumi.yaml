@@ -1,0 +1,5 @@
+name: l1-config-types-primitive
+runtime:
+  name: nodejs
+  options:
+    typescript: false

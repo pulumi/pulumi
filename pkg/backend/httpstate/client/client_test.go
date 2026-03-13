@@ -77,11 +77,10 @@ func newMockClient(server *httptest.Server) *Client {
 	httpClient := newHTTPClient()
 
 	return &Client{
-		apiURL:     server.URL,
-		apiToken:   "",
-		apiUser:    "",
-		diag:       nil,
-		httpClient: httpClient,
+		apiURL:   server.URL,
+		apiToken: "",
+		apiUser:  "",
+		diag:     nil,
 		restClient: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: httpClient,
@@ -634,6 +633,7 @@ func TestListPackages(t *testing.T) {
 
 		// Call ListPackages and collect results
 		searchName := "my-package"
+		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.PackageMetadata{}
 		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
 			require.NoError(t, err)
@@ -728,6 +728,7 @@ func TestListPackages(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		searchName := "my-package"
+		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.PackageMetadata{}
 		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
 			require.NoError(t, err)
@@ -852,5 +853,50 @@ func TestCallCopilot(t *testing.T) {
 
 		require.EqualError(t, err, "copilot API error: API error message\nDetailed error information")
 		require.Empty(t, response)
+	})
+}
+
+func TestCreateNeoTask(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Success", func(t *testing.T) {
+		t.Parallel()
+
+		successServer := newMockServer(http.StatusCreated, `{"taskId": "task_abc123"}`)
+		defer successServer.Close()
+
+		client := newMockClient(successServer)
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, "task_abc123", resp.TaskID)
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		t.Parallel()
+
+		errorServer := newMockServer(http.StatusBadRequest, `{"message": "Bad request"}`)
+		defer errorServer.Close()
+
+		client := newMockClient(errorServer)
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+
+		require.Error(t, err)
+		require.Nil(t, resp)
+		assert.Contains(t, err.Error(), "creating Neo task")
+	})
+
+	t.Run("Unauthorized", func(t *testing.T) {
+		t.Parallel()
+
+		unauthorizedServer := newMockServer(http.StatusUnauthorized, "401: Unauthorized")
+		defer unauthorizedServer.Close()
+
+		client := newMockClient(unauthorizedServer)
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+
+		require.Error(t, err)
+		require.Nil(t, resp)
 	})
 }

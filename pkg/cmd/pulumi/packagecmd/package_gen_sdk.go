@@ -23,8 +23,10 @@ import (
 	"github.com/spf13/cobra"
 
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -40,8 +42,7 @@ func newGenSdkCommand() *cobra.Command {
 	var version string
 	var local bool
 	cmd := &cobra.Command{
-		Use:   "gen-sdk <schema_source> [provider parameters]",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "gen-sdk",
 		Short: "Generate SDK(s) from a package or schema",
 		Long: `Generate SDK(s) from a package or schema.
 
@@ -56,18 +57,17 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return err
 			}
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false, nil)
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
+				nil, schema.NewLoaderServerFromHost)
 			if err != nil {
 				return err
 			}
-			defer func() {
-				contract.IgnoreError(pctx.Close())
-			}()
+			defer contract.IgnoreClose(pctx)
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
 				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-				env.Global())
+				env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				}
 				pkg.Version = &pkgVersion
 			}
-			// Normalize from well known language names the the matching runtime names.
+			// Normalize from well known language names the matching runtime names.
 			switch language {
 			case "csharp", "c#":
 				language = "dotnet"
@@ -96,7 +96,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					diags, err := packages.GenSDK(lang, out, pkg, overlays, local)
+					diags, err := packages.GenSDK(cmd.Context(), lang, out, pkg, overlays, local)
 					cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 					if err != nil {
 						return err
@@ -105,7 +105,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				fmt.Fprintf(os.Stderr, "SDKs have been written to %s\n", out)
 				return nil
 			}
-			diags, err := packages.GenSDK(language, out, pkg, overlays, local)
+			diags, err := packages.GenSDK(cmd.Context(), language, out, pkg, overlays, local)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				return err
@@ -114,6 +114,20 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "schema-source"},
+			{Name: "provider-parameter"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "gen-sdk <schema-source> [flags] [--] [provider-parameter]..."
+
 	cmd.Flags().StringVarP(&language, "language", "", "all",
 		"The SDK language to generate: [nodejs|python|go|dotnet|java|all]")
 	cmd.Flags().StringVarP(&out, "out", "o", "./sdk",

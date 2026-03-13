@@ -20,7 +20,6 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
-	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -31,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 )
 
 // Context is used to group related operations together so that
@@ -61,7 +61,7 @@ type Context struct {
 // host's.
 func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]any, disableProviderPreview bool,
-	parentSpan opentracing.Span,
+	parentSpan opentracing.Span, newLoader NewLoaderFunc,
 ) (*Context, error) {
 	// TODO: really this ought to just take plugins *workspace.Plugins and packages map[string]workspace.PackageSpec
 	// as args, but yaml depends on this function so *sigh*. For now just see if there's a project we should be using,
@@ -78,14 +78,14 @@ func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSo
 	}
 
 	return NewContextWithRoot(ctx, d, statusD, host, pwd, pwd, runtimeOptions,
-		disableProviderPreview, parentSpan, plugins, packages, nil, nil)
+		disableProviderPreview, parentSpan, plugins, packages, nil, nil, newLoader)
 }
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
 func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugContext,
+	config map[config.Key]string, debugging DebugContext, newLoader NewLoaderFunc,
 ) (*Context, error) {
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
@@ -119,6 +119,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	if host == nil {
 		h, err := NewDefaultHost(
 			pctx, runtimeOptions, disableProviderPreview, plugins, packages, config, debugging, projectName,
+			newLoader,
 		)
 		if err != nil {
 			return nil, err
@@ -142,6 +143,42 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	}
 
 	return pctx, nil
+}
+
+// NewContextWithHost creates a new [Context] without interacting with global state.
+//
+// Unilke [NewDefaultContext] or [NewContextWithRoot], NewContextWithHost does not accept
+// a nil host.
+//
+// d, statusD and parentSpan may all be nil.
+func NewContextWithHost(
+	ctx context.Context,
+	d, statusD diag.Sink,
+	host Host,
+	pwd, root string,
+	parentSpan opentracing.Span,
+) *Context {
+	contract.Assertf(host != nil, "NewContextWithHost requires a non-nil host")
+	if d == nil {
+		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	}
+	if statusD == nil {
+		statusD = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	return &Context{
+		Diag:            d,
+		StatusDiag:      statusD,
+		Host:            host,
+		Pwd:             pwd,
+		Root:            root,
+		tracingSpan:     parentSpan,
+		DebugTraceMutex: &sync.Mutex{},
+		cancel:          cancel,
+		baseContext:     ctx,
+	}
 }
 
 // Base returns this plugin context's base context; this is useful for things like cancellation.

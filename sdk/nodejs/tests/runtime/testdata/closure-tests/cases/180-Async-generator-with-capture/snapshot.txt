@@ -7,7 +7,7 @@ function __f0() {
   return (function() {
     with({ delay: 100, message: "Hello from captured variable", this: undefined, arguments: undefined }) {
 
-return function* () {
+return async function* () {
     await new Promise((resolve) => setTimeout(resolve, delay));
     yield message;
     console.log("World");

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -636,6 +636,41 @@ func (source *githubSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
+	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
+
+	// For Pulumi's official plugins on github.com, try direct download URL first to reduce
+	// API usage.  We know where the plugin is supposed to live, so we can construct the URL
+	// directly without going through the API.  If the naming doesn't match, we fall back to
+	// the API. This costs us one additional request, but it doesn't count at the rate limit,
+	// and compared to the time it takes to download the plugin the additional time for the
+	// API request should be negligible.
+	if source.organization == "pulumi" && source.host == "api.github.com" {
+		directURL := fmt.Sprintf(
+			"https://github.com/%s/%s/releases/download/v%s/%s",
+			source.organization, source.repository, version, assetName)
+		logging.V(1).Infof("%s trying direct download from %s", source.name, directURL)
+
+		req, err := buildHTTPRequest(ctx, directURL, "")
+		if err != nil {
+			return nil, -1, err
+		}
+		req.Header.Set("Accept", "application/octet-stream")
+		resp, length, err := getHTTPResponse(req)
+		if err == nil {
+			return resp, length, nil
+		}
+		logging.V(1).Infof("%s direct download failed, falling back to API: %v", source.name, err)
+	}
+
+	return source.downloadViaAPI(ctx, version, opSy, arch, getHTTPResponse, assetName)
+}
+
+func (source *githubSource) downloadViaAPI(
+	ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+	assetName string,
+) (io.ReadCloser, int64, error) {
 	releaseURL := fmt.Sprintf(
 		"https://%s/repos/%s/%s/releases/tags/v%s",
 		source.host, source.organization, source.repository, version)
@@ -656,7 +691,6 @@ func (source *githubSource) Download(
 		return nil, -1, fmt.Errorf("cannot decode github response len(%d): %w", length, err)
 	}
 
-	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
 	assetURL := ""
 	for _, asset := range release.Assets {
 		if asset.Name == assetName {
@@ -1046,11 +1080,14 @@ type PluginDescriptor struct {
 type PluginVersionNotFoundError error
 
 var urlRegex = sync.OnceValue(func() *regexp.Regexp {
-	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/](@.*)?$`)
+	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-_\./]*[a-zA-Z0-9/](@.*)?$`)
 })
 
 func IsExternalURL(source string) bool {
-	return strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "git://") || urlRegex().MatchString(source)
+	return strings.HasPrefix(source, "https://") ||
+		strings.HasPrefix(source, "http://") ||
+		strings.HasPrefix(source, "git://") ||
+		urlRegex().MatchString(source)
 }
 
 // Allow sha1 and sha256 hashes.
@@ -1421,7 +1458,7 @@ func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL str
 	case "git":
 		return newGitHTTPSSource(url)
 	default:
-		return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
+		return nil, fmt.Errorf("unknown plugin source scheme: %q", url.Scheme)
 	}
 }
 
@@ -1962,9 +1999,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 		(kind == apitype.LanguagePlugin && name == "yaml") ||
 		(kind == apitype.LanguagePlugin && name == "java") ||
 		(kind == apitype.ResourcePlugin && name == "pulumi-nodejs") ||
-		(kind == apitype.ResourcePlugin && name == "pulumi-python") ||
-		(kind == apitype.AnalyzerPlugin && name == "policy") ||
-		(kind == apitype.AnalyzerPlugin && name == "policy-python")
+		(kind == apitype.ResourcePlugin && name == "pulumi-python")
 }
 
 // GetPluginPath finds a plugin's path by its kind, name, and optional version.  It will match the latest version that

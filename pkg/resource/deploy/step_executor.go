@@ -228,6 +228,17 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	}
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
 	se.pendingNews.Delete(urn)
+
+	// If we have a skipped create, the resource was not targeted, but construct in a component
+	// resource might have called RegisterResourceOutputs regardless. There's nothing to do here
+	// in that case, so we can return early.
+	// See https://github.com/pulumi/pulumi/issues/21463
+	if sameStep, ok := reg.(*SameStep); ok && sameStep.IsSkippedCreate() {
+		se.log(synchronousWorkerID, "skipping register resource outputs for untargeted resource: %s", urn)
+		e.Done()
+		return nil
+	}
+
 	// Unconditionally set the resource's outputs to what was provided.  This intentionally overwrites whatever
 	// might already be there, since otherwise "deleting" outputs would have no affect.
 	outs := e.Outputs()

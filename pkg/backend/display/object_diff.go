@@ -689,7 +689,7 @@ func (p *propertyPrinter) printPropertyValueRecurse(v resource.PropertyValue) {
 		a := v.ArchiveValue()
 		if assets, has := a.GetAssets(); has {
 			p.writef("archive(assets:%s) {\n", shortHash(a.Hash))
-			var names []string
+			names := slice.Prealloc[string](len(assets))
 			for name := range assets {
 				names = append(names, name)
 			}

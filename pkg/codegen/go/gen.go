@@ -104,6 +104,8 @@ func (d *typeDetails) markMap(input, output bool) {
 // Title converts the input string to a title case
 // where only the initial letter is upper-cased.
 // It also removes $-prefix if any.
+// If the result doesn't start with a legal Go identifier character, it is
+// prefixed with "_" to produce a valid Go identifier.
 func Title(s string) string {
 	if s == "" {
 		return ""
@@ -113,6 +115,9 @@ func Title(s string) string {
 	}
 	s = cgstrings.UppercaseFirst(s)
 	s = cgstrings.Unhyphenate(s)
+	if len(s) > 0 && !isLegalIdentifierStart(rune(s[0])) {
+		s = "_" + s
+	}
 	return s
 }
 
@@ -232,6 +237,12 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
+	// Handle method-related tokens like "Resource/callResult" → "ResourceCallResult".
+	// Method function tokens use the format "ResourceName/methodName" in the name component,
+	// and derived types append "Result" or "Args" to produce e.g. "Resource/callResult".
+	if idx := strings.Index(name, "/"); idx >= 0 {
+		name = name[:idx] + Title(name[idx+1:])
+	}
 	name = Title(name)
 	if modPkg, ok := pkg.packages[mod]; ok {
 		newName, renamed := modPkg.renamed[name]
@@ -1601,7 +1612,7 @@ func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *sch
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	if goPkgInfo.Generics != GenericsSettingNone {
+	if goPkgInfo.Generics == GenericsSettingSideBySide || goPkgInfo.Generics == GenericsSettingGenericsOnly {
 		// ToOutput implementation for pulumix.Input.
 		fmt.Fprintf(w, "func (in *%sPtr) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", typeName, name)
 		fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", name)
@@ -3551,10 +3562,15 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 // different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
 // in a second step, we avoid collision and redeclaration.
 func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*nestedTypeInfo) []string {
-	var names []string
+	// Pre-calculate total capacity for names
+	totalNames := 0
+	for _, info := range types {
+		totalNames += len(info.names)
+	}
+	names := slice.Prealloc[string](totalNames)
 
 	// map iteration is unstable so sort items for deterministic codegen
-	sortedElems := []string{}
+	sortedElems := slice.Prealloc[string](len(types))
 	for k := range types {
 		sortedElems = append(sortedElems, k)
 	}
@@ -3563,7 +3579,7 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*n
 	for _, elementTypeName := range sortedElems {
 		info := types[elementTypeName]
 
-		collectionTypes := []string{}
+		collectionTypes := slice.Prealloc[string](len(info.names))
 		for k := range info.names {
 			collectionTypes = append(collectionTypes, k)
 		}
@@ -3855,6 +3871,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 
 // ExtractModulePath creates a go module path for a given package.
 func ExtractModulePath(extPkg schema.PackageReference) string {
+	contract.Assertf(extPkg != nil, "ExtractModulePath(nil) is not allowed")
 	var vPath string
 	version := extPkg.Version()
 	name := extPkg.Name()
@@ -5004,7 +5021,7 @@ func GeneratePackage(tool string,
 			if hasOutputs {
 				goImports = []string{"context", "reflect"}
 				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-				if goPkgInfo.Generics != GenericsSettingNone {
+				if goPkgInfo.Generics == GenericsSettingSideBySide || goPkgInfo.Generics == GenericsSettingGenericsOnly {
 					imports["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 				}
 			}
@@ -5183,7 +5200,7 @@ func GeneratePackage(tool string,
 		var gomod modfile.File
 		err = gomod.AddModuleStmt(modulePath)
 		contract.AssertNoErrorf(err, "could not add module statement to go.mod")
-		err = gomod.AddGoStmt("1.20")
+		err = gomod.AddGoStmt("1.25")
 		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
 		pulumiVersion := "v3.30.0"

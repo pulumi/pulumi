@@ -24,8 +24,10 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -47,7 +49,7 @@ func newPolicyNewCmd() *cobra.Command {
 	args := newPolicyArgs{}
 
 	cmd := &cobra.Command{
-		Use:        "new [template|url]",
+		Use:        "new",
 		SuggestFor: []string{"init", "create"},
 		Short:      "Create a new Pulumi Policy Pack",
 		Long: "Create a new Pulumi Policy Pack from a template.\n" +
@@ -58,7 +60,6 @@ func newPolicyNewCmd() *cobra.Command {
 			"\n" +
 			"Once you're done authoring the Policy Pack, you will need to publish the pack to your organization.\n" +
 			"Only organization administrators can publish a Policy Pack.",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
@@ -67,6 +68,13 @@ func newPolicyNewCmd() *cobra.Command {
 			return runNewPolicyPack(ctx, args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "template", Usage: "[template|url]"},
+		},
+		Required: 0,
+	})
 
 	cmd.PersistentFlags().StringVar(
 		&args.dir, "dir", "",
@@ -134,7 +142,9 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	} else if len(templates) == 1 {
 		template = templates[0]
 	} else if !opts.IsInteractive {
-		return errors.New("a template must be provided when running in non-interactive mode")
+		return backenderr.NonInteractiveInputRequiredError{
+			Detail: "a template must be provided when running in non-interactive mode",
+		}
 	} else {
 		if template, err = choosePolicyPackTemplate(templates, opts); err != nil {
 			return err

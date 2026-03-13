@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -358,6 +359,21 @@ func TestObjectConsExpression(t *testing.T) {
 	for _, c := range cases {
 		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope, nil)
 	}
+}
+
+func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	var index bytes.Buffer
+
+	expr := pcl.NewConvertCall(
+		model.VariableReference(&model.Variable{Name: "notSecret", VariableType: model.StringType}),
+		model.NewOutputType(model.StringType),
+	)
+
+	g.Fgenf(&index, "%v", expr)
+	assert.Equal(t, "pulumi.String(notSecret)", index.String())
 }
 
 func TestTupleConsExpression(t *testing.T) {

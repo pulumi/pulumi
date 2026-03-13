@@ -90,3 +90,63 @@ func (g *generator) rewriteInlineInvokes(x model.Expression) (model.Expression, 
 	expr, _ := model.VisitExpression(x, spill, spill)
 	return expr, spiller.temps
 }
+
+// callTemp represents a method call expression that has been spilled to a temporary variable.
+// Go methods return (result, error), so they must be separate statements rather than inline expressions.
+type callTemp struct {
+	Name  string
+	Value *model.FunctionCallExpression
+}
+
+func (temp *callTemp) Type() model.Type {
+	return temp.Value.Type()
+}
+
+func (temp *callTemp) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+	return temp.Type().Traverse(traverser)
+}
+
+func (temp *callTemp) SyntaxNode() hclsyntax.Node {
+	return syntax.None
+}
+
+type callSpiller struct {
+	temps []*callTemp
+	count int
+}
+
+func (spiller *callSpiller) spillExpression(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+	switch expr := expr.(type) {
+	case *model.FunctionCallExpression:
+		if expr.Name == pcl.Call {
+			method := expr.Args[1].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+			tempName := fmt.Sprintf("call%s%d", Title(method), spiller.count)
+			if spiller.count == 0 {
+				tempName = "call" + Title(method)
+			}
+			temp := &callTemp{
+				Name:  tempName,
+				Value: expr,
+			}
+			spiller.temps = append(spiller.temps, temp)
+			spiller.count++
+
+			return model.VariableReference(&model.Variable{
+				Name: temp.Name,
+			}), nil
+		}
+		return expr, nil
+	default:
+		return expr, nil
+	}
+}
+
+func (g *generator) rewriteInlineCalls(x model.Expression) (model.Expression, []*callTemp) {
+	spiller := g.callSpiller
+	spiller.temps = nil
+	spill := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+		return spiller.spillExpression(expr)
+	}
+	expr, _ := model.VisitExpression(x, spill, spill)
+	return expr, spiller.temps
+}

@@ -1090,6 +1090,14 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genLocalVariable(w, n)
 	case *pcl.Component:
 		g.genComponent(w, n)
+	case *pcl.PulumiBlock:
+		g.genPulumi(w, n)
+	}
+}
+
+func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
+	if v.RequiredVersion != nil {
+		g.Fgenf(w, "%sDeployment.RequirePulumiVersionAsync(%.v).Wait();\n", g.Indent, v.RequiredVersion)
 	}
 }
 
@@ -1292,10 +1300,10 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 		}
 
 		switch name {
-		case "IgnoreChanges", "HideDiffs":
-			// IgnoreChanges and HideDiffs need to be special cased because
+		case "IgnoreChanges", "HideDiffs", "ReplaceOnChanges":
+			// IgnoreChanges, HideDiffs, and ReplaceOnChanges need to be special cased because
 			// new [] { "field" } cannot be implicitly casted to List<string>
-			// which is the type of IgnoreChanges and HideDiffs
+			// which is the type of IgnoreChanges, HideDiffs, and ReplaceOnChanges
 			if changes, isTuple := value.(*model.TupleConsExpression); isTuple {
 				g.Fgenf(&result, "\n%s%s =", g.Indent, name)
 				g.Fgenf(&result, "\n%s{", g.Indent)
@@ -1404,6 +1412,12 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 	}
 	if opts.HideDiffs != nil {
 		appendOption("HideDiffs", opts.HideDiffs)
+	}
+	if opts.ReplaceOnChanges != nil {
+		appendOption("ReplaceOnChanges", opts.ReplaceOnChanges)
+	}
+	if opts.DeleteBeforeReplace != nil {
+		appendOption("DeleteBeforeReplace", opts.DeleteBeforeReplace)
 	}
 	if opts.ReplacementTrigger != nil {
 		appendOption("ReplacementTrigger", opts.ReplacementTrigger)
@@ -1613,7 +1627,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	// collect here all the deferred output variables
 	// these must be declared before the component instantiation
 	componentInputs := slice.Prealloc[*model.Attribute](len(r.Inputs))
-	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	componentDeferredOutputVariables := slice.Prealloc[*pcl.DeferredOutputVariable](len(r.Inputs))
 	for _, attr := range r.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, r, attr.Value)
 		componentInputs = append(componentInputs, &model.Attribute{

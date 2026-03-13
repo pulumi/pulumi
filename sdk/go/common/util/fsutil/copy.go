@@ -15,6 +15,7 @@
 package fsutil
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -45,18 +46,22 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 			}
 		}
 	} else if info.Mode().IsRegular() {
-		// Copy files by reading and rewriting their contents.  Skip other special files.
-		data, err := os.ReadFile(src)
+		// Copy regular files by reading and rewriting their contents.  Skip other special files.
+
+		srcFile, err := os.Open(src)
 		if err != nil {
-			return fmt.Errorf("read file: %w", err)
+			return fmt.Errorf("open file: %w", err)
 		}
 		dstdir := filepath.Dir(dst)
 		if err = os.MkdirAll(dstdir, 0o700); err != nil {
-			return err
+			return errors.Join(err, srcFile.Close())
 		}
-		if err = os.WriteFile(dst, data, info.Mode()); err != nil {
-			return err
+		dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
+		if err != nil {
+			return errors.Join(err, srcFile.Close())
 		}
+		_, err = srcFile.WriteTo(dstFile)
+		return errors.Join(err, dstFile.Close(), srcFile.Close())
 	}
 
 	return nil

@@ -13,9 +13,13 @@
         "strict": true
     },
     "files": [
+        "complexResource.ts",
         "index.ts",
         "provider.ts",
         "resource.ts",
+        "types/index.ts",
+        "types/input.ts",
+        "types/output.ts",
         "utilities.ts"
     ]
 }

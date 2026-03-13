@@ -73,7 +73,7 @@ type MockBackend struct {
 		[]StackReference, ContinuationToken, error)
 	RenameStackF                          func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF                      func(StackReference) (config.Crypter, error)
-	GetLatestConfigurationF               func(context.Context, Stack) (config.Map, error)
+	GetLatestConfigurationF               func(context.Context, Stack) (LatestConfiguration, error)
 	GetHistoryF                           func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
 	UpdateStackTagsF                      func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF                     func(context.Context, Stack) (*apitype.UntypedDeployment, error)
@@ -102,13 +102,15 @@ type MockBackend struct {
 
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 
-	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManagerF func(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error)
 
 	SupportsTemplatesF        func() bool
 	ListTemplatesF            func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
 	DownloadTemplateF         func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
 	GetCloudRegistryF         func() (CloudRegistry, error)
 	GetReadOnlyCloudRegistryF func() registry.Registry
+
+	GetStackPolicyPacksF func(ctx context.Context, stackRef StackReference) ([]engine.RequiredPolicy, error)
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -152,6 +154,15 @@ func (be *MockBackend) GetPolicyPack(
 ) (PolicyPack, error) {
 	if be.GetPolicyPackF != nil {
 		return be.GetPolicyPackF(ctx, policyPack, d)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) GetStackPolicyPacks(
+	ctx context.Context, stackRef StackReference,
+) ([]engine.RequiredPolicy, error) {
+	if be.GetStackPolicyPacksF != nil {
+		return be.GetStackPolicyPacksF(ctx, stackRef)
 	}
 	panic("not implemented")
 }
@@ -370,7 +381,7 @@ func (be *MockBackend) GetLogs(
 
 func (be *MockBackend) GetLatestConfiguration(ctx context.Context,
 	stack Stack,
-) (config.Map, error) {
+) (LatestConfiguration, error) {
 	if be.GetLatestConfigurationF != nil {
 		return be.GetLatestConfigurationF(ctx, stack)
 	}
@@ -460,9 +471,9 @@ func (be *MockBackend) GetGHAppIntegration(ctx context.Context, stack Stack) (*a
 	panic("not implemented")
 }
 
-func (be *MockBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error) {
+func (be *MockBackend) DefaultSecretManager(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error) {
 	if be.DefaultSecretManagerF != nil {
-		return be.DefaultSecretManagerF(ps)
+		return be.DefaultSecretManagerF(ctx, ps)
 	}
 	panic("not implemented")
 }
@@ -579,7 +590,7 @@ type MockStack struct {
 	SnapshotF             func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	TagsF                 func() map[apitype.StackTagName]string
 	BackendF              func() Backend
-	DefaultSecretManagerF func(info *workspace.ProjectStack) (secrets.Manager, error)
+	DefaultSecretManagerF func(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error)
 }
 
 var _ Stack = (*MockStack)(nil)
@@ -595,7 +606,7 @@ func (ms *MockStack) ConfigLocation() StackConfigLocation {
 	if ms.ConfigLocationF != nil {
 		return ms.ConfigLocationF()
 	}
-	panic("not implemented: MockStack.HasRemoteConfigF")
+	return StackConfigLocation{}
 }
 
 func (ms *MockStack) LoadRemoteConfig(ctx context.Context, project *workspace.Project,
@@ -665,9 +676,9 @@ func (ms *MockStack) Backend() Backend {
 	panic("not implemented: MockStack.Backend")
 }
 
-func (ms *MockStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
+func (ms *MockStack) DefaultSecretManager(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 	if ms.DefaultSecretManagerF != nil {
-		return ms.DefaultSecretManagerF(info)
+		return ms.DefaultSecretManagerF(ctx, info)
 	}
 	panic("not implemented: MockStack.DefaultSecretManager")
 }

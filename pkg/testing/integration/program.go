@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -62,6 +63,7 @@ import (
 const (
 	PythonRuntime = "python"
 	NodeJSRuntime = "nodejs"
+	BunRuntime    = "bun"
 	GoRuntime     = "go"
 	DotNetRuntime = "dotnet"
 	YAMLRuntime   = "yaml"
@@ -294,6 +296,8 @@ type ProgramTestOptions struct {
 	Bin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
+	// BunBin is a location of a `bun` executable to be run.  Taken from the $PATH if missing.
+	BunBin string
 	// GoBin is a location of a `go` executable to be run.  Taken from the $PATH if missing.
 	GoBin string
 	// PythonBin is a location of a `python` executable to be run.  Taken from the $PATH if missing.
@@ -426,7 +430,7 @@ func (opts *ProgramTestOptions) getEnvName(name string) string {
 	contract.IgnoreError(err)
 
 	suffix := hex.EncodeToString(h.Sum(nil))
-	return fmt.Sprintf("%v-%v", name, suffix)
+	return fmt.Sprintf("default/%v-%v", name, suffix)
 }
 
 func (opts *ProgramTestOptions) getEnvNameWithOwner(name string) string {
@@ -874,6 +878,7 @@ type ProgramTester struct {
 	opts           *ProgramTestOptions // options that control this test run.
 	bin            string              // the `pulumi` binary we are using.
 	yarnBin        string              // the `yarn` binary we are using.
+	bunBin         string              // the `bun` binary we are using.
 	goBin          string              // the `go` binary we are using.
 	pythonBin      string              // the `python` binary we are using.
 	pipenvBin      string              // The `pipenv` binary we are using.
@@ -923,6 +928,10 @@ func (pt *ProgramTester) getBin() (string, error) {
 
 func (pt *ProgramTester) getYarnBin() (string, error) {
 	return getCmdBin(&pt.yarnBin, "yarn", pt.opts.YarnBin)
+}
+
+func (pt *ProgramTester) getBunBin() (string, error) {
+	return getCmdBin(&pt.bunBin, "bun", pt.opts.BunBin)
 }
 
 func (pt *ProgramTester) getGoBin() (string, error) {
@@ -989,9 +998,20 @@ func (pt *ProgramTester) yarnCmd(args []string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := []string{bin}
+	result := slice.Prealloc[string](1 + len(args))
+	result = append(result, bin)
 	result = append(result, args...)
 	return withOptionalYarnFlags(result), nil
+}
+
+func (pt *ProgramTester) bunCmd(args []string) ([]string, error) {
+	bin, err := pt.getBunBin()
+	if err != nil {
+		return nil, err
+	}
+	result := slice.Prealloc[string](1 + len(args))
+	result = append(result, bin)
+	return append(result, args...), nil
 }
 
 func (pt *ProgramTester) pythonCmd(args []string) ([]string, error) {
@@ -1114,6 +1134,33 @@ func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) e
 				return true, nil, nil
 			} else if _, ok := runerr.(*exec.ExitError); ok {
 				// yarn failed, let's try again, assuming we haven't failed a few times.
+				if try+1 >= 3 {
+					return false, nil, fmt.Errorf("%v did not complete after %v tries", cmd, try+1)
+				}
+
+				return false, nil, nil
+			}
+
+			// someother error, fail
+			return false, nil, runerr
+		},
+	})
+	return err
+}
+
+func (pt *ProgramTester) runBunCommand(name string, args []string, wd string) error {
+	cmd, err := pt.bunCmd(args)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = retry.Until(context.Background(), retry.Acceptor{
+		Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
+			runerr := pt.runCommand(name, cmd, wd)
+			if runerr == nil {
+				return true, nil, nil
+			} else if _, ok := runerr.(*exec.ExitError); ok {
+				// bun failed, let's try again, assuming we haven't failed a few times.
 				if try+1 >= 3 {
 					return false, nil, fmt.Errorf("%v did not complete after %v tries", cmd, try+1)
 				}
@@ -1329,6 +1376,10 @@ func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 	switch rt := projInfo.Proj.Runtime.Name(); rt {
 	case NodeJSRuntime:
 		if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
+			return err
+		}
+	case BunRuntime:
+		if err = pt.bunLinkPackageDeps(projectDir); err != nil {
 			return err
 		}
 	case PythonRuntime:
@@ -1793,13 +1844,13 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 
 		// Finally, replace our current temp directory with the new one.
 		dirOld := dir + ".old"
-		if err := os.Rename(dir, dirOld); err != nil {
+		if err := os.Rename(dir, dirOld); err != nil { //nolint:forbidigo // test usage is OK
 			return fmt.Errorf("Couldn't rename %v to %v: %w", dir, dirOld, err)
 		}
 
 		// There's a brief window here where the old temp dir name could be taken from us.
 
-		if err := os.Rename(newDir, dir); err != nil {
+		if err := os.Rename(newDir, dir); err != nil { //nolint:forbidigo // test usage is OK
 			return fmt.Errorf("Couldn't rename %v to %v: %w", newDir, dir, err)
 		}
 
@@ -2250,6 +2301,90 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
+// prepareBunProject runs setup necessary to get a Bun project ready for `pulumi` commands.
+func (pt *ProgramTester) prepareBunProject(projinfo *engine.Projinfo) error {
+	// Get the correct pwd to run Yarn in.
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+
+	workspaceRoot, err := npm.FindWorkspaceRoot(cwd)
+	if err != nil {
+		if !errors.Is(err, npm.ErrNotInWorkspace) {
+			return err
+		}
+		// Not in a workspace, don't updated cwd.
+	} else {
+		pt.t.Logf("detected workspace root at %s", workspaceRoot)
+		cwd = workspaceRoot
+	}
+
+	// If dev versions were requested, we need to update the
+	// package.json to use them.  Note that Overrides take
+	// priority over installing dev versions.
+	if pt.opts.InstallDevReleases {
+		err := pt.runBunCommand("bun-add", []string{"add", "@pulumi/pulumi@dev"}, cwd)
+		if err != nil {
+			return err
+		}
+	}
+
+	// If the test requested some packages to be overridden, we do two things. First, if the package is listed as a
+	// direct dependency of the project, we change the version constraint in the package.json. For transitive
+	// dependencies, we use "resolutions" feature to force them to a specific version.
+	if len(pt.opts.Overrides) > 0 {
+		packageJSON, err := readPackageJSON(cwd)
+		if err != nil {
+			return err
+		}
+
+		resolutions := make(map[string]any)
+
+		for packageName, packageVersion := range pt.opts.Overrides {
+			for _, section := range []string{"dependencies", "devDependencies"} {
+				if _, has := packageJSON[section]; has {
+					entry := packageJSON[section].(map[string]any)
+
+					if _, has := entry[packageName]; has {
+						entry[packageName] = packageVersion
+					}
+				}
+			}
+
+			pt.t.Logf("adding resolution for %s to version %s", packageName, packageVersion)
+			resolutions["**/"+packageName] = packageVersion
+		}
+
+		// Wack any existing resolutions section with our newly computed one.
+		packageJSON["resolutions"] = resolutions
+
+		if err := writePackageJSON(cwd, packageJSON); err != nil {
+			return err
+		}
+	}
+
+	// Now ensure dependencies are present.
+	if err = pt.runBunCommand("bun-install", []string{"install"}, cwd); err != nil {
+		return err
+	}
+
+	if !pt.opts.RunUpdateTest {
+		if err = pt.bunLinkPackageDeps(cwd); err != nil {
+			return err
+		}
+	}
+
+	if pt.opts.RunBuild {
+		// And finally compile it using whatever build steps are in the package.json file.
+		if err = pt.runBunCommand("bun-build", []string{"run", "build"}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // readPackageJSON unmarshals the package.json file located in pathToPackage.
 func readPackageJSON(pathToPackage string) (map[string]any, error) {
 	f, err := os.Open(filepath.Join(pathToPackage, "package.json"))
@@ -2375,6 +2510,16 @@ func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
 func (pt *ProgramTester) yarnLinkPackageDeps(cwd string) error {
 	for _, dependency := range pt.opts.Dependencies {
 		if err := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pt *ProgramTester) bunLinkPackageDeps(cwd string) error {
+	for _, dependency := range pt.opts.Dependencies {
+		if err := pt.runBunCommand("bun-link", []string{"link", dependency}, cwd); err != nil {
 			return err
 		}
 	}
@@ -2696,6 +2841,8 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 	switch rt := projinfo.Proj.Runtime.Name(); rt {
 	case NodeJSRuntime:
 		return pt.prepareNodeJSProject(projinfo)
+	case BunRuntime:
+		return pt.prepareBunProject(projinfo)
 	case PythonRuntime:
 		return pt.preparePythonProject(projinfo)
 	case GoRuntime:

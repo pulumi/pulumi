@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // ConfigVariable represents a program- or component-scoped input variable. The value for a config variable may come
@@ -35,6 +36,8 @@ type ConfigVariable struct {
 	Description  string
 	// Whether the config variable is nullable
 	Nullable bool
+	// Whether the config variable should be read as a secret.
+	Secret bool
 	// The name visible to API calls related to the config. Used as the argument when
 	// fetching config variables. Must not be modified during code generation to ensure
 	// that valid config calls don't become invalid.
@@ -44,6 +47,13 @@ type ConfigVariable struct {
 // SyntaxNode returns the syntax node associated with the config variable.
 func (cv *ConfigVariable) SyntaxNode() hclsyntax.Node {
 	return cv.syntax
+}
+
+func (cv *ConfigVariable) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := context.Variables[cv.Name()]; hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
 }
 
 func (cv *ConfigVariable) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {

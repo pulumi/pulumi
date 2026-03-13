@@ -17,7 +17,7 @@ package config
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -26,15 +26,21 @@ func newConfigEnvRmCmd(parent *configEnvCmd) *cobra.Command {
 	impl := configEnvRmCmd{parent: parent}
 
 	cmd := &cobra.Command{
-		Use:   "rm <environment-name>",
+		Use:   "rm",
 		Short: "Remove environment from a stack",
 		Long:  "Removes an environment from a stack's import list.",
-		Args:  cmdutil.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "environment-name"},
+		},
+		Required: 1,
+	})
 
 	cmd.Flags().BoolVar(
 		&impl.showSecrets, "show-secrets", false,

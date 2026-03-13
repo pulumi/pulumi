@@ -148,6 +148,12 @@ const (
 	PluginDownload ProgressType = "plugin-download"
 	// PluginInstall represents the installation of a plugin.
 	PluginInstall ProgressType = "plugin-install"
+	// PolicyPackDownload represents a download of a policy pack.
+	PolicyPackDownload ProgressType = "policypack-download"
+	// PolicyPackInstall represents the installation of a policy pack.
+	PolicyPackInstall ProgressType = "policypack-install"
+	// PolicyPacksLoading represents the loading of policy packs.
+	PolicyPacksLoading ProgressType = "policypacks-loading"
 )
 
 func (e Event) Payload() any {

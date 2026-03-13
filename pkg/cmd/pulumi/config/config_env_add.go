@@ -17,7 +17,7 @@ package config
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -26,17 +26,24 @@ func newConfigEnvAddCmd(parent *configEnvCmd) *cobra.Command {
 	impl := configEnvAddCmd{parent: parent}
 
 	cmd := &cobra.Command{
-		Use:   "add <environment-name>...",
+		Use:   "add",
 		Short: "Add environments to a stack",
 		Long: "Adds environments to the end of a stack's import list. Imported environments are merged in order\n" +
 			"per the ESC merge rules. The list of stacks behaves as if it were the import list in an anonymous\n" +
 			"environment.",
-		Args: cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "environment-name"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
 
 	cmd.Flags().BoolVar(
 		&impl.showSecrets, "show-secrets", false,

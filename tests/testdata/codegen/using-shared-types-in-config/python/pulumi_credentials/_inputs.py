@@ -20,13 +20,8 @@ __all__ = [
     'SharedArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class SharedArgsDict(TypedDict):
-        foo: NotRequired[pulumi.Input[_builtins.str]]
-elif False:
-    SharedArgsDict: TypeAlias = Mapping[str, Any]
+class SharedArgsDict(TypedDict):
+    foo: NotRequired[pulumi.Input[_builtins.str]]
 
 @pulumi.input_type
 class SharedArgs:

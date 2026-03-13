@@ -19,16 +19,11 @@ __all__ = [
     'TypeWithAssetsArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class TypeWithAssetsArgsDict(TypedDict):
-        asset: pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]
-        plain_archive: pulumi.Archive
-        archive: NotRequired[pulumi.Input[pulumi.Archive]]
-        plain_asset: NotRequired[Union[pulumi.Asset, pulumi.Archive]]
-elif False:
-    TypeWithAssetsArgsDict: TypeAlias = Mapping[str, Any]
+class TypeWithAssetsArgsDict(TypedDict):
+    asset: pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]
+    plain_archive: pulumi.Archive
+    archive: NotRequired[pulumi.Input[pulumi.Archive]]
+    plain_asset: NotRequired[Union[pulumi.Asset, pulumi.Archive]]
 
 @pulumi.input_type
 class TypeWithAssetsArgs:

@@ -1,0 +1,3 @@
+name: error_hooks_nodejs
+description: A program with error hooks
+runtime: nodejs

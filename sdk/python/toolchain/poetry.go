@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -35,6 +34,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
@@ -59,7 +60,7 @@ func newPoetry(directory string) (*poetry, error) {
 	poetryPath, err := exec.LookPath("poetry")
 	if err != nil {
 		return nil, errors.New("Could not find `poetry` executable.\n" +
-			"Install poetry and make sure is is in your PATH, or set the toolchain option in Pulumi.yaml to `pip`.")
+			"Install poetry and make sure it is in your PATH, or set the toolchain option in Pulumi.yaml to `pip`.")
 	}
 	versionOut, err := poetryVersionOutput(poetryPath)
 	if err != nil {
@@ -80,12 +81,11 @@ func newPoetry(directory string) (*poetry, error) {
 func poetryVersionOutput(poetryPath string) (string, error) {
 	// Passing `--no-plugins` makes this a fair bit faster
 	cmd := exec.Command(poetryPath, "--version", "--no-ansi", "--no-plugins") //nolint:gosec
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to run poetry --version: %w", err)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", errutil.ErrorWithStderr(err, "failed to run poetry --version: %w")
 	}
-	return strings.TrimSpace(out.String()), nil
+	return strings.TrimSpace(string(out)), nil
 }
 
 func validateVersion(versionOut string) (semver.Version, error) {
@@ -161,9 +161,14 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		}
 	}
 	poetryCmd.Dir = p.directory
-	poetryCmd.Stdout = infoWriter
-	poetryCmd.Stderr = errorWriter
-	return errutil.ErrorWithStderr(poetryCmd.Run(), "poetry install failed")
+	if showOutput {
+		poetryCmd.Stdout = infoWriter
+		poetryCmd.Stderr = errorWriter
+		return poetryCmd.Run()
+	} else {
+		_, err := poetryCmd.Output()
+		return errutil.ErrorWithStderr(err, "poetry install failed")
+	}
 }
 
 func (p *poetry) PrepareProject(
@@ -233,39 +238,24 @@ func (p *poetry) PrepareProject(
 
 func (p *poetry) LinkPackages(ctx context.Context, packages map[string]string) error {
 	logging.V(9).Infof("poetry linking %s", packages)
-	args := []string{"add", "--lock"} // Add package to lockfile only
 	paths := slices.Collect(maps.Values(packages))
+	args := slice.Prealloc[string](2 + len(paths))
+	args = append(args, "add", "--lock") // Add package to lockfile only
 	args = append(args, paths...)
 	cmd := exec.CommandContext(ctx, "poetry", args...)
-	if err := cmd.Run(); err != nil {
+	cmd.Dir = p.directory
+	if _, err := cmd.Output(); err != nil {
 		return errutil.ErrorWithStderr(err, "linking packages")
 	}
 	return nil
 }
 
-func (p *poetry) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
-	args := []string{"list", "-v", "--format", "json"}
-	if !transitive {
-		args = append(args, "--not-required")
-	}
-
-	cmd, err := p.ModuleCommand(ctx, "pip", args...)
+func (p *poetry) ListPackages(_ context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
+	lockDir, err := searchup(p.directory, "poetry.lock")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not find poetry.lock: %w", err)
 	}
-
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(cmd.Args, " "), err)
-	}
-
-	var packages []PythonPackage
-	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
-	if err := jsonDecoder.Decode(&packages); err != nil {
-		return nil, fmt.Errorf("parsing `python %s` output: %w", strings.Join(cmd.Args, " "), err)
-	}
-
-	return packages, nil
+	return listPackagesFromLockFile(filepath.Join(lockDir, "poetry.lock"), transitive, nil)
 }
 
 func (p *poetry) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {

@@ -15,9 +15,7 @@
 package toolchain
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -32,7 +30,9 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
@@ -59,7 +59,7 @@ func newUv(root, virtualenv string) (*uv, error) {
 	_, err := exec.LookPath("uv")
 	if err != nil {
 		return nil, errors.New("Could not find `uv` executable.\n" +
-			"Install uv and make sure is is in your PATH.")
+			"Install uv and make sure it is in your PATH.")
 	}
 
 	if virtualenv == "" {
@@ -159,7 +159,12 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	// We now have either a uv.lock or at least a pyproject.toml file, and we can use uv
 	// install the dependencies.
 	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
-	return errutil.ErrorWithStderr(syncCmd.Run(), "error installing dependencies")
+	if !showOutput {
+		_, err := syncCmd.Output()
+		return errutil.ErrorWithStderr(err, "error installing dependencies")
+	} else {
+		return syncCmd.Run()
+	}
 }
 
 // PrepareProject prepares a project for use with uv. It will create a suitable pyproject.toml project file. If a
@@ -255,9 +260,8 @@ func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error
 
 	paths := slices.Collect(maps.Values(packages))
 	args = append(args, paths...)
-	var stdout, stderr bytes.Buffer
-	cmd := u.uvCommand(ctx, "", true, &stdout, &stderr, args...)
-	if err := cmd.Run(); err != nil {
+	cmd := u.uvCommand(ctx, u.root, false, nil, nil, args...)
+	if _, err := cmd.Output(); err != nil {
 		return errutil.ErrorWithStderr(err, "linking packages")
 	}
 	return nil
@@ -282,53 +286,49 @@ func (u *uv) ValidateVenv(ctx context.Context) error {
 	return nil
 }
 
-func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
-	// We use `pip` instead of `uv pip` because `uv pip` does not respect the
-	// `-v` flag, which is required to get the package location.
-	// https://github.com/astral-sh/uv/issues/9838
-	args := []string{"list", "--format", "json", "-v"}
-	if !transitive {
-		args = append(args, "--not-required")
-	}
-	pipCmd, err := u.ModuleCommand(ctx, "pip", args...)
+func (u *uv) ListPackages(_ context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
+	lockDir, err := searchup(u.root, "uv.lock")
 	if err != nil {
-		return nil, fmt.Errorf("preparing pip list command: %w", err)
+		return nil, fmt.Errorf("could not find uv.lock: %w", err)
 	}
-	// Check if pip is installed, if not, we'll fallback to `uvx pip`, which will install an
-	// isolated pip for us.
-	cmd, err := u.ModuleCommand(ctx, "pip")
+	lockFilePath := filepath.Join(lockDir, "uv.lock")
+	content, err := os.ReadFile(lockFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("preparing check pip command: %w", err)
+		return nil, fmt.Errorf("could not read %s: %w", lockFilePath, err)
 	}
-	if out, err := cmd.CombinedOutput(); err != nil {
-		if strings.Contains(string(out), "No module named pip") {
-			// Use the python executable of our virtual environment so that pip will
-			// list the packages from that venv, instead of the isolated venv where
-			// uvx installs pip.
-			_, pythonPath := u.pythonExecutable()
-			args = []string{"pip", "--python", pythonPath, "list", "--format", "json", "-v"}
-			if !transitive {
-				args = append(args, "--not-required")
-			}
-			cmd := exec.CommandContext(ctx, "uvx", args...)
-			cmd.Dir = u.root
-			pipCmd = cmd
-		} else {
-			return nil, errutil.ErrorWithStderr(err, "checking for pip")
+	virtual, err := uvVirtualPackages(content)
+	if err != nil {
+		return nil, fmt.Errorf("could not identify virtual packages in %s: %w", lockFilePath, err)
+	}
+	return listPackagesFromLockFile(lockFilePath, transitive, virtual)
+}
+
+// uvLockFile is a minimal representation of uv.lock for identifying virtual packages.
+type uvLockFile struct {
+	Package []uvLockPackage `toml:"package"`
+}
+
+type uvLockPackage struct {
+	Name   string `toml:"name"`
+	Source struct {
+		Virtual string `toml:"virtual"`
+	} `toml:"source"`
+}
+
+// uvVirtualPackages returns the names of packages that are virtual (i.e. the project root or workspace members) in a
+// uv.lock file. Virtual packages have source = { virtual = "..." } and are not real installable packages.
+func uvVirtualPackages(content []byte) (map[string]bool, error) {
+	var lock uvLockFile
+	if _, err := toml.Decode(string(content), &lock); err != nil {
+		return nil, err
+	}
+	virtual := make(map[string]bool)
+	for _, pkg := range lock.Package {
+		if pkg.Source.Virtual != "" {
+			virtual[normalizePythonPackageName(pkg.Name)] = true
 		}
 	}
-
-	output, err := pipCmd.Output()
-	if err != nil {
-		return nil, errutil.ErrorWithStderr(err, "listing packages")
-	}
-
-	var packages []PythonPackage
-	if err := json.Unmarshal(output, &packages); err != nil {
-		return nil, fmt.Errorf("parsing package list: %w", err)
-	}
-
-	return packages, nil
+	return virtual, nil
 }
 
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
@@ -353,7 +353,7 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 		// uv run does an "inexact" sync, that is it leaves extraneous
 		// dependencies alone and does not remove them.
 		venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync", "--inexact")
-		if err := venvCmd.Run(); err != nil {
+		if _, err := venvCmd.Output(); err != nil {
 			return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
 		}
 	}

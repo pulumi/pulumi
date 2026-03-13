@@ -15,11 +15,6 @@ on:
         required: true
         description: "Version to produce"
         type: string
-      test-codegen:
-        required: false
-        default: true
-        description: "Whether to run per-language codegen tests."
-        type: boolean
       lint:
         required: false
         default: true
@@ -45,11 +40,6 @@ on:
         default: false
         required: false
         type: boolean
-      enable-journaling:
-        description: "Whether journaling is enabled in tests"
-        default: true
-        required: false
-        type: boolean
       fail-fast:
         required: false
         default: false
@@ -60,6 +50,11 @@ on:
         default: 0
         description: "Retry tests n times if there are failures"
         type: number
+      fuzz-test-optional:
+        required: false
+        default: false
+        description: "If true, fuzz test failures won't block the workflow"
+        type: boolean
     secrets:
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
@@ -117,12 +112,14 @@ jobs:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
         id: matrix
         env:
-          TEST_CODEGEN: ${{ inputs.test-codegen }}
           TEST_VERSION_SETS: ${{ inputs.test-version-sets }}
           INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
           INPUT_ACCEPTANCE_TEST_PLATFORMS: ${{ inputs.acceptance-test-platforms }}
@@ -153,10 +150,6 @@ jobs:
 
           CODEGEN_TESTS_FLAG=--codegen-tests
           PKG_UNIT_TEST_PARTITIONS=7
-          if [ "${TEST_CODEGEN}" = "false" ]; then
-            CODEGEN_TESTS_FLAG=--no-codegen-tests
-            PKG_UNIT_TEST_PARTITIONS=3
-          fi
 
           UNIT_TEST_MATRIX=$(
             ./scripts/get-job-matrix.py \
@@ -166,7 +159,6 @@ jobs:
             "$CODEGEN_TESTS_FLAG" \
             --platform "${INTEGRATION_PLATFORMS[@]}" "${ACCEPTANCE_PLATFORMS[@]}" \
             --version-set current \
-            --partition-module cmd/pulumi-test-language 1 \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-module sdk 1 \
             --partition-module tests 8
@@ -183,8 +175,12 @@ jobs:
             --partition-module pkg 1 \
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
-            --partition-module sdk/nodejs/cmd/pulumi-language-nodejs 1 \
-            --partition-module sdk/python/cmd/pulumi-language-python 1 \
+            --partition-package github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl \
+                sdk/pcl/cmd/pulumi-language-pcl 2 \
+            --partition-package github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3 \
+                sdk/nodejs/cmd/pulumi-language-nodejs 2 \
+            --partition-package github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 \
+                sdk/python/cmd/pulumi-language-python 4 \
             --partition-module tests 2 \
             --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
             --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
@@ -216,9 +212,9 @@ jobs:
               "$CODEGEN_TESTS_FLAG" \
               --platform windows-latest \
               --version-set current \
-              --partition-module pkg 1 \
+              --partition-module pkg 2 \
               --partition-module sdk 1 \
-              --partition-module tests 2 \
+              --partition-module tests 3 \
               --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
               --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
             )
@@ -236,7 +232,7 @@ jobs:
               --version-set current \
               --partition-module pkg 1 \
               --partition-module sdk 1 \
-              --partition-module tests 2 \
+              --partition-module tests 4 \
               --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
               --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
             )
@@ -365,7 +361,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: false
       enable-coverage: ${{ inputs.enable-coverage }}
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -392,7 +387,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -420,7 +414,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -448,7 +441,6 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -467,9 +459,9 @@ jobs:
       test-command: make test_lifecycle_fuzz
       is-integration-test: false
       enable-coverage: false
-      enable-journaling: ${{ inputs.enable-journaling }}
       test-retries: ${{ inputs.test-retries }}
       version-set: ${{ needs.matrix.outputs.version-set }}
+      continue-on-error: ${{ inputs.fuzz-test-optional }}
     secrets: inherit
 
   test-collect-reports:

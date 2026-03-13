@@ -32,9 +32,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+
 	"github.com/blang/semver"
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -240,7 +245,7 @@ func newPlugin[T any](
 	prefix string,
 	kind apitype.PluginKind,
 	args []string,
-	env []string,
+	env env.Env,
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
 	attachDebugger bool,
@@ -268,6 +273,15 @@ func newPlugin[T any](
 	tracingSpan := opentracing.StartSpan("newPlugin", opts...)
 	defer tracingSpan.Finish()
 
+	tracer := otel.Tracer("pulumi-cli")
+	_, otelSpan := cmdutil.StartSpan(context.Background(), tracer, "newPlugin",
+		trace.WithAttributes(
+			attribute.String("prefix", prefix),
+			attribute.String("bin", bin),
+			attribute.String("pulumi-decorator", prefix+":"+bin),
+		))
+	defer otelSpan.End()
+
 	// Try to execute the binary.
 	plug, err := ExecPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
 	if err != nil {
@@ -278,7 +292,7 @@ func newPlugin[T any](
 	// If we did not successfully launch the plugin, we still need to wait for stderr and stdout to drain.
 	defer func() {
 		if plug.Conn == nil {
-			contract.IgnoreError(plug.Close())
+			contract.IgnoreClose(plug)
 		}
 	}()
 
@@ -440,7 +454,7 @@ func parsePort(portString string) (int, error) {
 
 // ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
 func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
-	pluginArgs []string, pwd string, env []string, attachDebugger bool,
+	pluginArgs []string, pwd string, e env.Env, attachDebugger bool,
 ) (*Plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
@@ -449,6 +463,17 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		logToStderr:     logging.LogToStderr,
 		verbose:         logging.Verbose,
 	})
+
+	environment := os.Environ()
+	if e != nil && e.GetStore() != nil {
+		for k, v := range e.GetStore().Values() {
+			environment = append(environment, k+"="+v)
+		}
+	}
+
+	if otelEndpoint := cmdutil.OTelEndpoint(); otelEndpoint != "" {
+		environment = append(environment, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+otelEndpoint)
+	}
 
 	// Check to see if we have a binary we can invoke directly
 	stat, err := os.Stat(bin)
@@ -462,25 +487,25 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		var runtimeInfo workspace.ProjectRuntimeInfo
 		var pulumiVersionRange string
 		switch kind { //nolint:exhaustive // golangci-lint v2 upgrade
-		case apitype.ResourcePlugin, apitype.ConverterPlugin:
+		case apitype.ResourcePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
-			pulumiVersionRange = proj.PulumiVersionRange
+			pulumiVersionRange = proj.RequiredPulumiVersion
 		case apitype.AnalyzerPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPolicy.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
-			pulumiVersionRange = proj.PulumiVersionRange
+			pulumiVersionRange = proj.RequiredPulumiVersion
 		default:
 			return nil, errors.New("language plugins must be executable binaries")
 		}
 
-		if err := validatePulumiVersionRange(pulumiVersionRange, version.Version); err != nil {
+		if err := ValidatePulumiVersionRange(pulumiVersionRange, version.Version); err != nil {
 			return nil, err
 		}
 
@@ -504,9 +529,10 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
-			Env:              env,
+			Env:              environment,
 			Kind:             string(kind),
 			AttachDebugger:   attachDebugger,
+			LoaderAddress:    ctx.Host.LoaderAddr(),
 		})
 		if err != nil {
 			return nil, err //nolint:govet // lostcancel
@@ -515,7 +541,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		return &Plugin{
 			Bin:    bin,
 			Args:   args,
-			Env:    env,
+			Env:    environment,
 			Kill:   func() error { kill(); return nil },
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
@@ -532,8 +558,9 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd
-	if len(env) > 0 {
-		cmd.Env = env
+
+	if len(environment) > 0 {
+		cmd.Env = environment
 	}
 	in, _ := cmd.StdinPipe()
 	outr, outw := io.Pipe()
@@ -606,7 +633,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	return &Plugin{
 		Bin:    bin,
 		Args:   args,
-		Env:    env,
+		Env:    environment,
 		Kill:   kill,
 		Stdin:  in,
 		Stdout: outr,
@@ -627,12 +654,12 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}, nil
 }
 
-// validatePulumiVersionRange validates that the CLI version satisfies the passed version range. The supported syntax
+// ValidatePulumiVersionRange validates that the CLI version satisfies the passed version range. The supported syntax
 // for ranges is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2".
 // Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and
 // not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or
 // greater-than 3.8.0.
-func validatePulumiVersionRange(pulumiVersionRange, cliVersion string) error {
+func ValidatePulumiVersionRange(pulumiVersionRange, cliVersion string) error {
 	// The cliVersion is the build version and will usually be set when running the Pulumi CLI, however it may be empty
 	// when running non-integration tests.
 	if pulumiVersionRange != "" && cliVersion != "" {

@@ -14,8 +14,10 @@ import (
 type Example struct {
 	pulumi.CustomResourceState
 
-	MapMapUnionProperty     pulumi.MapMapOutput `pulumi:"mapMapUnionProperty"`
-	StringOrIntegerProperty pulumi.AnyOutput    `pulumi:"stringOrIntegerProperty"`
+	MapMapUnionProperty         pulumi.MapMapOutput      `pulumi:"mapMapUnionProperty"`
+	StringEnumUnionListProperty pulumi.StringArrayOutput `pulumi:"stringEnumUnionListProperty"`
+	StringOrIntegerProperty     pulumi.AnyOutput         `pulumi:"stringOrIntegerProperty"`
+	TypedEnumProperty           pulumi.StringPtrOutput   `pulumi:"typedEnumProperty"`
 }
 
 // NewExample registers a new resource with the given unique name, arguments, and options.
@@ -58,14 +60,18 @@ func (ExampleState) ElementType() reflect.Type {
 }
 
 type exampleArgs struct {
-	MapMapUnionProperty     map[string]map[string]interface{} `pulumi:"mapMapUnionProperty"`
-	StringOrIntegerProperty interface{}                       `pulumi:"stringOrIntegerProperty"`
+	MapMapUnionProperty         map[string]map[string]interface{} `pulumi:"mapMapUnionProperty"`
+	StringEnumUnionListProperty []string                          `pulumi:"stringEnumUnionListProperty"`
+	StringOrIntegerProperty     interface{}                       `pulumi:"stringOrIntegerProperty"`
+	TypedEnumProperty           *string                           `pulumi:"typedEnumProperty"`
 }
 
 // The set of arguments for constructing a Example resource.
 type ExampleArgs struct {
-	MapMapUnionProperty     pulumi.MapMapInput
-	StringOrIntegerProperty pulumi.Input
+	MapMapUnionProperty         pulumi.MapMapInput
+	StringEnumUnionListProperty pulumi.StringArrayInput
+	StringOrIntegerProperty     pulumi.Input
+	TypedEnumProperty           pulumi.StringPtrInput
 }
 
 func (ExampleArgs) ElementType() reflect.Type {
@@ -109,8 +115,16 @@ func (o ExampleOutput) MapMapUnionProperty() pulumi.MapMapOutput {
 	return o.ApplyT(func(v *Example) pulumi.MapMapOutput { return v.MapMapUnionProperty }).(pulumi.MapMapOutput)
 }
 
+func (o ExampleOutput) StringEnumUnionListProperty() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *Example) pulumi.StringArrayOutput { return v.StringEnumUnionListProperty }).(pulumi.StringArrayOutput)
+}
+
 func (o ExampleOutput) StringOrIntegerProperty() pulumi.AnyOutput {
 	return o.ApplyT(func(v *Example) pulumi.AnyOutput { return v.StringOrIntegerProperty }).(pulumi.AnyOutput)
+}
+
+func (o ExampleOutput) TypedEnumProperty() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *Example) pulumi.StringPtrOutput { return v.TypedEnumProperty }).(pulumi.StringPtrOutput)
 }
 
 func init() {

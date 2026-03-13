@@ -27,7 +27,7 @@
       "requiredInputs": ["indexContent"],
       "properties": {
         "bucket": {
-          "$ref": "/aws/v5.16.2/schema.json#/resources/aws:s3%2Fbucket:Bucket",
+          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:s3%2Fbucket:Bucket",
           "description": "The bucket resource."
         },
         "websiteUrl": {
@@ -53,7 +53,7 @@
     "nodejs": {
       "dependencies": {
         "@pulumi/pulumi": "^3.12",
-        "@pulumi/aws": "^5.16.2"
+        "@pulumi/aws": "^5.4.0"
       },
       "devDependencies": {
         "typescript": "^4.6.0"

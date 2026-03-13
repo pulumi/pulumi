@@ -1418,19 +1418,23 @@ class _Path:
 
 
 def contains_unknowns(val: Any) -> bool:
-    def impl(val: Any, stack: list[Any]) -> bool:
+    def impl(val: Any, seen_ids: set[int]) -> bool:
         if known_types.is_unknown(val):
             return True
 
-        if not any(x is val for x in stack):
-            stack.append(val)
-            if isinstance(val, dict):
-                return any(impl(val[k], stack) for k in val)
-            if isinstance(val, list):
-                return any(impl(x, stack) for x in val)
+        val_id = id(val)
+        if val_id in seen_ids:
+            return False
+
+        seen_ids.add(val_id)
+        if isinstance(val, dict):
+            return any(impl(val[k], seen_ids) for k in val)
+        if isinstance(val, list):
+            return any(impl(x, seen_ids) for x in val)
+
         return False
 
-    return impl(val, [])
+    return impl(val, set())
 
 
 def resolve_outputs(

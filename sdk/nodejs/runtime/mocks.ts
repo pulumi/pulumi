@@ -282,4 +282,5 @@ export async function setMocks(
     store.supportsTransforms = false;
     store.supportsParameterization = true;
     store.supportsResourceHooks = true;
+    store.supportsErrorHooks = true;
 }

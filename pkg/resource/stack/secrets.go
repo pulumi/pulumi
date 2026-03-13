@@ -33,7 +33,7 @@ import (
 
 type Base64SecretsProvider struct{}
 
-func (Base64SecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+func (Base64SecretsProvider) OfType(_ context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
 	if ty != "b64" {
 		return nil, fmt.Errorf("no known secrets provider for type %q", ty)
 	}

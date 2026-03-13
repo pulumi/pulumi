@@ -1,0 +1,5 @@
+name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime: nodejs
+packages:
+  provider: ./provider@0.0.0

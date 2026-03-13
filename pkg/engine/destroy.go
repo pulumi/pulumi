@@ -41,7 +41,7 @@ func Destroy(
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "destroy", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "destroy", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -178,7 +178,7 @@ func DestroyV2(
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "destroy", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "destroy", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}

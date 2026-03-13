@@ -19,14 +19,9 @@ __all__ = [
     'BazDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class BazDict(TypedDict):
-        hello: NotRequired[_builtins.str]
-        world: NotRequired[_builtins.str]
-elif False:
-    BazDict: TypeAlias = Mapping[str, Any]
+class BazDict(TypedDict):
+    hello: NotRequired[_builtins.str]
+    world: NotRequired[_builtins.str]
 
 @pulumi.input_type
 class Baz:

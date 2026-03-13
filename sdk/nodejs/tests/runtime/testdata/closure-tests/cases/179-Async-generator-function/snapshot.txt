@@ -7,7 +7,7 @@ function __f0() {
   return (function() {
     with({ this: undefined, arguments: undefined }) {
 
-return function* () {
+return async function* () {
     await new Promise((resolve) => setTimeout(resolve, 100));
     yield "Hello";
     console.log("World");

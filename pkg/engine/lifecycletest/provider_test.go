@@ -38,6 +38,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -218,7 +220,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -300,7 +302,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -526,7 +528,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -673,7 +675,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -908,7 +910,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -1017,7 +1019,7 @@ func TestExplicitProviderDiffReplacement(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := []resource.PropertyKey{}
+					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 					for k := range req.NewInputs {
 						keys = append(keys, k)
 					}
@@ -1581,7 +1583,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			programF := deploytest.NewLanguageRuntimeF(c.prog, c.packages...)
-			loaders := []*deploytest.ProviderLoader{}
+			loaders := slice.Prealloc[*deploytest.ProviderLoader](len(c.versions))
 			for _, v := range c.versions {
 				loaders = append(loaders,
 					deploytest.NewProviderLoader("pkgA", semver.MustParse(v), func() (plugin.Provider, error) {
@@ -1733,6 +1735,267 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 		assert.Equal(t, deletionDepURN, res.DeletedWith)
 	}
 	require.NoError(t, err)
+}
+
+// TestProviderOptionInheritance checks that a child custom resource inherits its parent's explicit Provider option.
+func TestProviderOptionInheritance(t *testing.T) {
+	t.Parallel()
+
+	var expectedProviderRef string
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		providerResp, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(providerResp.URN, providerResp.ID)
+		require.NoError(t, err)
+		expectedProviderRef = provRef.String()
+
+		parentResp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: expectedProviderRef,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: parentResp.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps: []lt.TestStep{{
+			Op: Update,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+				require.NotEmpty(t, expectedProviderRef)
+
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+
+				providersByName := map[string]string{}
+				for _, res := range snap.Resources {
+					switch res.URN.Name() {
+					case "resA", "resB":
+						providersByName[res.URN.Name()] = res.Provider
+					}
+				}
+
+				require.Equal(t, map[string]string{
+					"resA": expectedProviderRef,
+					"resB": expectedProviderRef,
+				}, providersByName)
+				return nil
+			},
+		}},
+	}
+	p.Run(t, nil)
+}
+
+// TestProvidersOptionInheritance checks that a child custom resource inherits its parent's Providers option.
+func TestProvidersOptionInheritance(t *testing.T) {
+	t.Parallel()
+
+	var expectedProviderRef string
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		providerResp, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(providerResp.URN, providerResp.ID)
+		require.NoError(t, err)
+		expectedProviderRef = provRef.String()
+
+		parentResp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": expectedProviderRef},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: parentResp.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps: []lt.TestStep{{
+			Op: Update,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+				require.NotEmpty(t, expectedProviderRef)
+
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+
+				providersByName := map[string]string{}
+				for _, res := range snap.Resources {
+					switch res.URN.Name() {
+					case "resA", "resB":
+						providersByName[res.URN.Name()] = res.Provider
+					}
+				}
+
+				require.Equal(t, map[string]string{
+					"resA": expectedProviderRef,
+					"resB": expectedProviderRef,
+				}, providersByName)
+				return nil
+			},
+		}},
+	}
+	p.Run(t, nil)
+}
+
+// TestProvidersOptionInheritanceRemote checks that a remote component resource _does not_ inherit its parent's Provider
+// option unless its for the correct package.
+func TestProvidersOptionInheritanceRemote(t *testing.T) {
+	t.Parallel()
+
+	var expectedProviderRef string
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		providerResp, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(providerResp.URN, providerResp.ID)
+		require.NoError(t, err)
+		expectedProviderRef = provRef.String()
+
+		parentResp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": expectedProviderRef},
+		})
+		require.NoError(t, err)
+
+		// This resource should inherit the provider because it's for the same package.
+		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", false, deploytest.ResourceOptions{
+			Remote: true,
+			Parent: parentResp.URN,
+		})
+		require.NoError(t, err)
+
+		// This resource should not inherit the provider because it's for a different package.
+		_, err = monitor.RegisterResource("pkgB:m:typC", "resC", false, deploytest.ResourceOptions{
+			Remote: true,
+			Parent: parentResp.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	construct := func(expectedType tokens.Type) func(
+		context.Context, plugin.ConstructRequest, *deploytest.ResourceMonitor,
+	) (plugin.ConstructResponse, error) {
+		return func(
+			_ context.Context, req plugin.ConstructRequest, mon *deploytest.ResourceMonitor,
+		) (plugin.ConstructResponse, error) {
+			assert.Equal(t, expectedType, req.Type)
+			resp, err := mon.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+				Parent: req.Parent,
+			})
+			require.NoError(t, err)
+			return plugin.ConstructResponse{
+				URN: resp.URN,
+			}, nil
+		}
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: construct("pkgA:m:typB"),
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: construct("pkgB:m:typC"),
+			}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps: []lt.TestStep{{
+			Op: Update,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				_ []Event, err error,
+			) error {
+				require.NoError(t, err)
+				require.NotEmpty(t, expectedProviderRef)
+
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+
+				providerResources := map[string]*resource.State{}
+				for _, res := range snap.Resources {
+					if providers.IsProviderType(res.Type) {
+						providerResources[string(res.Type.Name())] = res
+					}
+				}
+
+				// Should be two providers one for pkgA and one for pkgB, and only the provider for pkgA should have the
+				// expected provider ref.
+				assert.Contains(t, providerResources, "pkgA")
+				assert.Contains(t, providerResources, "pkgB")
+				assert.Equal(t, expectedProviderRef,
+					string(providerResources["pkgA"].URN)+"::"+string(providerResources["pkgA"].ID))
+				assert.NotEqual(t, expectedProviderRef,
+					string(providerResources["pkgB"].URN)+"::"+string(providerResources["pkgB"].ID))
+
+				providersByName := map[string]string{}
+				for _, res := range snap.Resources {
+					switch res.URN.Name() {
+					case "resA", "resB", "resC":
+						providersByName[res.URN.Name()] = res.Provider
+					}
+				}
+
+				// Components don't have "provider" saved in their state
+				require.Equal(t, map[string]string{
+					"resA": expectedProviderRef,
+					"resB": "",
+					"resC": "",
+				}, providersByName)
+				return nil
+			},
+		}},
+	}
+	p.Run(t, nil)
 }
 
 // TestComponentProvidersInheritance is to test that the `providers` map is propagated to child resources. The rules
@@ -2296,4 +2559,69 @@ func TestInternalKey(t *testing.T) {
 		resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0_http_/example.com"),
 		warns[0].Diag.URN)
 	assert.Equal(t, "provider attempted to use __internal key that is reserved by the engine", warns[0].Diag.Message)
+}
+
+// TestDefaultProviderInheritance reproduces the type-not-found schema regression from
+// https://github.com/pulumi/pulumi/issues/22096 by having two different packages using default providers and
+// one resource being the child of the other.
+func TestDefaultProviderInheritance(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(ctx context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if cr.Type.Package() != "pkgA" {
+						return plugin.CreateResponse{}, fmt.Errorf("unexpected package %s", cr.Type.Package())
+					}
+
+					return plugin.CreateResponse{
+						Status:     resource.StatusOK,
+						ID:         resource.ID(uuid.Must(uuid.NewV4()).String()),
+						Properties: cr.Properties,
+					}, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(ctx context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if cr.Type.Package() != "pkgB" {
+						return plugin.CreateResponse{}, fmt.Errorf("unexpected package %s", cr.Type.Package())
+					}
+
+					return plugin.CreateResponse{
+						Status:     resource.StatusOK,
+						ID:         resource.ID(uuid.Must(uuid.NewV4()).String()),
+						Properties: cr.Properties,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		parent, err := monitor.RegisterResource("pkgB:m:typA", "resA", true, deploytest.ResourceOptions{})
+		if err != nil {
+			return err
+		}
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: parent.URN,
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
 }

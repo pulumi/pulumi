@@ -114,6 +114,9 @@
         "tests/runtime/testdata/nested/project/index.ts",
         "tests/automation/cmd.spec.ts",
         "tests/automation/localWorkspace.spec.ts",
+        "tests/automation/localWorkspace.command.spec.ts",
+        "tests/automation/localWorkspace.config.spec.ts",
+        "tests/automation/localWorkspace.stack.spec.ts",
         "tests/automation/remoteWorkspace.spec.ts",
         "tests/automation/util.ts",
         "tests/proto/proto.spec.ts",
@@ -122,7 +125,8 @@
         "tests/provider/experimental/schema.spec.ts",
         "tests_with_mocks/mocks.spec.ts",
         "npm/testdata/nested/project/index.ts",
-        "types/arborist.d.ts"
+        "types/arborist.d.ts",
+        "types/fdir.d.ts"
     ],
     "ts-node": {
         "files": true

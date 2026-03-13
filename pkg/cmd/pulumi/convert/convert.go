@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
@@ -48,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -77,7 +79,9 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"\n" +
 			"Example command usage:" +
 			"\n" +
-			"    pulumi convert --from yaml --language java --out . \n",
+			"    pulumi convert --from yaml --language java --out . \n" +
+			"\n\n" +
+			"Note that certain target languages may require additional arguments to be passed to this command.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -105,6 +109,8 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 			)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.UnrestrictedArgs)
 
 	cmd.PersistentFlags().StringVar(
 		&language, "language", "", "Which language plugin to use to generate the Pulumi project")
@@ -333,7 +339,7 @@ func runConvert(
 			return nil
 		}
 
-		version, err := pkgWorkspace.InstallPlugin(pCtx.Base(), pluginSpec, log)
+		version, err := pkgWorkspace.InstallPlugin(pCtx.Base(), pluginSpec, log, schema.NewLoaderServerFromHost)
 		if err != nil {
 			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 			return nil
@@ -477,13 +483,14 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		_, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+		_, main, pctx, err := engine.ProjectInfoContext(
+			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
 		if err != nil {
 			return err
 		}
-		defer ctx.Close()
+		defer pctx.Close()
 
-		if err := newcmd.InstallDependencies(ctx, &proj.Runtime, main); err != nil {
+		if err := newcmd.InstallDependencies(pctx, &proj.Runtime, main); err != nil {
 			return err
 		}
 	}
@@ -559,6 +566,7 @@ func generateAndLinkSdksForPackages(
 			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
 			registry,
 			env.Global(),
+			0, /* unbounded concurrency */
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)
@@ -570,6 +578,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		diags, err := packages.GenSDK(
+			pctx.Request(),
 			language,
 			tempOut,
 			pkgSchema,
@@ -582,7 +591,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		sdkOut := filepath.Join(targetDirectory, "sdks", pkg.Parameterization.Name)
-		err = packages.CopyAll(sdkOut, filepath.Join(tempOut, language))
+		err = fsutil.CopyFile(sdkOut, filepath.Join(tempOut, language), nil)
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
 		}

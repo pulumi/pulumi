@@ -143,6 +143,21 @@ func TestNoGlobalPulumi(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestVersionWithVerboseEnv(t *testing.T) {
+	dir := t.TempDir()
+	version := semver.Version{Major: 3, Minor: 98, Patch: 0}
+	_, err := InstallPulumiCommand(t.Context(), &PulumiCommandOptions{Root: dir, Version: version})
+	require.NoError(t, err)
+
+	t.Setenv("PULUMI_OPTION_VERBOSE", "11")
+
+	cmd, err := NewPulumiCommand(&PulumiCommandOptions{Root: dir, Version: version})
+	require.NoError(t, err)
+
+	version = cmd.Version()
+	require.Equal(t, version, semver.Version{Major: 3, Minor: 98, Patch: 0})
+}
+
 func TestFixupPath(t *testing.T) {
 	t.Parallel()
 
@@ -301,13 +316,9 @@ func TestRunCanceled(t *testing.T) {
 		"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple",
 	}
 	_, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
-	if runtime.GOOS == "windows" {
-		require.ErrorContains(t, err, "exit status 0xffffffff")
-		require.Equal(t, 4294967295, code)
-	} else {
-		require.ErrorContains(t, err, "exit status 255")
-		require.Equal(t, 255, code)
-	}
+	require.Error(t, err)
+	require.ErrorContains(t, err, "exit status 1")
+	require.Equal(t, 1, code)
 
 	e.RunCommand("pulumi", "stack", "rm", "--yes", stackName)
 }

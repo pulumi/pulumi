@@ -19,19 +19,14 @@ __all__ = [
     'BastionShareableLinkDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class BastionShareableLinkDict(TypedDict):
-        """
-        Bastion Shareable Link.
-        """
-        vm: _builtins.str
-        """
-        Reference of the virtual machine resource.
-        """
-elif False:
-    BastionShareableLinkDict: TypeAlias = Mapping[str, Any]
+class BastionShareableLinkDict(TypedDict):
+    """
+    Bastion Shareable Link.
+    """
+    vm: _builtins.str
+    """
+    Reference of the virtual machine resource.
+    """
 
 @pulumi.input_type
 class BastionShareableLink:
@@ -39,6 +34,7 @@ class BastionShareableLink:
                  vm: _builtins.str):
         """
         Bastion Shareable Link.
+
         :param _builtins.str vm: Reference of the virtual machine resource.
         """
         pulumi.set(__self__, "vm", vm)

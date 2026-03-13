@@ -134,6 +134,42 @@ type PackageSpec struct {
 	unmarshalledFromFull bool
 }
 
+func (p PackageSpec) String() string {
+	if len(p.Parameters) == 0 && len(p.Checksums) == 0 && len(p.PluginDownloadURL) == 0 {
+		if len(p.Version) == 0 {
+			return p.Source
+		}
+		return p.Source + "@" + p.Version
+	}
+
+	var b strings.Builder
+	b.WriteString("{ Source: ")
+	b.WriteString(p.Source)
+
+	if len(p.Version) != 0 {
+		b.WriteString(", Version: ")
+		b.WriteString(p.Version)
+	}
+
+	if len(p.Parameters) != 0 {
+		b.WriteString(", Parameters: ")
+		for i, param := range p.Parameters {
+			b.WriteString(param)
+			if i != len(p.Parameters)-1 {
+				b.WriteRune(' ')
+			}
+		}
+	}
+
+	if len(p.PluginDownloadURL) != 0 {
+		b.WriteString(", PluginDownloadURL: ")
+		b.WriteString(p.PluginDownloadURL)
+	}
+	b.WriteString(" }")
+
+	return b.String()
+}
+
 type packageSpecMarshalled struct {
 	Source            string            `json:"source" yaml:"source"`
 	Version           string            `json:"version,omitzero" yaml:"version,omitempty"`
@@ -307,6 +343,13 @@ type Project struct {
 
 	// Handle additional keys, albeit in a way that will remove comments and trivia.
 	AdditionalKeys map[string]any `yaml:",inline"`
+
+	// Optional, validates that the CLI version satisfies the passed version range. The supported syntax for ranges is
+	// that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be
+	// AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly
+	// 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than
+	// 3.8.0.
+	RequiredPulumiVersion string `json:"requiredPulumiVersion,omitempty" yaml:"requiredPulumiVersion,omitempty"`
 
 	// The original byte representation of the file, used to attempt trivia-preserving edits
 	raw []byte
@@ -906,7 +949,7 @@ type PluginProject struct {
 	// https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
 	// together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
 	// Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
-	PulumiVersionRange string `json:"pulumiVersionRange" yaml:"pulumiVersionRange"`
+	RequiredPulumiVersion string `json:"requiredPulumiVersion" yaml:"requiredPulumiVersion"`
 }
 
 var _ BaseProject = (*PluginProject)(nil)

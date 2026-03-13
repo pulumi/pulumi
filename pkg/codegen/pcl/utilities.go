@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -95,6 +95,9 @@ func SourceOrderNodes(nodes []Node) []Node {
 
 func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, hcl.Diagnostics) {
 	components := strings.Split(tok, ":")
+	if len(components) == 2 {
+		components = []string{components[0], "index", components[1]}
+	}
 	if len(components) != 3 {
 		// If we don't have a valid type token, return the invalid token as the type name.
 		return "", "", tok, hcl.Diagnostics{malformedToken(tok, sourceRange)}
@@ -103,7 +106,7 @@ func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, 
 }
 
 func hasDependencyOn(a, b Node) bool {
-	for _, d := range a.getDependencies() {
+	for _, d := range a.GetDependencies() {
 		if d.Name() == b.Name() {
 			return true
 		}
@@ -117,7 +120,7 @@ func mutuallyDependant(a, b Node) bool {
 
 func linearizeNode(n Node, done codegen.Set, list *[]Node) {
 	if !done.Has(n) {
-		for _, d := range n.getDependencies() {
+		for _, d := range n.GetDependencies() {
 			if !mutuallyDependant(n, d) {
 				linearizeNode(d, done, list)
 			}
@@ -167,7 +170,7 @@ func Linearize(p *Program) []Node {
 		for i, f := range worklist {
 			weight, processed := 0, codegen.Set{}
 			for _, n := range f.nodes {
-				for _, d := range n.getDependencies() {
+				for _, d := range n.GetDependencies() {
 					// We don't count nodes that we've already counted or nodes that have already been ordered.
 					if processed.Has(d) || doneNodes.Has(d) {
 						continue

@@ -396,27 +396,10 @@ func TestPluginDownload(t *testing.T) {
 		source, err := spec.GetSource()
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.30.0" {
-				assert.Equal(t, "", req.Header.Get("Authorization"))
-				assert.Equal(t, "application/json", req.Header.Get("Accept"))
-				// Minimal JSON from the releases API to get the test to pass
-				return newMockReadCloserString(`{
-					"assets": [
-					  {
-						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/654321",
-						"name": "pulumi-mockdl_4.30.0_checksums.txt"
-					  },
-					  {
-						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456",
-						"name": "pulumi-resource-mockdl-v4.30.0-darwin-amd64.tar.gz"
-					  }
-					]
-				  }
-				`)
-			}
-
-			assert.Equal(t, "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456", req.URL.String())
-			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
+			//nolint:lll
+			assert.Equal(t,
+				"https://github.com/pulumi/pulumi-mockdl/releases/download/v4.30.0/pulumi-resource-mockdl-v4.30.0-darwin-amd64.tar.gz",
+				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
 		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
@@ -437,7 +420,11 @@ func TestPluginDownload(t *testing.T) {
 		source, err := spec.GetSource()
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			// Test that the asset isn't on github
+			//nolint:lll
+			if req.URL.String() ==
+				"https://github.com/pulumi/pulumi-otherdl/releases/download/v4.32.0/pulumi-resource-otherdl-v4.32.0-darwin-amd64.tar.gz" {
+				return nil, -1, errors.New("404 not found")
+			}
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-otherdl/releases/tags/v4.32.0" {
 				return nil, -1, errors.New("404 not found")
 			}
@@ -514,6 +501,11 @@ func TestPluginDownload(t *testing.T) {
 		source, err := spec.GetSource()
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			//nolint:lll
+			if req.URL.String() ==
+				"https://github.com/pulumi/pulumi-mockdl/releases/download/v4.32.0/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz" {
+				return nil, -1, errors.New("404 not found")
+			}
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
 				assert.Equal(t, "token "+token, req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
@@ -597,26 +589,10 @@ func TestPluginDownload(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", "")
 		version := semver.MustParse("4.30.0")
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.30.0" {
-				assert.Equal(t, "", req.Header.Get("Authorization"))
-				assert.Equal(t, "application/json", req.Header.Get("Accept"))
-				// Minimal JSON from the releases API to get the test to pass
-				return newMockReadCloserString(`{
-					"assets": [
-					  {
-						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/654321",
-						"name": "pulumi-mockdl_4.30.0_checksums.txt"
-					  },
-					  {
-						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456",
-						"name": "pulumi-resource-mockdl-v4.30.0-darwin-amd64.tar.gz"
-					  }
-					]
-				  }
-				`)
-			}
-
-			assert.Equal(t, "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456", req.URL.String())
+			//nolint:lll
+			assert.Equal(t,
+				"https://github.com/pulumi/pulumi-mockdl/releases/download/v4.30.0/pulumi-resource-mockdl-v4.30.0-darwin-amd64.tar.gz",
+				req.URL.String())
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
@@ -732,12 +708,20 @@ func TestPluginDownload(t *testing.T) {
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			attempts++
 
+			//nolint:lll
+			if req.URL.String() ==
+				"https://github.com/pulumi/pulumi-mockdl/releases/download/v4.32.0/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz" {
+				return nil, -1, errors.New("404 not found")
+			}
+
 			if req.Header.Get("Authorization") == "token "+token {
 				// Fail with a 401 Unauthorized
 				return nil, -1, &downloadError{code: 401}
 			}
 
-			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
+			//nolint:lll
+			if req.URL.String() ==
+				"https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
 				assert.Equal(t, "", req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
@@ -764,7 +748,8 @@ func TestPluginDownload(t *testing.T) {
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
-		assert.Equal(t, 3, attempts) // Failed attempt, then two successful attempts, first for the tag then the asset.
+		// Direct download, failed API attempt with token, then two successful attempts without token.
+		assert.Equal(t, 4, attempts)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
@@ -782,6 +767,12 @@ func TestPluginDownload(t *testing.T) {
 		attempts := 0
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			attempts++
+
+			//nolint:lll
+			if req.URL.String() ==
+				"https://github.com/pulumi/pulumi-mockdl/releases/download/v5.32.0/pulumi-resource-mockdl-v5.32.0-darwin-amd64.tar.gz" {
+				return nil, -1, errors.New("404 not found")
+			}
 
 			if req.Header.Get("Authorization") == "token "+token {
 				// Fail with a 403 Forbidden
@@ -818,7 +809,8 @@ func TestPluginDownload(t *testing.T) {
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
-		assert.Equal(t, 3, attempts) // Failed attempt, then two successful attempts, first for the tag then the asset.
+		// Direct download, failed API attempt with token, then two successful attempts without token.
+		assert.Equal(t, 4, attempts)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
@@ -1408,7 +1400,7 @@ func TestPluginSpec_GetSource(t *testing.T) {
 				Kind:              apitype.PluginKind("resource"),
 				PluginDownloadURL: "unknown://example.com/plugin",
 			},
-			expectedErrMsg: "unknown plugin source scheme: unknown",
+			expectedErrMsg: `unknown plugin source scheme: "unknown"`,
 		},
 	}
 
@@ -2246,4 +2238,38 @@ func TestLocalName(t *testing.T) {
 			require.Equal(t, c.expectedPath, path)
 		})
 	}
+}
+
+func TestIsExternalURL(t *testing.T) {
+	t.Parallel()
+
+	is := func(source string) { t.Helper(); assert.Truef(t, IsExternalURL(source), "source = %q", source) }
+	isnot := func(source string) { t.Helper(); assert.Falsef(t, IsExternalURL(source), "source = %q", source) }
+
+	is("git://anything")
+	is("https://anything")
+	is("gitlab.com/project/subgroup/component-test")
+	is("gitlab.com/project/subgroup/component-test.git")
+	is("gitlab.com/project/subgroup/component-test@v4.0.0")
+	is("gitlab.com/project/subgroup/component-test.git@v4.0.0")
+	is("github.com/pulumi/pulumi-aws")
+	is("github.com/org/repo@deadbeef")
+	is("example.com/a")
+	is("registry.io/org/plugin/")
+	is("my-registry.com/org/repo")
+	is("https://example.com/path")
+	is("git://example.com/repo")
+	is("a.co/x")
+	is("http://example.com")
+
+	isnot("word")
+	isnot("")
+	isnot("./relative/path")
+	isnot("/absolute/path")
+	isnot("../parent/path")
+	isnot("just-a-name")
+	isnot("pulumi-aws")
+	isnot("name@v1.0.0")
+	isnot(".hidden")
+	isnot("local.exe")
 }

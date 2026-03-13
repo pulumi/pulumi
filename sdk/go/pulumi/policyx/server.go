@@ -64,6 +64,7 @@ type analyzerServer struct {
 	policyPackFactory func(*pulumi.Context) (PolicyPack, error)
 	policyPack        PolicyPack
 
+	stacktags map[string]string
 	config    map[string]PolicyConfig
 	handshake *pulumirpc.AnalyzerHandshakeRequest
 }
@@ -153,6 +154,8 @@ func (srv *analyzerServer) ConfigureStack(ctx context.Context,
 		return nil, fmt.Errorf("creating context: %w", err)
 	}
 
+	srv.stacktags = req.Tags
+
 	srv.policyPack, err = srv.policyPackFactory(pctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create policy pack: %w", err)
@@ -236,8 +239,9 @@ func (srv *analyzerServer) Analyze(
 				}
 
 				args := ResourceValidationArgs{
-					Manager: policyManager,
-					Config:  config.Properties,
+					Manager:   policyManager,
+					Config:    config.Properties,
+					StackTags: srv.stacktags,
 					Resource: AnalyzerResource{
 						Type:                 req.GetType(),
 						Properties:           resource.FromResourcePropertyMap(pm),

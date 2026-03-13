@@ -1,2 +1,2 @@
 runtime: test
-pulumiVersionRange: ">=100.0.0"
+requiredPulumiVersion: ">=100.0.0"

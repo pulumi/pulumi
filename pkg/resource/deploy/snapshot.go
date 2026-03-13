@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -211,6 +212,16 @@ type PruneResult struct {
 	Delete bool
 	// A list of dependencies that were removed as a result of pruning.
 	RemovedDependencies []resource.StateDependency
+}
+
+// Repair attempts to repair this snapshot by sorting resources topologically and pruning dangling dependencies.
+// It returns the set of changes made by pruning, or an error if sorting fails (e.g. due to cycles). If sorting
+// fails the snapshot may be left in a partially sorted state.
+func (snap *Snapshot) Repair() ([]PruneResult, error) {
+	if err := snap.Toposort(); err != nil {
+		return nil, err
+	}
+	return snap.Prune(), nil
 }
 
 // Toposort attempts sorts this snapshot so that it is topologically sorted with respect to dependencies (where a
@@ -755,7 +766,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 // Snapshot, returns the edited Snapshot.
 func (snap *Snapshot) withUpdatedResources(update func(*resource.State) *resource.State) *Snapshot {
 	old := snap.Resources
-	new := []*resource.State{}
+	new := slice.Prealloc[*resource.State](len(old))
 	edited := false
 	for _, s := range old {
 		n := update(s)

@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ func labelsErrorf(block *hclsyntax.Block, f string, args ...any) *hcl.Diagnostic
 }
 
 func malformedToken(token string, sourceRange hcl.Range) *hcl.Diagnostic {
-	return errorf(sourceRange, "malformed token '%v': expected 'pkg:module:member'", token)
+	return errorf(sourceRange, "malformed token '%v': expected 'pkg:module:member' or 'pkg:member'", token)
 }
 
 func unknownPackage(pkg string, tokenRange hcl.Range) *hcl.Diagnostic {
@@ -106,4 +106,8 @@ func stringAttributeError(attr *model.Attribute) *hcl.Diagnostic {
 
 func boolAttributeError(attr *model.Attribute) *hcl.Diagnostic {
 	return errorf(attr.Syntax.Expr.Range(), "attribute %v must be a boolean literal", attr.Name)
+}
+
+func cannotTraversePulumiBlock(rng hcl.Range) *hcl.Diagnostic {
+	return errorf(rng, "pulumi blocks cannot be traversed")
 }

@@ -19,14 +19,9 @@ __all__ = [
     'DataArgsDict',
 ]
 
-MYPY = False
-
-if not MYPY:
-    class DataArgsDict(TypedDict):
-        private: pulumi.Input[_builtins.str]
-        public: pulumi.Input[_builtins.str]
-elif False:
-    DataArgsDict: TypeAlias = Mapping[str, Any]
+class DataArgsDict(TypedDict):
+    private: pulumi.Input[_builtins.str]
+    public: pulumi.Input[_builtins.str]
 
 @pulumi.input_type
 class DataArgs:

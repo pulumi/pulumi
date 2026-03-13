@@ -53,8 +53,12 @@ func newErrorCatchingSecretsProvider(
 	}
 }
 
-func (p *errorCatchingSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
-	delegateManager, err := p.delegateProvider.OfType(ty, state)
+func (p *errorCatchingSecretsProvider) OfType(
+	ctx context.Context,
+	ty string,
+	state json.RawMessage,
+) (secrets.Manager, error) {
+	delegateManager, err := p.delegateProvider.OfType(ctx, ty, state)
 	if err != nil {
 		return nil, err
 	}

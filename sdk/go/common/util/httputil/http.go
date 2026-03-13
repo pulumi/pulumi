@@ -99,7 +99,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 
 			// Close the response body, if present, since our caller can't.
 			if resErr == nil {
-				contract.IgnoreError(res.Body.Close())
+				contract.IgnoreClose(res.Body)
 			}
 			return false, nil, nil
 		},
