@@ -43,7 +43,16 @@ func (p *KeywordsProvider) version() string {
 func (p *KeywordsProvider) properties() []string {
 	return []string{
 		"builtins",
+		"lambda",
 		"property",
+	}
+}
+
+func (p *KeywordsProvider) resourceTypes() []string {
+	return []string{
+		"keywords:index:Lambda",
+		"keywords:index:SomeResource",
+		"keywords:lambda:SomeResource",
 	}
 }
 
@@ -73,20 +82,23 @@ func (p *KeywordsProvider) GetSchema(
 		}
 	}
 
-	pkg := schema.PackageSpec{
-		Name:    p.Pkg().String(),
-		Version: p.version(),
-		Resources: map[string]schema.ResourceSpec{
-			"keywords:index:SomeResource": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type:       "object",
-					Properties: properties,
-					Required:   p.properties(),
-				},
-				InputProperties: properties,
-				RequiredInputs:  p.properties(),
+	resources := make(map[string]schema.ResourceSpec)
+	for _, rt := range p.resourceTypes() {
+		resources[rt] = schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Type:       "object",
+				Properties: properties,
+				Required:   p.properties(),
 			},
-		},
+			InputProperties: properties,
+			RequiredInputs:  p.properties(),
+		}
+	}
+
+	pkg := schema.PackageSpec{
+		Name:      p.Pkg().String(),
+		Version:   p.version(),
+		Resources: resources,
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
@@ -123,10 +135,19 @@ func (p *KeywordsProvider) CheckConfig(
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }
 
+func (p *KeywordsProvider) isValidResourceType(t tokens.Type) bool {
+	for _, rt := range p.resourceTypes() {
+		if string(t) == rt {
+			return true
+		}
+	}
+	return false
+}
+
 func (p *KeywordsProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	if req.URN.Type() != "keywords:index:SomeResource" {
+	if !p.isValidResourceType(req.URN.Type()) {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
@@ -158,7 +179,7 @@ func (p *KeywordsProvider) Check(
 func (p *KeywordsProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if req.URN.Type() != "keywords:index:SomeResource" {
+	if !p.isValidResourceType(req.URN.Type()) {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -189,7 +210,7 @@ func (p *KeywordsProvider) Create(
 func (p *KeywordsProvider) Update(
 	_ context.Context, req plugin.UpdateRequest,
 ) (plugin.UpdateResponse, error) {
-	if req.URN.Type() != "keywords:index:SomeResource" {
+	if !p.isValidResourceType(req.URN.Type()) {
 		return plugin.UpdateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -243,7 +264,7 @@ func (p *KeywordsProvider) Delete(
 }
 
 func (p *KeywordsProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-	if req.URN.Type() != "keywords:index:SomeResource" {
+	if !p.isValidResourceType(req.URN.Type()) {
 		return plugin.ReadResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
