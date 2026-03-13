@@ -333,6 +333,10 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
+// installPluginFunc is the function used to install plugins.
+// It is a variable so tests can replace it with a stub.
+var installPluginFunc = pkgWorkspace.InstallPlugin
+
 // loadPolicyAnalyzer attempts to load a policy analyzer plugin. If the plugin is missing, it attempts
 // to automatically install it and retry, similar to how resource provider plugins are auto-installed
 // in loadProvider (pkg/resource/deploy/providers/registry.go).
@@ -358,12 +362,21 @@ func loadPolicyAnalyzer(
 		plugctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, installErr := pkgWorkspace.InstallPlugin(ctx, me.Spec(), log, schema.NewLoaderServerFromHost)
+	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromHost)
 	if installErr != nil {
-		return nil, policyAnalyzerMissingError(name, me)
+		return nil, fmt.Errorf("failed to automatically install analyzer plugin %q: %w: %w",
+			string(name), installErr, me)
 	}
 
-	return plugctx.Host.PolicyAnalyzer(name, path, opts)
+	analyzer, err = plugctx.Host.PolicyAnalyzer(name, path, opts)
+	if err != nil {
+		var retryMe *workspace.MissingError
+		if errors.As(err, &retryMe) {
+			return nil, policyAnalyzerMissingError(name, retryMe)
+		}
+		return nil, err
+	}
+	return analyzer, nil
 }
 
 func policyAnalyzerMissingError(name tokens.QName, me *workspace.MissingError) error {

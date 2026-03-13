@@ -20,9 +20,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -182,6 +184,15 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 	t.Run("MissingError with auto-install retries and succeeds", func(t *testing.T) {
 		// auto-install is enabled by default. The first call to PolicyAnalyzer
 		// returns MissingError; after the install attempt the second call succeeds.
+		origInstall := installPluginFunc
+		installPluginFunc = func(
+			_ context.Context, _ workspace.PluginDescriptor,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+		) (*semver.Version, error) {
+			return nil, nil
+		}
+		t.Cleanup(func() { installPluginFunc = origInstall })
+
 		calls := 0
 		host := &plugin.MockHost{
 			PolicyAnalyzerF: func(name tokens.QName, _ string, _ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
@@ -204,6 +215,72 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, tokens.QName("my-policy"), analyzer.Name())
 		assert.Equal(t, 2, calls, "expected two calls: first fails, second succeeds after install")
+	})
+
+	t.Run("MissingError with auto-install failure includes install error", func(t *testing.T) {
+		origInstall := installPluginFunc
+		installErr := errors.New("network timeout")
+		installPluginFunc = func(
+			_ context.Context, _ workspace.PluginDescriptor,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+		) (*semver.Version, error) {
+			return nil, installErr
+		}
+		t.Cleanup(func() { installPluginFunc = origInstall })
+
+		host := &plugin.MockHost{
+			PolicyAnalyzerF: func(tokens.QName, string, *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+				return nil, workspace.NewMissingError(workspace.PluginDescriptor{
+					Name: "policy-opa",
+					Kind: apitype.AnalyzerPlugin,
+				}, false)
+			},
+		}
+		plugctx, err := plugin.NewContextWithRoot(
+			context.Background(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+		require.NoError(t, err)
+		defer plugctx.Close()
+
+		_, err = loadPolicyAnalyzer(context.Background(), plugctx, "my-policy", "/path", nil)
+		assert.ErrorContains(t, err, "network timeout")
+		assert.ErrorContains(t, err, "failed to automatically install analyzer plugin")
+
+		// The original MissingError should be wrapped.
+		var me *workspace.MissingError
+		assert.True(t, errors.As(err, &me))
+	})
+
+	t.Run("MissingError after successful install wraps retry error", func(t *testing.T) {
+		origInstall := installPluginFunc
+		installPluginFunc = func(
+			_ context.Context, _ workspace.PluginDescriptor,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+		) (*semver.Version, error) {
+			return nil, nil
+		}
+		t.Cleanup(func() { installPluginFunc = origInstall })
+
+		// Even after install, PolicyAnalyzer still returns MissingError.
+		host := &plugin.MockHost{
+			PolicyAnalyzerF: func(tokens.QName, string, *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+				return nil, workspace.NewMissingError(workspace.PluginDescriptor{
+					Name: "policy-opa",
+					Kind: apitype.AnalyzerPlugin,
+				}, false)
+			},
+		}
+		plugctx, err := plugin.NewContextWithRoot(
+			context.Background(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+		require.NoError(t, err)
+		defer plugctx.Close()
+
+		_, err = loadPolicyAnalyzer(context.Background(), plugctx, "my-policy", "/path", nil)
+		assert.ErrorContains(t, err,
+			`could not start policy pack "my-policy" because the built-in analyzer `+
+				`plugin that runs policy plugins is missing`)
+
+		var me *workspace.MissingError
+		assert.True(t, errors.As(err, &me))
 	})
 }
 
