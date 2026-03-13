@@ -19,7 +19,6 @@ class ResourceArgs:
         """
         The set of arguments for constructing a Resource resource.
 
-
         :param pulumi.Input[_builtins.bool] in_: Will be used to set ResourceArgs.in_ and Resource.out.
         """
         pulumi.set(__self__, "in_", in_)
