@@ -5,9 +5,21 @@ const container = new nestedobject.Container("container", {inputs: [
     "alpha",
     "bravo",
 ]});
-const target: nestedobject.Target[] = [];
+const mapContainer = new nestedobject.MapContainer("mapContainer", {tags: {
+    k1: "charlie",
+    k2: "delta",
+}});
+// A resource that ranges over a computed list
+const listOutput: nestedobject.Target[] = [];
 container.details.apply(rangeBody => {
     for (const range of rangeBody.map((v, k) => ({key: k, value: v}))) {
-        target.push(new nestedobject.Target(`target-${range.key}`, {name: range.value.value}));
+        listOutput.push(new nestedobject.Target(`listOutput-${range.key}`, {name: range.value.value}));
+    }
+});
+// A resource that ranges over a computed map
+const mapOutput: nestedobject.Target[] = [];
+mapContainer.tags.apply(rangeBody => {
+    for (const range of Object.entries(rangeBody).map(([k, v]) => ({key: k, value: v}))) {
+        mapOutput.push(new nestedobject.Target(`mapOutput-${range.key}`, {name: `${range.key}=>${range.value}`}));
     }
 });

@@ -31,23 +31,26 @@ func init() {
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 
-					// Expect: stack, nestedobject provider, container, 2 targets (one per input).
-					// We have 2 inputs -> 2 details -> 2 targets.
-					// Resources: stack + nestedobject provider + container + 2 targets = 5
-					require.Len(l, res.Snap.Resources, 5, "expected 5 resources in snapshot")
+					// Expect: stack, nestedobject provider, 2 containers, 6 targets (one per input).
+					require.Len(l, res.Snap.Resources, 8, "expected 10 resources in snapshot")
 
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:nestedobject")
 					RequireSingleResource(l, res.Snap.Resources, "nestedobject:index:Container")
 
-					targets := RequireNResources(l, res.Snap.Resources, "nestedobject:index:Target", 2)
+					names := map[string]string{}
+					targets := RequireNResources(l, res.Snap.Resources, "nestedobject:index:Target", 4)
 					for _, target := range targets {
 						name, ok := target.Inputs["name"]
-						assert.True(l, ok, "expected target to have 'name' input")
-						assert.True(l, name.IsString(), "expected 'name' to be a string")
-						assert.Contains(l, name.StringValue(), "computed-",
-							"expected name to contain 'computed-'")
+						require.True(l, ok && name.IsString(), "expected target to have 'name' input of type string")
+						names[target.URN.Name()] = name.StringValue()
 					}
+					assert.Equal(l, names, map[string]string{
+						"listOutput-0": "computed-alpha",
+						"listOutput-1": "computed-bravo",
+						"mapOutput-k1": "k1=>charlie",
+						"mapOutput-k2": "k2=>delta",
+					})
 				},
 			},
 		},

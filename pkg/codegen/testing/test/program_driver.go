@@ -263,14 +263,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except(TestPython),
 	},
 	{
-		Directory:   "iterating-optional-range-expressions",
-		Description: "Test that we can iterate over range expression that are option(iterator)",
-		// TODO: dotnet and go
-		Skip: allProgLanguages.Except(TestNodeJS).Except(TestPython),
-		// We are using a synthetic schema defined in range-1.0.0.json so we can't compile all the way
-		SkipCompile: allProgLanguages,
-	},
-	{
 		Directory:   "dynamic-entries",
 		Description: "Testing iteration of dynamic entries in TypeScript",
 		Skip:        allProgLanguages.Except(TestNodeJS),
