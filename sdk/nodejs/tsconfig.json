@@ -88,6 +88,7 @@
         "automation/workspace.ts",
         "tests/cmd/dynamic/config.spec.ts",
         "tests/cmd/run/error.spec.ts",
+        "tests/cmd/run-policy-pack/resolve.spec.ts",
         "tests/config.spec.ts",
         "tests/constants.ts",
         "tests/init.spec.ts",

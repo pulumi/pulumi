@@ -90,6 +90,39 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestAnalyzerSpawnWithSiblingJSON verifies that a policy pack can be loaded
+// when a sibling .json file exists alongside the policy pack directory.
+// This reproduces https://github.com/pulumi/pulumi/issues/4280 where
+// Node's require() would resolve "policypack.json" instead of the
+// "policypack/" directory.
+func TestAnalyzerSpawnWithSiblingJSON(t *testing.T) {
+	// Verify the sibling .json file exists (this is the trigger for #4280).
+	siblingJSON := filepath.Join("testdata", "policypack.json")
+	_, err := os.Stat(siblingJSON)
+	require.NoError(t, err, "testdata/policypack.json must exist to test sibling file scenario")
+
+	d := diagtest.LogSink(t)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil, nil)
+	require.NoError(t, err)
+
+	pluginPath, err := filepath.Abs("./testdata/analyzer-no-config")
+	require.NoError(t, err)
+
+	path := os.Getenv("PATH")
+	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
+
+	// Use an absolute path, matching the fix in update.go that now passes
+	// abs instead of pack.Path to PolicyAnalyzer.
+	absPackPath, err := filepath.Abs("./testdata/policypack")
+	require.NoError(t, err)
+
+	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", absPackPath, nil, nil)
+	require.NoError(t, err)
+
+	err = analyzer.Close()
+	require.NoError(t, err)
+}
+
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	d := diagtest.LogSink(t)
 	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil, nil)

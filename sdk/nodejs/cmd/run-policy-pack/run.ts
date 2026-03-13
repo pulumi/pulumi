@@ -148,6 +148,41 @@ export interface RunOpts {
     typeScript: boolean;
 }
 
+/**
+ * Resolves a program path to its entry point. If the path is a directory,
+ * explicitly resolves via package.json "main" field or defaults to "index".
+ * This bypasses Node's require() file-extension resolution which would
+ * pick up a sibling .json file before checking the directory.
+ * See https://github.com/pulumi/pulumi/issues/4280
+ *
+ * @internal
+ */
+export function resolveProgramPath(program: string): string {
+    if (!path.isAbsolute(program)) {
+        program = path.join(process.cwd(), program);
+    }
+
+    try {
+        if (fs.statSync(program).isDirectory()) {
+            const pkgJsonPath = path.join(program, "package.json");
+            try {
+                const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+                if (pkgJson.main) {
+                    program = path.resolve(program, pkgJson.main);
+                } else {
+                    program = path.join(program, "index");
+                }
+            } catch {
+                program = path.join(program, "index");
+            }
+        }
+    } catch {
+        // If stat fails, let require() handle it as before.
+    }
+
+    return program;
+}
+
 /** @internal */
 export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | Promise<void> {
     // If there is a --pwd directive, switch directories.
@@ -183,11 +218,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         });
     }
 
-    let program: string = opts.argv._[0];
-    if (!path.isAbsolute(program)) {
-        // If this isn't an absolute path, make it relative to the working directory.
-        program = path.join(process.cwd(), program);
-    }
+    let program: string = resolveProgramPath(opts.argv._[0]);
 
     // Now fake out the process-wide argv, to make the program think it was run normally.
     const programArgs: string[] = opts.argv._.slice(1);
