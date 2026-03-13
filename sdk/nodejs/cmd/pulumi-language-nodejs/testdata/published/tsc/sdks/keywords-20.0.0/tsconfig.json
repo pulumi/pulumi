@@ -14,6 +14,9 @@
     },
     "files": [
         "index.ts",
+        "lambda/index.ts",
+        "lambda/someResource.ts",
+        "lambda_.ts",
         "provider.ts",
         "someResource.ts",
         "utilities.ts"
