@@ -41,7 +41,7 @@ func assertJSONOutput(l *L, props resource.PropertyMap, key string, secret bool,
 		return
 	}
 	wantJSON, err := json.Marshal(want)
-	if !assert.NoError(l, err) {
+	if !assert.NoError(l, err) { //nolint:forbidigo
 		return
 	}
 	assert.JSONEq(l, string(wantJSON), pv.StringValue(), "output %q: parsed JSON does not match", key)
