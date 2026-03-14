@@ -9,6 +9,16 @@ A description of the schema for a Pulumi Package
 
 ---
 
+### `allowedPackageNames`
+
+A list of allowed package names in addition to the name property.
+
+`array`
+
+Items: `string`
+
+---
+
 ### `attribution`
 
 Freeform text attribution of derived work, if required.
@@ -27,9 +37,9 @@ The package's configuration variables.
 
 ---
 
-##### `required`
+##### `defaults`
 
-A list of the names of the package's required configuration variables.
+A list of the names of the package's non-required configuration variables.
 
 `array`
 
@@ -46,6 +56,16 @@ A map from variable name to propertySpec that describes a package's configuratio
 Additional properties: [Property Definition](#property-definition)
 
 ---
+
+---
+
+### `dependencies`
+
+A list of package descriptors that describes the set of dependencies for this package.
+
+`array`
+
+Items: [`https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/properties/dependencies/items`](#httpsgithubcompulumipulumiblobmasterpkgcodegenschemajsonpropertiesdependenciesitems)
 
 ---
 
@@ -71,7 +91,7 @@ A map from token to functionSpec that describes the set of functions defined by 
 
 `object`
 
-Property names: [Token](#token)
+Property names: [Function Token](#function-token)
 
 Additional properties: [Function Definition](#function-definition)
 
@@ -129,13 +149,21 @@ Format metadata about this package.
 
 ---
 
-##### `moduleFormat` (_required_)
+##### `moduleFormat`
 
 A regex that is used by the importer to extract a module name from the module portion of a type token. Packages that use the module format "namespace1/namespace2/.../namespaceN" do not need to specify a format. The regex must define one capturing group that contains the module name, which must be formatted as "namespace1/namespace2/...namespaceN".
 
 `string`
 
 Format: `regex`
+
+---
+
+##### `supportPack`
+
+Write the package to support the pack command.
+
+`boolean`
 
 ---
 
@@ -151,7 +179,28 @@ Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*$`
 
 ---
 
-### `pluginDownloadUrl`
+### `namespace`
+
+The namespace of the package. Used to disambiguate the package name. Defaults to 'pulumi' when not specified
+
+`string`
+
+Pattern: `^([a-z][a-z0-9]*)(-[a-z0-9]+)*$`
+
+---
+
+### `parameterization`
+
+An optional object to define parameterization for the package.
+
+`object`
+
+All of:
+- [`https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/$defs/parameterization`](#httpsgithubcompulumipulumiblobmasterpkgcodegenschemajsondefsparameterization)
+
+---
+
+### `pluginDownloadURL`
 
 The URL to use when downloading the provider plugin binary.
 
@@ -213,31 +262,15 @@ The version of the package. The version must be valid semver.
 
 `string`
 
-Pattern: `^v?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
+Pattern: `^v?(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 
 ---
 
 ## Alias Definition
 
-`object`
+`object` | `string`
 
 ### Properties
-
----
-
-#### `name`
-
-The name portion of the alias, if any
-
-`string`
-
----
-
-#### `project`
-
-The project portion of the alias, if any
-
-`string`
 
 ---
 
@@ -393,13 +426,55 @@ Additional language-specific data about the function.
 
 ---
 
-#### `outputs`
+#### `multiArgumentInputs`
 
-The bag of output values for the function, if any.
+A list of parameter names that determines whether the input bag should be treated as a single argument or as multiple arguments. The list corresponds to the order in which the parameters should be passed to the function.
 
-[Object Type Details](#object-type-details)
+`array`
+
+Items: `string`
 
 ---
+
+#### `outputs`
+
+Specifies the return type of the function definition.
+
+Any of:
+
+---
+
+#### `overlaySupportedLanguages`
+
+A list of languages that the overlay supports. This only has an effect if the Resource is an Overlay (isOverlay == true).  Supported values are 'nodejs', 'python', 'go', 'csharp', 'java', 'yaml'.
+
+`array`
+
+Items: `"nodejs"` | `"python"` | `"go"` | `"csharp"` | `"java"` | `"yaml"`
+
+---
+
+#### `plain`
+
+Plain is a marker field to indicate that this function should only generate plain and output style methods. It defaults to true, that is to emit both plain and output style methods. Setting this to false will emit only output style methods.
+
+`boolean`
+
+---
+
+#### `returnType`
+
+Specifies the return type of the function definition.
+
+Any of:
+
+---
+
+## Function Token
+
+`string`
+
+Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$`
 
 ## Map Type
 
@@ -487,6 +562,40 @@ Describes an object type
 
 ---
 
+#### `description`
+
+The description of the type, if any
+
+`string`
+
+---
+
+#### `isOverlay`
+
+indicates whether the type is an overlay provided by the package. Overlay code is generated by the package rather than using the core Pulumi codegen libraries.
+
+`boolean`
+
+---
+
+#### `language`
+
+Additional language-specific data about the object type.
+
+`object`
+
+---
+
+#### `overlaySupportedLanguages`
+
+A list of languages that the overlay supports. This only has an effect if the Resource is an Overlay (isOverlay == true).  Supported values are 'nodejs', 'python', 'go', 'csharp', 'java', 'yaml'.
+
+`array`
+
+Items: `"nodejs"` | `"python"` | `"go"` | `"csharp"` | `"java"` | `"yaml"`
+
+---
+
 #### `properties`
 
 A map from property name to propertySpec that describes the object's properties.
@@ -504,6 +613,14 @@ A list of the names of an object type's required properties. These properties mu
 `array`
 
 Items: `string`
+
+---
+
+#### `type`
+
+The type of the object.  Must be 'object' if this is an object type, or the underlying type for an enum.
+
+`string`
 
 ---
 
@@ -618,17 +735,17 @@ Specifies whether a change to the property causes its containing resource to be 
 
 ---
 
-#### `willReplaceOnChanges`
+#### `secret`
 
-Indicates that the provider will replace the resource when this property is changed.
+Specifies whether the property is secret (default false).
 
 `boolean`
 
 ---
 
-#### `secret`
+#### `willReplaceOnChanges`
 
-Specifies whether the property is secret (default false).
+Indicates that the provider will replace the resource when this property is changed.
 
 `boolean`
 
@@ -699,17 +816,6 @@ Indicates that the implementation of the resource should not be generated from t
 
 ---
 
-#### `overlaySupportedLanguages`
-
-Indicates what languages the overlay supports. This only has an effect if the Resource is an Overlay (IsOverlay == true).
-Supported values are "nodejs", "python", "go", "csharp", "java", "yaml".
-
-`array`
-
-Items: `string`
-
----
-
 #### `methods`
 
 A map from method name to function token that describes the resource's method set.
@@ -732,7 +838,7 @@ Items: `string`
 
 #### `stateInputs`
 
-An optional objectTypeSpec that describes additional inputs that mau be necessary to get an existing resource. If this is unset, only an ID is necessary.
+An optional objectTypeSpec that describes additional inputs that may be necessary to get an existing resource. If this is unset, only an ID is necessary.
 
 [Object Type Details](#object-type-details)
 
@@ -822,7 +928,7 @@ Informs the consumer of an alternative schema based on the value associated with
 
 ###### `mapping`
 
-an optional object to hold mappings between payload values and schema names or references
+An optional object to hold mappings between payload values and schema names or references
 
 `object`
 
@@ -857,5 +963,127 @@ The underlying primitive type of the union, if any
 `string`
 
 Enum: `"boolean"` | `"integer"` | `"number"` | `"string"`
+
+---
+
+## `https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/$defs/parameterization`
+
+`object`
+
+### Properties
+
+---
+
+#### `baseProvider`
+
+`object`
+
+##### Properties
+
+---
+
+###### `name` (_required_)
+
+The unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
+
+`string`
+
+Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*$`
+
+---
+
+###### `version` (_required_)
+
+The version of the package. The version must be valid semver.
+
+`string`
+
+Pattern: `^v?(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
+
+---
+
+---
+
+#### `parameter`
+
+The parameter for the provider.
+
+`string`
+
+---
+
+## `https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/properties/dependencies/items`
+
+`object`
+
+### Properties
+
+---
+
+#### `name` (_required_)
+
+The unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
+
+`string`
+
+Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*$`
+
+---
+
+#### `parameterization`
+
+An optional object to define parameterization for the package.
+
+`object`
+
+##### Properties
+
+---
+
+###### `name` (_required_)
+
+The unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
+
+`string`
+
+Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*$`
+
+---
+
+###### `value` (_required_)
+
+The parameter value for the provider.
+
+`string`
+
+---
+
+###### `version` (_required_)
+
+The version of the package. The version must be valid semver.
+
+`string`
+
+Pattern: `^v?(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
+
+---
+
+---
+
+#### `pluginDownloadURL`
+
+The optional URL to use when downloading the provider plugin binary.
+
+`string`
+
+---
+
+#### `version`
+
+The version of the package. The version must be valid semver if present.
+
+`string`
+
+Pattern: `^v?(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 
 ---
