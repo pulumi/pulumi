@@ -1148,6 +1148,48 @@ class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
 
 
 class DeserializationTests(unittest.TestCase):
+    def test_deserialize_resource_reference_uses_explicit_name_and_type(self):
+        urn = "urn:pulumi:stack::project::test:index:resource::legacy-name"
+        expected = object()
+        resource_module = unittest.mock.Mock()
+        resource_module.construct.return_value = expected
+
+        ref = struct_pb2.Struct()
+        ref[rpc._special_sig_key] = rpc._special_resource_sig
+        ref["urn"] = urn
+        ref["name"] = "name::from::field"
+        ref["type"] = "test:index:resource"
+
+        with unittest.mock.patch(
+            "pulumi.runtime.rpc.get_resource_module", return_value=resource_module
+        ):
+            actual = rpc.deserialize_property(ref)
+
+        self.assertIs(actual, expected)
+        resource_module.construct.assert_called_once_with(
+            "name::from::field", "test:index:resource", urn
+        )
+
+    def test_deserialize_resource_reference_falls_back_to_urn(self):
+        urn = "urn:pulumi:stack::project::test:index:resource::name-from-urn"
+        expected = object()
+        resource_module = unittest.mock.Mock()
+        resource_module.construct.return_value = expected
+
+        ref = struct_pb2.Struct()
+        ref[rpc._special_sig_key] = rpc._special_resource_sig
+        ref["urn"] = urn
+
+        with unittest.mock.patch(
+            "pulumi.runtime.rpc.get_resource_module", return_value=resource_module
+        ):
+            actual = rpc.deserialize_property(ref)
+
+        self.assertIs(actual, expected)
+        resource_module.construct.assert_called_once_with(
+            "name-from-urn", "test:index:resource", urn
+        )
+
     def test_unsupported_sig(self):
         struct = struct_pb2.Struct()
         struct[rpc._special_sig_key] = "foobar"
