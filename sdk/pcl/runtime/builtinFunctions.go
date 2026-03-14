@@ -32,6 +32,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
 )
 
 func (i *Interpreter) builtinFunctions() map[string]function.Function {
@@ -817,6 +818,39 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	toJSONFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name:             "value",
+				Type:             cty.DynamicPseudoType,
+				AllowMarked:      true,
+				AllowNull:        true,
+				AllowDynamicType: true,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if len(args) != 1 {
+				return cty.NilVal, errors.New("toJSON requires a value argument")
+			}
+			// UnmarkDeep strips marks from the value and all nested values, collecting them all.
+			// We re-apply them to the resulting string so that e.g. a secret nested anywhere in
+			// the input causes the JSON output to be secret too.
+			val, marks := args[0].UnmarkDeep()
+			if !val.IsWhollyKnown() {
+				return cty.UnknownVal(cty.String).WithMarks(marks), nil
+			}
+			if val.IsNull() {
+				return cty.StringVal("null").WithMarks(marks), nil
+			}
+			buf, err := ctyjson.Marshal(val, val.Type())
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("toJSON: %w", err)
+			}
+			return cty.StringVal(string(buf)).WithMarks(marks), nil
+		},
+	})
+
 	return map[string]function.Function{
 		"cwd":                literalStringFn(i.info.WorkingDir),
 		"rootDirectory":      literalStringFn(i.info.RootDirectory),
@@ -848,5 +882,6 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		"lookup":             stdlib.LookupFunc,
 		"toBase64":           toBase64Fn,
 		"fromBase64":         fromBase64Fn,
+		"toJSON":             toJSONFn,
 	}
 }

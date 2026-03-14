@@ -108,6 +108,7 @@ var expectedFailures = map[string]string{
 	"l1-builtin-list":        "list(string) config decoded as string; element/split emit TODO stubs",
 	"l1-builtin-object":      "entries/lookup emit TODO stubs",
 	"l2-builtin-object":      "entries/lookup emit TODO stubs",
+	"l1-builtin-to-json":     "Go doesn't support output based toJSON",
 
 	// pulumi/pulumi#18345
 	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types", //nolint:lll
