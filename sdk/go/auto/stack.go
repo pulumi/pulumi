@@ -286,6 +286,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.ImportFile != "" {
 		sharedArgs = append(sharedArgs, "--import-file="+preOpts.ImportFile)
 	}
+	if preOpts.ContinueOnError {
+		sharedArgs = append(sharedArgs, "--continue-on-error")
+	}
 	if preOpts.AttachDebugger {
 		sharedArgs = append(sharedArgs, "--attach-debugger")
 	}
