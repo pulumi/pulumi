@@ -1275,6 +1275,40 @@ def translate_output_properties(
     if typ is Any:
         typ = None
 
+    # For Union[...] outputs, try each member type until one matches.
+    # This is required for provider-returned dicts that must be deserialized
+    # into a concrete @output_type member of the union.
+    if typ is not None and _types._is_union_type(typ):
+        union_args = get_args(typ)
+        union_types = [t for t in union_args if t is not type(None)]
+        has_none_member = any(t is type(None) for t in union_args)
+        # Optional-style unions (e.g. Union[T, None]) accept None directly.
+        if output is None and has_none_member:
+            return None
+
+        for union_type in union_types:
+            # Probe each candidate in mismatch mode so non-matching dict shapes
+            # return None and allow trying the next union member.
+            translated = translate_output_properties(
+                output,
+                output_transformer,
+                union_type,
+                transform_using_type_metadata,
+                path,
+                return_none_on_dict_type_mismatch=True,
+            )
+            if translated is not None:
+                return translated
+
+        if return_none_on_dict_type_mismatch:
+            return None
+
+        raise AssertionError(
+            f"Unexpected type; expected a value of type `{typ}`"
+            f" but got a value of type `{type(output)}`{_Path.format(path)}:"
+            f" {output}"
+        )
+
     if isinstance(output, dict):
         # Function called to lookup a type for a given key.
         # The default always returns None.
@@ -1289,6 +1323,12 @@ def translate_output_properties(
                 # If typ is an output type, get its types, so we can pass the type along for each property.
                 types = _types.output_type_types(typ)
                 get_type = types.get
+                # When probing Union members, reject this output type if the incoming object
+                # contains keys that are not known properties for the candidate type.
+                if return_none_on_dict_type_mismatch and any(
+                    k not in types for k in output.keys()
+                ):
+                    return None
 
                 translated_values = {
                     k: translate_output_properties(
@@ -1453,7 +1493,7 @@ def resolve_outputs(
     # Get the resource's output types, so we can convert dicts from the engine into actual
     # instantiated output types or primitive types into enums as needed.
     resource_cls = type(res)
-    types = _types.resource_types(resource_cls)
+    resource_types = _types.resource_types(resource_cls)
     translate, translate_to_pass = (
         res.translate_output_property,
         res.translate_output_property,
@@ -1473,7 +1513,7 @@ def resolve_outputs(
         translated_value = translate_output_properties(
             value,
             translate_to_pass,
-            types.get(key),
+            resource_types.get(key),
             transform_using_type_metadata,
             path=_Path(translated_key, resource=f"{res._name}"),
         )
@@ -1503,7 +1543,7 @@ def resolve_outputs(
                 all_properties[translated_key] = translate_output_properties(
                     deserialize_property(value),
                     translate_to_pass,
-                    types.get(key),
+                    resource_types.get(key),
                     transform_using_type_metadata,
                     path=_Path(translated_key, resource=f"{res._name}"),
                     return_none_on_dict_type_mismatch=True,
