@@ -11,6 +11,12 @@
             }
         },
         {
+            "path": ["env"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
             "path": ["about"],
             "propagate": false,
             "flags": {
