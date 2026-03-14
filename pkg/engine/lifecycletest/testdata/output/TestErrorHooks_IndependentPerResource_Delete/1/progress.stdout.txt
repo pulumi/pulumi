@@ -3,9 +3,9 @@
 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>deleted<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying delete due to on-error hook request (2/100)<{%reset%}>
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%fg 1%}>deleted<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying delete due to on-error hook request (2/100)<{%reset%}>
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
