@@ -73,9 +73,13 @@ func memberPath(section, token string, rest ...string) string {
 }
 
 func errorf(path, message string, args ...any) *hcl.Diagnostic {
-	contract.Requiref(path != "", "path", "must not be empty")
-
-	summary := path + ": " + fmt.Sprintf(message, args...)
+	msg := fmt.Sprintf(message, args...)
+	var summary string
+	if path != "" {
+		summary = path + ": " + msg
+	} else {
+		summary = msg
+	}
 	return &hcl.Diagnostic{
 		Severity: hcl.DiagError,
 		Summary:  summary,
@@ -195,6 +199,9 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 
 	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions))
 
+	// Now we've bound everything we can do a pass over the Descriptions and Comments to check they have valid doc refs.
+	diags = diags.Extend(checkDocRefs(types, spec, options))
+
 	pkg := types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
@@ -209,6 +216,15 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	pkg.resourceTypeTable = types.resources
 	if err := pkg.ImportLanguages(languages); err != nil {
 		return nil, nil, err
+	}
+	pkg.interpretPulumiRefs = func(description string, resolver PulumiRefResolver) (string, error) {
+		source := []byte(description)
+		parsed := ParseDocs(source)
+		err := interpretPulumiRefs("", types, ValidationOptions{}, parsed, resolver)
+		if err != nil {
+			return "", err
+		}
+		return RenderDocsToString(source, parsed), nil
 	}
 	return pkg, diags, nil
 }
@@ -1415,6 +1431,90 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 	})
 
 	return typeList, diags, nil
+}
+
+func checkDocRefs(types *types, spec PackageSpec, options ValidationOptions) hcl.Diagnostics {
+	var diags hcl.Diagnostics
+	resolver := func(ref DocRef) (string, bool) { return "", false }
+
+	check := func(path, text string) {
+		if text == "" {
+			return
+		}
+		parsed := ParseDocs([]byte(text))
+		diags = diags.Extend(interpretPulumiRefs(path, types, options, parsed, resolver))
+	}
+
+	checkProperties := func(basePath string, props map[string]PropertySpec) {
+		for _, name := range sortedKeys(props) {
+			prop := props[name]
+			propPath := basePath + "/" + url.PathEscape(name)
+			check(propPath+"/description", prop.Description)
+			check(propPath+"/deprecationMessage", prop.DeprecationMessage)
+		}
+	}
+
+	checkResourceSpec := func(basePath string, res ResourceSpec) {
+		check(basePath+"/description", res.Description)
+		check(basePath+"/deprecationMessage", res.DeprecationMessage)
+		checkProperties(basePath+"/inputProperties", res.InputProperties)
+		checkProperties(basePath+"/properties", res.Properties)
+		if res.StateInputs != nil {
+			siPath := basePath + "/stateInputs"
+			check(siPath+"/description", res.StateInputs.Description)
+			checkProperties(siPath+"/properties", res.StateInputs.Properties)
+		}
+	}
+
+	// Package description
+	check("#/description", spec.Description)
+
+	// Config variables
+	for _, name := range sortedKeys(spec.Config.Variables) {
+		v := spec.Config.Variables[name]
+		vPath := memberPath("config/variables", name)
+		check(vPath+"/description", v.Description)
+		check(vPath+"/deprecationMessage", v.DeprecationMessage)
+	}
+
+	// Functions
+	for _, token := range sortedKeys(spec.Functions) {
+		f := spec.Functions[token]
+		fPath := memberPath("functions", token)
+		check(fPath+"/description", f.Description)
+		check(fPath+"/deprecationMessage", f.DeprecationMessage)
+		if f.Inputs != nil {
+			check(fPath+"/inputs/description", f.Inputs.Description)
+			checkProperties(fPath+"/inputs/properties", f.Inputs.Properties)
+		}
+		if f.Outputs != nil {
+			check(fPath+"/outputs/description", f.Outputs.Description)
+			checkProperties(fPath+"/outputs/properties", f.Outputs.Properties)
+		}
+	}
+
+	// Provider
+	checkResourceSpec("#/provider", spec.Provider)
+
+	// Resources
+	for _, token := range sortedKeys(spec.Resources) {
+		checkResourceSpec(memberPath("resources", token), spec.Resources[token])
+	}
+
+	// Types
+	for _, token := range sortedKeys(spec.Types) {
+		t := spec.Types[token]
+		tPath := memberPath("types", token)
+		check(tPath+"/description", t.Description)
+		for i, e := range t.Enum {
+			ePath := fmt.Sprintf("%s/enum/%d", tPath, i)
+			check(ePath+"/description", e.Description)
+			check(ePath+"/deprecationMessage", e.DeprecationMessage)
+		}
+		checkProperties(tPath+"/properties", t.Properties)
+	}
+
+	return diags
 }
 
 func checkDuplicates(

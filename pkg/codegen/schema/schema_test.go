@@ -2636,3 +2636,188 @@ func TestBindParameterizedExternals(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 }
+
+func TestMissingRefErrors(t *testing.T) {
+	t.Parallel()
+
+	missingRef := "{{% ref #/resources/test:index:Missing %}}"
+	spec := PackageSpec{
+		Name:        "test",
+		Description: missingRef,
+		Config: ConfigSpec{
+			Variables: map[string]PropertySpec{
+				"someConfig": {
+					TypeSpec:           TypeSpec{Type: "string"},
+					Description:        missingRef,
+					DeprecationMessage: missingRef,
+				},
+			},
+		},
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{
+				Description: missingRef,
+				Properties: map[string]PropertySpec{
+					"someProviderProperty": {
+						TypeSpec:           TypeSpec{Type: "string"},
+						Description:        missingRef,
+						DeprecationMessage: missingRef,
+					},
+				},
+			},
+			InputProperties: map[string]PropertySpec{
+				"someProviderInputProperty": {
+					TypeSpec:           TypeSpec{Type: "string"},
+					Description:        missingRef,
+					DeprecationMessage: missingRef,
+				},
+			},
+			StateInputs: &ObjectTypeSpec{
+				Description: missingRef,
+				Properties: map[string]PropertySpec{
+					"someProviderStateInputProperty": {
+						TypeSpec:           TypeSpec{Type: "string"},
+						Description:        missingRef,
+						DeprecationMessage: missingRef,
+					},
+				},
+			},
+			DeprecationMessage: missingRef,
+		},
+		Resources: map[string]ResourceSpec{
+			"test:index:SomeResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Description: missingRef,
+					Properties: map[string]PropertySpec{
+						"someResourceProperty": {
+							TypeSpec:           TypeSpec{Type: "string"},
+							Description:        missingRef,
+							DeprecationMessage: missingRef,
+						},
+					},
+				},
+				InputProperties: map[string]PropertySpec{
+					"someResourceInputProperty": {
+						TypeSpec:           TypeSpec{Type: "string"},
+						Description:        missingRef,
+						DeprecationMessage: missingRef,
+					},
+				},
+				StateInputs: &ObjectTypeSpec{
+					Description: missingRef,
+					Properties: map[string]PropertySpec{
+						"someResourceStateInputProperty": {
+							TypeSpec:           TypeSpec{Type: "string"},
+							Description:        missingRef,
+							DeprecationMessage: missingRef,
+						},
+					},
+				},
+				DeprecationMessage: missingRef,
+			},
+		},
+		Functions: map[string]FunctionSpec{
+			"test:index:SomeFunction": {
+				Description: missingRef,
+				Inputs: &ObjectTypeSpec{
+					Description: missingRef,
+					Properties: map[string]PropertySpec{
+						"someFunctionInputProperty": {
+							TypeSpec:           TypeSpec{Type: "string"},
+							Description:        missingRef,
+							DeprecationMessage: missingRef,
+						},
+					},
+				},
+				Outputs: &ObjectTypeSpec{
+					Description: missingRef,
+					Properties: map[string]PropertySpec{
+						"someFunctionOutputProperty": {
+							TypeSpec:           TypeSpec{Type: "string"},
+							Description:        missingRef,
+							DeprecationMessage: missingRef,
+						},
+					},
+				},
+				DeprecationMessage: missingRef,
+			},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"test:index:SomeType": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type:        "object",
+					Description: missingRef,
+					Properties: map[string]PropertySpec{
+						"someTypeProperty": {
+							TypeSpec:           TypeSpec{Type: "string"},
+							Description:        missingRef,
+							DeprecationMessage: missingRef,
+						},
+					},
+				},
+			},
+			"test:index:SomeEnum": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type:        "string",
+					Description: missingRef,
+				},
+				Enum: []EnumValueSpec{
+					{
+						Value:              "someEnumValue",
+						Description:        missingRef,
+						DeprecationMessage: missingRef,
+					},
+				},
+			},
+		},
+	}
+
+	// Try to bind the spec
+	_, diags, err := BindSpec(spec, nil, ValidationOptions{})
+
+	require.NoError(t, err)
+	missingRefError := "reference to resource '/resources/test:index:Missing' not found in package test"
+	diag := func(path string) *hcl.Diagnostic {
+		return &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  path + ": " + missingRefError,
+		}
+	}
+	expectedErrors := hcl.Diagnostics{
+		diag("#/description"),
+		diag("#/config/variables/someConfig/description"),
+		diag("#/config/variables/someConfig/deprecationMessage"),
+		diag("#/functions/test:index:SomeFunction/description"),
+		diag("#/functions/test:index:SomeFunction/deprecationMessage"),
+		diag("#/functions/test:index:SomeFunction/inputs/description"),
+		diag("#/functions/test:index:SomeFunction/inputs/properties/someFunctionInputProperty/description"),
+		diag("#/functions/test:index:SomeFunction/inputs/properties/someFunctionInputProperty/deprecationMessage"),
+		diag("#/functions/test:index:SomeFunction/outputs/description"),
+		diag("#/functions/test:index:SomeFunction/outputs/properties/someFunctionOutputProperty/description"),
+		diag("#/functions/test:index:SomeFunction/outputs/properties/someFunctionOutputProperty/deprecationMessage"),
+		diag("#/provider/description"),
+		diag("#/provider/deprecationMessage"),
+		diag("#/provider/inputProperties/someProviderInputProperty/description"),
+		diag("#/provider/inputProperties/someProviderInputProperty/deprecationMessage"),
+		diag("#/provider/properties/someProviderProperty/description"),
+		diag("#/provider/properties/someProviderProperty/deprecationMessage"),
+		diag("#/provider/stateInputs/description"),
+		diag("#/provider/stateInputs/properties/someProviderStateInputProperty/description"),
+		diag("#/provider/stateInputs/properties/someProviderStateInputProperty/deprecationMessage"),
+		diag("#/resources/test:index:SomeResource/description"),
+		diag("#/resources/test:index:SomeResource/deprecationMessage"),
+		diag("#/resources/test:index:SomeResource/inputProperties/someResourceInputProperty/description"),
+		diag("#/resources/test:index:SomeResource/inputProperties/someResourceInputProperty/deprecationMessage"),
+		diag("#/resources/test:index:SomeResource/properties/someResourceProperty/description"),
+		diag("#/resources/test:index:SomeResource/properties/someResourceProperty/deprecationMessage"),
+		diag("#/resources/test:index:SomeResource/stateInputs/description"),
+		diag("#/resources/test:index:SomeResource/stateInputs/properties/someResourceStateInputProperty/description"),
+		diag("#/resources/test:index:SomeResource/stateInputs/properties/someResourceStateInputProperty/deprecationMessage"),
+		diag("#/types/test:index:SomeEnum/description"),
+		diag("#/types/test:index:SomeEnum/enum/0/description"),
+		diag("#/types/test:index:SomeEnum/enum/0/deprecationMessage"),
+		diag("#/types/test:index:SomeType/description"),
+		diag("#/types/test:index:SomeType/properties/someTypeProperty/description"),
+		diag("#/types/test:index:SomeType/properties/someTypeProperty/deprecationMessage"),
+	}
+	assert.Equal(t, expectedErrors, diags)
+}

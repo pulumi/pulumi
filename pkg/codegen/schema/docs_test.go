@@ -26,6 +26,7 @@ import (
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/stretchr/testify/assert"
 )
 
 // Note to future engineers: keep each file tested as a single test, do not use `t.Run` in the inner
@@ -44,6 +45,10 @@ var nodeAssertions = testutil.DefaultNodeAssertions().Union(testutil.NodeAsserti
 	KindShortcode: func(t *testing.T, sourceExpected, sourceActual []byte, expected, actual ast.Node) bool {
 		shortcodeExpected, shortcodeActual := expected.(*Shortcode), actual.(*Shortcode)
 		return testutil.AssertEqualBytes(t, shortcodeExpected.Name, shortcodeActual.Name)
+	},
+	KindRef: func(t *testing.T, sourceExpected, sourceActual []byte, expected, actual ast.Node) bool {
+		refExpected, refActual := expected.(*Ref), actual.(*Ref)
+		return assert.Equal(t, refExpected.Destination, refActual.Destination)
 	},
 })
 
@@ -176,4 +181,124 @@ func TestParseAndRenderDocs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseDocRef(t *testing.T) {
+	t.Parallel()
+
+	t.Run("InvalidUnknownTopLevelType", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/unknown/aws:s3:bucket"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("InvalidTopLevelOnly", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/resources"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("InvalidMissingToken", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/resources/"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("ResourceRef", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/resources/aws:s3:bucket"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindResource, Token: "aws:s3:bucket"}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("ResourceRefWithSlashInToken", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/resources/aws:s3%2Fbucket:Bucket"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindResource, Token: "aws:s3/bucket:Bucket"}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("FunctionRef", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/functions/aws:ec2:getInstance"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindFunction, Token: "aws:ec2:getInstance"}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("TypeRef", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/types/aws:s3:BucketPolicy"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindType, Token: "aws:s3:BucketPolicy"}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("InvalidUnknownPropertyKind", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/resources/aws:s3:bucket/unknown/acl"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("InvalidPropertiesOnly", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/resources/aws:s3:bucket/properties"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("InvalidMissingPropertyName", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/resources/aws:s3:bucket/properties/"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("ResourcePropertyRef", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/resources/aws:s3:bucket/properties/acl"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindResourceProperty, Token: "aws:s3:bucket", Property: "acl"}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("ResourceInputPropertyRef", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/resources/aws:s3:bucket/inputProperties/acl"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindResourceInputProperty, Token: "aws:s3:bucket", Property: "acl"}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("FunctionInputPropertyRef", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/functions/aws:ec2:getInstance/inputs/properties/instanceId"
+		expected := internalDocRef{
+			Ref: ref, Kind: DocRefKindFunctionInputProperty, Token: "aws:ec2:getInstance", Property: "instanceId",
+		}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("FunctionOutputPropertyRef", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/functions/aws:ec2:getInstance/outputs/properties/publicIp"
+		expected := internalDocRef{
+			Ref: ref, Kind: DocRefKindFunctionOutputProperty, Token: "aws:ec2:getInstance", Property: "publicIp",
+		}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("InvalidMissingHashPrefix", func(t *testing.T) {
+		t.Parallel()
+		ref := "/resources/aws:s3:bucket"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
+
+	t.Run("InvalidSubProperty", func(t *testing.T) {
+		t.Parallel()
+		ref := "#/resources/aws:s3:bucket/properties/acl/invalid"
+		expected := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
+		assert.Equal(t, expected, parseDocRef(ref))
+	})
 }
