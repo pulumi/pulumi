@@ -99,8 +99,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
 	"l2-invoke-options-depends-on": "not implemented yet",
-	"l3-for":                       "reduce() missing initial value causes first element to be used as accumulator",
-	"l3-for-resource":              "Property 'value' does not exist on type 'number | Detail'. Did you mean 'valueOf'",
+	"l3-deferred-outputs":          "Cannot find name '_arg0_'.",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
@@ -147,6 +146,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 			require.NoError(t, err)
 
 			providersDir := "testdata/providers"
+			policyPackDir := "testdata/policies"
 			snapshotDir := "./testdata"
 			if local {
 				snapshotDir += "/local"
@@ -157,6 +157,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 			case "bun":
 				snapshotDir += "/bun"
 				providersDir = "testdata/providers-bun"
+				policyPackDir = "testdata/policies-bun"
 			case "nodejs":
 				if forceTsc {
 					snapshotDir += "/tsc"
@@ -173,7 +174,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 				SnapshotDirectory:    snapshotDir,
 				CoreSdkDirectory:     "../..",
 				CoreSdkVersion:       sdk.Version.String(),
-				PolicyPackDirectory:  "testdata/policies",
+				PolicyPackDirectory:  policyPackDir,
 				Local:                local,
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
@@ -201,9 +202,6 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 					}
 
 					if runtime == "bun" {
-						if strings.HasPrefix(tt, "policy-") {
-							t.Skip("Skipping policy tests - TODO: https://github.com/pulumi/pulumi/issues/22078")
-						}
 						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" {
 							t.Skip(
 								"On linux bun has trouble resolving indirect dependencies that point to a local file" +

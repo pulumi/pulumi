@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: The engine will fill in Name and Type for ResourceReference values on the wire protocol

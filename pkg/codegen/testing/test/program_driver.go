@@ -218,17 +218,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
 	},
 	{
-		Directory:   "aws-lambda",
-		Description: "AWS Lambdas",
-		// We have special testing for this case because lambda is a python keyword.
-		Skip: codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
-		Directory:   "deferred-outputs",
-		Description: "Tests program with mutually dependant components that emit deferred outputs",
-		SkipCompile: allProgLanguages,
-	},
-	{
 		Directory:   "traverse-union-repro",
 		Description: `Handling the error "cannot traverse value of type union(...)"`,
 		BindOptions: []pcl.BindOption{
@@ -268,23 +257,9 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except(TestPython),
 	},
 	{
-		Directory:   "iterating-optional-range-expressions",
-		Description: "Test that we can iterate over range expression that are option(iterator)",
-		// TODO: dotnet and go
-		Skip: allProgLanguages.Except(TestNodeJS).Except(TestPython),
-		// We are using a synthetic schema defined in range-1.0.0.json so we can't compile all the way
-		SkipCompile: allProgLanguages,
-	},
-	{
 		Directory:   "dynamic-entries",
 		Description: "Testing iteration of dynamic entries in TypeScript",
 		Skip:        allProgLanguages.Except(TestNodeJS),
-		SkipCompile: allProgLanguages,
-	},
-	{
-		Directory:   "simple-splat",
-		Description: "An example that shows we can compile splat expressions from array of objects",
-		// Skip compiling because we are using a test schema without a corresponding real package
 		SkipCompile: allProgLanguages,
 	},
 	{

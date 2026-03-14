@@ -125,6 +125,7 @@ var expectedFailures = map[string]string{
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
 	"l2-resource-order":                   "cannot convert localVar (variable of struct type pulumi.BoolOutput) to type pulumi.Bool", //nolint:lll
+	"l3-deferred-outputs":                 "does not compile && for expressions are not supported",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

@@ -1115,6 +1115,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
 				resKey = "value"
+			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in (%.v).items()]:\n", g.Indent, rangeExpr)
 			} else {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
 			}
@@ -1236,6 +1238,8 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
 				resKey = "value"
+			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in (%.v).items()]:\n", g.Indent, rangeExpr)
 			} else {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
 			}
