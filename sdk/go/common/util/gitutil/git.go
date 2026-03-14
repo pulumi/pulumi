@@ -40,6 +40,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"go.opentelemetry.io/otel"
@@ -461,6 +462,12 @@ func expandHomeDir(path string) (string, error) {
 func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.Hash, path string) error {
 	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, commit, path)
 
+	// go-git v5 has limited ADO support and cannot perform this operation.
+	// TODO(https://github.com/go-git/go-git/pull/1204): Remove once go-git v6 is released.
+	if u, err := parseGitRepoURLParts(url); err == nil && u.Hostname == AzureDevOpsHostName {
+		return gitCloneAndCheckoutRevisionSystemGit(ctx, url, plumbing.Revision(commit.String()), path)
+	}
+
 	u, auth, err := getAuthForURL(url)
 	if err != nil {
 		return err
@@ -487,6 +494,12 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 // GitCloneAndCheckoutRevision clones a Git repository, resolves the revision and checks it out.
 func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumbing.Revision, path string) error {
 	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, revision, path)
+
+	// go-git v5 has limited ADO support and cannot perform this operation.
+	// TODO(https://github.com/go-git/go-git/pull/1204): Remove once go-git v6 is released.
+	if u, err := parseGitRepoURLParts(url); err == nil && u.Hostname == AzureDevOpsHostName {
+		return gitCloneAndCheckoutRevisionSystemGit(ctx, url, revision, path)
+	}
 
 	u, auth, err := getAuthForURL(url)
 	if err != nil {
@@ -532,10 +545,9 @@ func GitCloneOrPull(
 
 	logging.V(10).Infof("Attempting to clone from %s at ref %s", rawurl, referenceName)
 
-	// TODO: https://github.com/go-git/go-git/pull/613 should have resolved the issue preventing this from cloning.
+	// go-git v5 has limited ADO support and cannot perform this operation.
+	// TODO(https://github.com/go-git/go-git/pull/1204): Remove once go-git v6 is released.
 	if u, err := parseGitRepoURLParts(rawurl); err == nil && u.Hostname == AzureDevOpsHostName {
-		// system-installed git is used to clone Azure DevOps repositories
-		// due to https://github.com/go-git/go-git/issues/64
 		return gitCloneOrPullSystemGit(ctx, rawurl, referenceName, path, shallow)
 	}
 	return gitCloneOrPull(ctx, rawurl, referenceName, path, shallow)
@@ -664,6 +676,58 @@ func gitCloneOrPullSystemGit(
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to run `git %v`", strings.Join(gitArgs, " "))
+	}
+	return nil
+}
+
+// gitListRefsSystemGit uses the system `git ls-remote` command to list refs.
+// This is used for Azure DevOps repositories where go-git v5 has limited support.
+func gitListRefsSystemGit(ctx context.Context, url string) ([]*plumbing.Reference, error) {
+	cmd := exec.CommandContext(ctx, "git", "ls-remote", url)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, errutil.ErrorWithStderr(err, fmt.Sprintf("failed to run `git ls-remote %s`", url))
+	}
+	return parseGitLsRemoteOutput(string(out)), nil
+}
+
+// parseGitLsRemoteOutput parses the output of `git ls-remote` into plumbing.Reference values.
+// Each line has the format: <hash>\t<refname>
+func parseGitLsRemoteOutput(output string) []*plumbing.Reference {
+	lines := strings.Split(output, "\n")
+	refs := make([]*plumbing.Reference, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) != 2 {
+			// git ls-remote may include non-ref lines such as "From <url>".
+			continue
+		}
+		hash := plumbing.NewHash(parts[0])
+		refName := plumbing.ReferenceName(parts[1])
+		refs = append(refs, plumbing.NewHashReference(refName, hash))
+	}
+	return refs
+}
+
+// gitCloneAndCheckoutRevisionSystemGit uses system git to clone and checkout a revision.
+// This is used for Azure DevOps repositories where go-git v5 has limited support.
+func gitCloneAndCheckoutRevisionSystemGit(
+	ctx context.Context, url string, revision plumbing.Revision, path string,
+) error {
+	cloneCmd := exec.CommandContext(ctx, "git", "clone", url, path)
+	if _, err := cloneCmd.Output(); err != nil {
+		return errutil.ErrorWithStderr(err, fmt.Sprintf("failed to run `git clone %s %s`", url, path))
+	}
+
+	//nolint:gosec // revision is from trusted internal callers
+	checkoutCmd := exec.CommandContext(ctx, "git", "checkout", string(revision))
+	checkoutCmd.Dir = path
+	if _, err := checkoutCmd.Output(); err != nil {
+		return errutil.ErrorWithStderr(err, fmt.Sprintf("failed to run `git checkout %s`", string(revision)))
 	}
 	return nil
 }
@@ -884,6 +948,12 @@ func GetGitReferenceNameOrHashAndSubDirectory(url string, urlPath string) (
 }
 
 func gitListRefs(ctx context.Context, url string) ([]*plumbing.Reference, error) {
+	// go-git v5 has limited ADO support and cannot perform this operation.
+	// TODO(https://github.com/go-git/go-git/pull/1204): Remove once go-git v6 is released.
+	if u, err := parseGitRepoURLParts(url); err == nil && u.Hostname == AzureDevOpsHostName {
+		return gitListRefsSystemGit(ctx, url)
+	}
+
 	// We're only listing the references, so just use in-memory storage.
 	repo, err := git.Init(memory.NewStorage(), nil)
 	if err != nil {
