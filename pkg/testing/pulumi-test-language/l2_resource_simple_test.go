@@ -557,6 +557,15 @@ func (c *convertTestConverter) ConvertProgram(
 		[]byte("resource \"res\" \"simple:index:Resource\" {\n    value = true\n}\n"),
 		0o600,
 	)
+	if err != nil {
+		return &plugin.ConvertProgramResponse{}, err
+	}
+
+	err = os.WriteFile(
+		filepath.Join(req.TargetDirectory, "Pulumi.yaml"),
+		[]byte("name: simple\nruntime: mock\n"),
+		0o600,
+	)
 	return &plugin.ConvertProgramResponse{}, err
 }
 

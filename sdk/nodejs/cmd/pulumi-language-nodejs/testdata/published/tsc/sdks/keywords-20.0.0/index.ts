@@ -5,6 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { LambdaArgs } from "./lambda_";
+export type Lambda = import("./lambda_").Lambda;
+export const Lambda: typeof import("./lambda_").Lambda = null as any;
+utilities.lazyLoad(exports, ["Lambda"], () => require("./lambda_"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
@@ -16,10 +21,19 @@ export const SomeResource: typeof import("./someResource").SomeResource = null a
 utilities.lazyLoad(exports, ["SomeResource"], () => require("./someResource"));
 
 
+// Export sub-modules:
+import * as lambda from "./lambda";
+
+export {
+    lambda,
+};
+
 const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "keywords:index:Lambda":
+                return new Lambda(name, <any>undefined, { urn })
             case "keywords:index:SomeResource":
                 return new SomeResource(name, <any>undefined, { urn })
             default:

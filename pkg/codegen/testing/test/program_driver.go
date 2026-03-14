@@ -218,12 +218,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
 	},
 	{
-		Directory:   "aws-lambda",
-		Description: "AWS Lambdas",
-		// We have special testing for this case because lambda is a python keyword.
-		Skip: codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
 		Directory:   "traverse-union-repro",
 		Description: `Handling the error "cannot traverse value of type union(...)"`,
 		BindOptions: []pcl.BindOption{
@@ -261,14 +255,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "python-reserved",
 		Description: "Test python reserved words aren't used",
 		Skip:        allProgLanguages.Except(TestPython),
-	},
-	{
-		Directory:   "iterating-optional-range-expressions",
-		Description: "Test that we can iterate over range expression that are option(iterator)",
-		// TODO: dotnet and go
-		Skip: allProgLanguages.Except(TestNodeJS).Except(TestPython),
-		// We are using a synthetic schema defined in range-1.0.0.json so we can't compile all the way
-		SkipCompile: allProgLanguages,
 	},
 	{
 		Directory:   "dynamic-entries",

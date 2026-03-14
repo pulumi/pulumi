@@ -230,7 +230,9 @@ func (host *pclLanguageHost) bindProgramFromDirectory(
 	loader := schema.NewCachedLoader(client)
 	defer contract.IgnoreClose(client)
 
-	options := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
+	options := []pcl.BindOption{
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !strict {
 		options = append(options, pcl.NonStrictBindOptions()...)
 	}
@@ -491,7 +493,9 @@ func (host *pclLanguageHost) GenerateProject(
 	}
 	defer loader.Close()
 
-	bindOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
+	bindOptions := []pcl.BindOption{
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !req.Strict {
 		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
 	}
@@ -579,7 +583,10 @@ func (host *pclLanguageHost) GenerateProgram(
 		}
 	}
 
-	options := []pcl.BindOption{pcl.Loader(schema.NewCachedLoader(loader)), pcl.PreferOutputVersionedInvokes}
+	options := []pcl.BindOption{
+		pcl.Loader(schema.NewCachedLoader(loader)),
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !req.Strict {
 		options = append(options, pcl.NonStrictBindOptions()...)
 	}

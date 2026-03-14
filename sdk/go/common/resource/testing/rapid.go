@@ -295,6 +295,8 @@ func resourceReferenceGenerator(ctx *StackContext) *rapid.Generator[resource.Res
 
 		return resource.ResourceReference{
 			URN:            r.URN,
+			Name:           r.URN.Name(),
+			Type:           string(r.URN.Type()),
 			ID:             id,
 			PackageVersion: SemverStringGenerator().Draw(t, "package version"),
 		}
