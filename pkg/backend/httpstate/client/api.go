@@ -365,6 +365,25 @@ func pulumiAPICall(ctx context.Context,
 		return "", nil, backenderr.ErrLoginRequired
 	}
 
+	// Detect SAML SSO reauthorization errors and wrap them with actionable context.
+	if resp.StatusCode == 401 && creds != "" {
+		respBody, readErr := readBody(resp)
+		if readErr == nil {
+			var errResp apitype.ErrorResponse
+			if jsonErr := json.Unmarshal(respBody, &errResp); jsonErr == nil {
+				lowMsg := strings.ToLower(errResp.Message)
+				if strings.Contains(lowMsg, "saml") && strings.Contains(lowMsg, "reauthorization") {
+					return "", nil, backenderr.SAMLReauthorizationError{
+						Err:    &errResp,
+						APIURL: cloudAPI,
+					}
+				}
+			}
+			// Re-wrap body back in the response for later processing.
+			resp.Body = io.NopCloser(bytes.NewReader(respBody))
+		}
+	}
+
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)
 	if resp.StatusCode == 429 {
 		return "", nil, errors.New("pulumi service: request rate-limit exceeded")

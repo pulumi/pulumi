@@ -17,11 +17,13 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -63,6 +65,12 @@ func processCmdErrors(err error) error {
 	}
 
 	// Other type-specific error handling.
+	var samlErr backenderr.SAMLReauthorizationError
+	if errors.As(err, &samlErr) {
+		printSAMLReauthorizationError(samlErr)
+		return result.BailError(err)
+	}
+
 	if de, ok := engine.AsDecryptError(err); ok {
 		printDecryptError(*de)
 		return nil
@@ -77,6 +85,20 @@ func processCmdErrors(err error) error {
 
 	// In all other cases, return the unexpected error as-is for generic handling.
 	return err
+}
+
+// printSAMLReauthorizationError prints a helpful error message when SAML SSO
+// reauthorization is required, including a link to the Pulumi Cloud console.
+func printSAMLReauthorizationError(e backenderr.SAMLReauthorizationError) {
+	var buf bytes.Buffer
+	writer := bufio.NewWriter(&buf)
+	ui.Fprintf(writer, "SAML SSO reauthorization is required.\n")
+	if consoleURL := e.ConsoleURL(); consoleURL != "" {
+		ui.Fprintf(writer, "\nTo re-authenticate, visit: %s\n", consoleURL)
+	}
+	ui.Fprintf(writer, "\nAlternatively, run `pulumi login` to log in again.\n")
+	contract.IgnoreError(writer.Flush())
+	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()))
 }
 
 // A type-specific handler for engine.DecryptErrors that prints out help text
