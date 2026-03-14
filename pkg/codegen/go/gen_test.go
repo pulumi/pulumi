@@ -610,17 +610,19 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 		t.Logf("Generated %v", f)
 	}
 
-	// Expect to see two chunked files (chunking at n=500).
-	assert.Contains(t, fs, "test/pulumiTypes.go")
-	assert.Contains(t, fs, "test/pulumiTypes1.go")
-	assert.NotContains(t, fs, "test/pulumiTypes2.go")
+	// Expect to see two chunked sub-packages and a facade file (chunking at n=500).
+	assert.Contains(t, fs, "test/internal/pulumiTypes0/types.go")
+	assert.Contains(t, fs, "test/internal/pulumiTypes1/types.go")
+	assert.NotContains(t, fs, "test/internal/pulumiTypes2/types.go")
+	assert.Contains(t, fs, "test/pulumiTypes.go") // facade file with type aliases
 
-	// The types defined in the chunks should be mutually exclusive.
-	typedefs := func(s string) []string {
+	// The concrete type definitions in each chunk should be mutually exclusive.
+	// We look for "type ... struct" to find concrete types, excluding type aliases ("type ... =").
+	concreteTypedefs := func(s string) []string {
 		var types []string
 		for _, line := range strings.Split(s, "\n") {
 			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "type") {
+			if strings.HasPrefix(line, "type") && !strings.Contains(line, " = ") {
 				types = append(types, line)
 			}
 		}
@@ -628,8 +630,8 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 		return types
 	}
 
-	typedefs1 := typedefs(string(fs["test/pulumiTypes.go"]))
-	typedefs2 := typedefs(string(fs["test/pulumiTypes1.go"]))
+	typedefs1 := concreteTypedefs(string(fs["test/internal/pulumiTypes0/types.go"]))
+	typedefs2 := concreteTypedefs(string(fs["test/internal/pulumiTypes1/types.go"]))
 
 	for _, typ := range typedefs1 {
 		assert.NotContains(t, typedefs2, typ)
