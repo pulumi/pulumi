@@ -207,6 +207,9 @@ type UpdateOptions struct {
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
+	// DeleteBeforeCreate forces all resource replacements to use delete-before-create strategy.
+	DeleteBeforeCreate bool
+
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
 

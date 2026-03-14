@@ -292,6 +292,7 @@ func NewPreviewCmd() *cobra.Command {
 	var targetReplaces []string
 	var targetDependents bool
 	var excludeDependents bool
+	var deleteBeforeCreate bool
 	var attachDebugger []string
 
 	// Flags for Neo.
@@ -489,8 +490,9 @@ func NewPreviewCmd() *cobra.Command {
 					DisableOutputValues:       env.DisableOutputValues.Value(),
 					Targets:                   deploy.NewUrnTargets(targetURNs),
 					TargetDependents:          targetDependents,
-					Excludes:                  deploy.NewUrnTargets(excludeURNs),
-					ExcludeDependents:         excludeDependents,
+				Excludes:                  deploy.NewUrnTargets(excludeURNs),
+				ExcludeDependents:         excludeDependents,
+				DeleteBeforeCreate:        deleteBeforeCreate,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
 					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
@@ -707,6 +709,9 @@ func NewPreviewCmd() *cobra.Command {
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
+	cmd.PersistentFlags().BoolVar(
+		&deleteBeforeCreate, "delete-before-create", false,
+		"Force all resource replacements to delete the existing resource before creating the updated one")
 	//nolint:lll // long description
 	cmd.PersistentFlags().StringArrayVar(
 		&attachDebugger, "attach-debugger", []string{},

@@ -125,6 +125,7 @@ func NewUpCmd() *cobra.Command {
 	var targetReplaces []string
 	var targetDependents bool
 	var excludeDependents bool
+	var deleteBeforeCreate bool
 	var planFilePath string
 	var attachDebugger []string
 	var strict bool
@@ -237,9 +238,10 @@ func NewUpCmd() *cobra.Command {
 			GeneratePlan:    env.Experimental.Value() || strict,
 			Experimental:    env.Experimental.Value(),
 			Strict:          strict,
-			ContinueOnError: continueOnError,
-			AttachDebugger:  attachDebugger,
-			Autonamer:       autonamer,
+			ContinueOnError:    continueOnError,
+			DeleteBeforeCreate: deleteBeforeCreate,
+			AttachDebugger:     attachDebugger,
+			Autonamer:          autonamer,
 		}
 
 		if planFilePath != "" {
@@ -820,6 +822,9 @@ func NewUpCmd() *cobra.Command {
 		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
 		"Continue updating resources even if an error is encountered "+
 			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)")
+	cmd.PersistentFlags().BoolVar(
+		&deleteBeforeCreate, "delete-before-create", false,
+		"Force all resource replacements to delete the existing resource before creating the updated one")
 	//nolint:lll // long description
 	cmd.PersistentFlags().StringArrayVar(
 		&attachDebugger, "attach-debugger", []string{},
