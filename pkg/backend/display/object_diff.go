@@ -1477,3 +1477,20 @@ func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 
 	return strings.Join(lines[:numLines], "\n") + "\n..."
 }
+
+// get pure string representation of property value
+func PropertyValueToString(pv resource.PropertyValue, truncateOutput, showSecrets bool) string {
+	var propValBuffer bytes.Buffer
+	pp := propertyPrinter{
+		dest:           &propValBuffer,
+		truncateOutput: truncateOutput,
+		showSecrets:    showSecrets,
+		op:             deploy.OpSame,
+	}
+
+	pp.printPropertyValue(pv)
+
+	propValStr := propValBuffer.String()
+	propValStr = strings.ReplaceAll(propValStr, "<{%reset%}>", "")
+	return propValStr
+}
