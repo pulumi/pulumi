@@ -712,6 +712,7 @@ type resmon struct {
 	abortChan              chan bool                          // a channel that can abort iteration of resources.
 	cancel                 chan bool                          // a channel that can cancel the server.
 	done                   <-chan error                       // a channel that resolves when the server completes.
+	serverHandle           rpcutil.ServeHandle                // handle to the gRPC server for closing
 	// a channel to signal that no more events will be sent from the program.
 	finChan             chan<- error
 	programComplete     *promise.Promise[struct{}] // a promise that resolves when the program has exited.
@@ -818,6 +819,7 @@ func newResourceMonitor(
 		MonitorAddress:   fmt.Sprintf("127.0.0.1:%d", handle.Port),
 	}
 	resmon.done = handle.Done
+	resmon.serverHandle = handle
 
 	go d.serve()
 
@@ -872,10 +874,13 @@ func (rm *resmon) Cancel(ctx context.Context) error {
 	// return to the program until we cancel, and we will never write to
 	// `rm.programCompleteChan` unless the program exits.
 	close(rm.cancel)
+	// Close the listener immediately to release the port
+	listenErr := rm.serverHandle.Close()
 	close(rm.waitForShutdownChan)                   // Signal to the program that we are ready to shutdown ...
 	_, programErr := rm.programComplete.Result(ctx) // ... and wait for the program to complete.
-	errs := slice.Prealloc[error](2 + len(rm.callbacks))
-	errs = append(errs, <-rm.done, programErr)
+	errs := slice.Prealloc[error](3 + len(rm.callbacks))
+	doneErr := <-rm.done
+	errs = append(errs, doneErr, programErr, listenErr)
 	for _, client := range rm.callbacks {
 		errs = append(errs, client.Close())
 	}

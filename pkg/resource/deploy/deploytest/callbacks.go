@@ -57,6 +57,7 @@ type CallbackServer struct {
 
 func (s *CallbackServer) Close() error {
 	s.stop <- true
+	_ = s.handle.Close()
 	return <-s.handle.Done
 }
 
