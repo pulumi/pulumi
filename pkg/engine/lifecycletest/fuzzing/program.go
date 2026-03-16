@@ -65,6 +65,7 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 		//
 		// Hardcoding the URN from the ResourceSpec would cause us to generate bad programs in the second case.
 		actuals := map[resource.URN]*deploytest.RegisterResourceResponse{}
+		failed := map[resource.URN]bool{}
 		rewriteProviderRef := func(oldRef string) string {
 			if oldRef == "" {
 				return ""
@@ -93,29 +94,40 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 		}
 
 		for _, r := range ps.ResourceRegistrations {
+			parent := r.Parent
+			if failed[parent] {
+				parent = ""
+			}
+			deletedWith := r.DeletedWith
+			if failed[deletedWith] {
+				deletedWith = ""
+			}
 			opts := deploytest.ResourceOptions{
 				// TODO(https://github.com/pulumi/pulumi/issues/18934): We should sometimes leave this null
 				Protect:        &r.Protect,
 				RetainOnDelete: &r.RetainOnDelete,
-				Parent:         rewriteURN(r.Parent),
+				Parent:         rewriteURN(parent),
 				Provider:       rewriteProviderRef(r.Provider),
-				DeletedWith:    rewriteURN(r.DeletedWith),
+				DeletedWith:    rewriteURN(deletedWith),
 
 				// We explicitly *don't* want to rewrite aliases since they are not dependencies and refer to (we expect)
 				// resources in the state, not the program we are running.
 				AliasURNs: r.Aliases,
 			}
 
-			deps := make([]resource.URN, len(r.Dependencies))
-			for i, dep := range r.Dependencies {
-				deps[i] = rewriteURN(dep)
+			var deps []resource.URN
+			for _, dep := range r.Dependencies {
+				if !failed[dep] {
+					deps = append(deps, rewriteURN(dep))
+				}
 			}
 
 			propDeps := map[resource.PropertyKey][]resource.URN{}
-			for k, deps := range r.PropertyDependencies {
-				propDeps[k] = make([]resource.URN, len(deps))
-				for i, dep := range deps {
-					propDeps[k][i] = rewriteURN(dep)
+			for k, pds := range r.PropertyDependencies {
+				for _, dep := range pds {
+					if !failed[dep] {
+						propDeps[k] = append(propDeps[k], rewriteURN(dep))
+					}
 				}
 			}
 
@@ -125,6 +137,8 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 			res, err := monitor.RegisterResource(r.Type, r.Name, r.Custom, opts)
 			if err == nil {
 				actuals[r.URN()] = res
+			} else {
+				failed[r.URN()] = true
 			}
 		}
 
