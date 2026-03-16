@@ -15,7 +15,9 @@
 package diy
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -206,6 +208,40 @@ func stripCompressionExt(file string) string {
 	return file
 }
 
+type compactJSONMarshaler struct{}
+
+var diyJSONMarshaler encoding.Marshaler = compactJSONMarshaler{}
+
+func (compactJSONMarshaler) Marshal(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (compactJSONMarshaler) Unmarshal(data []byte, v any) error {
+	return json.Unmarshal(data, v)
+}
+
+func normalizeVersionedCheckpoint(checkpoint *apitype.VersionedCheckpoint) (*apitype.VersionedCheckpoint, error) {
+	if checkpoint == nil {
+		return nil, nil
+	}
+
+	normalized := *checkpoint
+	if len(normalized.Checkpoint) > 0 {
+		var compact bytes.Buffer
+		if err := json.Compact(&compact, normalized.Checkpoint); err != nil {
+			return nil, fmt.Errorf("compacting checkpoint payload: %w", err)
+		}
+		normalized.Checkpoint = append(json.RawMessage(nil), compact.Bytes()...)
+	}
+	return &normalized, nil
+}
+
 func (b *diyBackend) saveCheckpoint(
 	ctx context.Context,
 	ref *diyBackendReference,
@@ -225,9 +261,19 @@ func (b *diyBackend) saveCheckpoint(
 	if compExt != "" {
 		file = file + compExt
 	}
-	m = encoding.Compress(m, b.compression)
+	var err error
+	checkpointToSave := checkpoint
+	if ext == encoding.JSONExt {
+		checkpointToSave, err = normalizeVersionedCheckpoint(checkpoint)
+		if err != nil {
+			return "", "", fmt.Errorf("serializing checkpoint: %w", err)
+		}
+		m = encoding.Compress(diyJSONMarshaler, b.compression)
+	} else {
+		m = encoding.Compress(m, b.compression)
+	}
 
-	byts, err := m.Marshal(checkpoint)
+	byts, err := m.Marshal(checkpointToSave)
 	if err != nil {
 		return "", "", fmt.Errorf("An IO error occurred while marshalling the checkpoint: %w", err)
 	}
@@ -623,7 +669,7 @@ func (b *diyBackend) addToHistory(ctx context.Context, ref *diyBackendReference,
 	// Prefix for the update and checkpoint files.
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", ref.name, time.Now().UnixNano()))
 
-	m := encoding.Compress(encoding.JSON, b.compression)
+	m := encoding.Compress(diyJSONMarshaler, b.compression)
 	ext := "json" + b.compression.Ext()
 
 	// Save the history file.

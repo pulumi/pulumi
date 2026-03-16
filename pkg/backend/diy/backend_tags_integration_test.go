@@ -15,7 +15,9 @@
 package diy
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -115,7 +117,11 @@ func TestStackTagsWithFileBackend(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(content), "environment")
 	assert.Contains(t, string(content), "production")
-	assert.Contains(t, string(content), "\"version\": 1")
+
+	trimmed := bytes.TrimSpace(content)
+	var compact bytes.Buffer
+	require.NoError(t, json.Compact(&compact, trimmed))
+	assert.Equal(t, compact.String(), string(trimmed))
 }
 
 // TestStackTagsFilteringIntegration tests stack filtering by tags

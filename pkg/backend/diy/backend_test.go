@@ -2103,4 +2103,9 @@ func TestJSONCasing(t *testing.T) {
 	assert.NotContains(t, string(data), `"Latest"`)
 	assert.Contains(t, string(data), `"stack"`)
 	assert.NotContains(t, string(data), `"Stack"`)
+
+	trimmed := bytes.TrimSpace(data)
+	var compact bytes.Buffer
+	require.NoError(t, json.Compact(&compact, trimmed))
+	assert.Equal(t, compact.String(), string(trimmed))
 }

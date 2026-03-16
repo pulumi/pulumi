@@ -15,6 +15,7 @@
 package diy
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -390,8 +391,11 @@ func TestStackTagsJSONFormat(t *testing.T) {
 	assert.Equal(t, stackTagsVersion, tagsFile.Version)
 	assert.Equal(t, testTags, tagsFile.Tags)
 
-	// Verify the JSON is properly formatted (indented)
-	assert.Contains(t, string(rawData), "    ") // Should contain indentation
+	// Verify the JSON is compact.
+	trimmed := bytes.TrimSpace(rawData)
+	var compact bytes.Buffer
+	require.NoError(t, json.Compact(&compact, trimmed))
+	assert.Equal(t, compact.String(), string(trimmed))
 	assert.Contains(t, string(rawData), "\"version\"")
 	assert.Contains(t, string(rawData), "\"tags\"")
 }
