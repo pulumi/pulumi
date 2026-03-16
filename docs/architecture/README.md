@@ -60,9 +60,9 @@ processes are implemented as libraries and executables written in
   (e.g. provider SDKs) from a supplied schema.
 
 With this in mind, this architecture is reflected in this repository as
-follows:[^side-node-exhaustive]
+follows:[^side-note-exhaustive]
 
-[^side-node-exhaustive]: This is not intended to be an exhaustive list of
+[^side-note-exhaustive]: This is not intended to be an exhaustive list of
     directories in the repository, but rather a high-level overview of the most
     important ones that pertain to the pieces outlined above. Other concerns,
     such as infrastructure, documentation, testing, and so on, are covered in
