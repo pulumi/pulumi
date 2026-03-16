@@ -141,7 +141,6 @@ exclude_patterns = [
     ## LICENSEs, etc.)
     "AGENTS.md",
     "CHANGELOG.md",
-    "CODE_OF_CONDUCT.md",
     "CODE-OF-CONDUCT.md",
     "CONTRIBUTING.md",
     "README.md",
