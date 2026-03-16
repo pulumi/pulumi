@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go,nodejs,python
+  description: Add "remove backups" option to remove stack
