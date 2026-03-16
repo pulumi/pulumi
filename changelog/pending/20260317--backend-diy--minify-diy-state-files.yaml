@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend/diy
+  description: Minify JSON persisted by the DIY backend for checkpoints, history, and stack tags
