@@ -20,6 +20,16 @@ The deployment object.
 
 ---
 
+#### `features`
+
+A set of features this deployment object requires to be supported by Pulumi.
+
+`array`
+
+Items: `string`
+
+---
+
 #### `version` (_required_)
 
 The deployment version.

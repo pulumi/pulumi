@@ -74,4 +74,5 @@ their implementation:
 /docs/architecture/providers/components
 /docs/architecture/providers/dynamic
 /docs/architecture/providers/parameterized
+/docs/architecture/providers/implementers-guide
 :::

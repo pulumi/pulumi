@@ -107,7 +107,9 @@ computation. Promises which don't capture metadata (and thus qualify as
 [outputs](outputs)) are not all that common -- plain
 [](pulumirpc.ResourceProvider.Invoke)s (that is, provider function calls which
 do not accept [`Input`](inputs)s or return [`Output`](outputs)) are perhaps the
-primary example of their use.
+primary example of their use. Note that although the underlying computation may
+fail, failures cannot be handled at runtime and cause a hard stop when
+attempting to access a `Promise<T>`'s concrete value.
 
 (resources)=
 ## Resources
@@ -386,6 +388,15 @@ Resource output properties often use `outputShape`d types. While values of these
 types track metadata at a granular level, accessing their values often requires
 a great deal of unwrapping as nesting depth increases.
 
+Rather than projecting these types in their fully-elaborated form, language SDKs
+typically simplify them to a plain `Output<T>` while using an internal
+representation that includes distinguished unknown values. This lets SDKs
+support lifted property and element access into partially-known composite
+values. For example, the Node.js SDK allows accessing an element of an
+`Output<string[]>` via a proxied index operator even when some elements are
+unknown, though it will not allow accessing the entire concrete value via
+`apply`.
+
 (plainshape)=
 #### `plainShape`
 
@@ -487,3 +498,16 @@ resource; this is necessary as resource shapes may change between SDK versions.
 
 Resource references are hydrated using the [built-in
 provider](built-in-provider)'s `getResource` invoke.
+
+:::{note}
+`getResource` can only be called when there is an active connection to the
+engine's resource monitor — that is, within the scope of a
+[](pulumirpc.ResourceProvider.Construct) call. Resource references therefore
+cannot be resolved inside CRUD methods
+([](pulumirpc.ResourceProvider.Create), [](pulumirpc.ResourceProvider.Read),
+[](pulumirpc.ResourceProvider.Update), [](pulumirpc.ResourceProvider.Delete)),
+[](pulumirpc.ResourceProvider.Configure), or
+[](pulumirpc.ResourceProvider.Invoke). Code in those contexts should treat a
+resource reference as its `ID` if present, falling back to its `URN`; an empty
+`ID` should be treated as [unknown](unknowns).
+:::
