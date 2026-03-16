@@ -30,6 +30,7 @@ import { register } from "module";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import { Inputs } from "../../output";
+import { addProcessListener } from "../../runtime/process-listener";
 import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
 import * as tsutils from "../../tsutils";
@@ -249,7 +250,7 @@ export async function run(
     // all remaining spans in the batch.
     if (tracingIsEnabled(tracingUrl)) {
         tracing.start(tracingUrl as string); // safe cast, since tracingIsEnable confirmed the type
-        process.on("exit", tracing.stop);
+        addProcessListener("exit", tracing.stop);
     }
     // Start a new span, which we shutdown at the bottom of this method.
     const span = tracing.newSpan("language-runtime.run");
@@ -450,11 +451,11 @@ ${defaultErrorMessage(err)}`,
         reportLoggedError(err);
     };
 
-    process.on("uncaughtException", uncaughtHandler);
+    addProcessListener("uncaughtException", uncaughtHandler);
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
     // just suppress the TS strictness here.
-    process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", settings.disconnectSync);
+    addProcessListener("unhandledRejection", uncaughtHandler);
+    addProcessListener("exit", settings.disconnectSync);
 
     // Trigger callback to update a sentinel variable tracking
     // whether the program is running.

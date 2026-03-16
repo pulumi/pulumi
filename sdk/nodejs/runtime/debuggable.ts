@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as log from "../log";
+import { addProcessListener } from "./process-listener";
 import * as state from "./state";
 
 /**
@@ -23,10 +24,10 @@ import * as state from "./state";
 export const debugPromiseLeaks: boolean = !!process.env.PULUMI_DEBUG_PROMISE_LEAKS;
 
 /**
- * leakDetectorScheduled is true when the promise leak detector is scheduled for
- * process exit.
+ * process-level property used to coordinate leak detector registration across
+ * multiple copies of the SDK loaded in a single process.
  */
-let leakDetectorScheduled: boolean = false;
+const LEAK_DETECTOR_KEY = "__pulumiLeakDetectorScheduled";
 
 /**
  * @internal
@@ -85,8 +86,9 @@ export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
 
     promiseId++;
 
-    if (!leakDetectorScheduled) {
-        process.on("exit", (code: number) => {
+    if (!(process as any)[LEAK_DETECTOR_KEY]) {
+        (process as any)[LEAK_DETECTOR_KEY] = true;
+        addProcessListener("exit", (code: number) => {
             // Only print leaks if we're exiting normally.  Otherwise, it could be a crash, which of
             // course yields things that look like "leaks".
             //
@@ -117,7 +119,6 @@ export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
                 process.exitCode = 1;
             }
         });
-        leakDetectorScheduled = true;
     }
 
     // Add this promise to the leak candidates list, and schedule it for removal if it resolves.

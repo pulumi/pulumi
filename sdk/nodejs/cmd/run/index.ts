@@ -22,6 +22,7 @@ import "source-map-support/register";
 import * as grpc from "@grpc/grpc-js";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as log from "../../log";
+import { addProcessListener } from "../../runtime/process-listener";
 import * as settings from "../../runtime/settings";
 
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
@@ -61,11 +62,11 @@ const uncaughtHandler = (err: Error) => {
 /** @internal */
 export const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
-process.on("uncaughtException", uncaughtHandler);
+addProcessListener("uncaughtException", uncaughtHandler);
 // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so just
 // suppress the TS strictness here.
-process.on("unhandledRejection", uncaughtHandler);
-process.on("exit", (code: number) => {
+addProcessListener("unhandledRejection", uncaughtHandler);
+addProcessListener("exit", (code: number) => {
     // If there were any uncaught errors at all, we always want to exit with an error code. If we
     // did not, it could be disastrous for the user.  i.e. not all resources may have been created,
     // but the 0 code would indicate we could proceed.  That could lead to many (or all) of the
@@ -112,7 +113,7 @@ process.on("exit", (code: number) => {
 // Concretly, aws has a handler that creates `BucketNotification` objects, see
 // https://github.com/pulumi/pulumi-aws/blob/df45f46766be1d304a5fcf7d6dc192846f7433a8/sdk/nodejs/s3/s3Mixins.ts#L187
 let hasRegisteredOnExit = false;
-process.on("beforeExit", () => {
+addProcessListener("beforeExit", () => {
     process.nextTick(() => {
         if (hasRegisteredOnExit) {
             return;
@@ -123,7 +124,7 @@ process.on("beforeExit", () => {
         setImmediate(() => {
             return;
         });
-        process.on("beforeExit", beforeExitHandler);
+        addProcessListener("beforeExit", beforeExitHandler);
     });
 });
 

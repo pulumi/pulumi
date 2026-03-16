@@ -14,6 +14,7 @@
 
 // Enable source map support so we get good stack traces.
 import "source-map-support/register";
+import { addProcessListener } from "../../runtime/process-listener";
 
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
 // events cause us to exit with a non-zero code. It is critically important that we do this early:
@@ -49,11 +50,11 @@ const uncaughtHandler = (err: Error) => {
 // https://nodejs.org/api/process.html#process_exit_codes
 const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
-process.on("uncaughtException", uncaughtHandler);
+addProcessListener("uncaughtException", uncaughtHandler);
 // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so just
 // suppress the TS strictness here.
-process.on("unhandledRejection", uncaughtHandler);
-process.on("exit", (code: number) => {
+addProcessListener("unhandledRejection", uncaughtHandler);
+addProcessListener("exit", (code: number) => {
     // If there were any uncaught errors at all, we always want to exit with an error code. If we
     // did not, it could be disastrous for the user.  i.e. not all resources may have been created,
     // but the 0 code would indicate we could proceed.  That could lead to many (or all) of the

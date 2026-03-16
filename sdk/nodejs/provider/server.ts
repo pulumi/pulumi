@@ -23,6 +23,7 @@ import * as resource from "../resource";
 import * as config from "../runtime/config";
 import { hookBindingFromProto } from "../runtime/resource";
 import * as rpc from "../runtime/rpc";
+import { addProcessListener } from "../runtime/process-listener";
 import * as settings from "../runtime/settings";
 import * as localState from "../runtime/state";
 import { parseArgs } from "./internals";
@@ -57,10 +58,10 @@ class Server implements grpc.UntypedServiceImplementation {
             // terminate the outstanding gRPC requests.
             this._callbacks.forEach((callback) => callback(err, undefined));
         };
-        process.on("uncaughtException", uncaughtHandler);
+        addProcessListener("uncaughtException", uncaughtHandler);
         // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
         // just suppress the TS strictness here.
-        process.on("unhandledRejection", uncaughtHandler);
+        addProcessListener("unhandledRejection", uncaughtHandler);
     }
 
     // Satisfy the grpc.UntypedServiceImplementation interface.
@@ -761,11 +762,11 @@ export async function main(provider: Provider, args: string[]) {
         }
     };
 
-    process.on("uncaughtException", uncaughtHandler);
+    addProcessListener("uncaughtException", uncaughtHandler);
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so just
     // suppress the TS strictness here.
-    process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", (code: number) => {
+    addProcessListener("unhandledRejection", uncaughtHandler);
+    addProcessListener("exit", (code: number) => {
         // If there were any uncaught errors at all, we always want to exit with an error code.
         if (code === 0 && uncaughtErrors.size > 0) {
             process.exitCode = 1;

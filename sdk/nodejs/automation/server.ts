@@ -17,6 +17,7 @@ import { isGrpcError, ResourceError, RunError } from "../errors";
 import * as log from "../log";
 import * as runtimeConfig from "../runtime/config";
 import * as debuggable from "../runtime/debuggable";
+import { addProcessListener, removeProcessListener } from "../runtime/process-listener";
 import * as settings from "../runtime/settings";
 import * as stack from "../runtime/stack";
 import * as localState from "../runtime/state";
@@ -82,22 +83,20 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
                 }
                 runtimeConfig.setAllConfig(config, req.getConfigsecretkeysList() || []);
 
-                process.setMaxListeners(settings.getMaximumListeners());
-
-                process.on("uncaughtException", uncaughtHandler);
+                addProcessListener("uncaughtException", uncaughtHandler);
                 // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
                 // just suppress the TS strictness here.
-                process.on("unhandledRejection", uncaughtHandler);
+                addProcessListener("unhandledRejection", uncaughtHandler);
 
                 try {
                     await stack.runInPulumiStack(this.program);
                     await settings.disconnect(true /* signalShutdown */);
-                    process.off("uncaughtException", uncaughtHandler);
-                    process.off("unhandledRejection", uncaughtHandler);
+                    removeProcessListener("uncaughtException", uncaughtHandler);
+                    removeProcessListener("unhandledRejection", uncaughtHandler);
                 } catch (e) {
                     await settings.disconnect(false /* signalShutdown */);
-                    process.off("uncaughtException", uncaughtHandler);
-                    process.off("unhandledRejection", uncaughtHandler);
+                    removeProcessListener("uncaughtException", uncaughtHandler);
+                    removeProcessListener("unhandledRejection", uncaughtHandler);
 
                     if (!isGrpcError(e)) {
                         throw e;

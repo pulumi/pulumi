@@ -21,6 +21,7 @@ import * as path from "path";
 import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
+import { addProcessListener } from "../../runtime/process-listener";
 import * as settings from "../../runtime/settings";
 import { componentProviderHost, getPulumiComponents } from "../../provider/experimental/provider";
 
@@ -253,11 +254,11 @@ ${errMsg}`,
         opts.reportLoggedError(err);
     };
 
-    process.on("uncaughtException", uncaughtHandler);
+    addProcessListener("uncaughtException", uncaughtHandler);
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
     // just suppress the TS strictness here.
-    process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", settings.disconnectSync);
+    addProcessListener("unhandledRejection", uncaughtHandler);
+    addProcessListener("exit", settings.disconnectSync);
 
     // Trigger callback to update a sentinel variable tracking
     // whether the program is running.

@@ -31,6 +31,7 @@ import * as provrpc from "../../proto/provider_grpc_pb";
 import * as provproto from "../../proto/provider_pb";
 import * as statusproto from "../../proto/status_pb";
 import { grpcChannelOptions } from "../../runtime";
+import { addProcessListener } from "../../runtime/process-listener";
 
 const requireFromString = require("require-from-string");
 
@@ -46,11 +47,11 @@ const uncaughtHandler = (err: Error) => {
     }
 };
 
-process.on("uncaughtException", uncaughtHandler);
+addProcessListener("uncaughtException", uncaughtHandler);
 // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so just
 // suppress the TS strictness here.
-process.on("unhandledRejection", uncaughtHandler);
-process.on("exit", (code: number) => {
+addProcessListener("unhandledRejection", uncaughtHandler);
+addProcessListener("exit", (code: number) => {
     // If there were any uncaught errors at all, we always want to exit with an error code.
     if (code === 0 && uncaughtErrors.size > 0) {
         process.exitCode = 1;
