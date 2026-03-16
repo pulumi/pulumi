@@ -26,6 +26,76 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestParseOptions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("defaults", func(t *testing.T) {
+		t.Parallel()
+		opts, err := parseOptions("root", "programDir", map[string]any{}, false)
+		require.NoError(t, err)
+		assert.Equal(t, "root", opts.Root)
+		assert.Equal(t, "programDir", opts.ProgramDir)
+		assert.Equal(t, toolchain.Auto, opts.Toolchain)
+		assert.Equal(t, toolchain.TypeCheckerNone, opts.Typechecker)
+		assert.Equal(t, "", opts.Virtualenv)
+	})
+
+	t.Run("virtualenv", func(t *testing.T) {
+		t.Parallel()
+		opts, err := parseOptions("root", "programDir", map[string]any{
+			"virtualenv":  "myvenv",
+			"toolchain":   "uv",
+			"typechecker": "mypy",
+		}, false)
+		require.NoError(t, err)
+		assert.Equal(t, "myvenv", opts.Virtualenv)
+		assert.Equal(t, toolchain.Uv, opts.Toolchain)
+		assert.Equal(t, toolchain.TypeCheckerMypy, opts.Typechecker)
+	})
+
+	t.Run("toolchain unknown", func(t *testing.T) {
+		t.Parallel()
+		_, err := parseOptions("root", "programDir", map[string]any{"toolchain": "npm"}, false)
+		require.ErrorContains(t, err, "unsupported toolchain option: npm")
+	})
+
+	t.Run("plugin auto toolchain defaults virtualenv to `venv`", func(t *testing.T) {
+		t.Parallel()
+		opts, err := parseOptions("root", "programDir", map[string]any{}, true)
+		require.NoError(t, err)
+		assert.Equal(t, "venv", opts.Virtualenv)
+		assert.Equal(t, toolchain.Auto, opts.Toolchain)
+	})
+
+	t.Run("plugin pip toolchain defaults virtualenv to `venv`", func(t *testing.T) {
+		t.Parallel()
+		opts, err := parseOptions("root", "programDir", map[string]any{"toolchain": "pip"}, true)
+		require.NoError(t, err)
+		assert.Equal(t, "venv", opts.Virtualenv)
+	})
+
+	t.Run("plugin explicit virtualenv is not overridden", func(t *testing.T) {
+		t.Parallel()
+		opts, err := parseOptions("root", "programDir", map[string]any{"virtualenv": "myvenv"}, true)
+		require.NoError(t, err)
+		assert.Equal(t, "myvenv", opts.Virtualenv)
+	})
+
+	t.Run("plugin poetry toolchain does not default virtualenv", func(t *testing.T) {
+		t.Parallel()
+		opts, err := parseOptions("root", "programDir", map[string]any{"toolchain": "poetry"}, true)
+		require.NoError(t, err)
+		assert.Equal(t, "", opts.Virtualenv)
+	})
+
+	t.Run("plugin uv toolchain does not default virtualenv", func(t *testing.T) {
+		t.Parallel()
+		opts, err := parseOptions("root", "programDir", map[string]any{"toolchain": "uv"}, true)
+		require.NoError(t, err)
+		assert.Equal(t, "", opts.Virtualenv)
+	})
+}
+
 func TestRemoveReleaseCandidateSuffix(t *testing.T) {
 	t.Parallel()
 
@@ -158,7 +228,7 @@ func getOptions(t *testing.T, name, cwd string) toolchain.PythonOptions {
 func addPackage(t *testing.T, opts toolchain.PythonOptions, name string) {
 	t.Helper()
 	switch opts.Toolchain {
-	case toolchain.Pip:
+	case toolchain.Pip, toolchain.Auto:
 		tc, err := toolchain.ResolveToolchain(opts)
 		require.NoError(t, err)
 		cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", name)
