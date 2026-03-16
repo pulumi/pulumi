@@ -1,23 +1,14 @@
-.PHONY: build ensure ensure-proto ensure-python generate generate-proto watch
-
-VENV = venv
-
-ensure-python:: .ensure-python.phony
-.ensure-python.phony: requirements.txt
-	../scripts/retry python -m $(VENV) $(VENV)
-	. $(VENV)/*/activate && ../scripts/retry python -m pip install --upgrade pip setuptools wheel
-	. $(VENV)/*/activate && ../scripts/retry python -m pip install -r requirements.txt
-	@touch .ensure-python.phony
+.PHONY: build ensure ensure-proto format generate generate-metaschema generate-deployment-schema generate-proto watch
 
 ensure-proto:: .ensure-proto.phony
-.ensure-proto.phony: ensure-python
-	. $(VENV)/*/activate && python make.py ensure-proto
+.ensure-proto.phony:
+	uv run python make.py ensure-proto
 	@touch .ensure-proto.phony
 
-ensure:: ensure-proto ensure-python
+ensure:: ensure-proto
 
 generate-proto: ensure
-	. $(VENV)/*/activate && python make.py generate-proto
+	uv run python make.py generate-proto
 
 generate-metaschema:
 	cd utils && go run ./jsonschema2md.go \
@@ -42,7 +33,7 @@ generate:: generate-proto generate-metaschema generate-deployment-schema
 # instead and updated locally when the underlying schemas change.
 build: ensure generate-proto
 	mkdir -p $$READTHEDOCS_OUTPUT/html
-	. $(VENV)/*/activate && python -m sphinx \
+	uv run python -m sphinx \
 		-T \
 		-c sphinx \
 		-b html \
@@ -53,7 +44,7 @@ build: ensure generate-proto
 	cp sphinx/index.html.template $$READTHEDOCS_OUTPUT/html/index.html
 
 watch: ensure generate
-	. $(VENV)/*/activate && sphinx-autobuild \
+	uv run sphinx-autobuild \
 		-c sphinx \
 		-b html \
 		--ignore "*~" \
@@ -67,4 +58,4 @@ watch: ensure generate
 		_build
 
 format:
-	. $(VENV)/*/activate && black .
+	uv run black .
