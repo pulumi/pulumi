@@ -511,3 +511,10 @@ cannot be resolved inside CRUD methods
 resource reference as its `ID` if present, falling back to its `URN`; an empty
 `ID` should be treated as [unknown](unknowns).
 :::
+
+:::{toctree}
+:maxdepth: 1
+:titlesonly:
+
+/sdk/go/property/README
+:::
