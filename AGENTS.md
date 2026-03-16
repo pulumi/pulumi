@@ -8,7 +8,7 @@ The core Pulumi SDK and CLI. Go monorepo with multiple Go modules (`pkg/`, `sdk/
 - `sdk/` — Language SDKs and shared Go SDK code (`sdk/go/`, `sdk/nodejs/`, `sdk/python/`, `sdk/pcl/`)
 - `tests/` — Integration and acceptance tests
 - `proto/` — Protobuf definitions for gRPC interfaces between engine, language hosts, and providers
-- `developer-docs/` — Internal developer documentation (Sphinx)
+- `docs/` — Internal developer documentation (Sphinx)
 - `build/` — Build system scaffolding (`common.mk`)
 - `scripts/` — CI and development helper scripts
 - `changelog/` — Pending changelog entries

@@ -113,9 +113,6 @@ build_cover::
 install_cover:: build_cover
 	cp bin/pulumi $(PULUMI_BIN)
 
-developer_docs::
-	cd developer-docs && make html
-
 dist::
 	cd pkg && go install -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
