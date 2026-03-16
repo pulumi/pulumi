@@ -189,7 +189,7 @@ type Options struct {
 	ExcludeDependents bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 	ProgressStreams []io.Writer
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
+	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
 	ErrorProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
