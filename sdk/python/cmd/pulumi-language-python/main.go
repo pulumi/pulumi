@@ -227,7 +227,9 @@ type pythonLanguageHost struct {
 	toolchain string
 }
 
-func parseOptions(root string, programDir string, options map[string]any) (toolchain.PythonOptions, error) {
+func parseOptions(
+	root string, programDir string, options map[string]any, isPlugin bool,
+) (toolchain.PythonOptions, error) {
 	pythonOptions := toolchain.PythonOptions{
 		Root:       root,
 		ProgramDir: programDir,
@@ -273,6 +275,15 @@ func parseOptions(root string, programDir string, options map[string]any) (toolc
 		}
 	}
 
+	// Default the `virtualenv` option to `venv` for plugins if not provided. We don't support running plugins using the
+	// global or ambient Python environment, but we do for programs for backwards compatibility. Auto is included
+	// because it is the zero value of the toolchain type: a plugin with no explicit toolchain set will have Toolchain
+	// == Auto, and should still get the venv default.
+	if isPlugin && (pythonOptions.Toolchain == toolchain.Pip || pythonOptions.Toolchain == toolchain.Auto) &&
+		pythonOptions.Virtualenv == "" {
+		pythonOptions.Virtualenv = "venv"
+	}
+
 	return pythonOptions, nil
 }
 
@@ -309,7 +320,7 @@ func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Cl
 func (host *pythonLanguageHost) GetRequiredPackages(ctx context.Context,
 	req *pulumirpc.GetRequiredPackagesRequest,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
 		return nil, err
 	}
@@ -974,7 +985,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 	defer contract.IgnoreClose(closer)
 
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
 		return nil, err
 	}
@@ -1274,15 +1285,9 @@ func validateVersion(ctx context.Context, options toolchain.PythonOptions) {
 func (host *pythonLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), req.IsPlugin)
 	if err != nil {
 		return err
-	}
-
-	// Default the `virtualenv` option to `venv` for plugins if not provided. We don't support running plugins using the
-	// global or ambient Python environment, but we do for programs for backwards compatibility.
-	if req.IsPlugin && opts.Toolchain == toolchain.Pip && opts.Virtualenv == "" {
-		opts.Virtualenv = "venv"
 	}
 
 	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
@@ -1396,7 +1401,7 @@ func (host *pythonLanguageHost) Template(
 ) (*pulumirpc.TemplateResponse, error) {
 	logging.V(5).Infof("Template(%+v)", req)
 
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
 		return nil, err
 	}
@@ -1420,7 +1425,7 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 	// Previously we did not pass any arguments to About and we always used the default python command.
 	opts := toolchain.PythonOptions{Toolchain: toolchain.Pip}
 	if req != nil && req.Info != nil {
-		aboutOpts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+		aboutOpts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 		if err != nil {
 			return nil, err
 		}
@@ -1451,7 +1456,7 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 func (host *pythonLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
 		return nil, err
 	}
@@ -1501,16 +1506,10 @@ func (host *pythonLanguageHost) RunPlugin(
 	}
 	defer contract.IgnoreClose(closer)
 
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	isPlugin := req.Kind != string(apitype.AnalyzerPlugin)
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), isPlugin)
 	if err != nil {
 		return err
-	}
-
-	// Default the `virtualenv` option to `venv` if not provided. We don't support running plugins using the global or
-	// ambient Python environment. Except for policy packs that still need to support the old behavior of defaulting to
-	// the global environment.
-	if opts.Toolchain == toolchain.Pip && opts.Virtualenv == "" && req.Kind != string(apitype.AnalyzerPlugin) {
-		opts.Virtualenv = "venv"
 	}
 	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
@@ -1887,7 +1886,7 @@ func (host *pythonLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
 	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
 		return nil, err
 	}

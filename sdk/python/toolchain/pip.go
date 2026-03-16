@@ -157,7 +157,7 @@ func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]plugin.Depen
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(cmd.Args, " "), err)
+		return nil, fmt.Errorf("calling `%s`: %w", strings.Join(cmd.Args, " "), err)
 	}
 
 	var raw []struct {
