@@ -103,7 +103,7 @@ export class API {
             __flags.push("--stack", "" + options.stack);
         }
 
-        __final.push(... __flags);
+        __final.push(...__flags);
 
         const __arguments: string[] = [];
 
@@ -113,7 +113,7 @@ export class API {
         }
         if (__arguments.length > 0) {
             __final.push("--");
-            __final.push(... __arguments);
+            __final.push(...__arguments);
         }
 
         return this.__run(options, __final);

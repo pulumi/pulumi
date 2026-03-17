@@ -301,7 +301,7 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
         const optionFlags = Object.values(allFlags).filter((f) => !f.omit);
         optionFlags.forEach((flag) => option(flag));
 
-        writer.writeLine("__final.push(... __flags);");
+        writer.writeLine("__final.push(...__flags);");
         writer.blankLine();
 
         writer.writeLine("const __arguments: string[] = [];");
@@ -322,7 +322,7 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
 
         writer.indent(() => {
             writer.writeLine('__final.push("--");');
-            writer.writeLine("__final.push(... __arguments);");
+            writer.writeLine("__final.push(...__arguments);");
         });
 
         writer.writeLine("}");
