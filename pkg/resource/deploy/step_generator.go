@@ -3155,59 +3155,14 @@ func (sg *stepGenerator) analyzeAll(
 		}
 	}
 
-	var invalid atomic.Bool
-	var sawError atomic.Bool
-
-	// Run Analyze for each analyzer in parallel, respecting the parallelism limit.
-	var g errgroup.Group
-	if parallelism := env.ParallelAnalyze.Value(); parallelism > 0 {
-		g.SetLimit(parallelism)
-	}
-
-	for _, analyzer := range analyzers {
-		g.Go(func() error {
-			info, err := analyzer.GetAnalyzerInfo()
-			if err != nil {
-				return fmt.Errorf("failed to get analyzer info: %w", err)
-			}
-
-			response, err := analyzer.Analyze(r)
-			if err != nil {
-				return fmt.Errorf("failed to run policy: %w", err)
-			}
-
-			for _, d := range response.Diagnostics {
-				if d.EnforcementLevel == apitype.Remediate {
-					// If we ran a remediation, but we are still somehow triggering a violation,
-					// "downgrade" the level we report from remediate to mandatory.
-					d.EnforcementLevel = apitype.Mandatory
-				}
-
-				if d.EnforcementLevel == apitype.Mandatory {
-					if !sg.deployment.opts.DryRun {
-						invalid.Store(true)
-					}
-					sawError.Store(true)
-				}
-				// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
-				sg.deployment.events.OnPolicyViolation(new.URN, d)
-			}
-
-			summary := resourceanalyzer.NewAnalyzePolicySummary(new.URN, response, info)
-			sg.deployment.events.OnPolicyAnalyzeSummary(summary)
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
+	invalid, sawError, err := analyzeResource(analyzers, r, sg.deployment.events, sg.deployment.opts.DryRun)
+	if err != nil {
 		return false, err
 	}
-
-	if sawError.Load() {
+	if sawError {
 		sg.sawError = true
 	}
-
-	return invalid.Load(), nil
+	return invalid, nil
 }
 
 func (sg *stepGenerator) AnalyzeResources() error {

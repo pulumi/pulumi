@@ -27,6 +27,7 @@ func NewPolicyCmd() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
+	cmd.AddCommand(newPolicyAnalyzeCmd())
 	cmd.AddCommand(newPolicyDisableCmd())
 	cmd.AddCommand(newPolicyEnableCmd())
 	cmd.AddCommand(newPolicyGroupCmd())

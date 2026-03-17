@@ -125,6 +125,62 @@ func ConvertLocalPolicyPacksToPaths(localPolicyPack []LocalPolicyPack) []string 
 	return r
 }
 
+// LoadLocalPolicyPackAnalyzers loads local policy pack analyzers from the given paths,
+// configures them with any supplied config files, and returns them ready for use.
+func LoadLocalPolicyPackAnalyzers(
+	ctx context.Context,
+	plugctx *plugin.Context,
+	packs []LocalPolicyPack,
+	analyzerOpts *plugin.PolicyAnalyzerOptions,
+) ([]plugin.Analyzer, error) {
+	var analyzers []plugin.Analyzer
+	for _, pack := range packs {
+		abs, err := filepath.Abs(pack.Path)
+		if err != nil {
+			return nil, err
+		}
+		analyzer, err := loadPolicyAnalyzer(ctx, plugctx, tokens.QName(abs), pack.Path, analyzerOpts)
+		if err != nil {
+			return nil, err
+		}
+		if analyzer == nil {
+			return nil, fmt.Errorf("policy analyzer could not be loaded from path %q", pack.Path)
+		}
+		info, err := analyzer.GetAnalyzerInfo()
+		if err != nil {
+			return nil, err
+		}
+		if !info.SupportsConfig {
+			if pack.Config != "" {
+				return nil, fmt.Errorf("policy pack %q at %q does not support config", info.Name, pack.Path)
+			}
+		} else {
+			var configFromFile map[string]plugin.AnalyzerPolicyConfig
+			if pack.Config != "" {
+				configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
+				if err != nil {
+					return nil, err
+				}
+			}
+			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
+				info.Policies, info.InitialConfig, configFromFile)
+			if err != nil {
+				return nil, fmt.Errorf("reconciling policy config for %q: %w", info.Name, err)
+			}
+			if len(validationErrors) > 0 {
+				sort.Strings(validationErrors)
+				return nil, fmt.Errorf("validating policy config for %q: %s",
+					info.Name, strings.Join(validationErrors, "; "))
+			}
+			if err = analyzer.Configure(config); err != nil {
+				return nil, fmt.Errorf("configuring policy pack %q: %w", info.Name, err)
+			}
+		}
+		analyzers = append(analyzers, analyzer)
+	}
+	return analyzers, nil
+}
+
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 //
 // This structure is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
