@@ -42,7 +42,7 @@ export class API {
         );
     }
 
-    cancel(options: PulumiCancelOptions, stackName?: string): ReturnType<API['__run']> {
+    cancel(options: PulumiCancelOptions, stackName?: string): ReturnType<API["__run"]> {
         const __final: string[] = [];
         __final.push("cancel");
 

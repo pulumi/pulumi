@@ -75,7 +75,7 @@ function baseFlag(flag: Flag): Flag {
     }
 
     generateOptionsTypes(spec, source);
-    generateCommands(spec, container, "ReturnType<API['__run']>");
+    generateCommands(spec, container, 'ReturnType<API["__run"]>');
     project.saveSync();
 })();
 
