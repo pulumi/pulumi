@@ -17,7 +17,7 @@ The core Pulumi SDK and CLI. Go monorepo with multiple Go modules (`pkg/`, `sdk/
 
 ## Tool setup
 
-This repo uses [mise](https://mise.jdx.dev/) to manage tool versions (Go, Node, Python, protoc, etc.). See `.mise.toml` for the full list. **Prefix all `make` commands with `mise exec --`** to ensure the correct tool versions are used:
+This repo uses [mise](https://mise.jdx.dev/) to manage tool versions (Go, Node, Python, protoc, etc.). See `.mise.toml` for the full list. If mise is installed and activated (via `mise activate` in your shell profile), tool versions are handled automatically and you can run `make` directly. Otherwise, **prefix all `make` commands with `mise exec --`** to ensure the correct tool versions are used:
 
 ```sh
 mise exec -- make build

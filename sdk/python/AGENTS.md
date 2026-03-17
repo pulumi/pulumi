@@ -2,7 +2,7 @@
 
 ## Commands
 
-All commands run from `sdk/python/`. Prefix with `mise exec --`.
+All commands run from `sdk/python/`. Prefix with `mise exec --` if mise is not activated.
 
 - **Build:** `mise exec -- make build`
 - **Lint:** `mise exec -- make lint`

@@ -2,7 +2,7 @@
 
 ## Commands
 
-All commands run from `sdk/nodejs/`. Prefix with `mise exec --`.
+All commands run from `sdk/nodejs/`. Prefix with `mise exec --` if mise is not activated.
 
 - **Build:** `mise exec -- make build`
 - **Install (required before integration tests):** `mise exec -- make install`
