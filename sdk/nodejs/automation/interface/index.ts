@@ -44,63 +44,63 @@ export class API {
 
     cancel(options: PulumiCancelOptions, stackName?: string): ReturnType<API['__run']> {
         const __final: string[] = [];
-        __final.push('cancel');
+        __final.push("cancel");
 
         const __flags: string[] = [];
 
-        __flags.push('--non-interactive');
-        __flags.push('--yes');
+        __flags.push("--non-interactive");
+        __flags.push("--yes");
 
         if (options.color != null) {
-            __flags.push('--color', '' + options.color);
+            __flags.push("--color", "" + options.color);
         }
 
         if (options.cwd != null) {
-            __flags.push('--cwd', '' + options.cwd);
+            __flags.push("--cwd", "" + options.cwd);
         }
 
         if (options.disableIntegrityChecking) {
-            __flags.push('--disable-integrity-checking');
+            __flags.push("--disable-integrity-checking");
         }
 
         if (options.fullyQualifyStackNames) {
-            __flags.push('--fully-qualify-stack-names');
+            __flags.push("--fully-qualify-stack-names");
         }
 
         if (options.logflow) {
-            __flags.push('--logflow');
+            __flags.push("--logflow");
         }
 
         if (options.logtostderr) {
-            __flags.push('--logtostderr');
+            __flags.push("--logtostderr");
         }
 
         if (options.memprofilerate != null) {
-            __flags.push('--memprofilerate', '' + options.memprofilerate);
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
         }
 
         if (options.otelTraces != null) {
-            __flags.push('--otel-traces', '' + options.otelTraces);
+            __flags.push("--otel-traces", "" + options.otelTraces);
         }
 
         if (options.profiling != null) {
-            __flags.push('--profiling', '' + options.profiling);
+            __flags.push("--profiling", "" + options.profiling);
         }
 
         if (options.tracing != null) {
-            __flags.push('--tracing', '' + options.tracing);
+            __flags.push("--tracing", "" + options.tracing);
         }
 
         if (options.tracingHeader != null) {
-            __flags.push('--tracing-header', '' + options.tracingHeader);
+            __flags.push("--tracing-header", "" + options.tracingHeader);
         }
 
         if (options.verbose != null) {
-            __flags.push('--verbose', '' + options.verbose);
+            __flags.push("--verbose", "" + options.verbose);
         }
 
         if (options.stack != null) {
-            __flags.push('--stack', '' + options.stack);
+            __flags.push("--stack", "" + options.stack);
         }
 
         __final.push(... __flags);
@@ -108,12 +108,12 @@ export class API {
         const __arguments: string[] = [];
 
         if (stackName != null) {
-            __arguments.push('' + stackName);
+            __arguments.push("" + stackName);
 
         }
         if (__arguments.length > 0) {
-            __final.push('--')
-            __final.push(... __arguments)
+            __final.push("--");
+            __final.push(... __arguments);
         }
 
         return this.__run(options, __final);

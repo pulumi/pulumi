@@ -197,18 +197,18 @@ function emitPresetFlag(
     function emit(): void {
         if (typeof value === "boolean") {
             if (value) {
-                writer.writeLine(`__flags.push('--${flag.name}');`);
+                writer.writeLine(`__flags.push("--${flag.name}");`);
             }
             return;
         }
         if (typeof value === "string" || typeof value === "number") {
-            writer.writeLine(`__flags.push('--${flag.name}', '' + ${JSON.stringify(value)});`);
+            writer.writeLine(`__flags.push("--${flag.name}", "" + ${JSON.stringify(value)});`);
             return;
         }
         if (Array.isArray(value)) {
             writer.writeLine(`for (const __preset of ${JSON.stringify(value)}) {`);
-            writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}', __preset);`));
-            writer.writeLine(`}`);
+            writer.indent(() => writer.writeLine(`__flags.push("--${flag.name}", __preset);`));
+            writer.writeLine("}");
             return;
         }
     }
@@ -227,7 +227,7 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
     return (writer) => {
         writer.writeLine("const __final: string[] = [];");
         for (const breadcrumb of breadcrumbs) {
-            writer.writeLine(`__final.push('${breadcrumb}');`);
+            writer.writeLine(`__final.push("${breadcrumb}");`);
         }
         writer.blankLine();
 
@@ -242,17 +242,17 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
             if (flag.repeatable) {
                 writer.writeLine(`for (const __item of ${name} ?? []) {`);
                 writer.indent(() => option({ ...flag, repeatable: false }, "__item"));
-                writer.writeLine(`}`);
+                writer.writeLine("}");
             } else if (flag.type === "boolean") {
                 writer.writeLine(`if (${name}) {`);
-                writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}');`));
-                writer.writeLine(`}`);
+                writer.indent(() => writer.writeLine(`__flags.push("--${flag.name}");`));
+                writer.writeLine("}");
             } else if (flag.required === true) {
-                writer.writeLine(`__flags.push('--${flag.name}', '' + ${name});`);
+                writer.writeLine(`__flags.push("--${flag.name}", "" + ${name});`);
             } else {
                 writer.writeLine(`if (${name} != null) {`);
-                writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}', '' + ${name});`));
-                writer.writeLine(`}`);
+                writer.indent(() => writer.writeLine(`__flags.push("--${flag.name}", "" + ${name});`));
+                writer.writeLine("}");
             }
 
             writer.blankLine();
@@ -277,7 +277,7 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
                 writer.indent(() => argument(specification, false, false, "__item"));
                 writer.writeLine(`}`);
             } else {
-                writer.writeLine(`__arguments.push('' + ${name});`);
+                writer.writeLine(`__arguments.push("" + ${name});`);
             }
 
             writer.blankLine();
@@ -321,8 +321,8 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
         writer.writeLine("if (__arguments.length > 0) {");
 
         writer.indent(() => {
-            writer.writeLine("__final.push('--')");
-            writer.writeLine("__final.push(... __arguments)");
+            writer.writeLine('__final.push("--");');
+            writer.writeLine("__final.push(... __arguments);");
         });
 
         writer.writeLine("}");
