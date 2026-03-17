@@ -98,6 +98,7 @@ var expectedFailures = map[string]string{
 	"l2-parameterized-invoke":            "dependency loading reports duplicate package definition for subpackage",
 	"l2-parameterized-resource":          "dependency loading reports duplicate package definition for subpackage",
 	"l2-explicit-parameterized-provider": "dependency loading reports duplicate package definition for goodbye",
+	"l2-resource-option-alias":           "NYI",
 	"l3-deferred-outputs":                "incorrectly detects cycle",
 }
 

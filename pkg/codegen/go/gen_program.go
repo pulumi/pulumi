@@ -1283,6 +1283,8 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 					switch key.AsString() {
 					case "name":
 						g.Fgenf(valBuffer, "Name: pulumi.String(%v), ", item.Value)
+					case "type":
+						g.Fgenf(valBuffer, "Type: pulumi.String(%v), ", item.Value)
 					case "noParent":
 						g.Fgenf(valBuffer, "NoParent: pulumi.Bool(%v), ", item.Value)
 					case "parent":
