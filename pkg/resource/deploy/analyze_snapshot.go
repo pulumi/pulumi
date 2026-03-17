@@ -94,25 +94,6 @@ func analyzeResource(
 	return invalidAtomic.Load(), sawErrorAtomic.Load(), nil
 }
 
-// stateToAnalyzerResource converts a resource.State to a plugin.AnalyzerResource,
-// using the resource's Inputs as properties, matching what Analyze receives during a deployment.
-func stateToAnalyzerResource(res *resource.State) plugin.AnalyzerResource {
-	return plugin.AnalyzerResource{
-		URN:        res.URN,
-		Type:       res.Type,
-		Name:       res.URN.Name(),
-		Properties: res.Inputs,
-		Options: plugin.AnalyzerResourceOptions{
-			Protect:                 res.Protect,
-			IgnoreChanges:           res.IgnoreChanges,
-			AdditionalSecretOutputs: res.AdditionalSecretOutputs,
-			Aliases:                 res.GetAliases(),
-			CustomTimeouts:          res.CustomTimeouts,
-			Parent:                  res.Parent,
-		},
-	}
-}
-
 // buildSnapshotProviderMap builds a map of provider URN -> provider state from a snapshot.
 func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*resource.State {
 	providers := make(map[resource.URN]*resource.State)
@@ -124,28 +105,42 @@ func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*resource.State {
 	return providers
 }
 
-// setAnalyzerResourceProvider populates the Provider field of a plugin.AnalyzerResource
-// based on the provider reference stored in the resource state.
-func setAnalyzerResourceProvider(
-	r *plugin.AnalyzerResource,
-	providerRef string,
+// stateToAnalyzerResource converts a resource.State to a plugin.AnalyzerResource.
+// properties must be supplied explicitly: use res.Inputs for per-resource Analyze calls
+// (matching what Analyze receives during a deployment) and res.Outputs for AnalyzeStack
+// calls (to verify the final deployed state).
+func stateToAnalyzerResource(
+	res *resource.State,
+	properties resource.PropertyMap,
 	providers map[resource.URN]*resource.State,
-) {
-	if providerRef == "" {
-		return
+) plugin.AnalyzerResource {
+	r := plugin.AnalyzerResource{
+		URN:        res.URN,
+		Type:       res.Type,
+		Name:       res.URN.Name(),
+		Properties: properties,
+		Options: plugin.AnalyzerResourceOptions{
+			Protect:                 res.Protect,
+			IgnoreChanges:           res.IgnoreChanges,
+			AdditionalSecretOutputs: res.AdditionalSecretOutputs,
+			Aliases:                 res.GetAliases(),
+			CustomTimeouts:          res.CustomTimeouts,
+			Parent:                  res.Parent,
+		},
 	}
-	ref, err := sdkproviders.ParseReference(providerRef)
-	if err != nil {
-		return
-	}
-	if provRes, ok := providers[ref.URN()]; ok {
-		r.Provider = &plugin.AnalyzerProviderResource{
-			URN:        provRes.URN,
-			Type:       provRes.Type,
-			Name:       provRes.URN.Name(),
-			Properties: provRes.Inputs,
+	if res.Provider != "" {
+		if ref, err := sdkproviders.ParseReference(res.Provider); err == nil {
+			if provRes, ok := providers[ref.URN()]; ok {
+				r.Provider = &plugin.AnalyzerProviderResource{
+					URN:        provRes.URN,
+					Type:       provRes.Type,
+					Name:       provRes.URN.Name(),
+					Properties: provRes.Inputs,
+				}
+			}
 		}
 	}
+	return r
 }
 
 // AnalyzeSnapshot runs policy analysis against an existing stack snapshot without
@@ -175,8 +170,7 @@ func AnalyzeSnapshot(
 			continue
 		}
 
-		analyzerRes := stateToAnalyzerResource(res)
-		setAnalyzerResourceProvider(&analyzerRes, res.Provider, providers)
+		analyzerRes := stateToAnalyzerResource(res, res.Inputs, providers)
 
 		// First pass: report remediations for this resource. Unlike during a deployment,
 		// we report what would be changed but do not apply the changes.
@@ -223,16 +217,13 @@ func AnalyzeSnapshot(
 	}
 
 	// Stack-level analysis: collect all non-deleted resources and run AnalyzeStack.
-	// Unlike per-resource Analyze, AnalyzeStack is called with the final Outputs of each resource,
-	// to verify the final stack is in a compliant state (matching step_generator.go behavior).
+	// AnalyzeStack receives Outputs (final deployed state) rather than Inputs.
 	stackResources := make([]plugin.AnalyzerStackResource, 0, len(snap.Resources))
 	for _, res := range snap.Resources {
 		if res.Delete {
 			continue
 		}
-		analyzerRes := stateToAnalyzerResource(res)
-		analyzerRes.Properties = res.Outputs
-		setAnalyzerResourceProvider(&analyzerRes, res.Provider, providers)
+		analyzerRes := stateToAnalyzerResource(res, res.Outputs, providers)
 		stackResources = append(stackResources, plugin.AnalyzerStackResource{
 			AnalyzerResource:     analyzerRes,
 			Parent:               res.Parent,
