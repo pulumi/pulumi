@@ -217,7 +217,7 @@ func TestAnalyzeSnapshot_RemediationReportedNotApplied(t *testing.T) {
 	remediated := resource.PropertyMap{"key": resource.NewProperty("good")}
 
 	res := makeTestResource(urn)
-	res.Outputs = original
+	res.Inputs = original
 
 	snap := &deploy.Snapshot{Resources: []*resource.State{res}}
 	events := &recordingPolicyEvents{}

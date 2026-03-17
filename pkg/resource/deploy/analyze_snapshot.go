@@ -95,13 +95,13 @@ func analyzeResource(
 }
 
 // stateToAnalyzerResource converts a resource.State to a plugin.AnalyzerResource,
-// using the resource's Outputs as properties (the final deployed state).
+// using the resource's Inputs as properties, matching what Analyze receives during a deployment.
 func stateToAnalyzerResource(res *resource.State) plugin.AnalyzerResource {
 	return plugin.AnalyzerResource{
 		URN:        res.URN,
 		Type:       res.Type,
 		Name:       res.URN.Name(),
-		Properties: res.Outputs,
+		Properties: res.Inputs,
 		Options: plugin.AnalyzerResourceOptions{
 			Protect:                 res.Protect,
 			IgnoreChanges:           res.IgnoreChanges,
@@ -223,12 +223,15 @@ func AnalyzeSnapshot(
 	}
 
 	// Stack-level analysis: collect all non-deleted resources and run AnalyzeStack.
+	// Unlike per-resource Analyze, AnalyzeStack is called with the final Outputs of each resource,
+	// to verify the final stack is in a compliant state (matching step_generator.go behavior).
 	stackResources := make([]plugin.AnalyzerStackResource, 0, len(snap.Resources))
 	for _, res := range snap.Resources {
 		if res.Delete {
 			continue
 		}
 		analyzerRes := stateToAnalyzerResource(res)
+		analyzerRes.Properties = res.Outputs
 		setAnalyzerResourceProvider(&analyzerRes, res.Provider, providers)
 		stackResources = append(stackResources, plugin.AnalyzerStackResource{
 			AnalyzerResource:     analyzerRes,
