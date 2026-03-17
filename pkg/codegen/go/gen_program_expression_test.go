@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -374,6 +375,33 @@ func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
 
 	g.Fgenf(&index, "%v", expr)
 	assert.Equal(t, "pulumi.String(notSecret)", index.String())
+}
+
+// TestIntrinsicConvertScopeTraversalToInputNoDoubleWrap verifies that converting a plain
+// variable to a schema-annotated input type does not double-wrap with pulumi.String(pulumi.String(x)).
+// This reproduces the regression where resource properties with schema.InputType annotations
+// cause genScopeTraversalExpression to add a redundant wrapper on top of the convert handler's wrapper.
+func TestIntrinsicConvertScopeTraversalToInputNoDoubleWrap(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	var index bytes.Buffer
+
+	// Simulate the type produced for a resource input property: a union of the plain type
+	// and Output<T>, annotated with schema.InputType. This is what schemaTypeToType produces
+	// for schema.InputType(schema.StringType).
+	inputType := model.NewUnionTypeAnnotated(
+		[]model.Type{model.StringType, model.NewOutputType(model.StringType)},
+		&schema.InputType{ElementType: schema.StringType},
+	)
+
+	expr := pcl.NewConvertCall(
+		model.VariableReference(&model.Variable{Name: "bucketName", VariableType: model.StringType}),
+		inputType,
+	)
+
+	g.Fgenf(&index, "%v", expr)
+	assert.Equal(t, "pulumi.String(bucketName)", index.String())
 }
 
 func TestTupleConsExpression(t *testing.T) {
