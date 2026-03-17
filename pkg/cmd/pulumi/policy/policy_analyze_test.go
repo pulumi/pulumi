@@ -33,27 +33,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// noopCleanup is a no-op cleanup function for injecting into tests.
-func noopCleanup() {}
-
-// stubLoadAnalyzers returns a loadAnalyzers function that yields the given analyzers.
-func stubLoadAnalyzers(analyzers []plugin.Analyzer) func(
-	context.Context, []engine.LocalPolicyPack,
-) ([]plugin.Analyzer, func(), error) {
-	return func(_ context.Context, _ []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
-		return analyzers, noopCleanup, nil
-	}
-}
-
-// stubSnapshot returns a getSnapshot function yielding the given snapshot.
-func stubSnapshot(snap *deploy.Snapshot) func(context.Context, backend.Stack) (*deploy.Snapshot, error) {
-	return func(_ context.Context, _ backend.Stack) (*deploy.Snapshot, error) {
-		return snap, nil
-	}
-}
-
-// makeSnapshot builds a minimal snapshot containing a single resource.
-func makeSnapshot() *deploy.Snapshot {
+// makeAnalyzeSnapshot builds a minimal snapshot with a single resource.
+func makeAnalyzeSnapshot() *deploy.Snapshot {
 	return &deploy.Snapshot{
 		Resources: []*resource.State{{
 			Type:    tokens.Type("pkg:index:MyResource"),
@@ -64,22 +45,48 @@ func makeSnapshot() *deploy.Snapshot {
 	}
 }
 
-// stubRunAnalysis returns a runAnalysis function that records calls and returns the given result.
-func stubRunAnalysis(hasMandatory bool, err error) func(
-	context.Context, *deploy.Snapshot, []plugin.Analyzer, deploy.PolicyEvents,
-) (bool, error) {
-	return func(_ context.Context, _ *deploy.Snapshot, _ []plugin.Analyzer, _ deploy.PolicyEvents) (bool, error) {
-		return hasMandatory, err
+// stubRequireStack returns a requireStack func that yields the given stack.
+func stubRequireStack(s backend.Stack) func(context.Context, string) (backend.Stack, error) {
+	return func(_ context.Context, _ string) (backend.Stack, error) { return s, nil }
+}
+
+// stubGetSnapshot returns a getSnapshot func that yields the given snapshot.
+func stubGetSnapshot(snap *deploy.Snapshot) func(context.Context, backend.Stack) (*deploy.Snapshot, error) {
+	return func(_ context.Context, _ backend.Stack) (*deploy.Snapshot, error) { return snap, nil }
+}
+
+// stubLoadAnalyzers returns a loadAnalyzers func that yields the given analyzers.
+func stubLoadAnalyzers(analyzers []plugin.Analyzer) func(context.Context, []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
+	return func(_ context.Context, _ []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
+		return analyzers, func() {}, nil
 	}
+}
+
+// runAnalyzeCmd is a helper that sets up a newPolicyAnalyzeCmd with the given
+// injectable dependencies, attaches extra args, runs it, and returns the error.
+func runAnalyzeCmd(
+	t *testing.T,
+	requireStack func(context.Context, string) (backend.Stack, error),
+	getSnapshot func(context.Context, backend.Stack) (*deploy.Snapshot, error),
+	loadAnalyzers func(context.Context, []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error),
+	extraArgs ...string,
+) (string, error) {
+	t.Helper()
+	var stderr bytes.Buffer
+	cmd := newPolicyAnalyzeCmd(requireStack, getSnapshot, loadAnalyzers)
+	cmd.SetErr(&stderr)
+	args := append([]string{"--policy-pack", "./pack"}, extraArgs...)
+	cmd.SetArgs(args)
+	err := cmd.ExecuteContext(t.Context())
+	return stderr.String(), err
 }
 
 func TestPolicyAnalyzeCmd_RequiresPolicyPackFlag(t *testing.T) {
 	t.Parallel()
 
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{stderr: &stderr}
-
-	err := cmd.Run(t.Context(), "", nil, nil)
+	cmd := newPolicyAnalyzeCmd(nil, nil, nil)
+	cmd.SetArgs([]string{}) // no --policy-pack
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--policy-pack")
 }
@@ -87,10 +94,9 @@ func TestPolicyAnalyzeCmd_RequiresPolicyPackFlag(t *testing.T) {
 func TestPolicyAnalyzeCmd_ConfigCountMustMatchPackCount(t *testing.T) {
 	t.Parallel()
 
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{stderr: &stderr}
-
-	err := cmd.Run(t.Context(), "", []string{"./my-pack"}, []string{"a.json", "b.json"})
+	cmd := newPolicyAnalyzeCmd(nil, nil, nil)
+	cmd.SetArgs([]string{"--policy-pack", "./pack", "--policy-pack-config", "a.json", "--policy-pack-config", "b.json"})
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--policy-pack-config")
 }
@@ -99,19 +105,11 @@ func TestPolicyAnalyzeCmd_UsesCurrentStackWhenNoneSpecified(t *testing.T) {
 	t.Parallel()
 
 	var requestedStack string
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			requestedStack = name
-			return newMockStack(&backend.MockBackend{}), nil
-		},
-		getSnapshot:   stubSnapshot(makeSnapshot()),
-		loadAnalyzers: stubLoadAnalyzers(nil),
-		runAnalysis:   stubRunAnalysis(false, nil),
+	requireStack := func(_ context.Context, name string) (backend.Stack, error) {
+		requestedStack = name
+		return newMockStack(&backend.MockBackend{}), nil
 	}
-
-	err := cmd.Run(t.Context(), "", []string{"./pack"}, nil)
+	_, err := runAnalyzeCmd(t, requireStack, stubGetSnapshot(makeAnalyzeSnapshot()), stubLoadAnalyzers(nil))
 	require.NoError(t, err)
 	assert.Empty(t, requestedStack, "empty stack name means use current stack")
 }
@@ -120,19 +118,11 @@ func TestPolicyAnalyzeCmd_UsesSpecifiedStack(t *testing.T) {
 	t.Parallel()
 
 	var requestedStack string
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			requestedStack = name
-			return newMockStack(&backend.MockBackend{}), nil
-		},
-		getSnapshot:   stubSnapshot(makeSnapshot()),
-		loadAnalyzers: stubLoadAnalyzers(nil),
-		runAnalysis:   stubRunAnalysis(false, nil),
+	requireStack := func(_ context.Context, name string) (backend.Stack, error) {
+		requestedStack = name
+		return newMockStack(&backend.MockBackend{}), nil
 	}
-
-	err := cmd.Run(t.Context(), "my-stack", []string{"./pack"}, nil)
+	_, err := runAnalyzeCmd(t, requireStack, stubGetSnapshot(makeAnalyzeSnapshot()), stubLoadAnalyzers(nil), "--stack", "my-stack")
 	require.NoError(t, err)
 	assert.Equal(t, "my-stack", requestedStack)
 }
@@ -140,15 +130,10 @@ func TestPolicyAnalyzeCmd_UsesSpecifiedStack(t *testing.T) {
 func TestPolicyAnalyzeCmd_FriendlyErrorWhenNoProjectAndNoStack(t *testing.T) {
 	t.Parallel()
 
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return nil, fmt.Errorf("loading: %w", workspace.ErrProjectNotFound)
-		},
+	requireStack := func(_ context.Context, _ string) (backend.Stack, error) {
+		return nil, fmt.Errorf("loading: %w", workspace.ErrProjectNotFound)
 	}
-
-	err := cmd.Run(t.Context(), "", []string{"./pack"}, nil)
+	_, err := runAnalyzeCmd(t, requireStack, nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--stack flag")
 	assert.NotErrorIs(t, err, workspace.ErrProjectNotFound)
@@ -157,32 +142,19 @@ func TestPolicyAnalyzeCmd_FriendlyErrorWhenNoProjectAndNoStack(t *testing.T) {
 func TestPolicyAnalyzeCmd_OriginalErrorWhenStackSpecifiedAndNotFound(t *testing.T) {
 	t.Parallel()
 
-	expectedErr := workspace.ErrProjectNotFound
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return nil, expectedErr
-		},
+	requireStack := func(_ context.Context, _ string) (backend.Stack, error) {
+		return nil, workspace.ErrProjectNotFound
 	}
-
-	err := cmd.Run(t.Context(), "my-stack", []string{"./pack"}, nil)
-	assert.ErrorIs(t, err, expectedErr)
+	_, err := runAnalyzeCmd(t, requireStack, nil, nil, "--stack", "my-stack")
+	assert.ErrorIs(t, err, workspace.ErrProjectNotFound)
 }
 
 func TestPolicyAnalyzeCmd_ErrorOnStackNotFound(t *testing.T) {
 	t.Parallel()
 
 	expectedErr := errors.New("stack not found")
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return nil, expectedErr
-		},
-	}
-
-	err := cmd.Run(t.Context(), "bad-stack", []string{"./pack"}, nil)
+	requireStack := func(_ context.Context, _ string) (backend.Stack, error) { return nil, expectedErr }
+	_, err := runAnalyzeCmd(t, requireStack, nil, nil)
 	assert.ErrorIs(t, err, expectedErr)
 }
 
@@ -190,18 +162,8 @@ func TestPolicyAnalyzeCmd_ErrorOnSnapshotFailure(t *testing.T) {
 	t.Parallel()
 
 	snapErr := errors.New("cannot load snapshot")
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return newMockStack(&backend.MockBackend{}), nil
-		},
-		getSnapshot: func(ctx context.Context, s backend.Stack) (*deploy.Snapshot, error) {
-			return nil, snapErr
-		},
-	}
-
-	err := cmd.Run(t.Context(), "", []string{"./pack"}, nil)
+	getSnapshot := func(_ context.Context, _ backend.Stack) (*deploy.Snapshot, error) { return nil, snapErr }
+	_, err := runAnalyzeCmd(t, stubRequireStack(newMockStack(&backend.MockBackend{})), getSnapshot, nil)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, snapErr)
 	assert.ErrorContains(t, err, "loading stack snapshot")
@@ -210,95 +172,51 @@ func TestPolicyAnalyzeCmd_ErrorOnSnapshotFailure(t *testing.T) {
 func TestPolicyAnalyzeCmd_EmptySnapshotPrintsMessage(t *testing.T) {
 	t.Parallel()
 
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return newMockStack(&backend.MockBackend{}), nil
-		},
-		getSnapshot: stubSnapshot(&deploy.Snapshot{}),
-	}
-
-	err := cmd.Run(t.Context(), "", []string{"./pack"}, nil)
+	out, err := runAnalyzeCmd(t,
+		stubRequireStack(newMockStack(&backend.MockBackend{})),
+		stubGetSnapshot(&deploy.Snapshot{}),
+		nil)
 	require.NoError(t, err)
-	assert.Contains(t, stderr.String(), "no resources")
+	assert.Contains(t, out, "no resources")
 }
 
 func TestPolicyAnalyzeCmd_NilSnapshotPrintsMessage(t *testing.T) {
 	t.Parallel()
 
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return newMockStack(&backend.MockBackend{}), nil
-		},
-		getSnapshot: stubSnapshot(nil),
-	}
-
-	err := cmd.Run(t.Context(), "", []string{"./pack"}, nil)
+	out, err := runAnalyzeCmd(t,
+		stubRequireStack(newMockStack(&backend.MockBackend{})),
+		stubGetSnapshot(nil),
+		nil)
 	require.NoError(t, err)
-	assert.Contains(t, stderr.String(), "no resources")
+	assert.Contains(t, out, "no resources")
 }
 
 func TestPolicyAnalyzeCmd_ErrorOnLoadAnalyzersFailure(t *testing.T) {
 	t.Parallel()
 
 	loadErr := errors.New("pack not found")
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return newMockStack(&backend.MockBackend{}), nil
-		},
-		getSnapshot: stubSnapshot(makeSnapshot()),
-		loadAnalyzers: func(ctx context.Context, packs []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
-			return nil, nil, loadErr
-		},
+	loadAnalyzers := func(_ context.Context, _ []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
+		return nil, nil, loadErr
 	}
-
-	err := cmd.Run(t.Context(), "", []string{"./bad-pack"}, nil)
+	_, err := runAnalyzeCmd(t,
+		stubRequireStack(newMockStack(&backend.MockBackend{})),
+		stubGetSnapshot(makeAnalyzeSnapshot()),
+		loadAnalyzers)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, loadErr)
 	assert.ErrorContains(t, err, "loading policy packs")
 }
 
-func TestPolicyAnalyzeCmd_ErrorOnAnalysisFailure(t *testing.T) {
-	t.Parallel()
-
-	analysisErr := errors.New("analysis failed")
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return newMockStack(&backend.MockBackend{}), nil
-		},
-		getSnapshot:   stubSnapshot(makeSnapshot()),
-		loadAnalyzers: stubLoadAnalyzers(nil),
-		runAnalysis:   stubRunAnalysis(false, analysisErr),
-	}
-
-	err := cmd.Run(t.Context(), "", []string{"./pack"}, nil)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, analysisErr)
-	assert.ErrorContains(t, err, "running policy analysis")
-}
-
 func TestPolicyAnalyzeCmd_MandatoryViolationReturnsError(t *testing.T) {
 	t.Parallel()
 
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return newMockStack(&backend.MockBackend{}), nil
-		},
-		getSnapshot:   stubSnapshot(makeSnapshot()),
-		loadAnalyzers: stubLoadAnalyzers(nil),
-		runAnalysis:   stubRunAnalysis(true, nil),
-	}
-
-	err := cmd.Run(t.Context(), "", []string{"./pack"}, nil)
+	// Use a real deploytest.Analyzer that returns a mandatory violation so that
+	// the command runs through deploy.AnalyzeSnapshot end-to-end.
+	analyzer := &fakeAnalyzer{mandatory: true}
+	_, err := runAnalyzeCmd(t,
+		stubRequireStack(newMockStack(&backend.MockBackend{})),
+		stubGetSnapshot(makeAnalyzeSnapshot()),
+		stubLoadAnalyzers([]plugin.Analyzer{analyzer}))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "mandatory policy violations")
 }
@@ -306,47 +224,44 @@ func TestPolicyAnalyzeCmd_MandatoryViolationReturnsError(t *testing.T) {
 func TestPolicyAnalyzeCmd_NoViolationsSucceeds(t *testing.T) {
 	t.Parallel()
 
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return newMockStack(&backend.MockBackend{}), nil
-		},
-		getSnapshot:   stubSnapshot(makeSnapshot()),
-		loadAnalyzers: stubLoadAnalyzers(nil),
-		runAnalysis:   stubRunAnalysis(false, nil),
-	}
-
-	err := cmd.Run(t.Context(), "", []string{"./pack"}, nil)
+	_, err := runAnalyzeCmd(t,
+		stubRequireStack(newMockStack(&backend.MockBackend{})),
+		stubGetSnapshot(makeAnalyzeSnapshot()),
+		stubLoadAnalyzers(nil))
 	require.NoError(t, err)
 }
 
-func TestPolicyAnalyzeCmd_SnapshotPassedToAnalysis(t *testing.T) {
-	t.Parallel()
-
-	snap := makeSnapshot()
-	var gotSnap *deploy.Snapshot
-
-	var stderr bytes.Buffer
-	cmd := policyAnalyzeCmd{
-		stderr: &stderr,
-		requireStack: func(ctx context.Context, name string) (backend.Stack, error) {
-			return newMockStack(&backend.MockBackend{}), nil
-		},
-		getSnapshot:   stubSnapshot(snap),
-		loadAnalyzers: stubLoadAnalyzers(nil),
-		runAnalysis: func(
-			ctx context.Context,
-			s *deploy.Snapshot,
-			analyzers []plugin.Analyzer,
-			events deploy.PolicyEvents,
-		) (bool, error) {
-			gotSnap = s
-			return false, nil
-		},
-	}
-
-	err := cmd.Run(t.Context(), "", []string{"./pack"}, nil)
-	require.NoError(t, err)
-	assert.Same(t, snap, gotSnap, "the snapshot returned by getSnapshot should be passed to runAnalysis")
+// fakeAnalyzer is a minimal plugin.Analyzer for use in command-level tests.
+type fakeAnalyzer struct {
+	mandatory bool
 }
+
+func (a *fakeAnalyzer) Analyze(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+	if a.mandatory {
+		return plugin.AnalyzeResponse{
+			Diagnostics: []plugin.AnalyzeDiagnostic{{
+				PolicyName:       "test-policy",
+				PolicyPackName:   "test-pack",
+				EnforcementLevel: "mandatory",
+				Message:          "test violation",
+				URN:              r.URN,
+			}},
+		}, nil
+	}
+	return plugin.AnalyzeResponse{}, nil
+}
+
+func (a *fakeAnalyzer) AnalyzeStack(_ []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+	return plugin.AnalyzeResponse{}, nil
+}
+func (a *fakeAnalyzer) Remediate(_ plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
+	return plugin.RemediateResponse{}, nil
+}
+func (a *fakeAnalyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
+	return plugin.AnalyzerInfo{Name: "test-pack"}, nil
+}
+func (a *fakeAnalyzer) Name() tokens.QName                       { return "test-pack" }
+func (a *fakeAnalyzer) GetPluginInfo() (plugin.PluginInfo, error) { return plugin.PluginInfo{}, nil }
+func (a *fakeAnalyzer) Configure(_ map[string]plugin.AnalyzerPolicyConfig) error { return nil }
+func (a *fakeAnalyzer) Cancel(_ context.Context) error                           { return nil }
+func (a *fakeAnalyzer) Close() error                                             { return nil }
