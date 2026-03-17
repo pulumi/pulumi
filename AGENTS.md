@@ -13,6 +13,33 @@ The core Pulumi SDK and CLI. Go monorepo with multiple Go modules (`pkg/`, `sdk/
 - `scripts/` — CI and development helper scripts
 - `changelog/` — Pending changelog entries
 
+### pkg/ in more detail
+```
+pkg/
+├── cmd/pulumi/          # CLI commands (Cobra). Entry: main.go → pulumi.go (NewPulumiCmd)
+│   ├── operations/      # pulumi up/destroy/preview/refresh
+│   ├── config/          # pulumi config
+│   ├── state/           # pulumi state
+│   └── stack/           # pulumi stack
+├── backend/             # Stack backends
+│   ├── httpstate/       # Pulumi Cloud backend
+│   ├── diy/             # Self-hosted (file, S3, GCS, Azure, Postgres)
+│   └── display/         # Event → CLI output rendering
+├── engine/              # Deployment orchestration
+│   └── lifecycletest/   # Lifecycle + fuzz tests
+├── resource/deploy/     # Step generation, execution, state management
+│   ├── providers/       # Provider registry
+│   └── deploytest/      # Mock providers/hosts for tests
+├── codegen/             # Code generation
+│   ├── go/, python/, nodejs/, dotnet/  # Language generators
+│   ├── schema/          # Type system and schema loading
+│   ├── hcl2/, pcl/      # PCL parsing and binding
+│   └── testing/test/testdata/  # Golden file tests
+├── secrets/             # Encryption: b64/, passphrase/, cloud/
+├── workspace/           # Pulumi.yaml loading, plugin management
+└── display/             # Terminal output formatting
+```
+
 ## Command canon
 All commands assume you're at the repo root.
 
@@ -37,6 +64,62 @@ All commands assume you're at the repo root.
 - `cd sdk/nodejs && make test_fast`
 - `cd sdk/python && make test_fast`
 - `cd sdk/go && make test_fast`
+
+## Code conventions
+
+### Style
+- **Formatter:** gofumpt (not gofmt)
+- **Linter:** golangci-lint v2, config in `.golangci.yml`
+- **License header required** on all files (Apache 2.0, enforced by `goheader` linter)
+- **Imports:** stdlib, then third-party, then internal Pulumi packages (enforced by linter)
+- **Import aliases:** `pulumirpc`, `testingrpc`, `mapset`, `ptesting` (see `.golangci.yml` `importas`)
+
+### Naming
+- Files: `[feature].go`, tests: `[feature]_test.go`
+- Types: PascalCase, no `I` prefix on interfaces
+- Constructors: `New[Type]()` pattern
+- Receivers: short (`d *Deployment`, `s *Stack`)
+
+### Error handling
+- Wrap with `fmt.Errorf("context: %w", err)` for `errors.Is`/`errors.As` support
+- **Bail errors:** `result.BailError(err)` / `result.IsBail(err)` for expected failures already reported to the user
+- **Decrypt errors:** `engine.AsDecryptError(err)` for config decryption failures
+- **Snapshot errors:** `snapshot.AsSnapshotIntegrityError(err)` for serious bugs that generate a diagnostic bundle
+- **Backend errors:** `backenderr.ErrNotFound`, `ErrLoginRequired`, `ErrForbidden`, all `errors.Is()` compatible
+- **Contract checks:** `util/contract` package, panics in debug builds
+
+### Testing
+- Always use `t.Parallel()` unless modifying global state (enforced by `paralleltest` linter)
+- Use `require` for critical assertions, `assert` for secondary checks
+- Table-driven tests with `t.Run()` subtests
+- Mocks: custom struct types implementing interfaces (no mock framework)
+- Suppress parallel requirement with `//nolint:paralleltest // reason`
+- Integration tests: `tests/integration/`, gated by `PULUMI_INTEGRATION_TESTS`
+- Lifecycle tests: `pkg/engine/lifecycletest/`, supports fuzzing via Rapid
+
+### Forbidden imports (enforced by `depguard`)
+- `github.com/golang/protobuf` — use `google.golang.org/protobuf`
+
+## Architecture
+
+**Data flow:** CLI → Backend → Engine → Resource Monitor → Step Generator → Step Executor → Plugin (gRPC)
+
+1. CLI parses command, loads workspace (`Pulumi.yaml`)
+2. Backend acquires stack (Cloud or DIY)
+3. Engine orchestrates deployment, emits events
+4. **Resource monitor** receives `RegisterResource` RPCs from language SDK, resolves default providers, dispatches `Construct` for multi-language components
+5. **Step generator** processes registration events **serially** (critical path!) and diffs desired vs current state, issues steps fire-and-forget to executor
+6. **Step executor** applies steps in parallel via chain/antichain model
+7. Snapshot manager persists state (journaling + atomic writes)
+
+**Key abstractions:**
+- `Backend` interface (`pkg/backend/backend.go`) for Cloud vs local
+- `Step` interface (`pkg/resource/deploy/step.go`) with 11 types: Create, Update, Delete, Same, Replace, Read, Refresh, Import, Diff, View, RemovePendingReplace
+- `StepExecutor` with chain (serial) / antichain (parallel) execution model
+- Resource Monitor as gRPC shim between language SDKs and engine, handling default providers
+- Plugin Host managing gRPC resource provider lifecycle
+
+See also: `developer-docs/architecture/` for detailed diagrams and algorithms.
 
 ## Key invariants
 - The repo has multiple Go modules (`pkg/go.mod`, `sdk/go.mod`, `tests/go.mod`, etc.). Changes to `go.mod` in one module may require updates in others. Run `make tidy` to verify.
@@ -78,3 +161,25 @@ All commands assume you're at the repo root.
 - Anything in `pkg/codegen/` → run codegen tests: `cd pkg && go test -count=1 -tags all ./codegen/...`
 - Anything in `pkg/backend/display/...` → add a test that uses pre-constructed, JSON-serialized engine events (ref. testProgressEvents)
 - Anything that adds or changes the engine, resource options, or the provider interface → add a test to `pkg/engine/lifecycletest/`
+
+## Adding new code
+
+| What | Where | Register in |
+|------|-------|-------------|
+| New CLI command | `pkg/cmd/pulumi/[cmd]/` | `pkg/cmd/pulumi/pulumi.go` (commandGroup) |
+| New subcommand | Existing command dir | Parent's `AddCommand()` |
+| New backend | `pkg/backend/[name]/` | Backend factory |
+| New secret provider | `pkg/secrets/[name]/` | Secrets factory |
+| New resource feature | `pkg/resource/deploy/` | Step types / executor |
+| New codegen language | `pkg/codegen/[lang]/` | `GeneratePackage()` + `schema.Language` |
+| New codegen test | `pkg/codegen/testing/test/testdata/[name]/` | Golden files per language |
+
+## Deeper documentation
+
+Each major subsystem has its own AGENTS.md with implementation details:
+
+- **`pkg/cmd/pulumi/AGENTS.md`** — Command patterns, registration, flag handling, constrictor args
+- **`pkg/backend/AGENTS.md`** — Backend interface, httpstate vs diy, state persistence, error types
+- **`pkg/engine/AGENTS.md`** — Deployment flow, event system, plugin management, cancellation, lifecycle tests
+- **`pkg/resource/deploy/AGENTS.md`** — Step types, generator algorithm, executor parallelism, race conditions, deploytest mocks
+- **`pkg/codegen/AGENTS.md`** — Generation pipeline, schema system, PCL, language generators, golden file testing
