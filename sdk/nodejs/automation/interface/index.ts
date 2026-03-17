@@ -109,7 +109,6 @@ export class API {
 
         if (stackName != null) {
             __arguments.push("" + stackName);
-
         }
         if (__arguments.length > 0) {
             __final.push("--");

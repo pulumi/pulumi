@@ -275,12 +275,10 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
             } else if (variadic) {
                 writer.writeLine(`for (const __item of ${name} ?? []) {`);
                 writer.indent(() => argument(specification, false, false, "__item"));
-                writer.writeLine(`}`);
+                writer.writeLine("}");
             } else {
                 writer.writeLine(`__arguments.push("" + ${name});`);
             }
-
-            writer.blankLine();
         }
 
         writer.writeLine("const __flags: string[] = [];");
