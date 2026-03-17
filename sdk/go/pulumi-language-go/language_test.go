@@ -110,7 +110,6 @@ var expectedFailures = map[string]string{
 	"l1-builtin-to-json":     "Go doesn't support output based toJSON",
 
 	// pulumi/pulumi#18345
-	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types", //nolint:lll
 	"l2-snake-names":                      "nesting apply is not generated correctly",
 	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
 	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
