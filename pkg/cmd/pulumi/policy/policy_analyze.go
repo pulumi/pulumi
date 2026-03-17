@@ -21,15 +21,14 @@ import (
 	"io"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -43,9 +42,7 @@ import (
 func newPolicyAnalyzeCmd(
 	ws pkgWorkspace.Context,
 	lm cmdBackend.LoginManager,
-	// getSnapshot fetches the current snapshot for a stack.
-	// Nil uses secrets.DefaultProvider.
-	getSnapshot func(ctx context.Context, s backend.Stack) (*deploy.Snapshot, error),
+	secretsProvider secrets.Provider,
 	// loadAnalyzers loads and configures local policy pack analyzers.
 	// Nil uses the real plugin host.
 	loadAnalyzers func(ctx context.Context, packs []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error),
@@ -73,13 +70,6 @@ func newPolicyAnalyzeCmd(
 			if len(policyPackConfigs) > 0 && len(policyPackConfigs) != len(policyPackPaths) {
 				return errors.New(
 					"the number of --policy-pack-config paths must match the number of --policy-pack paths")
-			}
-
-			// Default: getSnapshot.
-			if getSnapshot == nil {
-				getSnapshot = func(ctx context.Context, s backend.Stack) (*deploy.Snapshot, error) {
-					return s.Snapshot(ctx, backendSecrets.DefaultProvider)
-				}
 			}
 
 			// Default: loadAnalyzers.
@@ -111,7 +101,7 @@ func newPolicyAnalyzeCmd(
 			}
 
 			// Load the current stack snapshot.
-			snap, err := getSnapshot(ctx, s)
+			snap, err := s.Snapshot(ctx, secretsProvider)
 			if err != nil {
 				return fmt.Errorf("loading stack snapshot: %w", err)
 			}

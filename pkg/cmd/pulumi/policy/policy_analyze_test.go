@@ -27,6 +27,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -48,10 +49,10 @@ func makeAnalyzeSnapshot() *deploy.Snapshot {
 	}
 }
 
-// newMockBackendForAnalyze returns a wired-up MockBackend and MockStack for use in
-// policy analyze tests. Tests must pass "--stack", "<name>" to take the simpler
-// named-stack code path, which only requires ParseStackReferenceF and GetStackF.
-func newMockBackendForAnalyze() (*backend.MockBackend, backend.Stack) {
+// newMockBackendForAnalyze returns a wired-up MockBackend and MockStack. Tests
+// must pass "--stack", "<name>" to take the simpler named-stack code path.
+// Set stk.SnapshotF before running the command to control snapshot behavior.
+func newMockBackendForAnalyze() (*backend.MockBackend, *backend.MockStack) {
 	var be *backend.MockBackend
 	stk := &backend.MockStack{
 		BackendF: func() backend.Backend { return be },
@@ -86,11 +87,6 @@ func newMockWsAndLm(be backend.Backend) (pkgWorkspace.Context, cmdBackend.LoginM
 	return ws, lm
 }
 
-// stubGetSnapshot returns a getSnapshot func that yields the given snapshot.
-func stubGetSnapshot(snap *deploy.Snapshot) func(context.Context, backend.Stack) (*deploy.Snapshot, error) {
-	return func(_ context.Context, _ backend.Stack) (*deploy.Snapshot, error) { return snap, nil }
-}
-
 // stubLoadAnalyzers returns a loadAnalyzers func that yields the given analyzers.
 func stubLoadAnalyzers(
 	analyzers []plugin.Analyzer,
@@ -109,13 +105,12 @@ func runAnalyzeCmd(
 	t *testing.T,
 	ws pkgWorkspace.Context,
 	lm cmdBackend.LoginManager,
-	getSnapshot func(context.Context, backend.Stack) (*deploy.Snapshot, error),
 	loadAnalyzers func(context.Context, []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error),
 	extraArgs ...string,
 ) (string, error) {
 	t.Helper()
 	var stderr bytes.Buffer
-	cmd := newPolicyAnalyzeCmd(ws, lm, getSnapshot, loadAnalyzers)
+	cmd := newPolicyAnalyzeCmd(ws, lm, nil, loadAnalyzers)
 	cmd.SetErr(&stderr)
 	args := append([]string{"--policy-pack", "./pack"}, extraArgs...)
 	cmd.SetArgs(args)
@@ -146,11 +141,13 @@ func TestPolicyAnalyzeCmd_ConfigCountMustMatchPackCount(t *testing.T) {
 func TestPolicyAnalyzeCmd_ErrorOnSnapshotFailure(t *testing.T) {
 	t.Parallel()
 
-	be, _ := newMockBackendForAnalyze()
-	ws, lm := newMockWsAndLm(be)
 	snapErr := errors.New("cannot load snapshot")
-	getSnapshot := func(_ context.Context, _ backend.Stack) (*deploy.Snapshot, error) { return nil, snapErr }
-	_, err := runAnalyzeCmd(t, ws, lm, getSnapshot, nil, "--stack", "my-stack")
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return nil, snapErr
+	}
+	ws, lm := newMockWsAndLm(be)
+	_, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, snapErr)
 	assert.ErrorContains(t, err, "loading stack snapshot")
@@ -159,9 +156,12 @@ func TestPolicyAnalyzeCmd_ErrorOnSnapshotFailure(t *testing.T) {
 func TestPolicyAnalyzeCmd_EmptySnapshotPrintsMessage(t *testing.T) {
 	t.Parallel()
 
-	be, _ := newMockBackendForAnalyze()
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return &deploy.Snapshot{}, nil
+	}
 	ws, lm := newMockWsAndLm(be)
-	out, err := runAnalyzeCmd(t, ws, lm, stubGetSnapshot(&deploy.Snapshot{}), nil, "--stack", "my-stack")
+	out, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
 	require.NoError(t, err)
 	assert.Contains(t, out, "no resources")
 }
@@ -169,9 +169,12 @@ func TestPolicyAnalyzeCmd_EmptySnapshotPrintsMessage(t *testing.T) {
 func TestPolicyAnalyzeCmd_NilSnapshotPrintsMessage(t *testing.T) {
 	t.Parallel()
 
-	be, _ := newMockBackendForAnalyze()
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return nil, nil
+	}
 	ws, lm := newMockWsAndLm(be)
-	out, err := runAnalyzeCmd(t, ws, lm, stubGetSnapshot(nil), nil, "--stack", "my-stack")
+	out, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
 	require.NoError(t, err)
 	assert.Contains(t, out, "no resources")
 }
@@ -179,13 +182,16 @@ func TestPolicyAnalyzeCmd_NilSnapshotPrintsMessage(t *testing.T) {
 func TestPolicyAnalyzeCmd_ErrorOnLoadAnalyzersFailure(t *testing.T) {
 	t.Parallel()
 
-	be, _ := newMockBackendForAnalyze()
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return makeAnalyzeSnapshot(), nil
+	}
 	ws, lm := newMockWsAndLm(be)
 	loadErr := errors.New("pack not found")
 	loadAnalyzers := func(_ context.Context, _ []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
 		return nil, nil, loadErr
 	}
-	_, err := runAnalyzeCmd(t, ws, lm, stubGetSnapshot(makeAnalyzeSnapshot()), loadAnalyzers, "--stack", "my-stack")
+	_, err := runAnalyzeCmd(t, ws, lm, loadAnalyzers, "--stack", "my-stack")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, loadErr)
 	assert.ErrorContains(t, err, "loading policy packs")
@@ -194,11 +200,13 @@ func TestPolicyAnalyzeCmd_ErrorOnLoadAnalyzersFailure(t *testing.T) {
 func TestPolicyAnalyzeCmd_MandatoryViolationReturnsError(t *testing.T) {
 	t.Parallel()
 
-	be, _ := newMockBackendForAnalyze()
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return makeAnalyzeSnapshot(), nil
+	}
 	ws, lm := newMockWsAndLm(be)
 	analyzer := &fakeAnalyzer{mandatory: true}
 	_, err := runAnalyzeCmd(t, ws, lm,
-		stubGetSnapshot(makeAnalyzeSnapshot()),
 		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
 		"--stack", "my-stack")
 	require.Error(t, err)
@@ -208,12 +216,12 @@ func TestPolicyAnalyzeCmd_MandatoryViolationReturnsError(t *testing.T) {
 func TestPolicyAnalyzeCmd_NoViolationsSucceeds(t *testing.T) {
 	t.Parallel()
 
-	be, _ := newMockBackendForAnalyze()
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return makeAnalyzeSnapshot(), nil
+	}
 	ws, lm := newMockWsAndLm(be)
-	_, err := runAnalyzeCmd(t, ws, lm,
-		stubGetSnapshot(makeAnalyzeSnapshot()),
-		stubLoadAnalyzers(nil),
-		"--stack", "my-stack")
+	_, err := runAnalyzeCmd(t, ws, lm, stubLoadAnalyzers(nil), "--stack", "my-stack")
 	require.NoError(t, err)
 }
 
