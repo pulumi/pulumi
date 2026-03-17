@@ -119,7 +119,7 @@ func newPolicyAnalyzeCmd(
 			defer cleanup()
 
 			// Run analysis against the snapshot.
-			events := &analyzeEvents{out: cmd.ErrOrStderr()}
+			events := &analyzeEvents{out: cmd.OutOrStdout()}
 			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, events)
 			if err != nil {
 				return fmt.Errorf("running policy analysis: %w", err)
