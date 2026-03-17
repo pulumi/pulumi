@@ -56,8 +56,12 @@ func stubGetSnapshot(snap *deploy.Snapshot) func(context.Context, backend.Stack)
 }
 
 // stubLoadAnalyzers returns a loadAnalyzers func that yields the given analyzers.
-func stubLoadAnalyzers(analyzers []plugin.Analyzer) func(context.Context, []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
-	return func(_ context.Context, _ []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
+func stubLoadAnalyzers(
+	analyzers []plugin.Analyzer,
+) func(context.Context, []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
+	return func(
+		_ context.Context, _ []engine.LocalPolicyPack,
+	) ([]plugin.Analyzer, func(), error) {
 		return analyzers, func() {}, nil
 	}
 }
@@ -122,7 +126,10 @@ func TestPolicyAnalyzeCmd_UsesSpecifiedStack(t *testing.T) {
 		requestedStack = name
 		return newMockStack(&backend.MockBackend{}), nil
 	}
-	_, err := runAnalyzeCmd(t, requireStack, stubGetSnapshot(makeAnalyzeSnapshot()), stubLoadAnalyzers(nil), "--stack", "my-stack")
+	_, err := runAnalyzeCmd(
+		t, requireStack,
+		stubGetSnapshot(makeAnalyzeSnapshot()),
+		stubLoadAnalyzers(nil), "--stack", "my-stack")
 	require.NoError(t, err)
 	assert.Equal(t, "my-stack", requestedStack)
 }
@@ -254,14 +261,16 @@ func (a *fakeAnalyzer) Analyze(r plugin.AnalyzerResource) (plugin.AnalyzeRespons
 func (a *fakeAnalyzer) AnalyzeStack(_ []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 	return plugin.AnalyzeResponse{}, nil
 }
+
 func (a *fakeAnalyzer) Remediate(_ plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 	return plugin.RemediateResponse{}, nil
 }
+
 func (a *fakeAnalyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
 	return plugin.AnalyzerInfo{Name: "test-pack"}, nil
 }
-func (a *fakeAnalyzer) Name() tokens.QName                       { return "test-pack" }
-func (a *fakeAnalyzer) GetPluginInfo() (plugin.PluginInfo, error) { return plugin.PluginInfo{}, nil }
+func (a *fakeAnalyzer) Name() tokens.QName                                       { return "test-pack" }
+func (a *fakeAnalyzer) GetPluginInfo() (plugin.PluginInfo, error)                { return plugin.PluginInfo{}, nil }
 func (a *fakeAnalyzer) Configure(_ map[string]plugin.AnalyzerPolicyConfig) error { return nil }
 func (a *fakeAnalyzer) Cancel(_ context.Context) error                           { return nil }
 func (a *fakeAnalyzer) Close() error                                             { return nil }

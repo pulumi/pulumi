@@ -226,6 +226,5 @@ func (e *analyzeEvents) OnPolicyAnalyzeSummary(_ plugin.PolicySummary)      {}
 func (e *analyzeEvents) OnPolicyRemediateSummary(_ plugin.PolicySummary)    {}
 func (e *analyzeEvents) OnPolicyAnalyzeStackSummary(_ plugin.PolicySummary) {}
 
-
 // Ensure analyzeEvents satisfies the interface at compile time.
 var _ deploy.PolicyEvents = (*analyzeEvents)(nil)
