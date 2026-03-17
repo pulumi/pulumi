@@ -445,8 +445,8 @@ func (ctx *observeContext) rewriteRelativeTraversalExpression(expr *model.Relati
 			partResolvedType, isEventual = ctx.isEventualType(model.GetTraversableType(expr.Parts[i+1]))
 		}
 		if isEventual {
-			expr.Traversal, expr.Parts = expr.Traversal[:i+1], expr.Parts[:i+1]
-			paramType, traversal, parts = partResolvedType, expr.Traversal[i+1:], expr.Parts[i+1:]
+			expr.Traversal, expr.Parts = expr.Traversal[:i+1], expr.Parts[:i+2]
+			paramType, traversal, parts = partResolvedType, expr.Traversal[i+1:], expr.Parts[i+2:]
 			break
 		}
 	}
