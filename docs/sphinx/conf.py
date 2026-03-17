@@ -20,7 +20,7 @@ sys.path.append(os.path.abspath("./_ext"))
 # -- Project information -----------------------------------------------------
 
 project = "Pulumi"
-copyright = "Pulumi 2024-2025"
+copyright = "Pulumi 2024-2026"
 author = "Pulumi engineering"
 
 
@@ -94,7 +94,10 @@ myst_url_schemes = {
 intersphinx_mapping = {
     # Terrafom Bridge developer documentation
     # https://github.com/pulumi/pulumi-terraform-bridge
-    "tfbridge": ("https://pulumi-developer-docs.readthedocs.io/projects/pulumi-terraform-bridge/en/latest/", None),
+    "tfbridge": (
+        "https://pulumi-developer-docs.readthedocs.io/projects/pulumi-terraform-bridge/en/latest/",
+        None,
+    ),
 }
 
 # Sphinx defaults to trying to automatically resolve *unresolved* labels using
@@ -127,14 +130,18 @@ exclude_patterns = [
     "**/*.rst.inc",
     "**/node_modules",
     "**/site-packages",
+    "**/.pytest_cache",
     ".direnv",
     ".git",
     "node_modules",
+    "sdk/nodejs/bin",
+    "sdk/nodejs/vendor",
     # Pulumi-specific cases
     ## Standalone documentation files/noise from vendored libraries (CHANGELOGs,
     ## LICENSEs, etc.)
+    "AGENTS.md",
     "CHANGELOG.md",
-    "CODE_OF_CONDUCT.md",
+    "CODE-OF-CONDUCT.md",
     "CONTRIBUTING.md",
     "README.md",
     ## Test data
