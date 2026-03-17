@@ -37,14 +37,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
 func newPolicyAnalyzeCmd(
-	// requireStack fetches the named stack (empty string = current stack).
-	// Nil uses the standard implementation.
-	requireStack func(ctx context.Context, stackName string) (backend.Stack, error),
+	ws pkgWorkspace.Context,
+	lm cmdBackend.LoginManager,
 	// getSnapshot fetches the current snapshot for a stack.
 	// Nil uses secrets.DefaultProvider.
 	getSnapshot func(ctx context.Context, s backend.Stack) (*deploy.Snapshot, error),
@@ -77,15 +75,6 @@ func newPolicyAnalyzeCmd(
 					"the number of --policy-pack-config paths must match the number of --policy-pack paths")
 			}
 
-			// Default: requireStack.
-			if requireStack == nil {
-				requireStack = func(ctx context.Context, name string) (backend.Stack, error) {
-					displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-					return cmdStack.RequireStack(ctx, cmdutil.Diag(), pkgWorkspace.Instance,
-						cmdBackend.DefaultLoginManager, name, cmdStack.LoadOnly, displayOpts)
-				}
-			}
-
 			// Default: getSnapshot.
 			if getSnapshot == nil {
 				getSnapshot = func(ctx context.Context, s backend.Stack) (*deploy.Snapshot, error) {
@@ -115,12 +104,9 @@ func newPolicyAnalyzeCmd(
 			}
 
 			// Get the stack.
-			s, err := requireStack(ctx, stack)
+			displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
+			s, err := cmdStack.RequireStack(ctx, cmdutil.Diag(), ws, lm, stack, cmdStack.LoadOnly, displayOpts)
 			if err != nil {
-				if stack == "" && errors.Is(err, workspace.ErrProjectNotFound) {
-					return errors.New("could not find a Pulumi project in the current working directory; " +
-						"please specify a stack using the --stack flag")
-				}
 				return err
 			}
 
