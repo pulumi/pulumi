@@ -98,8 +98,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-invoke-options-depends-on": "not implemented yet",
-	"l3-deferred-outputs":          "Cannot find name '_arg0_'.",
+	"l3-deferred-outputs": "Cannot find name '_arg0_'.",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
