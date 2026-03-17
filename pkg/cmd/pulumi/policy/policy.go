@@ -30,7 +30,9 @@ func NewPolicyCmd() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.AddCommand(newPolicyAnalyzeCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, backendSecrets.DefaultProvider, nil))
+	cmd.AddCommand(newPolicyAnalyzeCmd(
+		pkgWorkspace.Instance, cmdBackend.DefaultLoginManager,
+		backendSecrets.DefaultProvider, nil))
 	cmd.AddCommand(newPolicyDisableCmd())
 	cmd.AddCommand(newPolicyEnableCmd())
 	cmd.AddCommand(newPolicyGroupCmd())

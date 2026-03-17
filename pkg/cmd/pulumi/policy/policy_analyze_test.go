@@ -124,8 +124,7 @@ func TestPolicyAnalyzeCmd_RequiresPolicyPackFlag(t *testing.T) {
 	cmd := newPolicyAnalyzeCmd(nil, nil, nil, nil)
 	cmd.SetArgs([]string{}) // no --policy-pack
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--policy-pack")
+	assert.ErrorContains(t, err, "--policy-pack")
 }
 
 func TestPolicyAnalyzeCmd_ConfigCountMustMatchPackCount(t *testing.T) {
@@ -134,8 +133,7 @@ func TestPolicyAnalyzeCmd_ConfigCountMustMatchPackCount(t *testing.T) {
 	cmd := newPolicyAnalyzeCmd(nil, nil, nil, nil)
 	cmd.SetArgs([]string{"--policy-pack", "./pack", "--policy-pack-config", "a.json", "--policy-pack-config", "b.json"})
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--policy-pack-config")
+	assert.ErrorContains(t, err, "--policy-pack-config")
 }
 
 func TestPolicyAnalyzeCmd_ErrorOnSnapshotFailure(t *testing.T) {
@@ -148,7 +146,6 @@ func TestPolicyAnalyzeCmd_ErrorOnSnapshotFailure(t *testing.T) {
 	}
 	ws, lm := newMockWsAndLm(be)
 	_, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
-	require.Error(t, err)
 	assert.ErrorIs(t, err, snapErr)
 	assert.ErrorContains(t, err, "loading stack snapshot")
 }
@@ -192,7 +189,6 @@ func TestPolicyAnalyzeCmd_ErrorOnLoadAnalyzersFailure(t *testing.T) {
 		return nil, nil, loadErr
 	}
 	_, err := runAnalyzeCmd(t, ws, lm, loadAnalyzers, "--stack", "my-stack")
-	require.Error(t, err)
 	assert.ErrorIs(t, err, loadErr)
 	assert.ErrorContains(t, err, "loading policy packs")
 }
@@ -209,8 +205,7 @@ func TestPolicyAnalyzeCmd_MandatoryViolationReturnsError(t *testing.T) {
 	_, err := runAnalyzeCmd(t, ws, lm,
 		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
 		"--stack", "my-stack")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "mandatory policy violations")
+	assert.ErrorContains(t, err, "mandatory policy violations")
 }
 
 func TestPolicyAnalyzeCmd_NoViolationsSucceeds(t *testing.T) {
