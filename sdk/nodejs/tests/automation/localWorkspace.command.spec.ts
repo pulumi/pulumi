@@ -16,7 +16,7 @@ import assert from "assert";
 import * as semver from "semver";
 import * as tmp from "tmp";
 
-import { CommandResult, LocalWorkspace, PulumiCommand } from "../../automation";
+import { CommandResult, LocalWorkspace, PulumiCommand, Stack } from "../../automation";
 import { withTestBackend } from "./util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
@@ -139,5 +139,29 @@ describe("LocalWorkspace - PulumiCommand", () => {
         const ws = await LocalWorkspace.create(withTestBackend({ pulumiCommand: mockCommand }));
 
         await assert.rejects(() => ws.install({ useLanguageVersionTools: true }));
+    });
+
+    it("cancels a running update via the automation CLI API", async () => {
+        let recordedArgs: string[] | undefined;
+        const mockCommand = {
+            command: "pulumi",
+            version: semver.parse("3.200.0"),
+            run: async (
+                args: string[],
+                cwd: string,
+                additionalEnv: { [key: string]: string },
+            ): Promise<CommandResult> => {
+                recordedArgs = args;
+                return new CommandResult("some output", "", 0);
+            },
+        };
+
+        const ws = await LocalWorkspace.create(withTestBackend({ pulumiCommand: mockCommand }));
+        const stack = await Stack.create("cancel-test", ws);
+
+        await stack.cancel();
+
+        assert.ok(recordedArgs, "expected cancel to invoke the CLI");
+        assert.deepStrictEqual(recordedArgs, ["cancel", "--stack", stack.name]);
     });
 });
