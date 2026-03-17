@@ -1321,7 +1321,6 @@ Event: ${line}\n${e.toString()}`);
             api.cancel({
                 ...base,
                 stack: this.name,
-                yes: true,
             }),
         );
     }
