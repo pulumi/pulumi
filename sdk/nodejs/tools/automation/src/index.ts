@@ -95,14 +95,23 @@ function generateOptionsTypes(
     const allFlags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
     const visibleFlags = Object.values(allFlags).filter((f) => !f.omit);
 
-    source.addInterface({
-        kind: StructureKind.Interface,
-        name: createOptionsTypeName(breadcrumbs),
-        extends: ["BaseOptions"],
-        docs: ["Options for the `" + command + "` command."],
-        isExported: true,
-        properties: visibleFlags.map(flagToPropertySignature),
-    });
+    // Only emit options types for structures that will also have a corresponding
+    // command method in the generated API. Non-executable menus (like the root
+    // "pulumi" node) do not produce methods, so we skip generating their
+    // options types to avoid orphaned interfaces such as `PulumiOptions`.
+    const shouldEmitOptions =
+        structure.type === "command" || (structure.type === "menu" && structure.executable === true);
+
+    if (shouldEmitOptions) {
+        source.addInterface({
+            kind: StructureKind.Interface,
+            name: createOptionsTypeName(breadcrumbs),
+            extends: ["BaseOptions"],
+            docs: ["Options for the `" + command + "` command."],
+            isExported: true,
+            properties: visibleFlags.map(flagToPropertySignature),
+        });
+    }
 
     if (structure.type === "menu" && structure.commands) {
         const childInherited = Object.fromEntries(Object.entries(allFlags).map(([k, v]) => [k, baseFlag(v)]));

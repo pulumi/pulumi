@@ -120,34 +120,6 @@ export class API {
     }
 }
 
-/** Options for the `pulumi ` command. */
-export interface PulumiOptions extends BaseOptions {
-    /** Colorize output. Choices are: always, never, raw, auto */
-    color?: string;
-    /** Run pulumi as if it had been started in another directory */
-    cwd?: string;
-    /** Disable integrity checking of checkpoint files */
-    disableIntegrityChecking?: boolean;
-    /** Show fully-qualified stack names */
-    fullyQualifyStackNames?: boolean;
-    /** Flow log settings to child processes (like plugins) */
-    logflow?: boolean;
-    /** Log to stderr instead of to files */
-    logtostderr?: boolean;
-    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
-    memprofilerate?: number;
-    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors */
-    otelTraces?: string;
-    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
-    profiling?: string;
-    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
-    tracing?: string;
-    /** Include the tracing header with the given contents. */
-    tracingHeader?: string;
-    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
-    verbose?: number;
-}
-
 /** Options for the `pulumi cancel` command. */
 export interface PulumiCancelOptions extends BaseOptions {
     /** Colorize output. Choices are: always, never, raw, auto */
