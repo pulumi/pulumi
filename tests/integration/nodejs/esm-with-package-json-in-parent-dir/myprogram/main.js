@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 // If this program runs successfully, then the test passes.
 // Locating and executing this file is enough to demonstrate that the `main` field
 // has been read correctly, because the package.json file
