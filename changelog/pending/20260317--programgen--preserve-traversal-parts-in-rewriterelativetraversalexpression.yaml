@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Preserve traversal parts in rewriteRelativeTraversalExpression
