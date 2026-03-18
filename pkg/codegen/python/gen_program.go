@@ -648,6 +648,9 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 }
 
 func tokenToQualifiedName(pkg, module, member string) string {
+	if module == "index" {
+		module = ""
+	}
 	components := strings.Split(strings.ToLower(module), "/")
 	for i, component := range components {
 		components[i] = PyName(component)
