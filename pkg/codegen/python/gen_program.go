@@ -903,6 +903,8 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 						switch key.AsString() {
 						case "name":
 							g.Fgenf(w, "name=%v", item.Value)
+						case "type":
+							g.Fgenf(w, "type_=%v", item.Value)
 						case "noParent":
 							g.Fgenf(w, "parent=(None if %v else ...)", item.Value)
 						case "parent":
