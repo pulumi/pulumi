@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -213,28 +214,6 @@ type compactJSONMarshaler struct{}
 var diyJSONMarshaler encoding.Marshaler = compactJSONMarshaler{}
 
 func (compactJSONMarshaler) Marshal(v any) ([]byte, error) {
-	switch checkpoint := v.(type) {
-	case *apitype.VersionedCheckpoint:
-		if checkpoint != nil {
-			// json.RawMessage emits its bytes verbatim, so compact the nested payload too.
-			compactJSON, err := compactRawJSON(checkpoint.Checkpoint)
-			if err != nil {
-				return nil, fmt.Errorf("compacting checkpoint payload: %w", err)
-			}
-
-			compactCheckpoint := *checkpoint
-			compactCheckpoint.Checkpoint = compactJSON
-			v = &compactCheckpoint
-		}
-	case apitype.VersionedCheckpoint:
-		compactJSON, err := compactRawJSON(checkpoint.Checkpoint)
-		if err != nil {
-			return nil, fmt.Errorf("compacting checkpoint payload: %w", err)
-		}
-		checkpoint.Checkpoint = compactJSON
-		v = checkpoint
-	}
-
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
@@ -258,6 +237,53 @@ func compactRawJSON(data json.RawMessage) (json.RawMessage, error) {
 		return nil, err
 	}
 	return append(json.RawMessage(nil), compact.Bytes()...), nil
+}
+
+func marshalVersionedCheckpoint(
+	version int,
+	features []string,
+	checkpoint any,
+) (*apitype.VersionedCheckpoint, error) {
+	bytes, err := diyJSONMarshaler.Marshal(checkpoint)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
+	}
+
+	return &apitype.VersionedCheckpoint{
+		Version:    version,
+		Features:   features,
+		Checkpoint: json.RawMessage(bytes),
+	}, nil
+}
+
+func typedDeploymentToVersionedCheckpoint(
+	stackName tokens.QName,
+	deployment apitype.TypedDeployment,
+) (*apitype.VersionedCheckpoint, error) {
+	return marshalVersionedCheckpoint(deployment.Version, deployment.Features, apitype.CheckpointV3{
+		Stack:  stackName,
+		Latest: deployment.Deployment,
+	})
+}
+
+func untypedDeploymentToVersionedCheckpoint(
+	stackName tokens.QName,
+	deployment *apitype.UntypedDeployment,
+) (*apitype.VersionedCheckpoint, error) {
+	contract.Requiref(deployment != nil, "deployment", "must not be nil")
+
+	latest, err := compactRawJSON(deployment.Deployment)
+	if err != nil {
+		return nil, fmt.Errorf("compacting deployment: %w", err)
+	}
+
+	return marshalVersionedCheckpoint(deployment.Version, deployment.Features, struct {
+		Stack  tokens.QName    `json:"stack,omitempty"`
+		Latest json.RawMessage `json:"latest,omitempty"`
+	}{
+		Stack:  stackName,
+		Latest: latest,
+	})
 }
 
 func (b *diyBackend) saveCheckpoint(
@@ -362,8 +388,7 @@ func (b *diyBackend) saveStack(
 	deployment apitype.TypedDeployment,
 ) (string, error) {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
-	chk, err := stack.DeploymentV3ToCheckpoint(
-		ref.FullyQualifiedName(), deployment.Deployment, deployment.Version, deployment.Features)
+	chk, err := typedDeploymentToVersionedCheckpoint(ref.FullyQualifiedName(), deployment)
 	if err != nil {
 		return "", fmt.Errorf("serializing checkpoint: %w", err)
 	}

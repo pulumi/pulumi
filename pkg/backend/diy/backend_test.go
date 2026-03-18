@@ -2121,6 +2121,10 @@ func TestJSONCheckpointIsCompact(t *testing.T) {
 		"v1:4iF78gb0nF0=:v1:Co6IbTWYs/UdrjgY:FSrAWOFZnj9ealCUDdJL7LrUKXX9BA==")
 	require.NoError(t, err)
 
+	var prettyDeployment bytes.Buffer
+	require.NoError(t, json.Indent(&prettyDeployment, deployment.Deployment, "", "    "))
+	deployment.Deployment = prettyDeployment.Bytes()
+
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
 	err = b.ImportDeployment(ctx, s, deployment)
 	require.NoError(t, err)
