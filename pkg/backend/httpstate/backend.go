@@ -2352,7 +2352,7 @@ func getAccountDetails(
 	// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).
 		GetPulumiAccountDetails(ctx)
-	if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
+	if errors.Is(err, backenderr.LoginRequiredError{}) {
 		return "", nil, nil, ErrUnauthorized
 	}
 	return username, organizations, tokenInfo, err
