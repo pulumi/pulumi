@@ -122,6 +122,56 @@ func TestProjectNameDefaults(t *testing.T) {
 	assert.Contains(t, string(yamlBytes), "name: pcl_testdata")
 }
 
+// Tests that converting from an empty directory with --strict returns an error.
+func TestConvertEmptyDirectoryStrict(t *testing.T) {
+	t.Parallel()
+
+	emptyDir := t.TempDir()
+	outDir := t.TempDir()
+
+	err := runConvert(
+		context.Background(),
+		pkgWorkspace.Instance,
+		env.Global(),
+		[]string{}, /*args*/
+		emptyDir,   /*cwd*/
+		[]string{}, /*mappings*/
+		"pcl",      /*from*/
+		"pcl",      /*language*/
+		outDir,
+		true, /*generateOnly*/
+		true, /*strict*/
+		"",   /*name*/
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no pcl source files found")
+}
+
+// Tests that converting from an empty directory without --strict produces a warning but no error.
+func TestConvertEmptyDirectoryNonStrict(t *testing.T) {
+	t.Parallel()
+
+	emptyDir := t.TempDir()
+	outDir := t.TempDir()
+
+	err := runConvert(
+		context.Background(),
+		pkgWorkspace.Instance,
+		env.Global(),
+		[]string{}, /*args*/
+		emptyDir,   /*cwd*/
+		[]string{}, /*mappings*/
+		"pcl",      /*from*/
+		"pcl",      /*language*/
+		outDir,
+		true,  /*generateOnly*/
+		false, /*strict*/
+		"",    /*name*/
+	)
+	// Should not error in non-strict mode
+	assert.NoError(t, err)
+}
+
 // Tests that project names can be overridden by the user.
 func TestProjectNameOverrides(t *testing.T) {
 	t.Parallel()

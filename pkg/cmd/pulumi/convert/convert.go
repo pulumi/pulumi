@@ -428,6 +428,29 @@ func runConvert(
 		}
 	}
 
+	// Check if the converter produced any PCL output files. If not, warn the user that no source
+	// files were detected.
+	pclFiles, err := os.ReadDir(pclDirectory)
+	if err != nil {
+		return fmt.Errorf("read PCL output directory: %w", err)
+	}
+	hasPCLFiles := false
+	for _, f := range pclFiles {
+		if !f.IsDir() && filepath.Ext(f.Name()) == ".pp" {
+			hasPCLFiles = true
+			break
+		}
+	}
+	if !hasPCLFiles {
+		if strict {
+			return fmt.Errorf("no %s source files found in '%s'", from, cwd)
+		}
+		pCtx.Diag.Warningf(
+			diag.Message("", "No %s source files were found in the current directory '%s'. "+
+				"Use --strict to make this an error."),
+			from, cwd)
+	}
+
 	// Load the project from the pcl directory if there is one. We default to a project with just
 	// the name of the original directory.
 	proj := &workspace.Project{Name: tokens.PackageName(name)}
