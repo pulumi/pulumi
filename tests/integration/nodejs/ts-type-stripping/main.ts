@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 import * as fs from "fs";
 import { x } from "./other.ts"; // When using type stripping, we use `.ts`, unlike ESM where you have to use `.js`.
