@@ -115,6 +115,7 @@ func TestStackTagsWithFileBackend(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(content), "environment")
 	assert.Contains(t, string(content), "production")
+	assert.Contains(t, string(content), `"version":1`)
 }
 
 // TestStackTagsFilteringIntegration tests stack filtering by tags

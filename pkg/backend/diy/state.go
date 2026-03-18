@@ -213,9 +213,26 @@ type compactJSONMarshaler struct{}
 var diyJSONMarshaler encoding.Marshaler = compactJSONMarshaler{}
 
 func (compactJSONMarshaler) Marshal(v any) ([]byte, error) {
-	v, err := compactJSONValue(v)
-	if err != nil {
-		return nil, err
+	switch checkpoint := v.(type) {
+	case *apitype.VersionedCheckpoint:
+		if checkpoint != nil {
+			// json.RawMessage emits its bytes verbatim, so compact the nested payload too.
+			compactJSON, err := compactRawJSON(checkpoint.Checkpoint)
+			if err != nil {
+				return nil, fmt.Errorf("compacting checkpoint payload: %w", err)
+			}
+
+			compactCheckpoint := *checkpoint
+			compactCheckpoint.Checkpoint = compactJSON
+			v = &compactCheckpoint
+		}
+	case apitype.VersionedCheckpoint:
+		compactJSON, err := compactRawJSON(checkpoint.Checkpoint)
+		if err != nil {
+			return nil, fmt.Errorf("compacting checkpoint payload: %w", err)
+		}
+		checkpoint.Checkpoint = compactJSON
+		v = checkpoint
 	}
 
 	var buf bytes.Buffer
@@ -229,32 +246,6 @@ func (compactJSONMarshaler) Marshal(v any) ([]byte, error) {
 
 func (compactJSONMarshaler) Unmarshal(data []byte, v any) error {
 	return json.Unmarshal(data, v)
-}
-
-func compactJSONValue(v any) (any, error) {
-	switch checkpoint := v.(type) {
-	case *apitype.VersionedCheckpoint:
-		if checkpoint == nil {
-			return nil, nil
-		}
-
-		compactCheckpoint := *checkpoint
-		compactJSON, err := compactRawJSON(checkpoint.Checkpoint)
-		if err != nil {
-			return nil, fmt.Errorf("compacting checkpoint payload: %w", err)
-		}
-		compactCheckpoint.Checkpoint = compactJSON
-		return &compactCheckpoint, nil
-	case apitype.VersionedCheckpoint:
-		compactJSON, err := compactRawJSON(checkpoint.Checkpoint)
-		if err != nil {
-			return nil, fmt.Errorf("compacting checkpoint payload: %w", err)
-		}
-		checkpoint.Checkpoint = compactJSON
-		return checkpoint, nil
-	default:
-		return v, nil
-	}
 }
 
 func compactRawJSON(data json.RawMessage) (json.RawMessage, error) {

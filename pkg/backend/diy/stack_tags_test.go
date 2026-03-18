@@ -15,7 +15,9 @@
 package diy
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -358,6 +360,38 @@ func TestStackTagsFiltering(t *testing.T) {
 		}
 	}
 	require.Len(t, matchedRefs, 2) // stack1, stack3 have team=backend
+}
+
+func TestStackTagsJSONFormat(t *testing.T) {
+	t.Parallel()
+
+	b, ctx := setupTestBackend(t)
+	ref := createTestStackRef("myproject", "mystack")
+	ref.store = b.store
+
+	testTags := map[apitype.StackTagName]string{
+		"env":   "dev",
+		"owner": "team-foo",
+	}
+
+	err := b.saveStackTags(ctx, ref, testTags)
+	require.NoError(t, err)
+
+	tagsPath := b.stackTagsPath(ref)
+	rawData, err := b.bucket.ReadAll(ctx, tagsPath)
+	require.NoError(t, err)
+
+	var tagsFile stackTagsFile
+	err = json.Unmarshal(rawData, &tagsFile)
+	require.NoError(t, err)
+
+	assert.Equal(t, stackTagsVersion, tagsFile.Version)
+	assert.Equal(t, testTags, tagsFile.Tags)
+
+	trimmed := bytes.TrimSpace(rawData)
+	var compact bytes.Buffer
+	require.NoError(t, json.Compact(&compact, trimmed))
+	assert.Equal(t, compact.String(), string(trimmed))
 }
 
 func TestInvalidStackReference(t *testing.T) {
