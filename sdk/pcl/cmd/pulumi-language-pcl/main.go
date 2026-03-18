@@ -553,7 +553,15 @@ func (host *pclLanguageHost) GenerateProject(
 		return nil, fmt.Errorf("copy source directory: %w", err)
 	}
 
+	// Only copy local dependencies that the program actually references.
+	referencedPackages := map[string]bool{}
+	for _, ref := range program.PackageReferences() {
+		referencedPackages[ref.Name()] = true
+	}
 	for name, content := range req.LocalDependencies {
+		if !referencedPackages[name] {
+			continue
+		}
 		outPath := path.Join(directory, name+".pp")
 		err := fsutil.CopyFile(outPath, content, nil)
 		if err != nil {
