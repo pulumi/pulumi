@@ -1,6 +1,7 @@
 package main
 
 import (
+	"example.com/pulumi-component/sdk/go/v13/component"
 	"example.com/pulumi-simple/sdk/go/v2/simple"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -35,6 +36,12 @@ func main() {
 		_, err = simple.NewResource(ctx, "aliasParent", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		}, pulumi.Parent(aliasURN))
+		if err != nil {
+			return err
+		}
+		_, err = component.NewCustom(ctx, "aliasType", &component.CustomArgs{
+			Value: pulumi.String("true"),
+		})
 		if err != nil {
 			return err
 		}

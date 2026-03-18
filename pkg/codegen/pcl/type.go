@@ -31,6 +31,7 @@ var (
 	// (with "name" and "parent", etc fields).
 	AliasType = model.NewUnionType(model.StringType, model.NewObjectType(map[string]model.Type{
 		"name":     model.NewOptionalType(model.StringType),
+		"type":     model.NewOptionalType(model.StringType),
 		"noParent": model.NewOptionalType(model.BoolType),
 		"parent":   model.NewOptionalType(model.DynamicType),
 	}))

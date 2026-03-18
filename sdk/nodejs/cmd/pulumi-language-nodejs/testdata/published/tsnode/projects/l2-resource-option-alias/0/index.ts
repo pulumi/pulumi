@@ -1,4 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as component from "@pulumi/component";
 import * as simple from "@pulumi/simple";
 
 // Make a simple resource to use as a parent
@@ -9,3 +10,4 @@ const aliasNoParent = new simple.Resource("aliasNoParent", {value: true});
 const aliasParent = new simple.Resource("aliasParent", {value: true}, {
     parent: aliasURN,
 });
+const aliasType = new component.Custom("aliasType", {value: "true"});

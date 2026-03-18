@@ -15,9 +15,13 @@ resource "aliasNoParent" "simple:index:Resource" {
     value = true
 }
 
-resource "aliasParent" "simple:index:Resource" { 
+resource "aliasParent" "simple:index:Resource" {
     value = true
     options {
         parent = aliasURN
     }
+}
+
+resource "aliasType" "simple:index:AltResource" {
+    value = true
 }
