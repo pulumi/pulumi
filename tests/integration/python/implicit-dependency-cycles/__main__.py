@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+# Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 # Regression test for https://github.com/pulumi/pulumi/issues/13551
 import pulumi

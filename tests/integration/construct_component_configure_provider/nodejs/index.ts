@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 import * as metaprovider from "@pulumi/metaprovider";
 import * as pulumi from "@pulumi/pulumi";
