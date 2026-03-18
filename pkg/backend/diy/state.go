@@ -213,6 +213,11 @@ type compactJSONMarshaler struct{}
 var diyJSONMarshaler encoding.Marshaler = compactJSONMarshaler{}
 
 func (compactJSONMarshaler) Marshal(v any) ([]byte, error) {
+	v, err := compactJSONValue(v)
+	if err != nil {
+		return nil, err
+	}
+
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
@@ -226,20 +231,42 @@ func (compactJSONMarshaler) Unmarshal(data []byte, v any) error {
 	return json.Unmarshal(data, v)
 }
 
-func normalizeVersionedCheckpoint(checkpoint *apitype.VersionedCheckpoint) (*apitype.VersionedCheckpoint, error) {
-	if checkpoint == nil {
+func compactJSONValue(v any) (any, error) {
+	switch checkpoint := v.(type) {
+	case *apitype.VersionedCheckpoint:
+		if checkpoint == nil {
+			return nil, nil
+		}
+
+		compactCheckpoint := *checkpoint
+		compactJSON, err := compactRawJSON(checkpoint.Checkpoint)
+		if err != nil {
+			return nil, fmt.Errorf("compacting checkpoint payload: %w", err)
+		}
+		compactCheckpoint.Checkpoint = compactJSON
+		return &compactCheckpoint, nil
+	case apitype.VersionedCheckpoint:
+		compactJSON, err := compactRawJSON(checkpoint.Checkpoint)
+		if err != nil {
+			return nil, fmt.Errorf("compacting checkpoint payload: %w", err)
+		}
+		checkpoint.Checkpoint = compactJSON
+		return checkpoint, nil
+	default:
+		return v, nil
+	}
+}
+
+func compactRawJSON(data json.RawMessage) (json.RawMessage, error) {
+	if len(data) == 0 {
 		return nil, nil
 	}
 
-	normalized := *checkpoint
-	if len(normalized.Checkpoint) > 0 {
-		var compact bytes.Buffer
-		if err := json.Compact(&compact, normalized.Checkpoint); err != nil {
-			return nil, fmt.Errorf("compacting checkpoint payload: %w", err)
-		}
-		normalized.Checkpoint = append(json.RawMessage(nil), compact.Bytes()...)
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, data); err != nil {
+		return nil, err
 	}
-	return &normalized, nil
+	return append(json.RawMessage(nil), compact.Bytes()...), nil
 }
 
 func (b *diyBackend) saveCheckpoint(
@@ -261,19 +288,12 @@ func (b *diyBackend) saveCheckpoint(
 	if compExt != "" {
 		file = file + compExt
 	}
-	var err error
-	checkpointToSave := checkpoint
 	if ext == encoding.JSONExt {
-		checkpointToSave, err = normalizeVersionedCheckpoint(checkpoint)
-		if err != nil {
-			return "", "", fmt.Errorf("serializing checkpoint: %w", err)
-		}
-		m = encoding.Compress(diyJSONMarshaler, b.compression)
-	} else {
-		m = encoding.Compress(m, b.compression)
+		m = diyJSONMarshaler
 	}
+	m = encoding.Compress(m, b.compression)
 
-	byts, err := m.Marshal(checkpointToSave)
+	byts, err := m.Marshal(checkpoint)
 	if err != nil {
 		return "", "", fmt.Errorf("An IO error occurred while marshalling the checkpoint: %w", err)
 	}
