@@ -1390,6 +1390,21 @@ type LiteralValueExpression struct {
 	exprType Type
 }
 
+func literalValueType(value cty.Value) Type {
+	if value.IsNull() {
+		return NoneType
+	}
+
+	if value.Type() == cty.Number {
+		if _, acc := value.AsBigFloat().Int(nil); acc == big.Exact {
+			return IntType
+		}
+		return NumberType
+	}
+
+	return ctyTypeToType(value.Type(), false)
+}
+
 // SyntaxNode returns the syntax node associated with the literal value expression.
 func (x *LiteralValueExpression) SyntaxNode() hclsyntax.Node {
 	if x.Syntax == nil {
@@ -1406,7 +1421,7 @@ func (x *LiteralValueExpression) NodeTokens() syntax.NodeTokens {
 // Type returns the type of the literal value expression.
 func (x *LiteralValueExpression) Type() Type {
 	if x.exprType == nil {
-		typ := ctyTypeToType(x.Value.Type(), false)
+		typ := literalValueType(x.Value)
 		x.exprType = NewConstType(typ, x.Value)
 	}
 	return x.exprType
@@ -1415,10 +1430,7 @@ func (x *LiteralValueExpression) Type() Type {
 func (x *LiteralValueExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
-	typ := NoneType
-	if !x.Value.IsNull() {
-		typ = ctyTypeToType(x.Value.Type(), false)
-	}
+	typ := literalValueType(x.Value)
 
 	switch typ {
 	case NoneType, StringType, IntType, NumberType, BoolType:

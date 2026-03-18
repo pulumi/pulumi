@@ -755,7 +755,7 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		g.Fgenf(w, "%v", expr.Value.True())
 	case model.NoneType:
 		g.Fgen(w, "null")
-	case model.NumberType:
+	case model.NumberType, model.IntType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {
 			g.Fgenf(w, "%d", i)
