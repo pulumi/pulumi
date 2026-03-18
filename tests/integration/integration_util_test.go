@@ -31,6 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -112,6 +113,78 @@ func testComponentProviderSchema(t *testing.T, path string) {
 				assert.ErrorContains(t, err, test.expectedError)
 			} else {
 				assert.Equal(t, test.expected, resp.GetSchema())
+			}
+		})
+	}
+}
+
+// schemaEnvMutex protects environment variable manipulation when creating providers
+// in testComponentProviderSchemaPlugin. Multiple test functions may run in parallel,
+// so we serialize the env var set/unset and provider creation.
+var schemaEnvMutex sync.Mutex
+
+// testComponentProviderSchemaPlugin tests the GetSchema RPC for component providers
+// that don't have native binaries (shimless providers). It uses the plugin system
+// to start the provider via the appropriate language runtime.
+func testComponentProviderSchemaPlugin(t *testing.T, dir string) {
+	runComponentSetup(t, "component_provider_schema")
+
+	tests := []struct {
+		name          string
+		env           map[string]string
+		version       int32
+		expected      string
+		expectedError string
+	}{
+		{
+			name:     "Default",
+			expected: "{}",
+		},
+		{
+			name:     "Schema",
+			env:      map[string]string{"INCLUDE_SCHEMA": "true"},
+			expected: `{"hello": "world"}`,
+		},
+		{
+			name:          "Invalid Version",
+			version:       15,
+			expectedError: "unsupported schema version 15",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Serialize env var manipulation and provider creation across parallel test functions.
+			schemaEnvMutex.Lock()
+			for k, v := range test.env {
+				os.Setenv(k, v)
+			}
+
+			absDir, err := filepath.Abs(dir)
+			require.NoError(t, err)
+
+			pCtx, err := plugin.NewContext(context.Background(), nil, nil, nil, nil, absDir, nil, false, nil, nil)
+			require.NoError(t, err)
+
+			prov, err := plugin.NewProviderFromPath(pCtx.Host, pCtx, "testcomponent", absDir)
+
+			for k := range test.env {
+				os.Unsetenv(k)
+			}
+			schemaEnvMutex.Unlock()
+
+			require.NoError(t, err)
+			defer func() {
+				assert.NoError(t, prov.Close())
+				assert.NoError(t, pCtx.Close())
+			}()
+
+			// Call GetSchema and verify the results.
+			resp, err := prov.GetSchema(context.Background(), plugin.GetSchemaRequest{Version: test.version})
+			if test.expectedError != "" {
+				assert.ErrorContains(t, err, test.expectedError)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expected, string(resp.Schema))
 			}
 		})
 	}
