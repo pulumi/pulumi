@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -326,6 +327,31 @@ func ParseDirectory(parser *syntax.Parser, directory string) (hcl.Diagnostics, e
 	return parseDiagnostics, nil
 }
 
+func packageDescriptorsEqual(a, b *schema.PackageDescriptor) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	if a.Name != b.Name || a.DownloadURL != b.DownloadURL {
+		return false
+	}
+	if (a.Version == nil) != (b.Version == nil) {
+		return false
+	}
+	if a.Version != nil && !a.Version.Equals(*b.Version) {
+		return false
+	}
+	if (a.Parameterization == nil) != (b.Parameterization == nil) {
+		return false
+	}
+	if a.Parameterization != nil {
+		ap, bp := a.Parameterization, b.Parameterization
+		if ap.Name != bp.Name || !ap.Version.Equals(bp.Version) || !bytes.Equal(ap.Value, bp.Value) {
+			return false
+		}
+	}
+	return true
+}
+
 func ReadAllPackageDescriptors(files []*syntax.File) (map[string]*schema.PackageDescriptor, hcl.Diagnostics) {
 	descriptorMap := map[string]*schema.PackageDescriptor{}
 	var diagnostics hcl.Diagnostics
@@ -333,8 +359,14 @@ func ReadAllPackageDescriptors(files []*syntax.File) (map[string]*schema.Package
 		packageDescriptors, diags := ReadPackageDescriptors(file)
 		diagnostics = append(diagnostics, diags...)
 		for packageName, descriptor := range packageDescriptors {
-			if _, ok := descriptorMap[packageName]; ok {
-				message := fmt.Sprintf("package %q was already defined", packageName)
+			existing, ok := descriptorMap[packageName]
+			if ok {
+				if packageDescriptorsEqual(existing, descriptor) {
+					// Identical duplicate — silently skip. This happens when the same package block
+					// appears in multiple files (e.g. main.pp and a per-package .pp file).
+					continue
+				}
+				message := fmt.Sprintf("package %q was already defined with different parameters", packageName)
 				subjectRange := file.Body.Range()
 				diagnostics = append(diagnostics, &hcl.Diagnostic{
 					Severity: hcl.DiagError,
