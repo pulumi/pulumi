@@ -639,83 +639,110 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 			}
 
 			labels := node.Labels
-			if len(labels) != 1 {
+			if len(labels) > 1 {
 				diagnostics = append(diagnostics,
-					labelsErrorf(node, "package blocks must have exactly one label (the package name)"))
+					labelsErrorf(node, "package blocks must have at most one label"))
 				continue
 			}
 
-			packageName := labels[0]
-			// make sure we don't declare the same package twice
-			if _, ok := packageDescriptors[packageName]; ok {
-				diagnostics = append(diagnostics,
-					errorf(node.Range(), "package %q was already defined", packageName))
-				continue
+			if len(labels) == 1 {
+				labelRange := node.LabelRanges[0]
+				diagnostics = append(diagnostics, &hcl.Diagnostic{
+					Severity: hcl.DiagWarning,
+					Summary:  "package block label is deprecated",
+					Detail:   "Package block labels should be replaced by baseProviderName.",
+					Subject:  &labelRange,
+				})
 			}
 
 			// read the attributes of the package block to fill in the package descriptor data
 			packageDescriptor := &schema.PackageDescriptor{}
 
-			if node.Body != nil {
-				for _, attribute := range node.Body.Attributes {
-					switch attribute.Name {
-					case "baseProviderName":
-						baseProviderName, err := evaluateLiteralExpr(attribute.Expr)
-						if err != nil {
-							diagnostics = append(diagnostics,
-								errorf(attribute.Range(), "invalid base provider name for %q: %v", packageName, err))
-							continue
-						}
+			if node.Body == nil {
+				diagnostics = append(diagnostics,
+					errorf(node.Range(), "package blocks must set base provider information"))
+				continue
+			}
 
-						packageDescriptor.Name = baseProviderName
-					case "baseProviderVersion":
-						version, _ := evaluateLiteralExpr(attribute.Expr)
-						parsedVersion, err := semver.Make(version)
-						if err != nil {
-							// parsing the version failed, error out and skip this package
-							diagnostics = append(diagnostics,
-								errorf(attribute.Range(),
-									"invalid baseProviderVersion %q for %q: %v", version, packageName, err))
-							continue
-						}
-						packageDescriptor.Version = &parsedVersion
-					case "baseProviderDownloadUrl":
-						downloadURLValue, err := evaluateLiteralExpr(attribute.Expr)
-						if err != nil {
-							diagnostics = append(diagnostics,
-								errorf(attribute.Range(), "invalid download URL for %q: %v", packageName, err))
-							continue
-						}
+			for _, attribute := range node.Body.Attributes {
+				switch attribute.Name {
+				case "baseProviderName":
+					baseProviderName, err := evaluateLiteralExpr(attribute.Expr)
+					if err != nil {
+						diagnostics = append(diagnostics,
+							errorf(attribute.Range(), "invalid base provider name for package: %v", err))
+						continue
+					}
 
-						if _, err := url.ParseRequestURI(downloadURLValue); err != nil {
-							diagnostics = append(diagnostics,
-								errorf(attribute.Range(), "invalid download URL for %q: %v", packageName, err))
-							continue
-						}
-						packageDescriptor.DownloadURL = downloadURLValue
+					packageDescriptor.Name = baseProviderName
+				case "baseProviderVersion":
+					version, _ := evaluateLiteralExpr(attribute.Expr)
+					parsedVersion, err := semver.Make(version)
+					if err != nil {
+						// parsing the version failed, error out and skip this package
+						diagnostics = append(diagnostics,
+							errorf(attribute.Range(),
+								"invalid baseProviderVersion %q for package: %v", version, err))
+						continue
 					}
-				}
-				for _, block := range node.Body.Blocks {
-					switch block.Type {
-					case "parameterization":
-						attributes := map[string]hclsyntax.Expression{}
-						for _, item := range block.Body.Attributes {
-							attributes[item.Name] = item.Expr
-						}
-						descriptor, diag := readParameterizationDescriptor(packageName, attributes)
-						if diag != nil {
-							diagnostics = append(diagnostics, diag)
-							continue
-						}
-						packageDescriptor.Parameterization = descriptor
+					packageDescriptor.Version = &parsedVersion
+				case "baseProviderDownloadUrl":
+					downloadURLValue, err := evaluateLiteralExpr(attribute.Expr)
+					if err != nil {
+						diagnostics = append(diagnostics,
+							errorf(attribute.Range(), "invalid download URL for package: %v", err))
+						continue
 					}
+
+					if _, err := url.ParseRequestURI(downloadURLValue); err != nil {
+						diagnostics = append(diagnostics,
+							errorf(attribute.Range(), "invalid download URL for package: %v", err))
+						continue
+					}
+					packageDescriptor.DownloadURL = downloadURLValue
 				}
 			}
 
+			if packageDescriptor.Name == "" && len(labels) == 1 {
+				// Backwards compatibility: if the package block has a single label and doesn't set baseProviderName,
+				// use the label as the package name
+				packageDescriptor.Name = labels[0]
+			}
+
 			if packageDescriptor.Name == "" {
-				// baseProviderName was not provided
-				// default to the package name
-				packageDescriptor.Name = packageName
+				diagnostics = append(diagnostics,
+					errorf(node.Range(), "package blocks must set baseProviderName"))
+				continue
+			}
+
+			for _, block := range node.Body.Blocks {
+				switch block.Type {
+				case "parameterization":
+					attributes := map[string]hclsyntax.Expression{}
+					for _, item := range block.Body.Attributes {
+						attributes[item.Name] = item.Expr
+					}
+					descriptor, diag := readParameterizationDescriptor(packageDescriptor.Name, attributes)
+					if diag != nil {
+						diagnostics = append(diagnostics, diag)
+						continue
+					}
+					packageDescriptor.Parameterization = descriptor
+				}
+			}
+
+			packageName := packageDescriptor.PackageName()
+			if packageName == "" {
+				diagnostics = append(diagnostics,
+					errorf(node.Range(), "package blocks must resolve a package name"))
+				continue
+			}
+
+			// make sure we don't declare the same package twice
+			if _, ok := packageDescriptors[packageName]; ok {
+				diagnostics = append(diagnostics,
+					errorf(node.Range(), "package %q was already defined", packageName))
+				continue
 			}
 			packageDescriptors[packageName] = packageDescriptor
 		}

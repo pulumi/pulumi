@@ -657,13 +657,25 @@ package "random" {
         value = "SGVsbG8=" // base64 encoded "Hello"
     }
 }
+
+// Unlabeled package with all fields specified
+package {
+	baseProviderName = "gcp"
+	baseProviderVersion = "2.3.4"
+}
 `
 	parser := syntax.NewParser()
 	err := parser.ParseFile(bytes.NewReader([]byte(source)), "program.pp")
 	require.NoError(t, err)
 	packageDescriptors, diags := pcl.ReadPackageDescriptors(parser.Files[0])
 	require.False(t, diags.HasErrors(), "There are no error diagnostics")
-	require.Len(t, packageDescriptors, 3, "There are two package descriptors")
+	require.Len(t, diags, 3, "There are three warning diagnostics")
+	for _, diag := range diags {
+		require.Equal(t, hcl.DiagWarning, diag.Severity)
+		require.Equal(t, "package block label is deprecated", diag.Summary)
+	}
+
+	require.Len(t, packageDescriptors, 4, "There are four package descriptors")
 
 	require.Equal(t, "aws", packageDescriptors["aws"].Name)
 	require.Nil(t, packageDescriptors["aws"].Version)
@@ -681,6 +693,9 @@ package "random" {
 	assert.Equal(t, "4.5.6", packageDescriptors["random"].Parameterization.Version.String())
 	base64Value := base64.StdEncoding.EncodeToString(packageDescriptors["random"].Parameterization.Value)
 	assert.Equal(t, "SGVsbG8=", base64Value)
+
+	require.Equal(t, "gcp", packageDescriptors["gcp"].Name)
+	require.Equal(t, "2.3.4", packageDescriptors["gcp"].Version.String())
 }
 
 func TestBindingConditionalResourcesDoesNotProduceDiagnostics(t *testing.T) {
