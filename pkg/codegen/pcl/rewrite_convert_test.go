@@ -34,8 +34,8 @@ func TestRewriteConversions(t *testing.T) {
 		to            model.Type
 	}{
 		{
-			input:  `"1" + 2`,
-			output: `1 + 2`,
+			input:  `"1.5" + 2.5`,
+			output: `1.5 + 2.5`,
 		},
 		{
 			input:  `{a: "b"}`,
@@ -66,8 +66,8 @@ func TestRewriteConversions(t *testing.T) {
 			}, &schema.ObjectType{})),
 		},
 		{
-			input:  `{a: "1" + 2}`,
-			output: `{a: 1 + 2}`,
+			input:  `{a: "1.5" + 2.5}`,
+			output: `{a: 1.5 + 2.5}`,
 			to: model.NewObjectType(map[string]model.Type{
 				"a": model.NumberType,
 			}),
@@ -104,18 +104,18 @@ func TestRewriteConversions(t *testing.T) {
 			to:     model.StringType,
 		},
 		{
-			input:  `42`,
-			output: `__convert(42)`,
+			input:  `42.5`,
+			output: `__convert(42.5)`,
 			to:     model.IntType,
 		},
 		{
-			input:  `"42"`,
-			output: `__convert(42)`,
+			input:  `"42.5"`,
+			output: `__convert(42.5)`,
 			to:     model.IntType,
 		},
 		{
-			input:  `{a: 42}`,
-			output: `{a: __convert( 42)}`,
+			input:  `{a: 42.5}`,
+			output: `{a: __convert( 42.5)}`,
 			to: model.NewObjectType(map[string]model.Type{
 				"a": model.IntType,
 			}),
