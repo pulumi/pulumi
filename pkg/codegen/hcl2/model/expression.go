@@ -392,6 +392,16 @@ func (x *BinaryOpExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	contract.Assertf(len(signature.Parameters) == 2,
 		"expected binary operator signature to have two parameters, got %v", len(signature.Parameters))
 
+	// If the signature is numbers but our input is an integer lift the operation to integers
+	if x.LeftOperand.Type().Equals(IntType) && signature.Parameters[0].Type.Equals(NumberType) &&
+		x.RightOperand.Type().Equals(IntType) && signature.Parameters[1].Type.Equals(NumberType) {
+		signature.Parameters[0].Type = IntType
+		signature.Parameters[1].Type = IntType
+		if signature.ReturnType.Equals(NumberType) {
+			signature.ReturnType = IntType
+		}
+	}
+
 	x.leftType = signature.Parameters[0].Type
 	x.rightType = signature.Parameters[1].Type
 
@@ -2630,6 +2640,14 @@ func (x *UnaryOpExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	signature := getOperationSignature(x.Operation)
 	contract.Assertf(len(signature.Parameters) == 1,
 		"expected unary operator signature to have 1 parameter, got %d", len(signature.Parameters))
+
+	// If the signature is numbers but our input is an integer lift the operation to integers
+	if x.Operand.Type().Equals(IntType) && signature.Parameters[0].Type.Equals(NumberType) {
+		signature.Parameters[0].Type = IntType
+		if signature.ReturnType.Equals(NumberType) {
+			signature.ReturnType = IntType
+		}
+	}
 
 	x.operandType = signature.Parameters[0].Type
 
