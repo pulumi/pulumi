@@ -30,10 +30,12 @@ func init() {
 		Runs: []TestRun{
 			{
 				Config: config.Map{
-					config.MustMakeKey("l2-resource-config-objects", "plainNumberArray"):  config.NewObjectValue(`[-1,0,1]`),
-					config.MustMakeKey("l2-resource-config-objects", "plainBooleanMap"):   config.NewObjectValue(`{"t":true,"f":false}`),
-					config.MustMakeKey("l2-resource-config-objects", "secretNumberArray"): config.NewSecureValue("Wy0yLDAsMl0="),                 // [-2,0,2]
-					config.MustMakeKey("l2-resource-config-objects", "secretBooleanMap"):  config.NewSecureValue("eyJ0Ijp0cnVlLCJmIjpmYWxzZX0="), // {"t":true,"f":false}
+					config.MustMakeKey("l2-resource-config-objects", "plainNumberArray"): config.NewObjectValue(`[-1,0,1]`),             //nolint:lll
+					config.MustMakeKey("l2-resource-config-objects", "plainBooleanMap"):  config.NewObjectValue(`{"t":true,"f":false}`), //nolint:lll
+					// [-2,0,2]
+					config.MustMakeKey("l2-resource-config-objects", "secretNumberArray"): config.NewSecureValue("Wy0yLDAsMl0="), //nolint:lll
+					// {"t":true,"f":false}
+					config.MustMakeKey("l2-resource-config-objects", "secretBooleanMap"): config.NewSecureValue("eyJ0Ijp0cnVlLCJmIjpmYWxzZX0="), //nolint:lll
 				},
 				Assert: func(l *L, res AssertArgs) {
 					err := res.Err
