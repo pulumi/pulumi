@@ -5,7 +5,7 @@ go 1.25.6
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/hashicorp/hcl/v2 v2.24.0
-	github.com/pulumi/pulumi/pkg/v3 v3.225.0
+	github.com/pulumi/pulumi/pkg/v3 v3.226.1-0.20260319094534-d92cdd93da3e
 	github.com/pulumi/pulumi/sdk/v3 v3.226.0
 	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.11.1
