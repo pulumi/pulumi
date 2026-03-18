@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/bun
+  description: Mark pulumi-language-bun as a bundled plugin
