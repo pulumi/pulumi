@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -136,7 +137,7 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 
 	be := s.Backend()
 	cloudBe, isCloud := be.(httpstate.Backend)
-	if !isCloud || cloudBe.CloudURL() != httpstate.PulumiCloudURL {
+	if !isCloud || cloudBe.CloudURL() != client.PulumiCloudURL {
 		fmt.Fprintf(out, "    Managed by %s\n", be.Name())
 	}
 	if isCloud {

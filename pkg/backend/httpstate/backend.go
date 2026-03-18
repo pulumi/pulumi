@@ -166,7 +166,7 @@ func ValueOrDefaultURL(ws pkgWorkspace.Context, cloudURL string) string {
 	}
 
 	// If none of those led to a cloud URL, simply return the default.
-	return PulumiCloudURL
+	return client.PulumiCloudURL
 }
 
 // Backend extends the base backend interface with specific information about cloud backends.
@@ -259,8 +259,8 @@ func loginWithBrowser(
 	// the nonce and the pulumi access token we created as part of the OAuth flow. If the nonces match, we set the
 	// access token that was passed to us and the redirect to a special welcome page on Pulumi.com
 
-	loginURL := cloudConsoleURL(cloudURL, "cli-login")
-	finalWelcomeURL := cloudConsoleURL(cloudURL, "welcome", "cli")
+	loginURL := client.CloudConsoleURL(cloudURL, "cli-login")
+	finalWelcomeURL := client.CloudConsoleURL(cloudURL, "welcome", "cli")
 
 	if loginURL == "" || finalWelcomeURL == "" {
 		return nil, errors.New("could not determine login url")
@@ -504,7 +504,7 @@ func (m defaultLoginManager) Login(
 
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	var accessToken string
-	accountLink := cloudConsoleURL(cloudURL, "account", "tokens")
+	accountLink := client.CloudConsoleURL(cloudURL, "account", "tokens")
 
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
@@ -668,7 +668,7 @@ func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string,
 }
 
 func (b *cloudBackend) Name() string {
-	if b.url == PulumiCloudURL {
+	if b.url == client.PulumiCloudURL {
 		return "pulumi.com"
 	}
 
@@ -678,9 +678,9 @@ func (b *cloudBackend) Name() string {
 func (b *cloudBackend) URL() string {
 	user, _, _, err := b.CurrentUser()
 	if err != nil {
-		return cloudConsoleURL(b.url)
+		return client.CloudConsoleURL(b.url)
 	}
-	return cloudConsoleURL(b.url, user)
+	return client.CloudConsoleURL(b.url, user)
 }
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
@@ -954,7 +954,7 @@ func validateProjectName(s string) error {
 // CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be
 // created, we return the empty string instead (this can happen if the endpoint isn't a recognized pattern).
 func (b *cloudBackend) CloudConsoleURL(paths ...string) string {
-	return cloudConsoleURL(b.CloudURL(), paths...)
+	return client.CloudConsoleURL(b.CloudURL(), paths...)
 }
 
 // serveBrowserLoginServer hosts the server that completes the browser based login flow.
