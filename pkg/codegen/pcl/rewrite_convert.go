@@ -72,6 +72,12 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 	case *model.BinaryOpExpression:
 		x.LeftOperand, _ = rewriteConversions(x.LeftOperand, model.InputType(x.LeftOperandType()), diags)
 		x.RightOperand, _ = rewriteConversions(x.RightOperand, model.InputType(x.RightOperandType()), diags)
+		left, leftUnwrapped := unwrapIntToNumberConvert(x.LeftOperand)
+		right, rightUnwrapped := unwrapIntToNumberConvert(x.RightOperand)
+		if leftUnwrapped && rightUnwrapped {
+			x.LeftOperand, x.RightOperand = left, right
+			typecheck = true
+		}
 	case *model.ConditionalExpression:
 		var trueChanged, falseChanged bool
 		x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType), diags)
@@ -154,6 +160,11 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		}
 	case *model.UnaryOpExpression:
 		x.Operand, _ = rewriteConversions(x.Operand, model.InputType(x.OperandType()), diags)
+		operand, unwrapped := unwrapIntToNumberConvert(x.Operand)
+		if unwrapped {
+			x.Operand = operand
+			typecheck = true
+		}
 	}
 
 	var typeChanged bool
@@ -174,6 +185,29 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 
 	// Otherwise, wrap the expression in a call to __convert.
 	return NewConvertCall(x, to), true
+}
+
+func unwrapIntToNumberConvert(expr model.Expression) (model.Expression, bool) {
+	call, ok := expr.(*model.FunctionCallExpression)
+	if !ok || call.Name != IntrinsicConvert || len(call.Args) != 1 {
+		return expr, false
+	}
+
+	if !model.ResolveOutputs(call.Signature.ReturnType).Equals(model.NumberType) {
+		return expr, false
+	}
+
+	from := call.Args[0]
+	typ := model.ResolveOutputs(from.Type())
+	// Handle constant types
+	if c, ok := typ.(*model.ConstType); ok {
+		typ = c.Type
+	}
+	if model.ResolveOutputs(typ).Equals(model.IntType) {
+		return from, true
+	}
+
+	return expr, false
 }
 
 // resolveDiscriminatedUnions reduces discriminated unions of object types to the type that matches

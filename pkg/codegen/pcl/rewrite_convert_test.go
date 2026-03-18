@@ -37,21 +37,14 @@ func TestRewriteConversions(t *testing.T) {
 			input:  `"1.5" + 2.5`,
 			output: `1.5 + 2.5`,
 		},
-		// These two cases don't seem ideal. The issue is we bind the operation (+/-) first against the
-		// the rwo raw operands, one of which is a string, so it binds to the "number" form of the operation
-		// rather than the "integer" form. We'd need to rewrite the operations as part of RewriteConversions to fix
-		// this. Seeing that we were doing a binary/unary operation and that we _could_ have bound both sides
-		// as integers.
 		{
 			input:  `"1" + 2`,
-			output: `__convert(1) + __convert( 2)`,
+			output: `1 + 2`,
 		},
 		{
 			input:  `-"1"`,
-			output: `-__convert(1)`,
+			output: `-1`,
 		},
-		// These two cases are correct. One of the operands should be (or is) a float, so binding to the number form of
-		// the operation is correct.
 		{
 			input:  `"1" + 2.5`,
 			output: `__convert(1) + 2.5`,
