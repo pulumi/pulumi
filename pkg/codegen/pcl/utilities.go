@@ -93,6 +93,8 @@ func SourceOrderNodes(nodes []Node) []Node {
 	return nodes
 }
 
+// DecomposeToken splits a token into its package, module, and name components. If the module is empty or missing then
+// "index" is returned. It returns an error diagnostic if the token is not in a valid format.
 func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, hcl.Diagnostics) {
 	components := strings.Split(tok, ":")
 	if len(components) == 2 {
