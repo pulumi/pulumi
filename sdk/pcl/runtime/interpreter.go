@@ -237,29 +237,27 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 }
 
 func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema.Resource, error) {
-	components := strings.Split(token, ":")
-	contract.Assertf(len(components) == 3, "invalid token format: %s", token)
-	if components[1] == "" {
-		components[1] = "index"
-	}
-	token = fmt.Sprintf("%s:%s:%s", components[0], components[1], components[2])
-	pkgName := components[0]
-	if components[0] == "pulumi" && components[1] == "providers" {
-		pkgName = components[2]
+	pkg, mod, typ, diags := pcl.DecomposeToken(token, hcl.Range{})
+	contract.AssertNoErrorf(diags, "invalid token format for resource token %s", token)
+
+	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
+	pkgName := pkg
+	if pkg == "pulumi" && mod == "providers" {
+		pkgName = typ
 	}
 
 	// Fall back to just the package name and passed in version if we don't have a descriptor.
 	descriptor := &schema.PackageDescriptor{
 		Name: pkgName,
 	}
-	pkg, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
 	if err != nil {
 		return nil, fmt.Errorf("load package for token %s: %w", token, err)
 	}
-	if components[0] == "pulumi" && components[1] == "providers" {
-		return pkg.Provider()
+	if pkg == "pulumi" && mod == "providers" {
+		return pkgref.Provider()
 	}
-	resources := pkg.Resources()
+	resources := pkgref.Resources()
 	schemaResource, ok, err := resources.Get(token)
 	if err != nil {
 		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
@@ -271,11 +269,13 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		for iter.Next() {
 			resToken := iter.Token()
 			// Canonicalize the resources token via TokenToModule
-			mod := pkg.TokenToModule(resToken)
-			components := strings.Split(resToken, ":")
-			resToken = fmt.Sprintf("%s:%s:%s", components[0], mod, components[2])
+			mod := pkgref.TokenToModule(resToken)
+			pkg, _, typ, err := pcl.DecomposeToken(resToken, hcl.Range{})
+			contract.AssertNoErrorf(err, "invalid token format in package %s: %s", pkg, resToken)
+			resToken = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 			if token == resToken {
 				token = iter.Token()
+				var err error
 				schemaResource, err = iter.Resource()
 				if err != nil {
 					return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
@@ -1270,8 +1270,8 @@ func (i *Interpreter) registerResourceWith(
 							return cty.NilVal, fmt.Errorf("providers: %w", err)
 						}
 						typ := resource.URN(urn).Type()
-						components := strings.Split(string(typ), ":")
-						pkg := components[2]
+						_, _, pkg, err := pcl.DecomposeToken(string(typ), hcl.Range{})
+						contract.AssertNoErrorf(err, "invalid token format from URN %s: %s", urn, typ)
 
 						var idstr string
 						if id.IsString() {
