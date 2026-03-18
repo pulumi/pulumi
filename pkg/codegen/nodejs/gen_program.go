@@ -944,6 +944,9 @@ func moduleName(module string, pkg schema.PackageReference) string {
 			}
 		}
 	}
+	if module == "index" {
+		return ""
+	}
 	return strings.ToLower(strings.ReplaceAll(module, "/", "."))
 }
 

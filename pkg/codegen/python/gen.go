@@ -358,7 +358,7 @@ func tokenToName(tok string) string {
 	return title(components[2])
 }
 
-// tokenToPackage accepts a *Pulumi token* and returns name of the *Python module* that it
+// tokenToModule accepts a *Pulumi token* and returns name of the *Python module* that it
 // should be generated into.
 //
 // For example, it converts: "pkg:someModule:Resource" to "somemodule".
@@ -372,11 +372,14 @@ func tokenToModule(tok string, pkg schema.PackageReference, moduleNameOverrides 
 	return moduleToPythonModule(canonicalModName, moduleNameOverrides)
 }
 
-// tokenToPackage accepts a *Pulumi module* and returns name of the *Python module* that it
+// moduleToPythonModule accepts a *Pulumi module* and returns name of the *Python module* that it
 // should be generated into.
 //
 // For example, it converts: "someModule" to "somemodule".
 func moduleToPythonModule(canonicalModName string, moduleNameOverrides map[string]string) string {
+	if canonicalModName == "index" {
+		return ""
+	}
 	if override, ok := moduleNameOverrides[canonicalModName]; ok {
 		return override
 	}
