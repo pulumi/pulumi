@@ -48,15 +48,10 @@ export class API {
 
         const __flags: string[] = [];
 
-        __flags.push("--non-interactive");
         __flags.push("--yes");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
-        }
-
-        if (options.cwd != null) {
-            __flags.push("--cwd", "" + options.cwd);
         }
 
         if (options.disableIntegrityChecking) {
@@ -123,8 +118,6 @@ export class API {
 export interface PulumiCancelOptions extends BaseOptions {
     /** Colorize output. Choices are: always, never, raw, auto */
     color?: string;
-    /** Run pulumi as if it had been started in another directory */
-    cwd?: string;
     /** Disable integrity checking of checkpoint files */
     disableIntegrityChecking?: boolean;
     /** Show fully-qualified stack names */
