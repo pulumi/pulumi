@@ -38,4 +38,3 @@ describe("Stack.cancel (generated CLI integration)", () => {
         assert.deepStrictEqual(recordedArgs, ["cancel", "--yes", "--stack", stack.name]);
     });
 });
-
