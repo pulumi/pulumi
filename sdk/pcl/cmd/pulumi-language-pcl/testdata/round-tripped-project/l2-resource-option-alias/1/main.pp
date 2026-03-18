@@ -36,6 +36,6 @@ resource "aliasParent" "simple:index:Resource" {
 resource "aliasType" "simple:index:Resource" {
     value = true
     options {
-        aliases = [{type = "simple:index:AltResource"}]
+        aliases = [{type = "component:index:Custom"}]
     }
 }

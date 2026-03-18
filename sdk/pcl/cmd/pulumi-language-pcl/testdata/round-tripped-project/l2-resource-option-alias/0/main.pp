@@ -22,6 +22,6 @@ resource "aliasParent" "simple:index:Resource" {
     }
 }
 
-resource "aliasType" "simple:index:AltResource" {
-    value = true
+resource "aliasType" "component:index:Custom" {
+    value = "true"
 }
