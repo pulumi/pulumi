@@ -104,14 +104,12 @@ var expectedFailures = map[string]string{
 	"l2-proxy-index":         "fails to compile",
 	"l1-builtin-try":         "pulumi#18506 Support try in Go program generation",
 	"l1-builtin-can":         "pulumi#18570 Support can in Go program generation",
-	"l1-builtin-base64":      "cannot use bytes (variable of type string) as pulumi.Input value in argument to ctx.Export", //nolint:lll
 	"l1-builtin-list":        "list(string) config decoded as string; element/split emit TODO stubs",
 	"l1-builtin-object":      "entries/lookup emit TODO stubs",
 	"l2-builtin-object":      "entries/lookup emit TODO stubs",
 	"l1-builtin-to-json":     "Go doesn't support output based toJSON",
 
 	// pulumi/pulumi#18345
-	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types", //nolint:lll
 	"l2-snake-names":                      "nesting apply is not generated correctly",
 	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
 	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll

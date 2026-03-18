@@ -252,7 +252,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genTemplateExpression(w, arg, expr.Type())
 		case *model.ScopeTraversalExpression:
 			// When converting a plain traversal to Output<T>, emit an explicit Pulumi input cast
-			// for scalar types (e.g. pulumi.String(x)) so calls like ctx.Export compile.
+			// (e.g. pulumi.String(x), pulumi.ToMap(x)) so calls like ctx.Export compile.
 			if isOutput && !isFromOutput {
 				scalarType := to
 				if cns, ok := scalarType.(*model.ConstType); ok {
@@ -265,6 +265,25 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						g.genScopeTraversalExpression(w, arg, expr.Type())
 						g.Fgenf(w, ")")
 						return
+					}
+				default:
+					// For collection types (maps, objects, lists), wrap with pulumi.ToMap/ToArray.
+					// Only do this when genScopeTraversalExpression won't already handle the
+					// conversion via its isInput/array-helper logic, which it does when the
+					// expression type has an associated schema type.
+					if _, hasSchema := pcl.GetSchemaForType(expr.Type()); !hasSchema {
+						switch scalarType.(type) {
+						case *model.ObjectType, *model.MapType:
+							g.Fgenf(w, "pulumi.ToMap(")
+							g.genScopeTraversalExpression(w, arg, expr.Type())
+							g.Fgenf(w, ")")
+							return
+						case *model.ListType, *model.TupleType:
+							g.Fgenf(w, "pulumi.ToArray(")
+							g.genScopeTraversalExpression(w, arg, expr.Type())
+							g.Fgenf(w, ")")
+							return
+						}
 					}
 				}
 			}
