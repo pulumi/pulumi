@@ -715,13 +715,15 @@ package {
 }
 `
 	parser := syntax.NewParser()
-	require.NoError(t, parser.ParseFile(bytes.NewReader([]byte(sharedPackage+`resource r "subpackage:index:Foo" {}`)), "main.pp"))
-	require.NoError(t, parser.ParseFile(bytes.NewReader([]byte(sharedPackage)), "subpackage.pp"))
+	require.NoError(t, parser.ParseFile(bytes.NewReader(
+		[]byte(sharedPackage+`resource r "subpackage:index:Foo" {}`)), "main.pp"))
+	require.NoError(t, parser.ParseFile(bytes.NewReader(
+		[]byte(sharedPackage)), "subpackage.pp"))
 
 	descriptors, diags := pcl.ReadAllPackageDescriptors(parser.Files)
 	assert.False(t, diags.HasErrors(), "identical duplicate package blocks should not produce errors: %v", diags)
-	assert.Len(t, descriptors, 1)
-	assert.NotNil(t, descriptors["subpackage"])
+	require.Len(t, descriptors, 1)
+	require.NotNil(t, descriptors["subpackage"])
 }
 
 func TestReadAllPackageDescriptorsErrorsOnConflictingDuplicates(t *testing.T) {
