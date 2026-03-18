@@ -162,6 +162,6 @@ describe("LocalWorkspace - PulumiCommand", () => {
         await stack.cancel();
 
         assert.ok(recordedArgs, "expected cancel to invoke the CLI");
-        assert.deepStrictEqual(recordedArgs, ["cancel", "--stack", stack.name]);
+        assert.deepStrictEqual(recordedArgs, ["cancel", "--yes", "--stack", stack.name]);
     });
 });
