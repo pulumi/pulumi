@@ -43,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -227,18 +226,6 @@ func (compactJSONMarshaler) Unmarshal(data []byte, v any) error {
 	return json.Unmarshal(data, v)
 }
 
-func compactRawJSON(data json.RawMessage) (json.RawMessage, error) {
-	if len(data) == 0 {
-		return nil, nil
-	}
-
-	var compact bytes.Buffer
-	if err := json.Compact(&compact, data); err != nil {
-		return nil, err
-	}
-	return append(json.RawMessage(nil), compact.Bytes()...), nil
-}
-
 func marshalVersionedCheckpoint(
 	version int,
 	features []string,
@@ -254,36 +241,6 @@ func marshalVersionedCheckpoint(
 		Features:   features,
 		Checkpoint: json.RawMessage(bytes),
 	}, nil
-}
-
-func typedDeploymentToVersionedCheckpoint(
-	stackName tokens.QName,
-	deployment apitype.TypedDeployment,
-) (*apitype.VersionedCheckpoint, error) {
-	return marshalVersionedCheckpoint(deployment.Version, deployment.Features, apitype.CheckpointV3{
-		Stack:  stackName,
-		Latest: deployment.Deployment,
-	})
-}
-
-func untypedDeploymentToVersionedCheckpoint(
-	stackName tokens.QName,
-	deployment *apitype.UntypedDeployment,
-) (*apitype.VersionedCheckpoint, error) {
-	contract.Requiref(deployment != nil, "deployment", "must not be nil")
-
-	latest, err := compactRawJSON(deployment.Deployment)
-	if err != nil {
-		return nil, fmt.Errorf("compacting deployment: %w", err)
-	}
-
-	return marshalVersionedCheckpoint(deployment.Version, deployment.Features, struct {
-		Stack  tokens.QName    `json:"stack,omitempty"`
-		Latest json.RawMessage `json:"latest,omitempty"`
-	}{
-		Stack:  stackName,
-		Latest: latest,
-	})
 }
 
 func (b *diyBackend) saveCheckpoint(
@@ -388,7 +345,13 @@ func (b *diyBackend) saveStack(
 	deployment apitype.TypedDeployment,
 ) (string, error) {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
-	chk, err := typedDeploymentToVersionedCheckpoint(ref.FullyQualifiedName(), deployment)
+	chk, err := stack.DeploymentV3ToCheckpointWithMarshaler(
+		diyJSONMarshaler,
+		ref.FullyQualifiedName(),
+		deployment.Deployment,
+		deployment.Version,
+		deployment.Features,
+	)
 	if err != nil {
 		return "", fmt.Errorf("serializing checkpoint: %w", err)
 	}

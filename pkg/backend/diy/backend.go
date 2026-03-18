@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
@@ -745,7 +746,11 @@ func (b *diyBackend) CreateStack(
 	}
 
 	if initialState != nil {
-		chk, err := untypedDeploymentToVersionedCheckpoint(stackName, initialState)
+		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+			diyJSONMarshaler,
+			stackName,
+			initialState,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -1444,7 +1449,11 @@ func (b *diyBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	defer b.Unlock(ctx, diyStackRef)
 
 	stackName := diyStackRef.FullyQualifiedName()
-	chk, err := untypedDeploymentToVersionedCheckpoint(stackName, deployment)
+	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+		diyJSONMarshaler,
+		stackName,
+		deployment,
+	)
 	if err != nil {
 		return err
 	}
