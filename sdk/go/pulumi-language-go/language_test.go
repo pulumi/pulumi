@@ -109,6 +109,7 @@ var expectedFailures = map[string]string{
 	"l2-builtin-object":             "entries/lookup emit TODO stubs",
 	"l1-builtin-to-json":            "Go doesn't support output based toJSON",
 	"l2-resource-config-primitives": "cannot convert secretBool (variable of struct type pulumi.BoolOutput) to type pulumi.Bool, etc", //nolint:lll
+	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
 
 	// pulumi/pulumi#18345
 	"l2-snake-names":                      "nesting apply is not generated correctly",
