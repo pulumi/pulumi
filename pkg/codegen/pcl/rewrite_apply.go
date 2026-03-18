@@ -445,6 +445,13 @@ func (ctx *observeContext) rewriteRelativeTraversalExpression(expr *model.Relati
 			partResolvedType, isEventual = ctx.isEventualType(model.GetTraversableType(expr.Parts[i+1]))
 		}
 		if isEventual {
+			// Invariant: len(expr.Parts) == len(expr.Traversal) + 1, because Parts holds one entry
+			// for the source type plus one entry per traversal hop. Since i < len(expr.Traversal),
+			// i+2 <= len(expr.Parts) and expr.Parts[i+2:] is guaranteed to be in bounds.
+			contract.Assertf(i+2 <= len(expr.Parts),
+				"Parts index out of bounds: i=%d, len(expr.Parts)=%d, len(expr.Traversal)=%d; "+
+					"expected len(Parts) == len(Traversal)+1",
+				i, len(expr.Parts), len(expr.Traversal))
 			expr.Traversal, expr.Parts = expr.Traversal[:i+1], expr.Parts[:i+2]
 			paramType, traversal, parts = partResolvedType, expr.Traversal[i+1:], expr.Parts[i+2:]
 			break
