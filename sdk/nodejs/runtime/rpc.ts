@@ -155,6 +155,14 @@ export interface SerializationOptions {
      * this will have no effect.
      */
     excludeResourceReferencesFromDependencies?: boolean;
+
+    /**
+     * True if we should skip outputs whose isKnown promise has not yet settled,
+     * serializing them as unknown values instead of awaiting them. This is used
+     * for local component resource registration to avoid deadlocks with deferred
+     * outputs in mutually dependent components.
+     */
+    skipPendingOutputs?: boolean;
 }
 
 /**
@@ -437,6 +445,17 @@ export async function serializeProperty(
     if (Output.isInstance(prop)) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Output<T>`);
+        }
+
+        // When skipPendingOutputs is set, check if the output's isKnown promise has already
+        // settled. If it hasn't, serialize as unknown to avoid blocking. This prevents deadlocks
+        // when component resources have deferred output inputs in mutually dependent cycles.
+        if (opts?.skipPendingOutputs) {
+            const pending = Symbol();
+            const settled = await Promise.race([prop.isKnown, Promise.resolve(pending)]);
+            if (settled === pending) {
+                return unknownValue;
+            }
         }
 
         // handle serializing both old-style outputs (with sync resources) and new-style outputs

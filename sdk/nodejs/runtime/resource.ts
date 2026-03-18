@@ -958,6 +958,11 @@ export async function prepareResource(
         // on 'propertyDependencies' won't create outputs for properties that only
         // contain resource references.
         excludeResourceReferencesFromDependencies: remote,
+        // For local component resources, skip outputs whose isKnown promise hasn't settled
+        // yet. This avoids deadlocks when components have deferred output inputs in mutually
+        // dependent cycles. The component's children use the actual args directly, so they
+        // still get the correct values when the deferred outputs eventually resolve.
+        skipPendingOutputs: !custom && !remote,
     });
 
     // Wait for the parent to complete.
