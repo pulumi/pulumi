@@ -231,32 +231,14 @@ func (host *pclLanguageHost) bindProgramFromDirectory(
 	loader := schema.NewCachedLoader(client)
 	defer contract.IgnoreClose(client)
 
-	parser := hclsyntax.NewParser()
-	parseDiagnostics, err := pcl.ParseDirectory(parser, directory)
-	if err != nil {
-		return nil, parseDiagnostics, fmt.Errorf("parse directory: %w", err)
-	}
-	if parseDiagnostics.HasErrors() {
-		return nil, parseDiagnostics, nil
-	}
-
 	options := []pcl.BindOption{
-		pcl.Loader(loader),
-		pcl.DirPath(directory),
-		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()),
 		pcl.PreferOutputVersionedInvokes,
 	}
 	if !strict {
 		options = append(options, pcl.NonStrictBindOptions()...)
 	}
 
-	program, bindDiagnostics, err := pcl.BindProgram(parser.Files, options...)
-	if bindDiagnostics != nil {
-		err = nil
-	}
-
-	allDiagnostics := append(parseDiagnostics, bindDiagnostics...)
-	return program, allDiagnostics, err
+	return pcl.BindDirectory(directory, loader, options...)
 }
 
 func (host *pclLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
