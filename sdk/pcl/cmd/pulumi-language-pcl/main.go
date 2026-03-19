@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	aferoutil "github.com/pulumi/pulumi/pkg/v3/util/afero"
+	"github.com/pulumi/pulumi/sdk/pcl/v3/runtime"
 	pclruntime "github.com/pulumi/pulumi/sdk/pcl/v3/runtime"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	pulumiencoding "github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -395,7 +396,10 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 			if !ok || block.Type != "resource" || len(block.Labels) < 2 {
 				continue
 			}
-			pkg := packageNameFromToken(block.Labels[1])
+			pkg, err := runtime.PackageNameFromToken(block.Labels[1])
+			if err != nil {
+				return nil, err
+			}
 			if pkg != "" {
 				if _, exists := descriptorMap[pkg]; !exists {
 					descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
@@ -412,8 +416,15 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 			if !ok {
 				return nil
 			}
-			pkg := packageNameFromToken(token)
-			if pkg != "" {
+			pkg, err := runtime.PackageNameFromToken(token)
+			if err != nil {
+				return hcl.Diagnostics{{
+					Severity: hcl.DiagError,
+					Summary:  "invalid package token",
+					Detail:   err.Error(),
+				}}
+			}
+			if pkg != "" && pkg != "pulumi" {
 				if _, exists := descriptorMap[pkg]; !exists {
 					descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
 				}
@@ -510,20 +521,6 @@ func invokeToken(call *hashihclsyntax.FunctionCallExpr) (string, bool) {
 		return "", false
 	}
 	return literal.Val.AsString(), true
-}
-
-func packageNameFromToken(token string) string {
-	pkg, mod, name, diags := pcl.DecomposeToken(token, hcl.Range{})
-	if diags.HasErrors() {
-		return ""
-	}
-	if pkg == "pulumi" {
-		if mod == "providers" {
-			return name
-		}
-		return ""
-	}
-	return pkg
 }
 
 func (host *pclLanguageHost) RunPlugin(

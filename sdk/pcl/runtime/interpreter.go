@@ -308,20 +308,22 @@ func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDes
 	return &schema.PackageDescriptor{Name: pkgName}
 }
 
-func (i *Interpreter) packageNameFromToken(token string) (string, error) {
-	components := strings.Split(token, ":")
-	if len(components) != 3 {
-		return "", fmt.Errorf("invalid token format: %s", token)
+func PackageNameFromToken(token string) (string, error) {
+	pkg, mod, name, diags := pcl.DecomposeToken(token, hcl.Range{})
+	if diags.HasErrors() {
+		return "", diags
 	}
-	pkgName := components[0]
-	if components[0] == "pulumi" && components[1] == "providers" {
-		pkgName = components[2]
+	if pkg == "pulumi" {
+		if mod == "providers" {
+			return name, nil
+		}
+		return "", nil
 	}
-	return pkgName, nil
+	return pkg, nil
 }
 
 func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
-	pkgName, err := i.packageNameFromToken(token)
+	pkgName, err := PackageNameFromToken(token)
 	if err != nil {
 		return "", err
 	}
