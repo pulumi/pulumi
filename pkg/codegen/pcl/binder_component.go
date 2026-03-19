@@ -15,11 +15,13 @@
 package pcl
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	syntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -47,6 +49,16 @@ func componentVariableType(program *Program) model.Type {
 		}
 	}
 
+	return model.NewObjectType(properties)
+}
+
+// componentInputType returns a map from config variable logical name to its expected model type.
+// Plain (non-InputType-wrapped) types are stored so callers can apply wrapping as needed.
+func componentInputType(program *Program) model.Type {
+	properties := map[string]model.Type{}
+	for _, cv := range program.ConfigVariables() {
+		properties[cv.LogicalName()] = model.InputType(cv.Type())
+	}
 	return model.NewObjectType(properties)
 }
 
@@ -96,22 +108,16 @@ func (s *componentScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*mode
 type componentInput struct {
 	key      string
 	required bool
-	typ      model.Type
 }
 
 func componentInputs(program *Program) map[string]componentInput {
 	inputs := map[string]componentInput{}
-	for _, node := range program.Nodes {
-		switch node := node.(type) {
-		case *ConfigVariable:
-			inputs[node.LogicalName()] = componentInput{
-				required: node.DefaultValue == nil && !node.Nullable,
-				key:      node.LogicalName(),
-				typ:      node.Type(),
-			}
+	for _, node := range program.ConfigVariables() {
+		inputs[node.LogicalName()] = componentInput{
+			required: node.DefaultValue == nil && !node.Nullable,
+			key:      node.LogicalName(),
 		}
 	}
-
 	return inputs
 }
 
@@ -344,6 +350,8 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	}
 
 	node.Program = componentProgram
+
+	node.InputType = componentInputType(componentProgram)
 	programVariableType := componentVariableType(componentProgram)
 	node.VariableType = transformComponentType(programVariableType)
 	node.dirPath = componentDirPath
@@ -366,15 +374,11 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				continue
 			}
 			// all other attributes are part of the inputs
-			input, knownInput := componentInputs[item.Name]
+			_, knownInput := componentInputs[item.Name]
 
 			if !knownInput {
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 				return diagnostics
-			}
-
-			if input.typ != nil && model.InputType(input.typ).ConversionFrom(item.Value.Type()) == model.NoConversion {
-				diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(input.typ), item.Value))
 			}
 
 			node.Inputs = append(node.Inputs, item)
@@ -389,6 +393,37 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				}
 			default:
 				diagnostics = append(diagnostics, unsupportedBlock(item.Type, item.Syntax.TypeRange))
+			}
+		}
+	}
+
+	if objectType, ok := node.InputType.(*model.ObjectType); ok {
+		diag := func(d *hcl.Diagnostic) {
+			if b.options.skipResourceTypecheck && d.Severity == hcl.DiagError {
+				d.Severity = hcl.DiagWarning
+			}
+			diagnostics = append(diagnostics, d)
+		}
+		attrNames := codegen.StringSet{}
+		for _, attr := range node.Inputs {
+			attrNames.Add(attr.Name)
+
+			if typ, ok := objectType.Properties[attr.Name]; ok {
+				conversion := typ.ConversionFrom(attr.Value.Type())
+				if !conversion.Exists() {
+					attributeRange := attr.Value.SyntaxNode().Range()
+					diag(&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Subject:  &attributeRange,
+						Detail: fmt.Sprintf("Cannot assign value %s to attribute of type %q for component %q",
+							attr.Value.Type().Pretty().String(),
+							typ.Pretty(),
+							node.name),
+					})
+
+				}
+			} else {
+				diag(unsupportedAttribute(attr.Name, attr.Syntax.NameRange))
 			}
 		}
 	}
