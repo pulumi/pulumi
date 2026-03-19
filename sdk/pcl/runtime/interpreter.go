@@ -68,7 +68,7 @@ type RunInfo struct {
 	DryRun         bool
 	Parallel       int32
 
-	// PackageDescriptors are package blocks keyed by package block label.
+	// PackageDescriptors are package blocks keyed by package name.
 	PackageDescriptors map[string]*schema.PackageDescriptor
 }
 
