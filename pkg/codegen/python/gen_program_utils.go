@@ -33,11 +33,11 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 %s    raise NotImplementedError(msg)`, indent, indent), true
 	case "singleOrNone":
 		return fmt.Sprintf(
-			`%sdef single_or_none(elements):
-%s    if len(elements) != 1:
-%s        raise Exception("single_or_none expected input list to have a single element")
-%s    return elements[0]
-`, indent, indent, indent, indent), true
+			`%[1]sdef single_or_none(elements):
+%[1]s    if len(elements) > 1:
+%[1]s        raise Exception("single_or_none expected input list to have a single element")
+%[1]s    return elements[0] if elements else None
+`, indent), true
 	case "try":
 		return fmt.Sprintf(`%[1]sdef try_(*fns):
 %[1]s    for fn in fns:
