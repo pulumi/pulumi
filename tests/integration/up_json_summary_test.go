@@ -63,13 +63,13 @@ func TestUp_JSONSummaryFooter(t *testing.T) {
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          "single_resource",
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
-		JSONOutput:   true,
-		Verbose:      true,
-		Stdout:       writer,
-		Stderr:       writer,
+		Dir:                    "single_resource",
+		Dependencies:           []string{"@pulumi/pulumi"},
+		Quick:                  true,
+		Verbose:                true,
+		Stdout:                 writer,
+		Stderr:                 writer,
+		UpdateCommandlineFlags: []string{"--format", "json"},
 		PrePulumiCommand: func(verb string) (func(err error) error, error) {
 			if verb != "up" {
 				return nil, nil
@@ -87,7 +87,7 @@ func TestUp_JSONSummaryFooter(t *testing.T) {
 		},
 	})
 
-	// Find the JSON summary object inside the captured `pulumi up --json` output.
+	// Find the JSON summary object inside the captured `pulumi up --format json` output.
 	// The output is JSONL (one JSON object per line) and we emit the summary as one final JSON object line.
 	lines := strings.Split(upOut.String(), "\n")
 	var found bool
