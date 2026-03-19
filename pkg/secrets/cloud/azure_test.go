@@ -63,7 +63,7 @@ func createAzureKey(ctx context.Context, t *testing.T, credentials *azidentity.D
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureCloudManager(t *testing.T) {
-	ctx := t.Context()
+	ctx := context.Background() //nolint:usetesting // ctx is used in t.Cleanup, which runs after t.Context is canceled
 	cfg := getAzureCaller(ctx, t)
 	keyName := createAzureKey(ctx, t, cfg)
 	url := "azurekeyvault://" + keyName

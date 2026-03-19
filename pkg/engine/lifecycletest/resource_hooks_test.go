@@ -323,7 +323,7 @@ func TestResourceHookAfterDelete(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = monitor.SignalAndWaitForShutdown(t.Context())
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
 		return nil
 	})
@@ -437,7 +437,7 @@ func TestResourceHookComponentAfterDelete(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = monitor.SignalAndWaitForShutdown(t.Context())
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
 		return nil
 	})
@@ -523,7 +523,7 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = monitor.SignalAndWaitForShutdown(t.Context())
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
 		return nil
 	})
@@ -662,7 +662,7 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(t.Context())
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
 		return nil
 	})
@@ -764,7 +764,7 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 		}
 
 		require.NoError(t, err)
-		err = monitor.SignalAndWaitForShutdown(t.Context())
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
 
 		return nil
@@ -837,7 +837,7 @@ func TestResourceHookDeleteCalledOnDestroyRunProgram(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(t.Context())
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
 		return nil
 	})
@@ -901,7 +901,7 @@ func TestResourceHookDeleteErrorWhenNoRunProgram(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(t.Context())
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
 		return nil
 	})
@@ -1005,7 +1005,7 @@ func TestResourceHookComponent(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(t.Context())
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
 
 		return nil

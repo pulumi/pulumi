@@ -76,7 +76,7 @@ func skipIfNoCredentials(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestGCPCloudManager(t *testing.T) {
 	skipIfNoCredentials(t)
-	ctx := t.Context()
+	ctx := context.Background() //nolint:usetesting // ctx is used in t.Cleanup, which runs after t.Context is canceled
 	keyName := createGCPKey(ctx, t)
 	url := "gcpkms://" + keyName
 	testURL(ctx, t, url)

@@ -83,7 +83,7 @@ func TestPackageRef(t *testing.T) {
 				pcs.MustFulfill(ref)
 			}()
 		}
-		ctx := t.Context()
+		ctx := context.Background() //nolint:usetesting // ctx outlives t.Context inside the engine
 		expected, err := promises[0].Result(ctx)
 		require.NoError(t, err)
 		for i := 1; i < 100; i++ {
