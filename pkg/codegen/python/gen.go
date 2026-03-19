@@ -2788,8 +2788,12 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 			ty = mod.typeString(codegen.OptionalType(prop), typeStringOpts{input: input})
 		}
 
+		useMissingSentinel := input && prop.DeprecationMessage != "" && (!prop.IsRequired() || prop.DefaultValue != nil)
 		var defaultValue string
-		if !prop.IsRequired() || prop.DefaultValue != nil {
+		switch {
+		case useMissingSentinel:
+			defaultValue = " = pulumi.MISSING"
+		case !prop.IsRequired() || prop.DefaultValue != nil:
 			defaultValue = " = None"
 		}
 		fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
@@ -2803,11 +2807,16 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		pname := PyName(prop.Name)
 		var arg any
 		var err error
+		useMissingSentinel := input && prop.DeprecationMessage != "" && (!prop.IsRequired() || prop.DefaultValue != nil)
 
 		// Check that the property isn't deprecated.
 		if input && prop.DeprecationMessage != "" {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
-			fmt.Fprintf(w, "        if %s is not None:\n", pname)
+			guard := fmt.Sprintf("%s is not None", pname)
+			if useMissingSentinel {
+				guard = fmt.Sprintf("%s is not pulumi.MISSING", pname)
+			}
+			fmt.Fprintf(w, "        if %s:\n", guard)
 			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
 			fmt.Fprintf(w, "            pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", pname, escaped)
 		}
@@ -2818,7 +2827,11 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(w, "        if %s is None:\n", pname)
+			guard := fmt.Sprintf("%s is None", pname)
+			if useMissingSentinel {
+				guard = fmt.Sprintf("%s is pulumi.MISSING", pname)
+			}
+			fmt.Fprintf(w, "        if %s:\n", guard)
 			fmt.Fprintf(w, "            %s = %s\n", pname, dv)
 		}
 
@@ -2834,7 +2847,11 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 		var indent string
 		if !prop.IsRequired() {
-			fmt.Fprintf(w, "        if %s is not None:\n", pname)
+			guard := fmt.Sprintf("%s is not None", pname)
+			if useMissingSentinel {
+				guard = fmt.Sprintf("%s is not pulumi.MISSING and %s is not None", pname, pname)
+			}
+			fmt.Fprintf(w, "        if %s:\n", guard)
 			indent = "    "
 		}
 
