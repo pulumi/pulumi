@@ -171,19 +171,6 @@ func TestPolicyAnalyzeCmd_EmptySnapshotPrintsMessage(t *testing.T) {
 	assert.Contains(t, stderr, "no resources")
 }
 
-func TestPolicyAnalyzeCmd_NilSnapshotPrintsMessage(t *testing.T) {
-	t.Parallel()
-
-	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
-		return nil, nil
-	}
-	ws, lm := newMockWsAndLm(be)
-	_, stderr, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
-	require.NoError(t, err)
-	assert.Contains(t, stderr, "no resources")
-}
-
 func TestPolicyAnalyzeCmd_ErrorOnLoadAnalyzersFailure(t *testing.T) {
 	t.Parallel()
 

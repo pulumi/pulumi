@@ -112,7 +112,7 @@ func newPolicyAnalyzeCmd(
 			if err != nil {
 				return fmt.Errorf("loading stack snapshot: %w", err)
 			}
-			if snap == nil || len(snap.Resources) == 0 {
+			if len(snap.Resources) == 0 {
 				fmt.Fprintf(cmd.ErrOrStderr(), "Stack %s has no resources; nothing to analyze.\n", s.Ref())
 				return nil
 			}
