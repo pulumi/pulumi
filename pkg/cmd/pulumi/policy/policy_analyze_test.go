@@ -301,8 +301,8 @@ func TestPolicyAnalyzeCmd_AnalyzeStackCalled_PrintsAndUsesOutputs(t *testing.T) 
 			Type:    tokens.Type("pkg:index:MyResource"),
 			URN:     urn,
 			Custom:  true,
-			Inputs:  resource.PropertyMap{"origin": resource.NewStringProperty("input")},
-			Outputs: resource.PropertyMap{"origin": resource.NewStringProperty("output")},
+			Inputs:  resource.PropertyMap{"origin": resource.NewProperty("input")},
+			Outputs: resource.PropertyMap{"origin": resource.NewProperty("output")},
 		}},
 	}
 
@@ -332,8 +332,8 @@ func TestPolicyAnalyzeCmd_AnalyzeStackCalled_PrintsAndUsesOutputs(t *testing.T) 
 
 	got, ok := analyzer.analyzeStackProperties["origin"]
 	require.True(t, ok)
-	assert.True(t, got.DeepEquals(resource.NewStringProperty("output")))
-	assert.False(t, got.DeepEquals(resource.NewStringProperty("input")))
+	assert.True(t, got.DeepEquals(resource.NewProperty("output")))
+	assert.False(t, got.DeepEquals(resource.NewProperty("input")))
 }
 
 func decodeEngineEventsJSON(t *testing.T, out string) []apitype.EngineEvent {
@@ -402,7 +402,7 @@ func (a *fakeAnalyzer) Remediate(_ plugin.AnalyzerResource) (plugin.RemediateRes
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
 				Description:       "fixes a property",
-				Properties:        resource.PropertyMap{"k": resource.NewStringProperty("fixed")},
+				Properties:        resource.PropertyMap{"k": resource.NewProperty("fixed")},
 			}},
 		}, nil
 	}
