@@ -264,6 +264,16 @@ func searchup(currentDir, fileToFind string) (string, error) {
 	return searchup(parentDir, fileToFind)
 }
 
+func pathExists(path string) (bool, error) {
+	if _, err := os.Stat(path); err == nil {
+		return true, nil
+	} else if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	} else {
+		return false, err
+	}
+}
+
 func getPythonExecutablePath(ctx context.Context,
 	commandFunc func(context.Context, ...string) (*exec.Cmd, error),
 ) (string, error) {

@@ -119,39 +119,39 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 		}
 	}
 
-	// If there's no `uv.lock` or `pyproject.toml` file, we first need to prepare the project.
-	if _, err := searchup(cwd, "uv.lock"); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("error while looking for uv.lock in %s: %w", cwd, err)
+	// If the project directory itself doesn't have a uv.lock or pyproject.toml file, we first need to
+	// prepare the project. An ancestor workspace file does not mean the Pulumi project itself is ready.
+	hasLocalUvLock, err := pathExists(filepath.Join(cwd, "uv.lock"))
+	if err != nil {
+		return fmt.Errorf("error while checking uv.lock in %s: %w", cwd, err)
+	}
+	hasLocalPyproject, err := pathExists(filepath.Join(cwd, "pyproject.toml"))
+	if err != nil {
+		return fmt.Errorf("error while checking pyproject.toml in %s: %w", cwd, err)
+	}
+	if !hasLocalUvLock && !hasLocalPyproject {
+		// No local pyproject.toml found, this is likely a template with a requirements.txt, convert it to a
+		// pyproject.toml file.
+		// We can't use workspace.LoadProject here because the workspace module depends on toolchain.
+		// TODO: https://github.com/pulumi/pulumi/issues/20953
+		//
+		// We can also remove the call to `PrepareProject` here eventually. Before `Language.Template` existed, the
+		// creation of a `pyproject.toml` file happened during `pulumi install`. It is possible to have a half
+		// initialized project, for example from `pulumi new ... --generate-only` which has a `requirements.txt`
+		// that still needs to be converted. We want to maintain the same behavior as before here for a while.
+		// TODO: https://github.com/pulumi/pulumi/issues/20987
+		var projectName string
+		pulumiYamlPath := filepath.Join(cwd, "Pulumi.yaml")
+		if pulumiYamlData, err := os.ReadFile(pulumiYamlPath); err == nil {
+			var pulumiConfig struct {
+				Name tokens.PackageName `json:"name" yaml:"name"`
+			}
+			if err := yaml.Unmarshal(pulumiYamlData, &pulumiConfig); err == nil {
+				projectName = string(pulumiConfig.Name)
+			}
 		}
-		// No uv.lock found, look for pyproject.toml.
-		if _, err := searchup(cwd, "pyproject.toml"); err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("error while looking for pyproject.toml in %s: %w", cwd, err)
-			}
-			// No pyproject.toml found, this is likely a template with a requirements.txt, convert it to a
-			// pyproject.toml file.
-			// We can't use workspace.LoadProject here because the workspace module depends on toolchain.
-			// TODO: https://github.com/pulumi/pulumi/issues/20953
-			//
-			// We can also remove the call to `PrepareProject` here eventually. Before `Language.Template` existed, the
-			// creation of a `pyproject.toml` file happened during `pulumi install`. It is possible to have a half
-			// initialized project, for example from `pulumi new ... --generate-only` which has a `requirements.txt`
-			// that still needs to be converted. We want to maintain the same behavior as before here for a while.
-			// TODO: https://github.com/pulumi/pulumi/issues/20987
-			var projectName string
-			pulumiYamlPath := filepath.Join(cwd, "Pulumi.yaml")
-			if pulumiYamlData, err := os.ReadFile(pulumiYamlPath); err == nil {
-				var pulumiConfig struct {
-					Name tokens.PackageName `json:"name" yaml:"name"`
-				}
-				if err := yaml.Unmarshal(pulumiYamlData, &pulumiConfig); err == nil {
-					projectName = string(pulumiConfig.Name)
-				}
-			}
-			if err := u.PrepareProject(ctx, projectName, cwd, showOutput, infoWriter, errorWriter); err != nil {
-				return fmt.Errorf("error preparing project: %w", err)
-			}
+		if err := u.PrepareProject(ctx, projectName, cwd, showOutput, infoWriter, errorWriter); err != nil {
+			return fmt.Errorf("error preparing project: %w", err)
 		}
 	}
 
@@ -171,12 +171,13 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 func (u *uv) PrepareProject(
 	ctx context.Context, projectName, cwd string, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
-	_, err := searchup(cwd, "pyproject.toml")
-	if err == nil {
+	hasLocalPyproject, err := pathExists(filepath.Join(cwd, "pyproject.toml"))
+	if err != nil {
+		return fmt.Errorf("error while checking pyproject.toml in %s: %w", cwd, err)
+	}
+	if hasLocalPyproject {
 		// There's already a pyproject.toml, we're done.
 		return nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("error while looking for nearest pyproject.toml in %s: %w", cwd, err)
 	}
 
 	requirementsTxtDir, err := searchup(cwd, "requirements.txt")
