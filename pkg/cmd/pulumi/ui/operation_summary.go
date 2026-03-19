@@ -45,11 +45,11 @@ type OperationSummaryJSON struct {
 // Callers can populate this while the operation runs and then use PrintOperationSummaryJSON
 // at the CLI layer once the command has completed.
 type OperationSummarySink struct {
-	StartTime    time.Time
-	EndTime      time.Time
+	StartTime     time.Time
+	EndTime       time.Time
 	ChangeSummary display.ResourceChanges
-	Err          error
-	Canceled     bool
+	Err           error
+	Canceled      bool
 }
 
 // OperationSummary builds an OperationSummaryJSON from the sink.
@@ -62,8 +62,8 @@ func (s *OperationSummarySink) OperationSummary() OperationSummaryJSON {
 	}
 
 	return OperationSummaryJSON{
-		Result:       result,
-		Duration:     s.EndTime.Sub(s.StartTime),
+		Result:        result,
+		Duration:      s.EndTime.Sub(s.StartTime),
 		ChangeSummary: s.ChangeSummary,
 	}
 }
