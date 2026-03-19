@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import { Resource } from "./resource";
-import * as settings from "./runtime/settings";
 import * as utils from "./utils";
 
 /* eslint-disable no-shadow, @typescript-eslint/no-shadow */
@@ -360,6 +359,42 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.`;
     public get(): T {
         throw new Error(`Cannot call '.get' during update or preview.
 To manipulate the value of this Output, use '.apply' instead.`);
+    }
+
+    // unlike apply, catch will run when the output resolve to an errored state. If the original output succeded catch will resolve
+    // with it's value, else it will call the onrejected and resolve with the value returned from that.
+    public catch<U>(onrejected: (reason: any) => Input<U>): Output<T | U> {
+        const applied = Promise.all([
+            this.allResources!().catch(() => this.resources()),
+            this.promise(/*withUnknowns*/ true).then(
+                // value or reason could be undefined so we use the array length to tell the difference
+                // between resolved and rejected.
+                (value) => [value],
+                (reason) => [undefined, reason],
+            ),
+            this.isKnown.catch(() => true),
+            this.isSecret.catch(() => false),
+        ]).then(([allResources, result, isKnown, isSecret]) => {
+            if (result.length === 1) {
+                return {
+                    allResources,
+                    value: result[0],
+                    isKnown,
+                    isSecret,
+                };
+            }
+
+            return applyHelperAsync<T, U>(allResources, result[1], isKnown, isSecret, onrejected, true);
+        });
+
+        const result = new OutputImpl<U>(
+            this.resources(),
+            applied.then((a) => a.value),
+            applied.then((a) => a.isKnown),
+            applied.then((a) => a.isSecret),
+            applied.then((a) => a.allResources),
+        );
+        return <Output<U>>(<any>result);
     }
 
     // runWithUnknowns requests that `func` is run even if `isKnown` resolves to `false`. This is used to allow
@@ -1055,6 +1090,11 @@ export interface OutputInstance<T> {
     apply<U>(func: (t: T) => Promise<U>): Output<U>;
     apply<U>(func: (t: T) => OutputInstance<U>): Output<U>;
     apply<U>(func: (t: T) => U): Output<U>;
+
+    // TODO: Document these methods
+    catch<U>(onrejected: (reason: any) => Promise<U>): Output<T | U>;
+    catch<U>(onrejected: (reason: any) => OutputInstance<U>): Output<T | U>;
+    catch<U>(onrejected: (reason: any) => U): Output<T | U>;
 
     /**
      * Retrieves the underlying value of this dependency.

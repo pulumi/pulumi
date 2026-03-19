@@ -356,6 +356,77 @@ describe("output", () => {
         assert.strictEqual(value, "inner");
     });
 
+    describe("catch", () => {
+        function createOutput<T>(promise: Promise<T>, isKnown: boolean, isSecret: boolean = false): Output<T> {
+            return new Output<T>(
+                new Set(),
+                promise,
+                Promise.resolve(isKnown),
+                Promise.resolve(isSecret),
+                Promise.resolve(new Set()),
+            );
+        }
+
+        it("returns original value when output resolves", async () => {
+            runtime._setIsDryRun(false);
+
+            let handlerCalled = false;
+            const out = createOutput(Promise.resolve("ok"), true);
+            const recovered = out.catch(() => {
+                handlerCalled = true;
+                return "recovered";
+            }) as Output<string>;
+
+            assert.strictEqual(await recovered.promise(), "ok");
+            assert.strictEqual(await recovered.isKnown, true);
+            assert.strictEqual(await recovered.isSecret, false);
+            assert.strictEqual(handlerCalled, false);
+        });
+
+        it("invokes handler when output rejects", async () => {
+            runtime._setIsDryRun(false);
+
+            const expected = new Error("boom");
+            const rejected = Promise.reject(expected) as Promise<string>;
+            rejected.catch(() => undefined);
+            const out = createOutput(rejected, true);
+            const recovered = out.catch((reason: Error) => {
+                assert.strictEqual(reason, expected);
+                return "recovered";
+            }) as Output<string>;
+
+            assert.strictEqual(await recovered.promise(), "recovered");
+            assert.strictEqual(await recovered.isKnown, true);
+            assert.strictEqual(await recovered.isSecret, false);
+        });
+
+        it("propagates secretness from the recovered output", async () => {
+            runtime._setIsDryRun(false);
+
+            const rejected = Promise.reject(new Error("boom")) as Promise<string>;
+            rejected.catch(() => undefined);
+            const out = createOutput(rejected, true);
+            const recovered = out.catch(() => createOutput(Promise.resolve("recovered"), true, true)) as Output<string>;
+
+            assert.strictEqual(await recovered.promise(), "recovered");
+            assert.strictEqual(await recovered.isKnown, true);
+            assert.strictEqual(await recovered.isSecret, true);
+        });
+
+        it("does not retain source secretness when recovering from a rejected source", async () => {
+            runtime._setIsDryRun(false);
+
+            const rejected = Promise.reject(new Error("boom")) as Promise<string>;
+            rejected.catch(() => undefined);
+            const out = createOutput(rejected, true, true);
+            const recovered = out.catch(() => "recovered") as Output<string>;
+
+            assert.strictEqual(await recovered.promise(), "recovered");
+            assert.strictEqual(await recovered.isKnown, true);
+            assert.strictEqual(await recovered.isSecret, false);
+        });
+    });
+
     describe("apply", () => {
         function createOutput<T>(val: T, isKnown: boolean, isSecret: boolean = false): Output<T> {
             return new Output<T>(
