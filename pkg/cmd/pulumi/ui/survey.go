@@ -25,6 +25,7 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -129,6 +130,10 @@ func PromptForValue(
 			if validationError == ErrRetryPromptForValue {
 				continue
 			} else if validationError != nil {
+				// Authentication errors should not be treated as validation failures.
+				if errors.Is(validationError, backenderr.LoginRequiredError{}) {
+					return "", validationError
+				}
 				// If validation failed, let the user know. If interactive, we will print the error and
 				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
 				var err error
