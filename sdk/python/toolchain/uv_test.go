@@ -114,7 +114,7 @@ func TestUvCommandSyncsEnvironment(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run a python command, this should run `uv sync` as side effect
-	cmd, err := uv.Command(context.Background(), "-c", "print('hello')")
+	cmd, err := uv.Command(t.Context(), "-c", "print('hello')")
 	require.NoError(t, err)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err)
@@ -124,7 +124,7 @@ func TestUvCommandSyncsEnvironment(t *testing.T) {
 	require.DirExists(t, filepath.Join(root, ".venv"))
 
 	// `wheel`, the project's dependency, should be installed
-	cmd, err = uv.ModuleCommand(context.Background(), "wheel", "version")
+	cmd, err = uv.ModuleCommand(t.Context(), "wheel", "version")
 	require.NoError(t, err)
 	out, err = cmd.CombinedOutput()
 	require.NoError(t, err)
@@ -144,7 +144,7 @@ func TestUvCommandSyncsEnvironmentCustomVenv(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run a python command, this should run `uv sync` as side effect
-	cmd, err := uv.Command(context.Background(), "-c", "print('hello')")
+	cmd, err := uv.Command(t.Context(), "-c", "print('hello')")
 	require.NoError(t, err)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err)
@@ -154,7 +154,7 @@ func TestUvCommandSyncsEnvironmentCustomVenv(t *testing.T) {
 	require.DirExists(t, filepath.Join(root, "my_venv"))
 
 	// `wheel`, the project's dependency, should be installed
-	cmd, err = uv.ModuleCommand(context.Background(), "wheel", "version")
+	cmd, err = uv.ModuleCommand(t.Context(), "wheel", "version")
 	require.NoError(t, err)
 	out, err = cmd.CombinedOutput()
 	require.NoError(t, err)

@@ -88,7 +88,7 @@ func (m *mockPulumiCommand) Run(ctx context.Context,
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
@@ -171,7 +171,7 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestRemoveWithForce(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
@@ -251,7 +251,7 @@ func TestRemoveWithForce(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestNewStackLocalSource(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
@@ -364,7 +364,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestUpsertStackLocalSource(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
@@ -472,7 +472,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 func TestNewStackRemoteSource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pName := "go_remote_proj"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -566,7 +566,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 func TestUpsertStackRemoteSource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pName := "go_remote_proj"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -660,7 +660,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pName := "go_remote_proj"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -769,7 +769,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pName := "go_remote_proj"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -878,7 +878,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 func TestNewStackInlineSource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
@@ -970,7 +970,7 @@ func TestStackLifecycleInlineProgramRemoveWithoutDestroy(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
@@ -1001,7 +1001,7 @@ func TestStackLifecycleInlineProgramDestroyWithRemove(t *testing.T) {
 	t.Parallel()
 
 	// Arrange.
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
@@ -1036,7 +1036,7 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		// Verify that shared context doesn't affect result
-		ctx := context.Background()
+		ctx := t.Context()
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
 			sName := ptesting.RandomStackName()
@@ -1134,7 +1134,7 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 func TestNestedStackFails(t *testing.T) {
 	t.Parallel()
 
-	testCtx := context.Background()
+	testCtx := t.Context()
 	sName := ptesting.RandomStackName()
 	parentstackName := FullyQualifiedStackName(pulumiOrg, "parent", sName)
 	nestedstackName := FullyQualifiedStackName(pulumiOrg, "nested", sName)
@@ -1195,7 +1195,7 @@ func TestNestedStackFails(t *testing.T) {
 func TestErrorProgressStreams(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pName := "inline_error_progress_streams"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -1255,7 +1255,7 @@ func TestErrorProgressStreams(t *testing.T) {
 func TestProgressStreams(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pName := "inline_progress_streams"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -1327,7 +1327,7 @@ func TestProgressStreams(t *testing.T) {
 func TestImportExportStack(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
@@ -1401,7 +1401,7 @@ func TestImportExportStack(t *testing.T) {
 func TestConfigFlagLike(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
@@ -1436,7 +1436,7 @@ func TestConfigFlagLike(t *testing.T) {
 func TestGetAllConfigCorrectArgs(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
 		stdout:   `{"key1": {"Value": "value1", "Secret": false}}`,
@@ -1463,7 +1463,7 @@ func TestGetAllConfigCorrectArgs(t *testing.T) {
 func TestConfigWithOptions(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
@@ -1878,7 +1878,7 @@ func TestConfigWithOptions(t *testing.T) {
 func TestConfigAllWithOptions(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
@@ -2169,7 +2169,7 @@ func TestConfigAllWithOptions(t *testing.T) {
 func TestSetAllConfigJson(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
@@ -2235,7 +2235,7 @@ func TestSetAllConfigJson(t *testing.T) {
 // the context of a stack and org, and running this test in different orgs will fail if there are secrets.
 func TestNestedConfig(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	stackName := FullyQualifiedStackName(pulumiOrg, "nested_config", "dev")
 
 	// initialize
@@ -2300,7 +2300,7 @@ func TestEnvFunctions(t *testing.T) {
 	}
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
 	pDir := filepath.Join(".", "test", pName)
@@ -2364,7 +2364,7 @@ func TestEnvFunctions(t *testing.T) {
 func TestTagFunctions(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
 	pDir := filepath.Join(".", "test", "testproj")
@@ -2413,7 +2413,7 @@ func TestTagFunctions(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestStructuredOutput(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
@@ -2536,7 +2536,7 @@ func TestStructuredOutput(t *testing.T) {
 func TestStackImportResources(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, "import", sName)
 	pDir := filepath.Join(".", "test", "import")
@@ -2577,7 +2577,7 @@ func TestStackImportResources(t *testing.T) {
 func TestSupportsStackOutputs(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
@@ -2686,7 +2686,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 func TestShallowClone(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name string
@@ -2738,7 +2738,7 @@ func TestShallowClone(t *testing.T) {
 func TestPulumiVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	ws, err := NewLocalWorkspace(ctx)
 	if err != nil {
 		t.Errorf("failed to create workspace, err: %v", err)
@@ -2752,7 +2752,7 @@ func TestPulumiVersion(t *testing.T) {
 func TestPulumiCommand(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pulumiCommand, err := NewPulumiCommand(nil)
 	require.NoError(t, err, "failed to create pulumi command: %s", err)
 	ws, err := NewLocalWorkspace(ctx, Pulumi(pulumiCommand))
@@ -2770,7 +2770,7 @@ func TestClIWithoutRemoteSupport(t *testing.T) {
 	// simulate a CLI version without remote support.
 	m := mockPulumiCommand{stdout: "some output"}
 
-	_, err := NewLocalWorkspace(context.Background(), Pulumi(&m), remote(true))
+	_, err := NewLocalWorkspace(t.Context(), Pulumi(&m), remote(true))
 
 	require.ErrorContains(t, err, "does not support remote operations")
 }
@@ -2784,7 +2784,7 @@ func TestByPassesRemoteCheck(t *testing.T) {
 	m := mockPulumiCommand{stdout: "some output"}
 	envVars := map[string]string{"PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK": "true"}
 
-	_, err := NewLocalWorkspace(context.Background(), Pulumi(&m), EnvVars(envVars), remote(true))
+	_, err := NewLocalWorkspace(t.Context(), Pulumi(&m), EnvVars(envVars), remote(true))
 
 	require.NoError(t, err)
 }
@@ -2792,7 +2792,7 @@ func TestByPassesRemoteCheck(t *testing.T) {
 func TestProjectSettingsRespected(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	pName := "correct_project"
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -2817,7 +2817,7 @@ func TestProjectSettingsRespected(t *testing.T) {
 func TestSaveStackSettings(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
@@ -2886,7 +2886,7 @@ func TestConfigSecretWarnings(t *testing.T) {
 
 	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
 	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
@@ -3316,7 +3316,7 @@ func TestConfigSecretWarnings(t *testing.T) {
 func TestWhoAmIDetailed(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
 	// initialize
@@ -3351,7 +3351,7 @@ func TestWhoAmIDetailed(t *testing.T) {
 func TestListStacks(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
@@ -3384,7 +3384,7 @@ func TestListStacks(t *testing.T) {
 func TestListStacksCorrectArgs(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
@@ -3411,7 +3411,7 @@ func TestListStacksCorrectArgs(t *testing.T) {
 func TestListAllStacks(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
@@ -3444,7 +3444,7 @@ func TestListAllStacks(t *testing.T) {
 func TestListStacksAllCorrectArgs(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	pDir := filepath.Join(".", "test", "testproj")
 	m := mockPulumiCommand{
@@ -3470,7 +3470,7 @@ func TestListStacksAllCorrectArgs(t *testing.T) {
 
 func TestInstallWithOptions(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	pDir := filepath.Join(".", "test", "install")
 
 	defer os.RemoveAll(filepath.Join(pDir, "venv"))
@@ -3500,7 +3500,7 @@ func TestInstallWithOptions(t *testing.T) {
 
 func TestInstallOptions(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	pDir := filepath.Join(".", "test", "install")
 	m := mockPulumiCommand{
 		// Set a version high enough to support UseLanguageVersionTools
@@ -3555,7 +3555,7 @@ func TestInstallOptions(t *testing.T) {
 
 func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	pDir := filepath.Join(".", "test", "install-use-language-version-tools")
 
 	// Option is not available on < 3.130
@@ -3585,7 +3585,7 @@ func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
-	ctx := context.Background()
+	ctx := b.Context()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_mixed", "dev")
 
 	// initialize
@@ -3652,7 +3652,7 @@ func BenchmarkBulkSetConfigMixed(b *testing.B) {
 }
 
 func BenchmarkBulkSetConfigPlain(b *testing.B) {
-	ctx := context.Background()
+	ctx := b.Context()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_plain", "dev")
 
 	// initialize
@@ -3719,7 +3719,7 @@ func BenchmarkBulkSetConfigPlain(b *testing.B) {
 }
 
 func BenchmarkBulkSetConfigSecret(b *testing.B) {
-	ctx := context.Background()
+	ctx := b.Context()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_plain", "dev")
 
 	// initialize
@@ -3842,7 +3842,7 @@ func NewMyResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOpti
 func TestStackLifecycleInlineProgramRunProgram(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 

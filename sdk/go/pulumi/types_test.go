@@ -864,7 +864,7 @@ func TestAll(t *testing.T) {
 func TestApplyTOutput(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 	r1 := newSimpleCustomResource(ctx, URN("urn1"), ID("id1"))
 	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
@@ -910,7 +910,7 @@ func assertResult(t *testing.T, o Output, expectedValue any, expectedKnown, expe
 func TestApplyTOutputJoinDeps(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 	rA := newSimpleCustomResource(ctx, URN("urnA"), ID("idA"))
 	rB := newSimpleCustomResource(ctx, URN("urnB"), ID("idB"))
@@ -938,7 +938,7 @@ func TestApplyTOutputJoinDeps(t *testing.T) {
 func TestApplyTOutputJoin(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 	r1 := newSimpleCustomResource(ctx, URN("urn1"), ID("id1"))
 	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
@@ -1223,7 +1223,7 @@ func TestApplyTCoerceRejectDifferentKinds(t *testing.T) {
 func TestDeferredOutputDelayedResolution(t *testing.T) {
 	t.Parallel()
 
-	deferred, resolve := DeferredOutput[string](context.Background())
+	deferred, resolve := DeferredOutput[string](t.Context())
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 
 	// Create a new unresolved output that we resolve *after* resolving the
@@ -1245,7 +1245,7 @@ func TestDeferredOutputDelayedResolution(t *testing.T) {
 func TestDeferredOutputDelayedRejection(t *testing.T) {
 	t.Parallel()
 
-	deferred, resolve := DeferredOutput[string](context.Background())
+	deferred, resolve := DeferredOutput[string](t.Context())
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 
 	// Create a new unresolved output that we reject *after* resolving the
@@ -1263,7 +1263,7 @@ func TestDeferredOutputDelayedRejection(t *testing.T) {
 func TestDeferredOutputString(t *testing.T) {
 	t.Parallel()
 
-	deferred, resolve := DeferredOutput[string](context.Background())
+	deferred, resolve := DeferredOutput[string](t.Context())
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 	resolve(String("hello").ToStringOutput())
 	v, known, secret, deps, err := await(deferred)
@@ -1277,7 +1277,7 @@ func TestDeferredOutputString(t *testing.T) {
 func TestDeferredOutputStringArray(t *testing.T) {
 	t.Parallel()
 
-	deferred, resolve := DeferredOutput[[]string](context.Background())
+	deferred, resolve := DeferredOutput[[]string](t.Context())
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 	resolve(ToStringArray([]string{"hello"}).ToStringArrayOutput())
 	v, known, secret, deps, err := await(deferred)
@@ -1303,7 +1303,7 @@ func (s SomeStruct) SomeMethod() string {
 func TestDeferredOutputStruct(t *testing.T) {
 	t.Parallel()
 
-	deferred, resolve := DeferredOutput[SomeInterface](context.Background())
+	deferred, resolve := DeferredOutput[SomeInterface](t.Context())
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 	resolve(pulumix.Val[SomeInterface](SomeStruct{A: 42}))
 	v, known, secret, deps, err := await(deferred)
@@ -1317,7 +1317,7 @@ func TestDeferredOutputStruct(t *testing.T) {
 func TestDeferredOutputNil(t *testing.T) {
 	t.Parallel()
 
-	deferred, resolve := DeferredOutput[*string](context.Background())
+	deferred, resolve := DeferredOutput[*string](t.Context())
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 	resolve(pulumix.Val[*string](nil))
 	v, known, secret, deps, err := await(deferred)
@@ -1331,7 +1331,7 @@ func TestDeferredOutputNil(t *testing.T) {
 func TestDeferredOutputAny(t *testing.T) {
 	t.Parallel()
 
-	deferred, resolve := DeferredOutput[any](context.Background())
+	deferred, resolve := DeferredOutput[any](t.Context())
 	require.Equal(t, internal.OutputPending, internal.GetOutputStatus(deferred))
 	resolve(String("hello").ToStringOutput())
 	v, known, secret, deps, err := await(deferred)

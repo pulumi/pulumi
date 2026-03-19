@@ -69,7 +69,7 @@ func (r mockRegistry) DownloadTemplate(ctx context.Context, downloadURL string) 
 func TestOnDemandRegistry(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()

@@ -31,7 +31,7 @@ func TestEmptyObject(t *testing.T) {
 	// without error.
 	o := object{}
 	crypter := nopCrypter{}
-	v, err := o.toDecryptedPropertyValue(context.Background(), crypter)
+	v, err := o.toDecryptedPropertyValue(t.Context(), crypter)
 	require.NoError(t, err)
 	assert.Equal(t, property.Value{}, v)
 }
@@ -74,7 +74,7 @@ func TestMarshallingRoundtrip(t *testing.T) {
 //nolint:paralleltest // changes global defaultMaxChunkSize variable
 func TestDecryptMap(t *testing.T) {
 	t.Run("empty map", func(t *testing.T) {
-		result, err := decryptMap(context.Background(), map[Key]object{}, nopCrypter{})
+		result, err := decryptMap(t.Context(), map[Key]object{}, nopCrypter{})
 		require.NoError(t, err)
 		assert.Empty(t, result)
 	})
@@ -84,7 +84,7 @@ func TestDecryptMap(t *testing.T) {
 			MustParseKey("ns:foo"): newObject("bar"),
 			MustParseKey("ns:num"): newObject(int64(42)),
 		}
-		result, err := decryptMap(context.Background(), input, nopCrypter{})
+		result, err := decryptMap(t.Context(), input, nopCrypter{})
 		require.NoError(t, err)
 		assert.Equal(t, "bar", result[MustParseKey("ns:foo")].value)
 		assert.Equal(t, int64(42), result[MustParseKey("ns:num")].value)
@@ -94,7 +94,7 @@ func TestDecryptMap(t *testing.T) {
 		input := map[Key]object{
 			MustParseKey("ns:secret"): newObject(CiphertextSecret{"ciphertext"}),
 		}
-		result, err := decryptMap(context.Background(), input, nopCrypter{})
+		result, err := decryptMap(t.Context(), input, nopCrypter{})
 		require.NoError(t, err)
 		assert.Equal(t, PlaintextSecret("ciphertext"), result[MustParseKey("ns:secret")].value)
 		assert.True(t, result[MustParseKey("ns:secret")].Secure())
@@ -106,7 +106,7 @@ func TestDecryptMap(t *testing.T) {
 				"foo": newObject(CiphertextSecret{"ciphertext"}),
 			}),
 		}
-		result, err := decryptMap(context.Background(), input, nopCrypter{})
+		result, err := decryptMap(t.Context(), input, nopCrypter{})
 		require.NoError(t, err)
 		assert.Equal(t,
 			NewPlaintext(PlaintextSecret("ciphertext")),
@@ -120,7 +120,7 @@ func TestDecryptMap(t *testing.T) {
 			MustParseKey("ns:plain"):  newObject("value"),
 			MustParseKey("ns:secret"): newObject(CiphertextSecret{"ciphertext"}),
 		}
-		result, err := decryptMap(context.Background(), input, nopCrypter{})
+		result, err := decryptMap(t.Context(), input, nopCrypter{})
 		require.NoError(t, err)
 		assert.Equal(t, "value", result[MustParseKey("ns:plain")].value)
 		assert.Equal(t, PlaintextSecret("ciphertext"), result[MustParseKey("ns:secret")].value)
@@ -138,7 +138,7 @@ func TestDecryptMap(t *testing.T) {
 			MustParseKey("ns:c"): newObject(CiphertextSecret{"s3"}),
 			MustParseKey("ns:d"): newObject("plain"),
 		}
-		result, err := decryptMap(context.Background(), input, nopCrypter{})
+		result, err := decryptMap(t.Context(), input, nopCrypter{})
 		require.NoError(t, err)
 		assert.Equal(t, PlaintextSecret("s1"), result[MustParseKey("ns:a")].value)
 		assert.Equal(t, PlaintextSecret("s2"), result[MustParseKey("ns:b")].value)

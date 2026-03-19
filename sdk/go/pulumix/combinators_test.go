@@ -31,7 +31,7 @@ func TestFlatten(t *testing.T) {
 	t.Parallel()
 
 	o := pulumix.Flatten[string, pulumix.Output[string]](pulumix.Val(pulumix.Val("a")))
-	v, known, secret, deps, err := internal.AwaitOutput(context.Background(), o)
+	v, known, secret, deps, err := internal.AwaitOutput(t.Context(), o)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -48,7 +48,7 @@ func TestFlatten_secret(t *testing.T) {
 		),
 	)
 
-	v, known, secret, deps, err := internal.AwaitOutput(context.Background(), o)
+	v, known, secret, deps, err := internal.AwaitOutput(t.Context(), o)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.True(t, secret)
@@ -67,7 +67,7 @@ func TestFlatten_failedOutput(t *testing.T) {
 	internal.RejectOutput(in, giveErr)
 
 	o := pulumix.Flatten[string, pulumix.Output[string]](in)
-	_, _, _, _, err := internal.AwaitOutput(context.Background(), o)
+	_, _, _, _, err := internal.AwaitOutput(t.Context(), o)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -81,7 +81,7 @@ func TestAll(t *testing.T) {
 		pulumix.Array[string]{pulumix.Val("b"), pulumix.Val("c")}.AsAny(),
 		pulumix.Map[int]{"d": pulumix.Val(3), "e": pulumix.Val(4)}.AsAny(),
 	)
-	v, _, _, _, err := internal.AwaitOutput(context.Background(), o)
+	v, _, _, _, err := internal.AwaitOutput(t.Context(), o)
 	require.NoError(t, err)
 
 	assert.Equal(t, []any{

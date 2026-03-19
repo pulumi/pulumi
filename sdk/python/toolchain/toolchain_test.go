@@ -52,7 +52,7 @@ func TestValidateVenv(t *testing.T) {
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
-			err = tc.ValidateVenv(context.Background())
+			err = tc.ValidateVenv(t.Context())
 			require.Error(t, err)
 		})
 		t.Run("Exists-"+Name(opts.Toolchain), func(t *testing.T) {
@@ -64,9 +64,9 @@ func TestValidateVenv(t *testing.T) {
 
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
-			err = tc.InstallDependencies(context.Background(), opts.Root, false, true, os.Stdout, os.Stderr)
+			err = tc.InstallDependencies(t.Context(), opts.Root, false, true, os.Stdout, os.Stderr)
 			require.NoError(t, err)
-			err = tc.ValidateVenv(context.Background())
+			err = tc.ValidateVenv(t.Context())
 			require.NoError(t, err)
 		})
 	}
@@ -101,7 +101,7 @@ func TestCommand(t *testing.T) {
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
-			cmd, err := tc.Command(context.Background())
+			cmd, err := tc.Command(t.Context())
 			require.NoError(t, err)
 
 			var venvBin string
@@ -193,7 +193,7 @@ func TestListPackages(t *testing.T) {
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
-			packages, err := tc.ListPackages(context.Background(), false)
+			packages, err := tc.ListPackages(t.Context(), false)
 
 			require.NoError(t, err)
 			packageNames := make([]string, len(packages))
@@ -214,7 +214,7 @@ func TestListPackages(t *testing.T) {
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
-			packages, err := tc.ListPackages(context.Background(), false)
+			packages, err := tc.ListPackages(t.Context(), false)
 
 			require.NoError(t, err)
 			packageNames := make([]string, len(packages))
@@ -236,7 +236,7 @@ func TestListPackages(t *testing.T) {
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
-			packages, err := tc.ListPackages(context.Background(), false)
+			packages, err := tc.ListPackages(t.Context(), false)
 
 			require.NoError(t, err)
 			packageNames := make([]string, len(packages))
@@ -279,7 +279,7 @@ func TestAbout(t *testing.T) {
 
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
-			info, err := tc.About(context.Background())
+			info, err := tc.About(t.Context())
 			require.NoError(t, err)
 			require.NotEqual(t, semver.Version{}, info.PythonVersion)
 			require.True(t, info.PythonVersion.Major > 0)
@@ -462,7 +462,7 @@ func TestPyenvInstall(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	err := installPython(context.Background(), tmpDir, false, stdout, stderr)
+	err := installPython(t.Context(), tmpDir, false, stdout, stderr)
 	require.NoError(t, err)
 
 	b, err := os.ReadFile(outPath)
@@ -477,12 +477,12 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 	case Auto, Pip:
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+		err = tc.InstallDependencies(t.Context(), opts.Root, false, /*useLanguageVersionTools*/
 			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
 		for _, pkg := range packages {
-			cmd, err := tc.Command(context.Background(), "-m", "pip", "install", pkg)
+			cmd, err := tc.Command(t.Context(), "-m", "pip", "install", pkg)
 			require.NoError(t, err)
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, string(out))
@@ -494,7 +494,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		writePoetryToml(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+		err = tc.InstallDependencies(t.Context(), opts.Root, false, /*useLanguageVersionTools*/
 			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
@@ -508,7 +508,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		writePyprojectForUv(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+		err = tc.InstallDependencies(t.Context(), opts.Root, false, /*useLanguageVersionTools*/
 			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 

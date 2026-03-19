@@ -36,7 +36,7 @@ type TestStruct struct {
 func TestConfig(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+	ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 		Config: map[string]string{
 			"testpkg:sss":    "a string value",
 			"testpkg:bbb":    "true",
@@ -171,7 +171,7 @@ func TestConfig(t *testing.T) {
 func TestSecretConfig(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+	ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 		Config: map[string]string{
 			"testpkg:sss":    "a string value",
 			"testpkg:bbb":    "true",

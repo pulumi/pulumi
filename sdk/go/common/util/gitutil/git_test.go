@@ -649,7 +649,7 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 
 			dir := t.TempDir()
 
-			err := GitCloneAndCheckoutRevision(context.Background(), "testdata/revision-test.git", c.revision, dir)
+			err := GitCloneAndCheckoutRevision(t.Context(), "testdata/revision-test.git", c.revision, dir)
 			if c.expectedError != "" {
 				require.ErrorContains(t, err, c.expectedError)
 				return
@@ -765,7 +765,7 @@ func TestGetLatestTagOrHash(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			v, err := GetLatestTagOrHash(context.Background(), c.dataDir)
+			v, err := GetLatestTagOrHash(t.Context(), c.dataDir)
 			require.NoError(t, err)
 			assert.Equal(t, c.expected.String(), v.String())
 		})

@@ -62,7 +62,7 @@ func (r *recordingEncrypter) BatchEncrypt(ctx context.Context, secrets []string)
 }
 
 func TestCiphertextToPlaintextCachedCrypter(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("EncryptValue stores mapping", func(t *testing.T) {
 		t.Parallel()

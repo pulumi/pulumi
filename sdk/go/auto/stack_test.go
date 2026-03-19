@@ -78,7 +78,7 @@ func TestUpdatePlans(t *testing.T) {
 		t.Skip("Skipping test on Windows due to flakiness")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
@@ -193,7 +193,7 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName("organization", pName, sName)
 
@@ -253,7 +253,7 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 func TestDestroyOptsConfigFile(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
@@ -281,7 +281,7 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 func TestRefreshOptsConfigFile(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
@@ -310,7 +310,7 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 func TestRefreshOptsDiff(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	// Copy the test project to a temp directory.
 	pDir := t.TempDir()
 	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
@@ -331,7 +331,7 @@ func TestRefreshOptsDiff(t *testing.T) {
 func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
@@ -357,7 +357,7 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 func TestRename(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
@@ -382,7 +382,7 @@ func TestPreviewImportResources(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 

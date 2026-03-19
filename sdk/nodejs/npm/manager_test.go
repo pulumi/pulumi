@@ -137,7 +137,7 @@ func TestPack(t *testing.T) {
 			require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 			stderr := new(bytes.Buffer)
 
-			artifact, err := Pack(context.Background(), AutoPackageManager, dir, stderr)
+			artifact, err := Pack(t.Context(), AutoPackageManager, dir, stderr)
 
 			require.NoError(t, err)
 			// check that the artifact contains a package.json
@@ -181,7 +181,7 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 			require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 			stderr := new(bytes.Buffer)
 
-			_, err := Pack(context.Background(), AutoPackageManager, dir, stderr)
+			_, err := Pack(t.Context(), AutoPackageManager, dir, stderr)
 			exitErr := new(exec.ExitError)
 			require.ErrorAs(t, err, &exitErr)
 			assert.NotZero(t, exitErr.ExitCode())
@@ -196,7 +196,7 @@ func TestBunPackNonExistentPackageJSON(t *testing.T) {
 	stderr := new(bytes.Buffer)
 	errorMessage := "error: No package.json was found for directory"
 
-	_, err := Pack(context.Background(), "bun", dir, stderr)
+	_, err := Pack(t.Context(), "bun", dir, stderr)
 	exitErr := new(exec.ExitError)
 	require.ErrorAs(t, err, &exitErr)
 	assert.NotZero(t, exitErr.ExitCode())
@@ -292,7 +292,7 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 	ptesting.YarnInstallMutex.Lock()
 	defer ptesting.YarnInstallMutex.Unlock()
 	out := iotest.LogWriter(t)
-	bin, err := Install(context.Background(), AutoPackageManager, pkgdir, production, out, out)
+	bin, err := Install(t.Context(), AutoPackageManager, pkgdir, production, out, out)
 	require.NoError(t, err)
 	assert.Equal(t, packageManager, bin)
 }

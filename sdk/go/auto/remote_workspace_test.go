@@ -39,7 +39,7 @@ const (
 func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, stackName string, repo GitRepo,
 	opts ...RemoteWorkspaceOption) (RemoteStack, error),
 ) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	const stack = "owner/project/stack"
 
@@ -195,7 +195,7 @@ func testRemoteStackGitSource(
 		t.Skipf("Skipping: PULUMI_TEST_DEPLOYMENTS_API is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pName := "go_remote_proj"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)

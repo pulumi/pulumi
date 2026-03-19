@@ -41,7 +41,7 @@ func TestIsVirtualEnv(t *testing.T) {
 
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
+	cmd, err := Command(t.Context(), "-m", "venv", venvDir)
 	require.NoError(t, err)
 	err = cmd.Run()
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
+	cmd, err := Command(t.Context(), "-m", "venv", venvDir)
 	require.NoError(t, err)
 	err = cmd.Run()
 	require.NoError(t, err)
@@ -141,7 +141,7 @@ func TestCommandNoVenv(t *testing.T) {
 	tc, err := newPip(".", "")
 	require.NoError(t, err)
 
-	cmd, err := tc.Command(context.Background())
+	cmd, err := tc.Command(t.Context())
 	require.NoError(t, err)
 
 	globalPython, err := exec.LookPath("python3")
@@ -158,7 +158,7 @@ func TestCommandPulumiPythonCommand(t *testing.T) {
 	tc, err := newPip(".", "")
 	require.NoError(t, err)
 
-	cmd, err := tc.Command(context.Background())
+	cmd, err := tc.Command(t.Context())
 	require.ErrorContains(t, err, "python-not-found")
 	require.Nil(t, cmd)
 }
@@ -209,7 +209,7 @@ func TestPipLinkPackages(t *testing.T) {
 			requirementsTxt := filepath.Join(tmp, "requirements.txt")
 			require.NoError(t, os.WriteFile(requirementsTxt, []byte(test.requirementsContent), 0o600))
 
-			err = tc.LinkPackages(context.Background(), test.packages)
+			err = tc.LinkPackages(t.Context(), test.packages)
 			require.NoError(t, err)
 
 			b, err := os.ReadFile(requirementsTxt)

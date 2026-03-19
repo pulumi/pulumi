@@ -29,7 +29,7 @@ func TestPtr(t *testing.T) {
 	t.Parallel()
 
 	o := pulumix.Ptr(42)
-	v, known, secret, deps, err := internal.AwaitOutput(context.Background(), o)
+	v, known, secret, deps, err := internal.AwaitOutput(t.Context(), o)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -44,7 +44,7 @@ func TestPtrOf(t *testing.T) {
 	vo := pulumix.Val("foo")
 	o := pulumix.PtrOf[string](vo)
 
-	v, known, secret, deps, err := internal.AwaitOutput(context.Background(), o)
+	v, known, secret, deps, err := internal.AwaitOutput(t.Context(), o)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -57,7 +57,7 @@ func TestPtrOutput_Elem(t *testing.T) {
 	t.Parallel()
 
 	o := pulumix.Ptr(42)
-	v, _, _, _, err := internal.AwaitOutput(context.Background(), o.Elem())
+	v, _, _, _, err := internal.AwaitOutput(t.Context(), o.Elem())
 	require.NoError(t, err)
 	assert.Equal(t, 42, v)
 }
@@ -67,7 +67,7 @@ func TestPtrOutput_Elem_nil(t *testing.T) {
 
 	o := pulumix.Cast[pulumix.PtrOutput[string], *string](pulumix.Val[*string]((*string)(nil)))
 
-	v, _, _, _, err := internal.AwaitOutput(context.Background(), o.Elem())
+	v, _, _, _, err := internal.AwaitOutput(t.Context(), o.Elem())
 	require.NoError(t, err)
 	assert.Equal(t, "", v)
 }
@@ -76,7 +76,7 @@ func TestGPtrOutput(t *testing.T) {
 	t.Parallel()
 
 	o := pulumix.GPtrOutput[string, pulumix.Output[string]](pulumix.Ptr("foo"))
-	v, known, secret, deps, err := internal.AwaitOutput(context.Background(), o)
+	v, known, secret, deps, err := internal.AwaitOutput(t.Context(), o)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -98,7 +98,7 @@ func TestGPtrOutput_Elem(t *testing.T) {
 	so := o.Elem()
 	assert.IsType(t, pulumi.StringOutput{}, so)
 
-	v, _, _, _, err := internal.AwaitOutput(context.Background(), so)
+	v, _, _, _, err := internal.AwaitOutput(t.Context(), so)
 	require.NoError(t, err)
 	assert.Equal(t, "foo", v)
 }

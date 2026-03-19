@@ -568,7 +568,7 @@ func assertOutputEqual(t *testing.T, value any, known bool, secret bool, deps ma
 
 	actualDepsSet := map[URN]struct{}{}
 	for _, res := range actualDeps {
-		urn, uknown, usecret, err := res.URN().awaitURN(context.Background())
+		urn, uknown, usecret, err := res.URN().awaitURN(t.Context())
 		require.NoError(t, err)
 		assert.True(t, uknown)
 		assert.False(t, usecret)
@@ -1669,7 +1669,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx, err := NewContext(context.Background(), RunInfo{})
+			ctx, err := NewContext(t.Context(), RunInfo{})
 			require.NoError(t, err)
 
 			inputs := map[string]any{
@@ -1754,7 +1754,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		req.Project = "myproject"
 
 		var got *ResourceOptions
-		ctx := context.Background()
+		ctx := t.Context()
 		_, err := construct(ctx, req, nil, func(
 			ctx *Context,
 			typ, name string,
@@ -1952,7 +1952,7 @@ func TestConstruct_await(t *testing.T) {
 		req.Stack = "mystack"
 		req.Project = "myproject"
 
-		ctx := context.Background()
+		ctx := t.Context()
 		_, err := construct(ctx, req, nil, func(
 			ctx *Context,
 			typ, name string,
@@ -2042,7 +2042,7 @@ func TestCall_await(t *testing.T) {
 		req.Stack = "mystack"
 		req.Project = "myproject"
 
-		ctx := context.Background()
+		ctx := t.Context()
 		_, err := call(ctx, req, nil, func(ctx *Context, tok string, args map[string]any) (Input, []any, error) {
 			result := make(Map)
 			resultF(ctx, result)

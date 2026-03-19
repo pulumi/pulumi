@@ -614,7 +614,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -654,7 +654,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -693,7 +693,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -732,7 +732,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -770,7 +770,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -806,7 +806,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -910,7 +910,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -951,7 +951,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -1024,7 +1024,7 @@ config:
   test:importantNumber: hello
 `
 
-	ctx := context.Background()
+	ctx := t.Context()
 	project, projectError := loadProjectFromText(t, projectYaml)
 	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
@@ -1081,7 +1081,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -1115,7 +1115,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -1151,7 +1151,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -1182,7 +1182,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},
@@ -1204,7 +1204,7 @@ config:
 `
 
 	crypter := config.Base64Crypter
-	encryptedValue, err := crypter.EncryptValue(context.Background(), "20")
+	encryptedValue, err := crypter.EncryptValue(t.Context(), "20")
 	require.NoError(t, err)
 
 	projectStackYamlValid := fmt.Sprintf(`
@@ -1218,7 +1218,7 @@ config:
   test:importantNumber: 20
 `
 
-	ctx := context.Background()
+	ctx := t.Context()
 	project, projectError := loadProjectFromText(t, projectYaml)
 	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
@@ -1300,7 +1300,7 @@ config:
 	require.NoError(t, stackError, "Should be able to read the stack")
 
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		env,
@@ -1939,7 +1939,7 @@ config:
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig(
-		context.Background(),
+		t.Context(),
 		"dev",
 		project,
 		esc.Value{},

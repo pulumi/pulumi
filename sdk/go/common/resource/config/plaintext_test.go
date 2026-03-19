@@ -86,7 +86,7 @@ func TestPlaintextEncrypt(t *testing.T) {
 			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
-	actual, err := plain.encrypt(context.Background(), nil, NopEncrypter)
+	actual, err := plain.encrypt(t.Context(), nil, NopEncrypter)
 	require.NoError(t, err)
 
 	expected := newObject(map[string]object{
@@ -115,10 +115,10 @@ func TestPlaintextRoundtrip(t *testing.T) {
 			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
-	obj, err := plain.encrypt(context.Background(), nil, NopEncrypter)
+	obj, err := plain.encrypt(t.Context(), nil, NopEncrypter)
 	require.NoError(t, err)
 
-	actual, err := obj.decrypt(context.Background(), nil, NopDecrypter)
+	actual, err := obj.decrypt(t.Context(), nil, NopDecrypter)
 	require.NoError(t, err)
 
 	assert.Equal(t, plain, actual)
@@ -152,7 +152,7 @@ func TestMarshalPlaintext(t *testing.T) {
 
 //nolint:paralleltest // changes global defaultMaxChunkSize variable
 func TestEncryptMap(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("empty map", func(t *testing.T) {
 		result, err := encryptMap(ctx, map[Key]Plaintext{}, nopCrypter{})
@@ -187,7 +187,7 @@ func TestEncryptMap(t *testing.T) {
 				"foo": NewPlaintext(PlaintextSecret("Plaintext")),
 			}),
 		}
-		result, err := encryptMap(context.Background(), input, nopCrypter{})
+		result, err := encryptMap(t.Context(), input, nopCrypter{})
 		require.NoError(t, err)
 		assert.Equal(t,
 			newObject(CiphertextSecret{"Plaintext"}),

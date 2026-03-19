@@ -43,7 +43,7 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 	}
 	srv := NewProviderServer(&provider)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := srv.Configure(ctx, &pulumirpc.ConfigureRequest{
 		Variables: map[string]string{
 			"ns:foo": `"bar"`,
@@ -89,7 +89,7 @@ func (p *stubProvider) Read(ctx context.Context, req ReadRequest) (ReadResponse,
 // When importing random passwords, the secret passed as "ID" should not leak in plain text into the final ID.
 func TestProviderServer_Read_respects_ID(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	provider := stubProvider{
 		ReadFunc: func(
 			urn resource.URN, id resource.ID,

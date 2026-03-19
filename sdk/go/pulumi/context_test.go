@@ -629,7 +629,7 @@ func TestWithValue(t *testing.T) {
 	val := "val"
 	testCtx := &Context{
 		state: &contextState{},
-		ctx:   context.Background(),
+		ctx:   t.Context(),
 	}
 	newCtx := testCtx.WithValue(key, val)
 

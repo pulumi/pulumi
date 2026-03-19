@@ -461,11 +461,11 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
 
 			// We have to configure before we can use Delete.
-			_, err := p.Configure(context.Background(), ConfigureRequest{})
+			_, err := p.Configure(t.Context(), ConfigureRequest{})
 			require.NoError(t, err, "Configure failed")
 
 			// Act.
-			_, err = p.Delete(context.Background(), tt.give)
+			_, err = p.Delete(t.Context(), tt.give)
 			require.NoError(t, err)
 
 			// Assert.
@@ -700,10 +700,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
 
 			// Must configure before we can use Construct.
-			_, err := p.Configure(context.Background(), ConfigureRequest{})
+			_, err := p.Configure(t.Context(), ConfigureRequest{})
 			require.NoError(t, err, "configure failed")
 
-			_, err = p.Construct(context.Background(),
+			_, err = p.Construct(t.Context(),
 				ConstructRequest{
 					Info:    ConstructInfo{Project: "project", Stack: "stack"},
 					Type:    "type",
@@ -762,7 +762,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 		defer close(done)
 
 		close(deleting)
-		_, err := p.Delete(context.Background(), DeleteRequest{
+		_, err := p.Delete(t.Context(), DeleteRequest{
 			URN:     resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux"),
 			Name:    "qux",
 			Type:    "bar:baz",
@@ -777,7 +777,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 	// Wait until delete request has been sent to Configure
 	// and then wait until Delete has finished.
 	<-deleting
-	_, err := p.Configure(context.Background(), ConfigureRequest{Inputs: props})
+	_, err := p.Configure(t.Context(), ConfigureRequest{Inputs: props})
 	require.NoError(t, err)
 	<-done
 
@@ -797,7 +797,7 @@ func newTestContext(t testing.TB) *Context {
 
 	sink := diagtest.LogSink(t)
 	ctx, err := NewContext(
-		context.Background(),
+		t.Context(),
 		sink, sink,
 		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */, nil)
 	require.NoError(t, err, "build context")
@@ -936,7 +936,7 @@ func TestKubernetesDiffError(t *testing.T) {
 
 	// Test that the error from 14529 is NOT ignored if reported by something other than kubernetes
 	az := NewProviderWithClient(newTestContext(t), "azure", client, false /* disablePreview */)
-	_, err := az.DiffConfig(context.Background(), DiffConfigRequest{
+	_, err := az.DiffConfig(t.Context(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:azure", "qux"),
 		"",
 		"",
@@ -950,7 +950,7 @@ func TestKubernetesDiffError(t *testing.T) {
 
 	// Test that the error from 14529 is ignored if reported by kubernetes
 	k8s := NewProviderWithClient(newTestContext(t), "kubernetes", client, false /* disablePreview */)
-	diff, err := k8s.DiffConfig(context.Background(), DiffConfigRequest{
+	diff, err := k8s.DiffConfig(t.Context(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
 		"",
 		"",
@@ -965,7 +965,7 @@ func TestKubernetesDiffError(t *testing.T) {
 
 	// Test that some other error is not ignored if reported by kubernetes
 	diffErr = status.Errorf(codes.Unknown, "some other error")
-	_, err = k8s.DiffConfig(context.Background(), DiffConfigRequest{
+	_, err = k8s.DiffConfig(t.Context(), DiffConfigRequest{
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
 		"",
 		"",
@@ -998,11 +998,11 @@ func TestOverrideVersion(t *testing.T) {
 	version := semver.MustParse("1.2.3")
 
 	prov := NewProviderWithVersionOverride(newTestContext(t), "azure", client, false /* disablePreview */, &version)
-	resp, err := prov.GetPluginInfo(context.Background())
+	resp, err := prov.GetPluginInfo(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, &version, resp.Version)
 
-	schema, err := prov.GetSchema(context.Background(), GetSchemaRequest{})
+	schema, err := prov.GetSchema(t.Context(), GetSchemaRequest{})
 	require.NoError(t, err)
 
 	var unmarshalledSchema map[string]any
@@ -1091,12 +1091,12 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 
 	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
 
-	_, err := p.Configure(context.Background(), ConfigureRequest{})
+	_, err := p.Configure(t.Context(), ConfigureRequest{})
 	require.NoError(t, err, "configure failed")
 
 	var initErr *InitError
 
-	createResp, err := p.Create(context.Background(), CreateRequest{
+	createResp, err := p.Create(t.Context(), CreateRequest{
 		URN:        urn,
 		Name:       urn.Name(),
 		Type:       urn.Type(),
@@ -1106,7 +1106,7 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 	assert.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"create issue"}, initErr.Reasons)
 
-	readResp, err := p.Read(context.Background(), ReadRequest{
+	readResp, err := p.Read(t.Context(), ReadRequest{
 		URN:    urn,
 		Name:   urn.Name(),
 		Type:   urn.Type(),
@@ -1118,7 +1118,7 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 	assert.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"read issue"}, initErr.Reasons)
 
-	updateResp, err := p.Update(context.Background(), UpdateRequest{
+	updateResp, err := p.Update(t.Context(), UpdateRequest{
 		URN:        urn,
 		Name:       urn.Name(),
 		Type:       urn.Type(),
