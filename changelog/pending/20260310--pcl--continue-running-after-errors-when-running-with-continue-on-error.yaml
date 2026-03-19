@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: pcl
-  description: Continue running after errors when running with --continue-on-error
