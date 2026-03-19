@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package httpstate
+package client
 
 import (
 	"net/url"
@@ -36,9 +36,9 @@ const (
 	defaultConsoleDomainPrefix = "app."
 )
 
-// cloudConsoleURL returns a URL to the Pulumi Cloud Console, rooted at cloudURL. If there is
+// CloudConsoleURL returns a URL to the Pulumi Cloud Console, rooted at cloudURL. If there is
 // an error, returns "".
-func cloudConsoleURL(cloudURL string, paths ...string) string {
+func CloudConsoleURL(cloudURL string, paths ...string) string {
 	u, err := url.Parse(cloudURL)
 	if err != nil {
 		return ""

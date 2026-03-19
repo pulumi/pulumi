@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -288,7 +288,15 @@ func GenerateLanguageDefinitions(
 	importState := createImportState(states, snapshot, names)
 	program, diags, err := generateProgramText(importState)
 	if err != nil {
-		if strings.Contains(err.Error(), "circular reference") {
+		// See if _any_ diagnostics are about circular references
+		diagHasCircularRef := false
+		for _, diag := range diags {
+			if strings.Contains(diag.Summary, "circular reference") {
+				diagHasCircularRef = true
+				break
+			}
+		}
+		if diagHasCircularRef {
 			// hitting an edge case when guessing references between resources
 			// this happens when an input of a _parent_ resource is equal to the ID of a _child_ resource
 			// for example importing the following program:

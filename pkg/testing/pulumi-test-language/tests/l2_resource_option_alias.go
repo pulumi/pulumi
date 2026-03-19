@@ -26,13 +26,15 @@ func init() {
 	LanguageTests["l2-resource-option-alias"] = LanguageTest{
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.SimpleProvider{} },
+			func() plugin.Provider { return &providers.ComponentProvider{} },
 		},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L, args AssertArgs) {
 					RequireStackResource(l, args.Err, args.Changes)
 
-					require.Len(l, args.Snap.Resources, 7, "expected 7 resources in snapshot")
+					// 1 stack + 2 providers + 6 resources = 9
+					require.Len(l, args.Snap.Resources, 9, "expected 9 resources in snapshot")
 				},
 			},
 			{
@@ -40,10 +42,11 @@ func init() {
 					snap := args.Snap
 					changes := args.Changes
 
-					// Don't expect any replacements.
+					// Don't expect any creates.
 					require.Equal(l, 0, changes[deploy.OpCreate], "expected no create operations")
 
-					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
+					// 1 stack + simple provider + 6 resources = 8
+					require.Len(l, snap.Resources, 8, "expected 8 resources in snapshot")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
@@ -58,6 +61,10 @@ func init() {
 
 					aliasParent := RequireSingleNamedResource(l, snap.Resources, "aliasParent")
 					assert.Equal(l, parent.URN, aliasParent.Parent, "expected parent to be parent of aliasParent resource")
+
+					aliasType := RequireSingleNamedResource(l, snap.Resources, "aliasType")
+					assert.Equal(l, "simple:index:Resource", string(aliasType.Type),
+						"expected aliasType to be of type simple:index:Resource")
 				},
 			},
 		},

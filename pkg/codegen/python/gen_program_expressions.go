@@ -1,4 +1,4 @@
-// Copyright 2020-2025, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -240,6 +240,10 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	// the index module is not put into a submodule
+	if module == "index" {
+		module = ""
+	}
 	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), title(member), diagnostics
 }
 

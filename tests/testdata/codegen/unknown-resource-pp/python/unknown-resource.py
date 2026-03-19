@@ -2,7 +2,7 @@ import pulumi
 import pulumi_unknown as unknown
 
 provider = pulumi.providers.Unknown("provider")
-main = unknown.index.Main("main",
+main = unknown.Main("main",
     first=hello,
     second={
         foo: bar,

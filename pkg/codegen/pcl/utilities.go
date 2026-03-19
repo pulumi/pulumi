@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -93,6 +93,8 @@ func SourceOrderNodes(nodes []Node) []Node {
 	return nodes
 }
 
+// DecomposeToken splits a token into its package, module, and name components. If the module is empty or missing then
+// "index" is returned. It returns an error diagnostic if the token is not in a valid format.
 func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, hcl.Diagnostics) {
 	components := strings.Split(tok, ":")
 	if len(components) == 2 {
@@ -102,6 +104,18 @@ func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, 
 		// If we don't have a valid type token, return the invalid token as the type name.
 		return "", "", tok, hcl.Diagnostics{malformedToken(tok, sourceRange)}
 	}
+	// Lots of old schemas would use pkg::typ instead of pkg:typ, fix those to set the module to index as well
+	if components[1] == "" {
+		components[1] = "index"
+	}
+
+	// If any component is empty this is also an invalid token
+	for _, c := range components {
+		if c == "" {
+			return "", "", tok, hcl.Diagnostics{malformedToken(tok, sourceRange)}
+		}
+	}
+
 	return components[0], components[1], components[2], nil
 }
 

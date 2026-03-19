@@ -1,4 +1,4 @@
-// Copyright 2020-2026, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1283,6 +1283,8 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 					switch key.AsString() {
 					case "name":
 						g.Fgenf(valBuffer, "Name: pulumi.String(%v), ", item.Value)
+					case "type":
+						g.Fgenf(valBuffer, "Type: pulumi.String(%v), ", item.Value)
 					case "noParent":
 						g.Fgenf(valBuffer, "NoParent: pulumi.Bool(%v), ", item.Value)
 					case "parent":
