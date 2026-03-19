@@ -46,6 +46,10 @@ type Component struct {
 	// The inner Program that makes up this Component.
 	Program *Program
 
+	// InputType maps each input attribute name to its expected model type, derived from the
+	// component program's config variables. Used for type-checking and RewriteConversions.
+	InputType model.Type
+
 	// The type of the resource variable.
 	VariableType model.Type
 
