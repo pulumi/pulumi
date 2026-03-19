@@ -517,13 +517,26 @@ func findRepositoryRoot() (string, error) {
 func TestArchiveTarFiles(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#7976] flaky
-	t.Skip("Disabled due to flakiness. See #7976.")
-
-	repoRoot, err := findRepositoryRoot()
+	// Use a controlled temp directory instead of the repo root to avoid
+	// TOCTOU races where files change size between stat and read (see #7976).
+	dir := t.TempDir()
+	for i := 0; i < 10; i++ {
+		name := filepath.Join(dir, fmt.Sprintf("file%d.txt", i))
+		data := make([]byte, 1024*(i+1))
+		//nolint:gosec
+		_, err := rand.Read(data)
+		require.NoError(t, err)
+		err = os.WriteFile(name, data, 0o600)
+		require.NoError(t, err)
+	}
+	// Also create a subdirectory with files.
+	subdir := filepath.Join(dir, "subdir")
+	err := os.Mkdir(subdir, 0o755)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(subdir, "nested.txt"), []byte("hello"), 0o600)
 	require.NoError(t, err)
 
-	arch, err := rarchive.FromPath(repoRoot)
+	arch, err := rarchive.FromPath(dir)
 	require.NoError(t, err)
 
 	err = arch.Archive(rarchive.TarArchive, io.Discard)
