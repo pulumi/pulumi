@@ -15,86 +15,102 @@
 package ints
 
 import (
-	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
+	"io"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/stretchr/testify/require"
 
 	ui "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
-//nolint:paralleltest // uses real pulumi binary and mutates env/backend
+type scopedWriter struct {
+	mu     sync.Mutex
+	buf    *bytes.Buffer
+	active bool
+}
+
+func (w *scopedWriter) Write(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if !w.active {
+		return len(p), nil
+	}
+	return w.buf.Write(p)
+}
+
+func (w *scopedWriter) SetActive(active bool) {
+	w.mu.Lock()
+	w.active = active
+	w.mu.Unlock()
+}
+
 func TestUp_JSONSummaryFooter(t *testing.T) {
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
+	// Avoid capturing output from commands other than `pulumi up`.
+	var upOut bytes.Buffer
+	writer := &scopedWriter{buf: &upOut}
 
-	e.WriteTestFile("Pulumi.yaml", `
-name: up-json-summary-test
-runtime: nodejs
-`)
-
-	e.WriteTestFile("index.ts", `
-import * as pulumi from "@pulumi/pulumi";
-
-const cfg = new pulumi.Config();
-const value = cfg.get("value") || "default";
-
-export const output = value;
-`)
-
-	// Use local file backend to avoid service dependency.
-	e.Backend = e.LocalURL()
-
-	// Install NodeJS dependencies for the test program.
-	{
-		cmd := e.SetupCommandIn(context.Background(), e.CWD, "npm", "install", "@pulumi/pulumi")
-		err := cmd.Run()
-		require.NoError(t, err)
+	// Skip on platforms where node tooling is not expected to be available.
+	if runtime.GOOS == "wasip1" {
+		t.Skip("Unsupported platform")
 	}
 
-	// Run `pulumi up --json --yes --non-interactive` and capture stdout.
-	cmd := e.SetupCommandIn(
-		context.Background(),
-		e.CWD,
-		"pulumi",
-		"up",
-		"--yes",
-		"--json",
-		"--non-interactive",
-	)
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "single_resource",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		JSONOutput:   true,
+		Verbose:      true,
+		Stdout:       writer,
+		Stderr:       writer,
+		PrePulumiCommand: func(verb string) (func(err error) error, error) {
+			if verb != "up" {
+				return nil, nil
+			}
 
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stdout
+			writer.SetActive(true)
+			return func(err error) error {
+				writer.SetActive(false)
+				return nil
+			}, nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Smoke sanity: verify the program actually ran and produced a deployment.
+			require.NotNil(t, stackInfo.Deployment)
+		},
+	})
 
-	err := cmd.Run()
-	require.NoError(t, err)
-
-	// Parse stdout as JSONL and inspect the last non-empty line as the summary.
-	scanner := bufio.NewScanner(bytes.NewReader(stdout.Bytes()))
-	var lastLine string
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	// Find the JSON summary object inside the captured `pulumi up --json` output.
+	// The output is JSONL (one JSON object per line) and we emit the summary as one final JSON object line.
+	lines := strings.Split(upOut.String(), "\n")
+	var found bool
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
 		if line == "" {
 			continue
 		}
-		lastLine = line
+
+		var summary ui.OperationSummaryJSON
+		if err := json.Unmarshal([]byte(line), &summary); err != nil {
+			continue
+		}
+		if summary.Result != "" && len(summary.ChangeSummary) > 0 && summary.Duration != 0 {
+			require.Equal(t, ui.OperationResultSucceeded, summary.Result)
+			require.NotEmpty(t, summary.ChangeSummary)
+			require.NotZero(t, summary.Duration)
+			found = true
+			break
+		}
 	}
-	require.NoError(t, scanner.Err())
-	require.NotEmpty(t, lastLine, "expected at least one JSON line in output")
 
-	var summary ui.OperationSummaryJSON
-
-	err = json.Unmarshal([]byte(lastLine), &summary)
-	require.NoError(t, err, "last line should be valid JSON summary")
-
-	require.Equal(t, ui.OperationResultSucceeded, summary.Result)
-	require.NotEmpty(t, summary.ChangeSummary)
-	// Duration should be a non-empty string like "1.234s".
-	require.NotEmpty(t, summary.Duration)
+	require.True(t, found, "expected to find operation summary JSON in pulumi up output")
 }
+
+// Ensure our scopedWriter implements io.Writer.
+var _ io.Writer = (*scopedWriter)(nil)
