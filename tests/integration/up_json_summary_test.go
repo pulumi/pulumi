@@ -51,6 +51,7 @@ func (w *scopedWriter) SetActive(active bool) {
 	w.mu.Unlock()
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestUp_JSONSummaryFooter(t *testing.T) {
 	// Avoid capturing output from commands other than `pulumi up`.
 	var upOut bytes.Buffer
