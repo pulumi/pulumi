@@ -993,6 +993,7 @@ func TestCanceledRefresh(t *testing.T) {
 	}
 
 	// Set up a cancelable context for the refresh operation.
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Serialize all refreshes s.t. we can cancel after the first is issued.

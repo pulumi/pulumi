@@ -15,7 +15,6 @@
 package operations
 
 import (
-	"context"
 	"testing"
 
 	"github.com/gofrs/uuid"
@@ -169,7 +168,7 @@ func TestBuildImportFile_SingleResource(t *testing.T) {
 
 			// Finally, close the events channel to signal that we're done
 			close(events)
-			importFile, err := importFilePromise.Result(context.Background())
+			importFile, err := importFilePromise.Result(t.Context())
 			require.NoError(t, err)
 			// There shouldn't be any thing in the name table
 			require.Len(t, importFile.NameTable, 0)
@@ -213,7 +212,7 @@ func TestBuildImportFile_ExistingParent(t *testing.T) {
 
 	// Finally, close the events channel to signal that we're done
 	close(events)
-	importFile, err := importFilePromise.Result(context.Background())
+	importFile, err := importFilePromise.Result(t.Context())
 	require.NoError(t, err)
 
 	// There should be one thing in the name table
@@ -266,7 +265,7 @@ func TestBuildImportFile_NewParent(t *testing.T) {
 
 	// Finally, close the events channel to signal that we're done
 	close(events)
-	importFile, err := importFilePromise.Result(context.Background())
+	importFile, err := importFilePromise.Result(t.Context())
 	require.NoError(t, err)
 
 	// There shouldn't be anything in the name table
@@ -329,7 +328,7 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 
 	// Finally, close the events channel to signal that we're done
 	close(events)
-	importFile, err := importFilePromise.Result(context.Background())
+	importFile, err := importFilePromise.Result(t.Context())
 	require.NoError(t, err)
 
 	// There should be one thing in the name table
@@ -382,7 +381,7 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 	close(events)
 
 	// This should error because we can't yet handle importing an explicit provider
-	_, err = importFilePromise.Result(context.Background())
+	_, err = importFilePromise.Result(t.Context())
 	assert.ErrorContains(
 		t, err,
 		"cannot import resource \"urn:pulumi:stack::project::pkg:mod:typ::res\" "+
@@ -422,7 +421,7 @@ func TestBuildImportFile_DuplicateNames(t *testing.T) {
 	// Finally, close the events channel to signal that we're done
 	close(events)
 
-	importFile, err := importFilePromise.Result(context.Background())
+	importFile, err := importFilePromise.Result(t.Context())
 	require.NoError(t, err)
 
 	// There should be nothing in the name table
@@ -488,7 +487,7 @@ func TestBuildImportFile_NameConflict(t *testing.T) {
 	// Finally, close the events channel to signal that we're done
 	close(events)
 
-	importFile, err := importFilePromise.Result(context.Background())
+	importFile, err := importFilePromise.Result(t.Context())
 	require.NoError(t, err)
 
 	// There should be nothing in the name table
@@ -542,7 +541,7 @@ func TestBuildImportFile_regress_15002(t *testing.T) {
 	// Finally, close the events channel to signal that we're done
 	close(events)
 
-	importFile, err := importFilePromise.Result(context.Background())
+	importFile, err := importFilePromise.Result(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, importFile.Resources)
 }
@@ -587,7 +586,7 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 	close(events)
 
 	// This should error because we can't yet handle importing an explicit provider
-	_, err = importFilePromise.Result(context.Background())
+	_, err = importFilePromise.Result(t.Context())
 	assert.ErrorContains(
 		t, err,
 		"cannot import resource \"urn:pulumi:stack::project::pkg:mod:typ::res\" "+

@@ -402,7 +402,7 @@ func TestPluginDownload(t *testing.T) {
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -433,7 +433,7 @@ func TestPluginDownload(t *testing.T) {
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -457,7 +457,7 @@ func TestPluginDownload(t *testing.T) {
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -482,7 +482,7 @@ func TestPluginDownload(t *testing.T) {
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -530,7 +530,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -578,7 +578,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -611,7 +611,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 			source, err := spec.GetSource()
 			require.NoError(t, err)
-			r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+			r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 			require.NoError(t, err)
 			readBytes, err := io.ReadAll(r)
 			assert.Error(t, err, "invalid checksum, expected 00, actual "+chksum)
@@ -634,7 +634,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 			source, err := spec.GetSource()
 			require.NoError(t, err)
-			r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+			r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 			require.NoError(t, err)
 			readBytes, err := io.ReadAll(r)
 			require.NoError(t, err)
@@ -659,7 +659,7 @@ func TestPluginDownload(t *testing.T) {
 			}
 			source, err := spec.GetSource()
 			require.NoError(t, err)
-			r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+			r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 			require.NoError(t, err)
 			readBytes, err := io.ReadAll(r)
 			require.NoError(t, err)
@@ -686,7 +686,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(context.Background(), *spec.Version, "windows", "arm64", getHTTPResponse)
+		r, l, err := source.Download(t.Context(), *spec.Version, "windows", "arm64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -744,7 +744,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -805,7 +805,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
-		r, l, err := source.Download(context.Background(), *spec.Version, "darwin", "amd64", getHTTPResponse)
+		r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 		require.NoError(t, err)
 		readBytes, err := io.ReadAll(r)
 		require.NoError(t, err)
@@ -839,7 +839,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 				"tag_name": "v4.37.5"
 			}`)
 		}
-		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
+		version, err := source.GetLatestVersion(t.Context(), getHTTPResponse)
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
@@ -851,7 +851,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
-		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
+		version, err := source.GetLatestVersion(t.Context(), getHTTPResponse)
 		assert.Nil(t, version)
 		assert.EqualError(t, err, "GetLatestVersion is not supported for plugins from http sources")
 	})
@@ -863,7 +863,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
-		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
+		version, err := source.GetLatestVersion(t.Context(), getHTTPResponse)
 		assert.Nil(t, version)
 		assert.EqualError(t, err, "GetLatestVersion is not supported for plugins from http sources")
 	})
@@ -889,7 +889,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 
 			panic("Unexpected call to getHTTPResponse")
 		}
-		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
+		version, err := source.GetLatestVersion(t.Context(), getHTTPResponse)
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
@@ -915,7 +915,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 
 			panic("Unexpected call to getHTTPResponse")
 		}
-		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
+		version, err := source.GetLatestVersion(t.Context(), getHTTPResponse)
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
@@ -942,7 +942,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 
 			panic("Unexpected call to getHTTPResponse")
 		}
-		version, err := source.GetLatestVersion(context.Background(), getHTTPResponse)
+		version, err := source.GetLatestVersion(t.Context(), getHTTPResponse)
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
@@ -958,7 +958,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			return nil, 0, newDownloadError(403, req.URL, http.Header{"X-Ratelimit-Remaining": []string{"0"}})
 		}
-		_, err = source.GetLatestVersion(context.Background(), getHTTPResponse)
+		_, err = source.GetLatestVersion(t.Context(), getHTTPResponse)
 		assert.ErrorContains(t, err, "rate limit exceeded")
 		assert.ErrorContains(t, err, "https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest")
 	})
@@ -1260,7 +1260,7 @@ func TestDownloadToFile_retries(t *testing.T) {
 			ch <- currentTime
 			return ch
 		},
-	}).DownloadToFile(context.Background(), spec)
+	}).DownloadToFile(t.Context(), spec)
 	assert.ErrorContains(t, err, "failed to download plugin: myplugin-1.0.0")
 	assert.Equal(t, numRequests, numRetries)
 }
@@ -1443,7 +1443,7 @@ func TestFallbackSource_URLOverride(t *testing.T) {
 	source := newFallbackSource("test-plugin", apitype.ResourcePlugin)
 	version := semver.MustParse("1.0.0")
 	_, _, err := source.Download(
-		context.Background(), version, "linux", "amd64",
+		t.Context(), version, "linux", "amd64",
 		func(req *http.Request) (io.ReadCloser, int64, error) {
 			if strings.Contains(req.URL.String(), "api.github.com/pulumi") {
 				return nil, -1, errors.New("GitHub API: 404 not found")
@@ -1558,7 +1558,7 @@ func TestBundledPluginSearch(t *testing.T) {
 	// Get the path of this executable
 	exe, err := os.Executable()
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a fake side-by-side plugin next to this executable, it must match one of our bundled names
 	bundledPath := filepath.Join(filepath.Dir(exe), "pulumi-language-nodejs")
@@ -1593,7 +1593,7 @@ func TestBundledPluginSearch(t *testing.T) {
 }
 
 func TestAmbientPluginsWarn(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Create a fake plugin in the path
 	pathDir := t.TempDir()
 	t.Setenv("PATH", pathDir)
@@ -1627,7 +1627,7 @@ func TestAmbientBundledPluginsWarn(t *testing.T) {
 	// Get the path of this executable
 	exe, err := os.Executable()
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a fake side-by-side plugin next to this executable, it must match one of our bundled names
 	bundledPath := filepath.Join(filepath.Dir(exe), "pulumi-language-nodejs")
@@ -1665,7 +1665,7 @@ func TestAmbientBundledPluginsWarn(t *testing.T) {
 }
 
 func TestBundledPluginsDoNotWarn(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Get the path of this executable
 	exe, err := os.Executable()
 	require.NoError(t, err)
@@ -1701,7 +1701,7 @@ func TestBundledPluginsDoNotWarn(t *testing.T) {
 
 // Regression test for https://github.com/pulumi/pulumi/issues/13656
 func TestSymlinkPathPluginsDoNotWarn(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Get the path of this executable
 	exe, err := os.Executable()
 	require.NoError(t, err)
@@ -1743,7 +1743,7 @@ func TestSymlinkPathPluginsDoNotWarn(t *testing.T) {
 //
 //nolint:paralleltest // modifies environment variables
 func TestPluginInfoShimless(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Create a fake plugin in temp
 	pathDir := t.TempDir()
 
@@ -1782,7 +1782,7 @@ func TestPluginInfoShimless(t *testing.T) {
 }
 
 func TestProjectPluginsWithUncleanPath(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tempdir := t.TempDir()
 
 	err := os.WriteFile(filepath.Join(tempdir, "pulumi-resource-aws"), []byte{}, 0o600)
@@ -1802,7 +1802,7 @@ func TestProjectPluginsWithUncleanPath(t *testing.T) {
 }
 
 func TestProjectPluginsWithSymlink(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tempdir := t.TempDir()
 
 	err := os.Mkdir(filepath.Join(tempdir, "subdir"), 0o700)
@@ -2023,7 +2023,7 @@ func TestNewPluginSpec(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			spec, err := NewPluginDescriptor(context.Background(), c.source, c.kind, c.version, c.pluginDownloadURL, nil)
+			spec, err := NewPluginDescriptor(t.Context(), c.source, c.kind, c.version, c.pluginDownloadURL, nil)
 			if c.Error != nil {
 				require.EqualError(t, err, c.Error.Error())
 				return
@@ -2054,7 +2054,7 @@ func TestGitSourceDownloadSemver(t *testing.T) {
 			return nil
 		},
 	}
-	readCloser, l, err := gitSource.Download(context.Background(), version, "unused", "unused",
+	readCloser, l, err := gitSource.Download(t.Context(), version, "unused", "unused",
 		func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
 	require.NoError(t, err)
 	require.NotNil(t, readCloser)
@@ -2102,7 +2102,7 @@ func TestGitSourceDownloadHEAD(t *testing.T) {
 			return nil
 		},
 	}
-	readCloser, l, err := gitSource.Download(context.Background(), version, "unused", "unused",
+	readCloser, l, err := gitSource.Download(t.Context(), version, "unused", "unused",
 		func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
 	require.NoError(t, err)
 	require.NotNil(t, readCloser)
@@ -2150,7 +2150,7 @@ func TestGitSourceDownloadHash(t *testing.T) {
 			return nil
 		},
 	}
-	readCloser, l, err := gitSource.Download(context.Background(), version, "unused", "unused",
+	readCloser, l, err := gitSource.Download(t.Context(), version, "unused", "unused",
 		func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
 	require.NoError(t, err)
 	require.NotNil(t, readCloser)
@@ -2184,7 +2184,7 @@ func TestGitSourceGetLatestVersion(t *testing.T) {
 	gitSource := &gitSource{
 		url: "testdata/latest-version.git",
 	}
-	version, err := gitSource.GetLatestVersion(context.Background(), func(*http.Request) (io.ReadCloser, int64, error) {
+	version, err := gitSource.GetLatestVersion(t.Context(), func(*http.Request) (io.ReadCloser, int64, error) {
 		panic("should not be called")
 	})
 	require.NoError(t, err)

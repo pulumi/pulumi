@@ -16,7 +16,6 @@ package client
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -180,7 +179,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 		}
 
 		_, _, err := pulumiAPICall(
-			context.Background(), opentracing.NoopTracer{}.StartSpan("test"),
+			t.Context(), opentracing.NoopTracer{}.StartSpan("test"),
 			diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 			httpClient, "https://api.pulumi.com", "GET", "/api/test", nil,
 			apiAccessToken("some-token"), httpCallOptions{},
@@ -224,7 +223,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 			}
 
 			_, _, err := pulumiAPICall(
-				context.Background(), opentracing.NoopTracer{}.StartSpan("test"),
+				t.Context(), opentracing.NoopTracer{}.StartSpan("test"),
 				diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 				httpClient, "https://api.pulumi.com", "GET", "/api/test", nil,
 				apiAccessToken("some-token"), httpCallOptions{},
@@ -256,7 +255,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 		}
 
 		_, _, err := pulumiAPICall(
-			context.Background(), opentracing.NoopTracer{}.StartSpan("test"),
+			t.Context(), opentracing.NoopTracer{}.StartSpan("test"),
 			diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 			httpClient, "https://api.pulumi.com", "GET", "/api/test", nil,
 			apiAccessToken(""), httpCallOptions{},

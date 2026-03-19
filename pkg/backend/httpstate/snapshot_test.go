@@ -66,7 +66,7 @@ func applyEdits(before, deltas json.RawMessage) (json.RawMessage, error) {
 func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	stackID := client.StackIdentifier{
 		Owner:   "owner",
@@ -568,7 +568,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	expectationsFile := "testdata/snapshot_test.json"
 	expectations := map[string]string{}
@@ -867,7 +867,7 @@ func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
 
 func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloadBytes int) []*apitype.DeploymentV3 {
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+		ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
 			Parallel:    info.Parallel,
@@ -927,7 +927,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 	for i := range journalEntries {
 		snap, err := journalEntries[:i].Snap(nil)
 		require.NoError(t, err)
-		deployment, err := stack.SerializeDeployment(context.Background(), snap, true)
+		deployment, err := stack.SerializeDeployment(t.Context(), snap, true)
 		require.NoError(t, err)
 		snaps[i] = deployment
 	}
@@ -959,7 +959,7 @@ func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
 func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dds := newDeploymentDiffState(0)
 	for _, s := range snaps {
@@ -978,7 +978,7 @@ func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
 }
 
 func benchmarkDiffStack(b *testing.B, snaps []*apitype.DeploymentV3) {
-	ctx := context.Background()
+	ctx := b.Context()
 	for i := 0; i < b.N; i++ {
 		wireSize, verbatimSize, diffs, verbatims := 0, 0, 0, 0
 		dds := newDeploymentDiffState(0)

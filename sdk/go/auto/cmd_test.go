@@ -36,7 +36,7 @@ func TestInstallDefaultRoot(t *testing.T) {
 
 	requestedVersion := semver.Version{Major: 3, Minor: 98, Patch: 0}
 
-	_, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Version: requestedVersion})
+	_, err := InstallPulumiCommand(t.Context(), &PulumiCommandOptions{Version: requestedVersion})
 
 	require.NoError(t, err)
 	homeDir, err := os.UserHomeDir()
@@ -75,7 +75,7 @@ func TestInstallTwice(t *testing.T) {
 
 	version := semver.Version{Major: 3, Minor: 98, Patch: 0}
 
-	_, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
+	_, err := InstallPulumiCommand(t.Context(), &PulumiCommandOptions{Root: dir, Version: version})
 
 	require.NoError(t, err)
 	pulumiPath := filepath.Join(dir, "bin", "pulumi")
@@ -86,7 +86,7 @@ func TestInstallTwice(t *testing.T) {
 	require.NoError(t, err, "did not find pulumi binary in the expected path")
 	modTime1 := stat.ModTime()
 
-	_, err = InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
+	_, err = InstallPulumiCommand(t.Context(), &PulumiCommandOptions{Root: dir, Version: version})
 
 	require.NoError(t, err)
 	stat, err = os.Stat(pulumiPath)
@@ -100,7 +100,7 @@ func TestErrorIncompatibleVersion(t *testing.T) {
 
 	dir := t.TempDir()
 	installedVersion := semver.Version{Major: 3, Minor: 98, Patch: 0}
-	_, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: installedVersion})
+	_, err := InstallPulumiCommand(t.Context(), &PulumiCommandOptions{Root: dir, Version: installedVersion})
 	require.NoError(t, err)
 	requestedVersion := semver.Version{Major: 3, Minor: 101, Patch: 0}
 
@@ -120,21 +120,21 @@ func TestNoGlobalPulumi(t *testing.T) {
 	version := semver.Version{Major: 3, Minor: 98, Patch: 0}
 
 	// Install before we mutate path, we need some system binaries available to run the install script.
-	_, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
+	_, err := InstallPulumiCommand(t.Context(), &PulumiCommandOptions{Root: dir, Version: version})
 	require.NoError(t, err)
 
 	t.Setenv("PATH", "") // Clear path so we don't have access to a globally installed pulumi command.
 
 	// Grab a new pulumi command for our installation, but now env.PATH is
 	// empty, so we can't accidentally use a globally installed pulumi.
-	pulumiCommand, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
+	pulumiCommand, err := InstallPulumiCommand(t.Context(), &PulumiCommandOptions{Root: dir, Version: version})
 	require.NoError(t, err)
 
 	deployFunc := func(ctx *pulumi.Context) error {
 		return nil
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	projectName := "autoInstall"
 	stackName := ptesting.RandomStackName()
@@ -295,7 +295,7 @@ func TestRunCanceled(t *testing.T) {
 	stackName := ptesting.RandomStackName()
 	e.RunCommand("pulumi", "stack", "init", "-s", stackName)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	go func() {

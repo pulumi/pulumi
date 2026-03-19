@@ -2190,6 +2190,7 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
+	//nolint:usetesting // plugin.NewContext manages the lifecycle of gRPC providers; t.Context cancels before they shut down
 	pluginCtx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost)
 	require.NoError(t, err)
 	return pluginCtx.Host

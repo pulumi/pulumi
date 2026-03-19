@@ -34,7 +34,7 @@ import (
 func testSetup(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServer) {
 	t.Helper()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil, schema.NewLoaderServerFromHost)
 	require.NoError(t, err)
 	t.Cleanup(func() { pctx.Close() })
@@ -306,7 +306,7 @@ exit 0
 	cmd.SetArgs([]string{pluginPath})
 
 	// Execute the command
-	ctx := context.Background()
+	ctx := t.Context()
 	cmd.SetContext(ctx)
 	err = cmd.Execute()
 	require.NoError(t, err)

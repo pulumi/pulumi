@@ -15,7 +15,6 @@
 package operations
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -29,7 +28,7 @@ import (
 )
 
 func getPulumiResources(t *testing.T, path string) *Resource {
-	ctx := context.Background()
+	ctx := t.Context()
 	var checkpoint apitype.CheckpointV3
 	byts, err := os.ReadFile(path)
 	require.NoError(t, err)

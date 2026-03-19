@@ -75,7 +75,7 @@ func TestSearchAI_cmd(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), nil /* args */)
+	err := cmd.Run(t.Context(), nil /* args */)
 	require.NoError(t, err)
 
 	assert.Contains(t, buff.String(), name)
@@ -125,6 +125,6 @@ func TestAISearchUserOrgFailure_cmd(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{})
+	err := cmd.Run(t.Context(), []string{})
 	assert.ErrorContains(t, err, "user is an individual account, not an organization")
 }

@@ -15,7 +15,6 @@
 package newcmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -60,13 +59,13 @@ func TestRegress13774(t *testing.T) {
 	}
 
 	// Create new project.
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	defer removeStack(t, tempdir, args.stack)
 	require.NoError(t, err)
 
 	// Create new stack on an existing project.
 	args.stack = strings.Join([]string{orgName, projectName, "dev"}, "/")
-	err = runNew(context.Background(), args)
+	err = runNew(t.Context(), args)
 	defer removeStack(t, tempdir, args.stack)
 	require.NoError(t, err, "should be able to run `pulumi new` successfully on an existing project")
 }
@@ -92,7 +91,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
@@ -127,7 +126,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	p := loadProject(t, tempdir)
@@ -158,7 +157,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
@@ -183,7 +182,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	removeStack(t, tempdir, stackName)
@@ -195,7 +194,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
 	require.NoError(t, err)
@@ -222,7 +221,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	require.NoError(t, runNew(context.Background(), args))
+	require.NoError(t, runNew(t.Context(), args))
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 	// Expect the stack directory to have a checkpoint file for the stack.
@@ -252,7 +251,7 @@ func TestRunNewYesNoTemplate(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
 }
 
@@ -272,7 +271,7 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 	proj := loadProject(t, args.dir)
 	require.Equal(t, "yaml", proj.Runtime.Name())
@@ -299,7 +298,7 @@ func TestRunNewYesWithAILanguage(t *testing.T) {
 		languageTemplate:      languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.ErrorContains(t, err,
 		"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag")
 }
@@ -335,7 +334,7 @@ func loadProject(t *testing.T, dir string) *workspace.Project {
 }
 
 func currentUser(t *testing.T) string {
-	ctx := context.Background()
+	ctx := t.Context()
 	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
 	require.NoError(t, err)
 	currentUser, _, _, err := b.CurrentUser()
@@ -351,14 +350,14 @@ func loadStackName(t *testing.T) string {
 
 func removeStack(t *testing.T, dir, name string) {
 	project := loadProject(t, dir)
-	ctx := context.Background()
+	ctx := t.Context()
 	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, project, display.Options{})
 	require.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
 	require.NoError(t, err)
-	stack, err := b.GetStack(context.Background(), ref)
+	stack, err := b.GetStack(t.Context(), ref)
 	require.NoError(t, err)
-	_, err = b.RemoveStack(context.Background(), stack, false /*force*/, false /*removeBackups*/)
+	_, err = b.RemoveStack(t.Context(), stack, false /*force*/, false /*removeBackups*/)
 	require.NoError(t, err)
 }
 

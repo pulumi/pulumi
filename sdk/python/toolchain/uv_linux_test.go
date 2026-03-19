@@ -17,7 +17,6 @@
 package toolchain
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -34,7 +33,7 @@ func TestEnsureVenv(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a virtualenv and record the directory's inode.
-	err = uv.EnsureVenv(context.Background(), root, false /* useLanguageVersionTools */, false, /* showOutput */
+	err = uv.EnsureVenv(t.Context(), root, false /* useLanguageVersionTools */, false, /* showOutput */
 		nil /* infoWriter */, nil /* infoWriter */)
 	require.NoError(t, err)
 	info, err := os.Stat(filepath.Join(root, ".venv"))
@@ -44,7 +43,7 @@ func TestEnsureVenv(t *testing.T) {
 	inode1 := stat.Ino
 
 	// Run EnsureVenv again and ensure the directory's inode is the same.
-	err = uv.EnsureVenv(context.Background(), root, false /* useLanguageVersionTools */, false, /* showOutput */
+	err = uv.EnsureVenv(t.Context(), root, false /* useLanguageVersionTools */, false, /* showOutput */
 		nil /* infoWriter */, nil /* infoWriter */)
 	require.NoError(t, err)
 	info, err = os.Stat(filepath.Join(root, ".venv"))

@@ -508,7 +508,7 @@ func TestCompileProgram(t *testing.T) {
 		tmp := t.TempDir()
 		stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 		_, err := compileProgram(
-			context.Background(), &mockEngine{}, tmp, "", false /* withDebugFlags */, stdout, stderr)
+			t.Context(), &mockEngine{}, tmp, "", false /* withDebugFlags */, stdout, stderr)
 		require.ErrorContains(t, err, "Failed to find go files")
 	})
 
@@ -525,7 +525,7 @@ func main() {}
 		require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.go"), []byte(program), 0o600))
 		expectedOut := filepath.Join(tmp, "out")
 		out, err := compileProgram(
-			context.Background(), engineClient, tmp, expectedOut, false /* withDebugFlags */, stdout, stderr)
+			t.Context(), engineClient, tmp, expectedOut, false /* withDebugFlags */, stdout, stderr)
 		require.NoError(t, err)
 		require.Equal(t, expectedOut, out)
 		require.Len(t, engineClient.logs, 2)
@@ -544,7 +544,7 @@ func main() {
 		require.NoError(t, os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(goMod), 0o600))
 		require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.go"), []byte(badProgram), 0o600))
 		_, err := compileProgram(
-			context.Background(), &mockEngine{}, tmp, "", false /* withDebugFlags */, stdout, stderr)
+			t.Context(), &mockEngine{}, tmp, "", false /* withDebugFlags */, stdout, stderr)
 		require.ErrorContains(t, err, "unable to run `go build`: exit status 1")
 		require.Contains(t, stderr.String(), "main.go:3:1: syntax error")
 	})

@@ -33,7 +33,7 @@ func await(out pulumi.Output) (any, bool, bool, []pulumi.Resource, error) {
 func TestBasicOutputs(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+	ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 		Project: "proj",
 		Stack:   "stack",
 	})

@@ -63,7 +63,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 	t.Parallel()
 	// Don't check return values. Just check that GetLatestConfiguration() is not called.
 	_, _, _ = GetStackConfiguration(
-		context.Background(),
+		t.Context(),
 		nil, /*sink*/
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
@@ -99,7 +99,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 	// Don't check return values. Just check that GetLatestConfiguration() is called.
 	called := false
 	_, _, _ = GetStackConfigurationOrLatest(
-		context.Background(),
+		t.Context(),
 		nil, /*sink*/
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
@@ -187,7 +187,7 @@ func TestOpenStackEnvNoEnv(t *testing.T) {
 	err := yaml.Unmarshal([]byte(""), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack)
 	require.NoError(t, err)
 }
 
@@ -201,7 +201,7 @@ func TestOpenStackEnvUnsupportedBackend(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack)
 	assert.Error(t, err)
 }
 
@@ -253,7 +253,7 @@ func TestOpenStackEnv(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack)
 	require.NoError(t, err)
 	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
@@ -280,7 +280,7 @@ func TestOpenStackEnvLiteral(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  imports:\n    - test"), &projectStack)
 	require.NoError(t, err)
 
-	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack)
 	require.NoError(t, err)
 	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
@@ -350,7 +350,7 @@ func TestStackEnvConfig(t *testing.T) {
 
 	project := workspace.Project{Name: tokens.PackageName("project")}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg, err := getStackConfigurationFromProjectStack(
 		ctx,
 		stack,
@@ -441,7 +441,7 @@ func TestCopyConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		requiresSaving, err := stack.CopyEntireConfigMap(
-			context.Background(),
+			t.Context(),
 			stack.SecretsManagerLoader{},
 			sourceStack,
 			&sourceProjectStack,
@@ -484,7 +484,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, diags, err := openStackEnv(context.Background(), stack, &projectStack)
+	_, diags, err := openStackEnv(t.Context(), stack, &projectStack)
 	require.NoError(t, err)
 	require.Len(t, diags, 1)
 }
@@ -514,7 +514,7 @@ func TestOpenStackEnvError(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack)
 	assert.Error(t, err)
 }
 

@@ -523,6 +523,7 @@ func TestProviderCancellation(t *testing.T) {
 	const resourceCount = 4
 
 	// Set up a cancelable context for the refresh operation.
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Wait for our resource ops, then cancel.
@@ -534,6 +535,7 @@ func TestProviderCancellation(t *testing.T) {
 	}()
 
 	// Set up an independent cancelable context for the provider's operations.
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
 	provCtx, provCancel := context.WithCancel(context.Background())
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -2639,6 +2641,7 @@ func TestConfigSecrets(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	crypter := config.NewSymmetricCrypter(make([]byte, 32))
+	//nolint:usetesting // outlives t.Context inside the engine
 	secret, err := crypter.EncryptValue(context.Background(), "hunter2")
 	require.NoError(t, err)
 
@@ -4933,7 +4936,7 @@ func TestProgramError(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
 
 		return nil

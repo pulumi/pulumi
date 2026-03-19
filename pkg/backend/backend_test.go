@@ -69,7 +69,7 @@ func TestGetStackResourceOutputs(t *testing.T) {
 	client := &backendClient{backend: be}
 
 	// Get resource outputs for mock stack.
-	outs, err := client.GetStackResourceOutputs(context.Background(), "fakeStack")
+	outs, err := client.GetStackResourceOutputs(t.Context(), "fakeStack")
 	require.NoError(t, err)
 
 	// Verify resource outputs for resc1.

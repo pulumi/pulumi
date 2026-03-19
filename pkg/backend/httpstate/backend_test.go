@@ -17,7 +17,6 @@ package httpstate
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -61,7 +60,7 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
@@ -105,7 +104,7 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 		})
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := NewLoginManager().Login(ctx, "https://api.example.com", false, "", "", nil, true, display.Options{})
 	var expectedErr backenderr.MissingEnvVarForNonInteractiveError
@@ -121,7 +120,7 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
@@ -262,7 +261,7 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			org, err := inferOrg(context.Background(), tt.getDefaultOrg, tt.getUserOrg)
+			org, err := inferOrg(t.Context(), tt.getDefaultOrg, tt.getUserOrg)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -279,7 +278,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
@@ -411,7 +410,7 @@ func TestCopilotExplainer(t *testing.T) {
 			Color:   colors.Never,
 		}),
 	}
-	summary, err := b.Explain(context.Background(), stackRef, apitype.UpdateUpdate, op, events)
+	summary, err := b.Explain(t.Context(), stackRef, apitype.UpdateUpdate, op, events)
 
 	// Verify results
 	require.NoError(t, err)
@@ -434,7 +433,7 @@ func TestListStackNames(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
@@ -549,7 +548,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
@@ -678,7 +677,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var lastRequest *http.Request
 
@@ -804,7 +803,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 func TestImportDeploymentSchemaVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var lastRequest *http.Request
 
@@ -954,7 +953,7 @@ func TestIsExplainPreviewEnabled(t *testing.T) {
 		d: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 	}
 
-	result := b.IsExplainPreviewEnabled(context.Background(), display.Options{})
+	result := b.IsExplainPreviewEnabled(t.Context(), display.Options{})
 	assert.True(t, result)
 }
 
@@ -1255,7 +1254,7 @@ func TestGetAccountDetails(t *testing.T) {
 			}
 
 			username, orgs, tokenInfo, err := getAccountDetails(
-				context.Background(), cloudURL, false, tt.accessToken,
+				t.Context(), cloudURL, false, tt.accessToken,
 			)
 
 			if tt.wantErr {
@@ -1290,7 +1289,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			project: "my-project",
 		}
 
-		resp, err := b.createNeoTaskOnError(context.Background(), "", stackRef, display.Options{})
+		resp, err := b.createNeoTaskOnError(t.Context(), "", stackRef, display.Options{})
 		require.NoError(t, err)
 		assert.Nil(t, resp)
 	})
@@ -1302,7 +1301,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			client: &client.Client{},
 			d:      diagtest.LogSink(t),
 		}
-		resp, err := b.createNeoTaskOnError(context.Background(), "some error", nil, display.Options{})
+		resp, err := b.createNeoTaskOnError(t.Context(), "some error", nil, display.Options{})
 		require.Error(t, err)
 		assert.Nil(t, resp)
 	})
@@ -1341,7 +1340,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			project: "my-project",
 		}
 
-		resp, err := b.createNeoTaskOnError(context.Background(), "resource failed to create", stackRef, display.Options{})
+		resp, err := b.createNeoTaskOnError(t.Context(), "resource failed to create", stackRef, display.Options{})
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.Equal(t, "task_abc123", resp.TaskID)
@@ -1379,7 +1378,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			project: "my-project",
 		}
 
-		resp, err := b.createNeoTaskOnError(context.Background(), "something broke", stackRef, display.Options{})
+		resp, err := b.createNeoTaskOnError(t.Context(), "something broke", stackRef, display.Options{})
 		require.Error(t, err)
 		assert.Nil(t, resp)
 	})

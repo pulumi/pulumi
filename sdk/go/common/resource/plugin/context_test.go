@@ -15,7 +15,6 @@
 package plugin
 
 import (
-	"context"
 	"sync"
 	"testing"
 
@@ -28,7 +27,7 @@ func TestContextRequest_race(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(
-		context.Background(),
+		t.Context(),
 		diagtest.LogSink(t), // The diagnostics sink to use for messages.
 		diagtest.LogSink(t), // The diagnostics sink to use for status messages.
 		nil,                 // the host that can be used to fetch providers.

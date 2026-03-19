@@ -107,7 +107,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			client := pulumirpc.NewResourceProviderClient(conn)
 
 			// Call GetSchema and verify the results.
-			resp, err := client.GetSchema(context.Background(), &pulumirpc.GetSchemaRequest{Version: test.version})
+			resp, err := client.GetSchema(t.Context(), &pulumirpc.GetSchemaRequest{Version: test.version})
 			if test.expectedError != "" {
 				assert.ErrorContains(t, err, test.expectedError)
 			} else {
@@ -222,7 +222,7 @@ func runComponentSetup(t *testing.T, testDir string) {
 }
 
 func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn func()) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 
 	lockWait := make(chan struct{})

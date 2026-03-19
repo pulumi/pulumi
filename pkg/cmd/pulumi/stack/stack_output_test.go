@@ -126,7 +126,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 				requireStack: requireStack,
 				showSecrets:  tt.showSecrets,
 			}
-			require.NoError(t, cmd.Run(context.Background(), tt.args))
+			require.NoError(t, cmd.Run(t.Context(), tt.args))
 			stdout := stdoutBuff.String()
 
 			if tt.equals != "" {
@@ -238,7 +238,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 				jsonOut:      true,
 				Stdout:       &stdoutBuff,
 			}
-			require.NoError(t, cmd.Run(context.Background(), tt.args))
+			require.NoError(t, cmd.Run(t.Context(), tt.args))
 
 			stdout := stdoutBuff.Bytes()
 			var got any
@@ -365,7 +365,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 				OS:           osys,
 				Stdout:       &stdoutBuff,
 			}
-			require.NoError(t, cmd.Run(context.Background(), tt.args))
+			require.NoError(t, cmd.Run(t.Context(), tt.args))
 
 			// Drop trailing "\n" from stdout
 			// rather than add a "" at the end of every tt.want.
@@ -390,7 +390,7 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 		jsonOut:  true,
 	}
 
-	err := cmd.Run(context.Background(), nil)
+	err := cmd.Run(t.Context(), nil)
 	assert.ErrorContains(t, err, "only one of --json and --shell may be set")
 }
 

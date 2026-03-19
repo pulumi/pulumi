@@ -43,7 +43,7 @@ func TestClientInterceptorCatchesErrors(t *testing.T) {
 
 	uci := i.DebugClientInterceptor(LogOptions{})
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	giveErr := errors.New("oops")
 

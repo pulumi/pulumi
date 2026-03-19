@@ -38,7 +38,7 @@ func TestApplier_Call(t *testing.T) {
 		}, stringType)
 		require.NoError(t, err)
 
-		o, err := ap.Call(context.Background(), reflect.ValueOf("hello"))
+		o, err := ap.Call(t.Context(), reflect.ValueOf("hello"))
 		require.NoError(t, err)
 		assert.Equal(t, int64(42), o.Int())
 	})
@@ -46,7 +46,7 @@ func TestApplier_Call(t *testing.T) {
 	t.Run("context", func(t *testing.T) {
 		t.Parallel()
 
-		giveCtx, cancel := context.WithCancel(context.Background())
+		giveCtx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		ap, err := newApplier(func(ctx context.Context, s string) int {
@@ -71,7 +71,7 @@ func TestApplier_Call(t *testing.T) {
 		}, stringType)
 		require.NoError(t, err)
 
-		o, err := ap.Call(context.Background(), reflect.ValueOf("hello"))
+		o, err := ap.Call(t.Context(), reflect.ValueOf("hello"))
 		require.NoError(t, err)
 		assert.Equal(t, int64(42), o.Int())
 	})
@@ -86,7 +86,7 @@ func TestApplier_Call(t *testing.T) {
 		}, stringType)
 		require.NoError(t, err)
 
-		_, err = ap.Call(context.Background(), reflect.ValueOf("hello"))
+		_, err = ap.Call(t.Context(), reflect.ValueOf("hello"))
 		// == check because we want an exact reference match,
 		// not a deep equals.
 		assert.True(t, err == giveErr, "error must match")
@@ -176,7 +176,7 @@ func TestOutputWithDependencies(t *testing.T) {
 	require.Empty(t, state.dependencies())
 
 	deps := []Resource{&ResourceState{}, &ResourceState{}}
-	outputWithDeps := OutputWithDependencies(context.Background(), out, deps...)
+	outputWithDeps := OutputWithDependencies(t.Context(), out, deps...)
 
 	// The output with dependencies should be pending and track the dependencies
 	stateWithDeps := outputWithDeps.getState()
@@ -186,7 +186,7 @@ func TestOutputWithDependencies(t *testing.T) {
 	// Resolve the original output, which should also resolve the output with dependencies
 	state.resolve(42, true, false, nil)
 
-	v, known, secret, resolvedDeps, err := stateWithDeps.await(context.Background())
+	v, known, secret, resolvedDeps, err := stateWithDeps.await(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, 42, v)
 	require.True(t, known)
@@ -202,7 +202,7 @@ func TestOutputWithDependenciesReject(t *testing.T) {
 	require.Empty(t, state.dependencies())
 
 	deps := []Resource{&ResourceState{}, &ResourceState{}}
-	outputWithDeps := OutputWithDependencies(context.Background(), out, deps...)
+	outputWithDeps := OutputWithDependencies(t.Context(), out, deps...)
 
 	// The output with dependencies should be pending and track the dependencies
 	stateWithDeps := outputWithDeps.getState()
@@ -212,7 +212,7 @@ func TestOutputWithDependenciesReject(t *testing.T) {
 	// Reject the original output, which should also reject the output with dependencies
 	state.reject(errors.New("oh no"))
 
-	v, known, secret, resolvedDeps, err := stateWithDeps.await(context.Background())
+	v, known, secret, resolvedDeps, err := stateWithDeps.await(t.Context())
 	require.Error(t, err, "oh no")
 	require.Nil(t, v)
 	require.True(t, known)

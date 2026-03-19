@@ -352,7 +352,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			}
 			assert.Equal(t, state.Protect, actualState.Protect)
 			if !assert.True(t, actualState.Inputs.DeepEquals(state.Inputs)) {
-				actual, err := stack.SerializeResource(context.Background(), actualState, config.NopEncrypter, false)
+				actual, err := stack.SerializeResource(t.Context(), actualState, config.NopEncrypter, false)
 				contract.IgnoreError(err)
 
 				sb, err := json.MarshalIndent(s, "", "    ")

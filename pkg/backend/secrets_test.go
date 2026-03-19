@@ -168,7 +168,7 @@ func TestErrorCatchingSecretsManager_EncryptValue(t *testing.T) {
 		manager := &errorCatchingSecretsManager{delegateManager: delegateManager}
 
 		// Act
-		_, err := manager.EncryptValue(context.Background(), "test")
+		_, err := manager.EncryptValue(t.Context(), "test")
 
 		// Assert
 		assert.Error(t, err)
@@ -186,7 +186,7 @@ func TestErrorCatchingSecretsManager_BatchEncrypt(t *testing.T) {
 		manager := &errorCatchingSecretsManager{delegateManager: delegateManager}
 
 		// Act
-		_, err := manager.BatchEncrypt(context.Background(), []string{"test"})
+		_, err := manager.BatchEncrypt(t.Context(), []string{"test"})
 
 		// Assert
 		assert.Error(t, err)
@@ -212,7 +212,7 @@ func TestErrorCatchingSecretsManager_DecryptValue_Success(t *testing.T) {
 		}
 
 		// Act
-		plaintext, err := manager.DecryptValue(context.Background(), "encrypted")
+		plaintext, err := manager.DecryptValue(t.Context(), "encrypted")
 
 		// Assert
 		require.NoError(t, err)
@@ -244,7 +244,7 @@ func TestErrorCatchingSecretsManager_DecryptValue_ErrorPropagated(t *testing.T) 
 		}
 
 		// Act
-		_, err := manager.DecryptValue(context.Background(), "encrypted")
+		_, err := manager.DecryptValue(t.Context(), "encrypted")
 
 		// Assert
 		assert.Error(t, err)
@@ -274,7 +274,7 @@ func TestErrorCatchingSecretsManager_DecryptValue_ErrorIgnored(t *testing.T) {
 		}
 
 		// Act
-		plaintext, err := manager.DecryptValue(context.Background(), "encrypted")
+		plaintext, err := manager.DecryptValue(t.Context(), "encrypted")
 
 		// Assert
 		require.NoError(t, err)
@@ -298,7 +298,7 @@ func TestErrorCatchingSecretsManager_DecryptValue_NilDecrypter(t *testing.T) {
 		}
 
 		// Act
-		_, err := manager.DecryptValue(context.Background(), "encrypted")
+		_, err := manager.DecryptValue(t.Context(), "encrypted")
 
 		// Assert
 		assert.Error(t, err)
@@ -323,7 +323,7 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_Success(t *testing.T) {
 		}
 
 		// Act
-		plaintexts, err := manager.BatchDecrypt(context.Background(), []string{"encrypted1", "encrypted2"})
+		plaintexts, err := manager.BatchDecrypt(t.Context(), []string{"encrypted1", "encrypted2"})
 
 		// Assert
 		require.NoError(t, err)
@@ -386,7 +386,7 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_ErrorPropagated(t *testing.T) 
 		}
 
 		// Act
-		_, err := manager.BatchDecrypt(context.Background(), []string{"encrypted1", "encrypted2"})
+		_, err := manager.BatchDecrypt(t.Context(), []string{"encrypted1", "encrypted2"})
 
 		// Assert
 		assert.Error(t, err)
@@ -454,7 +454,7 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_ErrorIgnored(t *testing.T) {
 		}
 
 		// Act
-		plaintexts, err := manager.BatchDecrypt(context.Background(), []string{"encrypted1", "encrypted2"})
+		plaintexts, err := manager.BatchDecrypt(t.Context(), []string{"encrypted1", "encrypted2"})
 
 		// Assert
 		require.NoError(t, err)
@@ -516,7 +516,7 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_NilDecrypter(t *testing.T) {
 		}
 
 		// Act
-		_, err := manager.BatchDecrypt(context.Background(), []string{"encrypted1", "encrypted2"})
+		_, err := manager.BatchDecrypt(t.Context(), []string{"encrypted1", "encrypted2"})
 
 		// Assert
 		assert.Error(t, err)
