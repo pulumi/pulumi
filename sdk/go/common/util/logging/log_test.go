@@ -83,4 +83,12 @@ func TestFilter(t *testing.T) {
 	assert.Equal(t,
 		"These are my secrets: [secret]",
 		msg6)
+
+	// Boolean strings "true" and "false" are not masked, regardless of case.
+	filter7 := CreateFilter([]string{"true", "false", "True", "FALSE", "realsecret"}, "[secret]")
+	msg7 := filter7.Filter(
+		"value is True and FALSE but realsecret is hidden")
+	assert.Equal(t,
+		"value is True and FALSE but [secret] is hidden",
+		msg7)
 }
