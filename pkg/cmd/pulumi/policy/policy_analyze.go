@@ -21,7 +21,9 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -31,9 +33,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
@@ -48,6 +52,7 @@ func newPolicyAnalyzeCmd(
 	loadAnalyzers func(ctx context.Context, packs []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error),
 ) *cobra.Command {
 	var stack string
+	var diffDisplay bool
 	var policyPackPaths []string
 	var policyPackConfigs []string
 
@@ -119,8 +124,13 @@ func newPolicyAnalyzeCmd(
 			defer cleanup()
 
 			// Run analysis against the snapshot.
-			events := newAnalyzeEvents(cmd.OutOrStdout(), cmdutil.GetGlobalColorization())
+			events, finish, err := newAnalyzeEvents(
+				cmd.OutOrStdout(), cmd.ErrOrStderr(), cmdutil.GetGlobalColorization(), diffDisplay, s.Ref(), analyzers)
+			if err != nil {
+				return fmt.Errorf("configuring analysis display: %w", err)
+			}
 			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, events)
+			finish()
 			if err != nil {
 				return fmt.Errorf("running policy analysis: %w", err)
 			}
@@ -136,6 +146,8 @@ func newPolicyAnalyzeCmd(
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to analyze. Defaults to the current stack")
+	cmd.Flags().BoolVar(&diffDisplay, "diff", false,
+		"Display policy diagnostics as a rich diff instead of grouped progress output")
 	cmd.Flags().StringArrayVar(&policyPackPaths, "policy-pack", []string{},
 		"Path to a policy pack to run during analysis")
 	cmd.Flags().StringArrayVar(&policyPackConfigs, "policy-pack-config", []string{},
@@ -150,19 +162,101 @@ type analyzeEvents struct {
 	out     io.Writer
 	opts    display.Options
 	seen    map[resource.URN]engine.StepEventMetadata
+	events  chan<- engine.Event
 }
 
-func newAnalyzeEvents(out io.Writer, colorization colors.Colorization) *analyzeEvents {
-	return &analyzeEvents{
-		out: out,
-		opts: display.Options{
-			Color: colorization,
-		},
-		seen: make(map[resource.URN]engine.StepEventMetadata),
+func newAnalyzeEvents(
+	out io.Writer,
+	errOut io.Writer,
+	colorization colors.Colorization,
+	diffDisplay bool,
+	stackRef backend.StackReference,
+	analyzers []plugin.Analyzer,
+) (*analyzeEvents, func(), error) {
+	if diffDisplay {
+		return &analyzeEvents{
+			out: out,
+			opts: display.Options{
+				Color: colorization,
+			},
+			seen: make(map[resource.URN]engine.StepEventMetadata),
+		}, func() {}, nil
 	}
+
+	policyPacks := map[string]string{}
+	for _, analyzer := range analyzers {
+		info, err := analyzer.GetAnalyzerInfo()
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting analyzer info: %w", err)
+		}
+		policyPacks[info.Name] = info.Version
+	}
+
+	displayType := display.DisplayProgress
+	opts := display.Options{
+		Color:                  colorization,
+		Type:                   displayType,
+		ShowPolicyRemediations: true,
+		IsInteractive:          cmdutil.Interactive(),
+		Stdout:                 out,
+		Stderr:                 errOut,
+	}
+	events := make(chan engine.Event)
+	done := make(chan bool)
+	go display.ShowEvents(
+		"analyze", apitype.UpdateUpdate,
+		stackName(stackRef), projectName(stackRef),
+		"", events, done, opts, false)
+
+	return &analyzeEvents{
+			events: events,
+		}, func() {
+			events <- engine.NewEvent(engine.SummaryEventPayload{
+				IsPreview:       false,
+				MaybeCorrupt:    false,
+				Duration:        0 * time.Second,
+				ResourceChanges: nil,
+				PolicyPacks:     policyPacks,
+			})
+			close(events)
+			<-done
+		}, nil
+}
+
+func projectName(stackRef backend.StackReference) tokens.PackageName {
+	project, ok := safeProjectName(stackRef)
+	if ok {
+		return tokens.PackageName(project.Q())
+	}
+	return tokens.PackageName("project")
+}
+
+func stackName(stackRef backend.StackReference) (name tokens.StackName) {
+	name = tokens.MustParseStackName("stack")
+	defer func() {
+		if recover() != nil {
+			name = tokens.MustParseStackName("stack")
+		}
+	}()
+	return stackRef.Name()
+}
+
+func safeProjectName(stackRef backend.StackReference) (name tokens.Name, ok bool) {
+	defer func() {
+		if recover() != nil {
+			name = ""
+			ok = false
+		}
+	}()
+	return stackRef.Project()
 }
 
 func (e *analyzeEvents) writeEvent(event engine.Event) {
+	if e.events != nil {
+		e.events <- event
+		return
+	}
+
 	msg := display.RenderDiffEvent(event, 0, e.seen, e.opts)
 	if msg == "" {
 		return

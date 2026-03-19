@@ -208,7 +208,7 @@ func TestPolicyAnalyzeCmd_MandatoryViolationReturnsError(t *testing.T) {
 	analyzer := &fakeAnalyzer{mandatory: true}
 	stdout, _, err := runAnalyzeCmd(t, ws, lm,
 		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
-		"--stack", "my-stack")
+		"--stack", "my-stack", "--diff")
 	assert.ErrorContains(t, err, "mandatory policy violations")
 	expected := "    test-pack@v [mandatory]  test-policy  (pkg:index:MyResource: res)test violation\n"
 	assert.Equal(t, expected, stdout)
@@ -222,7 +222,7 @@ func TestPolicyAnalyzeCmd_NoViolationsSucceeds(t *testing.T) {
 		return makeAnalyzeSnapshot(), nil
 	}
 	ws, lm := newMockWsAndLm(be)
-	stdout, _, err := runAnalyzeCmd(t, ws, lm, stubLoadAnalyzers(nil), "--stack", "my-stack")
+	stdout, _, err := runAnalyzeCmd(t, ws, lm, stubLoadAnalyzers(nil), "--stack", "my-stack", "--diff")
 	require.NoError(t, err)
 	assert.Empty(t, stdout)
 }
@@ -239,11 +239,30 @@ func TestPolicyAnalyzeCmd_RemediationWritesToOutputStream(t *testing.T) {
 	analyzer := &fakeAnalyzer{remediate: true}
 	stdout, _, err := runAnalyzeCmd(t, ws, lm,
 		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
-		"--stack", "my-stack")
+		"--stack", "my-stack", "--diff")
 	require.NoError(t, err)
 	expected := "    test-pack@v1.0.0 [remediate]  test-remediation  (pkg:index:MyResource: res)\n" +
 		"      + k: \"fixed\"\n\n"
 	assert.Equal(t, expected, stdout)
+}
+
+func TestPolicyAnalyzeCmd_ProgressDisplayGroupsPolicyOutput(t *testing.T) {
+	t.Parallel()
+
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return makeAnalyzeSnapshot(), nil
+	}
+	ws, lm := newMockWsAndLm(be)
+
+	analyzer := &fakeAnalyzer{mandatory: true}
+	stdout, _, err := runAnalyzeCmd(t, ws, lm,
+		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
+		"--stack", "my-stack")
+	assert.ErrorContains(t, err, "mandatory policy violations")
+	assert.Contains(t, stdout, "Policies:")
+	assert.Contains(t, stdout, "test-pack@v")
+	assert.Contains(t, stdout, "test-policy")
 }
 
 // fakeAnalyzer is a minimal plugin.Analyzer for use in command-level tests.
