@@ -26,7 +26,7 @@ import (
 func TestMainContext(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 
 	err := MainContext(ctx, "short-lived-test-provider",

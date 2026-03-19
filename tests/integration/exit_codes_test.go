@@ -15,7 +15,6 @@
 package ints
 
 import (
-	"context"
 	"os/exec"
 	"testing"
 
@@ -40,7 +39,7 @@ runtime: nodejs
 	// Use a local file backend so we don't depend on external services.
 	e.Backend = e.LocalURL()
 
-	cmd := e.SetupCommandIn(context.Background(), e.CWD, "pulumi", "stack", "select", "does-not-exist")
+	cmd := e.SetupCommandIn(t.Context(), e.CWD, "pulumi", "stack", "select", "does-not-exist")
 	err := cmd.Run()
 
 	require.Error(t, err)

@@ -262,7 +262,7 @@ func (c dynamicStackCase) getRun(
 			"test",
 			newManager,
 			func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor, provider *snapshotBenchProvider) error {
-				cancelCtx, cancel := context.WithCancel(context.Background())
+				cancelCtx, cancel := context.WithCancel(t.Context())
 				defer cancel()
 
 				ctx, err := pulumi.NewContext(cancelCtx, pulumi.RunInfo{
@@ -364,7 +364,7 @@ func (c recordedReplayCase) getRun(
 				// Next kick off registration for each resource. The registration of a single resource R will wait on
 				// any resources that R depends upon.
 				for _, res := range d.Deployment.Resources {
-					r.registerResource(context.Background(), res, provider)
+					r.registerResource(t.Context(), res, provider)
 				}
 
 				r.resources.Range(func(_ resource.URN, res *resourceData) bool {
@@ -618,7 +618,7 @@ func newMockPersister(t testing.TB, server *httptest.Server) *cloudSnapshotPersi
 
 	backend := backendGeneric.(*cloudBackend)
 	stackID := client.StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
-	return backend.newSnapshotPersister(context.Background(), client.UpdateIdentifier{
+	return backend.newSnapshotPersister(t.Context(), client.UpdateIdentifier{
 		StackIdentifier: stackID,
 		UpdateKind:      "update",
 		UpdateID:        "update",

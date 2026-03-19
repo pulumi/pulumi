@@ -15,7 +15,6 @@
 package state
 
 import (
-	"context"
 	"encoding/json"
 	"path/filepath"
 	"testing"
@@ -33,7 +32,7 @@ import (
 func TestTaintSingleResource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -82,7 +81,7 @@ func TestTaintSingleResource(t *testing.T) {
 func TestTaintMultipleResources(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -146,7 +145,7 @@ func TestTaintMultipleResources(t *testing.T) {
 func TestTaintNonExistentResource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -198,7 +197,7 @@ func TestTaintNonExistentResource(t *testing.T) {
 func TestTaintMixedExistingAndNonExistent(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -259,7 +258,7 @@ func TestTaintMixedExistingAndNonExistent(t *testing.T) {
 func TestTaintAlreadyTaintedResource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -320,7 +319,7 @@ func TestTaintEmptySnapshot(t *testing.T) {
 func TestTaintWithParentChildRelationship(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -418,7 +417,7 @@ func TestTaintMultipleResourcesWithErrors(t *testing.T) {
 func TestTaintWithDependencies(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)

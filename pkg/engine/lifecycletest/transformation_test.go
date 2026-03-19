@@ -994,7 +994,7 @@ func TestTransformOrdering(t *testing.T) {
 				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
 			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
 				if name == "resA" && opts.Provider == "" {
-					provider, err := pcs.Promise().Result(context.Background())
+					provider, err := pcs.Promise().Result(t.Context())
 					if err != nil {
 						return nil, nil, err
 					}
@@ -1022,7 +1022,7 @@ func TestTransformOrdering(t *testing.T) {
 			pcs.MustFulfill(resp)
 		}()
 
-		_, err = resA.Result(context.Background())
+		_, err = resA.Result(t.Context())
 		require.NoError(t, err)
 
 		return nil

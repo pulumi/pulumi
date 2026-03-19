@@ -16,7 +16,6 @@ package ints
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -3219,7 +3218,7 @@ func installNodejsProviderDependencies(t *testing.T, dir string) {
 	require.NoError(t, err)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	err = pm.Install(context.Background(), dir, false /* production*/, stdout, stderr)
+	err = pm.Install(t.Context(), dir, false /* production*/, stdout, stderr)
 	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
 	cmd := exec.Command("yarn", "link", "@pulumi/pulumi")
 	cmd.Dir = dir

@@ -15,7 +15,6 @@
 package diy
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,7 +33,7 @@ func TestStackTagsWithFileBackend(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create file-based backend
 	bucket, err := fileblob.OpenBucket(tmpDir, nil)
@@ -123,7 +122,7 @@ func TestStackTagsFilteringIntegration(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create file-based backend
 	bucket, err := fileblob.OpenBucket(tmpDir, nil)
@@ -249,7 +248,7 @@ func TestStackTagsWithLegacyBackend(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create file-based backend
 	bucket, err := fileblob.OpenBucket(tmpDir, nil)
@@ -299,7 +298,7 @@ func TestStackDeletionCleansUpTags(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create file-based backend
 	bucket, err := fileblob.OpenBucket(tmpDir, nil)

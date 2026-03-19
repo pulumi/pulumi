@@ -480,7 +480,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 				},
 			}
 
-			err := cmd.Run(context.Background(), tt.args, "testpackage", nil /* packageParams */)
+			err := cmd.Run(t.Context(), tt.args, "testpackage", nil /* packageParams */)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
@@ -539,7 +539,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				},
 			}
 
-			err = cmd.Run(context.Background(), publishPackageArgs{
+			err = cmd.Run(t.Context(), publishPackageArgs{
 				source:     "pulumi",
 				publisher:  "publisher",
 				readmePath: readmePath,

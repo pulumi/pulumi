@@ -63,7 +63,7 @@ func TestBasePluginMapper_UsesEntries(t *testing.T) {
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -116,7 +116,7 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "otherProvider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "otherProvider", nil /*hint*/)
 
 	// Assert.
 	assert.True(t, installCalled, "installPlugin should have been called")
@@ -238,7 +238,7 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "yetAnotherProvider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "yetAnotherProvider", nil /*hint*/)
 
 	// Assert.
 	assert.True(t, installCalled, "installPlugin should have been called")
@@ -298,7 +298,7 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -384,7 +384,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/)
 
 	// Assert.
 	assert.Equal(t, 1, installCalls, "installPlugin should have been called once")
@@ -392,7 +392,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 	assert.Equal(t, []byte("datagcp"), data)
 
 	// Act.
-	data, err = mapper.GetMapping(context.Background(), "aws", nil /*hint*/)
+	data, err = mapper.GetMapping(t.Context(), "aws", nil /*hint*/)
 
 	// Assert.
 	assert.Equal(t, 2, installCalls, "installPlugin should have been called twice")
@@ -452,7 +452,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "gcp", &MapperPackageHint{
+	data, err := mapper.GetMapping(t.Context(), "gcp", &MapperPackageHint{
 		PluginName: "pulumiProviderGcp",
 	})
 
@@ -520,7 +520,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "gcp", &MapperPackageHint{
+	data, err := mapper.GetMapping(t.Context(), "gcp", &MapperPackageHint{
 		PluginName: "terraform-provider",
 		Parameterization: &workspace.Parameterization{
 			Name:    "gcp",
@@ -584,7 +584,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "aws", &MapperPackageHint{
+	data, err := mapper.GetMapping(t.Context(), "aws", &MapperPackageHint{
 		PluginName: "aws",
 		Parameterization: &workspace.Parameterization{
 			Name:    "aws",
@@ -653,7 +653,7 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 	// Act.
 
 	// Attempt to get the mapping for the GCP provider, which we don't have a plugin for.
-	data, err := mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/)
 
 	// Assert.
 	require.NoError(t, err)

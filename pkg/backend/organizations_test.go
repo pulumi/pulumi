@@ -25,7 +25,7 @@ import (
 
 func TestGetDefaultOrg(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	userConfiguredOrg := "user-configured-default-org"
 	backendConfiguredOrg := "backend-configured-org"
 

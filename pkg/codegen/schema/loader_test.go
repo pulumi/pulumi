@@ -34,7 +34,7 @@ func initLoader(b testing.TB, options pluginLoaderCacheOptions) ReferenceLoader 
 	cwd, err := os.Getwd()
 	require.NoError(b, err)
 	sink := diagtest.LogSink(b)
-	ctx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost)
+	ctx, err := plugin.NewContext(b.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost)
 	require.NoError(b, err)
 	loader := newPluginLoaderWithOptions(ctx.Host, options)
 
@@ -185,7 +185,7 @@ func TestLoadParameterized(t *testing.T) {
 	})
 
 	version := semver.MustParse("1.0.0")
-	ref, err := loader.LoadPackageReferenceV2(context.Background(), &PackageDescriptor{
+	ref, err := loader.LoadPackageReferenceV2(t.Context(), &PackageDescriptor{
 		Name:    "terraform-provider",
 		Version: &version,
 		Parameterization: &ParameterizationDescriptor{
@@ -247,7 +247,7 @@ func TestLoadNameMismatch(t *testing.T) {
 	})
 
 	// Act.
-	ref, err := LoadPackageReferenceV2(context.Background(), loader, &PackageDescriptor{
+	ref, err := LoadPackageReferenceV2(t.Context(), loader, &PackageDescriptor{
 		Name:    pkg,
 		Version: &version,
 	})
@@ -318,7 +318,7 @@ func TestLoadVersionMismatch(t *testing.T) {
 	})
 
 	// Act.
-	ref, err := LoadPackageReferenceV2(context.Background(), loader, &PackageDescriptor{
+	ref, err := LoadPackageReferenceV2(t.Context(), loader, &PackageDescriptor{
 		Name:    pkg,
 		Version: &requestVersion,
 	})

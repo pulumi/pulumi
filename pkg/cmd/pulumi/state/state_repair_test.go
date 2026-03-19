@@ -70,7 +70,7 @@ func TestStateRepair_ExitsIfTheStateIsAlreadyValid(t *testing.T) {
 			fx := newStateRepairCmdFixture(t, []*resource.State{})
 
 			// Act.
-			err := fx.cmd.run(context.Background())
+			err := fx.cmd.run(t.Context())
 
 			// Assert.
 			require.NoError(t, err)
@@ -97,7 +97,7 @@ func TestStateRepair_ConfirmationIncludesReorderSummary(t *testing.T) {
 	fx.stdin.buf.WriteString("no\r\n")
 
 	// Act.
-	err := fx.cmd.run(context.Background())
+	err := fx.cmd.run(t.Context())
 
 	// Assert.
 	require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestStateRepair_ConfirmationIncludesModificationSummary(t *testing.T) {
 	fx.stdin.buf.WriteString("no\r\n")
 
 	// Act.
-	err := fx.cmd.run(context.Background())
+	err := fx.cmd.run(t.Context())
 
 	// Assert.
 	require.NoError(t, err)
@@ -147,7 +147,7 @@ func TestStateRepair_ConfirmationIncludesCombinedSummaries(t *testing.T) {
 	fx.stdin.buf.WriteString("no\r\n")
 
 	// Act.
-	err := fx.cmd.run(context.Background())
+	err := fx.cmd.run(t.Context())
 
 	// Assert.
 	require.NoError(t, err)
@@ -172,7 +172,7 @@ func TestStateRepair_PromptsForConfirmationAndCancels(t *testing.T) {
 	fx.stdin.buf.WriteString("no\r\n")
 
 	// Act.
-	err := fx.cmd.run(context.Background())
+	err := fx.cmd.run(t.Context())
 
 	// Assert.
 	require.NoError(t, err)
@@ -197,7 +197,7 @@ func TestStateRepair_PromptsForConfirmationAndProceeds(t *testing.T) {
 	fx.stdin.buf.WriteString("yes\r\n")
 
 	// Act.
-	err := fx.cmd.run(context.Background())
+	err := fx.cmd.run(t.Context())
 
 	// Assert.
 	require.NoError(t, err)
@@ -215,7 +215,7 @@ func TestStateRepair_SkipsConfirmationIfYesFlagIsSet(t *testing.T) {
 	fx.cmd.Args.Yes = true
 
 	// Act.
-	err := fx.cmd.run(context.Background())
+	err := fx.cmd.run(t.Context())
 
 	// Assert.
 	require.NoError(t, err)
@@ -238,7 +238,7 @@ func TestStateRepair_DoesNotWriteIfRepairFails(t *testing.T) {
 	fx.cmd.Args.Yes = true
 
 	// Act.
-	err := fx.cmd.run(context.Background())
+	err := fx.cmd.run(t.Context())
 
 	// Assert.
 	assert.ErrorContains(t, err, "unknown provider")
@@ -256,7 +256,7 @@ func TestStateRepair_RepairsSnapshots(t *testing.T) {
 	fx.cmd.Args.Yes = true
 
 	// Act.
-	err := fx.cmd.run(context.Background())
+	err := fx.cmd.run(t.Context())
 
 	// Assert.
 	require.NoError(t, err)

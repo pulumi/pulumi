@@ -17,7 +17,6 @@ package ints
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -2574,7 +2573,7 @@ func TestGetLanguageRuntimeMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	p := metadata.GetLanguageRuntimeMetadata(t.Context(), e.RootPath, project)
-	meta, err := p.Result(context.Background())
+	meta, err := p.Result(t.Context())
 
 	require.NoError(t, err)
 	require.Equal(t, meta["runtime.name"], "python")

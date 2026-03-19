@@ -103,7 +103,7 @@ func TestSourceFuncCancellation(t *testing.T) {
 	t.Parallel()
 
 	// Set up a cancelable context for the operation.
-	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
+	cancelCtx, cancelSrc := cancel.NewContext(t.Context())
 
 	// Wait for our source func, then cancel.
 	ops := make(chan bool)

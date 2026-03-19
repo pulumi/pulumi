@@ -63,7 +63,7 @@ func createAzureKey(ctx context.Context, t *testing.T, credentials *azidentity.D
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureCloudManager(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg := getAzureCaller(ctx, t)
 	keyName := createAzureKey(ctx, t, cfg)
 	url := "azurekeyvault://" + keyName
@@ -78,7 +78,7 @@ func TestAzureCloudManager(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingKey(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Use this to skip the test if we can't get Azure credentials.
 	_ = getAzureCaller(ctx, t)
@@ -107,7 +107,7 @@ func TestAzureKeyVaultExistingKey(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingState(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Use this to skip the test if we can't get Azure credentials.
 	_ = getAzureCaller(ctx, t)
@@ -136,7 +136,7 @@ func TestAzureKeyVaultExistingState(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyEditProjectStack(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Use this to skip the test if we can't get Azure credentials.
 	_ = getAzureCaller(ctx, t)
 
@@ -162,7 +162,7 @@ func TestAzureKeyEditProjectStack(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingKeyState(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Use this to skip the test if we can't get Azure credentials.
 	_ = getAzureCaller(ctx, t)
 
@@ -195,7 +195,7 @@ func TestAzureKeyVaultExistingKeyState(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultAutoFix15329(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Use this to skip the test if we can't get Azure credentials.
 	_ = getAzureCaller(ctx, t)

@@ -76,7 +76,7 @@ func skipIfNoCredentials(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestGCPCloudManager(t *testing.T) {
 	skipIfNoCredentials(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	keyName := createGCPKey(ctx, t)
 	url := "gcpkms://" + keyName
 	testURL(ctx, t, url)
@@ -85,7 +85,7 @@ func TestGCPCloudManager(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestGCPExistingKey(t *testing.T) {
 	skipIfNoCredentials(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	url := "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key"
 
@@ -111,7 +111,7 @@ func TestGCPExistingKey(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestGCPExistingState(t *testing.T) {
 	skipIfNoCredentials(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	//nolint:lll // this includes a base64 encoded key
 	cloudState := `{

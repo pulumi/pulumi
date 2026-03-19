@@ -83,7 +83,7 @@ func TestPackageRef(t *testing.T) {
 				pcs.MustFulfill(ref)
 			}()
 		}
-		ctx := context.Background()
+		ctx := t.Context()
 		expected, err := promises[0].Result(ctx)
 		require.NoError(t, err)
 		for i := 1; i < 100; i++ {

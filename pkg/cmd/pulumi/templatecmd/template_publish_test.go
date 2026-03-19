@@ -264,7 +264,7 @@ runtime: nodejs
 			}
 
 			mockCmd := &cobra.Command{}
-			err := cmd.Run(context.Background(), mockCmd, tt.args, templateDir)
+			err := cmd.Run(t.Context(), mockCmd, tt.args, templateDir)
 			if tt.expectedErr != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErr)
@@ -312,7 +312,7 @@ runtime: nodejs
 			}
 
 			mockCmd := &cobra.Command{}
-			err = cmd.Run(context.Background(), mockCmd, publishTemplateArgs{
+			err = cmd.Run(t.Context(), mockCmd, publishTemplateArgs{
 				publisher: "publisher",
 				name:      "test-template",
 				version:   "1.0.0",
@@ -408,7 +408,7 @@ func TestTemplatePublishCmd_RelativePathBug(t *testing.T) {
 		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) { return "org", nil },
 	}
 
-	err := cmd.Run(context.Background(), &cobra.Command{}, publishTemplateArgs{
+	err := cmd.Run(t.Context(), &cobra.Command{}, publishTemplateArgs{
 		publisher: "test", name: "test", version: "1.0.0",
 	}, "./template-subdir")
 
@@ -539,7 +539,7 @@ dist/
 			}
 
 			mockCmd := &cobra.Command{}
-			err := cmd.Run(context.Background(), mockCmd, publishTemplateArgs{
+			err := cmd.Run(t.Context(), mockCmd, publishTemplateArgs{
 				publisher: "testpublisher",
 				name:      "test-template",
 				version:   "1.0.0",

@@ -87,7 +87,7 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+		ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
 			Parallel:    info.Parallel,
@@ -164,7 +164,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 
 	setupAndRunProgram := func(ignoreChanges []string) *deploy.Snapshot {
 		programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+			ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 				Project:     info.Project,
 				Stack:       info.Stack,
 				Parallel:    info.Parallel,
@@ -260,7 +260,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	var stackURN, provURN, urnA resource.URN = "urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
 		"urn:pulumi:test::test::pulumi:providers:pkgA::provA", "urn:pulumi:test::test::pkgA:m:typA::resA"
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+		ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
 			Parallel:    info.Parallel,
@@ -360,7 +360,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 
 	setupAndRunProgram := func() *deploy.Snapshot {
 		programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+			ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 				Project:     info.Project,
 				Stack:       info.Stack,
 				Parallel:    info.Parallel,
@@ -471,7 +471,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+		ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
 			Parallel:    info.Parallel,
@@ -616,7 +616,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+		ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
 			Parallel:    info.Parallel,
@@ -741,7 +741,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+		ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
 			Parallel:    info.Parallel,

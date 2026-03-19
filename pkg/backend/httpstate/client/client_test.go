@@ -17,7 +17,6 @@ package client
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -101,7 +100,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		unauthorizedClient := newMockClient(unauthorizedServer)
-		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(t.Context(), nil)
 
 		assert.EqualError(t, unauthorizedErr, "this command requires logging in; try running `pulumi login` first")
 	})
@@ -113,7 +112,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer rateLimitedServer.Close()
 
 		rateLimitedClient := newMockClient(rateLimitedServer)
-		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(t.Context(), nil)
 
 		assert.EqualError(t, rateLimitErr, "pulumi service: request rate-limit exceeded")
 	})
@@ -125,7 +124,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer defaultErrorServer.Close()
 
 		defaultErrorClient := newMockClient(defaultErrorServer)
-		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(t.Context(), nil)
 
 		assert.Error(t, defaultErrorErr)
 	})
@@ -142,7 +141,7 @@ func TestAPIVersionResponses(t *testing.T) {
 
 	versionClient := newMockClient(versionServer)
 	latestVersion, oldestWithoutWarning, latestDevVersion, err := versionClient.GetCLIVersionInfo(
-		context.Background(), nil,
+		t.Context(), nil,
 	)
 
 	require.NoError(t, err)
@@ -165,7 +164,7 @@ func TestAPIVersionMetadataHeaders(t *testing.T) {
 	client := newMockClient(server)
 
 	// Act.
-	_, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
+	_, _, _, err := client.GetCLIVersionInfo(t.Context(), map[string]string{
 		"First":  "foo",
 		"Second": "bar",
 	})
@@ -190,13 +189,13 @@ func TestGzip(t *testing.T) {
 	}
 
 	// POST /import
-	_, err := client.ImportStackDeployment(context.Background(), identifier, nil)
+	_, err := client.ImportStackDeployment(t.Context(), identifier, nil)
 	require.NoError(t, err)
 
 	tok := updateTokenStaticSource("")
 
 	// PATCH /checkpoint
-	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{
+	err = client.PatchUpdateCheckpoint(t.Context(), UpdateIdentifier{
 		StackIdentifier: identifier,
 	}, &apitype.UntypedDeployment{
 		Version:    3,
@@ -205,13 +204,13 @@ func TestGzip(t *testing.T) {
 	require.NoError(t, err)
 
 	// POST /events/batch
-	err = client.RecordEngineEvents(context.Background(), UpdateIdentifier{
+	err = client.RecordEngineEvents(t.Context(), UpdateIdentifier{
 		StackIdentifier: identifier,
 	}, apitype.EngineEventBatch{}, tok)
 	require.NoError(t, err)
 
 	// POST /events/batch
-	_, err = client.BatchDecryptValue(context.Background(), identifier, nil)
+	_, err = client.BatchDecryptValue(t.Context(), identifier, nil)
 	require.NoError(t, err)
 }
 
@@ -257,7 +256,7 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 
 	newlines := bytes.Count(indented, []byte{'\n'})
 
-	err = client.PatchUpdateCheckpointVerbatim(context.Background(),
+	err = client.PatchUpdateCheckpointVerbatim(t.Context(),
 		UpdateIdentifier{
 			StackIdentifier: StackIdentifier{
 				Stack: tokens.MustParseStackName("stack"),
@@ -287,7 +286,7 @@ func TestGetCapabilities(t *testing.T) {
 		defer s.Close()
 
 		c := newMockClient(s)
-		resp, err := c.GetCapabilities(context.Background())
+		resp, err := c.GetCapabilities(t.Context())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.Empty(t, resp.Capabilities)
@@ -314,7 +313,7 @@ func TestGetCapabilities(t *testing.T) {
 		defer s.Close()
 
 		c := newMockClient(s)
-		resp, err := c.GetCapabilities(context.Background())
+		resp, err := c.GetCapabilities(t.Context())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		require.Len(t, resp.Capabilities, 2)
@@ -378,7 +377,7 @@ func TestDeploymentSettingsApi(t *testing.T) {
 
 		c := newMockClient(s)
 		stack, _ := tokens.ParseStackName("stack")
-		resp, err := c.GetStackDeploymentSettings(context.Background(), StackIdentifier{
+		resp, err := c.GetStackDeploymentSettings(t.Context(), StackIdentifier{
 			Owner:   "owner",
 			Project: "project",
 			Stack:   stack,
@@ -418,7 +417,7 @@ func TestDeploymentSettingsApi(t *testing.T) {
 
 func TestListOrgTemplates(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("with-templates", func(t *testing.T) {
 		t.Parallel()
@@ -488,7 +487,7 @@ func TestGetDefaultOrg(t *testing.T) {
 
 		// WHEN
 		c := newMockClient(s)
-		resp, err := c.GetDefaultOrg(context.Background())
+		resp, err := c.GetDefaultOrg(t.Context())
 
 		// THEN
 		// We should gracefully handle the 404
@@ -553,7 +552,7 @@ func TestGetPackage(t *testing.T) {
 
 		c := newMockClient(s)
 
-		resp, err := c.GetPackage(context.Background(), "my-source", "my-publisher", "my-package", nil)
+		resp, err := c.GetPackage(t.Context(), "my-source", "my-publisher", "my-package", nil)
 		require.NoError(t, err)
 		assert.Equal(t, metadata(), resp)
 	})
@@ -565,7 +564,7 @@ func TestGetPackage(t *testing.T) {
 
 		c := newMockClient(s)
 
-		_, err := c.GetPackage(context.Background(), "my-source", "my-publisher", "my-package", nil)
+		_, err := c.GetPackage(t.Context(), "my-source", "my-publisher", "my-package", nil)
 		var apiError *apitype.ErrorResponse
 		require.ErrorAs(t, err, &apiError, "actual error type %T", err)
 		assert.Equal(t, 404, apiError.Code)
@@ -581,7 +580,7 @@ func TestGetPackage(t *testing.T) {
 
 		c := newMockClient(s)
 
-		resp, err := c.GetPackage(context.Background(), "my-source", "my-publisher", "my-package", &semver.Version{
+		resp, err := c.GetPackage(t.Context(), "my-source", "my-publisher", "my-package", &semver.Version{
 			Major: 1,
 		})
 		require.NoError(t, err)
@@ -636,7 +635,7 @@ func TestListPackages(t *testing.T) {
 		searchName := "my-package"
 		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.PackageMetadata{}
-		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
+		for pkg, err := range mockClient.ListPackages(t.Context(), &searchName) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, pkg)
 		}
@@ -731,7 +730,7 @@ func TestListPackages(t *testing.T) {
 		searchName := "my-package"
 		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.PackageMetadata{}
-		for pkg, err := range mockClient.ListPackages(context.Background(), &searchName) {
+		for pkg, err := range mockClient.ListPackages(t.Context(), &searchName) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, pkg)
 		}
@@ -755,7 +754,7 @@ func TestCallCopilot(t *testing.T) {
 		defer noContentServer.Close()
 
 		client := newMockClient(noContentServer)
-		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+		response, err := client.callCopilot(t.Context(), map[string]string{"test": "data"})
 
 		require.NoError(t, err)
 		require.Empty(t, response)
@@ -769,7 +768,7 @@ func TestCallCopilot(t *testing.T) {
 		defer usageLimitServer.Close()
 
 		client := newMockClient(usageLimitServer)
-		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+		response, err := client.callCopilot(t.Context(), map[string]string{"test": "data"})
 
 		require.EqualError(t, err, "Usage limit reached")
 		require.Empty(t, response)
@@ -783,7 +782,7 @@ func TestCallCopilot(t *testing.T) {
 		defer errorServer.Close()
 
 		client := newMockClient(errorServer)
-		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+		response, err := client.callCopilot(t.Context(), map[string]string{"test": "data"})
 
 		require.EqualError(t, err, "Internal server error")
 		require.Empty(t, response)
@@ -797,7 +796,7 @@ func TestCallCopilot(t *testing.T) {
 		defer emptyBodyServer.Close()
 
 		client := newMockClient(emptyBodyServer)
-		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+		response, err := client.callCopilot(t.Context(), map[string]string{"test": "data"})
 
 		require.ErrorContains(t, err, "Copilot API returned error status: 400")
 		require.Empty(t, response)
@@ -811,7 +810,7 @@ func TestCallCopilot(t *testing.T) {
 		defer invalidJSONServer.Close()
 
 		client := newMockClient(invalidJSONServer)
-		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+		response, err := client.callCopilot(t.Context(), map[string]string{"test": "data"})
 
 		require.EqualError(t, err, "unable to parse Copilot response: This is not JSON")
 		require.Empty(t, response)
@@ -833,7 +832,7 @@ func TestCallCopilot(t *testing.T) {
 		defer validJSONServer.Close()
 
 		client := newMockClient(validJSONServer)
-		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+		response, err := client.callCopilot(t.Context(), map[string]string{"test": "data"})
 
 		require.NoError(t, err)
 		require.Equal(t, "\"This is a valid response\"", response)
@@ -850,7 +849,7 @@ func TestCallCopilot(t *testing.T) {
 		defer errorJSONServer.Close()
 
 		client := newMockClient(errorJSONServer)
-		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+		response, err := client.callCopilot(t.Context(), map[string]string{"test": "data"})
 
 		require.EqualError(t, err, "copilot API error: API error message\nDetailed error information")
 		require.Empty(t, response)

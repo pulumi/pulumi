@@ -993,7 +993,7 @@ func TestCanceledRefresh(t *testing.T) {
 	}
 
 	// Set up a cancelable context for the refresh operation.
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	// Serialize all refreshes s.t. we can cancel after the first is issued.
 	refreshes, cancelled := make(chan resource.ID), make(chan bool)

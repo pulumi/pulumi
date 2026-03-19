@@ -15,7 +15,6 @@
 package stack
 
 import (
-	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -280,7 +279,7 @@ func TestStackCommands(t *testing.T) {
 		require.NoError(t, err)
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "correct horse battery staple")
 		snap, err := stack.DeserializeUntypedDeployment(
-			context.Background(),
+			t.Context(),
 			&deployment, secrets.DefaultProvider)
 		require.NoError(t, err)
 		// Let's say that the the CLI crashed during the deletion of the last resource and we've now got
@@ -290,7 +289,7 @@ func TestStackCommands(t *testing.T) {
 			Resource: res,
 			Type:     resource.OperationTypeDeleting,
 		})
-		v3deployment, err := stack.SerializeDeployment(context.Background(), snap, false /* showSecrets */)
+		v3deployment, err := stack.SerializeDeployment(t.Context(), snap, false /* showSecrets */)
 		require.NoError(t, err)
 		data, err := json.Marshal(&v3deployment)
 		require.NoError(t, err)

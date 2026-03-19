@@ -99,7 +99,7 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Act.
@@ -139,7 +139,7 @@ func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Act.
@@ -203,7 +203,7 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Act.
@@ -272,7 +272,7 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Act.
@@ -486,7 +486,7 @@ func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Act.
@@ -528,7 +528,7 @@ func TestCheckForUpdate_CachesPrompts(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	uncached := checkForUpdate(ctx, srv.URL, nil)
@@ -577,7 +577,7 @@ func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Act.
@@ -621,7 +621,7 @@ func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	uncached := checkForUpdate(ctx, srv.URL, nil)
@@ -685,7 +685,7 @@ func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Act.
@@ -731,7 +731,7 @@ func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	uncached := checkForUpdate(ctx, srv.URL, nil)
@@ -794,7 +794,7 @@ func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	uncached := checkForUpdate(ctx, srv.URL, nil)

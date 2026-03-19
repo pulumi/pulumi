@@ -744,7 +744,7 @@ func TestAnalyzerCancellation(t *testing.T) {
 		}, deploytest.WithGrpc),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		time.Sleep(1 * time.Second)
 		cancel()

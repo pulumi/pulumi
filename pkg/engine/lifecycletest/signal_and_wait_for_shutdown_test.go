@@ -44,7 +44,7 @@ func TestSignalAndWaitForShutdown(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		require.NoError(t, err)
 		if callSignalAndWaitForShutdown {
-			err = monitor.SignalAndWaitForShutdown(context.Background())
+			err = monitor.SignalAndWaitForShutdown(t.Context())
 			require.NoError(t, err)
 		}
 		return nil
@@ -127,7 +127,7 @@ func TestSignalAndWaitForShutdownContinueOnError(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.ErrorContains(t, err, "resource registration failed")
 		if callSignalAndWaitForShutdown {
-			err = monitor.SignalAndWaitForShutdown(context.Background())
+			err = monitor.SignalAndWaitForShutdown(t.Context())
 			// Even though RegisterResource returned an error, we continue
 			// running and expect WaitForShutdown to return successfully because
 			// we are running with `ContinueOnError: true`.
@@ -171,7 +171,7 @@ func TestSignalAndWaitForShutdownErrorAfterWait(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		require.NoError(t, err)
 		if callSignalAndWaitForShutdown {
-			err = monitor.SignalAndWaitForShutdown(context.Background())
+			err = monitor.SignalAndWaitForShutdown(t.Context())
 			require.NoError(t, err)
 			return errors.New("error in program after signal")
 		}

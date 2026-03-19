@@ -156,7 +156,7 @@ func TestListStacksPagination(t *testing.T) {
 
 	// Execute the command, which will use our mocked backend. Confirm the expected number of
 	// backend calls were made.
-	ctx := context.Background()
+	ctx := t.Context()
 	args := stackLSArgs{
 		orgFilter:  testOrgName,
 		projFilter: testProjName,
@@ -228,7 +228,7 @@ func TestListStacksJsonProgress(t *testing.T) {
 	})
 
 	var buff bytes.Buffer
-	ctx := context.Background()
+	ctx := t.Context()
 	args := stackLSArgs{
 		jsonOut:   true,
 		allStacks: true,
@@ -286,7 +286,7 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 	})
 
 	var buff bytes.Buffer
-	ctx := context.Background()
+	ctx := t.Context()
 	args := stackLSArgs{
 		jsonOut:   true,
 		allStacks: true,

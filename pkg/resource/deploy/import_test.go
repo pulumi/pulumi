@@ -88,7 +88,7 @@ func TestImporter(t *testing.T) {
 					},
 				},
 			}
-			_, err := i.registerProviders(context.Background())
+			_, err := i.registerProviders(t.Context())
 			assert.ErrorContains(t, err, "incorrect package type specified")
 		})
 		t.Run("ensure provider is called correctly", func(t *testing.T) {
@@ -124,7 +124,7 @@ func TestImporter(t *testing.T) {
 					},
 				},
 			}
-			_, err := i.registerProviders(context.Background())
+			_, err := i.registerProviders(t.Context())
 			assert.ErrorIs(t, err, expectedErr)
 		})
 	})
@@ -134,7 +134,7 @@ func TestImporter(t *testing.T) {
 			t.Parallel()
 			t.Run("ok", func(t *testing.T) {
 				t.Parallel()
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(t.Context())
 				cancel()
 				i := &importer{
 					executor: &stepExecutor{
@@ -163,7 +163,7 @@ func TestImporter(t *testing.T) {
 			t.Parallel()
 			t.Run("ok", func(t *testing.T) {
 				t.Parallel()
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(t.Context())
 				cancel()
 				i := &importer{
 					executor: &stepExecutor{
@@ -183,7 +183,7 @@ func TestImporter(t *testing.T) {
 			})
 			t.Run("ignore existing delete resources", func(t *testing.T) {
 				t.Parallel()
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(t.Context())
 				cancel()
 				i := &importer{
 					executor: &stepExecutor{
@@ -216,7 +216,7 @@ func TestImporter(t *testing.T) {
 
 func TestImporterParameterizedProvider(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	version := semver.MustParse("1.2.3")
 	mockProvider := plugin.MockProvider{
@@ -277,6 +277,6 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			},
 		},
 	}
-	_, err := i.registerProviders(context.Background())
+	_, err := i.registerProviders(t.Context())
 	require.NoError(t, err)
 }

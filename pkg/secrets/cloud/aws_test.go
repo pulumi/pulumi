@@ -31,7 +31,7 @@ import (
 )
 
 func getAwsCaller(t *testing.T) (context.Context, aws.Config, *sts.GetCallerIdentityOutput) {
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		t.Logf("Skipping, could not load aws config: %s", err)

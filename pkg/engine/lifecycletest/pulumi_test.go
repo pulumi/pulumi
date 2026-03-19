@@ -523,7 +523,7 @@ func TestProviderCancellation(t *testing.T) {
 	const resourceCount = 4
 
 	// Set up a cancelable context for the refresh operation.
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	// Wait for our resource ops, then cancel.
 	var ops sync.WaitGroup
@@ -534,7 +534,7 @@ func TestProviderCancellation(t *testing.T) {
 	}()
 
 	// Set up an independent cancelable context for the provider's operations.
-	provCtx, provCancel := context.WithCancel(context.Background())
+	provCtx, provCancel := context.WithCancel(t.Context())
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -2639,7 +2639,7 @@ func TestConfigSecrets(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	crypter := config.NewSymmetricCrypter(make([]byte, 32))
-	secret, err := crypter.EncryptValue(context.Background(), "hunter2")
+	secret, err := crypter.EncryptValue(t.Context(), "hunter2")
 	require.NoError(t, err)
 
 	p := &lt.TestPlan{
@@ -4933,7 +4933,7 @@ func TestProgramError(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 
 		return nil

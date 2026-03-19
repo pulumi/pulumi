@@ -118,7 +118,7 @@ func TestPluginInstallCancellation(t *testing.T) {
 	t.Parallel()
 
 	// Create a new cancellable context.
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Now proceed to try various ways of installing plugins, all of which should promptly

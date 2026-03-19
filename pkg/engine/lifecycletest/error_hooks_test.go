@@ -106,7 +106,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -200,7 +200,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -299,7 +299,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -380,7 +380,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_RetryIfAnyHookRet
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -438,7 +438,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHook
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -510,7 +510,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_RetryIfAnyHookRet
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -581,7 +581,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_NoRetryWhenNoHook
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -653,7 +653,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_RetryIfAnyHookRet
 			require.NoError(t, err)
 		}
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -717,7 +717,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_NoRetryWhenNoHook
 			require.NoError(t, err)
 		}
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -783,7 +783,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -853,7 +853,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -917,7 +917,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 			})
 			require.NoError(t, err)
 		}
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -986,7 +986,7 @@ func TestErrorHooks_NotCalledOnSuccess_Update(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -1052,7 +1052,7 @@ func TestErrorHooks_NotCalledOnSuccess_Delete(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -1122,7 +1122,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -1214,7 +1214,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -1317,7 +1317,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -1433,7 +1433,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -1510,7 +1510,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -1585,7 +1585,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -1690,7 +1690,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -1796,7 +1796,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})
@@ -1894,7 +1894,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(t.Context())
 		require.NoError(t, err)
 		return nil
 	})

@@ -86,7 +86,7 @@ func TestLoader(t *testing.T) {
 		defer conn.Close()
 		loader := codegenrpc.NewLoaderClient(conn)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		resp, err := loader.GetSchema(ctx, &codegenrpc.GetSchemaRequest{
 			Package: "pkgA",
 		})

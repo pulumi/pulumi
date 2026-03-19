@@ -15,7 +15,6 @@
 package test
 
 import (
-	"context"
 	filesystem "io/fs"
 	"path/filepath"
 	"strings"
@@ -82,7 +81,7 @@ func CompilePython(t *testing.T, codeDir string) {
 		Toolchain: toolchain.Pip,
 	})
 	require.NoError(t, err)
-	info, err := tc.About(context.Background())
+	info, err := tc.About(t.Context())
 	require.NoError(t, err)
 	pythonCmdPath := info.PythonExecutable
 	// Run `python -m py_compile` on all python files

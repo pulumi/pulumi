@@ -16,7 +16,6 @@ package stack
 
 import (
 	"bytes"
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -52,7 +51,7 @@ func TestShowStackName(t *testing.T) {
 				},
 			}
 
-			err := runStack(context.Background(), &s, &output, args)
+			err := runStack(t.Context(), &s, &output, args)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected+"\n", output.String())
 		})
