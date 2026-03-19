@@ -65,7 +65,6 @@ func TestBindIntegerLiterals(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.expr, func(t *testing.T) {
 			t.Parallel()
 
@@ -74,7 +73,8 @@ func TestBindIntegerLiterals(t *testing.T) {
 
 			constType, ok := expr.Type().(*ConstType)
 			require.True(t, ok, "expected const type for %q, got %T", tc.expr, expr.Type())
-			require.True(t, constType.Type.Equals(tc.expected), "expected %v for %q, got %v", tc.expected, tc.expr, constType.Type)
+			require.True(t, constType.Type.Equals(tc.expected),
+				"expected %v for %q, got %v", tc.expected, tc.expr, constType.Type)
 		})
 	}
 }
