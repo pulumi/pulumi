@@ -1284,21 +1284,20 @@ component myComp "./myComponent" {
 func TestRewriteConversionsOnComponentInputs(t *testing.T) {
 	t.Parallel()
 
-	// Create a component that declares an int input, and a main program that passes a
-	// string for it — an unsafe but valid conversion. RewriteConversions should wrap
-	// the expression in a __convert call when given the correct target type, which is
-	// obtained via Component.InputType.
+	// Create a component that declares a number input, and a main program that passes a string for it — an
+	// valid conversion. RewriteConversions should rewrite the literal when given the correct target type,
+	// which is obtained via Component.InputType.
 	dir := t.TempDir()
 	componentDir := filepath.Join(dir, "myComponent")
 	require.NoError(t, os.MkdirAll(componentDir, 0o755))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(componentDir, "main.pp"),
-		[]byte(`config myInput int { }`),
+		[]byte(`config myInput number { }`),
 		0o600))
 
 	mainSource := `
 component myComp "./myComponent" {
-    myInput = "42"
+    myInput = "42.5"
 }
 `
 	parser := syntax.NewParser()
@@ -1332,7 +1331,6 @@ component myComp "./myComponent" {
 
 		expr, convertDiags := pcl.RewriteConversions(attr.Value, model.InputType(targetType))
 		require.False(t, convertDiags.HasErrors())
-		// "42" (string) converted to int should produce __convert(42)
-		require.Equal(t, "__convert( 42\n)", fmt.Sprintf("%v", expr))
+		require.Equal(t, " 42.5\n", fmt.Sprintf("%v", expr))
 	}
 }
