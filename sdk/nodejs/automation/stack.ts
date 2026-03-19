@@ -28,6 +28,7 @@ import { ConfigMap, ConfigValue } from "./config";
 import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
 import { LocalWorkspace } from "./localWorkspace";
+import * as CLI from "./interface";
 import { LanguageServer } from "./server";
 import { TagMap } from "./tag";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
@@ -1316,7 +1317,12 @@ Event: ${line}\n${e.toString()}`);
      * resource operation was pending when the update was canceled.
      */
     async cancel(): Promise<void> {
-        await this.runPulumiCmd(["cancel", "--yes"]);
+        await this.run((api, base) =>
+            api.cancel({
+                ...base,
+                stack: this.name,
+            }),
+        );
     }
 
     /**
@@ -1338,6 +1344,57 @@ Event: ${line}\n${e.toString()}`);
      */
     async importStack(state: Deployment): Promise<void> {
         return this.workspace.importStack(this.name, state);
+    }
+
+    /**
+     * Create the shared low-level CLI options for this stack.
+     */
+    private createBaseOptions(
+        onOutput?: (out: string) => void,
+        onError?: (err: string) => void,
+        signal?: AbortSignal,
+    ): CLI.BaseOptions {
+        const ws = this.workspace;
+
+        let envs: { [key: string]: string } = {
+            PULUMI_DEBUG_COMMANDS: "true",
+        };
+
+        // Preserve existing remote semantics where we opt into experimental features.
+        if ((ws as any).isRemote) {
+            envs["PULUMI_EXPERIMENTAL"] = "true";
+        }
+
+        const pulumiHome = ws.pulumiHome;
+        if (pulumiHome) {
+            envs["PULUMI_HOME"] = pulumiHome;
+        }
+
+        envs = { ...envs, ...ws.envVars };
+
+        return {
+            cwd: ws.workDir,
+            additionalEnv: envs,
+            onOutput,
+            onError,
+            signal,
+        };
+    }
+
+    /**
+     * Invoke a low-level CLI operation with shared wiring and post-command callback.
+     */
+    private async run<TOptions extends CLI.BaseOptions>(
+        build: (api: CLI.API, base: CLI.BaseOptions) => Promise<CommandResult> | CommandResult,
+        onOutput?: (out: string) => void,
+        onError?: (err: string) => void,
+        signal?: AbortSignal,
+    ): Promise<CommandResult> {
+        const ws = this.workspace;
+        const base = this.createBaseOptions(onOutput, onError, signal);
+        const result = await build(ws.cliApi, base as TOptions);
+        await ws.postCommandCallback(this.name);
+        return result;
     }
 
     private async runPulumiCmd(

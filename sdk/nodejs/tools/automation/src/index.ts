@@ -45,12 +45,12 @@ function baseFlag(flag: Flag): Flag {
 
 (function main(): void {
     if (!process.argv[2]) {
-        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts]");
+        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts] [output-dir]");
     }
 
     const specification: string = path.resolve(process.cwd(), process.argv[2]);
     const boilerplate: string = path.resolve(process.cwd(), process.argv[3] ?? path.join("boilerplate", "testing.ts"));
-    const output: string = path.join(process.cwd(), "output");
+    const output: string = path.resolve(process.cwd(), process.argv[4] ?? "output");
 
     const spec: Structure = JSON.parse(fs.readFileSync(specification, "utf-8")) as Structure;
     fs.mkdirSync(output, { recursive: true });
@@ -75,7 +75,7 @@ function baseFlag(flag: Flag): Flag {
     }
 
     generateOptionsTypes(spec, source);
-    generateCommands(spec, container, "ReturnType<API['__run']>");
+    generateCommands(spec, container, 'ReturnType<API["__run"]>');
     project.saveSync();
 })();
 
@@ -95,14 +95,23 @@ function generateOptionsTypes(
     const allFlags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
     const visibleFlags = Object.values(allFlags).filter((f) => !f.omit);
 
-    source.addInterface({
-        kind: StructureKind.Interface,
-        name: createOptionsTypeName(breadcrumbs),
-        extends: ["BaseOptions"],
-        docs: ["Options for the `" + command + "` command."],
-        isExported: true,
-        properties: visibleFlags.map(flagToPropertySignature),
-    });
+    // Only emit options types for structures that will also have a corresponding
+    // command method in the generated API. Non-executable menus (like the root
+    // "pulumi" node) do not produce methods, so we skip generating their
+    // options types to avoid orphaned interfaces such as `PulumiOptions`.
+    const shouldEmitOptions =
+        structure.type === "command" || (structure.type === "menu" && structure.executable === true);
+
+    if (shouldEmitOptions) {
+        source.addInterface({
+            kind: StructureKind.Interface,
+            name: createOptionsTypeName(breadcrumbs),
+            extends: ["BaseOptions"],
+            docs: ["Options for the `" + command + "` command."],
+            isExported: true,
+            properties: visibleFlags.map(flagToPropertySignature),
+        });
+    }
 
     if (structure.type === "menu" && structure.commands) {
         const childInherited = Object.fromEntries(Object.entries(allFlags).map(([k, v]) => [k, baseFlag(v)]));
@@ -188,18 +197,18 @@ function emitPresetFlag(
     function emit(): void {
         if (typeof value === "boolean") {
             if (value) {
-                writer.writeLine(`__flags.push('--${flag.name}');`);
+                writer.writeLine(`__flags.push("--${flag.name}");`);
             }
             return;
         }
         if (typeof value === "string" || typeof value === "number") {
-            writer.writeLine(`__flags.push('--${flag.name}', '' + ${JSON.stringify(value)});`);
+            writer.writeLine(`__flags.push("--${flag.name}", "" + ${JSON.stringify(value)});`);
             return;
         }
         if (Array.isArray(value)) {
             writer.writeLine(`for (const __preset of ${JSON.stringify(value)}) {`);
-            writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}', __preset);`));
-            writer.writeLine(`}`);
+            writer.indent(() => writer.writeLine(`__flags.push("--${flag.name}", __preset);`));
+            writer.writeLine("}");
             return;
         }
     }
@@ -218,7 +227,7 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
     return (writer) => {
         writer.writeLine("const __final: string[] = [];");
         for (const breadcrumb of breadcrumbs) {
-            writer.writeLine(`__final.push('${breadcrumb}');`);
+            writer.writeLine(`__final.push("${breadcrumb}");`);
         }
         writer.blankLine();
 
@@ -233,17 +242,17 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
             if (flag.repeatable) {
                 writer.writeLine(`for (const __item of ${name} ?? []) {`);
                 writer.indent(() => option({ ...flag, repeatable: false }, "__item"));
-                writer.writeLine(`}`);
+                writer.writeLine("}");
             } else if (flag.type === "boolean") {
                 writer.writeLine(`if (${name}) {`);
-                writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}');`));
-                writer.writeLine(`}`);
+                writer.indent(() => writer.writeLine(`__flags.push("--${flag.name}");`));
+                writer.writeLine("}");
             } else if (flag.required === true) {
-                writer.writeLine(`__flags.push('--${flag.name}', '' + ${name});`);
+                writer.writeLine(`__flags.push("--${flag.name}", "" + ${name});`);
             } else {
                 writer.writeLine(`if (${name} != null) {`);
-                writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}', '' + ${name});`));
-                writer.writeLine(`}`);
+                writer.indent(() => writer.writeLine(`__flags.push("--${flag.name}", "" + ${name});`));
+                writer.writeLine("}");
             }
 
             writer.blankLine();
@@ -266,12 +275,10 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
             } else if (variadic) {
                 writer.writeLine(`for (const __item of ${name} ?? []) {`);
                 writer.indent(() => argument(specification, false, false, "__item"));
-                writer.writeLine(`}`);
+                writer.writeLine("}");
             } else {
-                writer.writeLine(`__arguments.push('' + ${name});`);
+                writer.writeLine(`__arguments.push("" + ${name});`);
             }
-
-            writer.blankLine();
         }
 
         writer.writeLine("const __flags: string[] = [];");
@@ -292,7 +299,7 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
         const optionFlags = Object.values(allFlags).filter((f) => !f.omit);
         optionFlags.forEach((flag) => option(flag));
 
-        writer.writeLine("__final.push(... __flags);");
+        writer.writeLine("__final.push(...__flags);");
         writer.blankLine();
 
         writer.writeLine("const __arguments: string[] = [];");
@@ -312,8 +319,8 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
         writer.writeLine("if (__arguments.length > 0) {");
 
         writer.indent(() => {
-            writer.writeLine("__final.push('--')");
-            writer.writeLine("__final.push(... __arguments)");
+            writer.writeLine('__final.push("--");');
+            writer.writeLine("__final.push(...__arguments);");
         });
 
         writer.writeLine("}");

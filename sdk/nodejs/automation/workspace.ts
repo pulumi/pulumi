@@ -19,6 +19,7 @@ import { ProjectSettings } from "./projectSettings";
 import { OutputMap } from "./stack";
 import { StackSettings } from "./stackSettings";
 import { TagMap } from "./tag";
+import * as CLI from "./interface";
 
 /**
  * {@link Workspace} is the execution context containing a single Pulumi
@@ -59,6 +60,13 @@ export interface Workspace {
      * The underlying Pulumi CLI.
      */
     readonly pulumiCommand: PulumiCommand;
+
+    /**
+     * Low-level Automation API for invoking Pulumi CLI commands.
+     *
+     * @internal
+     */
+    readonly cliApi: CLI.API;
 
     /**
      * The inline program {@link PulumiFn} to be used for preview/update
