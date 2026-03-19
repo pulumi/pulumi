@@ -52,16 +52,6 @@ func componentVariableType(program *Program) model.Type {
 	return model.NewObjectType(properties)
 }
 
-// componentInputType returns a map from config variable logical name to its expected model type.
-// Plain (non-InputType-wrapped) types are stored so callers can apply wrapping as needed.
-func componentInputType(program *Program) model.Type {
-	properties := map[string]model.Type{}
-	for _, cv := range program.ConfigVariables() {
-		properties[cv.LogicalName()] = model.InputType(cv.Type())
-	}
-	return model.NewObjectType(properties)
-}
-
 type componentScopes struct {
 	root      *model.Scope
 	withRange *model.Scope
@@ -351,7 +341,12 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 
 	node.Program = componentProgram
 
-	node.InputType = componentInputType(componentProgram)
+	inputProperties := map[string]model.Type{}
+	for _, cv := range componentProgram.ConfigVariables() {
+		inputProperties[cv.LogicalName()] = model.InputType(cv.Type())
+	}
+	node.InputType = model.NewObjectType(inputProperties)
+
 	programVariableType := componentVariableType(componentProgram)
 	node.VariableType = transformComponentType(programVariableType)
 	node.dirPath = componentDirPath
