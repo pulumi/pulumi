@@ -98,4 +98,3 @@ export const output = value;
 	// Duration should be a non-empty string like "1.234s".
 	require.NotEmpty(t, summary.Duration)
 }
-
