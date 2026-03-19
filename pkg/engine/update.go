@@ -143,9 +143,6 @@ func LoadLocalPolicyPackAnalyzers(
 		if err != nil {
 			return nil, err
 		}
-		if analyzer == nil {
-			return nil, fmt.Errorf("policy analyzer could not be loaded from path %q", pack.Path)
-		}
 		info, err := analyzer.GetAnalyzerInfo()
 		if err != nil {
 			return nil, err
