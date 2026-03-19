@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -120,7 +119,7 @@ func newPolicyAnalyzeCmd(
 			defer cleanup()
 
 			// Run analysis against the snapshot.
-			events := &analyzeEvents{out: cmd.OutOrStdout()}
+			events := newAnalyzeEvents(cmd.OutOrStdout(), cmdutil.GetGlobalColorization())
 			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, events)
 			if err != nil {
 				return fmt.Errorf("running policy analysis: %w", err)
@@ -149,31 +148,40 @@ func newPolicyAnalyzeCmd(
 type analyzeEvents struct {
 	outLock sync.Mutex
 	out     io.Writer
+	opts    display.Options
+	seen    map[resource.URN]engine.StepEventMetadata
+}
+
+func newAnalyzeEvents(out io.Writer, colorization colors.Colorization) *analyzeEvents {
+	return &analyzeEvents{
+		out: out,
+		opts: display.Options{
+			Color: colorization,
+		},
+		seen: make(map[resource.URN]engine.StepEventMetadata),
+	}
+}
+
+func (e *analyzeEvents) writeEvent(event engine.Event) {
+	msg := display.RenderDiffEvent(event, 0, e.seen, e.opts)
+	if msg == "" {
+		return
+	}
+	fmt.Fprint(e.out, msg)
 }
 
 func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
-	var level string
-	switch d.EnforcementLevel { //nolint:exhaustive // default case handles other levels
-	case apitype.Mandatory:
-		level = colors.Always.Colorize(colors.BrightRed + "mandatory" + colors.Reset)
-	case apitype.Advisory:
-		level = colors.Always.Colorize(colors.Yellow + "advisory" + colors.Reset)
-	default:
-		level = string(d.EnforcementLevel)
-	}
-
 	e.outLock.Lock()
 	defer e.outLock.Unlock()
-
-	fmt.Fprintf(e.out, "\n  [%s] %s (%s v%s)\n",
-		level, d.PolicyName, d.PolicyPackName, d.PolicyPackVersion)
-	if urn != "" {
-		fmt.Fprintf(e.out, "  %s\n", urn)
-	}
-	if d.Description != "" {
-		fmt.Fprintf(e.out, "  Description: %s\n", d.Description)
-	}
-	fmt.Fprintf(e.out, "  %s\n", d.Message)
+	e.writeEvent(engine.NewEvent(engine.PolicyViolationEventPayload{
+		ResourceURN:       urn,
+		Message:           d.Message,
+		PolicyName:        d.PolicyName,
+		PolicyPackName:    d.PolicyPackName,
+		PolicyPackVersion: d.PolicyPackVersion,
+		EnforcementLevel:  d.EnforcementLevel,
+		Severity:          d.Severity,
+	}))
 }
 
 func (e *analyzeEvents) OnPolicyRemediation(
@@ -184,26 +192,14 @@ func (e *analyzeEvents) OnPolicyRemediation(
 ) {
 	e.outLock.Lock()
 	defer e.outLock.Unlock()
-
-	fmt.Fprintf(e.out, "\n  [remediation] %s (%s v%s) would change %s\n",
-		rem.PolicyName, rem.PolicyPackName, rem.PolicyPackVersion, urn)
-	if rem.Description != "" {
-		fmt.Fprintf(e.out, "  Description: %s\n", rem.Description)
-	}
-	for k, newVal := range after {
-		if oldVal, ok := before[k]; ok {
-			if !oldVal.DeepEquals(newVal) {
-				fmt.Fprintf(e.out, "  ~ %s: %v => %v\n", k, oldVal, newVal)
-			}
-		} else {
-			fmt.Fprintf(e.out, "  + %s: %v\n", k, newVal)
-		}
-	}
-	for k := range before {
-		if _, ok := after[k]; !ok {
-			fmt.Fprintf(e.out, "  - %s\n", k)
-		}
-	}
+	e.writeEvent(engine.NewEvent(engine.PolicyRemediationEventPayload{
+		ResourceURN:       urn,
+		PolicyName:        rem.PolicyName,
+		PolicyPackName:    rem.PolicyPackName,
+		PolicyPackVersion: rem.PolicyPackVersion,
+		Before:            before,
+		After:             after,
+	}))
 }
 
 func (e *analyzeEvents) OnPolicyAnalyzeSummary(_ plugin.PolicySummary)      {}

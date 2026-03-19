@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -211,10 +210,7 @@ func TestPolicyAnalyzeCmd_MandatoryViolationReturnsError(t *testing.T) {
 		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
 		"--stack", "my-stack")
 	assert.ErrorContains(t, err, "mandatory policy violations")
-	expected := fmt.Sprintf(
-		"\n  [%s] test-policy (test-pack v)\n  urn:pulumi:stack::project::pkg:index:MyResource::res\n  test violation\n",
-		colors.Always.Colorize(colors.BrightRed+"mandatory"+colors.Reset),
-	)
+	expected := "    test-pack@v [mandatory]  test-policy  (pkg:index:MyResource: res)test violation\n"
 	assert.Equal(t, expected, stdout)
 }
 
@@ -245,11 +241,8 @@ func TestPolicyAnalyzeCmd_RemediationWritesToOutputStream(t *testing.T) {
 		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
 		"--stack", "my-stack")
 	require.NoError(t, err)
-	expected := "" +
-		"\n  [remediation] test-remediation (test-pack v1.0.0) would change " +
-		"urn:pulumi:stack::project::pkg:index:MyResource::res\n" +
-		"  Description: fixes a property\n" +
-		"  + k: {fixed}\n"
+	expected := "    test-pack@v1.0.0 [remediate]  test-remediation  (pkg:index:MyResource: res)\n" +
+		"      + k: \"fixed\"\n\n"
 	assert.Equal(t, expected, stdout)
 }
 
