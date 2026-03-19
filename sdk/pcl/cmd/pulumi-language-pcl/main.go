@@ -383,12 +383,8 @@ func (host *pclLanguageHost) GetRequiredPlugins(
 	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
 }
 
-func getPclPackageDescriptors(parser *hclsyntax.Parser) (map[string]*schema.PackageDescriptor, hcl.Diagnostics) {
-	return pcl.ReadAllPackageDescriptors(parser.Files)
-}
-
 func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, error) {
-	descriptorMap, diags := getPclPackageDescriptors(parser)
+	descriptorMap, diags := pcl.ReadAllPackageDescriptors(parser.Files)
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -494,7 +490,7 @@ func allPackageDescriptors(programDir string) map[string]*schema.PackageDescript
 	if err != nil || parseDiagnostics.HasErrors() {
 		return nil
 	}
-	descriptorMap, diags := getPclPackageDescriptors(parser)
+	descriptorMap, diags := pcl.ReadAllPackageDescriptors(parser.Files)
 	if diags.HasErrors() {
 		return nil
 	}
