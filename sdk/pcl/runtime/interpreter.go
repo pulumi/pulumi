@@ -238,7 +238,7 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 
 func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema.Resource, error) {
 	pkg, mod, typ, diags := pcl.DecomposeToken(token, hcl.Range{})
-	contract.AssertNoErrorf(diags, "invalid token format for resource token %s", token)
+	contract.Assertf(!diags.HasErrors(), "invalid token format for resource token %s", token)
 
 	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 	pkgName := pkg
@@ -270,8 +270,11 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 			resToken := iter.Token()
 			// Canonicalize the resources token via TokenToModule
 			mod := pkgref.TokenToModule(resToken)
-			pkg, _, typ, err := pcl.DecomposeToken(resToken, hcl.Range{})
-			contract.AssertNoErrorf(err, "invalid token format in package %s: %s", pkg, resToken)
+			if mod == "" {
+				mod = "index"
+			}
+			pkg, _, typ, diags := pcl.DecomposeToken(resToken, hcl.Range{})
+			contract.Assertf(!diags.HasErrors(), "invalid token format in package %s: %s", pkg, resToken)
 			resToken = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 			if token == resToken {
 				token = iter.Token()
@@ -1270,8 +1273,8 @@ func (i *Interpreter) registerResourceWith(
 							return cty.NilVal, fmt.Errorf("providers: %w", err)
 						}
 						typ := resource.URN(urn).Type()
-						_, _, pkg, err := pcl.DecomposeToken(string(typ), hcl.Range{})
-						contract.AssertNoErrorf(err, "invalid token format from URN %s: %s", urn, typ)
+						_, _, pkg, diags := pcl.DecomposeToken(string(typ), hcl.Range{})
+						contract.Assertf(!diags.HasErrors(), "invalid token format from URN %s: %s", urn, typ)
 
 						var idstr string
 						if id.IsString() {

@@ -236,8 +236,11 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 					fnToken := iter.Token()
 					// Canonicalize the functions token via TokenToModule
 					mod := pkgref.TokenToModule(fnToken)
-					pkg, _, member, err := pcl.DecomposeToken(fnToken, hcl.Range{})
-					contract.AssertNoErrorf(err, "invalid token format in package %s: %s", pkg, fnToken)
+					if mod == "" {
+						mod = "index"
+					}
+					pkg, _, member, diags := pcl.DecomposeToken(fnToken, hcl.Range{})
+					contract.Assertf(!diags.HasErrors(), "invalid token format in package %s: %s", pkg, fnToken)
 					fnToken = fmt.Sprintf("%s:%s:%s", pkg, mod, member)
 					if token == fnToken {
 						var err error
