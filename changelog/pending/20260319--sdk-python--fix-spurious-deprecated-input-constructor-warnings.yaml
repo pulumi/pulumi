@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Avoid spurious deprecation warnings in generated Python input constructors for deprecated optional inputs
