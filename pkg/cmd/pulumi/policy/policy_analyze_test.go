@@ -292,6 +292,50 @@ func TestPolicyAnalyzeCmd_JSONDisplayWritesPolicyEvents(t *testing.T) {
 	assert.Equal(t, "", version)
 }
 
+func TestPolicyAnalyzeCmd_AnalyzeStackCalled_PrintsAndUsesOutputs(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
+	snap := &deploy.Snapshot{
+		Resources: []*resource.State{{
+			Type:    tokens.Type("pkg:index:MyResource"),
+			URN:     urn,
+			Custom:  true,
+			Inputs:  resource.PropertyMap{"origin": resource.NewStringProperty("input")},
+			Outputs: resource.PropertyMap{"origin": resource.NewStringProperty("output")},
+		}},
+	}
+
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return snap, nil
+	}
+	ws, lm := newMockWsAndLm(be)
+
+	analyzer := &fakeAnalyzer{
+		stackDiagnostic: &plugin.AnalyzeDiagnostic{
+			PolicyName:       "stack-policy",
+			PolicyPackName:   "test-pack",
+			EnforcementLevel: apitype.Mandatory,
+			Message:          "stack-level violation",
+			URN:              urn,
+		},
+	}
+
+	stdout, _, err := runAnalyzeCmd(t, ws, lm,
+		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
+		"--stack", "my-stack", "--diff")
+	assert.ErrorContains(t, err, "mandatory policy violations")
+	assert.True(t, analyzer.analyzeStackCalled)
+	expected := "    test-pack@v [mandatory]  stack-policy  (pkg:index:MyResource: res)stack-level violation\n"
+	assert.Equal(t, expected, stdout)
+
+	got, ok := analyzer.analyzeStackProperties["origin"]
+	require.True(t, ok)
+	assert.True(t, got.DeepEquals(resource.NewStringProperty("output")))
+	assert.False(t, got.DeepEquals(resource.NewStringProperty("input")))
+}
+
 func decodeEngineEventsJSON(t *testing.T, out string) []apitype.EngineEvent {
 	t.Helper()
 
@@ -315,8 +359,11 @@ func decodeEngineEventsJSON(t *testing.T, out string) []apitype.EngineEvent {
 
 // fakeAnalyzer is a minimal plugin.Analyzer for use in command-level tests.
 type fakeAnalyzer struct {
-	mandatory bool
-	remediate bool
+	mandatory              bool
+	remediate              bool
+	stackDiagnostic        *plugin.AnalyzeDiagnostic
+	analyzeStackCalled     bool
+	analyzeStackProperties resource.PropertyMap
 }
 
 func (a *fakeAnalyzer) Analyze(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
@@ -334,7 +381,16 @@ func (a *fakeAnalyzer) Analyze(r plugin.AnalyzerResource) (plugin.AnalyzeRespons
 	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *fakeAnalyzer) AnalyzeStack(_ []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+func (a *fakeAnalyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+	a.analyzeStackCalled = true
+	if len(resources) > 0 {
+		a.analyzeStackProperties = resources[0].Properties.Copy()
+	}
+	if a.stackDiagnostic != nil {
+		return plugin.AnalyzeResponse{
+			Diagnostics: []plugin.AnalyzeDiagnostic{*a.stackDiagnostic},
+		}, nil
+	}
 	return plugin.AnalyzeResponse{}, nil
 }
 
