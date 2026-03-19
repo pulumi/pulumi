@@ -98,6 +98,7 @@ func NewUpCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var format string
 	var policyPackPaths []string
 	var policyPackConfigPaths []string
 	var diffDisplay bool
@@ -617,6 +618,19 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 
+			// Normalize/validate output format. We intentionally keep `--json`
+			// backwards compatible (JSONL events only) and only add the final
+			// JSON operation summary footer when `--format json` is requested.
+			formatNormalized := strings.ToLower(strings.TrimSpace(format))
+			switch formatNormalized {
+			case "", "default":
+				// No-op.
+			case "json":
+				jsonDisplay = true
+			default:
+				return fmt.Errorf("invalid --format value %q (expected %q or %q)", format, "default", "json")
+			}
+
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
 			if err != nil {
 				return err
@@ -725,7 +739,7 @@ func NewUpCmd() *cobra.Command {
 				summary,
 			)
 
-			if opts.Display.JSONDisplay {
+			if formatNormalized == "json" {
 				if perr := ui.PrintOperationSummaryJSON(summary); perr != nil && err == nil {
 					err = perr
 				}
@@ -812,6 +826,9 @@ func NewUpCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the update diffs, operations, and overall output as JSON")
+	cmd.Flags().StringVar(
+		&format, "format", "default",
+		"Output format. Supported values are: default, json")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
