@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Initialize uv-based Pulumi Python projects locally instead of inheriting parent workspace project metadata
