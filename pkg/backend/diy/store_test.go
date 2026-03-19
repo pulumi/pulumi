@@ -15,7 +15,6 @@
 package diy
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -278,7 +277,7 @@ func TestLegacyReferenceStore_ListReferences(t *testing.T) {
 			bucket := memblob.OpenBucket(nil)
 			store := newLegacyReferenceStore(bucket)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			for _, f := range tt.files {
 				require.NoError(t, bucket.WriteAll(ctx, f, []byte{}, nil))
 			}
@@ -380,7 +379,7 @@ func TestProjectReferenceStore_List(t *testing.T) {
 				return &workspace.Project{Name: "test"}
 			})
 
-			ctx := context.Background()
+			ctx := t.Context()
 			for _, f := range tt.files {
 				require.NoError(t, bucket.WriteAll(ctx, f, []byte{}, nil))
 			}
@@ -470,7 +469,7 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 				return &workspace.Project{Name: "test"}
 			})
 
-			ctx := context.Background()
+			ctx := t.Context()
 			for _, f := range tt.files {
 				require.NoError(t, bucket.WriteAll(ctx, f, []byte{}, nil))
 			}

@@ -68,7 +68,7 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), nil /* args */)
+	err := cmd.Run(t.Context(), nil /* args */)
 	assert.ErrorContains(t, err, "stack dev uses the mock backend: mock does not support --teams")
 }
 

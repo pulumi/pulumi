@@ -48,7 +48,7 @@ func TestBundledError(t *testing.T) {
 		),
 	}
 
-	err := cmd.Run(context.Background(), []string{"language", "nodejs"})
+	err := cmd.Run(t.Context(), []string{"language", "nodejs"})
 	assert.EqualError(t, err,
 		"the nodejs language plugin is bundled with Pulumi, "+
 			"and cannot be directly installed with this command. "+
@@ -78,7 +78,7 @@ func TestBundledDev(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{"language", "nodejs"})
+	err := cmd.Run(t.Context(), []string{"language", "nodejs"})
 	assert.ErrorContains(t, err, "404 HTTP error fetching plugin")
 }
 
@@ -235,7 +235,7 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{"resource", "random", "1.48.0"})
+	err := cmd.Run(t.Context(), []string{"resource", "random", "1.48.0"})
 	require.NoError(t, err)
 }
 
@@ -265,7 +265,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 			},
 		}
 
-		err := cmd.Run(context.Background(), []string{"resource", "unknown", "1.48.0"})
+		err := cmd.Run(t.Context(), []string{"resource", "unknown", "1.48.0"})
 		assert.ErrorContains(t, err,
 			"Unable to resolve package from name: package unknown@1.48.0 not found")
 	})
@@ -293,7 +293,7 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 			},
 		}
 
-		err := cmd.Run(context.Background(), []string{"resource", "unknown"})
+		err := cmd.Run(t.Context(), []string{"resource", "unknown"})
 		assert.ErrorContains(t, err,
 			"Unable to resolve package from name: package unknown not found")
 	})
@@ -422,7 +422,7 @@ func TestSuggestedPackagesDisplay(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{"resource", "missing-pkg", "1.0.0"})
+	err := cmd.Run(t.Context(), []string{"resource", "missing-pkg", "1.0.0"})
 	assert.ErrorContains(t, err, "Unable to resolve package from name")
 
 	output := stdout.String() + stderr.String()

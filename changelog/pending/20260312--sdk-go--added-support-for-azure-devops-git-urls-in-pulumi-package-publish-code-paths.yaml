@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: Add support for Azure DevOps git URLs in pulumi package publish code paths

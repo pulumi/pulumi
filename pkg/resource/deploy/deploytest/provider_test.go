@@ -40,13 +40,13 @@ func TestProvider(t *testing.T) {
 					return errors.New("expected error")
 				},
 			}
-			assert.Error(t, prov.SignalCancellation(context.Background()))
+			assert.Error(t, prov.SignalCancellation(t.Context()))
 			assert.True(t, called)
 		})
 		t.Run("no CancelF", func(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
-			require.NoError(t, prov.SignalCancellation(context.Background()))
+			require.NoError(t, prov.SignalCancellation(t.Context()))
 		})
 	})
 	t.Run("Close", func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestProvider(t *testing.T) {
 			Name:    "expected-name",
 			Version: semver.MustParse("1.0.0"),
 		}
-		info, err := prov.GetPluginInfo(context.Background())
+		info, err := prov.GetPluginInfo(t.Context())
 		require.NoError(t, err)
 		// Ensure reference is passed correctly.
 		assert.Equal(t, &prov.Version, info.Version)
@@ -83,7 +83,7 @@ func TestProvider(t *testing.T) {
 					return plugin.GetSchemaResponse{}, expectedErr
 				},
 			}
-			_, err := prov.GetSchema(context.Background(), plugin.GetSchemaRequest{
+			_, err := prov.GetSchema(t.Context(), plugin.GetSchemaRequest{
 				Version:           1,
 				SubpackageName:    "expected-subpackage",
 				SubpackageVersion: &expectedVersion,
@@ -94,7 +94,7 @@ func TestProvider(t *testing.T) {
 		t.Run("no GetSchemaF", func(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
-			b, err := prov.GetSchema(context.Background(), plugin.GetSchemaRequest{})
+			b, err := prov.GetSchema(t.Context(), plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 			assert.Equal(t, []byte("{}"), b.Schema)
 		})
@@ -117,7 +117,7 @@ func TestProvider(t *testing.T) {
 					return plugin.CheckConfigResponse{}, expectedErr
 				},
 			}
-			_, err := prov.CheckConfig(context.Background(), plugin.CheckConfigRequest{
+			_, err := prov.CheckConfig(t.Context(), plugin.CheckConfigRequest{
 				URN: resource.URN("expected-urn"),
 				Olds: resource.PropertyMap{
 					"old": resource.NewProperty("old-value"),
@@ -133,7 +133,7 @@ func TestProvider(t *testing.T) {
 		t.Run("no CheckConfigF", func(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
-			resp, err := prov.CheckConfig(context.Background(), plugin.CheckConfigRequest{
+			resp, err := prov.CheckConfig(t.Context(), plugin.CheckConfigRequest{
 				News: resource.PropertyMap{
 					"expected": resource.NewProperty("expected-value"),
 				},
@@ -172,7 +172,7 @@ func TestProvider(t *testing.T) {
 						return plugin.ConstructResponse{}, expectedErr
 					},
 				}
-				_, err := prov.Construct(context.Background(), plugin.ConstructRequest{
+				_, err := prov.Construct(t.Context(), plugin.ConstructRequest{
 					Type: tokens.Type("some-type"),
 					Name: "name",
 					Info: plugin.ConstructInfo{
@@ -198,7 +198,7 @@ func TestProvider(t *testing.T) {
 							return plugin.ConstructResponse{}, nil
 						},
 					}
-					_, err := prov.Construct(context.Background(), plugin.ConstructRequest{
+					_, err := prov.Construct(t.Context(), plugin.ConstructRequest{
 						Type:   tokens.Type("some-type"),
 						Name:   "name",
 						Parent: resource.URN("<parent-urn>"),
@@ -225,7 +225,7 @@ func TestProvider(t *testing.T) {
 							return plugin.ConstructResponse{}, nil
 						},
 					}
-					_, err := prov.Construct(context.Background(), plugin.ConstructRequest{
+					_, err := prov.Construct(t.Context(), plugin.ConstructRequest{
 						Type:   tokens.Type("some-type"),
 						Name:   "name",
 						Parent: resource.URN("<parent-urn>"),
@@ -243,7 +243,7 @@ func TestProvider(t *testing.T) {
 					return nil, nil
 				},
 			}
-			_, err := prov.Construct(context.Background(), plugin.ConstructRequest{
+			_, err := prov.Construct(t.Context(), plugin.ConstructRequest{
 				Type:   tokens.Type("some-type"),
 				Name:   "name",
 				Parent: resource.URN("<parent-urn>"),
@@ -266,7 +266,7 @@ func TestProvider(t *testing.T) {
 					return plugin.InvokeResponse{Properties: expectedPropertyMap}, nil
 				},
 			}
-			resp, err := prov.Invoke(context.Background(), plugin.InvokeRequest{
+			resp, err := prov.Invoke(t.Context(), plugin.InvokeRequest{
 				Tok: "expected-tok",
 			})
 			require.NoError(t, err)
@@ -276,7 +276,7 @@ func TestProvider(t *testing.T) {
 		t.Run("no InvokeF", func(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
-			resp, err := prov.Invoke(context.Background(), plugin.InvokeRequest{})
+			resp, err := prov.Invoke(t.Context(), plugin.InvokeRequest{})
 			require.NoError(t, err)
 			assert.Empty(t, resp.Failures)
 			assert.Equal(t, resource.PropertyMap{}, resp.Properties)
@@ -309,7 +309,7 @@ func TestProvider(t *testing.T) {
 						return plugin.CallResponse{}, expectedErr
 					},
 				}
-				_, err := prov.Call(context.Background(), plugin.CallRequest{Tok: "expected-tok"})
+				_, err := prov.Call(t.Context(), plugin.CallRequest{Tok: "expected-tok"})
 				assert.ErrorIs(t, err, expectedErr)
 				assert.True(t, dialCalled)
 				assert.True(t, callCalled)
@@ -324,7 +324,7 @@ func TestProvider(t *testing.T) {
 							return plugin.CallResponse{}, nil
 						},
 					}
-					_, err := prov.Call(context.Background(), plugin.CallRequest{})
+					_, err := prov.Call(t.Context(), plugin.CallRequest{})
 					assert.ErrorContains(t, err, "could not determine whether secrets are supported")
 				})
 				t.Run("injected error", func(t *testing.T) {
@@ -343,7 +343,7 @@ func TestProvider(t *testing.T) {
 							return plugin.CallResponse{}, expectedErr
 						},
 					}
-					_, err := prov.Call(context.Background(), plugin.CallRequest{})
+					_, err := prov.Call(t.Context(), plugin.CallRequest{})
 					assert.ErrorIs(t, err, expectedErr)
 					assert.True(t, dialCalled)
 				})
@@ -357,7 +357,7 @@ func TestProvider(t *testing.T) {
 					return nil, nil
 				},
 			}
-			_, err := prov.Call(context.Background(), plugin.CallRequest{})
+			_, err := prov.Call(t.Context(), plugin.CallRequest{})
 			require.NoError(t, err)
 		})
 	})
@@ -373,7 +373,7 @@ func TestProvider(t *testing.T) {
 					return plugin.GetMappingResponse{}, expectedErr
 				},
 			}
-			_, err := prov.GetMapping(context.Background(), plugin.GetMappingRequest{
+			_, err := prov.GetMapping(t.Context(), plugin.GetMappingRequest{
 				Key:      "expected-key",
 				Provider: "expected-provider",
 			})
@@ -382,7 +382,7 @@ func TestProvider(t *testing.T) {
 		t.Run("no GetMappingF", func(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
-			resp, err := prov.GetMapping(context.Background(), plugin.GetMappingRequest{})
+			resp, err := prov.GetMapping(t.Context(), plugin.GetMappingRequest{})
 			require.NoError(t, err)
 			assert.Equal(t, "", resp.Provider)
 			assert.Nil(t, resp.Data)
@@ -399,13 +399,13 @@ func TestProvider(t *testing.T) {
 					return plugin.GetMappingsResponse{}, expectedErr
 				},
 			}
-			_, err := prov.GetMappings(context.Background(), plugin.GetMappingsRequest{Key: "expected-key"})
+			_, err := prov.GetMappings(t.Context(), plugin.GetMappingsRequest{Key: "expected-key"})
 			assert.ErrorIs(t, err, expectedErr)
 		})
 		t.Run("no GetMappingsF", func(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
-			mappingStrs, err := prov.GetMappings(context.Background(), plugin.GetMappingsRequest{})
+			mappingStrs, err := prov.GetMappings(t.Context(), plugin.GetMappingsRequest{})
 			require.NoError(t, err)
 			assert.Empty(t, mappingStrs)
 		})

@@ -15,7 +15,6 @@
 package policy
 
 import (
-	"context"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -35,7 +34,7 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 		templateNameOrURL: "aws-typescript",
 	}
 
-	err := runNewPolicyPack(context.Background(), args)
+	err := runNewPolicyPack(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(tempdir, "PulumiPolicy.yaml"))

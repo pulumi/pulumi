@@ -139,6 +139,13 @@ func (p *PrimitiveProvider) Check(
 		}, nil
 	}
 
+	unsecret := func(v resource.PropertyValue) resource.PropertyValue {
+		if v.IsSecret() {
+			return v.SecretValue().Element
+		}
+		return v
+	}
+
 	assertField := func(key resource.PropertyKey, typ string,
 		assertType func(resource.PropertyValue) bool,
 	) *plugin.CheckResponse {
@@ -148,7 +155,7 @@ func (p *PrimitiveProvider) Check(
 				Failures: makeCheckFailure(key, "missing value"),
 			}
 		}
-		if !assertType(v) {
+		if !assertType(unsecret(v)) {
 			return &plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "value is not a "+typ),
 			}
@@ -179,8 +186,9 @@ func (p *PrimitiveProvider) Check(
 		return *check, nil
 	}
 	// Check the array is numbers
-	for _, v := range req.News["numberArray"].ArrayValue() {
-		if !v.IsNumber() {
+	numberArray := unsecret(req.News["numberArray"])
+	for _, v := range numberArray.ArrayValue() {
+		if !unsecret(v).IsNumber() {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("numberArray", "array element is not a number"),
 			}, nil
@@ -191,8 +199,9 @@ func (p *PrimitiveProvider) Check(
 		return *check, nil
 	}
 	// Check the map values are booleans
-	for _, v := range req.News["booleanMap"].ObjectValue() {
-		if !v.IsBool() {
+	booleanMap := unsecret(req.News["booleanMap"])
+	for _, v := range booleanMap.ObjectValue() {
+		if !unsecret(v).IsBool() {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("booleanMap", "map value is not a boolean"),
 			}, nil

@@ -15,7 +15,6 @@
 package deploy
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -36,7 +35,7 @@ func TestErrorSource(t *testing.T) {
 		t.Parallel()
 		s := &errorSource{}
 		assert.Panics(t, func() {
-			_, err := s.Iterate(context.Background(), nil)
+			_, err := s.Iterate(t.Context(), nil)
 			contract.Ignore(err)
 		})
 	})

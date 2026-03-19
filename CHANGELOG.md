@@ -1,5 +1,75 @@
 # Changelog
 
+## 3.227.0 (2026-03-19)
+
+
+### Features
+
+- [engine] The engine will fill in Name and Type for ResourceReference values on the wire protocol
+  [#22208](https://github.com/pulumi/pulumi/pull/22208)
+
+- [sdk/bun] Add support for running policy packs with bun
+  [#22206](https://github.com/pulumi/pulumi/pull/22206)
+
+- [cli/policy] Auto-install missing policy analyzer plugins
+  [#22196](https://github.com/pulumi/pulumi/pull/22196)
+
+- [sdk/python] Add lock file detection for picking the Python toolchain
+  [#22234](https://github.com/pulumi/pulumi/pull/22234)
+
+
+### Bug Fixes
+
+- [cli] Use distinct exit codes for different types of error
+  [#22205](https://github.com/pulumi/pulumi/pull/22205)
+
+- [cli] Improve SAML SSO reauthorization error message
+
+- [engine] Fix snapshot integrity error in refresh v2 with changed parents
+  [#22190](https://github.com/pulumi/pulumi/pull/22190)
+
+- [pcl] Continue running after errors when running with --continue-on-error
+  [#22171](https://github.com/pulumi/pulumi/pull/22171)
+
+- [pcl] Deprecate labels on package blocks
+  [#22253](https://github.com/pulumi/pulumi/pull/22253)
+
+- [programgen] Preserve traversal parts in rewriteRelativeTraversalExpression
+  [#22249](https://github.com/pulumi/pulumi/pull/22249)
+
+- [sdk/bun] Check for an SDK version compatible with bun
+  [#22262](https://github.com/pulumi/pulumi/pull/22262)
+
+- [programgen/nodejs] Correctly generate `for` expressions
+  [#22219](https://github.com/pulumi/pulumi/pull/22219)
+
+- [sdk/go] Add support for Azure DevOps git URLs in pulumi package publish code paths
+  [#22217](https://github.com/pulumi/pulumi/pull/22217)
+
+- [programgen/python] Correctly generate list & dictionary comprehension in Python code
+  [#22182](https://github.com/pulumi/pulumi/pull/22182)
+
+
+### Miscellaneous
+
+- [backend] Move CloudConsoleURL from httpstate to httpstate/client
+  [#22258](https://github.com/pulumi/pulumi/pull/22258)
+
+- [docs] Move remaining content from /developer-docs to /docs
+  [#22225](https://github.com/pulumi/pulumi/pull/22225)
+
+- [sdk/bun] Add a test for the function serialization error message when using bun
+  [#22207](https://github.com/pulumi/pulumi/pull/22207)
+
+- [sdk/bun] Run policy language tests for bun
+  [#22209](https://github.com/pulumi/pulumi/pull/22209)
+
+- [sdk/bun] Mark pulumi-language-bun as a bundled plugin
+  [#22265](https://github.com/pulumi/pulumi/pull/22265)
+
+- [sdk/{bun,nodejs}] Use defaultErrorMessage in run-plugin and run-policy-pack
+  [#22210](https://github.com/pulumi/pulumi/pull/22210)
+
 ## 3.226.0 (2026-03-11)
 
 
