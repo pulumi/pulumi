@@ -43,7 +43,6 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	displaypkg "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -278,7 +277,7 @@ func NewUpCmd() *cobra.Command {
 		}, nil /* events */)
 		if summary != nil {
 			summary.EndTime = time.Now()
-			summary.ChangeSummary = displaypkg.ResourceChanges(changes)
+			summary.ChangeSummary = changes
 			if err == context.Canceled {
 				summary.Canceled = true
 			} else {
@@ -537,7 +536,7 @@ func NewUpCmd() *cobra.Command {
 		}, nil /* events */)
 		if summary != nil {
 			summary.EndTime = time.Now()
-			summary.ChangeSummary = displaypkg.ResourceChanges(changes)
+			summary.ChangeSummary = changes
 			if err == context.Canceled {
 				summary.Canceled = true
 			} else {
