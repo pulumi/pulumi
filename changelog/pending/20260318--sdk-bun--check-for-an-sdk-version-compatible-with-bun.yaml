@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/bun
-  description: Check for an SDK version compatible with bun

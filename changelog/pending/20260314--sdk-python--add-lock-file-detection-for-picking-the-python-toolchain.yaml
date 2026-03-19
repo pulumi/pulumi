@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/python
-  description: Add lock file detection for picking the Python toolchain

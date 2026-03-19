@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: pcl
-  description: Deprecate labels on package blocks
