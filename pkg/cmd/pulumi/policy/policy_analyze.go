@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -146,7 +147,8 @@ func newPolicyAnalyzeCmd(
 
 // analyzeEvents implements deploy.PolicyEvents and writes human-readable output.
 type analyzeEvents struct {
-	out io.Writer
+	outLock sync.Mutex
+	out     io.Writer
 }
 
 func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
@@ -159,6 +161,9 @@ func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiag
 	default:
 		level = string(d.EnforcementLevel)
 	}
+
+	e.outLock.Lock()
+	defer e.outLock.Unlock()
 
 	fmt.Fprintf(e.out, "\n  [%s] %s (%s v%s)\n",
 		level, d.PolicyName, d.PolicyPackName, d.PolicyPackVersion)
@@ -177,6 +182,9 @@ func (e *analyzeEvents) OnPolicyRemediation(
 	before resource.PropertyMap,
 	after resource.PropertyMap,
 ) {
+	e.outLock.Lock()
+	defer e.outLock.Unlock()
+
 	fmt.Fprintf(e.out, "\n  [remediation] %s (%s v%s) would change %s\n",
 		rem.PolicyName, rem.PolicyPackName, rem.PolicyPackVersion, urn)
 	if rem.Description != "" {
