@@ -1256,9 +1256,12 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// TODO account for outputs in other namespaces like aws
 	// TODO[pulumi/pulumi#8453] incomplete pattern code below.
 	var typeAssertion string
-	if retType == "[]string" {
+	switch retType {
+	case "interface{}":
+		typeAssertion = ".(pulumi.AnyOutput)"
+	case "[]string":
 		typeAssertion = ".(pulumi.StringArrayOutput)"
-	} else {
+	default:
 		if strings.HasPrefix(retType, "*") {
 			retType = Title(strings.TrimPrefix(retType, "*")) + "Ptr"
 			switch then.Body.(type) {
