@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -99,7 +100,8 @@ func stubLoadAnalyzers(
 }
 
 // runAnalyzeCmd is a helper that builds a newPolicyAnalyzeCmd with the given
-// dependencies, attaches extra args, runs it, and returns stderr and the error.
+// dependencies, attaches extra args, runs it, and returns stdout, stderr, and
+// the error.
 // All tests that reach stack loading must pass "--stack", "<name>" in extraArgs.
 func runAnalyzeCmd(
 	t *testing.T,
@@ -107,15 +109,18 @@ func runAnalyzeCmd(
 	lm cmdBackend.LoginManager,
 	loadAnalyzers func(context.Context, []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error),
 	extraArgs ...string,
-) (string, error) {
+) (string, string, error) {
 	t.Helper()
+	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd := newPolicyAnalyzeCmd(ws, lm, nil, loadAnalyzers)
+	cmd.SilenceUsage = true
+	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	args := append([]string{"--policy-pack", "./pack"}, extraArgs...)
 	cmd.SetArgs(args)
 	err := cmd.ExecuteContext(t.Context())
-	return stderr.String(), err
+	return stdout.String(), stderr.String(), err
 }
 
 func TestPolicyAnalyzeCmd_RequiresPolicyPackFlag(t *testing.T) {
@@ -145,7 +150,7 @@ func TestPolicyAnalyzeCmd_ErrorOnSnapshotFailure(t *testing.T) {
 		return nil, snapErr
 	}
 	ws, lm := newMockWsAndLm(be)
-	_, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
+	_, _, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
 	assert.ErrorIs(t, err, snapErr)
 	assert.ErrorContains(t, err, "loading stack snapshot")
 }
@@ -158,9 +163,9 @@ func TestPolicyAnalyzeCmd_EmptySnapshotPrintsMessage(t *testing.T) {
 		return &deploy.Snapshot{}, nil
 	}
 	ws, lm := newMockWsAndLm(be)
-	out, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
+	_, stderr, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
 	require.NoError(t, err)
-	assert.Contains(t, out, "no resources")
+	assert.Contains(t, stderr, "no resources")
 }
 
 func TestPolicyAnalyzeCmd_NilSnapshotPrintsMessage(t *testing.T) {
@@ -171,9 +176,9 @@ func TestPolicyAnalyzeCmd_NilSnapshotPrintsMessage(t *testing.T) {
 		return nil, nil
 	}
 	ws, lm := newMockWsAndLm(be)
-	out, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
+	_, stderr, err := runAnalyzeCmd(t, ws, lm, nil, "--stack", "my-stack")
 	require.NoError(t, err)
-	assert.Contains(t, out, "no resources")
+	assert.Contains(t, stderr, "no resources")
 }
 
 func TestPolicyAnalyzeCmd_ErrorOnLoadAnalyzersFailure(t *testing.T) {
@@ -188,7 +193,7 @@ func TestPolicyAnalyzeCmd_ErrorOnLoadAnalyzersFailure(t *testing.T) {
 	loadAnalyzers := func(_ context.Context, _ []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
 		return nil, nil, loadErr
 	}
-	_, err := runAnalyzeCmd(t, ws, lm, loadAnalyzers, "--stack", "my-stack")
+	_, _, err := runAnalyzeCmd(t, ws, lm, loadAnalyzers, "--stack", "my-stack")
 	assert.ErrorIs(t, err, loadErr)
 	assert.ErrorContains(t, err, "loading policy packs")
 }
@@ -202,10 +207,15 @@ func TestPolicyAnalyzeCmd_MandatoryViolationReturnsError(t *testing.T) {
 	}
 	ws, lm := newMockWsAndLm(be)
 	analyzer := &fakeAnalyzer{mandatory: true}
-	_, err := runAnalyzeCmd(t, ws, lm,
+	stdout, _, err := runAnalyzeCmd(t, ws, lm,
 		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
 		"--stack", "my-stack")
 	assert.ErrorContains(t, err, "mandatory policy violations")
+	expected := fmt.Sprintf(
+		"\n  [%s] test-policy (test-pack v)\n  urn:pulumi:stack::project::pkg:index:MyResource::res\n  test violation\n",
+		colors.Always.Colorize(colors.BrightRed+"mandatory"+colors.Reset),
+	)
+	assert.Equal(t, expected, stdout)
 }
 
 func TestPolicyAnalyzeCmd_NoViolationsSucceeds(t *testing.T) {
@@ -216,13 +226,37 @@ func TestPolicyAnalyzeCmd_NoViolationsSucceeds(t *testing.T) {
 		return makeAnalyzeSnapshot(), nil
 	}
 	ws, lm := newMockWsAndLm(be)
-	_, err := runAnalyzeCmd(t, ws, lm, stubLoadAnalyzers(nil), "--stack", "my-stack")
+	stdout, _, err := runAnalyzeCmd(t, ws, lm, stubLoadAnalyzers(nil), "--stack", "my-stack")
 	require.NoError(t, err)
+	assert.Empty(t, stdout)
+}
+
+func TestPolicyAnalyzeCmd_RemediationWritesToOutputStream(t *testing.T) {
+	t.Parallel()
+
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return makeAnalyzeSnapshot(), nil
+	}
+	ws, lm := newMockWsAndLm(be)
+
+	analyzer := &fakeAnalyzer{remediate: true}
+	stdout, _, err := runAnalyzeCmd(t, ws, lm,
+		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
+		"--stack", "my-stack")
+	require.NoError(t, err)
+	expected := "" +
+		"\n  [remediation] test-remediation (test-pack v1.0.0) would change " +
+		"urn:pulumi:stack::project::pkg:index:MyResource::res\n" +
+		"  Description: fixes a property\n" +
+		"  + k: {fixed}\n"
+	assert.Equal(t, expected, stdout)
 }
 
 // fakeAnalyzer is a minimal plugin.Analyzer for use in command-level tests.
 type fakeAnalyzer struct {
 	mandatory bool
+	remediate bool
 }
 
 func (a *fakeAnalyzer) Analyze(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
@@ -245,6 +279,17 @@ func (a *fakeAnalyzer) AnalyzeStack(_ []plugin.AnalyzerStackResource) (plugin.An
 }
 
 func (a *fakeAnalyzer) Remediate(_ plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
+	if a.remediate {
+		return plugin.RemediateResponse{
+			Remediations: []plugin.Remediation{{
+				PolicyName:        "test-remediation",
+				PolicyPackName:    "test-pack",
+				PolicyPackVersion: "1.0.0",
+				Description:       "fixes a property",
+				Properties:        resource.PropertyMap{"k": resource.NewStringProperty("fixed")},
+			}},
+		}, nil
+	}
 	return plugin.RemediateResponse{}, nil
 }
 
