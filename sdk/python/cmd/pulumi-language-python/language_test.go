@@ -103,9 +103,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l1-builtin-try":                "Temporarily disabled until pr #18915 is submitted",
 	"l1-builtin-can":                "Temporarily disabled until pr #18916 is submitted",
-	"l1-builtin-list":               "singleOrNone throws for empty list instead of returning null",
 	"l3-deferred-outputs":           "does not type-check",
-	"l2-resource-config-primitives": "Argument integer to Resource has incompatible type Output[float]",
+  "l2-resource-config-primitives": "Argument integer to Resource has incompatible type Output[float]",
 }
 
 type languageTestConfig struct {

@@ -44,14 +44,14 @@ func TestBuiltinProvider(t *testing.T) {
 	t.Run("GetSchema", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
-		b, err := p.GetSchema(context.Background(), plugin.GetSchemaRequest{})
+		b, err := p.GetSchema(t.Context(), plugin.GetSchemaRequest{})
 		require.NoError(t, err)
 		assert.Equal(t, []byte("{}"), b.Schema)
 	})
 	t.Run("GetMapping", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
-		m, err := p.GetMapping(context.Background(), plugin.GetMappingRequest{Key: "key", Provider: "provider"})
+		m, err := p.GetMapping(t.Context(), plugin.GetMappingRequest{Key: "key", Provider: "provider"})
 		require.NoError(t, err)
 		assert.Nil(t, m.Data)
 		assert.Equal(t, "", m.Provider)
@@ -59,7 +59,7 @@ func TestBuiltinProvider(t *testing.T) {
 	t.Run("GetMappings", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
-		strs, err := p.GetMappings(context.Background(), plugin.GetMappingsRequest{Key: "key"})
+		strs, err := p.GetMappings(t.Context(), plugin.GetMappingsRequest{Key: "key"})
 		require.NoError(t, err)
 		assert.Empty(t, strs)
 	})
@@ -68,7 +68,7 @@ func TestBuiltinProvider(t *testing.T) {
 		t.Run("builtin only supports stack reference type", func(t *testing.T) {
 			t.Parallel()
 			p := &builtinProvider{}
-			_, err := p.Check(context.Background(), plugin.CheckRequest{
+			_, err := p.Check(t.Context(), plugin.CheckRequest{
 				URN:           resource.CreateURN("foo", "not-stack-reference-type", "", "proj", "stack"),
 				Olds:          resource.PropertyMap{},
 				News:          resource.PropertyMap{},
@@ -81,7 +81,7 @@ func TestBuiltinProvider(t *testing.T) {
 			p := &builtinProvider{
 				diag: &deploytest.NoopSink{},
 			}
-			resp, err := p.Check(context.Background(), plugin.CheckRequest{
+			resp, err := p.Check(t.Context(), plugin.CheckRequest{
 				URN:           resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
 				Olds:          resource.PropertyMap{},
 				News:          resource.PropertyMap{},
@@ -100,7 +100,7 @@ func TestBuiltinProvider(t *testing.T) {
 			p := &builtinProvider{
 				diag: &deploytest.NoopSink{},
 			}
-			resp, err := p.Check(context.Background(), plugin.CheckRequest{
+			resp, err := p.Check(t.Context(), plugin.CheckRequest{
 				URN:  resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
 				Olds: resource.PropertyMap{},
 				News: resource.PropertyMap{
@@ -121,7 +121,7 @@ func TestBuiltinProvider(t *testing.T) {
 			p := &builtinProvider{
 				diag: &deploytest.NoopSink{},
 			}
-			resp, err := p.Check(context.Background(), plugin.CheckRequest{
+			resp, err := p.Check(t.Context(), plugin.CheckRequest{
 				URN: resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
 				News: resource.PropertyMap{
 					"name": resource.NewProperty("res-name"),
@@ -139,7 +139,7 @@ func TestBuiltinProvider(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
 		oldOutputs := resource.PropertyMap{"cookie": resource.NewProperty("yum")}
-		_, err := p.Update(context.Background(), plugin.UpdateRequest{
+		_, err := p.Update(t.Context(), plugin.UpdateRequest{
 			URN:        resource.CreateURN("foo", "not-stack-reference-type", "", "proj", "stack"),
 			ID:         "some-id",
 			OldInputs:  nil,
@@ -151,7 +151,7 @@ func TestBuiltinProvider(t *testing.T) {
 	t.Run("Construct (always fails)", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
-		_, err := p.Construct(context.Background(), plugin.ConstructRequest{Inputs: resource.PropertyMap{}})
+		_, err := p.Construct(t.Context(), plugin.ConstructRequest{Inputs: resource.PropertyMap{}})
 		assert.ErrorContains(t, err, "builtin resources may not be constructed")
 	})
 	t.Run("Invoke", func(t *testing.T) {
@@ -161,7 +161,7 @@ func TestBuiltinProvider(t *testing.T) {
 			t.Run("err", func(t *testing.T) {
 				t.Parallel()
 				p := &builtinProvider{}
-				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
+				_, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: readStackOutputs,
 					Args: resource.PropertyMap{
 						"name": resource.NewProperty("res-name"),
@@ -183,7 +183,7 @@ func TestBuiltinProvider(t *testing.T) {
 						},
 					},
 				}
-				resp, err := p.Invoke(context.Background(), plugin.InvokeRequest{
+				resp, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: readStackOutputs,
 					Args: resource.PropertyMap{
 						"name": resource.NewProperty("res-name"),
@@ -204,7 +204,7 @@ func TestBuiltinProvider(t *testing.T) {
 			t.Run("err", func(t *testing.T) {
 				t.Parallel()
 				p := &builtinProvider{}
-				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
+				_, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: readStackResourceOutputs,
 					Args: resource.PropertyMap{
 						"stackName": resource.NewProperty("res-name"),
@@ -223,7 +223,7 @@ func TestBuiltinProvider(t *testing.T) {
 						},
 					},
 				}
-				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
+				_, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: readStackResourceOutputs,
 					Args: resource.PropertyMap{
 						"stackName": resource.NewProperty("res-name"),
@@ -252,7 +252,7 @@ func TestBuiltinProvider(t *testing.T) {
 
 				p.news.Store("res-name", expected)
 
-				actual, err := p.Invoke(context.Background(), plugin.InvokeRequest{
+				actual, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: getResource,
 					Args: resource.PropertyMap{
 						"urn": resource.NewProperty("res-name"),
@@ -279,7 +279,7 @@ func TestBuiltinProvider(t *testing.T) {
 
 				p.reads.Store("res-name", expected)
 
-				actual, err := p.Invoke(context.Background(), plugin.InvokeRequest{
+				actual, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: getResource,
 					Args: resource.PropertyMap{
 						"urn": resource.NewProperty("res-name"),
@@ -296,7 +296,7 @@ func TestBuiltinProvider(t *testing.T) {
 					news:  &gsync.Map[urn.URN, *resource.State]{},
 					reads: &gsync.Map[urn.URN, *resource.State]{},
 				}
-				_, err := p.Invoke(context.Background(), plugin.InvokeRequest{
+				_, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: getResource,
 					Args: resource.PropertyMap{
 						"urn": resource.NewProperty("res-name"),
@@ -309,13 +309,13 @@ func TestBuiltinProvider(t *testing.T) {
 	t.Run("Call (unimplemented)", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
-		_, err := p.Call(context.Background(), plugin.CallRequest{})
+		_, err := p.Call(t.Context(), plugin.CallRequest{})
 		assert.ErrorContains(t, err, "the builtin provider does not implement call")
 	})
 	t.Run("GetPluginInfo (always fails)", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
-		_, err := p.GetPluginInfo(context.Background())
+		_, err := p.GetPluginInfo(t.Context())
 		assert.ErrorContains(t, err, "the builtin provider does not report plugin info")
 	})
 	t.Run("SignalCancellation", func(t *testing.T) {
@@ -326,9 +326,9 @@ func TestBuiltinProvider(t *testing.T) {
 				called = true
 			},
 		}
-		require.NoError(t, p.SignalCancellation(context.Background()))
+		require.NoError(t, p.SignalCancellation(t.Context()))
 		assert.True(t, called)
 		// Ensure idempotent.
-		require.NoError(t, p.SignalCancellation(context.Background()))
+		require.NoError(t, p.SignalCancellation(t.Context()))
 	})
 }

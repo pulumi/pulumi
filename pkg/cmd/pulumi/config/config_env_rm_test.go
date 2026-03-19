@@ -16,7 +16,6 @@ package config
 
 import (
 	"bytes"
-	"context"
 	"strings"
 	"testing"
 
@@ -39,7 +38,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", nil, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := rm.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
@@ -61,7 +60,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(nil, &stdout, projectYAML, "", nil, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent, yes: true}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := rm.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
@@ -86,7 +85,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, nil, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent, yes: true}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := rm.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
@@ -121,7 +120,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := rm.run(ctx, []string{"env2"})
 		require.NoError(t, err)
 
@@ -162,7 +161,7 @@ aws:region    us-west-2
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
 		rm := &configEnvRmCmd{parent: parent, showSecrets: true}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := rm.run(ctx, []string{"env2"})
 		require.NoError(t, err)
 

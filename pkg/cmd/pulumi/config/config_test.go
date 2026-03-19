@@ -45,7 +45,7 @@ import (
 )
 
 func TestListConfig(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	openEnv := &esc.Environment{
 		Properties: map[string]esc.Value{
@@ -565,7 +565,7 @@ func TestConfigSet(t *testing.T) {
 
 //nolint:paralleltest // changes global ConfigFile variable
 func TestConfigSetTypes(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cases := []struct {
 		name     string
@@ -676,7 +676,7 @@ func TestConfigSetTypes(t *testing.T) {
 
 //nolint:paralleltest // changes global ConfigFile variable
 func TestConfigSetAll(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cases := []struct {
 		name          string

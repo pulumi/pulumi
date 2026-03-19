@@ -79,7 +79,7 @@ func TestAbbreviateFilePath(t *testing.T) {
 func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
 	t.Parallel()
 
-	cancelCtx, _ := cancel.NewContext(context.Background())
+	cancelCtx, _ := cancel.NewContext(t.Context())
 
 	acts := newUpdateActions(&Context{
 		Cancel: cancelCtx,
@@ -127,11 +127,11 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			context.Background(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
-		analyzer, err := loadPolicyAnalyzer(context.Background(), plugctx, "my-policy", "/path", nil)
+		analyzer, err := loadPolicyAnalyzer(t.Context(), plugctx, "my-policy", "/path", nil)
 		require.NoError(t, err)
 		assert.Equal(t, tokens.QName("my-policy"), analyzer.Name())
 	})
@@ -146,11 +146,11 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			context.Background(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
-		_, err = loadPolicyAnalyzer(context.Background(), plugctx, "my-policy", "/path", nil)
+		_, err = loadPolicyAnalyzer(t.Context(), plugctx, "my-policy", "/path", nil)
 		assert.ErrorIs(t, err, expectedErr)
 	})
 
@@ -166,11 +166,11 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			context.Background(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
-		_, err = loadPolicyAnalyzer(context.Background(), plugctx, "my-policy", "/path", nil)
+		_, err = loadPolicyAnalyzer(t.Context(), plugctx, "my-policy", "/path", nil)
 		assert.ErrorContains(t, err,
 			`could not start policy pack "my-policy" because the built-in analyzer `+
 				`plugin that runs policy plugins is missing`)
@@ -208,11 +208,11 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			context.Background(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
-		analyzer, err := loadPolicyAnalyzer(context.Background(), plugctx, "my-policy", "/path", nil)
+		analyzer, err := loadPolicyAnalyzer(t.Context(), plugctx, "my-policy", "/path", nil)
 		require.NoError(t, err)
 		assert.Equal(t, tokens.QName("my-policy"), analyzer.Name())
 		assert.Equal(t, 2, calls, "expected two calls: first fails, second succeeds after install")
@@ -239,11 +239,11 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			context.Background(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
-		_, err = loadPolicyAnalyzer(context.Background(), plugctx, "my-policy", "/path", nil)
+		_, err = loadPolicyAnalyzer(t.Context(), plugctx, "my-policy", "/path", nil)
 		assert.ErrorContains(t, err, "network timeout")
 		assert.ErrorContains(t, err, "failed to automatically install analyzer plugin")
 
@@ -273,11 +273,11 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			context.Background(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
-		_, err = loadPolicyAnalyzer(context.Background(), plugctx, "my-policy", "/path", nil)
+		_, err = loadPolicyAnalyzer(t.Context(), plugctx, "my-policy", "/path", nil)
 		assert.ErrorContains(t, err,
 			`could not start policy pack "my-policy" because the built-in analyzer `+
 				`plugin that runs policy plugins is missing`)

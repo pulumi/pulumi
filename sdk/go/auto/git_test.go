@@ -15,7 +15,6 @@
 package auto
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -126,7 +125,7 @@ func TestGitClone(t *testing.T) {
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
 			require.NoError(t, err)
 
-			_, err = setupGitRepo(context.Background(), tmp, repo)
+			_, err = setupGitRepo(t.Context(), tmp, repo)
 			require.NoError(t, err)
 
 			r, err := git.PlainOpen(tmp)
@@ -181,7 +180,7 @@ func TestGitClone(t *testing.T) {
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
 			require.NoError(t, err)
 
-			_, err = setupGitRepo(context.Background(), tmp, repo)
+			_, err = setupGitRepo(t.Context(), tmp, repo)
 			assert.EqualError(t, err, tc.expectedError)
 		})
 	}

@@ -728,7 +728,7 @@ func GetLogs(
 	query operations.LogQuery,
 ) *[]operations.LogEntry {
 	snap, err := stack.DeserializeDeploymentV3(
-		context.Background(),
+		t.Context(),
 		*stackInfo.Deployment,
 		secrets.DefaultProvider)
 	require.NoError(t, err)
@@ -906,7 +906,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	return &ProgramTester{
 		t:              t,
 		opts:           opts,
-		updateEventLog: filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
+		updateEventLog: filepath.Join(t.TempDir(), string(stackName)+"-events.json"),
 		maxStepTries:   maxStepTries,
 		pulumiHome:     home,
 	}

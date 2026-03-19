@@ -15,7 +15,6 @@
 package pulumix_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -28,7 +27,7 @@ import (
 func TestArray(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	arr := pulumix.Array[string]{
 		pulumix.Val("foo"),
 		pulumi.String("bar"),
@@ -47,7 +46,7 @@ func TestArray(t *testing.T) {
 func TestGArrayOutput(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	o := pulumix.Cast[pulumix.GArrayOutput[string, pulumi.StringOutput], []string](
 		pulumix.Array[string]{
 			pulumi.String("foo"),

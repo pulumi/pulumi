@@ -29,7 +29,7 @@ func TestZeroPanic(t *testing.T) {
 
 	var p Promise[int]
 	assert.PanicsWithValue(t, "Promise must be initialized", func() {
-		p.Result(context.Background()) //nolint:errcheck // Result is expected to panic
+		p.Result(t.Context()) //nolint:errcheck // Result is expected to panic
 	})
 
 	assert.PanicsWithValue(t, "Promise must be initialized", func() {
@@ -44,7 +44,7 @@ func TestFulfill(t *testing.T) {
 	set := ps.Fulfill(42)
 	assert.True(t, set, "set should be true")
 	promise := ps.Promise()
-	i, err := promise.Result(context.Background())
+	i, err := promise.Result(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 42, i)
 	// Trying to fulfill again should fail
@@ -53,7 +53,7 @@ func TestFulfill(t *testing.T) {
 	// Asking for the promise again should give the same promise
 	assert.Equal(t, promise, ps.Promise())
 	// Result should still be 42
-	i, err = promise.Result(context.Background())
+	i, err = promise.Result(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 42, i)
 	// Trying to reject should fail
@@ -68,7 +68,7 @@ func TestMustFulfill(t *testing.T) {
 	// First call should succeed
 	ps.MustFulfill(42)
 	// And this promise should now resolve to 42
-	i, err := ps.Promise().Result(context.Background())
+	i, err := ps.Promise().Result(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 42, i)
 	// Second call should panic
@@ -85,7 +85,7 @@ func TestReject(t *testing.T) {
 	set := ps.Reject(boom)
 	assert.True(t, set, "set should be true")
 	promise := ps.Promise()
-	_, err := promise.Result(context.Background())
+	_, err := promise.Result(t.Context())
 	require.Equal(t, boom, err)
 	// Trying to reject again should fail
 	set = ps.Reject(errors.New("bigger boom"))
@@ -94,7 +94,7 @@ func TestReject(t *testing.T) {
 	assert.Equal(t, promise, ps.Promise())
 	// Result should still be boom
 	promise = ps.Promise()
-	_, err = promise.Result(context.Background())
+	_, err = promise.Result(t.Context())
 	require.Equal(t, boom, err)
 	// Trying to fulfill should fail
 	set = ps.Fulfill(42)
@@ -109,7 +109,7 @@ func TestMustReject(t *testing.T) {
 	boom := errors.New("boom")
 	ps.MustReject(boom)
 	// And this promise should now resolve to boom
-	_, err := ps.Promise().Result(context.Background())
+	_, err := ps.Promise().Result(t.Context())
 	require.Equal(t, boom, err)
 	// Second call should panic
 	assert.PanicsWithValue(t, "CompletionSource already resolved", func() {
@@ -121,7 +121,7 @@ func TestManyGets(t *testing.T) {
 	t.Parallel()
 
 	ps := &CompletionSource[int]{}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
@@ -142,7 +142,7 @@ func TestManyGets(t *testing.T) {
 func TestAwaitCancelled(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	ps := &CompletionSource[int]{}
 	p := ps.Promise()
@@ -162,7 +162,7 @@ func TestAwaitCancelled(t *testing.T) {
 	set := ps.Fulfill(12)
 	assert.True(t, set, "set should be true")
 
-	i, err := p.Result(context.Background())
+	i, err := p.Result(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 12, i)
 }
@@ -211,7 +211,7 @@ func TestTryResultRace(t *testing.T) {
 	}()
 
 	// Wait for the result promise.
-	i, err := result.Result(context.Background())
+	i, err := result.Result(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 42, i)
 }
@@ -224,6 +224,6 @@ func TestRunError(t *testing.T) {
 		return 0, errors.New("boom")
 	})
 
-	_, err := result.Result(context.Background())
+	_, err := result.Result(t.Context())
 	assert.Error(t, err)
 }

@@ -16,7 +16,6 @@ package client
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -405,7 +404,7 @@ func TestPublishPackage(t *testing.T) {
 			}
 
 			// Call the function
-			err := client.PublishPackage(context.Background(), input)
+			err := client.PublishPackage(t.Context(), input)
 
 			// Check results
 			if tt.errorMessage != "" {

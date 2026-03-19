@@ -121,7 +121,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			resource.AfterDelete:  {"hook2"},
 		},
 	}.Make()
-	dep, err := SerializeResource(context.Background(), res, config.NopEncrypter, false /* showSecrets */)
+	dep, err := SerializeResource(t.Context(), res, config.NopEncrypter, false /* showSecrets */)
 	require.NoError(t, err)
 
 	// assert some things about the deployment record:
@@ -217,7 +217,7 @@ func TestDeploymentSerialization(t *testing.T) {
 func TestSerializeDeploymentWithMetadata(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name             string
@@ -320,7 +320,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 
 func TestLoadTooNewDeployment(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: DeploymentSchemaVersionLatest + 1,
@@ -334,7 +334,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 
 func TestLoadTooOldDeployment(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: DeploymentSchemaVersionOldestSupported - 1,
@@ -349,7 +349,7 @@ func TestLoadTooOldDeployment(t *testing.T) {
 // TestUnsupportedFeature tests that an unsupported feature in the deployment errors as expected.
 func TestUnsupportedFeature(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: DeploymentSchemaVersionLatest,
@@ -368,7 +368,7 @@ func TestUnsupportedFeature(t *testing.T) {
 // TestDeserializeUntypedDeploymentFeatures tests that the deserializer does not error for features that are supported.
 func TestDeserializeUntypedDeploymentFeatures(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for _, features := range combinations.All([]string{
 		"refreshBeforeUpdate",
@@ -553,7 +553,7 @@ func TestCustomSerialization(t *testing.T) {
 	t.Run("SerializeProperties", func(t *testing.T) {
 		t.Parallel()
 
-		serializedPropMap, err := SerializeProperties(context.Background(), propMap, config.BlindingCrypter, false /* showSecrets */)
+		serializedPropMap, err := SerializeProperties(t.Context(), propMap, config.BlindingCrypter, false /* showSecrets */)
 		require.NoError(t, err)
 
 		// Now JSON encode the results?
@@ -610,7 +610,7 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 	t.Parallel()
 
 	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
 		Resources: []apitype.ResourceV3{
@@ -628,7 +628,7 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 func TestDeserializeInvalidResourceErrors(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	deployment, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{},
@@ -667,7 +667,7 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 	t.Parallel()
 
 	urn := "urn:pulumi:urn:pulumi:test_stack::test_project::pkg:index:type::name"
-	ctx := context.Background()
+	ctx := t.Context()
 	deployment, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{
@@ -722,7 +722,7 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 func TestSerializePropertyValue(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	rapid.Check(t, func(t *rapid.T) {
 		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value")
 		_, err := SerializePropertyValue(ctx, v, config.NopEncrypter, false)
@@ -734,7 +734,7 @@ func TestSerializePropertyValue(t *testing.T) {
 func TestSerializePropertyValue_ShowSecrets(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	crypter := config.NewPanicCrypter()
 
 	secret := resource.MakeSecret(resource.NewProperty("secret"))
@@ -986,7 +986,7 @@ func ObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
 func TestSecretInputRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	res := &resource.State{
 		URN:  "urn:pulumi:stack::project::pkg:index:type::name",

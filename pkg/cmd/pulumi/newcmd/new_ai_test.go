@@ -59,7 +59,7 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 
 	assert.ErrorContains(t,
 		runNew(
-			context.Background(), testNewArgs,
+			t.Context(), testNewArgs,
 		),
 		"please log in to Pulumi Cloud to use Pulumi AI")
 }
@@ -113,7 +113,7 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
