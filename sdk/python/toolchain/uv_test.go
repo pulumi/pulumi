@@ -17,6 +17,7 @@ package toolchain
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,6 +26,18 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/require"
 )
+
+func installFakeUv(t *testing.T, script string) string {
+	t.Helper()
+
+	binDir := t.TempDir()
+	uvPath := filepath.Join(binDir, "uv.cmd")
+	require.NoError(t, os.WriteFile(uvPath, []byte(script), 0o700))
+
+	path := os.Getenv("PATH")
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+path)
+	return uvPath
+}
 
 func TestUvVirtualenvPath(t *testing.T) {
 	t.Parallel()
@@ -99,6 +112,64 @@ func TestUvVersion(t *testing.T) {
 
 	_, err := ParseUvVersion("uv 0.4.25")
 	require.ErrorContains(t, err, "less than the minimum required version")
+}
+
+func TestUvInstallDependenciesPreparesLocalProjectInsideWorkspace(t *testing.T) {
+	root := t.TempDir()
+	cwd := filepath.Join(root, "infrastructure")
+	require.NoError(t, os.Mkdir(cwd, 0o755))
+
+	require.NoError(t, os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte("[project]\nname='workspace'\nversion='0.0.1'\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "uv.lock"), []byte{}, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(cwd, "requirements.txt"), []byte("pulumi>=3\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(cwd, "Pulumi.yaml"), []byte("name: infrastructure\n"), 0o600))
+
+	initMarker := filepath.Join(root, "init-cwd.txt")
+	addMarker := filepath.Join(root, "add-cwd.txt")
+	syncMarker := filepath.Join(root, "sync-cwd.txt")
+	installFakeUv(t, fmt.Sprintf(`@echo off
+if "%%1"=="--version" (
+  echo uv 0.9.10
+  exit /b 0
+)
+if "%%1"=="init" (
+  > "%s" echo %%CD%%
+  > "%%CD%%\\pyproject.toml" echo [project]
+  >> "%%CD%%\\pyproject.toml" echo name = "generated"
+  >> "%%CD%%\\pyproject.toml" echo version = "0.0.1"
+  exit /b 0
+)
+if "%%1"=="add" (
+  > "%s" echo %%CD%%
+  exit /b 0
+)
+if "%%1"=="sync" (
+  > "%s" echo %%CD%%
+  exit /b 0
+)
+exit /b 1
+`, initMarker, addMarker, syncMarker))
+
+	uv, err := newUv(cwd, "")
+	require.NoError(t, err)
+
+	err = uv.InstallDependencies(context.Background(), cwd, false, false, nil, nil)
+	require.NoError(t, err)
+
+	require.FileExists(t, filepath.Join(cwd, "pyproject.toml"))
+	require.NoFileExists(t, filepath.Join(cwd, "requirements.txt"))
+
+	initRanIn, err := os.ReadFile(initMarker)
+	require.NoError(t, err)
+	require.Equal(t, cwd, strings.TrimSpace(string(initRanIn)))
+
+	addRanIn, err := os.ReadFile(addMarker)
+	require.NoError(t, err)
+	require.Equal(t, cwd, strings.TrimSpace(string(addRanIn)))
+
+	syncRanIn, err := os.ReadFile(syncMarker)
+	require.NoError(t, err)
+	require.Equal(t, cwd, strings.TrimSpace(string(syncRanIn)))
 }
 
 func TestUvCommandSyncsEnvironment(t *testing.T) {
