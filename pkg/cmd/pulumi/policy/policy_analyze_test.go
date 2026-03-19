@@ -251,9 +251,13 @@ func TestPolicyAnalyzeCmd_ProgressDisplayGroupsPolicyOutput(t *testing.T) {
 		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
 		"--stack", "my-stack")
 	assert.ErrorContains(t, err, "mandatory policy violations")
-	assert.Contains(t, stdout, "Policies:")
-	assert.Contains(t, stdout, "test-pack@v")
-	assert.Contains(t, stdout, "test-policy")
+	expected := "" +
+		"    pulumi:pulumi:Stack project-stack  \n" +
+		"Policies:\n" +
+		"    ❌ test-pack@v\n" +
+		"        - [mandatory]  test-policy  (pkg:index:MyResource: res)\n" +
+		"          test violation\n\n"
+	assert.Equal(t, expected, stdout)
 }
 
 func TestPolicyAnalyzeCmd_JSONDisplayWritesPolicyEvents(t *testing.T) {
