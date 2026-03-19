@@ -824,6 +824,11 @@ func (g *generator) genScopeTraversalExpression(
 	}
 
 	// TODO if it's an array type, we need a lowering step to turn []string -> pulumi.StringArray
+	// If the expression type is already an OutputType, it already satisfies the corresponding
+	// Input interface in Go (e.g. BoolOutput implements BoolInput), so no wrapping is needed.
+	if _, exprIsOutput := expr.Type().(*model.OutputType); exprIsOutput {
+		isInput = false
+	}
 	if isInput {
 		argTypeName := g.argumentTypeName(expr.Type(), isInput)
 		if strings.HasSuffix(argTypeName, "Array") {

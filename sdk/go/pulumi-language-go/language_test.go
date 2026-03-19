@@ -122,7 +122,6 @@ var expectedFailures = map[string]string{
 	"l3-range-resource-output-traversal":  "pulumi#21678: cannot range over an ArrayOutput",
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
-	"l2-resource-order":                   "cannot convert localVar (variable of struct type pulumi.BoolOutput) to type pulumi.Bool", //nolint:lll
 	"l3-deferred-outputs":                 "does not compile && for expressions are not supported",
 }
 
