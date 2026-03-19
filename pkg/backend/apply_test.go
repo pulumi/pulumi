@@ -105,7 +105,7 @@ func TestConfirmBeforeUpdating_ExplainerErrorDoesNotCrash(t *testing.T) {
 		Stdout: console.Tty(),
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	kind := apitype.UpdateUpdate
 	var stackRef StackReference
 	op := UpdateOperation{

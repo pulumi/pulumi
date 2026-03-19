@@ -776,7 +776,7 @@ func templateRepository(repo workspace.TemplateRepository, err error) getWorkspa
 }
 
 func testContext(t *testing.T) context.Context {
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
 	return ctx

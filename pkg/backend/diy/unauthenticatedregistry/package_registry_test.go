@@ -15,7 +15,6 @@
 package unauthenticatedregistry
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -35,7 +34,7 @@ import (
 func TestGetPackageSpecifiedVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte(`{
   "name": "random",
@@ -89,7 +88,7 @@ func TestGetPackageSpecifiedVersion(t *testing.T) {
 func TestGetPackageUnspecifiedVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte(`{
@@ -146,7 +145,7 @@ func TestGetPackageUnspecifiedVersion(t *testing.T) {
 func TestGetPackageNonExistantPackage(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
@@ -172,7 +171,7 @@ func TestGetPackageNonExistantPackage(t *testing.T) {
 func TestGetPackagePrivatePackage(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
@@ -195,7 +194,7 @@ func TestGetPackagePrivatePackage(t *testing.T) {
 func TestListPackages(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte(`{
@@ -297,7 +296,7 @@ func TestListPackages(t *testing.T) {
 func TestListPackagesNoMatches(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte(`{"packages":[]}`))

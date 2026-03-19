@@ -62,7 +62,7 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	assert.Error(t, err)
 }
 
@@ -84,7 +84,7 @@ func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	assert.ErrorContains(t, err, "project name (--name projectB) "+
 		"and stack reference project name (--stack projectA) must be the same")
 }
@@ -110,7 +110,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
@@ -136,7 +136,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
@@ -164,7 +164,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
@@ -190,7 +190,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	removeStack(t, tempdir, stackName)
@@ -215,7 +215,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	removeStack(t, tempdir, stackName)
@@ -255,7 +255,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	assert.ErrorContains(t, err, "project with this name already exists")
 }
 
@@ -293,7 +293,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	assert.ErrorContains(t, err, "Try again")
 }
 
@@ -333,7 +333,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
@@ -374,7 +374,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
@@ -409,7 +409,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
@@ -455,7 +455,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	assert.ErrorContains(t, err, "project names may only contain")
 }
 
@@ -484,7 +484,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
-	err := runNew(context.Background(), newArgs{
+	err := runNew(t.Context(), newArgs{
 		generateOnly:      true,
 		interactive:       true,
 		prompt:            promptMock("not#valid", ""),
@@ -494,7 +494,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	})
 	assert.ErrorContains(t, err, "project names may only contain")
 
-	err = runNew(context.Background(), newArgs{
+	err = runNew(t.Context(), newArgs{
 		generateOnly:      true,
 		interactive:       true,
 		prompt:            promptMock("", ""),
@@ -522,7 +522,7 @@ func TestInvalidTemplateName(t *testing.T) {
 			templateMode:      true,
 		}
 
-		err := runNew(context.Background(), args)
+		err := runNew(t.Context(), args)
 		assert.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
 	})
 
@@ -540,7 +540,7 @@ func TestInvalidTemplateName(t *testing.T) {
 			templateNameOrURL: template,
 		}
 
-		err := runNew(context.Background(), args)
+		err := runNew(t.Context(), args)
 		assert.ErrorContains(t, err, "not found")
 	})
 
@@ -559,7 +559,7 @@ func TestInvalidTemplateName(t *testing.T) {
 			yes:               true,
 		}
 
-		err := runNew(context.Background(), args)
+		err := runNew(t.Context(), args)
 		assert.ErrorContains(t, err, "not found")
 	})
 }
@@ -666,7 +666,7 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 
 func TestProjectExists(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	b := &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, orgName string, projectName string) (bool, error) {
 			type Org string
@@ -767,7 +767,7 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 				languageTemplate:  languageTemplateMock,
 			}
 
-			err := runNew(context.Background(), args)
+			err := runNew(t.Context(), args)
 			require.NoError(t, err)
 		})
 	}
@@ -796,7 +796,7 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 
 	require.NoError(t,
 		validateProjectNameInternal(
-			context.Background(), b, "moolumi", "some-project-name", false /* generateOnly */, display.Options{},
+			t.Context(), b, "moolumi", "some-project-name", false /* generateOnly */, display.Options{},
 			func(s string) error {
 				assert.Fail(t, "this should not be called as this is a not a duplicate project name")
 				return nil
@@ -806,7 +806,7 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 	var called bool
 	require.NoError(t,
 		validateProjectNameInternal(
-			context.Background(), b, "moolumi", "existing-project-name", false /* generateOnly */, display.Options{},
+			t.Context(), b, "moolumi", "existing-project-name", false /* generateOnly */, display.Options{},
 			func(s string) error {
 				called = true
 				return nil
@@ -882,7 +882,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 				templateNameOrURL:    tt.argument,
 			}
 
-			err := runNew(context.Background(), args)
+			err := runNew(t.Context(), args)
 			require.NoError(t, err)
 
 			proj := loadProject(t, tempdir)
@@ -920,7 +920,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 		templateNameOrURL:    "python",
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	require.NoError(t, err)

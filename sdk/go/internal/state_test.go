@@ -39,7 +39,7 @@ func TestRejectOutput(t *testing.T) {
 	assert.Equal(t, OutputPending, GetOutputStatus(out))
 	RejectOutput(out, giveErr)
 
-	_, _, _, _, err := AwaitOutput(context.Background(), out)
+	_, _, _, _, err := AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 	assert.Equal(t, OutputRejected, GetOutputStatus(out))
 }
@@ -51,7 +51,7 @@ func TestResolveOutput(t *testing.T) {
 	assert.Equal(t, OutputPending, GetOutputStatus(out))
 	ResolveOutput(out, 42, true, false, nil)
 
-	got, known, secret, deps, err := AwaitOutput(context.Background(), out)
+	got, known, secret, deps, err := AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.Equal(t, 42, got)
 	assert.True(t, known)
@@ -68,7 +68,7 @@ func TestResolveOutput_alreadyResolved(t *testing.T) {
 	assert.Equal(t, OutputResolved, GetOutputStatus(out))
 
 	ResolveOutput(out, 43, true, false, nil)
-	got, _, _, _, err := AwaitOutput(context.Background(), out)
+	got, _, _, _, err := AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.Equal(t, 42, got)
 }
@@ -79,7 +79,7 @@ func TestFulfillOutput_success(t *testing.T) {
 	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
 	FulfillOutput(out, 42, true, false, nil, nil)
 
-	got, known, secret, deps, err := AwaitOutput(context.Background(), out)
+	got, known, secret, deps, err := AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.Equal(t, 42, got)
 	assert.True(t, known)
@@ -95,7 +95,7 @@ func TestFulfillOutput_error(t *testing.T) {
 	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
 	FulfillOutput(out, 42, true, false, nil, giveErr)
 
-	_, _, _, _, err := AwaitOutput(context.Background(), out)
+	_, _, _, _, err := AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -147,7 +147,7 @@ func TestGetOutputValue(t *testing.T) {
 func TestAwaitOutput_contextExpired(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	out := NewOutput(nil, reflect.TypeOf(intOutput{}))

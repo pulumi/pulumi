@@ -33,7 +33,7 @@ import (
 )
 
 // setupTestBackend creates a test backend with in-memory storage
-func setupTestBackend(_ *testing.T) (*diyBackend, context.Context) {
+func setupTestBackend(t *testing.T) (*diyBackend, context.Context) {
 	bucket := memblob.OpenBucket(nil)
 	b := &diyBackend{
 		bucket: bucket,
@@ -41,7 +41,7 @@ func setupTestBackend(_ *testing.T) (*diyBackend, context.Context) {
 			return &workspace.Project{Name: "test-project"}
 		}),
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	return b, ctx
 }
 
@@ -457,7 +457,7 @@ func TestStackTagsDoNotInterfereWithStackDiscovery(t *testing.T) {
 			return &workspace.Project{Name: "test-project"}
 		}),
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a stack reference
 	ref := &diyBackendReference{
@@ -543,7 +543,7 @@ func TestLegacyStackTagsDoNotInterfereWithStackDiscovery(t *testing.T) {
 		bucket: bucket,
 		store:  newLegacyReferenceStore(bucket),
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a legacy stack reference (no project)
 	ref := &diyBackendReference{

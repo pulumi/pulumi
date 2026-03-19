@@ -15,7 +15,6 @@
 package diy
 
 import (
-	"context"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -47,7 +46,7 @@ func TestWrappedBucket(t *testing.T) {
 
 	// Initialize a diy backend, using the default Pulumi directory.
 	cloudURL := FilePathPrefix + "~"
-	ctx := context.Background()
+	ctx := t.Context()
 	b, err := New(ctx, nil, cloudURL, nil)
 	if err != nil {
 		t.Fatalf("Initializing new diy backend: %v", err)

@@ -99,7 +99,7 @@ func TestConverterServer_State(t *testing.T) {
 
 	server := NewConverterServer(&testConverter{})
 
-	resp, err := server.ConvertState(context.Background(), &pulumirpc.ConvertStateRequest{
+	resp, err := server.ConvertState(t.Context(), &pulumirpc.ConvertStateRequest{
 		Args:         []string{"arg1", "arg2"},
 		MapperTarget: "localhost:1234",
 	})
@@ -128,7 +128,7 @@ func TestConverterServer_Program(t *testing.T) {
 
 	server := NewConverterServer(&testConverter{})
 
-	resp, err := server.ConvertProgram(context.Background(), &pulumirpc.ConvertProgramRequest{
+	resp, err := server.ConvertProgram(t.Context(), &pulumirpc.ConvertProgramRequest{
 		MapperTarget:    "localhost:1234",
 		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",

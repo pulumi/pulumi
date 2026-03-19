@@ -16,7 +16,6 @@ package config
 
 import (
 	"bytes"
-	"context"
 	"strings"
 	"testing"
 
@@ -50,7 +49,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
@@ -75,7 +74,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
@@ -106,7 +105,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
@@ -141,7 +140,7 @@ thirdEnv
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
@@ -177,7 +176,7 @@ thirdEnv
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 
@@ -213,7 +212,7 @@ thirdEnv
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := ls.run(ctx, nil)
 		require.NoError(t, err)
 

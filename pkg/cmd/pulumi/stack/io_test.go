@@ -100,7 +100,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 	// Act.
 	//nolint:errcheck
 	CreateStack(
-		context.Background(),
+		t.Context(),
 		cmdutil.Diag(),
 		pkgWorkspace.Instance,
 		mockBackend,

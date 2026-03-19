@@ -1267,7 +1267,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 		Virtualenv: "venv",
 	})
 	require.NoError(t, err)
-	require.NoError(t, tc.InstallDependencies(context.Background(),
+	require.NoError(t, tc.InstallDependencies(t.Context(),
 		filepath.Join(e.CWD, "python_policy_pack"), false /*useLanguageVersionTools*/, false, /*showOutput */
 		os.Stdout, os.Stderr))
 	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
@@ -1278,7 +1278,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 		t.Log("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
 		t.FailNow()
 	}
-	cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", "-e", sdkDir)
+	cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", "-e", sdkDir)
 	require.NoError(t, err)
 	require.NoError(t, cmd.Run())
 
@@ -1659,7 +1659,7 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 	e.RunCommandWithRetry("yarn", "install")
 
 	// The bug was causing a hang, ensure the test times out
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
 	defer cancel()
 
 	cmd := e.SetupCommandIn(ctx, e.CWD, "node", "index.js")
@@ -1698,7 +1698,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	// Run pulumi via a wrapper that does not start Pulumi in its own process group.
 	// This simulates the behaviour of the 1password CLI.
-	cmd := e.SetupCommandIn(context.TODO(), filepath.Join(e.RootPath, "wrapper"), "go", "run", ".",
+	cmd := e.SetupCommandIn(t.Context(), filepath.Join(e.RootPath, "wrapper"), "go", "run", ".",
 		"pulumi", "-C", programPath, "up", "--skip-preview", "-s", "dev")
 	t.Logf("Running command %s", cmd.String())
 

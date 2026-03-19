@@ -721,10 +721,9 @@ time.sleep(3)
 `
 
 	// Create a named pipe to use as stdout
-	tmp := os.TempDir()
+	tmp := t.TempDir()
 	p := filepath.Join(tmp, "fake-stdout")
 	err := syscall.Mkfifo(p, 0o644)
-	defer os.Remove(p)
 	require.NoError(t, err)
 	// Open fd without O_NONBLOCK, ensuring that os.NewFile does not return a pollable file.
 	// When our python script changes the file to non-blocking, Go does not notice and continues to

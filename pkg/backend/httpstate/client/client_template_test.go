@@ -119,7 +119,7 @@ func TestStartTemplatePublish(t *testing.T) {
 				},
 			}
 
-			resp, err := client.StartTemplatePublish(context.Background(), tt.source, tt.publisher, tt.templateName, tt.version)
+			resp, err := client.StartTemplatePublish(t.Context(), tt.source, tt.publisher, tt.templateName, tt.version)
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -204,7 +204,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 			}
 
 			err := client.CompleteTemplatePublish(
-				context.Background(),
+				t.Context(),
 				tt.source,
 				tt.publisher,
 				tt.templateName,
@@ -420,7 +420,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 				Archive:   bytes.NewReader(tt.archiveData),
 			}
 
-			err := registry.PublishTemplate(context.Background(), op)
+			err := registry.PublishTemplate(t.Context(), op)
 
 			if tt.errorMessage != "" {
 				require.Error(t, err)
@@ -504,7 +504,7 @@ func TestDownloadTemplate(t *testing.T) {
 		client := newMockClient(server)
 		downloadURL := server.URL + "/api/template/download"
 
-		result, err := client.DownloadTemplate(context.Background(), downloadURL)
+		result, err := client.DownloadTemplate(t.Context(), downloadURL)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		defer result.Close()
@@ -534,7 +534,7 @@ func TestDownloadTemplate(t *testing.T) {
 
 		presignedURL := presignedServer.URL + "/file.tar.gz?X-Amz-Expires=3600&X-Amz-Signature=abc123"
 
-		result, err := client.DownloadTemplate(context.Background(), presignedURL)
+		result, err := client.DownloadTemplate(t.Context(), presignedURL)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		defer result.Close()
@@ -565,7 +565,7 @@ func TestDownloadTemplate(t *testing.T) {
 
 		client := newMockClient(clientServer)
 
-		result, err := client.DownloadTemplate(context.Background(), foreignServer.URL)
+		result, err := client.DownloadTemplate(t.Context(), foreignServer.URL)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		defer result.Close()
@@ -588,7 +588,7 @@ func TestDownloadTemplate(t *testing.T) {
 		client := newMockClient(server)
 		downloadURL := server.URL + "/api/template/download"
 
-		_, err := client.DownloadTemplate(context.Background(), downloadURL)
+		_, err := client.DownloadTemplate(t.Context(), downloadURL)
 		require.Error(t, err)
 	})
 
@@ -608,7 +608,7 @@ func TestDownloadTemplate(t *testing.T) {
 
 		presignedURL := presignedServer.URL + "/file.tar.gz?X-Amz-Expires=3600&X-Amz-Signature=abc123"
 
-		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		_, err := client.DownloadTemplate(t.Context(), presignedURL)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "HTTP 403")
 		assert.Contains(t, err.Error(), "Access denied")
@@ -623,7 +623,7 @@ func TestDownloadTemplate(t *testing.T) {
 
 		presignedURL := "http://127.0.0.1:1/invalid?X-Amz-Expires=3600&X-Amz-Signature=abc123"
 
-		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		_, err := client.DownloadTemplate(t.Context(), presignedURL)
 		require.Error(t, err)
 	})
 
@@ -636,7 +636,7 @@ func TestDownloadTemplate(t *testing.T) {
 
 		presignedURL := "://invalid-url?X-Amz-Expires=3600&X-Amz-Signature=abc123"
 
-		_, err := client.DownloadTemplate(context.Background(), presignedURL)
+		_, err := client.DownloadTemplate(t.Context(), presignedURL)
 		require.Error(t, err)
 	})
 }
@@ -690,7 +690,7 @@ func TestListTemplates(t *testing.T) {
 		searchName := "my-template"
 		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
-		for tmpl, err := range mockClient.ListTemplates(context.Background(), &searchName) {
+		for tmpl, err := range mockClient.ListTemplates(t.Context(), &searchName) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, tmpl)
 		}
@@ -788,7 +788,7 @@ func TestListTemplates(t *testing.T) {
 		searchName := "my-template"
 		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
-		for tmpl, err := range mockClient.ListTemplates(context.Background(), &searchName) {
+		for tmpl, err := range mockClient.ListTemplates(t.Context(), &searchName) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, tmpl)
 		}

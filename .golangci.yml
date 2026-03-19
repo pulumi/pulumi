@@ -27,6 +27,10 @@ linters:
     - copyloopvar
     - gocritic
   settings:
+    usetesting:
+      os-temp-dir: true
+      context-background: true
+      context-todo: true
     gocritic:
       disabled-checks:
         - appendAssign

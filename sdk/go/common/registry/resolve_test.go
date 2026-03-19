@@ -29,7 +29,7 @@ import (
 
 func TestResolvePackageFromName(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Three-part identifier tests
 	t.Run("three-part/success", func(t *testing.T) {
