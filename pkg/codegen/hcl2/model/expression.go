@@ -17,6 +17,7 @@ package model
 import (
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"strconv"
 
@@ -1406,7 +1407,8 @@ func literalValueType(value cty.Value) Type {
 	}
 
 	if value.Type() == cty.Number {
-		if _, acc := value.AsBigFloat().Int(nil); acc == big.Exact {
+		bi, acc := value.AsBigFloat().Int64()
+		if acc == big.Exact && bi >= math.MinInt32 && bi <= math.MaxInt32 {
 			return IntType
 		}
 		return NumberType
