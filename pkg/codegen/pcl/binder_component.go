@@ -420,7 +420,6 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 							typ.Pretty(),
 							node.name),
 					})
-
 				}
 			} else {
 				diag(unsupportedAttribute(attr.Name, attr.Syntax.NameRange))
