@@ -108,6 +108,52 @@ func TestGeneratePackage(t *testing.T) {
 	})
 }
 
+func TestGeneratePackageUsesMissingSentinelForDeprecatedOptionalInputs(t *testing.T) {
+	t.Parallel()
+
+	pkgSpec := schema.PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
+		},
+		Resources: map[string]schema.ResourceSpec{
+			"test:index:Thing": {
+				InputProperties: map[string]schema.PropertySpec{
+					"cidrBlock": {
+						TypeSpec: schema.TypeSpec{Type: "string"},
+						DeprecationMessage: "cidrBlock is deprecated; use filter instead",
+					},
+				},
+			},
+		},
+	}
+
+	pkg, err := schema.ImportSpec(pkgSpec, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+
+	files, err := GeneratePackage("tool", pkg, nil, nil)
+	require.NoError(t, err)
+
+	var resource string
+	for _, file := range files {
+		text := string(file)
+		if strings.Contains(text, "class ThingArgs:") {
+			resource = text
+			break
+		}
+	}
+
+	require.NotEmpty(t, resource, "generated ThingArgs class not found")
+	assert.Contains(t, resource,
+		"cidr_block: Optional[pulumi.Input[_builtins.str]] = pulumi.MISSING")
+	assert.Contains(t, resource, "if cidr_block is not pulumi.MISSING:")
+	assert.Contains(t, resource, "if cidr_block is not pulumi.MISSING and cidr_block is not None:")
+	assert.NotContains(t, resource, "if cidr_block is not None:")
+}
+
 func absTestsPath() (string, error) {
 	hereDir, err := filepath.Abs(".")
 	if err != nil {
