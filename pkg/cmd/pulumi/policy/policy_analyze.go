@@ -16,6 +16,7 @@ package policy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -53,6 +54,7 @@ func newPolicyAnalyzeCmd(
 ) *cobra.Command {
 	var stack string
 	var diffDisplay bool
+	var jsonDisplay bool
 	var policyPackPaths []string
 	var policyPackConfigs []string
 
@@ -125,7 +127,8 @@ func newPolicyAnalyzeCmd(
 
 			// Run analysis against the snapshot.
 			events, finish, err := newAnalyzeEvents(
-				cmd.OutOrStdout(), cmd.ErrOrStderr(), cmdutil.GetGlobalColorization(), diffDisplay, s.Ref(), analyzers)
+				cmd.OutOrStdout(), cmd.ErrOrStderr(), cmdutil.GetGlobalColorization(),
+				diffDisplay, jsonDisplay, s.Ref(), analyzers)
 			if err != nil {
 				return fmt.Errorf("configuring analysis display: %w", err)
 			}
@@ -148,6 +151,8 @@ func newPolicyAnalyzeCmd(
 		"The name of the stack to analyze. Defaults to the current stack")
 	cmd.Flags().BoolVar(&diffDisplay, "diff", false,
 		"Display policy diagnostics as a rich diff instead of grouped progress output")
+	cmd.Flags().BoolVarP(&jsonDisplay, "json", "j", false,
+		"Serialize policy analysis events as JSON")
 	cmd.Flags().StringArrayVar(&policyPackPaths, "policy-pack", []string{},
 		"Path to a policy pack to run during analysis")
 	cmd.Flags().StringArrayVar(&policyPackConfigs, "policy-pack-config", []string{},
@@ -163,6 +168,8 @@ type analyzeEvents struct {
 	opts    display.Options
 	seen    map[resource.URN]engine.StepEventMetadata
 	events  chan<- engine.Event
+	json    *json.Encoder
+	seq     int
 }
 
 func newAnalyzeEvents(
@@ -170,9 +177,32 @@ func newAnalyzeEvents(
 	errOut io.Writer,
 	colorization colors.Colorization,
 	diffDisplay bool,
+	jsonDisplay bool,
 	stackRef backend.StackReference,
 	analyzers []plugin.Analyzer,
 ) (*analyzeEvents, func(), error) {
+	if jsonDisplay {
+		policyPacks, err := policyPackVersions(analyzers)
+		if err != nil {
+			return nil, nil, err
+		}
+		events := &analyzeEvents{
+			out:  out,
+			json: json.NewEncoder(out),
+		}
+		return events, func() {
+			events.outLock.Lock()
+			defer events.outLock.Unlock()
+			events.writeEvent(engine.NewEvent(engine.SummaryEventPayload{
+				IsPreview:       false,
+				MaybeCorrupt:    false,
+				Duration:        0 * time.Second,
+				ResourceChanges: nil,
+				PolicyPacks:     policyPacks,
+			}))
+		}, nil
+	}
+
 	if diffDisplay {
 		return &analyzeEvents{
 			out: out,
@@ -183,13 +213,9 @@ func newAnalyzeEvents(
 		}, func() {}, nil
 	}
 
-	policyPacks := map[string]string{}
-	for _, analyzer := range analyzers {
-		info, err := analyzer.GetAnalyzerInfo()
-		if err != nil {
-			return nil, nil, fmt.Errorf("getting analyzer info: %w", err)
-		}
-		policyPacks[info.Name] = info.Version
+	policyPacks, err := policyPackVersions(analyzers)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	displayType := display.DisplayProgress
@@ -198,6 +224,7 @@ func newAnalyzeEvents(
 		Type:                   displayType,
 		ShowPolicyRemediations: true,
 		IsInteractive:          cmdutil.Interactive(),
+		JSONDisplay:            jsonDisplay,
 		Stdout:                 out,
 		Stderr:                 errOut,
 	}
@@ -221,6 +248,18 @@ func newAnalyzeEvents(
 			close(events)
 			<-done
 		}, nil
+}
+
+func policyPackVersions(analyzers []plugin.Analyzer) (map[string]string, error) {
+	policyPacks := map[string]string{}
+	for _, analyzer := range analyzers {
+		info, err := analyzer.GetAnalyzerInfo()
+		if err != nil {
+			return nil, fmt.Errorf("getting analyzer info: %w", err)
+		}
+		policyPacks[info.Name] = info.Version
+	}
+	return policyPacks, nil
 }
 
 func projectName(stackRef backend.StackReference) tokens.PackageName {
@@ -254,6 +293,18 @@ func safeProjectName(stackRef backend.StackReference) (name tokens.Name, ok bool
 func (e *analyzeEvents) writeEvent(event engine.Event) {
 	if e.events != nil {
 		e.events <- event
+		return
+	}
+
+	if e.json != nil {
+		apiEvent, err := display.ConvertEngineEvent(event, false /*showSecrets*/)
+		if err != nil {
+			return
+		}
+		apiEvent.Sequence = e.seq
+		apiEvent.Timestamp = int(time.Now().Unix())
+		e.seq++
+		_ = e.json.Encode(apiEvent)
 		return
 	}
 

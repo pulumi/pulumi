@@ -17,7 +17,10 @@ package policy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -263,6 +267,59 @@ func TestPolicyAnalyzeCmd_ProgressDisplayGroupsPolicyOutput(t *testing.T) {
 	assert.Contains(t, stdout, "Policies:")
 	assert.Contains(t, stdout, "test-pack@v")
 	assert.Contains(t, stdout, "test-policy")
+}
+
+func TestPolicyAnalyzeCmd_JSONDisplayWritesPolicyEvents(t *testing.T) {
+	t.Parallel()
+
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return makeAnalyzeSnapshot(), nil
+	}
+	ws, lm := newMockWsAndLm(be)
+
+	analyzer := &fakeAnalyzer{mandatory: true}
+	stdout, _, err := runAnalyzeCmd(t, ws, lm,
+		stubLoadAnalyzers([]plugin.Analyzer{analyzer}),
+		"--stack", "my-stack", "--json")
+	assert.ErrorContains(t, err, "mandatory policy violations")
+
+	events := decodeEngineEventsJSON(t, stdout)
+	require.Len(t, events, 2)
+
+	assert.Equal(t, 0, events[0].Sequence)
+	require.NotNil(t, events[0].PolicyEvent)
+	assert.Equal(t, "test-policy", events[0].PolicyEvent.PolicyName)
+	assert.Equal(t, "test-pack", events[0].PolicyEvent.PolicyPackName)
+	assert.Equal(t, "mandatory", events[0].PolicyEvent.EnforcementLevel)
+	assert.Equal(t, "test violation", events[0].PolicyEvent.Message)
+
+	assert.Equal(t, 1, events[1].Sequence)
+	require.NotNil(t, events[1].SummaryEvent)
+	version, ok := events[1].SummaryEvent.PolicyPacks["test-pack"]
+	require.True(t, ok)
+	assert.Equal(t, "", version)
+}
+
+func decodeEngineEventsJSON(t *testing.T, out string) []apitype.EngineEvent {
+	t.Helper()
+
+	dec := json.NewDecoder(strings.NewReader(out))
+	var events []apitype.EngineEvent
+	for {
+		var event apitype.EngineEvent
+		err := dec.Decode(&event)
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		events = append(events, event)
+	}
+
+	// Ensure there is no trailing non-whitespace junk.
+	require.False(t, dec.More())
+
+	return events
 }
 
 // fakeAnalyzer is a minimal plugin.Analyzer for use in command-level tests.
