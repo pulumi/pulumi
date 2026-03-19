@@ -96,6 +96,7 @@ func (s *componentScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*mode
 type componentInput struct {
 	key      string
 	required bool
+	typ      model.Type
 }
 
 func componentInputs(program *Program) map[string]componentInput {
@@ -106,6 +107,7 @@ func componentInputs(program *Program) map[string]componentInput {
 			inputs[node.LogicalName()] = componentInput{
 				required: node.DefaultValue == nil && !node.Nullable,
 				key:      node.LogicalName(),
+				typ:      node.Type(),
 			}
 		}
 	}
@@ -364,11 +366,15 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				continue
 			}
 			// all other attributes are part of the inputs
-			_, knownInput := componentInputs[item.Name]
+			input, knownInput := componentInputs[item.Name]
 
 			if !knownInput {
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 				return diagnostics
+			}
+
+			if input.typ != nil && model.InputType(input.typ).ConversionFrom(item.Value.Type()) == model.NoConversion {
+				diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(input.typ), item.Value))
 			}
 
 			node.Inputs = append(node.Inputs, item)
