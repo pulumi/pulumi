@@ -15,7 +15,6 @@
 package npm
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"strings"

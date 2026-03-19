@@ -18,7 +18,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"context"
 	"crypto/sha1" //nolint:gosec // this is what NPM wants
 	"encoding/hex"
 	"fmt"

@@ -15,7 +15,6 @@
 package pulumix_test // to avoid import cycles
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"

@@ -15,7 +15,6 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"testing"

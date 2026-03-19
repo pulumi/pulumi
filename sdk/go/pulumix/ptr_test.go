@@ -15,7 +15,6 @@
 package pulumix_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"

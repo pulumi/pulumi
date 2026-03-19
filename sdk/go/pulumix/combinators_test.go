@@ -15,7 +15,6 @@
 package pulumix_test
 
 import (
-	"context"
 	"errors"
 	"reflect"
 	"testing"

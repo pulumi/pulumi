@@ -15,7 +15,6 @@
 package auto
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"runtime"

@@ -16,7 +16,6 @@ package toolchain
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"os"

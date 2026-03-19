@@ -15,7 +15,6 @@
 package plugin
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"sync"

@@ -16,7 +16,6 @@ package toolchain
 
 import (
 	"bytes"
-	"context"
 	"os"
 	"path/filepath"
 	"strings"

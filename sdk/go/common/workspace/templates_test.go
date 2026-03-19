@@ -15,7 +15,6 @@
 package workspace
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -305,7 +304,7 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 			assert.Equal(t, true, repository.ShouldDelete)
 
 			// Root should point to a subfolder of a Temp Dir
-			tempDir := os.TempDir()
+			tempDir := os.TempDir() //nolint:usetesting // checking system temp dir, not creating one
 			pattern := filepath.Join(tempDir, "*")
 			matched, _ := filepath.Match(pattern, repository.Root)
 			assert.True(t, matched)
