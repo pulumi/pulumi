@@ -1,4 +1,4 @@
-// Copyright 2020-2026, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -252,7 +252,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genTemplateExpression(w, arg, expr.Type())
 		case *model.ScopeTraversalExpression:
 			// When converting a plain traversal to Output<T>, emit an explicit Pulumi input cast
-			// for scalar types (e.g. pulumi.String(x)) so calls like ctx.Export compile.
+			// (e.g. pulumi.String(x), pulumi.ToMap(x)) so calls like ctx.Export compile.
 			if isOutput && !isFromOutput {
 				scalarType := to
 				if cns, ok := scalarType.(*model.ConstType); ok {
@@ -265,6 +265,25 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						g.genScopeTraversalExpression(w, arg, expr.Type())
 						g.Fgenf(w, ")")
 						return
+					}
+				default:
+					// For collection types (maps, objects, lists), wrap with pulumi.ToMap/ToArray.
+					// Only do this when genScopeTraversalExpression won't already handle the
+					// conversion via its isInput/array-helper logic, which it does when the
+					// expression type has an associated schema type.
+					if _, hasSchema := pcl.GetSchemaForType(expr.Type()); !hasSchema {
+						switch scalarType.(type) {
+						case *model.ObjectType, *model.MapType:
+							g.Fgenf(w, "pulumi.ToMap(")
+							g.genScopeTraversalExpression(w, arg, expr.Type())
+							g.Fgenf(w, ")")
+							return
+						case *model.ListType, *model.TupleType:
+							g.Fgenf(w, "pulumi.ToArray(")
+							g.genScopeTraversalExpression(w, arg, expr.Type())
+							g.Fgenf(w, ")")
+							return
+						}
 					}
 				}
 			}
@@ -805,6 +824,11 @@ func (g *generator) genScopeTraversalExpression(
 	}
 
 	// TODO if it's an array type, we need a lowering step to turn []string -> pulumi.StringArray
+	// If the expression type is already an OutputType, it already satisfies the corresponding
+	// Input interface in Go (e.g. BoolOutput implements BoolInput), so no wrapping is needed.
+	if _, exprIsOutput := expr.Type().(*model.OutputType); exprIsOutput {
+		isInput = false
+	}
 	if isInput {
 		argTypeName := g.argumentTypeName(expr.Type(), isInput)
 		if strings.HasSuffix(argTypeName, "Array") {

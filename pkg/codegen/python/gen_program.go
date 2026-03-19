@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -648,6 +648,9 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 }
 
 func tokenToQualifiedName(pkg, module, member string) string {
+	if module == "index" {
+		module = ""
+	}
 	components := strings.Split(strings.ToLower(module), "/")
 	for i, component := range components {
 		components[i] = PyName(component)
@@ -903,6 +906,8 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 						switch key.AsString() {
 						case "name":
 							g.Fgenf(w, "name=%v", item.Value)
+						case "type":
+							g.Fgenf(w, "type_=%v", item.Value)
 						case "noParent":
 							g.Fgenf(w, "parent=(None if %v else ...)", item.Value)
 						case "parent":

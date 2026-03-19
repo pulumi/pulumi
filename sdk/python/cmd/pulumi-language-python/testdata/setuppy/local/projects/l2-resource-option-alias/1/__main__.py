@@ -13,3 +13,5 @@ opts = pulumi.ResourceOptions(aliases=[pulumi.Alias(parent=(None if True else ..
 alias_parent = simple.Resource("aliasParent", value=True,
 opts = pulumi.ResourceOptions(aliases=[pulumi.Alias(parent=alias_urn)],
     parent=parent))
+alias_type = simple.Resource("aliasType", value=True,
+opts = pulumi.ResourceOptions(aliases=[pulumi.Alias(type_="component:index:Custom")]))

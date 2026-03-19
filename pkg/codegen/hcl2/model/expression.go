@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1333,28 +1333,48 @@ func literalText(value cty.Value, rawBytes []byte, escaped, quoted bool) string 
 }
 
 func escapeString(s string) string {
-	// escape special characters
-	s = strconv.Quote(s)
-	s = s[1 : len(s)-1] // Remove surrounding double quote (`"`)
-
-	// Escape `${`
-	runes := []rune(s)
-	out := slice.Prealloc[rune](len(runes))
-	for i, r := range runes {
-		next := func() rune {
-			if i >= len(runes)-1 {
-				return 0
+	// Escape the string using only HCL-compatible escape sequences.
+	// HCL supports: \n, \r, \t, \\, \", \uXXXX, \UXXXXXXXX
+	// Go's strconv.Quote produces \a, \b, \f, \v, \xHH which are NOT valid HCL.
+	out := slice.Prealloc[rune](len([]rune(s)))
+	for _, r := range s {
+		switch r {
+		case '"':
+			out = append(out, '\\', '"')
+		case '\\':
+			out = append(out, '\\', '\\')
+		case '\n':
+			out = append(out, '\\', 'n')
+		case '\r':
+			out = append(out, '\\', 'r')
+		case '\t':
+			out = append(out, '\\', 't')
+		default:
+			if r < 0x20 || r == 0x7f {
+				out = append(out, []rune(fmt.Sprintf("\\u%04x", r))...)
+			} else if r > 0xFFFF {
+				out = append(out, []rune(fmt.Sprintf("\\U%08x", r))...)
+			} else {
+				out = append(out, r)
 			}
-			return runes[i+1]
 		}
-		if r == '$' && next() == '{' {
-			out = append(out, '$')
-		} else if r == '%' && next() == '{' {
-			out = append(out, '%')
-		}
-		out = append(out, r)
 	}
-	return string(out)
+
+	// Escape `${` and `%{` template sequences.
+	result := slice.Prealloc[rune](len(out))
+	for i, r := range out {
+		next := rune(0)
+		if i < len(out)-1 {
+			next = out[i+1]
+		}
+		if r == '$' && next == '{' {
+			result = append(result, '$')
+		} else if r == '%' && next == '{' {
+			result = append(result, '%')
+		}
+		result = append(result, r)
+	}
+	return string(result)
 }
 
 // LiteralValueExpression represents a semantically-analyzed literal value expression.

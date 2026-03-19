@@ -1,4 +1,4 @@
-# Copyright 2024-2025, Pulumi Corporation.
+# Copyright 2024, Pulumi Corporation.
 
 from typing import Any
 

@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -657,13 +657,25 @@ package "random" {
         value = "SGVsbG8=" // base64 encoded "Hello"
     }
 }
+
+// Unlabeled package with all fields specified
+package {
+	baseProviderName = "gcp"
+	baseProviderVersion = "2.3.4"
+}
 `
 	parser := syntax.NewParser()
 	err := parser.ParseFile(bytes.NewReader([]byte(source)), "program.pp")
 	require.NoError(t, err)
 	packageDescriptors, diags := pcl.ReadPackageDescriptors(parser.Files[0])
 	require.False(t, diags.HasErrors(), "There are no error diagnostics")
-	require.Len(t, packageDescriptors, 3, "There are two package descriptors")
+	require.Len(t, diags, 3, "There are three warning diagnostics")
+	for _, diag := range diags {
+		require.Equal(t, hcl.DiagWarning, diag.Severity)
+		require.Equal(t, "package block label is deprecated", diag.Summary)
+	}
+
+	require.Len(t, packageDescriptors, 4, "There are four package descriptors")
 
 	require.Equal(t, "aws", packageDescriptors["aws"].Name)
 	require.Nil(t, packageDescriptors["aws"].Version)
@@ -681,6 +693,78 @@ package "random" {
 	assert.Equal(t, "4.5.6", packageDescriptors["random"].Parameterization.Version.String())
 	base64Value := base64.StdEncoding.EncodeToString(packageDescriptors["random"].Parameterization.Value)
 	assert.Equal(t, "SGVsbG8=", base64Value)
+
+	require.Equal(t, "gcp", packageDescriptors["gcp"].Name)
+	require.Equal(t, "2.3.4", packageDescriptors["gcp"].Version.String())
+}
+
+func TestReadAllPackageDescriptorsAllowsIdenticalDuplicates(t *testing.T) {
+	t.Parallel()
+
+	// The same package block in two files (e.g. main.pp and a per-package .pp file) should be
+	// silently deduplicated rather than causing an error.
+	sharedPackage := `
+package {
+	baseProviderName = "parameterized"
+	baseProviderVersion = "1.2.3"
+	parameterization {
+		name = "subpackage"
+		version = "2.0.0"
+		value = "SGVsbG8=" // base64 encoded "Hello"
+	}
+}
+`
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(bytes.NewReader(
+		[]byte(sharedPackage+`resource r "subpackage:index:Foo" {}`)), "main.pp"))
+	require.NoError(t, parser.ParseFile(bytes.NewReader(
+		[]byte(sharedPackage)), "subpackage.pp"))
+
+	descriptors, diags := pcl.ReadAllPackageDescriptors(parser.Files)
+	assert.False(t, diags.HasErrors(), "identical duplicate package blocks should not produce errors: %v", diags)
+	require.Len(t, descriptors, 1)
+	require.NotNil(t, descriptors["subpackage"])
+}
+
+func TestReadAllPackageDescriptorsErrorsOnConflictingDuplicates(t *testing.T) {
+	t.Parallel()
+
+	pkg1 := `
+package {
+	baseProviderName = "parameterized"
+	baseProviderVersion = "1.2.3"
+	parameterization {
+		name = "subpackage"
+		version = "2.0.0"
+		value = "SGVsbG8=" // base64 encoded "Hello"
+	}
+}
+`
+	pkg2 := `
+package {
+	baseProviderName = "parameterized"
+	baseProviderVersion = "1.2.3"
+	parameterization {
+		name = "subpackage"
+		version = "3.0.0"
+		value = "SGVsbG8="
+	}
+}
+`
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(bytes.NewReader([]byte(pkg1)), "main.pp"))
+	require.NoError(t, parser.ParseFile(bytes.NewReader([]byte(pkg2)), "subpackage.pp"))
+
+	_, diags := pcl.ReadAllPackageDescriptors(parser.Files)
+	assert.True(t, diags.HasErrors(), "conflicting package blocks should produce an error")
+	hasConflictError := false
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError && d.Summary == `package "subpackage" was already defined with different parameters` {
+			hasConflictError = true
+			break
+		}
+	}
+	assert.True(t, hasConflictError, "expected a conflict error diagnostic")
 }
 
 func TestBindingConditionalResourcesDoesNotProduceDiagnostics(t *testing.T) {

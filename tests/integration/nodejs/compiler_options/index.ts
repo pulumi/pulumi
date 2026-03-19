@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 // Confirm that Pulumi no longer forces the `target` `compilerOptions` in `tsconfig.json` to be `es6`.
 //

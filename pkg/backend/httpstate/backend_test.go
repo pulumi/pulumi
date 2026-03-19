@@ -1,16 +1,17 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package httpstate
 
 import (
@@ -62,10 +63,10 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -122,10 +123,10 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -280,10 +281,10 @@ func TestDisableIntegrityChecking(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -383,7 +384,7 @@ func TestCopilotExplainer(t *testing.T) {
 	}
 
 	// Create a backend and API client using our mock transport
-	apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
+	apiClient := client.NewClient(client.PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
 	apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
 	b := &cloudBackend{
 		client: apiClient,
@@ -435,10 +436,10 @@ func TestListStackNames(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
 	require.NoError(t, err)
 
 	// Create test stacks
@@ -550,10 +551,10 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
 	require.NoError(t, err)
 
 	// Create a test stack
@@ -1327,7 +1328,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			},
 		}
 
-		apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
+		apiClient := client.NewClient(client.PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
 		apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
 		b := &cloudBackend{
 			client: apiClient,
@@ -1365,7 +1366,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			},
 		}
 
-		apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
+		apiClient := client.NewClient(client.PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
 		apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
 		b := &cloudBackend{
 			client: apiClient,

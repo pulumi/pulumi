@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1998,6 +1998,7 @@ func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 // Eventually we want to fix this so new plugins are true plugins in the plugin cache.
 func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 	return (kind == apitype.LanguagePlugin && name == "nodejs") ||
+		(kind == apitype.LanguagePlugin && name == "bun") ||
 		(kind == apitype.LanguagePlugin && name == "go") ||
 		(kind == apitype.LanguagePlugin && name == "python") ||
 		(kind == apitype.LanguagePlugin && name == "dotnet") ||
