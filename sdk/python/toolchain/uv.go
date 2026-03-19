@@ -133,13 +133,13 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 		// No local pyproject.toml found, this is likely a template with a requirements.txt, convert it to a
 		// pyproject.toml file.
 		// We can't use workspace.LoadProject here because the workspace module depends on toolchain.
-		// TODO: https://github.com/pulumi/pulumi/issues/20953
+		// TODO: use workspace project loading here if the dependency direction allows it.
 		//
 		// We can also remove the call to `PrepareProject` here eventually. Before `Language.Template` existed, the
 		// creation of a `pyproject.toml` file happened during `pulumi install`. It is possible to have a half
 		// initialized project, for example from `pulumi new ... --generate-only` which has a `requirements.txt`
 		// that still needs to be converted. We want to maintain the same behavior as before here for a while.
-		// TODO: https://github.com/pulumi/pulumi/issues/20987
+		// TODO: remove this fallback once project creation always materializes the toolchain metadata up front.
 		var projectName string
 		pulumiYamlPath := filepath.Join(cwd, "Pulumi.yaml")
 		if pulumiYamlData, err := os.ReadFile(pulumiYamlPath); err == nil {
