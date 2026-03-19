@@ -114,7 +114,7 @@ func deserializeProperty(v any, dec config.Decrypter) (resource.PropertyValue, e
 func TestCachingSecretsManager(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sm := &testSecretsManager{}
 	csm := NewBatchingCachingSecretsManager(sm)
 
@@ -360,7 +360,7 @@ func TestBatchEncrypter(t *testing.T) {
 	t.Parallel()
 	t.Run("empty batch", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 
 		_, complete := beginBatchEncryption(sm.Encrypter(), NewSecretCache(), 999)
@@ -371,7 +371,7 @@ func TestBatchEncrypter(t *testing.T) {
 
 	t.Run("single batch", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 		secret := &resource.Secret{}
 		target := &apitype.SecretV1{}
@@ -386,7 +386,7 @@ func TestBatchEncrypter(t *testing.T) {
 
 	t.Run("auto-send on max batch reached", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 		secret := &resource.Secret{}
 		target1 := &apitype.SecretV1{}
@@ -405,7 +405,7 @@ func TestBatchEncrypter(t *testing.T) {
 
 	t.Run("leverages cache if whole batch cached", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 		cache := NewSecretCache()
 		secret := &resource.Secret{}
@@ -422,7 +422,7 @@ func TestBatchEncrypter(t *testing.T) {
 
 	t.Run("bypass cache on partial miss", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 		cache := NewSecretCache()
 		secret1 := &resource.Secret{}
@@ -443,7 +443,7 @@ func TestBatchEncrypter(t *testing.T) {
 
 	t.Run("can't enqueue after complete", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 		enc, complete := beginBatchEncryption(sm.Encrypter(), NewSecretCache(), 999)
 		require.NoError(t, complete(ctx), "complete")
@@ -459,7 +459,7 @@ func TestBatchDecrypter(t *testing.T) {
 	t.Parallel()
 	t.Run("empty batch", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 
 		_, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
@@ -470,7 +470,7 @@ func TestBatchDecrypter(t *testing.T) {
 
 	t.Run("single batch", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 		secret := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 
@@ -484,7 +484,7 @@ func TestBatchDecrypter(t *testing.T) {
 
 	t.Run("auto-send on max batch reached", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 		secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 		secret2 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
@@ -502,7 +502,7 @@ func TestBatchDecrypter(t *testing.T) {
 
 	t.Run("leverages cache if whole batch cached", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 		cache := NewSecretCache()
 		secret := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
@@ -519,7 +519,7 @@ func TestBatchDecrypter(t *testing.T) {
 
 	t.Run("bypass cache on partial miss", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 		cache := NewSecretCache()
 		secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
@@ -540,7 +540,7 @@ func TestBatchDecrypter(t *testing.T) {
 
 	t.Run("can't enqueue after complete", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
+		ctx := t.Context()
 		sm := &testSecretsManager{}
 		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
 		require.NoError(t, complete(ctx), "complete")

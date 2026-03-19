@@ -71,7 +71,7 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), lm, []string{})
+	err := cmd.Run(t.Context(), lm, []string{})
 	require.NoError(t, err)
 }
 
@@ -112,7 +112,7 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), lm, []string{"org1"})
+	err := cmd.Run(t.Context(), lm, []string{"org1"})
 	require.NoError(t, err)
 }
 
@@ -172,7 +172,7 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), lm, []string{})
+	err := cmd.Run(t.Context(), lm, []string{})
 	require.NoError(t, err)
 
 	assertEnvValue := func(env map[string]string, key, val string) {

@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: backend
-  description: Move CloudConsoleURL from httpstate to httpstate/client

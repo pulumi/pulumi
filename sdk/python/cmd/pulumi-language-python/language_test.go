@@ -104,7 +104,6 @@ var expectedFailures = map[string]string{
 	"l1-builtin-try":      "Temporarily disabled until pr #18915 is submitted",
 	"l1-builtin-can":      "Temporarily disabled until pr #18916 is submitted",
 	"l1-builtin-list":     "singleOrNone throws for empty list instead of returning null",
-	"l3-range":            "enumerate(map) gives (index, key) pairs instead of (key, value); map range generates wrong resource names", //nolint:lll
 	"l3-deferred-outputs": "does not type-check",
 }
 

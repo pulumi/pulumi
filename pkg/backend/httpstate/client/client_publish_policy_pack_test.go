@@ -16,7 +16,6 @@ package client
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -125,7 +124,7 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 	var metadata map[string]string
 
 	// Call PublishPolicyPack
-	version, err := client.PublishPolicyPack(context.Background(), "test-org", analyzerInfo, archive, metadata)
+	version, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 	assert.Equal(t, "1.2.3", version)
 
@@ -224,7 +223,7 @@ func TestPublishPolicyPack_EmptyOptionalFields(t *testing.T) {
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(context.Background(), "test-org", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 
 	// Verify required fields are present
@@ -294,7 +293,7 @@ func TestPublishPolicyPack_LegacyVersionHandling(t *testing.T) {
 	// Empty metadata.
 	var metadata map[string]string
 
-	version, err := client.PublishPolicyPack(context.Background(), "test-org", analyzerInfo, archive, metadata)
+	version, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 
 	// Verify that server-assigned version is returned when client version is empty
@@ -391,7 +390,7 @@ func TestPublishPolicyPack_PolicyConfigSchemaConversion(t *testing.T) {
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(context.Background(), "test-org", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 
 	// Verify config schema conversion
@@ -473,7 +472,7 @@ func TestPublishPolicyPack_NilConfigSchema(t *testing.T) {
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(context.Background(), "test-org", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 
 	// Verify nil config schema is handled correctly
@@ -537,7 +536,7 @@ func TestPublishPolicyPack_NilComplianceFramework(t *testing.T) {
 	// Empty metadata.
 	var metadata map[string]string
 
-	_, err := client.PublishPolicyPack(context.Background(), "test-org", analyzerInfo, archive, metadata)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org", analyzerInfo, archive, metadata)
 	require.NoError(t, err)
 
 	// Verify nil compliance framework is handled correctly

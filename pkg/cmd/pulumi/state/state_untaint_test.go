@@ -15,7 +15,6 @@
 package state
 
 import (
-	"context"
 	"encoding/json"
 	"path/filepath"
 	"testing"
@@ -33,7 +32,7 @@ import (
 func TestUntaintSingleResource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -82,7 +81,7 @@ func TestUntaintSingleResource(t *testing.T) {
 func TestUntaintMultipleResources(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -146,7 +145,7 @@ func TestUntaintMultipleResources(t *testing.T) {
 func TestUntaintNonExistentResource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -199,7 +198,7 @@ func TestUntaintNonExistentResource(t *testing.T) {
 func TestUntaintMixedExistingAndNonExistent(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -261,7 +260,7 @@ func TestUntaintMixedExistingAndNonExistent(t *testing.T) {
 func TestUntaintAlreadyUntaintedResource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -322,7 +321,7 @@ func TestUntaintEmptySnapshot(t *testing.T) {
 func TestUntaintWithParentChildRelationship(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -422,7 +421,7 @@ func TestUntaintMultipleResourcesWithErrors(t *testing.T) {
 func TestUntaintWithDependencies(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
@@ -483,7 +482,7 @@ func TestUntaintWithDependencies(t *testing.T) {
 func TestUntaintRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)

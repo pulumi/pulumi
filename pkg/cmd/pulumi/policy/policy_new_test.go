@@ -15,7 +15,6 @@
 package policy
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -34,7 +33,7 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 		templateNameOrURL: "aws-javascript",
 	}
 
-	err := runNewPolicyPack(context.Background(), args)
+	err := runNewPolicyPack(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(tempdir, "PulumiPolicy.yaml"))
@@ -56,7 +55,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 			templateNameOrURL: nonExistantTemplate,
 		}
 
-		err := runNewPolicyPack(context.Background(), args)
+		err := runNewPolicyPack(t.Context(), args)
 		assert.Error(t, err)
 		assertNotFoundError(t, err)
 	})
@@ -71,7 +70,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 			templateNameOrURL: nonExistantTemplate,
 		}
 
-		err := runNewPolicyPack(context.Background(), args)
+		err := runNewPolicyPack(t.Context(), args)
 		assert.Error(t, err)
 		assertNotFoundError(t, err)
 	})

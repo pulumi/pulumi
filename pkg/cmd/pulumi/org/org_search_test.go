@@ -77,7 +77,7 @@ func TestSearch_cmd(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{})
+	err := cmd.Run(t.Context(), []string{})
 	require.NoError(t, err)
 
 	assert.Contains(t, buff.String(), name)
@@ -131,7 +131,7 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{})
+	err := cmd.Run(t.Context(), []string{})
 	require.NoError(t, err)
 
 	assert.Contains(t, buff.String(), name)
