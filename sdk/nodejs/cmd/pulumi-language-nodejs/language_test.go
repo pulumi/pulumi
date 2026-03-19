@@ -206,9 +206,6 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 								"On linux bun has trouble resolving indirect dependencies that point to a local file" +
 									"https://github.com/pulumi/pulumi/issues/22100")
 						}
-						if strings.HasPrefix(tt, "policy-") {
-							t.Skip("Policy tests are intermittently failing on bun, printing values as [[secret]]")
-						}
 					}
 
 					if expected, ok := expectedFailures[tt]; ok {
