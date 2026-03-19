@@ -76,4 +76,3 @@ func PrintOperationSummaryJSON(s *OperationSummarySink) error {
 	summary := s.OperationSummary()
 	return PrintJSON(summary)
 }
-
