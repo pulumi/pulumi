@@ -48,3 +48,33 @@ func TestEscapeStringRoundTrip(t *testing.T) {
 		require.Equal(t, norm.NFC.String(s), val.AsString())
 	})
 }
+
+func TestBindIntegerLiterals(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		expr     string
+		expected Type
+	}{
+		{expr: "0", expected: IntType},
+		{expr: "2147483647", expected: IntType},
+		{expr: "2147483648", expected: NumberType},
+		{expr: "-2147483648", expected: IntType},
+		{expr: "-2147483649", expected: NumberType},
+		{expr: "3.14", expected: NumberType},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.expr, func(t *testing.T) {
+			t.Parallel()
+
+			expr, diags := BindExpressionText(tc.expr, nil, hcl.Pos{})
+			require.False(t, diags.HasErrors(), "failed to bind %q: %s", tc.expr, diags.Error())
+
+			constType, ok := expr.Type().(*ConstType)
+			require.True(t, ok, "expected const type for %q, got %T", tc.expr, expr.Type())
+			require.True(t, constType.Type.Equals(tc.expected), "expected %v for %q, got %v", tc.expected, tc.expr, constType.Type)
+		})
+	}
+}
