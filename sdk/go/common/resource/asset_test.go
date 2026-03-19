@@ -523,7 +523,7 @@ func TestArchiveTarFiles(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		name := filepath.Join(dir, fmt.Sprintf("file%d.txt", i))
 		data := make([]byte, 1024*(i+1))
-		//nolint:gosec
+		//nolint:gosec,staticcheck
 		_, err := rand.Read(data)
 		require.NoError(t, err)
 		err = os.WriteFile(name, data, 0o600)
