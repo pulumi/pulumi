@@ -15,6 +15,8 @@
 package ui
 
 import (
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -74,5 +76,11 @@ func PrintOperationSummaryJSON(s *OperationSummarySink) error {
 		return nil
 	}
 	summary := s.OperationSummary()
-	return PrintJSON(summary)
+	// Emit a single-line JSON object so it works naturally with JSONL parsing.
+	jsonStr, err := MakeJSONString(summary, false /* multiline */)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(os.Stdout, jsonStr)
+	return err
 }
