@@ -372,8 +372,7 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 		}
 
 		i.packageRefs[key] = resp.GetRef()
-		i.packageRefs[descriptor.Name] = resp.GetRef()
-		i.packageRefs[descriptor.Parameterization.Name] = resp.GetRef()
+		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
 	}
 
 	return nil
