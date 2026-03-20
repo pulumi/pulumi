@@ -852,7 +852,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 			g.addPulumiImport(pkg, vPath, mod, name)
 		}
-		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar {
+		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar && !g.isComponent {
 			g.importer.Import("github.com/pulumi/pulumi/sdk/v3/go/pulumi/config", "config")
 		}
 
