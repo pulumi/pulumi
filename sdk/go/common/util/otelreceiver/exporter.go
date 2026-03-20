@@ -72,23 +72,38 @@ func NewExporter(endpoint string) (SpanExporter, error) {
 }
 
 func resolveFilePath(endpoint string) (string, error) {
-	path := strings.TrimPrefix(endpoint, "file://")
-	if path == "" {
-		return "", errors.New("file path is required for file:// endpoint")
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return "", fmt.Errorf("invalid file:// endpoint: %w", err)
 	}
 
-	if strings.HasPrefix(path, "~/") {
+	// file://~/foo: tilde is in the Host field, path is /foo
+	if u.Host == "~" {
 		usr, err := user.Current()
 		if err != nil {
 			return "", fmt.Errorf("could not determine current user to resolve file://~ path: %w", err)
 		}
-		path = filepath.Join(usr.HomeDir, path[2:])
+		path, err := filepath.Abs(filepath.Join(usr.HomeDir, filepath.FromSlash(strings.TrimPrefix(u.Path, "/"))))
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve file path: %w", err)
+		}
+		return path, nil
 	}
 
-	path, err := filepath.Abs(path)
+	// All other cases: authority is empty, full path is in u.Path. On Windows, file:///C:/foo parses to u.Path ==
+	// "/C:/foo". Strip the leading slash before a drive letter so filepath.Abs doesn't prepend the current drive.
+	p := u.Path
+	if p == "" {
+		return "", errors.New("file path is required for file:// endpoint")
+	}
+	if len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+		// looks like /X:/... — drop the leading slash
+		p = p[1:]
+	}
+
+	path, err := filepath.Abs(filepath.FromSlash(p))
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve file path: %w", err)
 	}
-
 	return path, nil
 }
