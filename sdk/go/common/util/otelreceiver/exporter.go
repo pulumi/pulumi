@@ -19,6 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os/user"
+	"path/filepath"
+	"strings"
 
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
@@ -47,12 +50,9 @@ func NewExporter(endpoint string) (SpanExporter, error) {
 
 	switch u.Scheme {
 	case "file":
-		path := u.Path
-		if path == "" {
-			path = u.Opaque
-		}
-		if path == "" {
-			return nil, errors.New("file path is required for file:// endpoint")
+		path, err := resolveFilePath(endpoint)
+		if err != nil {
+			return nil, err
 		}
 		return newFileExporter(path)
 
@@ -69,4 +69,41 @@ func NewExporter(endpoint string) (SpanExporter, error) {
 	default:
 		return nil, fmt.Errorf("unsupported endpoint scheme: %s", u.Scheme)
 	}
+}
+
+func resolveFilePath(endpoint string) (string, error) {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return "", fmt.Errorf("invalid file:// endpoint: %w", err)
+	}
+
+	// file://~/foo: tilde is in the Host field, path is /foo
+	if u.Host == "~" {
+		usr, err := user.Current()
+		if err != nil {
+			return "", fmt.Errorf("could not determine current user to resolve file://~ path: %w", err)
+		}
+		path, err := filepath.Abs(filepath.Join(usr.HomeDir, filepath.FromSlash(strings.TrimPrefix(u.Path, "/"))))
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve file path: %w", err)
+		}
+		return path, nil
+	}
+
+	// All other cases: authority is empty, full path is in u.Path. On Windows, file:///C:/foo parses to u.Path ==
+	// "/C:/foo". Strip the leading slash before a drive letter so filepath.Abs doesn't prepend the current drive.
+	p := u.Path
+	if p == "" {
+		return "", errors.New("file path is required for file:// endpoint")
+	}
+	if len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+		// looks like /X:/... — drop the leading slash
+		p = p[1:]
+	}
+
+	path, err := filepath.Abs(filepath.FromSlash(p))
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve file path: %w", err)
+	}
+	return path, nil
 }
