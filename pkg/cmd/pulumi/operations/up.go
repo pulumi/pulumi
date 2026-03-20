@@ -265,6 +265,9 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		if summary != nil && summary.StartTime.IsZero() {
+			// Deliberate duplication: the display pipeline already tracks duration for
+			// human-readable output. We separately track timing here so `--format json`
+			// can emit a structured summary without depending on display internals.
 			summary.StartTime = time.Now()
 		}
 
@@ -525,6 +528,9 @@ func NewUpCmd() *cobra.Command {
 		// - show template.Quickstart?
 
 		if summary != nil && summary.StartTime.IsZero() {
+			// Deliberate duplication: the display pipeline already tracks duration for
+			// human-readable output. We separately track timing here so `--format json`
+			// can emit a structured summary without depending on display internals.
 			summary.StartTime = time.Now()
 		}
 
