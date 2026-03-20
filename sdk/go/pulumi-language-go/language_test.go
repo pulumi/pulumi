@@ -124,6 +124,8 @@ var expectedFailures = map[string]string{
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
 	"l3-deferred-outputs":                 "does not compile && for expressions are not supported",
+
+	"l3-rewrite-conversions": "does not compile; missing necessary casts for pulumi inputs",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
