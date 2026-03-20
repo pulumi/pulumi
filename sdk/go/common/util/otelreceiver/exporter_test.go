@@ -17,6 +17,7 @@ package otelreceiver
 import (
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,9 +28,20 @@ func TestResolveFilePath(t *testing.T) {
 
 	t.Run("absolute path", func(t *testing.T) {
 		t.Parallel()
-		path, err := resolveFilePath("file:///tmp/traces.json")
+		var (
+			input    string
+			expected string
+		)
+		if runtime.GOOS == "windows" {
+			input = "file:///C:/traces.json"
+			expected = `C:\traces.json`
+		} else {
+			input = "file:///tmp/traces.json"
+			expected = "/tmp/traces.json"
+		}
+		path, err := resolveFilePath(input)
 		require.NoError(t, err)
-		require.Equal(t, "/tmp/traces.json", path)
+		require.Equal(t, expected, path)
 	})
 
 	t.Run("tilde expands to home dir", func(t *testing.T) {
