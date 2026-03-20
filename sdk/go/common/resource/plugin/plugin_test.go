@@ -130,7 +130,7 @@ func TestHealthCheck(t *testing.T) {
 			return &foo{}, nil
 		}
 
-		conn, _, err := dialPlugin(port, "test", "test", handshake, []grpc.DialOption{
+		conn, _, err := dialPlugin(t.Context(), port, "test", "test", handshake, []grpc.DialOption{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		})
 		require.NoError(t, err)
