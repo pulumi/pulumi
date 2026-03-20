@@ -1806,8 +1806,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			if goal.ID != "" {
 				replaceDiff := strings.Join(
 					slice.Map(diff.ReplaceKeys, func(k resource.PropertyKey) string {
-						old := old.Inputs[k].String()
-						new := new.Inputs[k].String()
+						old := old.Inputs[k].RedactSecrets()
+						new := new.Inputs[k].RedactSecrets()
 						return fmt.Sprintf("%s: %s => %s", k, old, new)
 					}),
 					"\n")
