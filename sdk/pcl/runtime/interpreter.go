@@ -1559,7 +1559,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	if err := i.setVariable(ctx, component.Name(), result); err != nil {
 		return hcl.Diagnostics{{
 			Severity: hcl.DiagError,
-			Summary:  fmt.Sprintf("Failed to set component output %s", component.Name()),
+			Summary:  "Failed to set component output" + component.Name(),
 			Detail:   err.Error(),
 		}}
 	}
