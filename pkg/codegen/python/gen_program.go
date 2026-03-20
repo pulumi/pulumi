@@ -295,7 +295,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 			}
 
 			if len(outputVars) == 0 {
-				g.Fgenf(w, "%sself.register_outputs()\n", g.Indent)
+				g.Fgenf(w, "%sself.register_outputs({})\n", g.Indent)
 			} else {
 				g.Fgenf(w, "%sself.register_outputs({\n", g.Indent)
 				g.Indented(func() {
@@ -1180,7 +1180,9 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	}
 
 	for _, input := range componentInputs {
-		value, valueTemps := g.lowerExpression(input.Value, input.Value.Type())
+		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+		g.diagnostics = append(g.diagnostics, diagnostics...)
+		value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))
 		temps = append(temps, valueTemps...)
 		input.Value = value
 	}

@@ -12,4 +12,4 @@ class AnotherComponent(pulumi.ComponentResource):
             special=True,
             opts = pulumi.ResourceOptions(parent=self))
 
-        self.register_outputs()
+        self.register_outputs({})
