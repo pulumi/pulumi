@@ -19,6 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os/user"
+	"path/filepath"
+	"strings"
 
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
@@ -47,12 +50,9 @@ func NewExporter(endpoint string) (SpanExporter, error) {
 
 	switch u.Scheme {
 	case "file":
-		path := u.Path
-		if path == "" {
-			path = u.Opaque
-		}
-		if path == "" {
-			return nil, errors.New("file path is required for file:// endpoint")
+		path, err := resolveFilePath(endpoint)
+		if err != nil {
+			return nil, err
 		}
 		return newFileExporter(path)
 
@@ -69,4 +69,26 @@ func NewExporter(endpoint string) (SpanExporter, error) {
 	default:
 		return nil, fmt.Errorf("unsupported endpoint scheme: %s", u.Scheme)
 	}
+}
+
+func resolveFilePath(endpoint string) (string, error) {
+	path := strings.TrimPrefix(endpoint, "file://")
+	if path == "" {
+		return "", errors.New("file path is required for file:// endpoint")
+	}
+
+	if strings.HasPrefix(path, "~/") {
+		usr, err := user.Current()
+		if err != nil {
+			return "", fmt.Errorf("could not determine current user to resolve file://~ path: %w", err)
+		}
+		path = filepath.Join(usr.HomeDir, path[2:])
+	}
+
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve file path: %w", err)
+	}
+
+	return path, nil
 }
