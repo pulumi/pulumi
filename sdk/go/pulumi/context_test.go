@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -908,4 +909,148 @@ func TestRegisterResourceOutputs(t *testing.T) {
 	}, WithMocks("project", "stack", mocks))
 	require.NoError(t, err)
 	require.Equal(t, int32(2), count.Load(), "RegisterResourceOutputs should be called exactly twice")
+}
+
+// packageRefMonitor is a mock monitor that tracks RegisterPackage calls and
+// returns configurable refs. It embeds mockMonitor for the full interface.
+type packageRefMonitor struct {
+	mockMonitor
+	calls atomic.Int32
+	ref   string
+	err   error
+}
+
+func (m *packageRefMonitor) RegisterPackage(_ context.Context, _ *pulumirpc.RegisterPackageRequest,
+	_ ...grpc.CallOption,
+) (*pulumirpc.RegisterPackageResponse, error) {
+	m.calls.Add(1)
+	if m.err != nil {
+		return nil, m.err
+	}
+	return &pulumirpc.RegisterPackageResponse{Ref: m.ref}, nil
+}
+
+// newTestContextWithMonitor creates a minimal Context for testing with
+// the given monitor and supportsParameterization enabled.
+func newTestContextWithMonitor(monitor pulumirpc.ResourceMonitorClient) *Context {
+	return &Context{
+		ctx: context.Background(),
+		state: &contextState{
+			monitor:                  monitor,
+			supportsParameterization: true,
+		},
+	}
+}
+
+func dummyRegisterReq() (*pulumirpc.RegisterPackageRequest, error) {
+	return &pulumirpc.RegisterPackageRequest{
+		Name:    "test-provider",
+		Version: "1.0.0",
+		Parameterization: &pulumirpc.Parameterization{
+			Name:    "test-package",
+			Version: "2.0.0",
+			Value:   []byte("param"),
+		},
+	}, nil
+}
+
+func TestGetOrRegisterPackageRef(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns registered ref", func(t *testing.T) {
+		t.Parallel()
+		mon := &packageRefMonitor{ref: "uuid-1"}
+		ctx := newTestContextWithMonitor(mon)
+
+		ref, err := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
+
+		require.NoError(t, err)
+		assert.Equal(t, "uuid-1", ref)
+		assert.Equal(t, int32(1), mon.calls.Load())
+	})
+
+	t.Run("caches ref for same key", func(t *testing.T) {
+		t.Parallel()
+		mon := &packageRefMonitor{ref: "uuid-1"}
+		ctx := newTestContextWithMonitor(mon)
+
+		ref1, err := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
+		require.NoError(t, err)
+		ref2, err := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
+		require.NoError(t, err)
+
+		assert.Equal(t, ref1, ref2)
+		assert.Equal(t, int32(1), mon.calls.Load(), "RegisterPackage should be called exactly once")
+	})
+
+	t.Run("different keys register separately", func(t *testing.T) {
+		t.Parallel()
+		mon := &packageRefMonitor{ref: "uuid-1"}
+		ctx := newTestContextWithMonitor(mon)
+
+		_, err := ctx.GetOrRegisterPackageRef("pkg-a:1.0", dummyRegisterReq)
+		require.NoError(t, err)
+		_, err = ctx.GetOrRegisterPackageRef("pkg-b:2.0", dummyRegisterReq)
+		require.NoError(t, err)
+
+		assert.Equal(t, int32(2), mon.calls.Load(), "each key should trigger its own RegisterPackage")
+	})
+
+	t.Run("error is cached", func(t *testing.T) {
+		t.Parallel()
+		expectedErr := errors.New("registration failed")
+		mon := &packageRefMonitor{err: expectedErr}
+		ctx := newTestContextWithMonitor(mon)
+
+		_, err1 := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
+		_, err2 := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
+
+		assert.ErrorIs(t, err1, expectedErr)
+		assert.ErrorIs(t, err2, expectedErr)
+		assert.Equal(t, int32(1), mon.calls.Load(), "should only attempt registration once")
+	})
+
+	t.Run("separate contexts get independent refs", func(t *testing.T) {
+		t.Parallel()
+		monA := &packageRefMonitor{ref: "uuid-A"}
+		monB := &packageRefMonitor{ref: "uuid-B"}
+		ctxA := newTestContextWithMonitor(monA)
+		ctxB := newTestContextWithMonitor(monB)
+
+		refA, err := ctxA.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
+		require.NoError(t, err)
+		refB, err := ctxB.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
+		require.NoError(t, err)
+
+		assert.Equal(t, "uuid-A", refA)
+		assert.Equal(t, "uuid-B", refB)
+		assert.Equal(t, int32(1), monA.calls.Load())
+		assert.Equal(t, int32(1), monB.calls.Load())
+	})
+
+	t.Run("concurrent goroutines same key single registration", func(t *testing.T) {
+		t.Parallel()
+		mon := &packageRefMonitor{ref: "uuid-concurrent"}
+		ctx := newTestContextWithMonitor(mon)
+
+		const goroutines = 50
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+		refs := make([]string, goroutines)
+		errs := make([]error, goroutines)
+
+		for i := 0; i < goroutines; i++ {
+			go func(idx int) {
+				defer wg.Done()
+				refs[idx], errs[idx] = ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
+			}(i)
+		}
+		wg.Wait()
+
+		for i := 0; i < goroutines; i++ {
+			require.NoError(t, errs[i])
+			assert.Equal(t, "uuid-concurrent", refs[i])
+		}
+		assert.Equal(t, int32(1), mon.calls.Load(), "concurrent calls should result in single registration")
+	})
 }
