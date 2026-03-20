@@ -81,10 +81,24 @@ type Interpreter struct {
 	evalLock    sync.Mutex
 	evalContext *hcl.EvalContext
 	stackURN    string
+
+	// namePrefix is prepended to resource and component names when this interpreter is executing
+	// inside a component. For example, if a component named "myComp" contains a resource "res",
+	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
+	namePrefix string
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
 	return &Interpreter{program: program, info: info}
+}
+
+// effectiveName returns the name to use when registering a resource or component with the given
+// logical name, prepending the current namePrefix if one is set.
+func (i *Interpreter) effectiveName(logicalName string) string {
+	if i.namePrefix == "" {
+		return logicalName
+	}
+	return i.namePrefix + "-" + logicalName
 }
 
 func (i *Interpreter) Run(ctx context.Context) error {
@@ -591,7 +605,7 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 
 func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) error {
 	lexicalBaseName := res.Name()
-	logicalBaseName := res.LogicalName()
+	logicalBaseName := i.effectiveName(res.LogicalName())
 	if res.Options == nil || res.Options.Range == nil {
 		result, err := i.registerResourceWith(ctx, res, i.evalContext, logicalBaseName)
 		if err != nil {
@@ -1397,9 +1411,10 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 	marshalOpts.KeepOutputValues = true
 
+	componentName := i.effectiveName(component.LogicalName())
 	request := &pulumirpc.RegisterResourceRequest{
 		Type:            "components:index:" + component.DeclarationName(),
-		Name:            component.LogicalName(),
+		Name:            componentName,
 		Custom:          false,
 		Object:          obj,
 		AcceptSecrets:   true,
@@ -1443,6 +1458,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		loader:      i.loader,
 		evalContext: componentEval,
 		stackURN:    resp.GetUrn(),
+		namePrefix:  componentName,
 	}
 
 	for k, v := range inputs {
