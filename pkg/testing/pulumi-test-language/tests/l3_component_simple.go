@@ -44,6 +44,7 @@ func init() {
 					assert.Empty(l, stack.Inputs, "expected stack to have no inputs")
 
 					component := RequireSingleResource(l, snap.Resources, "components:index:MyComponent")
+					assert.Equal(l, "someComponent", component.URN.Name())
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"input": true,
@@ -57,6 +58,7 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
 
 					simple := RequireSingleResource(l, snap.Resources, "simple:index:Resource")
+					assert.Equal(l, "someComponent-res", simple.URN.Name())
 					assert.Equal(l, component.URN, simple.Parent, "expected simple resource to have component as parent")
 
 					want = resource.NewPropertyMapFromMap(map[string]any{
