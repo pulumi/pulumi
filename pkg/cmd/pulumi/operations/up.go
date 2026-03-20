@@ -626,10 +626,6 @@ func NewUpCmd() *cobra.Command {
 				return fmt.Errorf("invalid --format value %q (expected %q or %q)", format, "default", "json")
 			}
 
-			// `--format json` is summary-only mode; `--json` is event-stream mode.
-			effectiveJSONDisplay := jsonDisplay || formatNormalized == "json"
-			suppressJSONEvents := formatNormalized == "json" && !jsonDisplay
-
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
 			if err != nil {
 				return err
@@ -658,8 +654,7 @@ func NewUpCmd() *cobra.Command {
 				Type:                   displayType,
 				EventLogPath:           eventLogPath,
 				Debug:                  debug,
-				JSONDisplay:            effectiveJSONDisplay,
-				SuppressJSONEvents:     suppressJSONEvents,
+				JSONDisplay:            jsonDisplay,
 				ShowSecrets:            showSecrets,
 			}
 
@@ -673,7 +668,7 @@ func NewUpCmd() *cobra.Command {
 
 			if remoteArgs.Remote {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client,
-					effectiveJSONDisplay, policyPackPaths,
+					jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
 					showReads, suppressOutputs, secretsProvider, &targets, &excludes, replaces, targetReplaces,
 					targetDependents, planFilePath, cmdStack.ConfigFile, runProgram)

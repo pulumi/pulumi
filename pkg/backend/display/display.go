@@ -124,10 +124,6 @@ func ShowEvents(
 	}
 
 	if opts.JSONDisplay {
-		if opts.SuppressJSONEvents {
-			consumeStampedEvents(stampedEvents, done)
-			return
-		}
 		if isPreview && !streamPreview {
 			ShowPreviewDigest(rawEvents, done, opts)
 		} else {
@@ -149,15 +145,6 @@ func ShowEvents(
 		ShowWatchEvents(op, permalink, rawEvents, done, opts)
 	default:
 		contract.Failf("Unknown display type %d", opts.Type)
-	}
-}
-
-func consumeStampedEvents(events <-chan engine.StampedEvent, done chan<- bool) {
-	defer close(done)
-	for e := range events {
-		if e.Type == engine.CancelEvent {
-			break
-		}
 	}
 }
 
