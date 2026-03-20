@@ -829,6 +829,7 @@ func NewUpCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&format, "format", "default",
 		"Output format. Supported values are: default, json")
+	cmd.MarkFlagsMutuallyExclusive("json", "format")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
