@@ -88,6 +88,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -298,9 +299,16 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				ctx = tracing.ContextWithOptions(ctx, tracingOptions)
 			}
 
+			metadata := getCLIMetadata(cmd, os.Environ(), args)
+			logging.V(9).Infof("CLI Metadata: %v", metadata)
+
 			if cmdutil.IsOTelEnabled() {
 				tracer := otel.Tracer("pulumi-cli")
 				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi")
+
+				for k, v := range metadata {
+					rootSpan.SetAttributes(attribute.String("cli."+strings.ToLower(k), v))
+				}
 
 				// Remap legacy OpenTracing spans into this Otel trace, so everything appears in a single trace.
 				sc := rootSpan.SpanContext()
@@ -325,8 +333,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			} else {
 				logging.V(3).Info("Pulumi " + ver.String())
 			}
-			metadata := getCLIMetadata(cmd, os.Environ(), args)
-			logging.V(9).Infof("CLI Metadata: %v", metadata)
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling, memProfileRate); err != nil {

@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Add CLI metadata to the root span
