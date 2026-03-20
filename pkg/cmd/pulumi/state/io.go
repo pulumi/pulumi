@@ -213,63 +213,14 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	return optionMap[option], nil
 }
 
-// resolveStateResourceArg resolves a CLI argument to a single resource in the snapshot.
-// If arg is a valid URN, resources with that URN are located (with interactive disambiguation
-// when multiple instances exist). Otherwise, a case-insensitive substring match is attempted
-// against full resource URNs; multiple matches require interactive disambiguation.
+// resolveStateResourceArg resolves a CLI argument (must be a valid resource URN) to a resource
+// in the snapshot, with interactive disambiguation when multiple state entries share the same URN.
 func resolveStateResourceArg(opts display.Options, snap *deploy.Snapshot, arg string) (*resource.State, error) {
 	urn := resource.URN(arg)
-	if urn.IsValid() {
-		candidates := edit.LocateResource(snap, urn)
-		if len(candidates) == 0 {
-			return nil, fmt.Errorf("No such resource %q exists in the current state", urn)
-		}
-		return locateStackResource(opts, snap, urn)
+	if !urn.IsValid() {
+		return nil, fmt.Errorf("%q is not a valid resource URN", arg)
 	}
-
-	argLower := strings.ToLower(arg)
-	var matches []*resource.State
-	for _, res := range snap.Resources {
-		if strings.Contains(strings.ToLower(string(res.URN)), argLower) {
-			matches = append(matches, res)
-		}
-	}
-	if len(matches) == 0 {
-		return nil, fmt.Errorf("No resource matching %q exists in the current state", arg)
-	}
-	if len(matches) == 1 {
-		return matches[0], nil
-	}
-	if !cmdutil.Interactive() {
-		var b strings.Builder
-		fmt.Fprintf(&b, "Argument %q matched multiple resources:\n", arg)
-		for _, res := range matches {
-			fmt.Fprintf(&b, "  %s\n", res.URN)
-		}
-		return nil, errors.New(strings.TrimSuffix(b.String(), "\n"))
-	}
-
-	surveycore.DisableColor = true
-	prompt := opts.Color.Colorize(colors.SpecPrompt + "Multiple resources match. Select one:" + colors.Reset)
-
-	options := slice.Prealloc[string](len(matches))
-	optionMap := make(map[string]*resource.State)
-	for _, res := range matches {
-		opt := string(res.URN)
-		options = append(options, opt)
-		optionMap[opt] = res
-	}
-
-	var chosen string
-	if err := survey.AskOne(&survey.Select{
-		Message:  prompt,
-		Options:  options,
-		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
-	}, &chosen, ui.SurveyIcons(opts.Color)); err != nil {
-		return nil, errors.New("no resource selected")
-	}
-
-	return optionMap[chosen], nil
+	return locateStackResource(opts, snap, urn)
 }
 
 // Prompt the user to select a URN from the passed in state.

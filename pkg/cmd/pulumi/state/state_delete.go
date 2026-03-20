@@ -48,8 +48,7 @@ func newStateDeleteCommand(ws pkgWorkspace.Context, lm backend.LoginManager) *co
 		Long: `Deletes one or more resources from a stack's state
 
 This command deletes resources from a stack's state, as long as it is safe to do so. Each resource is specified
-by its Pulumi URN, or by a unique case-insensitive substring of its URN when the argument is not a valid URN.
-If no resource is specified, this command will prompt for one.
+by its Pulumi URN. If no resource is specified, this command will prompt for one.
 
 Resources can't be deleted if other resources depend on it or are parented to it. Protected resources
 will not be deleted unless specifically requested using the --force flag.

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/state
-  description: Allow `pulumi state delete` to accept multiple resource arguments and resolve non-URN arguments by case-insensitive substring match against URNs

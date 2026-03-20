@@ -171,25 +171,16 @@ func TestStateDeleteMultipleURNsResolvesDependencyOrder(t *testing.T) {
 	require.Len(t, deployment.Resources, 0)
 }
 
-func TestStateDeleteFuzzyUniqueSubstring(t *testing.T) {
+func TestStateDeleteInvalidURN(t *testing.T) {
 	t.Parallel()
 
 	var mockStack *backend.MockStack
-
-	var savedDeployment *apitype.UntypedDeployment
 	mockBackend := &backend.MockBackend{
 		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
 			assert.Equal(t, "stk", ref.String())
 			return mockStack, nil
 		},
-		ImportDeploymentF: func(_ context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
-			savedDeployment = deployment
-			return nil
-		},
 	}
-
-	targetURN := resource.URN("urn:pulumi:proj::stk::pkg:index:typ::only-match-xyz")
-
 	mockStack = &backend.MockStack{
 		BackendF: func() backend.Backend {
 			return mockBackend
@@ -197,16 +188,14 @@ func TestStateDeleteFuzzyUniqueSubstring(t *testing.T) {
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
-					{URN: targetURN},
+					{URN: "urn:pulumi:proj::stk::pkg:index:typ::res"},
 				},
 			}, nil
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
 		ReadProjectF: func() (*workspace.Project, string, error) {
-			return &workspace.Project{
-				Name: "proj",
-			}, "/testing/project", nil
+			return &workspace.Project{Name: "proj"}, "/testing/project", nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -221,14 +210,9 @@ func TestStateDeleteFuzzyUniqueSubstring(t *testing.T) {
 	}
 
 	cmd := newStateDeleteCommand(ws, lm)
-	cmd.SetArgs([]string{"--stack=stk", "only-match-xyz"})
+	cmd.SetArgs([]string{"--stack=stk", "not-a-valid-urn"})
 	err := cmd.ExecuteContext(t.Context())
-	require.NoError(t, err)
-	require.NotNil(t, savedDeployment)
-	deployment := apitype.DeploymentV3{}
-	err = json.Unmarshal(savedDeployment.Deployment, &deployment)
-	require.NoError(t, err)
-	require.Len(t, deployment.Resources, 0)
+	assert.ErrorContains(t, err, "is not a valid resource URN")
 }
 
 func TestStateDeleteAllAndURN(t *testing.T) {
