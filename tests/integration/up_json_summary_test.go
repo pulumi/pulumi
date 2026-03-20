@@ -20,7 +20,6 @@ import (
 	"io"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -30,15 +29,11 @@ import (
 )
 
 type scopedWriter struct {
-	mu     sync.Mutex
 	buf    *bytes.Buffer
 	active bool
 }
 
 func (w *scopedWriter) Write(p []byte) (n int, err error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
 	if !w.active {
 		return len(p), nil
 	}
@@ -46,9 +41,7 @@ func (w *scopedWriter) Write(p []byte) (n int, err error) {
 }
 
 func (w *scopedWriter) SetActive(active bool) {
-	w.mu.Lock()
 	w.active = active
-	w.mu.Unlock()
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
