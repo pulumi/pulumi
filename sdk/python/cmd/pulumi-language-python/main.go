@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
@@ -1298,8 +1299,13 @@ func (host *pythonLanguageHost) InstallDependencies(
 	defer closer.Close()
 
 	tracer := otel.Tracer("pulumi-language-python")
-	_, otelSpan := cmdutil.StartSpan(server.Context(), tracer, "pip-install")
+	_, otelSpan := cmdutil.StartSpan(server.Context(), tracer, "InstallDependencies",
+		trace.WithAttributes(append(tracing.ProgramInfoAttributes(req.Info),
+			attribute.Bool("useLanguageVersionTools", req.UseLanguageVersionTools),
+			attribute.Bool("isPlugin", req.IsPlugin),
+		)...))
 	defer otelSpan.End()
+	otelSpan.SetAttributes(pythonOptionsAttributes(opts)...)
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
@@ -2002,4 +2008,12 @@ func (host *pythonLanguageHost) Link(
 
 func (host *pythonLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
+}
+
+func pythonOptionsAttributes(opts toolchain.PythonOptions) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.String("pythonOptions.virtualenv", opts.Virtualenv),
+		attribute.String("pythonOptions.toolchain", toolchain.Name(opts.Toolchain)),
+		attribute.String("pythonOptions.typechecker", toolchain.TypeCheckerName(opts.Typechecker)),
+	}
 }
