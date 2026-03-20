@@ -107,6 +107,11 @@ func TestBindResourceOptions(t *testing.T) {
 			src:  `deletedWith = "abc123"`,
 			want: cty.StringVal("abc123"),
 		},
+		{
+			name: "AdditionalSecretOutputs",
+			src:  `additionalSecretOutputs = [property]`,
+			want: cty.TupleVal([]cty.Value{cty.StringVal("property")}),
+		},
 	}
 
 	for _, tt := range tests {
