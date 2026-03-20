@@ -39,6 +39,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -169,6 +170,7 @@ var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy 
 var errPluginNotFound = errors.New("plugin not found")
 
 func dialPlugin[T any](
+	ctx context.Context,
 	portNum int,
 	bin string,
 	prefix string,
@@ -192,7 +194,7 @@ func dialPlugin[T any](
 	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
 	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
 	//     while this bug exists, we'll simply do a bit of waiting of our own up front.
-	timeout, cancel := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+	timeout, cancel := context.WithTimeout(ctx, pluginRPCConnectionTimeout)
 	defer cancel()
 	for {
 		s := conn.GetState()
@@ -227,7 +229,10 @@ func dialPlugin[T any](
 	return conn, handshakeRes, nil
 }
 
-func testConnection(ctx context.Context, bin string, prefix string, conn *grpc.ClientConn) (*struct{}, error) {
+func testConnection(ctx context.Context, bin string, prefix string, conn *grpc.ClientConn) (_ *struct{}, retErr error) {
+	ctx, span := otel.Tracer("pulumi-cli").Start(ctx, "testConnection")
+	defer span.End()
+
 	err := conn.Invoke(ctx, "", nil, nil)
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -249,7 +254,7 @@ func newPlugin[T any](
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
 	attachDebugger bool,
-) (*Plugin, *T, error) {
+) (_ *Plugin, _ *T, retErr error) {
 	if logging.V(9) {
 		var argstr strings.Builder
 		for i, arg := range args {
@@ -274,13 +279,21 @@ func newPlugin[T any](
 	defer tracingSpan.Finish()
 
 	tracer := otel.Tracer("pulumi-cli")
-	_, otelSpan := cmdutil.StartSpan(context.Background(), tracer, "newPlugin",
+	_, otelSpan := cmdutil.StartSpan(ctx.Base(), tracer, "newPlugin",
 		trace.WithAttributes(
 			attribute.String("prefix", prefix),
 			attribute.String("bin", bin),
+			attribute.String("kind", string(kind)),
+			attribute.Bool("attachDebugger", attachDebugger),
 			attribute.String("pulumi-decorator", prefix+":"+bin),
 		))
-	defer otelSpan.End()
+	defer func() {
+		if retErr != nil {
+			otelSpan.SetStatus(otelcodes.Error, retErr.Error())
+			otelSpan.RecordError(retErr)
+		}
+		otelSpan.End()
+	}()
 
 	// Try to execute the binary.
 	plug, err := ExecPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
@@ -416,7 +429,8 @@ func newPlugin[T any](
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, outStreamID, stdoutDone)
 
-	conn, handshakeRes, err := dialPlugin(port, bin, prefix, handshake, dialOptions)
+	dialCtx := trace.ContextWithSpan(ctx.Base(), otelSpan)
+	conn, handshakeRes, err := dialPlugin(dialCtx, port, bin, prefix, handshake, dialOptions)
 	if err != nil {
 		return nil, nil, err
 	}

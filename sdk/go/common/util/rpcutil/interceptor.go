@@ -349,6 +349,9 @@ func otelStreamClientInterceptor() grpc.StreamClientInterceptor {
 func startClientSpan(ctx context.Context, method, target string) (context.Context, trace.Span) {
 	// Parse method name: "/package.Service/Method" -> "package.Service/Method"
 	name := strings.TrimPrefix(method, "/")
+	if name == "" {
+		name = "<empty method>"
+	}
 
 	var attrs []attribute.KeyValue
 	if idx := strings.LastIndex(name, "/"); idx >= 0 {
