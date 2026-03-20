@@ -393,7 +393,9 @@ type trackedClientStream struct {
 
 func (s *trackedClientStream) RecvMsg(m any) error {
 	err := s.ClientStream.RecvMsg(m)
-	if err != nil && err != io.EOF {
+	if err == io.EOF {
+		s.span.End()
+	} else if err != nil {
 		setSpanStatus(s.span, err)
 		s.span.End()
 	}
