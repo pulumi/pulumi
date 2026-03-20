@@ -57,6 +57,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -1188,7 +1189,11 @@ func (host *goLanguageHost) InstallDependencies(
 	defer closer.Close()
 
 	tracer := otel.Tracer("pulumi-language-go")
-	_, otelSpan := cmdutil.StartSpan(server.Context(), tracer, "go-mod-tidy")
+	_, otelSpan := cmdutil.StartSpan(server.Context(), tracer, "InstallDependencies",
+		trace.WithAttributes(append(tracing.ProgramInfoAttributes(req.Info),
+			attribute.Bool("useLanguageVersionTools", req.UseLanguageVersionTools),
+			attribute.Bool("isPlugin", req.IsPlugin),
+		)...))
 	defer otelSpan.End()
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))

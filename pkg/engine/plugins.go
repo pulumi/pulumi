@@ -23,6 +23,10 @@ import (
 	"slices"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -415,12 +419,21 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
 	projectPlugins []workspace.ProjectPlugin, reinstall, explicitInstall bool,
 ) error {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "EnsurePluginsAreInstalled")
+	defer span.End()
+
 	manager := newInstallManager(true /*returnPluginErrors*/)
 	err := ensurePluginsAreInstalled(ctx, opts, d, plugins, projectPlugins, reinstall, explicitInstall, manager)
 	if err != nil {
+		span.RecordError(err)
 		return err
 	}
-	return manager.Wait()
+	err = manager.Wait()
+	if err != nil {
+		span.RecordError(err)
+	}
+	return err
 }
 
 func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
@@ -511,6 +524,18 @@ func installPlugin(
 	pluginManager PluginManager,
 	plugin workspace.PluginDescriptor,
 ) error {
+	tracer := otel.Tracer("pulumi-cli")
+	attrs := []attribute.KeyValue{
+		attribute.String("plugin.name", plugin.Name),
+		attribute.String("plugin.kind", string(plugin.Kind)),
+	}
+	if plugin.Version != nil {
+		attrs = append(attrs, attribute.String("plugin.version", plugin.Version.String()))
+	}
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "installPlugin",
+		trace.WithAttributes(attrs...))
+	defer span.End()
+
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 
 	// If we don't have a version yet try and call GetLatestVersion to fill it in
