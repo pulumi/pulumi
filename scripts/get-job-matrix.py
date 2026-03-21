@@ -64,7 +64,7 @@ INTEGRATION_TEST_PACKAGES = {
     "github.com/pulumi/pulumi/sdk/v3/nodejs/npm",
     "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python",
     "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs",
-    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go",
+    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3",
     # And the entirety of the 'tests' module
 }
 
