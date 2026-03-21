@@ -49,7 +49,7 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 		{
 			name:            "MalformedVersion",
 			goVersionOutput: "go version xyz",
-			err:             "parsing go version: Malformed version: xyz",
+			err:             "parsing go version: malformed version: xyz",
 		},
 		{
 			name:            "GarbageVersionOutput",
