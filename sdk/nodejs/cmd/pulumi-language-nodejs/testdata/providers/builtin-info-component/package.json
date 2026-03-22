@@ -1,0 +1,7 @@
+{
+    "name": "builtin-info-component",
+    "main": "index.ts",
+    "dependencies": {
+        "@pulumi/pulumi": "^3"
+    }
+}

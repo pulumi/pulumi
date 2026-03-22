@@ -44,11 +44,7 @@ func init() {
 
 					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
 					assert.Equal(l, want, component.Inputs, "expected inputs to be {value: true}")
-					AssertPropertyMapMember(l, component.Outputs, "value", resource.NewProperty(true))
-					AssertPropertyMapMember(
-						l, component.Outputs, "context",
-						resource.NewProperty("organization-provider-resource-component-test"),
-					)
+					assert.Equal(l, component.Inputs, component.Outputs, "expected inputs and outputs to match")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
 					simple := RequireSingleNamedResource(l, snap.Resources, "res-child")
