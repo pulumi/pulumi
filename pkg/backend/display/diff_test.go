@@ -275,9 +275,9 @@ func TestCreateDiffDoesNotIndentBeneathHiddenParent(t *testing.T) {
 	t.Parallel()
 
 	stackURN := resource.URN("urn:pulumi:dev::project::pulumi:pulumi:Stack::project-dev")
-	parentURN := resource.URN("urn:pulumi:dev::project::pkg:index:Parent::otel-collector")
-	childURN := resource.URN("urn:pulumi:dev::project::pkg:index:Child::template")
-	siblingURN := resource.URN("urn:pulumi:dev::project::pkg:index:Sibling::cloud-run-agent")
+	parentURN := resource.URN("urn:pulumi:dev::project::pkg:index:Parent::parentRes")
+	childURN := resource.URN("urn:pulumi:dev::project::pkg:index:Parent$pkg:index:Child::childRes")
+	siblingURN := resource.URN("urn:pulumi:dev::project::pkg:index:Sibling::siblingRes")
 
 	newState := func(urn resource.URN, parent resource.URN) *engine.StepEventStateMetadata {
 		return &engine.StepEventStateMetadata{
@@ -338,12 +338,12 @@ func TestCreateDiffDoesNotIndentBeneathHiddenParent(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-expected := `pulumi:pulumi:Stack: (same)
+	expected := `pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:dev::project::pulumi:pulumi:Stack::project-dev]
     + pkg:index:Sibling: (create)
-        [urn=urn:pulumi:dev::project::pkg:index:Sibling::cloud-run-agent]
+        [urn=urn:pulumi:dev::project::pkg:index:Sibling::siblingRes]
     ~ pkg:index:Child: (update)
-        [urn=urn:pulumi:dev::project::pkg:index:Child::template]
+        [urn=urn:pulumi:dev::project::pkg:index:Parent$pkg:index:Child::childRes]
 `
 	assert.Equal(t, strings.TrimSuffix(expected, "\n"), diff)
 }
