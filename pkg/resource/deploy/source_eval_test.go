@@ -1594,6 +1594,80 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 	}
 }
 
+func TestResourceMonitor_remoteComponentIncludesOrganization(t *testing.T) {
+	t.Parallel()
+
+	runInfo := &EvalRunInfo{
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target: &Target{
+			Name:         tokens.MustParseStackName("test"),
+			Organization: "organization",
+		},
+	}
+
+	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
+		_, err := resmon.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{Remote: true})
+		require.NoError(t, err, "register resource")
+		return nil
+	}
+	pluginCtx, err := newTestPluginContext(t, program)
+	require.NoError(t, err, "build plugin context")
+
+	evalSource := NewEvalSource(pluginCtx, runInfo, nil, nil, EvalSourceOptions{}, nil)
+	defer func() {
+		require.NoError(t, evalSource.Close(), "close eval source")
+	}()
+
+	var got plugin.ConstructInfo
+	provider := &deploytest.Provider{
+		ConstructF: func(
+			_ context.Context,
+			req plugin.ConstructRequest,
+			monitor *deploytest.ResourceMonitor,
+		) (plugin.ConstructResponse, error) {
+			got = req.Info
+			return plugin.ConstructResponse{
+				URN: resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", req.Type, req.Name),
+			}, nil
+		},
+	}
+
+	ctx := context.Background()
+	iter, res := evalSource.Iterate(ctx, &testProviderSource{defaultProvider: provider})
+	require.Nil(t, res, "iterate eval source")
+
+	for ev, res := iter.Next(); ev != nil; ev, res = iter.Next() {
+		require.Nil(t, res, "iterate eval source")
+		switch ev := ev.(type) {
+		case RegisterResourceEvent:
+			goal := ev.Goal()
+			id := goal.ID
+			if id == "" {
+				id = "id"
+			}
+			ev.Done(&RegisterResult{
+				State: &resource.State{
+					Type:   goal.Type,
+					URN:    resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name),
+					Custom: goal.Custom,
+					ID:     id,
+					Inputs: goal.Properties,
+					Parent: goal.Parent,
+				},
+			})
+		default:
+			t.Fatalf("unexpected event: %#v", ev)
+		}
+	}
+
+	require.Equal(t, "test", got.Project)
+	require.Equal(t, "test", got.Stack)
+	require.Equal(t, "organization", got.Organization)
+}
+
 // TODO[pulumi/pulumi#2753]: We should re-enable these tests (and fix them up as needed) once we have a solution
 // for #2753.
 // func TestReadResourceAndInvokeVersion(t *testing.T) {
