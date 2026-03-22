@@ -232,10 +232,11 @@ func testAttributeHelper(t *testing.T, names NameTable, expectedCode string) {
 	assert.Equal(t, expectedCode, generatedProgram.String())
 }
 
-// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that given names are used in attribute lookups
+// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that given names are used in attribute
+// lookups
 func TestGenerateLanguageDefinitionsReferencesOtherResourcesByGivenName(t *testing.T) {
 	t.Parallel()
-	var names NameTable = NameTable{
+	names := NameTable{
 		"urn:pulumi:stack::project::aws:s3/bucket:Bucket::my.Bucket.com": "myBucket",
 	}
 	expectedCode := `package aws {
@@ -256,7 +257,8 @@ resource obj "aws:s3/bucketObject:BucketObject" {
 	testAttributeHelper(t, names, expectedCode)
 }
 
-// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that sanitized names are used in attribute lookups
+// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that sanitized names are used in attribute
+// lookups
 func TestGenerateLanguageDefinitionsReferencesOtherResourcesBySanitizedName(t *testing.T) {
 	t.Parallel()
 	var names NameTable
