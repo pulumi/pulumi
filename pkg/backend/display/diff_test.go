@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -337,7 +338,12 @@ func TestCreateDiffDoesNotIndentBeneathHiddenParent(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	assert.Contains(t, diff, "\n    + pkg:index:Sibling: (create)\n")
-	assert.Contains(t, diff, "\n    ~ pkg:index:Child: (update)\n")
-	assert.NotContains(t, diff, "\n        ~ pkg:index:Child: (update)\n")
+expected := `pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:dev::project::pulumi:pulumi:Stack::project-dev]
+    + pkg:index:Sibling: (create)
+        [urn=urn:pulumi:dev::project::pkg:index:Sibling::cloud-run-agent]
+    ~ pkg:index:Child: (update)
+        [urn=urn:pulumi:dev::project::pkg:index:Child::template]
+`
+	assert.Equal(t, strings.TrimSuffix(expected, "\n"), diff)
 }
