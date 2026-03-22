@@ -26,8 +26,10 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -266,4 +268,76 @@ func TestCreateDiffRequiresColor(t *testing.T) {
 	_, err := CreateDiff([]engine.Event{}, Options{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "color must be specified")
+}
+
+func TestCreateDiffDoesNotIndentBeneathHiddenParent(t *testing.T) {
+	t.Parallel()
+
+	stackURN := resource.URN("urn:pulumi:dev::project::pulumi:pulumi:Stack::project-dev")
+	parentURN := resource.URN("urn:pulumi:dev::project::pkg:index:Parent::otel-collector")
+	childURN := resource.URN("urn:pulumi:dev::project::pkg:index:Child::template")
+	siblingURN := resource.URN("urn:pulumi:dev::project::pkg:index:Sibling::cloud-run-agent")
+
+	newState := func(urn resource.URN, parent resource.URN) *engine.StepEventStateMetadata {
+		return &engine.StepEventStateMetadata{
+			URN:    urn,
+			Type:   urn.Type(),
+			Parent: parent,
+			Inputs: resource.PropertyMap{},
+		}
+	}
+
+	events := []engine.Event{
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN:  stackURN,
+				Type: stackURN.Type(),
+				Op:   deploy.OpSame,
+				Old:  newState(stackURN, ""),
+				New:  newState(stackURN, ""),
+				Res:  newState(stackURN, ""),
+			},
+		}),
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN:  parentURN,
+				Type: parentURN.Type(),
+				Op:   deploy.OpSame,
+				Old:  newState(parentURN, stackURN),
+				New:  newState(parentURN, stackURN),
+				Res:  newState(parentURN, stackURN),
+			},
+		}),
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN:  siblingURN,
+				Type: siblingURN.Type(),
+				Op:   deploy.OpCreate,
+				New:  newState(siblingURN, stackURN),
+				Res:  newState(siblingURN, stackURN),
+			},
+		}),
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN:  childURN,
+				Type: childURN.Type(),
+				Op:   deploy.OpUpdate,
+				Old:  newState(childURN, parentURN),
+				New:  newState(childURN, parentURN),
+				Res:  newState(childURN, parentURN),
+			},
+		}),
+		engine.NewCancelEvent(),
+	}
+
+	diff, err := CreateDiff(events, Options{
+		Color:                colors.Never,
+		ShowSameResources:    false,
+		ShowReplacementSteps: true,
+	})
+	require.NoError(t, err)
+
+	assert.Contains(t, diff, "\n    + pkg:index:Sibling: (create)\n")
+	assert.Contains(t, diff, "\n    ~ pkg:index:Child: (update)\n")
+	assert.NotContains(t, diff, "\n        ~ pkg:index:Child: (update)\n")
 }
