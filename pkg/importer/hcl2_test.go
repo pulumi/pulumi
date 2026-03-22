@@ -636,6 +636,87 @@ resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
 	assert.Equal(t, expectedCode, hcl2Text.String(), "Generated HCL2 code does not match expected code")
 }
 
+func TestCreateImportStateSanitizesMappedLexicalNames(t *testing.T) {
+	t.Parallel()
+	logicalName := "mydomain.net."
+	zoneURN := resource.URN("urn:pulumi:stack::project::aws:route53/zone:Zone::" + logicalName)
+	nameTable := NameTable{
+		zoneURN: logicalName,
+	}
+
+	resources := []apitype.ResourceV3{
+		{
+			URN:      zoneURN,
+			ID:       "/hostedzone/Z23K1TY340BZZI",
+			Custom:   true,
+			Type:     "aws:route53/zone:Zone",
+			Outputs: map[string]any{
+				"name": logicalName,
+			},
+		},
+		{
+			URN:      "urn:pulumi:stack::project::aws:route53/record:Record::dependent",
+			ID:       "dependent-id",
+			Custom:   true,
+			Type:     "aws:route53/record:Record",
+			Inputs: map[string]any{
+				"zoneId": "/hostedzone/Z23K1TY340BZZI",
+				"name":   logicalName,
+				"type":   "NS",
+				"ttl":    300.0,
+				"records": []any{
+					"ns-123.awsdns-45.net",
+				},
+			},
+		},
+	}
+
+	states := slice.Prealloc[*resource.State](len(resources))
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
+		require.NoError(t, err)
+		states = append(states, state)
+	}
+
+	importState := createImportState(states, nil, nameTable)
+
+	var roots []string
+	var traversals []string
+	for _, v := range importState.PathedLiteralValues {
+		roots = append(roots, v.Root)
+		if v.ExpressionReference != nil {
+			traversals = append(traversals, v.ExpressionReference.RootName)
+		}
+	}
+
+	assert.Contains(t, roots, "mydomain_net_")
+	assert.NotContains(t, roots, "mydomain.net.")
+	assert.Contains(t, traversals, "mydomain_net_")
+	assert.NotContains(t, traversals, "mydomain.net.")
+}
+
+func TestCreateImportStatePreservesValidMappedLexicalNames(t *testing.T) {
+	t.Parallel()
+
+	zoneURN := resource.URN("urn:pulumi:stack::project::aws:route53/zone:Zone::mydomain-net")
+	nameTable := NameTable{
+		zoneURN: "mydomain_net",
+	}
+
+	state, err := stack.DeserializeResource(apitype.ResourceV3{
+		URN:    zoneURN,
+		ID:     "/hostedzone/Z23K1TY340BZZI",
+		Custom: true,
+		Type:   "aws:route53/zone:Zone",
+	}, config.NopDecrypter)
+	require.NoError(t, err)
+
+	importState := createImportState([]*resource.State{state}, nil, nameTable)
+	require.Len(t, importState.PathedLiteralValues, 1)
+	assert.Equal(t, "mydomain_net", importState.PathedLiteralValues[0].Root)
+	assert.Equal(t, "mydomain_net", importState.PathedLiteralValues[0].ExpressionReference.RootName)
+}
+
 func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *testing.T) {
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
