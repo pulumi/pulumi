@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: import
+  description: Sanitize lexical names used by inferred import references so imported resource names with trailing dots or other invalid identifier characters generate valid code.
