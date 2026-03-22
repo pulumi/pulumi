@@ -42,8 +42,16 @@ func init() {
 					component := RequireSingleResource(l, snap.Resources, "builtin-info-component:index:BuiltinInfo")
 
 					AssertPropertyMapMember(
-						l, component.Outputs, "context",
-						resource.NewProperty("organization-provider-builtin-info-component-test"),
+						l, component.Outputs, "organization",
+						resource.NewProperty("organization"),
+					)
+					AssertPropertyMapMember(
+						l, component.Outputs, "project",
+						resource.NewProperty("provider-builtin-info-component"),
+					)
+					AssertPropertyMapMember(
+						l, component.Outputs, "stack",
+						resource.NewProperty("test"),
 					)
 				},
 			},

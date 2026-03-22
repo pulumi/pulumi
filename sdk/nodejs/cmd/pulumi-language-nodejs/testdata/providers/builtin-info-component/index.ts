@@ -3,17 +3,21 @@ import * as pulumi from "@pulumi/pulumi";
 export interface BuiltinInfoArgs {}
 
 export class BuiltinInfo extends pulumi.ComponentResource {
-    public readonly context: pulumi.Output<string>;
+    public readonly organization: pulumi.Output<string>;
+    public readonly project: pulumi.Output<string>;
+    public readonly stack: pulumi.Output<string>;
 
     constructor(name: string, args: BuiltinInfoArgs, opts?: pulumi.ComponentResourceOptions) {
         super("builtin-info-component:index:BuiltinInfo", name, args, opts);
 
-        this.context = pulumi.output(
-            `${pulumi.getOrganization()}-${pulumi.getProject()}-${pulumi.getStack()}`,
-        );
+        this.organization = pulumi.output(pulumi.getOrganization());
+        this.project = pulumi.output(pulumi.getProject());
+        this.stack = pulumi.output(pulumi.getStack());
 
         this.registerOutputs({
-            context: this.context,
+            organization: this.organization,
+            project: this.project,
+            stack: this.stack,
         });
     }
 }

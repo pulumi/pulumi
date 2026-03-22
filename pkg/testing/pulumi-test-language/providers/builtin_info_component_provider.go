@@ -55,7 +55,13 @@ func (p *BuiltinInfoComponentProvider) GetSchema(
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
-						"context": {
+						"organization": {
+							TypeSpec: schema.TypeSpec{Type: "string"},
+						},
+						"project": {
+							TypeSpec: schema.TypeSpec{Type: "string"},
+						},
+						"stack": {
 							TypeSpec: schema.TypeSpec{Type: "string"},
 						},
 					},

@@ -103,8 +103,8 @@ func TestRemoteComponentConstructInfoIncludesOrganization(t *testing.T) {
 					req plugin.ConstructRequest,
 					monitor *deploytest.ResourceMonitor,
 				) (plugin.ConstructResponse, error) {
-					assert.Equal(t, "test", req.Info.Project)
-					assert.Equal(t, "test", req.Info.Stack)
+					assert.Equal(t, "project-name", req.Info.Project)
+					assert.Equal(t, "stack-name", req.Info.Stack)
 					assert.Equal(t, "organization", req.Info.Organization)
 
 					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
@@ -128,8 +128,9 @@ func TestRemoteComponentConstructInfoIncludesOrganization(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &lt.TestPlan{
+		Project: "project-name",
+		Stack:   "stack-name",
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
-		Steps:   lt.MakeBasicLifecycleSteps(t, 2),
 	}
 
 	project := p.GetProject()
