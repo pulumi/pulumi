@@ -174,10 +174,8 @@ func GenerateHCL2Definition(
 	}
 
 	var items []model.BodyItem
-	name := sanitizeName(state.URN.Name())
-	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
-	// the resource block.
-	if mappedName, ok := importState.Names[state.URN]; ok {
+	name := syntacticName(state.URN, importState.Names)
+	if name != state.URN.Name() {
 		items = append(items, &model.Attribute{
 			Name: "__logicalName",
 			Value: &model.TemplateExpression{
@@ -188,7 +186,6 @@ func GenerateHCL2Definition(
 				},
 			},
 		})
-		name = sanitizeName(mappedName)
 	}
 
 	// keep track of a set of added references to avoid adding the same reference to the dependsOn list
@@ -268,7 +265,7 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		if !ok {
 			return nil, fmt.Errorf("no name for parent %v", state.Parent)
 		}
-		resourceOptions = appendResourceOption(resourceOptions, "parent", newVariableReference(name))
+		resourceOptions = appendResourceOption(resourceOptions, "parent", newVariableReference(sanitizeName(name)))
 	}
 	if state.Provider != "" {
 		ref, err := sdkproviders.ParseReference(state.Provider)
@@ -280,7 +277,7 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 			if !ok {
 				return nil, fmt.Errorf("no name for provider %v", state.Provider)
 			}
-			resourceOptions = appendResourceOption(resourceOptions, "provider", newVariableReference(name))
+			resourceOptions = appendResourceOption(resourceOptions, "provider", newVariableReference(sanitizeName(name)))
 		}
 	}
 	if len(state.Dependencies) != 0 {
@@ -290,6 +287,7 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 			if !ok {
 				return nil, fmt.Errorf("no name for resource %v", d)
 			}
+			name = sanitizeName(name)
 			// implicitly referenced resource via their properties do not need to be added to the dependsOn list
 			// for example if you have a property bucket: exampleBucket.id then exampleBucket doesn't need to
 			// be explicitly added to the dependsOn list
@@ -334,7 +332,7 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		if !ok {
 			return nil, fmt.Errorf("no name for deletedWith %v", state.DeletedWith)
 		}
-		resourceOptions = appendResourceOption(resourceOptions, "deletedWith", newVariableReference(name))
+		resourceOptions = appendResourceOption(resourceOptions, "deletedWith", newVariableReference(sanitizeName(name)))
 	}
 	if len(state.ReplaceWith) > 0 {
 		newReplaceWith := make([]model.Expression, len(state.ReplaceWith))
@@ -344,7 +342,7 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 				return nil, fmt.Errorf("no name for replaceWith %v", replaceWith)
 			}
 
-			newReplaceWith[i] = newVariableReference(name)
+			newReplaceWith[i] = newVariableReference(sanitizeName(name))
 		}
 		resourceOptions = appendResourceOption(resourceOptions, "replaceWith", &model.TupleConsExpression{
 			Tokens:      syntax.NewTupleConsTokens(len(newReplaceWith)),

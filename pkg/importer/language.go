@@ -122,6 +122,13 @@ func sanitizeName(name string) string {
 	return strings.ReplaceAll(name, ".", "_")
 }
 
+func syntacticName(urn resource.URN, names NameTable) string {
+	if mappedName, ok := names[urn]; ok {
+		return sanitizeName(mappedName)
+	}
+	return sanitizeName(urn.Name())
+}
+
 func createImportState(states []*resource.State, snapshot []*resource.State, names NameTable) ImportState {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for _, state := range states {
@@ -130,11 +137,7 @@ func createImportState(states []*resource.State, snapshot []*resource.State, nam
 			continue
 		}
 
-		name := state.URN.Name()
-		if mappedName, ok := names[state.URN]; ok {
-			name = mappedName
-		}
-		name = sanitizeName(name)
+		name := syntacticName(state.URN, names)
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
 			Root:  name,
 			Value: resourceID,

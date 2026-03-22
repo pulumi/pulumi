@@ -636,13 +636,10 @@ resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
 	assert.Equal(t, expectedCode, hcl2Text.String(), "Generated HCL2 code does not match expected code")
 }
 
-func TestCreateImportStateSanitizesMappedLexicalNames(t *testing.T) {
+func TestCreateImportStateSanitizesDerivedSyntacticNames(t *testing.T) {
 	t.Parallel()
 	logicalName := "mydomain.net."
 	zoneURN := resource.URN("urn:pulumi:stack::project::aws:route53/zone:Zone::" + logicalName)
-	nameTable := NameTable{
-		zoneURN: logicalName,
-	}
 
 	resources := []apitype.ResourceV3{
 		{
@@ -678,7 +675,7 @@ func TestCreateImportStateSanitizesMappedLexicalNames(t *testing.T) {
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, nil, nameTable)
+	importState := createImportState(states, nil, nil)
 
 	var roots []string
 	var traversals []string
@@ -695,12 +692,12 @@ func TestCreateImportStateSanitizesMappedLexicalNames(t *testing.T) {
 	assert.NotContains(t, traversals, "mydomain.net.")
 }
 
-func TestCreateImportStatePreservesValidMappedLexicalNames(t *testing.T) {
+func TestCreateImportStateSanitizesMappedSyntacticNames(t *testing.T) {
 	t.Parallel()
 
 	zoneURN := resource.URN("urn:pulumi:stack::project::aws:route53/zone:Zone::mydomain-net")
 	nameTable := NameTable{
-		zoneURN: "mydomain_net",
+		zoneURN: "mydomain.net.",
 	}
 
 	state, err := stack.DeserializeResource(apitype.ResourceV3{
@@ -713,8 +710,115 @@ func TestCreateImportStatePreservesValidMappedLexicalNames(t *testing.T) {
 
 	importState := createImportState([]*resource.State{state}, nil, nameTable)
 	require.Len(t, importState.PathedLiteralValues, 1)
-	assert.Equal(t, "mydomain_net", importState.PathedLiteralValues[0].Root)
-	assert.Equal(t, "mydomain_net", importState.PathedLiteralValues[0].ExpressionReference.RootName)
+	assert.Equal(t, "mydomain_net_", importState.PathedLiteralValues[0].Root)
+	assert.Equal(t, "mydomain_net_", importState.PathedLiteralValues[0].ExpressionReference.RootName)
+}
+
+func TestGenerateHCL2DefinitionsWithInvalidLogicalNamesUseSanitizedSyntacticNames(t *testing.T) {
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		},
+	}
+
+	logicalName := "mydomain.net."
+	resources := []apitype.ResourceV3{
+		{
+			URN:      urn.URN("urn:pulumi:stack::project::aws:s3/bucket:Bucket::" + logicalName),
+			ID:       "provider-generated-bucket-id-abc123",
+			Custom:   true,
+			Type:     "aws:s3/bucket:Bucket",
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::exampleBucketObject",
+			ID:     "provider-generated-bucket-object-id-abc123",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]any{
+				"bucket":       "provider-generated-bucket-id-abc123",
+				"storageClass": "STANDARD",
+			},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+	}
+
+	states := slice.Prealloc[*resource.State](len(resources))
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
+		require.NoError(t, err)
+		states = append(states, state)
+	}
+
+	importState := createImportState(states, snapshot, nil)
+
+	var hcl2Text strings.Builder
+	for i, state := range states {
+		hcl2Def, _, err := GenerateHCL2Definition(loader, state, importState)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		pre := ""
+		if i > 0 {
+			pre = "\n"
+		}
+		_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
+		contract.IgnoreError(err)
+	}
+
+	expectedCode := `resource mydomain_net_ "aws:s3/bucket:Bucket" {
+    __logicalName = "mydomain.net."
+
+}
+
+resource exampleBucketObject "aws:s3/bucketObject:BucketObject" {
+    bucket = mydomain_net_.id
+    storageClass = "STANDARD"
+
+}
+`
+
+	assert.Equal(t, expectedCode, hcl2Text.String(), "Generated HCL2 code does not match expected code")
+}
+
+func TestMakeResourceOptionsSanitizesSyntacticReferences(t *testing.T) {
+	t.Parallel()
+
+	parentURN := resource.URN("urn:pulumi:stack::project::pkg:index:Component::parent")
+	providerURN := resource.URN("urn:pulumi:stack::project::pulumi:providers:pkg::provider")
+	depURN := resource.URN("urn:pulumi:stack::project::pkg:index:Resource::dependency")
+	providerRef, err := providers.NewReference(providerURN, "id")
+	require.NoError(t, err)
+
+	state := &resource.State{
+		URN:          "urn:pulumi:stack::project::pkg:index:Resource::child",
+		Parent:       parentURN,
+		Provider:     providerRef.String(),
+		Dependencies: []resource.URN{depURN},
+	}
+
+	names := NameTable{
+		parentURN:   "parent.component",
+		providerURN: "provider.ref",
+		depURN:      "dependency.ref",
+	}
+
+	opts, err := makeResourceOptions(state, names, map[string]bool{})
+	require.NoError(t, err)
+	require.NotNil(t, opts)
+
+	rendered := fmt.Sprintf("%v", opts)
+	assert.Contains(t, rendered, "parent = parent_component")
+	assert.Contains(t, rendered, "provider = provider_ref")
+	assert.Contains(t, rendered, "dependsOn =")
+	assert.Contains(t, rendered, "dependency_ref")
 }
 
 func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *testing.T) {
