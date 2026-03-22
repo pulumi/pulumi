@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"strings"
 	"testing"
 
@@ -81,7 +82,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 				actualState = renderResource(t, res)
 				return nil
-			}, []*resource.State{state}, snapshot, names)
+			}, []*resource.State{state}, snapshot, maps.Clone(names))
 			require.NoError(t, err)
 
 			assert.Equal(t, state.Type, actualState.Type)
