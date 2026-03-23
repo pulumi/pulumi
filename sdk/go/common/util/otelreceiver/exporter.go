@@ -26,6 +26,19 @@ import (
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
+func headersFromQuery(q url.Values) map[string]string {
+	if len(q) == 0 {
+		return nil
+	}
+	m := make(map[string]string, len(q))
+	for k, vs := range q {
+		if len(vs) > 0 {
+			m[k] = vs[0]
+		}
+	}
+	return m
+}
+
 type SpanExporter interface {
 	// ExportSpans exports the given resource spans.
 	ExportSpans(ctx context.Context, spans []*tracepb.ResourceSpans) error
@@ -36,8 +49,13 @@ type SpanExporter interface {
 // NewExporter creates a SpanExporter based on the endpoint URL.
 // Supported schemes:
 //   - file:// - writes OTLP JSON to a local file
-//   - grpc:// - sends OTLP via gRPC
-//   - no scheme - defaults to gRPC
+//   - grpc:// - sends OTLP via insecure gRPC (local collectors)
+//   - grpcs:// - sends OTLP via TLS-secured gRPC with optional header auth
+//
+// grpc:// and grpcs:// support passing arbitrary gRPC metadata headers as
+// URL query parameters:
+//
+//	grpcs://api.honeycomb.io:443?x-honeycomb-team=YOUR_API_KEY
 func NewExporter(endpoint string) (SpanExporter, error) {
 	if endpoint == "" {
 		return nil, errors.New("endpoint is required")
@@ -61,10 +79,21 @@ func NewExporter(endpoint string) (SpanExporter, error) {
 		if host == "" {
 			return nil, errors.New("host is required for grpc:// endpoint")
 		}
-		return newGRPCExporter(host)
+		return newGRPCExporterWithOptions(grpcExporterOptions{
+			target:  host,
+			headers: headersFromQuery(u.Query()),
+		})
 
-	case "":
-		return newGRPCExporter(endpoint)
+	case "grpcs":
+		host := u.Host
+		if host == "" {
+			return nil, errors.New("host is required for grpcs:// endpoint")
+		}
+		return newGRPCExporterWithOptions(grpcExporterOptions{
+			target:  host,
+			tls:     true,
+			headers: headersFromQuery(u.Query()),
+		})
 
 	default:
 		return nil, fmt.Errorf("unsupported endpoint scheme: %s", u.Scheme)
