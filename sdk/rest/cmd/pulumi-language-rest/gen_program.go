@@ -27,9 +27,9 @@ import (
 
 // DeclarativeProgram is the JSON format generated from PCL for the REST gateway.
 type DeclarativeProgram struct {
-	Resources []DeclarativeResource `json:"resources,omitempty"`
-	Invokes   []DeclarativeInvoke   `json:"invokes,omitempty"`
-	Outputs   map[string]string     `json:"outputs,omitempty"`
+	Resources []DeclarativeResource  `json:"resources,omitempty"`
+	Invokes   []DeclarativeInvoke    `json:"invokes,omitempty"`
+	Outputs   map[string]interface{} `json:"outputs,omitempty"`
 }
 
 // DeclarativeResource represents a single resource to register.
@@ -60,7 +60,7 @@ type DeclarativeOptions struct {
 // generateProgram converts a bound PCL program into our JSON declarative format.
 func generateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	decl := &DeclarativeProgram{
-		Outputs: map[string]string{},
+		Outputs: map[string]interface{}{},
 	}
 
 	nodes := pcl.Linearize(program)
@@ -75,8 +75,7 @@ func generateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 			decl.Resources = append(decl.Resources, res)
 
 		case *pcl.OutputVariable:
-			exprStr := exprToRef(n.Value)
-			decl.Outputs[n.LogicalName()] = exprStr
+			decl.Outputs[n.LogicalName()] = exprToValue(n.Value)
 
 		case *pcl.ConfigVariable, *pcl.LocalVariable, *pcl.PulumiBlock:
 			// Config and locals are resolved at runtime via expression references.

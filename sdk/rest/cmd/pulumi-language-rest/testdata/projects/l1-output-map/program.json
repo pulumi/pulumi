@@ -1,0 +1,21 @@
+{
+  "outputs": {
+    "empty": {},
+    "keys": {
+      "MYKEY": 6,
+      "MY_KEY": 4,
+      "my-key": 2,
+      "my.key": 1,
+      "my_key": 3,
+      "mykey": 5
+    },
+    "numbers": {
+      "1": 1,
+      "2": 2
+    },
+    "strings": {
+      "farewell": "Goodbye, world!",
+      "greeting": "Hello, world!"
+    }
+  }
+}
