@@ -958,19 +958,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				eng.artifactMap.Store(sdkTempDir, sdkArtifact)
 
 				// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-				// Again we need to make a snapshot edit for this.
-				sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
-				if err != nil {
-					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
-				}
-				validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
-				// If we made a snapshot edit we can clean it up now
-				if sdkSnapshotDir != sdkTempDir {
-					err := os.RemoveAll(sdkSnapshotDir)
-					if err != nil {
-						return nil, fmt.Errorf("remove snapshot dir: %w", err)
-					}
-				}
+				validations, err = compareDirectories(sdkTempDir, snapshotDir, true, snapshotEdits)
 				if err != nil {
 					return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg.Name, err)
 				}
@@ -1245,23 +1233,12 @@ func runLanguageTests(
 				if len(test.Runs) > 1 && !test.RunsShareSource {
 					snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 				}
-				projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
-				if err != nil {
-					return nil, fmt.Errorf("program snapshot creation: %w", err)
-				}
-				validations, err := doSnapshot(disableSnapshotWriting, projectDirSnapshot, snapshotDir)
+				validations, err := doSnapshot(disableSnapshotWriting, projectDir, snapshotDir, snapshotEdits)
 				if err != nil {
 					return nil, fmt.Errorf("program snapshot validation: %w", err)
 				}
 				if len(validations) > 0 {
 					return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
-				}
-				// If we made a snapshot edit we can clean it up now
-				if projectDirSnapshot != projectDir {
-					err = os.RemoveAll(projectDirSnapshot)
-					if err != nil {
-						return nil, fmt.Errorf("remove snapshot dir: %w", err)
-					}
 				}
 			}
 		}
@@ -1736,14 +1713,7 @@ func (rtc roundTripClient) GenerateProject(
 		rel, relErr := filepath.Rel(rtc.projectsBaseDir, targetDirectory)
 		if relErr == nil {
 			ejectSnapshotDir := filepath.Join(rtc.ejectSnapshotBaseDir, rel)
-			pclDirSnapshot, snapErr := editSnapshot(pclDir, rtc.snapshotEdits)
-			if snapErr != nil {
-				return diags, fmt.Errorf("eject PCL snapshot creation: %w", snapErr)
-			}
-			validations, snapErr := doSnapshot(rtc.disableSnapshotWriting, pclDirSnapshot, ejectSnapshotDir)
-			if pclDirSnapshot != pclDir {
-				contract.IgnoreError(os.RemoveAll(pclDirSnapshot))
-			}
+			validations, snapErr := doSnapshot(rtc.disableSnapshotWriting, pclDir, ejectSnapshotDir, rtc.snapshotEdits)
 			if snapErr != nil {
 				return diags, fmt.Errorf("eject PCL snapshot validation: %w", snapErr)
 			}

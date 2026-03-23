@@ -92,9 +92,18 @@ type uv struct {
 	// (e.g. InstallDependencies followed by Run), the project's
 	// dependencies don't change between our own operations.
 	synced bool
+	// needsNoWorkspace is pre-computed at construction time from the uv
+	// version. When true, `uv add` calls must include --no-workspace.
+	needsNoWorkspace bool
 }
 
 var minUvVersion = semver.MustParse("0.4.26")
+
+// Pre-parsed version thresholds used in hot-path comparisons.
+var (
+	uvVersion060 = semver.MustParse("0.6.0")
+	uvVersion080 = semver.MustParse("0.8.0")
+)
 
 var defaultVirtualEnv = ".venv"
 
@@ -138,9 +147,10 @@ func newUv(root, virtualenv string) (*uv, error) {
 	logging.V(9).Infof("Python toolchain: using uv version %s", version)
 
 	u := &uv{
-		virtualenvPath: virtualenv,
-		root:           root,
-		version:        version,
+		virtualenvPath:   virtualenv,
+		root:             root,
+		version:          version,
+		needsNoWorkspace: version.GE(uvVersion080),
 	}
 
 	return u, nil
@@ -156,9 +166,12 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	}
 
 	// If there's no `uv.lock` or `pyproject.toml` file, we first need to prepare the project.
-	if _, err := searchup(cwd, "uv.lock"); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("error while looking for uv.lock in %s: %w", cwd, err)
+	// Track whether a lockfile exists so we can reuse this below for --frozen.
+	_, lockErr := searchup(cwd, "uv.lock")
+	hasLockFile := lockErr == nil
+	if !hasLockFile {
+		if !errors.Is(lockErr, os.ErrNotExist) {
+			return fmt.Errorf("error while looking for uv.lock in %s: %w", cwd, lockErr)
 		}
 		// No uv.lock found, look for pyproject.toml.
 		if _, err := searchup(cwd, "pyproject.toml"); err != nil {
@@ -197,7 +210,7 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	// When a lockfile already exists, use --frozen to skip dependency
 	// resolution and install directly from the lock. This avoids the
 	// resolver entirely and is significantly faster.
-	if _, err := searchup(cwd, "uv.lock"); err == nil {
+	if hasLockFile {
 		syncArgs = append(syncArgs, "--frozen")
 	}
 	if !showOutput {
@@ -246,7 +259,7 @@ func (u *uv) PrepareProject(
 
 	args := []string{"init", "--bare", "--no-package", "--no-pin-python"}
 	deleteHello := false
-	if u.version.LT(semver.MustParse("0.6.0")) {
+	if u.version.LT(uvVersion060) {
 		// The `--bare` option prevents `uv init` from creating a
 		// `main.py` file, but this is only available in uv 0.6. Prior
 		// to 0.6, uv always creates a `hello.py` file, which we
@@ -359,7 +372,8 @@ func (u *uv) ListPackages(_ context.Context, transitive bool) ([]plugin.Dependen
 	if err != nil {
 		return nil, fmt.Errorf("could not identify virtual packages in %s: %w", lockFilePath, err)
 	}
-	return listPackagesFromLockFile(lockFilePath, transitive, virtual)
+	// Pass the already-read content to avoid a redundant file read.
+	return listPackagesFromLockFileContent(lockFilePath, content, transitive, virtual)
 }
 
 // uvLockFile is a minimal representation of uv.lock for identifying virtual packages.
@@ -429,18 +443,26 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// However, if we already ran a sync for this virtualenv (e.g. during
 	// InstallDependencies), we can skip the redundant sync.
 	if !u.isSynced() {
-		pyprojectTomlDir, err := searchup(u.root, "pyproject.toml")
-		if err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
+		// Check for uv.lock first; its presence implies pyproject.toml exists.
+		_, lockErr := searchup(u.root, "uv.lock")
+		hasLock := lockErr == nil
+		hasPyproject := hasLock
+		if !hasLock {
+			if !errors.Is(lockErr, os.ErrNotExist) {
+				return nil, fmt.Errorf("error while looking for uv.lock in %s: %w", u.root, lockErr)
+			}
+			if _, err := searchup(u.root, "pyproject.toml"); err == nil {
+				hasPyproject = true
+			} else if !errors.Is(err, os.ErrNotExist) {
 				return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", u.root, err)
 			}
 		}
-		if pyprojectTomlDir != "" {
+		if hasPyproject {
 			// uv run does an "inexact" sync, that is it leaves extraneous
 			// dependencies alone and does not remove them.
 			syncArgs := []string{"sync", "--inexact", "--no-progress"}
 			// Use --frozen when a lockfile exists to skip resolution.
-			if _, lockErr := searchup(u.root, "uv.lock"); lockErr == nil {
+			if hasLock {
 				syncArgs = append(syncArgs, "--frozen")
 			}
 			venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, syncArgs...)
@@ -455,7 +477,12 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	_, cmdPath := u.pythonExecutable()
 	cmd = exec.CommandContext(ctx, cmdPath, args...)
 	env := ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
-	env = append(env, "PYTHONDONTWRITEBYTECODE=1")
+	env = append(env,
+		"PYTHONDONTWRITEBYTECODE=1",
+		// Skip scanning user site-packages directory, which is unnecessary
+		// when running inside a virtualenv and saves startup time.
+		"PYTHONNOUSERSITE=1",
+	)
 	cmd.Env = env
 	cmd.Dir = u.root
 	return cmd, nil
@@ -517,9 +544,13 @@ func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool,
 	cmd.Env = append(cmd.Environ(),
 		"UV_PROJECT_ENVIRONMENT="+u.virtualenvPath,
 		"PYTHONDONTWRITEBYTECODE=1",
+		"PYTHONNOUSERSITE=1",
 		// Use hardlinks where possible to avoid copying cached packages
 		// into the virtual environment, significantly speeding up installs.
 		"UV_LINK_MODE=hardlink",
+		// Suppress progress bars globally via env var so every uv
+		// subprocess is quiet without needing --no-progress per call.
+		"UV_NO_PROGRESS=1",
 	)
 	return cmd
 }
@@ -537,14 +568,7 @@ func (u *uv) VirtualEnvPath(_ context.Context) (string, error) {
 }
 
 func (u *uv) needsNoWorkspacesFlag(ctx context.Context) (bool, error) {
-	// Starting with version 0.8.0, uv will automatically add packages in subdirectories as workspace members. However
-	// the generated SDK might not have a `pyproject.toml`, which is required for uv workspace members. To add the
-	// generated SDK as a normal dependency, we can run `uv add --no-workspace`, but this flag is only available on
-	// version 0.8.0 and up.
-	if u.version.GE(semver.MustParse("0.8.0")) {
-		return true, nil
-	}
-	return false, nil
+	return u.needsNoWorkspace, nil
 }
 
 func ParseUvVersion(versionString string) (semver.Version, error) {

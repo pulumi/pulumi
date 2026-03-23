@@ -399,14 +399,17 @@ func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
 		if useUv {
 			logging.V(5).Infof("Creating build virtual environment using uv at %s", venv)
 			cmd := exec.CommandContext(ctx, "uv", "venv", "--quiet", venv)
+			cmd.Env = append(os.Environ(), "UV_NO_PROGRESS=1")
 			if out, err := cmd.CombinedOutput(); err != nil {
 				cachedBuildVenvErr = fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
 				return
 			}
-			cmd = exec.CommandContext(ctx, "uv", "pip", "install", "--no-progress", "build")
+			cmd = exec.CommandContext(ctx, "uv", "pip", "install", "build")
 			cmd.Env = append(toolchain.ActivateVirtualEnv(os.Environ(), venv),
 				"PYTHONDONTWRITEBYTECODE=1",
+				"PYTHONNOUSERSITE=1",
 				"UV_LINK_MODE=hardlink",
+				"UV_NO_PROGRESS=1",
 			)
 			if out, err := cmd.CombinedOutput(); err != nil {
 				cachedBuildVenvErr = fmt.Errorf("install build using uv: %w\n%s", err, string(out))

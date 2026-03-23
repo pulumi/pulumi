@@ -33,7 +33,14 @@ func listPackagesFromLockFile(
 	if err != nil {
 		return nil, fmt.Errorf("could not read %s: %w", lockFilePath, err)
 	}
+	return listPackagesFromLockFileContent(lockFilePath, content, transitive, exclude)
+}
 
+// listPackagesFromLockFileContent is like listPackagesFromLockFile but accepts
+// already-read file content to avoid a redundant read when the caller has the bytes.
+func listPackagesFromLockFileContent(
+	lockFilePath string, content []byte, transitive bool, exclude map[string]bool,
+) ([]plugin.DependencyInfo, error) {
 	result, err := manifests.Parse(filepath.Base(lockFilePath), content)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse %s: %w", lockFilePath, err)
