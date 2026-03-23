@@ -1422,19 +1422,16 @@ func (s *RefreshStep) ResultOp() display.StepOp {
 		return OpDelete
 	}
 
-	// There are two cases in which we'll diff only resource outputs on a
-	// refresh:
-	//
-	// * The resource is external, that is, it is not managed by Pulumi.
-	//   In these cases, we care somewhat equally about inputs and outputs, but
-	//   the Diff contract we currently support forces us to bias one side
-	//   (typically inputs). Moreover, some providers might not support
-	//   diff/handle diffing correctly for external resources. This can lead to
-	//   surprising results, so for now we sidestep the issue by only looking at
-	//   outputs.
-	// * The user has explicitly opted into this legacy behaviour by setting
-	//   the `UseLegacyRefreshDiff` option to true.
-	if s.old.External || s.deployment.opts.UseLegacyRefreshDiff {
+	// External resources are not managed by Pulumi -- they were obtained
+	// via Get/ReadResource and Pulumi does not control their lifecycle.
+	// Changes to their state are not "drift" in a meaningful sense, so we
+	// always report them as unchanged to avoid false-positive drift events.
+	// The refreshed state is still persisted in the snapshot.
+	if s.old.External {
+		return OpSame
+	}
+
+	if s.deployment.opts.UseLegacyRefreshDiff {
 		if s.new == s.old || s.old.Outputs.Diff(s.new.Outputs) == nil {
 			return OpSame
 		}

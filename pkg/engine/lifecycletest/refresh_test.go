@@ -233,6 +233,95 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 	assert.False(t, diffCalled, "Refresh should not diff external resources")
 }
 
+// TestExternalRefreshDoesNotReportDrift verifies that external resources
+// (created via ReadResource/Get) do not produce drift events during refresh,
+// even when the provider reports changed outputs. Drift detection should only
+// fire for managed resources, not external ones.
+func TestExternalRefreshDoesNotReportDrift(t *testing.T) {
+	t.Parallel()
+
+	readCount := 0
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					readCount++
+					// Return the resource with different outputs on refresh,
+					// simulating external drift.
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: req.ID,
+							Outputs: resource.PropertyMap{
+								"o1": resource.NewProperty(fmt.Sprintf("value-%d", readCount)),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	// Our program reads a resource and exits.
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, err := monitor.ReadResource(
+			"pkgA:m:typA",
+			"resA",
+			"resA-some-id",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			"",
+		)
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	// Step 1: Create the snapshot with an external resource via Update.
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []lt.TestStep{{Op: Update}},
+	}
+	snap := p.RunWithName(t, nil, "0")
+
+	// Verify the external resource is in the snapshot.
+	require.Len(t, snap.Resources, 2)
+	assert.True(t, snap.Resources[1].External)
+
+	// Step 2: Refresh and check that no drift (OpUpdate) is reported for the external resource.
+	p = &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps: []lt.TestStep{
+			{
+				Op: Refresh,
+				Validate: func(
+					project workspace.Project, target deploy.Target, entries JournalEntries,
+					events []engine.Event, err error,
+				) error {
+					for _, e := range events {
+						if e.Type != ResourceOutputsEvent {
+							continue
+						}
+						payload := e.Payload().(engine.ResourceOutputsEventPayload)
+						if payload.Metadata.URN.Name() == "resA" {
+							assert.NotEqual(t, deploy.OpUpdate, payload.Metadata.Op,
+								"External resource should not report drift (OpUpdate)")
+						}
+					}
+					return err
+				},
+			},
+		},
+	}
+	p.RunWithName(t, snap, "1")
+}
+
 func TestRefreshInitFailure(t *testing.T) {
 	t.Parallel()
 
