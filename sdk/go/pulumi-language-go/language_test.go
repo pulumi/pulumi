@@ -100,8 +100,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
 	"l1-config-types-object":        "fails to compile",
-	"l1-proxy-index":                "fails to compile",
-	"l2-proxy-index":                "fails to compile",
 	"l1-builtin-try":                "pulumi#18506 Support try in Go program generation",
 	"l1-builtin-can":                "pulumi#18570 Support can in Go program generation",
 	"l1-builtin-list":               "list(string) config decoded as string; element/split emit TODO stubs",
