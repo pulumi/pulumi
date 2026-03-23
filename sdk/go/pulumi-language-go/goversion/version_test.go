@@ -42,6 +42,10 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 			goVersionOutput: "go version go1.18beta2 darwin/amd64",
 		},
 		{
+			name:            "Non-standard toolchain",
+			goVersionOutput: "go version go1.26.1-X:nodwarf5 linux/amd64",
+		},
+		{
 			name:            "OlderGoVersion",
 			goVersionOutput: "go version go1.13.8 linux/amd64",
 			err:             "go version must be 1.14.0 or higher (1.13.8 detected)",

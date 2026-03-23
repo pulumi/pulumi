@@ -44,6 +44,8 @@ func checkMinimumGoVersion(goVersionOutput string) error {
 	}
 	version := strings.TrimSpace(split[2])
 	version = strings.TrimPrefix(version, "go")
+	// Handle non-standard toolchains (https://go.dev/doc/toolchain#name)
+	version = strings.Split(version, "-")[0]
 
 	currVersion, err := goVersion.NewVersion(version)
 	if err != nil {
