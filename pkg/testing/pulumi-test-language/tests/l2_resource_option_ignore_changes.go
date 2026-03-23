@@ -24,7 +24,7 @@ import (
 func init() {
 	LanguageTests["l2-resource-option-ignore-changes"] = LanguageTest{
 		Providers: []func() plugin.Provider{
-			func() plugin.Provider { return &providers.SimpleProvider{} },
+			func() plugin.Provider { return &providers.NestedObjectProvider{} },
 		},
 		Runs: []TestRun{
 			{
@@ -35,15 +35,18 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					// The stack, default provider, and 2 explicit
-					// resources: ignoreChanges and notIgnoreChanges.
-					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+					// The stack, default provider, and 3 explicit resources:
+					// receiverIgnore, mapIgnore, and noIgnore.
+					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
 
-					ignoreChanges := RequireSingleNamedResource(l, snap.Resources, "ignoreChanges")
-					assert.Equal(l, []string{"value"}, ignoreChanges.IgnoreChanges)
+					receiverIgnore := RequireSingleNamedResource(l, snap.Resources, "receiverIgnore")
+					assert.Equal(l, []string{"details[0].key"}, receiverIgnore.IgnoreChanges)
 
-					notIgnoreChanges := RequireSingleNamedResource(l, snap.Resources, "notIgnoreChanges")
-					assert.Empty(l, notIgnoreChanges.IgnoreChanges)
+					mapIgnore := RequireSingleNamedResource(l, snap.Resources, "mapIgnore")
+					assert.Equal(l, []string{"tags.env"}, mapIgnore.IgnoreChanges)
+
+					noIgnore := RequireSingleNamedResource(l, snap.Resources, "noIgnore")
+					assert.Empty(l, noIgnore.IgnoreChanges)
 				},
 			},
 		},
