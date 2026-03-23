@@ -358,12 +358,24 @@ func (p *legacyReferenceStore) BackupDir(stack *diyBackendReference) string {
 }
 
 func (p *legacyReferenceStore) ParseReference(stackRef string) (*diyBackendReference, error) {
-	parsedName, err := tokens.ParseStackName(stackRef)
-	if err != nil {
-		return nil, err
-	}
-	return p.newReference(parsedName), nil
+    // Support org/project/stack and org/stack formats by extracting just the stack name.
+    // In legacy mode the org and project are ignored, only the stack name matters.
+    name := stackRef
+    if parts := strings.Split(stackRef, "/"); len(parts) == 2 {
+        name = parts[1]
+    } else if len(parts) == 3 {
+        name = parts[2]
+    } else if len(parts) > 3 {
+        return nil, fmt.Errorf("could not parse stack name '%s'", stackRef)
+    }
+
+    parsedName, err := tokens.ParseStackName(name)
+    if err != nil {
+        return nil, err
+    }
+    return p.newReference(parsedName), nil
 }
+
 
 func (p *legacyReferenceStore) ValidateReference(ref *diyBackendReference) error {
 	if ref.project != "" {

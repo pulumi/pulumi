@@ -118,6 +118,20 @@ func TestProjectReferenceStore_ParseReference(t *testing.T) {
 	}
 }
 
+func TestLegacyReferenceStore_ParseReference_QualifiedName(t *testing.T) {
+    // Legacy store must accept org/project/stack format used by `pulumi state move`
+    store := newLegacyReferenceStore(...)
+    
+    ref, err := store.ParseReference("organization/bootstrap/bootstrap")
+    require.NoError(t, err)
+    assert.Equal(t, "bootstrap", ref.Name().String())
+
+    ref, err = store.ParseReference("organization/bootstrap")
+    require.NoError(t, err)
+    assert.Equal(t, "bootstrap", ref.Name().String())
+}
+
+
 func TestLegacyReferenceStore_ParseReference_errors(t *testing.T) {
 	t.Parallel()
 
