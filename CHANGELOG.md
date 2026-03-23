@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- [cli/backend] Allow legacy stack references to accept org/project/stack and org/stack formats for `pulumi state move` compatibility. Fixes #22236.
+
 ## 3.227.0 (2026-03-19)
 
 
