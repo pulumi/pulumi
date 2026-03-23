@@ -126,48 +126,17 @@ func (h *testHost) ListAnalyzers() []plugin.Analyzer {
 }
 
 func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
-	// If we've not been given a version, we'll try and find the provider by name alone, picking the latest if there are
-	// multiple versions of the named provider. Otherwise, we can attempt to find an exact match.
-	var key string
-	var provider plugin.Provider
-	if descriptor.Version == nil {
-		key = descriptor.Name
-
-		var version semver.Version
-		for k, p := range h.providers {
-			parts := strings.Split(k, "@")
-			if len(parts) != 2 {
-				return nil, fmt.Errorf("unexpected provider key %s", k)
-			}
-
-			if parts[0] == key {
-				v := semver.MustParse(parts[1])
-				if provider == nil || v.GT(version) {
-					var err error
-					provider, err = p()
-					if err != nil {
-						return nil, fmt.Errorf("initializing provider %s: %w", k, err)
-					}
-					version = v
-				}
-			}
-		}
-	} else {
-		key = fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
-		var err error
-		providerFactory, ok := h.providers[key]
-		if !ok {
-			return nil, fmt.Errorf("unknown provider %s", key)
-		}
-
-		provider, err = providerFactory()
-		if err != nil {
-			return nil, fmt.Errorf("initializing provider %s: %w", key, err)
-		}
+	factory, key, err := h.findProviderFactory(descriptor)
+	if err != nil {
+		return nil, err
+	}
+	if factory == nil {
+		return nil, fmt.Errorf("unknown provider %s", key)
 	}
 
-	if provider == nil {
-		return nil, fmt.Errorf("unknown provider %s", key)
+	provider, err := factory()
+	if err != nil {
+		return nil, fmt.Errorf("initializing provider %s: %w", key, err)
 	}
 
 	grpcProvider, closer, err := wrapProviderWithGrpc(provider)
@@ -181,43 +150,57 @@ func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (p
 	return grpcProvider, nil
 }
 
+// findProviderFactory finds the best matching provider factory for the given descriptor.
+// It returns the factory, the key, and any error. When version is nil, it picks the latest version.
+// This avoids creating provider instances just to compare versions.
+func (h *testHost) findProviderFactory(
+	descriptor workspace.PluginDescriptor,
+) (func() (plugin.Provider, error), string, error) {
+	if descriptor.Version == nil {
+		var bestKey string
+		var bestVersion semver.Version
+		var found bool
+		for k := range h.providers {
+			parts := strings.Split(k, "@")
+			if len(parts) != 2 {
+				return nil, k, fmt.Errorf("unexpected provider key %s", k)
+			}
+			if parts[0] == descriptor.Name {
+				v := semver.MustParse(parts[1])
+				if !found || v.GT(bestVersion) {
+					bestKey = k
+					bestVersion = v
+					found = true
+				}
+			}
+		}
+		if !found {
+			return nil, descriptor.Name, nil
+		}
+		return h.providers[bestKey], bestKey, nil
+	}
+
+	key := fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
+	factory, ok := h.providers[key]
+	if !ok {
+		return nil, key, nil
+	}
+	return factory, key, nil
+}
+
 // RawProvider returns a provider instance without gRPC wrapping. This is useful for
 // operations that only need to call GetSchema or other metadata methods, avoiding the
 // overhead of starting a gRPC server just for a schema query.
 func (h *testHost) RawProvider(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
-	if descriptor.Version == nil {
-		var provider plugin.Provider
-		var version semver.Version
-		for k, p := range h.providers {
-			parts := strings.Split(k, "@")
-			if len(parts) != 2 {
-				return nil, fmt.Errorf("unexpected provider key %s", k)
-			}
-			if parts[0] == descriptor.Name {
-				v := semver.MustParse(parts[1])
-				if provider == nil || v.GT(version) {
-					var err error
-					provider, err = p()
-					if err != nil {
-						return nil, fmt.Errorf("initializing provider %s: %w", k, err)
-					}
-					version = v
-				}
-			}
-		}
-		if provider == nil {
-			return nil, fmt.Errorf("unknown provider %s", descriptor.Name)
-		}
-		return provider, nil
+	factory, key, err := h.findProviderFactory(descriptor)
+	if err != nil {
+		return nil, err
 	}
-
-	key := fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
-	providerFactory, ok := h.providers[key]
-	if !ok {
+	if factory == nil {
 		return nil, fmt.Errorf("unknown provider %s", key)
 	}
 
-	provider, err := providerFactory()
+	provider, err := factory()
 	if err != nil {
 		return nil, fmt.Errorf("initializing provider %s: %w", key, err)
 	}

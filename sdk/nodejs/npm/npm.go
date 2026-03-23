@@ -88,11 +88,9 @@ func (node *npmManager) installCmd(ctx context.Context, production bool) *exec.C
 	// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
 	// `description`, `repository`, and `license` fields in the package.json file.
 	args := []string{"install", "--loglevel=error",
-		// Skip the security audit during install to reduce latency.
-		"--no-audit",
 		// Skip printing funding messages.
 		"--no-fund",
-		// Prefer locally cached packages to avoid network round-trips when possible.
+		// Prefer locally cached packages to avoid network round-trips.
 		"--prefer-offline",
 	}
 
@@ -122,7 +120,7 @@ func (node *npmManager) ListPackages(
 
 func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
-	command := exec.CommandContext(ctx, node.executable, "pack", "--loglevel=error", "--no-audit", "--no-fund")
+	command := exec.CommandContext(ctx, node.executable, "pack", "--loglevel=error", "--no-fund")
 	command.Dir = dir
 
 	// We have to read the name of the file from stdout.
