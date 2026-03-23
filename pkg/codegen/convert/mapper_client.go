@@ -36,11 +36,12 @@ type mapperClient struct {
 func NewMapperClient(target string) (Mapper, error) {
 	contract.Assertf(target != "", "unexpected empty target for mapper")
 
-	conn, err := grpc.NewClient(
-		target,
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
+	conn, err := grpc.NewClient(target, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
