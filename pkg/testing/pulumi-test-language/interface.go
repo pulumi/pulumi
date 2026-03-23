@@ -47,7 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -296,7 +295,7 @@ func (eng *languageTestServer) RequirePulumiVersion(ctx context.Context, req *pu
 type providerLoader struct {
 	language, languageInfo string
 
-	host plugin.Host
+	host *testHost
 }
 
 func (l *providerLoader) LoadPackageReference(pkg string, version *semver.Version) (schema.PackageReference, error) {
@@ -313,7 +312,9 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		return schema.DefaultPulumiPackage.Reference(), nil
 	}
 
-	// Defer to the host to find the provider for the given package descriptor.
+	// Use RawProvider to get a provider instance without gRPC wrapping. Schema loading
+	// only needs GetSchema (and optionally Parameterize), so the full gRPC round-trip
+	// through a TCP connection is unnecessary overhead.
 	workspaceDescriptor := workspace.PluginDescriptor{
 		Kind:              apitype.ResourcePlugin,
 		Name:              descriptor.Name,
@@ -321,7 +322,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		PluginDownloadURL: descriptor.DownloadURL,
 	}
 
-	provider, err := l.host.Provider(workspaceDescriptor, env.Global())
+	provider, err := l.host.RawProvider(workspaceDescriptor)
 	if err != nil {
 		return nil, fmt.Errorf("could not load schema for %s: %w", descriptor.Name, err)
 	}
@@ -937,18 +938,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				}
 
 				snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-				sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
-				if err != nil {
-					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
-				}
-				validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
-				// If we made a snapshot edit we can clean it up now
-				if sdkSnapshotDir != sdkTempDir {
-					err := os.RemoveAll(sdkSnapshotDir)
-					if err != nil {
-						return nil, fmt.Errorf("remove snapshot dir: %w", err)
-					}
-				}
+				validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkTempDir, snapshotDir, snapshotEdits)
 				if err != nil {
 					return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
 				}

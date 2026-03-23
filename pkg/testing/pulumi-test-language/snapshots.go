@@ -104,11 +104,40 @@ func copyDirectory(fs iofs.FS, src string, dst string, edits []compiledReplaceme
 	})
 }
 
+// applyEditsToContent applies the given replacements to the file content in memory,
+// returning the original content if no edits match the path.
+func applyEditsToContent(relativePath string, content []byte, edits []compiledReplacement) []byte {
+	if len(edits) == 0 {
+		return content
+	}
+
+	var editsToApply []compiledReplacement
+	for _, edit := range edits {
+		if edit.Path.MatchString(relativePath) {
+			editsToApply = append(editsToApply, edit)
+		}
+	}
+	if len(editsToApply) == 0 {
+		return content
+	}
+
+	src := string(content)
+	for _, edit := range editsToApply {
+		src = edit.Pattern.ReplaceAllString(src, edit.Replacement)
+	}
+	return []byte(src)
+}
+
 // compareDirectories compares two directories, returning a list of validation failures where files had
 // different contents, or we only present in on of the directories. If allowNewFiles is true then it's ok to
 // have extra files in the actual directory, we use this for checking building SDKs doesn't mutate any files,
 // but doing so might add new build files (which would then normally be .gitignored).
-func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]string, error) {
+//
+// If actualEdits is non-nil, the edits are applied in-memory to actual file contents before comparison,
+// avoiding the need to copy the actual directory to a temp dir first.
+func compareDirectories(
+	actualDir, expectedDir string, allowNewFiles bool, actualEdits []compiledReplacement,
+) ([]string, error) {
 	// Validate files, we need to walk twice to get this correct because we need to check all expected
 	// files are present, but also that no unexpected files are present.
 
@@ -141,6 +170,9 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 			// Move on to the next file
 			return nil
 		}
+
+		// Apply edits in-memory if provided
+		actualContents = applyEditsToContent(relativePath, actualContents, actualEdits)
 
 		if !bytes.Equal(actualContents, expectedContents) {
 			edits := myers.ComputeEdits(
@@ -227,9 +259,13 @@ func editSnapshot(snapshotDirectory string, edits []compiledReplacement) (string
 
 // Do a snapshot check of the generated source code against the snapshot code. If PULUMI_ACCEPT is true just
 // write the new files instead.
+//
+// When edits are provided, they are applied in-memory during comparison (avoiding a full directory copy).
+// For PULUMI_ACCEPT mode, edits are applied during the copy to the snapshot directory.
 func doSnapshot(
 	disableSnapshotWriting bool,
 	sourceDirectory, snapshotDirectory string,
+	edits []compiledReplacement,
 ) ([]string, error) {
 	if !disableSnapshotWriting && cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
 		// Write files
@@ -241,13 +277,13 @@ func doSnapshot(
 		if err != nil {
 			return nil, fmt.Errorf("create snapshot dir: %w", err)
 		}
-		err = copyDirectory(os.DirFS(sourceDirectory), ".", snapshotDirectory, nil, nil)
+		err = copyDirectory(os.DirFS(sourceDirectory), ".", snapshotDirectory, edits, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy snapshot dir: %w", err)
 		}
 		return nil, nil
 	}
-	validations, err := compareDirectories(sourceDirectory, snapshotDirectory, false /* allowNewFiles */)
+	validations, err := compareDirectories(sourceDirectory, snapshotDirectory, false, edits)
 	if err != nil {
 		return nil, err
 	}

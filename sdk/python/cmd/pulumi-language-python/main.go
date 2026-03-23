@@ -398,13 +398,16 @@ func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
 		useUv := err == nil
 		if useUv {
 			logging.V(5).Infof("Creating build virtual environment using uv at %s", venv)
-			cmd := exec.CommandContext(ctx, "uv", "venv", venv)
+			cmd := exec.CommandContext(ctx, "uv", "venv", "--quiet", venv)
 			if out, err := cmd.CombinedOutput(); err != nil {
 				cachedBuildVenvErr = fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
 				return
 			}
-			cmd = exec.CommandContext(ctx, "uv", "pip", "install", "build")
-			cmd.Env = toolchain.ActivateVirtualEnv(os.Environ(), venv)
+			cmd = exec.CommandContext(ctx, "uv", "pip", "install", "--no-progress", "build")
+			cmd.Env = append(toolchain.ActivateVirtualEnv(os.Environ(), venv),
+				"PYTHONDONTWRITEBYTECODE=1",
+				"UV_LINK_MODE=hardlink",
+			)
 			if out, err := cmd.CombinedOutput(); err != nil {
 				cachedBuildVenvErr = fmt.Errorf("install build using uv: %w\n%s", err, string(out))
 				return
@@ -867,7 +870,7 @@ func determinePluginVersion(packageVersion string) (string, error) {
 
 // debugCommand produces python program args to launch a python file with debugpy.
 func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, *debugger, error) {
-	err := checkForPackage(ctx, "debugpy", opts)
+	err := checkForPackage(ctx, "debugpy", opts, nil)
 	if err != nil {
 		var installError *NotInstalledError
 		if errors.As(err, &installError) {
@@ -985,10 +988,15 @@ func (e *NotInstalledError) Error() string {
 	return e.InstallMessage
 }
 
-func checkForPackage(ctx context.Context, pkg string, opts toolchain.PythonOptions) error {
-	tc, err := toolchain.ResolveToolchain(opts)
-	if err != nil {
-		return err
+func checkForPackage(ctx context.Context, pkg string, opts toolchain.PythonOptions,
+	tc toolchain.Toolchain,
+) error {
+	var err error
+	if tc == nil {
+		tc, err = toolchain.ResolveToolchain(opts)
+		if err != nil {
+			return err
+		}
 	}
 	packages, err := tc.ListPackages(ctx, true)
 	if err != nil {
@@ -1138,7 +1146,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		typecheckerCmd.Stdout = os.Stdout
 		typecheckerCmd.Stderr = os.Stderr
 		typecheckerCmd.Dir = req.Info.ProgramDirectory
-		err = checkForPackage(ctx, typechecker, opts)
+		err = checkForPackage(ctx, typechecker, opts, tc)
 		if err != nil {
 			var installError *NotInstalledError
 			if errors.As(err, &installError) {

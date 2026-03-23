@@ -193,7 +193,18 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 
 	// We now have either a uv.lock or at least a pyproject.toml file, and we can use uv
 	// install the dependencies.
-	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
+	syncArgs := []string{"sync"}
+	// When a lockfile already exists, use --frozen to skip dependency
+	// resolution and install directly from the lock. This avoids the
+	// resolver entirely and is significantly faster.
+	if _, err := searchup(cwd, "uv.lock"); err == nil {
+		syncArgs = append(syncArgs, "--frozen")
+	}
+	if !showOutput {
+		// Suppress progress output when the caller doesn't need it.
+		syncArgs = append(syncArgs, "--no-progress")
+	}
+	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, syncArgs...)
 	if !showOutput {
 		_, err := syncCmd.Output()
 		if err != nil {
@@ -427,7 +438,12 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 		if pyprojectTomlDir != "" {
 			// uv run does an "inexact" sync, that is it leaves extraneous
 			// dependencies alone and does not remove them.
-			venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync", "--inexact")
+			syncArgs := []string{"sync", "--inexact", "--no-progress"}
+			// Use --frozen when a lockfile exists to skip resolution.
+			if _, lockErr := searchup(u.root, "uv.lock"); lockErr == nil {
+				syncArgs = append(syncArgs, "--frozen")
+			}
+			venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, syncArgs...)
 			if _, err := venvCmd.Output(); err != nil {
 				return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
 			}
@@ -485,7 +501,12 @@ func (u *uv) About(ctx context.Context) (Info, error) {
 func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool,
 	infoWriter, errorWriter io.Writer, args ...string,
 ) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, "uv", args...)
+	// Use the cached uv path from getUvVersion() to avoid repeated LookPath calls.
+	uvPath := cachedUvPath
+	if uvPath == "" {
+		uvPath = "uv"
+	}
+	cmd := exec.CommandContext(ctx, uvPath, args...)
 	if cwd != "" {
 		cmd.Dir = cwd
 	}
