@@ -95,8 +95,13 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // Tests that are expected to pass with the REST language host.
 // We start with l1 and l2 tests that don't require callbacks/transforms.
 var supportedTests = map[string]bool{
-	"l1-empty":          true,
-	"l2-resource-simple": true,
+	"l1-empty":               true,
+	"l1-output-bool":         true,
+	"l1-output-map":          true,
+	"l1-output-array":        true,
+	"l2-resource-simple":     true,
+	"l2-resource-alpha":      true,
+	"l2-resource-primitives": true,
 }
 
 func TestLanguage(t *testing.T) {
