@@ -33,9 +33,11 @@ if (process.env.TRACEPARENT) {
     const { ATTR_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 
     const provider = new NodeTracerProvider({
-        resource: Resource.default().merge(new Resource({
-            [ATTR_SERVICE_NAME]: "pulumi-sdk-nodejs",
-        })),
+        resource: Resource.default().merge(
+            new Resource({
+                [ATTR_SERVICE_NAME]: "pulumi-sdk-nodejs",
+            }),
+        ),
     });
 
     const otlpEndpoint = process.env.PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT;
