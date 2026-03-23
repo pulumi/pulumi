@@ -62,6 +62,20 @@ func TracingServerInterceptorOptions(parentSpan opentracing.Span, options ...otg
 	}
 }
 
+// OTelServerInterceptorOptions configures gRPC server interceptors with only OpenTelemetry tracing.
+func OTelServerInterceptorOptions() []grpc.ServerOption {
+	return []grpc.ServerOption{
+		grpc.ChainUnaryInterceptor(
+			otelUnaryServerInterceptor(),
+			stackTraceUnaryServerInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			otelStreamServerInterceptor(),
+			stackTraceStreamServerInterceptor(),
+		),
+	}
+}
+
 // Configures gRPC clients with OpenTracing and OpenTelemetry interceptors.
 func TracingInterceptorDialOptions(opts ...otgrpc.Option) []grpc.DialOption {
 	return []grpc.DialOption{
