@@ -94,14 +94,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-resource-option-additional-secret-outputs": `skip temporarily because
-https://github.com/pulumi/pulumi/pull/22302 is a breaking change in PCL binding, and the only way to get it through CI
-is to not run this test or to run this test against the new code.  However - we don't have a stable SHA for the new code
-until this merges: it's a cyclic dependency in-repo.
-
-To break the cycle - I'm temporarily skipping this test. As soon as https://github.com/pulumi/pulumi/pull/22302 merges,
-I'll update the linked version of pulumi/pulumi in this module & remove the skip.`,
-
 	"l2-parameterized-resource-twice":    "dependency loading reports duplicate package definition for hipackage",
 	"l2-parameterized-invoke":            "dependency loading reports duplicate package definition for subpackage",
 	"l2-parameterized-resource":          "dependency loading reports duplicate package definition for subpackage",
