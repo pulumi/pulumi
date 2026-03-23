@@ -2019,6 +2019,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	configType := model.ResolveOutputs(v.Type())
 
 	getType := ""
+	// useObjectConfig indicates the config value must be deserialized via
+	// RequireObject/GetObject which populate a pointer rather than returning
+	// a value.
+	useObjectConfig := false
 	switch configType {
 	case model.StringType: // Already default
 	case model.NumberType:
@@ -2029,6 +2033,12 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getType = "Bool"
 	case model.DynamicType:
 		getType = "Object"
+		useObjectConfig = true
+	default:
+		if _, ok := configType.(*model.ObjectType); ok {
+			getType = "Object"
+			useObjectConfig = true
+		}
 	}
 
 	getOrRequire := "Get"
@@ -2047,7 +2057,13 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 
 	name := makeValidIdentifier(v.Name())
 	if v.DefaultValue == nil {
-		g.Fgenf(w, "%s := cfg.%s%s(\"%s\")\n", name, getOrRequire, getType, v.LogicalName())
+		if useObjectConfig {
+			goType := g.argumentTypeName(configType, false)
+			g.Fgenf(w, "var %s %s\n", name, goType)
+			g.Fgenf(w, "cfg.%s%s(\"%s\", &%s)\n", getOrRequire, getType, v.LogicalName(), name)
+		} else {
+			g.Fgenf(w, "%s := cfg.%s%s(\"%s\")\n", name, getOrRequire, getType, v.LogicalName())
+		}
 	} else {
 		expr, temps := g.lowerExpression(v.DefaultValue, v.DefaultValue.Type())
 		g.genTemps(w, temps)
