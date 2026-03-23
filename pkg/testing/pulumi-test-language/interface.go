@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -58,6 +59,7 @@ import (
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
@@ -804,6 +806,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	// Generate SDKs for all the packages we need
+	initTracer := otel.Tracer("pulumi-test-language")
 	artifactsDir := filepath.Join(token.TemporaryDirectory, "artifacts")
 
 	// For each test run collect the packages reported by PCL.
@@ -839,7 +842,9 @@ func (eng *languageTestServer) RunLanguageTest(
 			sourceDir = filepath.Join(sourceDir, run.Main)
 		}
 
+		_, initBindSpan := cmdutil.StartSpan(ctx, initTracer, "pcl.BindDirectory/initial")
 		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
+		initBindSpan.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
 		}
@@ -897,6 +902,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// We only generate sdks if running in non-local mode
 	if !token.Local {
+		_, sdkGenSpan := cmdutil.StartSpan(ctx, initTracer, "generateSDKs")
 		for _, pkg := range packages {
 			sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
 			sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
@@ -927,8 +933,10 @@ func (eng *languageTestServer) RunLanguageTest(
 					return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
 				}
 
+				_, genPkgSpan := cmdutil.StartSpan(ctx, initTracer, "GeneratePackage/"+pkg.Name)
 				diags, err := languageClient.GeneratePackage(
 					sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, false)
+				genPkgSpan.End()
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
 				}
@@ -938,7 +946,9 @@ func (eng *languageTestServer) RunLanguageTest(
 				}
 
 				snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
+				_, snapSpan := cmdutil.StartSpan(ctx, initTracer, "doSnapshot/sdk/"+pkg.Name)
 				validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkTempDir, snapshotDir, snapshotEdits)
+				snapSpan.End()
 				if err != nil {
 					return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
 				}
@@ -971,9 +981,11 @@ func (eng *languageTestServer) RunLanguageTest(
 				return nil, nil
 			}()
 			if response != nil || err != nil {
+				sdkGenSpan.End()
 				return response, err
 			}
 		}
+		sdkGenSpan.End()
 	}
 
 	// Just use base64 "secrets" for these tests
@@ -1103,6 +1115,10 @@ func runLanguageTests(
 	pctx *plugin.Context,
 	projectDir string,
 ) (*testingrpc.RunLanguageTestResponse, error) {
+	tracer := otel.Tracer("pulumi-test-language")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "runLanguageTests/"+testName)
+	defer span.End()
+
 	sm := b64secrets.NewBase64SecretsManager()
 	dec := sm.Decrypter()
 
@@ -1110,6 +1126,7 @@ func runLanguageTests(
 	var dependencies []plugin.DependencyInfo
 	var requiredPackages []workspace.PackageDescriptor
 	var result tests.LResult
+
 	for i, run := range test.Runs {
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", testName)
 		projectSubDir := projectDir
@@ -1132,7 +1149,11 @@ func runLanguageTests(
 					pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 				}
 
-				if err := copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil); err != nil {
+				if err := func() error {
+					_, copySpan := cmdutil.StartSpan(ctx, tracer, "copyDirectory/source")
+					defer copySpan.End()
+					return copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
+				}(); err != nil {
 					return nil, fmt.Errorf("copy source test data: %w", err)
 				}
 			}
@@ -1166,9 +1187,11 @@ func runLanguageTests(
 				programPackages = precomputedPackageRefs[i]
 			} else {
 				// Check the PCL is valid and get the list of packages it reports
+				_, bindSpan := cmdutil.StartSpan(ctx, tracer, "pcl.BindDirectory")
 				var diags hcl.Diagnostics
 				var program *pcl.Program
 				program, diags, err = pcl.BindDirectory(sourceDir, loader)
+				bindSpan.End()
 				if err != nil {
 					return nil, fmt.Errorf("bind PCL program: %v", err)
 				}
@@ -1192,8 +1215,10 @@ func runLanguageTests(
 						return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
 					}
 
+					_, genPkgSpan := cmdutil.StartSpan(ctx, tracer, "GeneratePackage/"+pkg.Name)
 					diags, err := languageClient.GeneratePackage(
 						sdkTargetDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, false)
+					genPkgSpan.End()
 					if err != nil {
 						return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
 					}
@@ -1213,8 +1238,10 @@ func runLanguageTests(
 					return nil, fmt.Errorf("copy override testdata: %w", err)
 				}
 			} else {
+				_, genProjSpan := cmdutil.StartSpan(ctx, tracer, "GenerateProject")
 				diagnostics, err = languageClient.GenerateProject(
 					sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
+				genProjSpan.End()
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
 				}
@@ -1224,7 +1251,11 @@ func runLanguageTests(
 
 				// GenerateProject only handles the .pp source files it doesn't copy across other files like testdata so we copy
 				// them across here.
-				err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
+				func() {
+					_, copySpan := cmdutil.StartSpan(ctx, tracer, "copyDirectory/testdata")
+					defer copySpan.End()
+					err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
+				}()
 				if err != nil {
 					return nil, fmt.Errorf("copy testdata: %w", err)
 				}
@@ -1233,7 +1264,9 @@ func runLanguageTests(
 				if len(test.Runs) > 1 && !test.RunsShareSource {
 					snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 				}
+				_, snapSpan := cmdutil.StartSpan(ctx, tracer, "doSnapshot/project")
 				validations, err := doSnapshot(disableSnapshotWriting, projectDir, snapshotDir, snapshotEdits)
+				snapSpan.End()
 				if err != nil {
 					return nil, fmt.Errorf("program snapshot validation: %w", err)
 				}
@@ -1265,7 +1298,9 @@ func runLanguageTests(
 		// GetRequiredPackages) for subsequent runs since the project directory and its
 		// dependencies haven't changed.
 		if i == 0 || !test.RunsShareSource {
+			_, installSpan := cmdutil.StartSpan(ctx, tracer, "InstallDependencies")
 			resp := installDependencies(languageClient, programInfo, false /* isPlugin */)
+			installSpan.End()
 			if resp != nil {
 				return resp, nil
 			}
@@ -1277,13 +1312,17 @@ func runLanguageTests(
 			// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
 			// well.
 			var err error
+			_, getDepsSpan := cmdutil.StartSpan(ctx, tracer, "GetProgramDependencies")
 			dependencies, err = languageClient.GetProgramDependencies(programInfo, true)
+			getDepsSpan.End()
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
 			}
 
 			// Query the language plugin for what it thinks the project packages are, we expect to see the SDKs.
+			_, getReqPkgSpan := cmdutil.StartSpan(ctx, tracer, "GetRequiredPackages")
 			requiredPackages, err = languageClient.GetRequiredPackages(programInfo)
+			getReqPkgSpan.End()
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
 			}
@@ -1593,7 +1632,9 @@ func runLanguageTests(
 			eventsCts.Fulfill(events)
 		}()
 
+		_, previewSpan := cmdutil.StartSpan(ctx, tracer, "PreviewStack")
 		plan, previewChanges, res := backend.PreviewStack(ctx, s, updateOperation, eventSink)
+		previewSpan.End()
 		close(eventSink)
 		events, err := eventsCts.Promise().Result(ctx)
 		if err != nil {
@@ -1630,7 +1671,9 @@ func runLanguageTests(
 			}
 			eventsCts.Fulfill(events)
 		}()
+		_, updateSpan := cmdutil.StartSpan(ctx, tracer, "UpdateStack")
 		changes, res := backend.UpdateStack(ctx, s, updateOperation, eventSink)
+		updateSpan.End()
 		close(eventSink)
 		events, err = eventsCts.Promise().Result(ctx)
 		if err != nil {

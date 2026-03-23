@@ -129,7 +129,15 @@ func compileProgram(
 	}
 	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
-	buildCmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOPROXY=off", "GONOSUMDB=*", "GONOSUMCHECK=*")
+	buildCmd.Env = append(os.Environ(),
+		"CGO_ENABLED=0",
+		// Skip the proxy and sum DB — go straight to source for any needed downloads.
+		// This avoids proxy.golang.org round-trips while still allowing direct fetches
+		// when modules aren't in the local cache.
+		"GOPROXY=direct",
+		"GONOSUMDB=*",
+		"GONOSUMCHECK=*",
+	)
 	buildCmd.Stdout, buildCmd.Stderr = stdout, stderr
 
 	if err := buildCmd.Run(); err != nil {
@@ -1229,7 +1237,11 @@ func (host *goLanguageHost) InstallDependencies(
 
 	cmd := exec.Command(gobin, "mod", "tidy", "-compat=1.18")
 	cmd.Dir = req.Info.ProgramDirectory
-	cmd.Env = append(os.Environ(), "GONOSUMDB=*", "GONOSUMCHECK=*", "GOPROXY=off")
+	cmd.Env = append(os.Environ(),
+		"GONOSUMDB=*",
+		"GONOSUMCHECK=*",
+		"GOPROXY=direct",
+	)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err := cmd.Run(); err != nil {
