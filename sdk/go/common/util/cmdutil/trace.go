@@ -290,10 +290,11 @@ func InitOtelTracing(serviceName, endpoint string) error {
 		return fmt.Errorf("failed to create trace exporter: %w", err)
 	}
 
-	res := resource.NewWithAttributes(
-		"",
-		semconv.ServiceName(serviceName),
+	res, err := resource.Merge(
+		resource.Environment(),
+		resource.NewWithAttributes("", semconv.ServiceName(serviceName)),
 	)
+	contract.AssertNoErrorf(err, "resource.Merge should never fail")
 
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(traceExporter),
