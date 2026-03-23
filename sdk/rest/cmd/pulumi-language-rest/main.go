@@ -24,6 +24,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -234,11 +235,6 @@ func (host *restLanguageHost) Run(
 		return nil, errors.New("missing program info")
 	}
 
-	prog, err := readDeclarativeProgram(req.Info.ProgramDirectory)
-	if err != nil {
-		return &pulumirpc.RunResponse{Error: fmt.Sprintf("reading program: %v", err)}, nil
-	}
-
 	// Start an in-process REST gateway wrapping the engine's monitor.
 	sess, err := restgateway.NewSessionFromMonitor(
 		ctx,
@@ -253,13 +249,56 @@ func (host *restLanguageHost) Run(
 
 	gw := restgateway.NewGateway()
 	gw.AddSession(sess)
-	ts := httptest.NewServer(gw.Handler())
-	defer ts.Close()
 
-	// Execute the program by making HTTP calls to the gateway.
-	if err := executeProgram(ctx, ts.URL, sess.ID, prog); err != nil {
-		return &pulumirpc.RunResponse{Error: err.Error()}, nil
+	// Check if a program.json exists (batch mode for conformance tests).
+	programPath := filepath.Join(req.Info.ProgramDirectory, "program.json")
+	if _, statErr := os.Stat(programPath); statErr == nil {
+		// Batch mode: read and execute the program.json.
+		prog, err := readDeclarativeProgram(req.Info.ProgramDirectory)
+		if err != nil {
+			return &pulumirpc.RunResponse{Error: fmt.Sprintf("reading program: %v", err)}, nil
+		}
+
+		ts := httptest.NewServer(gw.Handler())
+		defer ts.Close()
+
+		if err := executeProgram(ctx, ts.URL, sess.ID, prog); err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}, nil
+		}
+
+		return &pulumirpc.RunResponse{}, nil
 	}
+
+	// Interactive mode: start a real HTTP server and wait for the user
+	// to send requests. The session ends when DELETE /sessions/:id is called.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return &pulumirpc.RunResponse{Error: fmt.Sprintf("starting HTTP server: %v", err)}, nil
+	}
+
+	server := &http.Server{Handler: gw.Handler()}
+	go server.Serve(listener) //nolint:errcheck // shutdown handled below
+
+	addr := fmt.Sprintf("http://%s", listener.Addr().String())
+	fmt.Fprintf(os.Stderr, "\n=== REST Gateway ready ===\n")
+	fmt.Fprintf(os.Stderr, "Session ID: %s\n", sess.ID)
+	fmt.Fprintf(os.Stderr, "Base URL:   %s\n", addr)
+	fmt.Fprintf(os.Stderr, "\nRegister resources:\n")
+	fmt.Fprintf(os.Stderr, "  curl -X POST %s/sessions/%s/resources -d '{...}'\n", addr, sess.ID)
+	fmt.Fprintf(os.Stderr, "\nFinish and apply:\n")
+	fmt.Fprintf(os.Stderr, "  curl -X DELETE %s/sessions/%s\n", addr, sess.ID)
+	fmt.Fprintf(os.Stderr, "==========================\n\n")
+
+	// Block until the session is closed via DELETE or context is cancelled.
+	select {
+	case <-sess.Done():
+		// User called DELETE — session is closed.
+	case <-ctx.Done():
+		// Context cancelled (e.g. Ctrl+C).
+		sess.Close(ctx, nil)
+	}
+
+	server.Close()
 
 	return &pulumirpc.RunResponse{}, nil
 }

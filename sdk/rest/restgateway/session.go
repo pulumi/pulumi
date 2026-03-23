@@ -47,9 +47,16 @@ type Session struct {
 	tmpDir      string
 	ready       chan struct{} // closed when gRPC clients are connected
 	finished    chan struct{} // closed on shutdown, unblocks Run()
+	done        chan struct{} // closed when Close() completes, signals interactive mode to exit
 	// ownsProcess indicates whether this session started the pulumi subprocess
 	// (and should kill it on close). False for sessions created from an existing monitor.
 	ownsProcess bool
+}
+
+// Done returns a channel that is closed when the session is closed.
+// Use this to block until the session is shut down (e.g. in interactive mode).
+func (s *Session) Done() <-chan struct{} {
+	return s.done
 }
 
 // langRuntime implements the LanguageRuntime gRPC server. The Pulumi CLI calls Run() on this
@@ -92,6 +99,7 @@ func NewSessionFromMonitor(
 		Monitor:     monitor,
 		monitorConn: monitorConn,
 		finished:    make(chan struct{}),
+		done:        make(chan struct{}),
 		ownsProcess: false,
 	}
 
@@ -159,6 +167,7 @@ func newSession(ctx context.Context, pulumiBin, project, stack string, preview b
 		tmpDir:      tmpDir,
 		ready:       make(chan struct{}),
 		finished:    make(chan struct{}),
+		done:        make(chan struct{}),
 		ownsProcess: true,
 	}
 
@@ -272,6 +281,9 @@ func (s *Session) Close(ctx context.Context, exports map[string]interface{}) err
 	if s.tmpDir != "" {
 		os.RemoveAll(s.tmpDir)
 	}
+
+	// Signal that the session is fully closed.
+	close(s.done)
 
 	return nil
 }
