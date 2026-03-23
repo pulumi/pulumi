@@ -805,8 +805,11 @@ func (eng *languageTestServer) RunLanguageTest(
 	// Generate SDKs for all the packages we need
 	artifactsDir := filepath.Join(token.TemporaryDirectory, "artifacts")
 
-	// For each test run collect the packages reported by PCL
+	// For each test run collect the packages reported by PCL.
+	// Also collect the per-run package references so we can pass them to runLanguageTests
+	// and avoid re-binding the same PCL programs.
 	packages := []*schema.Package{}
+	runPackageRefs := make([][]schema.PackageReference, len(test.Runs))
 	for i, run := range test.Runs {
 		if i > 0 && test.RunsShareSource {
 			break
@@ -844,6 +847,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		pkgs := program.PackageReferences()
+		runPackageRefs[i] = pkgs
 		// We should be able to get a full def for each package
 		for _, pkg := range pkgs {
 			if pkg.Name() == "pulumi" {
@@ -1013,7 +1017,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, err
 	}
 
-	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
+	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages, runPackageRefs,
 		sdks, localDependencies, languageClient, grpcServer,
 		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
 	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
@@ -1059,7 +1063,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, err
 	}
 
-	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
+	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages, nil,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
 		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
 }
@@ -1111,7 +1115,9 @@ func createStackReferences(
 
 func runLanguageTests(
 	ctx context.Context, token testToken, testName string, test tests.LanguageTest,
-	loader schema.ReferenceLoader, packages []*schema.Package, sdks, localDependencies map[string]string,
+	loader schema.ReferenceLoader, packages []*schema.Package,
+	precomputedPackageRefs [][]schema.PackageReference,
+	sdks, localDependencies map[string]string,
 	languageClient plugin.LanguageRuntime, grpcServer *plugin.GrpcServer,
 	disableSnapshotWriting bool, snapshotEdits []compiledReplacement,
 	testBackend diy.Backend,
@@ -1123,29 +1129,34 @@ func runLanguageTests(
 	dec := sm.Decrypter()
 
 	var programPackages []schema.PackageReference
+	var dependencies []plugin.DependencyInfo
+	var requiredPackages []workspace.PackageDescriptor
 	var result tests.LResult
 	for i, run := range test.Runs {
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", testName)
 		projectSubDir := projectDir
 		projectDir := filepath.Join(token.TemporaryDirectory, projectDir, testName)
 		if i == 0 || !test.RunsShareSource {
-			// Create a source directory for the test
 			if len(test.Runs) > 1 && !test.RunsShareSource {
 				sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 			}
 
-			if err := os.MkdirAll(sourceDir, 0o700); err != nil {
-				return nil, fmt.Errorf("create source dir: %w", err)
-			}
+			// When precomputedPackageRefs is provided, the caller (RunLanguageTest) already
+			// created and populated the source directories with PCL testdata. Skip the
+			// redundant copy.
+			if precomputedPackageRefs == nil {
+				if err := os.MkdirAll(sourceDir, 0o700); err != nil {
+					return nil, fmt.Errorf("create source dir: %w", err)
+				}
 
-			// Find and copy the tests PCL code to the source dir
-			pclDir := filepath.Join("testdata", testName)
-			if len(test.Runs) > 1 && !test.RunsShareSource {
-				pclDir = filepath.Join(pclDir, strconv.Itoa(i))
-			}
+				pclDir := filepath.Join("testdata", testName)
+				if len(test.Runs) > 1 && !test.RunsShareSource {
+					pclDir = filepath.Join(pclDir, strconv.Itoa(i))
+				}
 
-			if err := copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil); err != nil {
-				return nil, fmt.Errorf("copy source test data: %w", err)
+				if err := copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil); err != nil {
+					return nil, fmt.Errorf("copy source test data: %w", err)
+				}
 			}
 
 			// Create a directory for the project
@@ -1169,15 +1180,25 @@ func runLanguageTests(
 		}()
 
 		if i == 0 || !test.RunsShareSource {
-			// Check the PCL is valid and get the list of packages it reports
-			program, diags, err := pcl.BindDirectory(sourceDir, loader)
-			if err != nil {
-				return nil, fmt.Errorf("bind PCL program: %v", err)
+			var err error
+
+			// Use precomputed package references if available (from the initial PCL bind in
+			// RunLanguageTest), otherwise bind the PCL program to validate and collect them.
+			if precomputedPackageRefs != nil && precomputedPackageRefs[i] != nil {
+				programPackages = precomputedPackageRefs[i]
+			} else {
+				// Check the PCL is valid and get the list of packages it reports
+				var diags hcl.Diagnostics
+				var program *pcl.Program
+				program, diags, err = pcl.BindDirectory(sourceDir, loader)
+				if err != nil {
+					return nil, fmt.Errorf("bind PCL program: %v", err)
+				}
+				if diags.HasErrors() {
+					return nil, fmt.Errorf("bind PCL program: %v", diags)
+				}
+				programPackages = program.PackageReferences()
 			}
-			if diags.HasErrors() {
-				return nil, fmt.Errorf("bind PCL program: %v", diags)
-			}
-			programPackages = program.PackageReferences()
 			// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 			var diagnostics hcl.Diagnostics
 
@@ -1272,21 +1293,35 @@ func runLanguageTests(
 			main,
 			project.Runtime.Options())
 
-		resp := installDependencies(languageClient, programInfo, false /* isPlugin */)
-		if resp != nil {
-			return resp, nil
+		// For shared-source runs, dependencies are already installed and validated from the first
+		// run. Skip the expensive RPCs (InstallDependencies, GetProgramDependencies,
+		// GetRequiredPackages) for subsequent runs since the project directory and its
+		// dependencies haven't changed.
+		if i == 0 || !test.RunsShareSource {
+			resp := installDependencies(languageClient, programInfo, false /* isPlugin */)
+			if resp != nil {
+				return resp, nil
+			}
+
+			// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
+
+			// Query the language plugin for what it thinks the project dependencies are, we expect to see pulumi and the SDKs.
+			// We make a transitive query here because some languages (e.g. Python) treat dependencies as transitive if any of
+			// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
+			// well.
+			var err error
+			dependencies, err = languageClient.GetProgramDependencies(programInfo, true)
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
+			}
+
+			// Query the language plugin for what it thinks the project packages are, we expect to see the SDKs.
+			requiredPackages, err = languageClient.GetRequiredPackages(programInfo)
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
+			}
 		}
 
-		// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
-
-		// Query the language plugin for what it thinks the project dependencies are, we expect to see pulumi and the SDKs.
-		// We make a transitive query here because some languages (e.g. Python) treat dependencies as transitive if any of
-		// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
-		// well.
-		dependencies, err := languageClient.GetProgramDependencies(programInfo, true)
-		if err != nil {
-			return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
-		}
 		expectedDependencies := []plugin.DependencyInfo{}
 		if token.CoreVersion != "" {
 			expectedDependencies = append(expectedDependencies, plugin.DependencyInfo{
@@ -1358,11 +1393,6 @@ func runLanguageTests(
 			}
 		}
 
-		// Query the language plugin for what it thinks the project packages are, we expect to see the SDKs.
-		packages, err := languageClient.GetRequiredPackages(programInfo)
-		if err != nil {
-			return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
-		}
 		expectedPackages := []workspace.PackageDescriptor{}
 		for _, pkg := range programPackages {
 			if pkg.Name() == "pulumi" {
@@ -1422,7 +1452,7 @@ func runLanguageTests(
 		}
 		for _, expectedPackage := range expectedPackages {
 			var found bool
-			for _, actual := range packages {
+			for _, actual := range requiredPackages {
 				if actual.Name == expectedPackage.Name &&
 					versionsMatch(expectedPackage.Version, actual.Version) &&
 					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
@@ -1436,7 +1466,7 @@ func runLanguageTests(
 			}
 		}
 		// For packages we need a symmetric check, we shouldn't have any packages that _aren't_ expected.
-		for _, actual := range packages {
+		for _, actual := range requiredPackages {
 			var found bool
 			for _, expectedPackage := range expectedPackages {
 				if actual.Name == expectedPackage.Name &&

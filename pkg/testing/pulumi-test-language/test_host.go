@@ -181,6 +181,49 @@ func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (p
 	return grpcProvider, nil
 }
 
+// RawProvider returns a provider instance without gRPC wrapping. This is useful for
+// operations that only need to call GetSchema or other metadata methods, avoiding the
+// overhead of starting a gRPC server just for a schema query.
+func (h *testHost) RawProvider(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+	if descriptor.Version == nil {
+		var provider plugin.Provider
+		var version semver.Version
+		for k, p := range h.providers {
+			parts := strings.Split(k, "@")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("unexpected provider key %s", k)
+			}
+			if parts[0] == descriptor.Name {
+				v := semver.MustParse(parts[1])
+				if provider == nil || v.GT(version) {
+					var err error
+					provider, err = p()
+					if err != nil {
+						return nil, fmt.Errorf("initializing provider %s: %w", k, err)
+					}
+					version = v
+				}
+			}
+		}
+		if provider == nil {
+			return nil, fmt.Errorf("unknown provider %s", descriptor.Name)
+		}
+		return provider, nil
+	}
+
+	key := fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
+	providerFactory, ok := h.providers[key]
+	if !ok {
+		return nil, fmt.Errorf("unknown provider %s", key)
+	}
+
+	provider, err := providerFactory()
+	if err != nil {
+		return nil, fmt.Errorf("initializing provider %s: %w", key, err)
+	}
+	return provider, nil
+}
+
 // LanguageRuntime returns the language runtime initialized by the test host.
 // ProgramInfo is only used here for compatibility reasons and will be removed from this function.
 func (h *testHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
@@ -208,18 +251,15 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plu
 
 	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
 	// that that returned the expected plugins (with expected versions).
+	// We derive the expected set from the provider keys (which are already "name@version")
+	// to avoid creating provider instances just for metadata queries.
 	expected := mapset.NewSet[string]()
-	for name, provider := range h.providers {
-		p, err := provider()
-		if err != nil {
-			return fmt.Errorf("initializing provider %s for ensure plugins: %w", name, err)
+	for key := range h.providers {
+		parts := strings.Split(key, "@")
+		if len(parts) != 2 {
+			return fmt.Errorf("unexpected provider key %s", key)
 		}
-		pkg := p.Pkg()
-		version, err := getProviderVersion(p)
-		if err != nil {
-			return fmt.Errorf("get provider version %s: %w", pkg, err)
-		}
-		expected.Add(fmt.Sprintf("resource-%s@%s", pkg, version))
+		expected.Add(fmt.Sprintf("resource-%s@%s", parts[0], parts[1]))
 	}
 
 	actual := mapset.NewSetWithSize[string](len(plugins))
@@ -244,17 +284,16 @@ func (h *testHost) ResolvePlugin(
 	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
-		for name, provider := range h.providers {
-			p, err := provider()
-			if err != nil {
-				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", name, err)
+		// Resolve from the provider keys (which are "name@version") to avoid
+		// creating provider instances just for metadata queries.
+		for key := range h.providers {
+			parts := strings.Split(key, "@")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("unexpected provider key %s", key)
 			}
-			pkg := p.Pkg()
-			providerVersion, err := getProviderVersion(p)
-			if err != nil {
-				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
-			}
-			if spec.Name == string(pkg) && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
+			name := parts[0]
+			version := semver.MustParse(parts[1])
+			if spec.Name == name && (spec.Version == nil || spec.Version.EQ(version)) {
 				return &workspace.PluginInfo{
 					Name:    spec.Name,
 					Kind:    spec.Kind,

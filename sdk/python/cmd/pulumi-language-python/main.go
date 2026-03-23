@@ -41,6 +41,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unicode"
@@ -369,7 +370,85 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
 }
 
+// cachedBuildVenv caches a virtual environment with the `build` package installed.
+// This avoids recreating the venv and reinstalling build for every Pack call.
+var (
+	cachedBuildVenvOnce sync.Once
+	cachedBuildVenvPath string
+	cachedBuildVenvUv   bool
+	cachedBuildVenvTC   toolchain.Toolchain
+	cachedBuildVenvErr  error
+)
+
+func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
+	cachedBuildVenvOnce.Do(func() {
+		// Create a persistent temp directory for the build venv.
+		tmp, err := os.MkdirTemp("", "pulumi-python-build-venv")
+		if err != nil {
+			cachedBuildVenvErr = fmt.Errorf("create build venv directory: %w", err)
+			return
+		}
+		cachedBuildVenvPath = tmp
+		venv := filepath.Join(tmp, ".venv")
+
+		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+			Toolchain:  toolchain.Uv,
+			Virtualenv: venv,
+		})
+		useUv := err == nil
+		if useUv {
+			logging.V(5).Infof("Creating build virtual environment using uv at %s", venv)
+			cmd := exec.CommandContext(ctx, "uv", "venv", venv)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				cachedBuildVenvErr = fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
+				return
+			}
+			cmd = exec.CommandContext(ctx, "uv", "pip", "install", "build")
+			cmd.Env = toolchain.ActivateVirtualEnv(os.Environ(), venv)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				cachedBuildVenvErr = fmt.Errorf("install build using uv: %w\n%s", err, string(out))
+				return
+			}
+			cachedBuildVenvTC = tc
+			cachedBuildVenvUv = true
+		} else {
+			logging.V(5).Infof("Creating build virtual environment using pip+venv at %s", venv)
+			cmd := exec.CommandContext(ctx, "python", "-m", "venv", venv)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				cachedBuildVenvErr = fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
+				return
+			}
+			tc, err = toolchain.ResolveToolchain(toolchain.PythonOptions{
+				Toolchain:  toolchain.Pip,
+				Virtualenv: venv,
+			})
+			if err != nil {
+				cachedBuildVenvErr = fmt.Errorf("setup pip toolchain: %w", err)
+				return
+			}
+			cmd, err = tc.ModuleCommand(ctx, "pip", "install", "build")
+			if err != nil {
+				cachedBuildVenvErr = err
+				return
+			}
+			if out, err := cmd.CombinedOutput(); err != nil {
+				cachedBuildVenvErr = fmt.Errorf("install build using pip: %w\n%s", err, string(out))
+				return
+			}
+			cachedBuildVenvTC = tc
+			cachedBuildVenvUv = false
+		}
+	})
+	return cachedBuildVenvTC, cachedBuildVenvUv, cachedBuildVenvErr
+}
+
 func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	tc, useUv, err := ensureBuildVenv(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ensure build venv: %w", err)
+	}
+
+	// Create a temporary output directory for this pack operation.
 	tmp, err := os.MkdirTemp("", "pulumi-python-pack")
 	if err != nil {
 		return nil, fmt.Errorf("create temporary directory: %w", err)
@@ -380,51 +459,6 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 			logging.V(5).Infof("failed to remove temporary directory: %s", err)
 		}
 	}()
-	// We use [build](https://build.pypa.io/en/stable/) as the build frontend to
-	// pack the Python SDK. We install this in an isolated virtual environment
-	// to avoid conflicts with the user's environment.
-	venv := filepath.Join(tmp, ".venv")
-	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		Toolchain:  toolchain.Uv,
-		Virtualenv: venv,
-	})
-	useUv := err == nil
-	if useUv {
-		// `uv` is available, use it to create our virtual environment.
-		logging.V(5).Infof("Creating virtual environment using uv at %s", venv)
-		cmd := exec.CommandContext(ctx, "uv", "venv", venv)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return nil, fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
-		}
-		// Install `build` into the virtual environment.
-		cmd = exec.CommandContext(ctx, "uv", "pip", "install", "build")
-		cmd.Env = toolchain.ActivateVirtualEnv(os.Environ(), venv)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return nil, fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
-		}
-	} else {
-		// Fallback to pip+venv
-		logging.V(5).Infof("Creating virtual environment using pip+venv at %s", venv)
-		cmd := exec.CommandContext(ctx, "python", "-m", "venv", venv)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return nil, fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
-		}
-		tc, err = toolchain.ResolveToolchain(toolchain.PythonOptions{
-			Toolchain:  toolchain.Pip,
-			Virtualenv: venv,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("setup pip toolchain: %w", err)
-		}
-		// Install `build` into the virtual environment.
-		cmd, err = tc.ModuleCommand(ctx, "pip", "install", "build")
-		if err != nil {
-			return nil, err
-		}
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return nil, fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
-		}
-	}
 
 	args := []string{"--wheel", "--outdir", tmp}
 	if useUv {
@@ -1091,6 +1125,10 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 				return nil, err
 			}
 			typecheckerArgs = append(typecheckerArgs, "--exclude", relPath)
+			// Use a shared mypy cache directory so that type stubs for the
+			// Pulumi SDK and other dependencies are computed once and reused
+			// across multiple program runs within the same process.
+			typecheckerArgs = append(typecheckerArgs, "--cache-dir", sharedMypyCacheDir())
 		}
 		typecheckerArgs = append(typecheckerArgs, req.Info.ProgramDirectory)
 		typecheckerCmd, err := tc.Command(ctx, typecheckerArgs...)
@@ -1242,45 +1280,73 @@ func (host *pythonLanguageHost) GetPluginInfo(ctx context.Context, req *emptypb.
 	}, nil
 }
 
+// sharedMypyCacheDirOnce ensures the shared mypy cache directory is only created once.
+var (
+	sharedMypyCacheDirOnce sync.Once
+	sharedMypyCacheDirPath string
+)
+
+// sharedMypyCacheDir returns a shared directory for mypy caches. By using a
+// single cache directory across all runs within the same language host process,
+// mypy can reuse cached type stubs for the Pulumi SDK and other dependencies
+// instead of re-analyzing them from scratch each time.
+func sharedMypyCacheDir() string {
+	sharedMypyCacheDirOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "pulumi-mypy-cache")
+		if err != nil {
+			// Fall back to default mypy behavior if we can't create a shared dir.
+			sharedMypyCacheDirPath = ".mypy_cache"
+			return
+		}
+		sharedMypyCacheDirPath = dir
+	})
+	return sharedMypyCacheDirPath
+}
+
+// validateVersionOnce ensures we only check the Python version once per process.
+var validateVersionOnce sync.Once
+
 // validateVersion checks that python is running a valid version. If a version
 // is invalid, it prints to os.Stderr. This is interpreted as diagnostic message
 // by the Pulumi CLI program.
 func validateVersion(ctx context.Context, options toolchain.PythonOptions) {
-	var versionCmd *exec.Cmd
-	var err error
-	versionArgs := []string{"--version"}
+	validateVersionOnce.Do(func() {
+		var versionCmd *exec.Cmd
+		var err error
+		versionArgs := []string{"--version"}
 
-	tc, err := toolchain.ResolveToolchain(options)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to configure python toolchain: %s\n", err)
-		return
-	}
+		tc, err := toolchain.ResolveToolchain(options)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to configure python toolchain: %s\n", err)
+			return
+		}
 
-	versionCmd, err = tc.Command(ctx, versionArgs...)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create python version command: %s\n", err)
-		return
-	}
-	var out []byte
-	if out, err = versionCmd.Output(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to resolve python version command: %s\n", err)
-		return
-	}
-	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
-	version = removeReleaseCandidateSuffix(version)
-	parsed, err := semver.Parse(version)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to parse python version: '%s'\n", version)
-		return
-	}
-	if parsed.LT(minimumSupportedPythonVersion) {
-		fmt.Fprintf(os.Stderr, "Pulumi does not support Python %s."+
-			" Please upgrade to at least %s\n", parsed, minimumSupportedPythonVersion)
-	} else if parsed.LT(eolPythonVersion) {
-		fmt.Fprintf(os.Stderr, "Python %d.%d is approaching EOL and will not be supported in Pulumi soon."+
-			" Check %s for more details\n", parsed.Major,
-			parsed.Minor, eolPythonVersionIssue)
-	}
+		versionCmd, err = tc.Command(ctx, versionArgs...)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create python version command: %s\n", err)
+			return
+		}
+		var out []byte
+		if out, err = versionCmd.Output(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to resolve python version command: %s\n", err)
+			return
+		}
+		version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+		version = removeReleaseCandidateSuffix(version)
+		parsed, err := semver.Parse(version)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to parse python version: '%s'\n", version)
+			return
+		}
+		if parsed.LT(minimumSupportedPythonVersion) {
+			fmt.Fprintf(os.Stderr, "Pulumi does not support Python %s."+
+				" Please upgrade to at least %s\n", parsed, minimumSupportedPythonVersion)
+		} else if parsed.LT(eolPythonVersion) {
+			fmt.Fprintf(os.Stderr, "Python %d.%d is approaching EOL and will not be supported in Pulumi soon."+
+				" Check %s for more details\n", parsed.Major,
+				parsed.Minor, eolPythonVersionIssue)
+		}
+	})
 }
 
 func (host *pythonLanguageHost) InstallDependencies(

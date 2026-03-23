@@ -31,8 +31,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/blang/semver"

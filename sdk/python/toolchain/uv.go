@@ -27,6 +27,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 
 	"golang.org/x/sync/errgroup"
 
@@ -40,6 +41,44 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// cachedUvVersion caches the result of running `uv --version` so we only
+// shell out once per process. The uv binary doesn't change during a
+// process's lifetime.
+var (
+	cachedUvVersionOnce sync.Once
+	cachedUvVersion     semver.Version
+	cachedUvVersionErr  error
+	cachedUvPath        string
+	cachedUvPathErr     error
+
+	// uvSyncedPaths tracks virtualenv paths that have been synced by
+	// InstallDependencies. This allows Command() to skip the redundant
+	// `uv sync --inexact` when it's called on the same virtualenv shortly
+	// after installation. The map is keyed by the absolute virtualenv path.
+	uvSyncedPaths   = make(map[string]bool)
+	uvSyncedPathsMu sync.Mutex
+)
+
+func getUvVersion() (semver.Version, error) {
+	cachedUvVersionOnce.Do(func() {
+		cachedUvPath, cachedUvPathErr = exec.LookPath("uv")
+		if cachedUvPathErr != nil {
+			cachedUvVersionErr = errors.New("Could not find `uv` executable.\n" +
+				"Install uv and make sure it is in your PATH.")
+			return
+		}
+
+		cmd := exec.Command(cachedUvPath, "--version")
+		versionString, err := cmd.Output()
+		if err != nil {
+			cachedUvVersionErr = fmt.Errorf("failed to get uv version: %w", err)
+			return
+		}
+		cachedUvVersion, cachedUvVersionErr = ParseUvVersion(string(versionString))
+	})
+	return cachedUvVersion, cachedUvVersionErr
+}
+
 type uv struct {
 	// The absolute path to the virtual env.
 	virtualenvPath string
@@ -47,6 +86,12 @@ type uv struct {
 	root string
 	// The version of uv.
 	version semver.Version
+	// synced tracks whether we have already run `uv sync` for this
+	// toolchain instance so we can skip redundant syncs in Command().
+	// This is safe because within a single language-host RPC call
+	// (e.g. InstallDependencies followed by Run), the project's
+	// dependencies don't change between our own operations.
+	synced bool
 }
 
 var minUvVersion = semver.MustParse("0.4.26")
@@ -56,10 +101,9 @@ var defaultVirtualEnv = ".venv"
 var _ Toolchain = &uv{}
 
 func newUv(root, virtualenv string) (*uv, error) {
-	_, err := exec.LookPath("uv")
+	version, err := getUvVersion()
 	if err != nil {
-		return nil, errors.New("Could not find `uv` executable.\n" +
-			"Install uv and make sure it is in your PATH.")
+		return nil, err
 	}
 
 	if virtualenv == "" {
@@ -91,15 +135,6 @@ func newUv(root, virtualenv string) (*uv, error) {
 		virtualenv = filepath.Join(root, virtualenv)
 	}
 
-	cmd := exec.Command("uv", "--version")
-	versionString, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get uv version: %w", err)
-	}
-	version, err := ParseUvVersion(string(versionString))
-	if err != nil {
-		return nil, err
-	}
 	logging.V(9).Infof("Python toolchain: using uv version %s", version)
 
 	u := &uv{
@@ -161,9 +196,17 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
 	if !showOutput {
 		_, err := syncCmd.Output()
-		return errutil.ErrorWithStderr(err, "error installing dependencies")
+		if err != nil {
+			return errutil.ErrorWithStderr(err, "error installing dependencies")
+		}
+		u.markSynced()
+		return nil
 	} else {
-		return syncCmd.Run()
+		if err := syncCmd.Run(); err != nil {
+			return err
+		}
+		u.markSynced()
+		return nil
 	}
 }
 
@@ -270,6 +313,11 @@ func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error
 func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
 	infoWriter, errorWriter io.Writer,
 ) error {
+	// If we already synced, the venv was created as part of the sync. Skip
+	// the redundant venv creation.
+	if u.isSynced() {
+		return nil
+	}
 	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet",
 		"--allow-existing", u.virtualenvPath)
 	if err := venvCmd.Run(); err != nil {
@@ -331,6 +379,30 @@ func uvVirtualPackages(content []byte) (map[string]bool, error) {
 	return virtual, nil
 }
 
+// markSynced records that this virtualenv has been synced, both on the
+// instance and globally so that new instances for the same path skip the sync.
+func (u *uv) markSynced() {
+	u.synced = true
+	uvSyncedPathsMu.Lock()
+	uvSyncedPaths[u.virtualenvPath] = true
+	uvSyncedPathsMu.Unlock()
+}
+
+// isSynced returns true if this virtualenv has already been synced, either
+// by this instance or by a previous instance with the same path.
+func (u *uv) isSynced() bool {
+	if u.synced {
+		return true
+	}
+	uvSyncedPathsMu.Lock()
+	synced := uvSyncedPaths[u.virtualenvPath]
+	uvSyncedPathsMu.Unlock()
+	if synced {
+		u.synced = true
+	}
+	return synced
+}
+
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// Note that we do not use `uv run python` here because this results in a
 	// process tree of `python-language-runtime -> uv -> python`. This is
@@ -343,25 +415,32 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	//
 	// To maintain uv's behaviour that `uv run ...` should keep the venv
 	// up-to-date, we run `uv sync` first, provided there is a `pyproject.toml`.
-	pyprojectTomlDir, err := searchup(u.root, "pyproject.toml")
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", u.root, err)
+	// However, if we already ran a sync for this virtualenv (e.g. during
+	// InstallDependencies), we can skip the redundant sync.
+	if !u.isSynced() {
+		pyprojectTomlDir, err := searchup(u.root, "pyproject.toml")
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", u.root, err)
+			}
 		}
-	}
-	if pyprojectTomlDir != "" {
-		// uv run does an "inexact" sync, that is it leaves extraneous
-		// dependencies alone and does not remove them.
-		venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync", "--inexact")
-		if _, err := venvCmd.Output(); err != nil {
-			return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
+		if pyprojectTomlDir != "" {
+			// uv run does an "inexact" sync, that is it leaves extraneous
+			// dependencies alone and does not remove them.
+			venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync", "--inexact")
+			if _, err := venvCmd.Output(); err != nil {
+				return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
+			}
+			u.markSynced()
 		}
 	}
 
 	var cmd *exec.Cmd
 	_, cmdPath := u.pythonExecutable()
 	cmd = exec.CommandContext(ctx, cmdPath, args...)
-	cmd.Env = ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
+	env := ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
+	env = append(env, "PYTHONDONTWRITEBYTECODE=1")
+	cmd.Env = env
 	cmd.Dir = u.root
 	return cmd, nil
 }
@@ -414,7 +493,13 @@ func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool,
 		cmd.Stdout = infoWriter
 		cmd.Stderr = errorWriter
 	}
-	cmd.Env = append(cmd.Environ(), "UV_PROJECT_ENVIRONMENT="+u.virtualenvPath)
+	cmd.Env = append(cmd.Environ(),
+		"UV_PROJECT_ENVIRONMENT="+u.virtualenvPath,
+		"PYTHONDONTWRITEBYTECODE=1",
+		// Use hardlinks where possible to avoid copying cached packages
+		// into the virtual environment, significantly speeding up installs.
+		"UV_LINK_MODE=hardlink",
+	)
 	return cmd
 }
 
