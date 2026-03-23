@@ -1,0 +1,298 @@
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "google/protobuf/struct.proto";
+
+package pulumirpc;
+
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
+
+// WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
+// evaluator process to materialize graph shape and execute specific callable nodes.
+service WorkflowEvaluator {
+    // GenerateJob asks the evaluator to generate the job shape for a path.
+    rpc GenerateJob(GenerateJobRequest) returns (GenerateNodeResponse) {}
+
+    // GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path.
+    rpc GenerateGraph(GenerateGraphRequest) returns (GenerateNodeResponse) {}
+
+    // RunSensor executes a sensor poll function and returns fire/skip plus cursor data.
+    rpc RunSensor(RunSensorRequest) returns (RunSensorResponse) {}
+
+    // RunStep executes a single step and returns a PropertyValue-compatible result.
+    rpc RunStep(RunStepRequest) returns (RunStepResponse) {}
+
+    // RunFilter executes a trigger filter and returns pass/fail.
+    rpc RunFilter(RunFilterRequest) returns (RunFilterResponse) {}
+
+    // RunOnError executes a node's on-error callback and returns retry behavior.
+    rpc RunOnError(RunOnErrorRequest) returns (RunOnErrorResponse) {}
+}
+
+// WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
+// ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
+service WorkflowMonitor {
+    rpc RegisterTrigger(RegisterTriggerRequest) returns (RegisterNodeResponse) {}
+    rpc RegisterSensor(RegisterSensorRequest) returns (RegisterNodeResponse) {}
+    rpc RegisterJob(RegisterJobRequest) returns (RegisterNodeResponse) {}
+    rpc RegisterGraph(RegisterGraphRequest) returns (RegisterNodeResponse) {}
+    rpc RegisterStep(RegisterStepRequest) returns (RegisterNodeResponse) {}
+
+    // GetStepResult asks for a previously completed step output.
+    rpc GetStepResult(GetStepResultRequest) returns (GetStepResultResponse) {}
+}
+
+// WorkflowContext identifies a workflow definition and execution.
+message WorkflowContext {
+    // A stable name for the workflow definition.
+    string workflowName = 1;
+
+    // A scheduler-defined immutable workflow version identifier.
+    string workflowVersion = 2;
+
+    // The workflow execution identifier for a single trigger fire.
+    string executionId = 3;
+}
+
+// WorkflowError represents an execution or generation error.
+message WorkflowError {
+    // A user-facing error message.
+    string reason = 1;
+
+    // Optional machine-friendly error category.
+    string category = 2;
+
+    // Optional extra structured details.
+    google.protobuf.Struct details = 3;
+}
+
+// WorkflowValue transports PropertyValue-like payloads.
+message WorkflowValue {
+    // If false, value is unknown (like preview-time unknowns in IaC).
+    bool known = 1;
+
+    // The value encoded as protobuf Value/Struct/List/scalar.
+    google.protobuf.Value value = 2;
+
+    // If set, this value is faulted and downstream consumers should treat it as failed.
+    WorkflowError error = 3;
+}
+
+// A dependency term can be a direct path or a nested dependency expression.
+message DependencyTerm {
+    oneof term {
+        // A direct dependency on a concrete graph node path.
+        string path = 1;
+
+        // A nested dependency expression.
+        DependencyExpression expression = 2;
+    }
+}
+
+// DependencyExpression supports OR/strict compositions of dependencies.
+message DependencyExpression {
+    enum Operator {
+        OPERATOR_UNSPECIFIED = 0;
+
+        // All terms must be complete (default conjunction).
+        OPERATOR_ALL = 1;
+
+        // Any one term must be complete.
+        OPERATOR_ANY = 2;
+
+        // All terms must be complete and successful.
+        OPERATOR_STRICT = 3;
+
+        // All terms must be complete, ignoring strictness from enclosing scopes.
+        OPERATOR_UNSTRICT = 4;
+    }
+
+    Operator operator = 1;
+    repeated DependencyTerm terms = 2;
+}
+
+message PlatformRequirements {
+    string os = 1;
+    string arch = 2;
+    int32 minVcpu = 3;
+    int32 minMemoryGib = 4;
+}
+
+message PlatformSelector {
+    enum MatchPolicy {
+        MATCH_POLICY_UNSPECIFIED = 0;
+        MATCH_POLICY_EXACT = 1;
+        MATCH_POLICY_CLOSEST = 2;
+    }
+
+    string target = 1;
+    PlatformRequirements requirements = 2;
+    MatchPolicy matchPolicy = 3;
+}
+
+message ErrorRecord {
+    // Empty when the failure occurred during node generation instead of a concrete step.
+    string stepPath = 1;
+
+    // Human-readable reason for the failure.
+    string reason = 2;
+
+    // Optional machine-friendly category.
+    string category = 3;
+}
+
+message GenerateJobRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+}
+
+message GenerateGraphRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+}
+
+message GenerateNodeResponse {
+    WorkflowError error = 1;
+}
+
+message RunSensorRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+
+    // Last persisted sensor cursor.
+    WorkflowValue cursor = 3;
+}
+
+message RunSensorResponse {
+    enum Decision {
+        DECISION_UNSPECIFIED = 0;
+        DECISION_SKIP = 1;
+        DECISION_FIRE = 2;
+    }
+
+    // Non-empty error indicates poll failure.
+    WorkflowError error = 1;
+
+    // Whether this poll cycle should create a workflow execution.
+    Decision decision = 2;
+
+    // Updated cursor to persist before the next poll.
+    WorkflowValue cursor = 3;
+
+    // Trigger payload emitted when decision is FIRE.
+    WorkflowValue event = 4;
+
+    // Optional scheduler hint for next poll cadence (e.g. "30s").
+    string nextInterval = 5;
+}
+
+message RunStepRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+}
+
+message RunStepResponse {
+    WorkflowError error = 1;
+    WorkflowValue result = 2;
+}
+
+message RunFilterRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+}
+
+message RunFilterResponse {
+    WorkflowError error = 1;
+    bool pass = 2;
+}
+
+message RunOnErrorRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+    repeated ErrorRecord errors = 3;
+}
+
+message RunOnErrorResponse {
+    WorkflowError error = 1;
+
+    // True when execution should be retried.
+    bool retry = 2;
+
+    // Optional scheduler hint for how long to delay before retrying (e.g. "250ms").
+    string retryAfter = 3;
+}
+
+message RegisterTriggerRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+
+    // Trigger type token, e.g. cloud:github:push.
+    string type = 3;
+
+    // Scheduler-owned declarative trigger specification.
+    google.protobuf.Struct spec = 4;
+
+    // If true, trigger has a filter function that can be executed via RunFilter.
+    bool hasFilter = 5;
+}
+
+message RegisterSensorRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+
+    // Declarative sensor polling specification.
+    google.protobuf.Struct spec = 3;
+
+    // Nominal polling interval used by the scheduler.
+    string interval = 4;
+}
+
+message RegisterJobRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+    DependencyExpression dependencies = 3;
+    PlatformSelector platform = 4;
+    bool hasOnError = 5;
+}
+
+message RegisterGraphRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+    DependencyExpression dependencies = 3;
+    bool hasOnError = 4;
+}
+
+message RegisterStepRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+    string jobPath = 3;
+    DependencyExpression dependencies = 4;
+    bool hasOnError = 5;
+}
+
+message RegisterNodeResponse {
+    // Current state for the node if known in the provided execution state.
+    WorkflowValue value = 1;
+}
+
+message GetStepResultRequest {
+    WorkflowContext context = 1;
+    string path = 2;
+}
+
+message GetStepResultResponse {
+    WorkflowValue result = 1;
+}
