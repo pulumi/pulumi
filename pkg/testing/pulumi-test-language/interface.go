@@ -1122,6 +1122,7 @@ func runLanguageTests(
 	sm := b64secrets.NewBase64SecretsManager()
 	dec := sm.Decrypter()
 
+	var programPackages []schema.PackageReference
 	var result tests.LResult
 	for i, run := range test.Runs {
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", testName)
@@ -1167,17 +1168,16 @@ func runLanguageTests(
 			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, testName, run.Main)
 		}()
 
-		// Check the PCL is valid and get the list of packages it reports
-		program, diags, err := pcl.BindDirectory(sourceDir, loader)
-		if err != nil {
-			return nil, fmt.Errorf("bind PCL program: %v", err)
-		}
-		if diags.HasErrors() {
-			return nil, fmt.Errorf("bind PCL program: %v", diags)
-		}
-		programPackages := program.PackageReferences()
-
 		if i == 0 || !test.RunsShareSource {
+			// Check the PCL is valid and get the list of packages it reports
+			program, diags, err := pcl.BindDirectory(sourceDir, loader)
+			if err != nil {
+				return nil, fmt.Errorf("bind PCL program: %v", err)
+			}
+			if diags.HasErrors() {
+				return nil, fmt.Errorf("bind PCL program: %v", diags)
+			}
+			programPackages = program.PackageReferences()
 			// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 			var diagnostics hcl.Diagnostics
 

@@ -32,6 +32,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"sync"
 	"time"
 
 	"github.com/blang/semver"
@@ -120,12 +121,15 @@ func compileProgram(
 		return "", fmt.Errorf("unable to find 'go' executable: %w", err)
 	}
 	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
-	args := []string{"build", "-o", outfile}
+	args := []string{"build", "-buildvcs=false", "-trimpath", "-o", outfile}
 	if withDebugFlags {
 		args = append(args, "-gcflags", "all=-N -l")
+	} else {
+		args = append(args, "-ldflags", "-s -w")
 	}
 	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
+	buildCmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOPROXY=off", "GONOSUMDB=*", "GONOSUMCHECK=*")
 	buildCmd.Stdout, buildCmd.Stderr = stdout, stderr
 
 	if err := buildCmd.Run(); err != nil {
@@ -283,6 +287,7 @@ type goLanguageHost struct {
 	engineAddress string
 	tracing       string
 	otelEndpoint  string
+	buildCache    sync.Map
 }
 
 type goOptions struct {
@@ -1095,10 +1100,25 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgram(
-		ctx, engineClient, req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger(), os.Stdout, os.Stderr)
-	if err != nil {
-		return nil, errutil.ErrorWithStderr(err, "error in compiling Go")
+	var program string
+	if opts.buildTarget == "" && !req.GetAttachDebugger() {
+		if cached, ok := host.buildCache.Load(req.Info.ProgramDirectory); ok {
+			cachedPath := cached.(string)
+			if _, err := os.Stat(cachedPath); err == nil {
+				program = cachedPath
+			}
+		}
+	}
+	if program == "" {
+		var err error
+		program, err = compileProgram(
+			ctx, engineClient, req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger(), os.Stdout, os.Stderr)
+		if err != nil {
+			return nil, errutil.ErrorWithStderr(err, "error in compiling Go")
+		}
+		if opts.buildTarget == "" && !req.GetAttachDebugger() {
+			host.buildCache.Store(req.Info.ProgramDirectory, program)
+		}
 	}
 	if opts.buildTarget == "" {
 		// If there is no specified buildTarget, delete the temporary program after running it.
@@ -1209,7 +1229,7 @@ func (host *goLanguageHost) InstallDependencies(
 
 	cmd := exec.Command(gobin, "mod", "tidy", "-compat=1.18")
 	cmd.Dir = req.Info.ProgramDirectory
-	cmd.Env = os.Environ()
+	cmd.Env = append(os.Environ(), "GONOSUMDB=*", "GONOSUMCHECK=*", "GOPROXY=off")
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err := cmd.Run(); err != nil {

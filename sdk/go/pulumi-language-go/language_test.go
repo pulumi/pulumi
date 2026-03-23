@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -40,6 +42,16 @@ import (
 )
 
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
+	// Set up otel tracing if PULUMI_CONFORMANCE_TRACING is set to a file path.
+	if tracingFile := os.Getenv("PULUMI_CONFORMANCE_TRACING"); tracingFile != "" {
+		err := cmdutil.InitOtelReceiver("file://" + tracingFile)
+		require.NoError(t, err, "failed to start otel receiver")
+		t.Logf("otel tracing enabled, writing traces to %s (receiver at %s)", tracingFile, cmdutil.OTelEndpoint())
+		t.Cleanup(func() {
+			cmdutil.CloseOtelTracing()
+		})
+	}
+
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
 	binary := t.TempDir() + "/pulumi-test-language"
@@ -49,6 +61,10 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	require.NoError(t, err)
 
 	cmd = exec.Command(binary)
+	// Pass the otel endpoint to the test host subprocess so it can forward to providers.
+	if otelEp := cmdutil.OTelEndpoint(); otelEp != "" {
+		cmd.Env = append(os.Environ(), "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+otelEp)
+	}
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()
@@ -204,7 +220,7 @@ func TestLanguage(t *testing.T) {
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					host := newLanguageHost(engineAddress, "", "", "")
+					host := newLanguageHost(engineAddress, "", "", cmdutil.OTelEndpoint())
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},

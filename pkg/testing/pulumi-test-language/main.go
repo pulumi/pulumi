@@ -18,9 +18,19 @@ import (
 	"context"
 	"fmt"
 	"os"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func main() {
+	// Initialize OTel tracing if the parent process provided an endpoint.
+	if otelEndpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT"); otelEndpoint != "" {
+		if err := cmdutil.InitOtelTracing("pulumi-test-language", otelEndpoint); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to initialize OTel tracing: %v\n", err)
+		}
+		defer cmdutil.CloseOtelTracing()
+	}
+
 	ctx := context.Background()
 	server, err := Start(ctx)
 	if err != nil {
