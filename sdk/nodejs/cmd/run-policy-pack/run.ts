@@ -37,7 +37,7 @@ const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
  * Attempts to provide a detailed error message for module load failure if the
  * module that failed to load is the top-level module.
  * @param program The name of the program given to `run`, i.e. the top level module
- * @param error The error that occured. Must be a module load error.
+ * @param error The error that occurred. Must be a module load error.
  */
 function reportModuleLoadFailure(program: string, error: Error): never {
     throwOrPrintModuleLoadError(program, error);
