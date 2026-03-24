@@ -13,8 +13,8 @@ def main_graph(ctx: workflow.Context) -> None:
 
 
 def register_workflows(registry: workflow.WorkflowRegistry) -> None:
-    registry.graph("example:index:main", main_graph)
+    registry.graph("main", main_graph)
 
 
 if __name__ == "__main__":
-    workflow.run_plugin(register_workflows)
+    workflow.run("example", "0.0.1", register_workflows)

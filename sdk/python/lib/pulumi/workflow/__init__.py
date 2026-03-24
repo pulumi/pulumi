@@ -21,7 +21,6 @@ register graph/trigger shape with a GraphMonitor.
 from __future__ import annotations
 
 import contextlib
-import os
 from concurrent import futures
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union
@@ -97,18 +96,6 @@ class WorkflowRegistry:
         return register
 
 
-def _new_workflow_context() -> workflow_pb2.WorkflowContext:
-    workflow_name = os.getenv("PULUMI_WORKFLOW_NAME", "workflow")
-    workflow_version = os.getenv("PULUMI_WORKFLOW_VERSION", "dev")
-    execution_id = os.getenv("PULUMI_WORKFLOW_EXECUTION_ID", "")
-
-    context = workflow_pb2.WorkflowContext()
-    context.workflow_name = workflow_name
-    context.workflow_version = workflow_version
-    context.execution_id = execution_id
-    return context
-
-
 def _evaluate_graph(
     token: str,
     graph_fn: Callable[[Context], None],
@@ -131,7 +118,9 @@ def _evaluate_graph(
 
 
 class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
-    def __init__(self, register: Callable[[WorkflowRegistry], None]) -> None:
+    def __init__(self, package_name: str, package_version: str, register: Callable[[WorkflowRegistry], None]) -> None:
+        self._package_name = package_name
+        self._package_version = package_version
         self._workflow_registry = WorkflowRegistry()
         register(self._workflow_registry)
 
@@ -152,9 +141,9 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         _ = request
         _ = context
         response = workflow_pb2.GetPackageInfoResponse()
-        response.package.name = os.getenv("PULUMI_WORKFLOW_PACKAGE_NAME", os.getenv("PULUMI_WORKFLOW_NAME", "workflow"))
-        response.package.version = os.getenv("PULUMI_WORKFLOW_PACKAGE_VERSION", os.getenv("PULUMI_WORKFLOW_VERSION", "dev"))
-        response.package.display_name = os.getenv("PULUMI_WORKFLOW_PACKAGE_DISPLAY_NAME", "Workflow")
+        response.package.name = self._package_name
+        response.package.version = self._package_version
+        response.package.display_name = self._package_name
         return response
 
     def GetGraphs(
@@ -220,25 +209,19 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         context.abort(grpc.StatusCode.UNIMPLEMENTED, "GenerateJob is not implemented")
 
 
-def run(register: Callable[[WorkflowRegistry], None]) -> None:
-    """Executes graph evaluation once against the graph monitor."""
-
-    graph_monitor_address = os.getenv("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS")
-    if not graph_monitor_address:
-        raise WorkflowError("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS is required")
-
-    context = _new_workflow_context()
-    workflow_registry = WorkflowRegistry()
-    register(workflow_registry)
-    for token, graph_fn in workflow_registry._graphs.items():
-        _evaluate_graph(token, graph_fn, context, graph_monitor_address)
-
-
-def run_plugin(register: Callable[[WorkflowRegistry], None]) -> None:
+def run(package_name: str, package_version: str, register: Callable[[WorkflowRegistry], None]) -> None:
     """Runs a WorkflowEvaluator gRPC server and prints the bound port on stdout."""
 
+    if not package_name:
+        raise WorkflowError("package_name is required")
+    if not package_version:
+        raise WorkflowError("package_version is required")
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
-    workflow_pb2_grpc.add_WorkflowEvaluatorServicer_to_server(_WorkflowEvaluatorServer(register), server)
+    workflow_pb2_grpc.add_WorkflowEvaluatorServicer_to_server(
+        _WorkflowEvaluatorServer(package_name, package_version, register),
+        server,
+    )
     port = server.add_insecure_port("127.0.0.1:0")
     server.start()
     print(port, flush=True)
@@ -250,5 +233,4 @@ __all__ = [
     "WorkflowRegistry",
     "WorkflowError",
     "run",
-    "run_plugin",
 ]
