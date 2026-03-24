@@ -346,7 +346,7 @@ func newDIYBackend(
 Legacy DIY state is deprecated, please upgrade your state to project mode using:
 'pulumi state upgrade'
 
-It is due to be removed in a future release before the end of this year (2025).
+It is due to be removed in a future release before the end of this year (2026).
 If you have any feedback or concerns, please let us know by commenting on the
 issue at https://github.com/pulumi/pulumi/issues/19566.
 Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_WARNING=1 to disable this warning.
