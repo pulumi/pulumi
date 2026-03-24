@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"testing"
-	"time"
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
@@ -748,10 +747,6 @@ func TestAnalyzerCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(t.Context())
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		// Sleep to ensure the executor's SignalCancellation goroutine sees
-		// callerCtx.Done() before the done channel is closed. Without this,
-		// CancelF may never be called due to a race in the executor.
-		time.Sleep(1 * time.Second)
 		cancel()
 		// Wait for the engine to signal cancellation to the analyzer before
 		// returning. Without this, the program's nil return races with context
