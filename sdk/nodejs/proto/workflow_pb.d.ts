@@ -329,6 +329,97 @@ export namespace GetGraphResponse {
     }
 }
 
+export class GetTriggersRequest extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetTriggersRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetTriggersRequest): GetTriggersRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetTriggersRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetTriggersRequest;
+    static deserializeBinaryFromReader(message: GetTriggersRequest, reader: jspb.BinaryReader): GetTriggersRequest;
+}
+
+export namespace GetTriggersRequest {
+    export type AsObject = {
+    }
+}
+
+export class GetTriggersResponse extends jspb.Message { 
+    clearTriggersList(): void;
+    getTriggersList(): Array<string>;
+    setTriggersList(value: Array<string>): GetTriggersResponse;
+    addTriggers(value: string, index?: number): string;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetTriggersResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GetTriggersResponse): GetTriggersResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetTriggersResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetTriggersResponse;
+    static deserializeBinaryFromReader(message: GetTriggersResponse, reader: jspb.BinaryReader): GetTriggersResponse;
+}
+
+export namespace GetTriggersResponse {
+    export type AsObject = {
+        triggersList: Array<string>,
+    }
+}
+
+export class GetTriggerRequest extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): GetTriggerRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetTriggerRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetTriggerRequest): GetTriggerRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetTriggerRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetTriggerRequest;
+    static deserializeBinaryFromReader(message: GetTriggerRequest, reader: jspb.BinaryReader): GetTriggerRequest;
+}
+
+export namespace GetTriggerRequest {
+    export type AsObject = {
+        token: string,
+    }
+}
+
+export class GetTriggerResponse extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): GetTriggerResponse;
+
+    hasInputType(): boolean;
+    clearInputType(): void;
+    getInputType(): TypeReference | undefined;
+    setInputType(value?: TypeReference): GetTriggerResponse;
+
+    hasOutputType(): boolean;
+    clearOutputType(): void;
+    getOutputType(): TypeReference | undefined;
+    setOutputType(value?: TypeReference): GetTriggerResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetTriggerResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GetTriggerResponse): GetTriggerResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetTriggerResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetTriggerResponse;
+    static deserializeBinaryFromReader(message: GetTriggerResponse, reader: jspb.BinaryReader): GetTriggerResponse;
+}
+
+export namespace GetTriggerResponse {
+    export type AsObject = {
+        token: string,
+        inputType?: TypeReference.AsObject,
+        outputType?: TypeReference.AsObject,
+    }
+}
+
 export class GetJobsRequest extends jspb.Message { 
 
     serializeBinary(): Uint8Array;
@@ -913,6 +1004,54 @@ export class ResolveStepResultResponse extends jspb.Message {
 export namespace ResolveStepResultResponse {
     export type AsObject = {
         error?: WorkflowError.AsObject,
+    }
+}
+
+export class RunTriggerMockRequest extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): RunTriggerMockRequest;
+    clearArgsList(): void;
+    getArgsList(): Array<string>;
+    setArgsList(value: Array<string>): RunTriggerMockRequest;
+    addArgs(value: string, index?: number): string;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RunTriggerMockRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RunTriggerMockRequest): RunTriggerMockRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RunTriggerMockRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RunTriggerMockRequest;
+    static deserializeBinaryFromReader(message: RunTriggerMockRequest, reader: jspb.BinaryReader): RunTriggerMockRequest;
+}
+
+export namespace RunTriggerMockRequest {
+    export type AsObject = {
+        token: string,
+        argsList: Array<string>,
+    }
+}
+
+export class RunTriggerMockResponse extends jspb.Message { 
+
+    hasValue(): boolean;
+    clearValue(): void;
+    getValue(): google_protobuf_struct_pb.Struct | undefined;
+    setValue(value?: google_protobuf_struct_pb.Struct): RunTriggerMockResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RunTriggerMockResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: RunTriggerMockResponse): RunTriggerMockResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RunTriggerMockResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RunTriggerMockResponse;
+    static deserializeBinaryFromReader(message: RunTriggerMockResponse, reader: jspb.BinaryReader): RunTriggerMockResponse;
+}
+
+export namespace RunTriggerMockResponse {
+    export type AsObject = {
+        value?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 

@@ -22,9 +22,10 @@ from __future__ import annotations
 
 import contextlib
 from concurrent import futures
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 import asyncio
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+import inspect
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union, get_type_hints
 
 import grpc
 from google.protobuf import json_format
@@ -42,6 +43,9 @@ StepCallback = Callable[[], Any]
 JobCallback = Callable[..., None]
 GraphCallback = Callable[["Context"], None]
 FilterCallback = Callable[[Any], bool]
+TInput = TypeVar("TInput")
+TOutput = TypeVar("TOutput")
+TriggerMockCallback = Callable[[List[str]], TOutput]
 Output = PulumiOutput[Any]
 
 _WORKFLOW_OUTPUT_PATHS_ATTR = "_pulumi_workflow_output_paths"
@@ -59,6 +63,14 @@ class _JobDefinition:
     fn: JobCallback
     on_error: Optional[OnErrorHandler]
     inputs: List[Any]
+
+
+@dataclass
+class _TriggerDefinition:
+    token: str
+    input_type: Type[Any]
+    output_type: Type[Any]
+    mock: Callable[[List[str]], Any]
 
 
 @dataclass
@@ -89,7 +101,7 @@ class Context:
         self,
         name: str,
         trigger_type: str,
-        spec: Optional[Dict[str, Any]] = None,
+        spec: Optional[Any] = None,
         *,
         options: Optional[TriggerOptions] = None,
     ) -> PulumiOutput[Any]:
@@ -106,9 +118,9 @@ class Context:
         request.path = trigger_path
         request.type = trigger_type
         request.has_filter = filter_fn is not None
-        if spec:
+        if spec is not None:
             trigger_spec = struct_pb2.Struct()
-            trigger_spec.update(spec)
+            trigger_spec.update(_coerce_to_struct_data(spec))
             request.spec.CopyFrom(trigger_spec)
 
         self._state.monitor.RegisterTrigger(request)
@@ -231,6 +243,7 @@ class WorkflowRegistry:
 
     def __init__(self) -> None:
         self._graphs: Dict[str, GraphCallback] = {}
+        self._triggers: Dict[str, _TriggerDefinition] = {}
 
     def graph(
         self,
@@ -248,6 +261,31 @@ class WorkflowRegistry:
         if fn is not None:
             return register(fn)
         return register
+
+    def trigger(
+        self,
+        token: str,
+        input_type: Type[TInput],
+        mock: TriggerMockCallback[TOutput],
+    ) -> None:
+        """Registers an exported trigger by token with typed input/output and mock behavior."""
+        if not token:
+            raise WorkflowError("trigger token is required")
+        if token in self._triggers:
+            raise WorkflowError(f"trigger '{token}' is already registered")
+        if not callable(mock):
+            raise WorkflowError("trigger mock must be callable")
+
+        _validate_record_type(input_type, "trigger input type")
+        output_type = _mock_return_type(mock)
+        _validate_record_type(output_type, "trigger output type")
+
+        self._triggers[token] = _TriggerDefinition(
+            token=token,
+            input_type=input_type,
+            output_type=output_type,
+            mock=mock,
+        )
 
 
 def _normalize_job_dependency(graph_path: str, dependency: str) -> str:
@@ -274,16 +312,61 @@ def _to_proto_value(value: Any) -> struct_pb2.Value:
         result.string_value = value
     elif isinstance(value, dict):
         struct_value = struct_pb2.Struct()
-        struct_value.update(value)
+        struct_value.update(_coerce_to_struct_data(value))
         result.struct_value.CopyFrom(struct_value)
     elif isinstance(value, list):
         list_value = struct_pb2.ListValue()
         for item in value:
             list_value.values.add().CopyFrom(_to_proto_value(item))
         result.list_value.CopyFrom(list_value)
+    elif _is_record_instance(value):
+        struct_value = struct_pb2.Struct()
+        struct_value.update(_coerce_to_struct_data(value))
+        result.struct_value.CopyFrom(struct_value)
     else:
         result.string_value = str(value)
     return result
+
+
+def _mock_return_type(mock: Callable[..., Any]) -> Type[Any]:
+    hints = get_type_hints(mock)
+    output_type = hints.get("return")
+    if output_type is None:
+        raise WorkflowError("trigger mock must declare a return type annotation")
+    if not inspect.isclass(output_type):
+        raise WorkflowError("trigger mock return type must be a class/record type")
+    return output_type
+
+
+def _validate_record_type(record_type: Type[Any], label: str) -> None:
+    if not inspect.isclass(record_type):
+        raise WorkflowError(f"{label} must be a class/record type")
+    if record_type in (dict, list, str, int, float, bool):
+        raise WorkflowError(f"{label} must not be a primitive/container builtin type")
+    if not (is_dataclass(record_type) or hasattr(record_type, "__annotations__")):
+        raise WorkflowError(f"{label} must define fields via dataclass or annotations")
+
+
+def _is_record_instance(value: Any) -> bool:
+    if is_dataclass(value):
+        return True
+    if hasattr(value, "__dict__") and hasattr(type(value), "__annotations__"):
+        return True
+    return False
+
+
+def _coerce_to_struct_data(value: Any) -> Dict[str, Any]:
+    if is_dataclass(value):
+        return asdict(value)
+    if isinstance(value, dict):
+        return dict(value)
+    if _is_record_instance(value):
+        return dict(vars(value))
+    raise WorkflowError("expected a class/record instance or dict for structured trigger data")
+
+
+def _type_token(record_type: Type[Any]) -> str:
+    return f"{record_type.__module__}.{record_type.__qualname__}"
 
 
 def _from_proto_value(value: struct_pb2.Value) -> Any:
@@ -510,6 +593,35 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         _ = context
         return workflow_pb2.GetJobsResponse()
 
+    def GetTriggers(
+        self,
+        request: workflow_pb2.GetTriggersRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GetTriggersResponse:
+        _ = request
+        _ = context
+        response = workflow_pb2.GetTriggersResponse()
+        for token in sorted(self._workflow_registry._triggers):
+            response.triggers.append(token)
+        return response
+
+    def GetTrigger(
+        self,
+        request: workflow_pb2.GetTriggerRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GetTriggerResponse:
+        trigger = self._workflow_registry._triggers.get(request.token)
+        if trigger is None:
+            context.abort(
+                grpc.StatusCode.NOT_FOUND, f"unknown trigger token {request.token}"
+            )
+
+        response = workflow_pb2.GetTriggerResponse()
+        response.token = trigger.token
+        response.input_type.token = _type_token(trigger.input_type)
+        response.output_type.token = _type_token(trigger.output_type)
+        return response
+
     def GetJob(
         self,
         request: workflow_pb2.GetJobRequest,
@@ -517,6 +629,30 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
     ) -> workflow_pb2.GetJobResponse:
         _ = request
         context.abort(grpc.StatusCode.NOT_FOUND, "no jobs exported")
+
+    def RunTriggerMock(
+        self,
+        request: workflow_pb2.RunTriggerMockRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.RunTriggerMockResponse:
+        trigger = self._workflow_registry._triggers.get(request.token)
+        if trigger is None:
+            context.abort(
+                grpc.StatusCode.NOT_FOUND, f"unknown trigger token {request.token}"
+            )
+
+        response = workflow_pb2.RunTriggerMockResponse()
+
+        try:
+            value = trigger.mock(list(request.args))
+            if not isinstance(value, trigger.output_type):
+                raise WorkflowError(
+                    f"trigger mock for {trigger.token} must return {trigger.output_type.__name__}"
+                )
+            response.value.update(_coerce_to_struct_data(value))
+        except Exception as error:  # pylint: disable=broad-except
+            context.abort(grpc.StatusCode.INTERNAL, f"trigger mock failed: {error}")
+        return response
 
     def GenerateGraph(
         self,

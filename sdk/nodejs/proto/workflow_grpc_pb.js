@@ -163,6 +163,50 @@ function deserialize_pulumirpc_GetPackageInfoResponse(buffer_arg) {
   return pulumi_workflow_pb.GetPackageInfoResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_GetTriggerRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetTriggerRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetTriggerRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetTriggerRequest(buffer_arg) {
+  return pulumi_workflow_pb.GetTriggerRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetTriggerResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetTriggerResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetTriggerResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetTriggerResponse(buffer_arg) {
+  return pulumi_workflow_pb.GetTriggerResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetTriggersRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetTriggersRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetTriggersRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetTriggersRequest(buffer_arg) {
+  return pulumi_workflow_pb.GetTriggersRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetTriggersResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetTriggersResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetTriggersResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetTriggersResponse(buffer_arg) {
+  return pulumi_workflow_pb.GetTriggersResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_RegisterGraphRequest(arg) {
   if (!(arg instanceof pulumi_workflow_pb.RegisterGraphRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterGraphRequest');
@@ -339,6 +383,28 @@ function deserialize_pulumirpc_RunStepResponse(buffer_arg) {
   return pulumi_workflow_pb.RunStepResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RunTriggerMockRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.RunTriggerMockRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RunTriggerMockRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RunTriggerMockRequest(buffer_arg) {
+  return pulumi_workflow_pb.RunTriggerMockRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RunTriggerMockResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.RunTriggerMockResponse)) {
+    throw new Error('Expected argument of type pulumirpc.RunTriggerMockResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RunTriggerMockResponse(buffer_arg) {
+  return pulumi_workflow_pb.RunTriggerMockResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_WorkflowHandshakeRequest(arg) {
   if (!(arg instanceof pulumi_workflow_pb.WorkflowHandshakeRequest)) {
     throw new Error('Expected argument of type pulumirpc.WorkflowHandshakeRequest');
@@ -415,6 +481,30 @@ getGraph: {
     requestDeserialize: deserialize_pulumirpc_GetGraphRequest,
     responseSerialize: serialize_pulumirpc_GetGraphResponse,
     responseDeserialize: deserialize_pulumirpc_GetGraphResponse,
+  },
+  // Returns the list of exported trigger tokens.
+getTriggers: {
+    path: '/pulumirpc.WorkflowEvaluator/GetTriggers',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.GetTriggersRequest,
+    responseType: pulumi_workflow_pb.GetTriggersResponse,
+    requestSerialize: serialize_pulumirpc_GetTriggersRequest,
+    requestDeserialize: deserialize_pulumirpc_GetTriggersRequest,
+    responseSerialize: serialize_pulumirpc_GetTriggersResponse,
+    responseDeserialize: deserialize_pulumirpc_GetTriggersResponse,
+  },
+  // Returns the schema for one exported trigger.
+getTrigger: {
+    path: '/pulumirpc.WorkflowEvaluator/GetTrigger',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.GetTriggerRequest,
+    responseType: pulumi_workflow_pb.GetTriggerResponse,
+    requestSerialize: serialize_pulumirpc_GetTriggerRequest,
+    requestDeserialize: deserialize_pulumirpc_GetTriggerRequest,
+    responseSerialize: serialize_pulumirpc_GetTriggerResponse,
+    responseDeserialize: deserialize_pulumirpc_GetTriggerResponse,
   },
   // Returns the list of exported job tokens.
 getJobs: {
@@ -499,6 +589,18 @@ resolveStepResult: {
     requestDeserialize: deserialize_pulumirpc_ResolveStepResultRequest,
     responseSerialize: serialize_pulumirpc_ResolveStepResultResponse,
     responseDeserialize: deserialize_pulumirpc_ResolveStepResultResponse,
+  },
+  // RunTriggerMock executes a trigger mock function and returns a mock output value.
+runTriggerMock: {
+    path: '/pulumirpc.WorkflowEvaluator/RunTriggerMock',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.RunTriggerMockRequest,
+    responseType: pulumi_workflow_pb.RunTriggerMockResponse,
+    requestSerialize: serialize_pulumirpc_RunTriggerMockRequest,
+    requestDeserialize: deserialize_pulumirpc_RunTriggerMockRequest,
+    responseSerialize: serialize_pulumirpc_RunTriggerMockResponse,
+    responseDeserialize: deserialize_pulumirpc_RunTriggerMockResponse,
   },
   // RunFilter executes a trigger filter and returns pass/fail.
 runFilter: {

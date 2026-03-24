@@ -1,22 +1,34 @@
 import pulumi.workflow as workflow
 import random
 import string
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
+
+CRON_TRIGGER_TOKEN = "example:index:CronTrigger"
+
+
+@dataclass
+class CronTriggerInput:
+    schedule: str
+    timezone: str
+
+
+@dataclass
+class CronTriggerOutput:
+    timestamp: str
 
 
 def main_graph(ctx: workflow.Context) -> None:
     def cron_filter(value: Any) -> bool:
-        if not isinstance(value, dict):
+        if not isinstance(value, dict) or "timestamp" not in value:
             return False
-        return bool(value.get("allow", False))
+        return str(value["timestamp"]).endswith("00:00+00:00")
 
     trigger_output = ctx.trigger(
         "every-minute",
-        "cloud:cron",
-        {
-            "schedule": "* * * * *",
-            "timezone": "UTC",
-        },
+        CRON_TRIGGER_TOKEN,
+        CronTriggerInput(schedule="* * * * *", timezone="UTC"),
         options=workflow.TriggerOptions(filter=cron_filter),
     )
 
@@ -32,12 +44,25 @@ def main_graph(ctx: workflow.Context) -> None:
         @job.step("consume")
         def consume_step() -> str:
             print(f"consuming trigger payload: {cron}", flush=True)
-            if isinstance(cron, dict) and "triggerPath" in cron:
-                return str(cron["triggerPath"])
+            if isinstance(cron, dict) and "timestamp" in cron:
+                return str(cron["timestamp"])
             return str(cron)
 
 
 def register_workflows(registry: workflow.WorkflowRegistry) -> None:
+    def cron_trigger_mock(args: list[str]) -> CronTriggerOutput:
+        if len(args) != 1:
+            raise ValueError("cron trigger expects exactly one arg: timestamp")
+        timestamp = datetime.fromisoformat(args[0])
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        return CronTriggerOutput(timestamp=timestamp.isoformat())
+
+    registry.trigger(
+        CRON_TRIGGER_TOKEN,
+        CronTriggerInput,
+        cron_trigger_mock,
+    )
     registry.graph("main", main_graph)
 
 

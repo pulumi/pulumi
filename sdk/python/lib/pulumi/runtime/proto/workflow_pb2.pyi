@@ -305,6 +305,71 @@ class GetGraphResponse(google.protobuf.message.Message):
 global___GetGraphResponse = GetGraphResponse
 
 @typing.final
+class GetTriggersRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___GetTriggersRequest = GetTriggersRequest
+
+@typing.final
+class GetTriggersResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TRIGGERS_FIELD_NUMBER: builtins.int
+    @property
+    def triggers(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    def __init__(
+        self,
+        *,
+        triggers: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["triggers", b"triggers"]) -> None: ...
+
+global___GetTriggersResponse = GetTriggersResponse
+
+@typing.final
+class GetTriggerRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
+
+global___GetTriggerRequest = GetTriggerRequest
+
+@typing.final
+class GetTriggerResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    INPUT_TYPE_FIELD_NUMBER: builtins.int
+    OUTPUT_TYPE_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    @property
+    def input_type(self) -> global___TypeReference: ...
+    @property
+    def output_type(self) -> global___TypeReference: ...
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+        input_type: global___TypeReference | None = ...,
+        output_type: global___TypeReference | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["input_type", b"input_type", "output_type", b"output_type"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["input_type", b"input_type", "output_type", b"output_type", "token", b"token"]) -> None: ...
+
+global___GetTriggerResponse = GetTriggerResponse
+
+@typing.final
 class GetJobsRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -818,6 +883,42 @@ class ResolveStepResultResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["error", b"error"]) -> None: ...
 
 global___ResolveStepResultResponse = ResolveStepResultResponse
+
+@typing.final
+class RunTriggerMockRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    ARGS_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    @property
+    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+        args: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "token", b"token"]) -> None: ...
+
+global___RunTriggerMockRequest = RunTriggerMockRequest
+
+@typing.final
+class RunTriggerMockResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    VALUE_FIELD_NUMBER: builtins.int
+    @property
+    def value(self) -> google.protobuf.struct_pb2.Struct: ...
+    def __init__(
+        self,
+        *,
+        value: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["value", b"value"]) -> None: ...
+
+global___RunTriggerMockResponse = RunTriggerMockResponse
 
 @typing.final
 class RunFilterRequest(google.protobuf.message.Message):

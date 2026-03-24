@@ -66,6 +66,18 @@ class WorkflowEvaluatorStub:
     ]
     """Returns the schema for one exported graph."""
 
+    GetTriggers: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetTriggersRequest,
+        pulumi.workflow_pb2.GetTriggersResponse,
+    ]
+    """Returns the list of exported trigger tokens."""
+
+    GetTrigger: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetTriggerRequest,
+        pulumi.workflow_pb2.GetTriggerResponse,
+    ]
+    """Returns the schema for one exported trigger."""
+
     GetJobs: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetJobsRequest,
         pulumi.workflow_pb2.GetJobsResponse,
@@ -107,6 +119,12 @@ class WorkflowEvaluatorStub:
         pulumi.workflow_pb2.ResolveStepResultResponse,
     ]
     """ResolveStepResult pushes a completed step result and resolved output value to the evaluator."""
+
+    RunTriggerMock: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.RunTriggerMockRequest,
+        pulumi.workflow_pb2.RunTriggerMockResponse,
+    ]
+    """RunTriggerMock executes a trigger mock function and returns a mock output value."""
 
     RunFilter: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunFilterRequest,
@@ -153,6 +171,18 @@ class WorkflowEvaluatorAsyncStub:
     ]
     """Returns the schema for one exported graph."""
 
+    GetTriggers: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetTriggersRequest,
+        pulumi.workflow_pb2.GetTriggersResponse,
+    ]
+    """Returns the list of exported trigger tokens."""
+
+    GetTrigger: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetTriggerRequest,
+        pulumi.workflow_pb2.GetTriggerResponse,
+    ]
+    """Returns the schema for one exported trigger."""
+
     GetJobs: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetJobsRequest,
         pulumi.workflow_pb2.GetJobsResponse,
@@ -194,6 +224,12 @@ class WorkflowEvaluatorAsyncStub:
         pulumi.workflow_pb2.ResolveStepResultResponse,
     ]
     """ResolveStepResult pushes a completed step result and resolved output value to the evaluator."""
+
+    RunTriggerMock: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.RunTriggerMockRequest,
+        pulumi.workflow_pb2.RunTriggerMockResponse,
+    ]
+    """RunTriggerMock executes a trigger mock function and returns a mock output value."""
 
     RunFilter: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunFilterRequest,
@@ -247,6 +283,22 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetGraphResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetGraphResponse]]:
         """Returns the schema for one exported graph."""
+
+    
+    def GetTriggers(
+        self,
+        request: pulumi.workflow_pb2.GetTriggersRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.GetTriggersResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetTriggersResponse]]:
+        """Returns the list of exported trigger tokens."""
+
+    
+    def GetTrigger(
+        self,
+        request: pulumi.workflow_pb2.GetTriggerRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.GetTriggerResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetTriggerResponse]]:
+        """Returns the schema for one exported trigger."""
 
     
     def GetJobs(
@@ -303,6 +355,14 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.ResolveStepResultResponse, collections.abc.Awaitable[pulumi.workflow_pb2.ResolveStepResultResponse]]:
         """ResolveStepResult pushes a completed step result and resolved output value to the evaluator."""
+
+    
+    def RunTriggerMock(
+        self,
+        request: pulumi.workflow_pb2.RunTriggerMockRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.RunTriggerMockResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RunTriggerMockResponse]]:
+        """RunTriggerMock executes a trigger mock function and returns a mock output value."""
 
     
     def RunFilter(

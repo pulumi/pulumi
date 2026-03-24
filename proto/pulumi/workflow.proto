@@ -38,6 +38,12 @@ service WorkflowEvaluator {
     // Returns the schema for one exported graph.
     rpc GetGraph(GetGraphRequest) returns (GetGraphResponse) {}
 
+    // Returns the list of exported trigger tokens.
+    rpc GetTriggers(GetTriggersRequest) returns (GetTriggersResponse) {}
+
+    // Returns the schema for one exported trigger.
+    rpc GetTrigger(GetTriggerRequest) returns (GetTriggerResponse) {}
+
     // Returns the list of exported job tokens.
     rpc GetJobs(GetJobsRequest) returns (GetJobsResponse) {}
 
@@ -58,6 +64,9 @@ service WorkflowEvaluator {
 
     // ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
     rpc ResolveStepResult(ResolveStepResultRequest) returns (ResolveStepResultResponse) {}
+
+    // RunTriggerMock executes a trigger mock function and returns a mock output value.
+    rpc RunTriggerMock(RunTriggerMockRequest) returns (RunTriggerMockResponse) {}
 
     // RunFilter executes a trigger filter and returns pass/fail.
     rpc RunFilter(RunFilterRequest) returns (RunFilterResponse) {}
@@ -159,6 +168,20 @@ message GetGraphRequest {
 }
 message GetGraphResponse {
     GraphInfo graph = 1;
+}
+
+message GetTriggersRequest {}
+message GetTriggersResponse {
+    repeated string triggers = 1;
+}
+
+message GetTriggerRequest {
+    string token = 1;
+}
+message GetTriggerResponse {
+    string token = 1;
+    TypeReference input_type = 2;
+    TypeReference output_type = 3;
 }
 
 message GetJobsRequest {}
@@ -327,6 +350,15 @@ message ResolveStepResultRequest {
 
 message ResolveStepResultResponse {
     WorkflowError error = 1;
+}
+
+message RunTriggerMockRequest {
+    string token = 1;
+    repeated string args = 2;
+}
+
+message RunTriggerMockResponse {
+    google.protobuf.Struct value = 1;
 }
 
 message RunFilterRequest {

@@ -36,6 +36,16 @@ class WorkflowEvaluatorStub(object):
                 request_serializer=pulumi_dot_workflow__pb2.GetGraphRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetGraphResponse.FromString,
                 )
+        self.GetTriggers = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/GetTriggers',
+                request_serializer=pulumi_dot_workflow__pb2.GetTriggersRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.GetTriggersResponse.FromString,
+                )
+        self.GetTrigger = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/GetTrigger',
+                request_serializer=pulumi_dot_workflow__pb2.GetTriggerRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.GetTriggerResponse.FromString,
+                )
         self.GetJobs = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GetJobs',
                 request_serializer=pulumi_dot_workflow__pb2.GetJobsRequest.SerializeToString,
@@ -70,6 +80,11 @@ class WorkflowEvaluatorStub(object):
                 '/pulumirpc.WorkflowEvaluator/ResolveStepResult',
                 request_serializer=pulumi_dot_workflow__pb2.ResolveStepResultRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.ResolveStepResultResponse.FromString,
+                )
+        self.RunTriggerMock = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/RunTriggerMock',
+                request_serializer=pulumi_dot_workflow__pb2.RunTriggerMockRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.RunTriggerMockResponse.FromString,
                 )
         self.RunFilter = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/RunFilter',
@@ -114,6 +129,20 @@ class WorkflowEvaluatorServicer(object):
 
     def GetGraph(self, request, context):
         """Returns the schema for one exported graph.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetTriggers(self, request, context):
+        """Returns the list of exported trigger tokens.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetTrigger(self, request, context):
+        """Returns the schema for one exported trigger.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -168,6 +197,13 @@ class WorkflowEvaluatorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RunTriggerMock(self, request, context):
+        """RunTriggerMock executes a trigger mock function and returns a mock output value.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def RunFilter(self, request, context):
         """RunFilter executes a trigger filter and returns pass/fail.
         """
@@ -205,6 +241,16 @@ def add_WorkflowEvaluatorServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_workflow__pb2.GetGraphRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetGraphResponse.SerializeToString,
             ),
+            'GetTriggers': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetTriggers,
+                    request_deserializer=pulumi_dot_workflow__pb2.GetTriggersRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.GetTriggersResponse.SerializeToString,
+            ),
+            'GetTrigger': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetTrigger,
+                    request_deserializer=pulumi_dot_workflow__pb2.GetTriggerRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.GetTriggerResponse.SerializeToString,
+            ),
             'GetJobs': grpc.unary_unary_rpc_method_handler(
                     servicer.GetJobs,
                     request_deserializer=pulumi_dot_workflow__pb2.GetJobsRequest.FromString,
@@ -239,6 +285,11 @@ def add_WorkflowEvaluatorServicer_to_server(servicer, server):
                     servicer.ResolveStepResult,
                     request_deserializer=pulumi_dot_workflow__pb2.ResolveStepResultRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.ResolveStepResultResponse.SerializeToString,
+            ),
+            'RunTriggerMock': grpc.unary_unary_rpc_method_handler(
+                    servicer.RunTriggerMock,
+                    request_deserializer=pulumi_dot_workflow__pb2.RunTriggerMockRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.RunTriggerMockResponse.SerializeToString,
             ),
             'RunFilter': grpc.unary_unary_rpc_method_handler(
                     servicer.RunFilter,
@@ -327,6 +378,40 @@ class WorkflowEvaluator(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetGraph',
             pulumi_dot_workflow__pb2.GetGraphRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetGraphResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetTriggers(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetTriggers',
+            pulumi_dot_workflow__pb2.GetTriggersRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.GetTriggersResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetTrigger(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetTrigger',
+            pulumi_dot_workflow__pb2.GetTriggerRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.GetTriggerResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -446,6 +531,23 @@ class WorkflowEvaluator(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/ResolveStepResult',
             pulumi_dot_workflow__pb2.ResolveStepResultRequest.SerializeToString,
             pulumi_dot_workflow__pb2.ResolveStepResultResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def RunTriggerMock(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/RunTriggerMock',
+            pulumi_dot_workflow__pb2.RunTriggerMockRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.RunTriggerMockResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

@@ -37,6 +37,8 @@ const (
 	WorkflowEvaluator_GetPackageInfo_FullMethodName    = "/pulumirpc.WorkflowEvaluator/GetPackageInfo"
 	WorkflowEvaluator_GetGraphs_FullMethodName         = "/pulumirpc.WorkflowEvaluator/GetGraphs"
 	WorkflowEvaluator_GetGraph_FullMethodName          = "/pulumirpc.WorkflowEvaluator/GetGraph"
+	WorkflowEvaluator_GetTriggers_FullMethodName       = "/pulumirpc.WorkflowEvaluator/GetTriggers"
+	WorkflowEvaluator_GetTrigger_FullMethodName        = "/pulumirpc.WorkflowEvaluator/GetTrigger"
 	WorkflowEvaluator_GetJobs_FullMethodName           = "/pulumirpc.WorkflowEvaluator/GetJobs"
 	WorkflowEvaluator_GetJob_FullMethodName            = "/pulumirpc.WorkflowEvaluator/GetJob"
 	WorkflowEvaluator_GenerateJob_FullMethodName       = "/pulumirpc.WorkflowEvaluator/GenerateJob"
@@ -44,6 +46,7 @@ const (
 	WorkflowEvaluator_RunSensor_FullMethodName         = "/pulumirpc.WorkflowEvaluator/RunSensor"
 	WorkflowEvaluator_RunStep_FullMethodName           = "/pulumirpc.WorkflowEvaluator/RunStep"
 	WorkflowEvaluator_ResolveStepResult_FullMethodName = "/pulumirpc.WorkflowEvaluator/ResolveStepResult"
+	WorkflowEvaluator_RunTriggerMock_FullMethodName    = "/pulumirpc.WorkflowEvaluator/RunTriggerMock"
 	WorkflowEvaluator_RunFilter_FullMethodName         = "/pulumirpc.WorkflowEvaluator/RunFilter"
 	WorkflowEvaluator_RunOnError_FullMethodName        = "/pulumirpc.WorkflowEvaluator/RunOnError"
 )
@@ -66,6 +69,10 @@ type WorkflowEvaluatorClient interface {
 	GetGraphs(ctx context.Context, in *GetGraphsRequest, opts ...grpc.CallOption) (*GetGraphsResponse, error)
 	// Returns the schema for one exported graph.
 	GetGraph(ctx context.Context, in *GetGraphRequest, opts ...grpc.CallOption) (*GetGraphResponse, error)
+	// Returns the list of exported trigger tokens.
+	GetTriggers(ctx context.Context, in *GetTriggersRequest, opts ...grpc.CallOption) (*GetTriggersResponse, error)
+	// Returns the schema for one exported trigger.
+	GetTrigger(ctx context.Context, in *GetTriggerRequest, opts ...grpc.CallOption) (*GetTriggerResponse, error)
 	// Returns the list of exported job tokens.
 	GetJobs(ctx context.Context, in *GetJobsRequest, opts ...grpc.CallOption) (*GetJobsResponse, error)
 	// Returns the schema for one exported job.
@@ -80,6 +87,8 @@ type WorkflowEvaluatorClient interface {
 	RunStep(ctx context.Context, in *RunStepRequest, opts ...grpc.CallOption) (*RunStepResponse, error)
 	// ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
 	ResolveStepResult(ctx context.Context, in *ResolveStepResultRequest, opts ...grpc.CallOption) (*ResolveStepResultResponse, error)
+	// RunTriggerMock executes a trigger mock function and returns a mock output value.
+	RunTriggerMock(ctx context.Context, in *RunTriggerMockRequest, opts ...grpc.CallOption) (*RunTriggerMockResponse, error)
 	// RunFilter executes a trigger filter and returns pass/fail.
 	RunFilter(ctx context.Context, in *RunFilterRequest, opts ...grpc.CallOption) (*RunFilterResponse, error)
 	// RunOnError executes a node's on-error callback and returns retry behavior.
@@ -128,6 +137,26 @@ func (c *workflowEvaluatorClient) GetGraph(ctx context.Context, in *GetGraphRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetGraphResponse)
 	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetGraph_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowEvaluatorClient) GetTriggers(ctx context.Context, in *GetTriggersRequest, opts ...grpc.CallOption) (*GetTriggersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTriggersResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetTriggers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowEvaluatorClient) GetTrigger(ctx context.Context, in *GetTriggerRequest, opts ...grpc.CallOption) (*GetTriggerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTriggerResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetTrigger_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -204,6 +233,16 @@ func (c *workflowEvaluatorClient) ResolveStepResult(ctx context.Context, in *Res
 	return out, nil
 }
 
+func (c *workflowEvaluatorClient) RunTriggerMock(ctx context.Context, in *RunTriggerMockRequest, opts ...grpc.CallOption) (*RunTriggerMockResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunTriggerMockResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_RunTriggerMock_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *workflowEvaluatorClient) RunFilter(ctx context.Context, in *RunFilterRequest, opts ...grpc.CallOption) (*RunFilterResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RunFilterResponse)
@@ -242,6 +281,10 @@ type WorkflowEvaluatorServer interface {
 	GetGraphs(context.Context, *GetGraphsRequest) (*GetGraphsResponse, error)
 	// Returns the schema for one exported graph.
 	GetGraph(context.Context, *GetGraphRequest) (*GetGraphResponse, error)
+	// Returns the list of exported trigger tokens.
+	GetTriggers(context.Context, *GetTriggersRequest) (*GetTriggersResponse, error)
+	// Returns the schema for one exported trigger.
+	GetTrigger(context.Context, *GetTriggerRequest) (*GetTriggerResponse, error)
 	// Returns the list of exported job tokens.
 	GetJobs(context.Context, *GetJobsRequest) (*GetJobsResponse, error)
 	// Returns the schema for one exported job.
@@ -256,6 +299,8 @@ type WorkflowEvaluatorServer interface {
 	RunStep(context.Context, *RunStepRequest) (*RunStepResponse, error)
 	// ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
 	ResolveStepResult(context.Context, *ResolveStepResultRequest) (*ResolveStepResultResponse, error)
+	// RunTriggerMock executes a trigger mock function and returns a mock output value.
+	RunTriggerMock(context.Context, *RunTriggerMockRequest) (*RunTriggerMockResponse, error)
 	// RunFilter executes a trigger filter and returns pass/fail.
 	RunFilter(context.Context, *RunFilterRequest) (*RunFilterResponse, error)
 	// RunOnError executes a node's on-error callback and returns retry behavior.
@@ -282,6 +327,12 @@ func (UnimplementedWorkflowEvaluatorServer) GetGraphs(context.Context, *GetGraph
 func (UnimplementedWorkflowEvaluatorServer) GetGraph(context.Context, *GetGraphRequest) (*GetGraphResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGraph not implemented")
 }
+func (UnimplementedWorkflowEvaluatorServer) GetTriggers(context.Context, *GetTriggersRequest) (*GetTriggersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTriggers not implemented")
+}
+func (UnimplementedWorkflowEvaluatorServer) GetTrigger(context.Context, *GetTriggerRequest) (*GetTriggerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTrigger not implemented")
+}
 func (UnimplementedWorkflowEvaluatorServer) GetJobs(context.Context, *GetJobsRequest) (*GetJobsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJobs not implemented")
 }
@@ -302,6 +353,9 @@ func (UnimplementedWorkflowEvaluatorServer) RunStep(context.Context, *RunStepReq
 }
 func (UnimplementedWorkflowEvaluatorServer) ResolveStepResult(context.Context, *ResolveStepResultRequest) (*ResolveStepResultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResolveStepResult not implemented")
+}
+func (UnimplementedWorkflowEvaluatorServer) RunTriggerMock(context.Context, *RunTriggerMockRequest) (*RunTriggerMockResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunTriggerMock not implemented")
 }
 func (UnimplementedWorkflowEvaluatorServer) RunFilter(context.Context, *RunFilterRequest) (*RunFilterResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunFilter not implemented")
@@ -398,6 +452,42 @@ func _WorkflowEvaluator_GetGraph_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WorkflowEvaluatorServer).GetGraph(ctx, req.(*GetGraphRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowEvaluator_GetTriggers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTriggersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).GetTriggers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_GetTriggers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).GetTriggers(ctx, req.(*GetTriggersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowEvaluator_GetTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTriggerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).GetTrigger(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_GetTrigger_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).GetTrigger(ctx, req.(*GetTriggerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -528,6 +618,24 @@ func _WorkflowEvaluator_ResolveStepResult_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkflowEvaluator_RunTriggerMock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunTriggerMockRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).RunTriggerMock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_RunTriggerMock_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).RunTriggerMock(ctx, req.(*RunTriggerMockRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WorkflowEvaluator_RunFilter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RunFilterRequest)
 	if err := dec(in); err != nil {
@@ -588,6 +696,14 @@ var WorkflowEvaluator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorkflowEvaluator_GetGraph_Handler,
 		},
 		{
+			MethodName: "GetTriggers",
+			Handler:    _WorkflowEvaluator_GetTriggers_Handler,
+		},
+		{
+			MethodName: "GetTrigger",
+			Handler:    _WorkflowEvaluator_GetTrigger_Handler,
+		},
+		{
 			MethodName: "GetJobs",
 			Handler:    _WorkflowEvaluator_GetJobs_Handler,
 		},
@@ -614,6 +730,10 @@ var WorkflowEvaluator_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveStepResult",
 			Handler:    _WorkflowEvaluator_ResolveStepResult_Handler,
+		},
+		{
+			MethodName: "RunTriggerMock",
+			Handler:    _WorkflowEvaluator_RunTriggerMock_Handler,
 		},
 		{
 			MethodName: "RunFilter",

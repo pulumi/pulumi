@@ -159,6 +159,18 @@ func (p *workflowPlugin) GetGraph(
 	return p.clientRaw.GetGraph(ctx, req)
 }
 
+func (p *workflowPlugin) GetTriggers(
+	ctx context.Context, req *pulumirpc.GetTriggersRequest,
+) (*pulumirpc.GetTriggersResponse, error) {
+	return p.clientRaw.GetTriggers(ctx, req)
+}
+
+func (p *workflowPlugin) GetTrigger(
+	ctx context.Context, req *pulumirpc.GetTriggerRequest,
+) (*pulumirpc.GetTriggerResponse, error) {
+	return p.clientRaw.GetTrigger(ctx, req)
+}
+
 func (p *workflowPlugin) GetJobs(
 	ctx context.Context, req *pulumirpc.GetJobsRequest,
 ) (*pulumirpc.GetJobsResponse, error) {
@@ -181,6 +193,12 @@ func (p *workflowPlugin) GenerateJob(
 	ctx context.Context, req *pulumirpc.GenerateJobRequest,
 ) (*pulumirpc.GenerateNodeResponse, error) {
 	return p.clientRaw.GenerateJob(ctx, req)
+}
+
+func (p *workflowPlugin) RunTriggerMock(
+	ctx context.Context, req *pulumirpc.RunTriggerMockRequest,
+) (*pulumirpc.RunTriggerMockResponse, error) {
+	return p.clientRaw.RunTriggerMock(ctx, req)
 }
 
 func (p *workflowPlugin) RunFilter(
