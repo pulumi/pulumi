@@ -50,8 +50,10 @@ func init() {
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"value": true,
 						"resourceRef": resource.NewProperty(resource.ResourceReference{
-							URN: "urn:pulumi:test::l2-namespaced-provider::component:index:ComponentCustomRefOutput$component:index:Custom::componentRes-child",
-							ID:  resource.NewProperty("id-foo-bar-baz"),
+							URN:  "urn:pulumi:test::l2-namespaced-provider::component:index:ComponentCustomRefOutput$component:index:Custom::componentRes-child",
+							Name: "componentRes-child",
+							Type: "component:index:Custom",
+							ID:   resource.NewProperty("id-foo-bar-baz"),
 						}),
 					})
 					require.Equal(l, want, namespaced.Inputs)

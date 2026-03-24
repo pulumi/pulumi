@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -180,6 +180,9 @@ func CreateFilter(secrets []string, replacement string) Filter {
 		// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
 		// displaying `[secret]`. Travis does a similar thing, for example.
 		if len(secret) < 3 {
+			continue
+		}
+		if strings.EqualFold(secret, "true") || strings.EqualFold(secret, "false") {
 			continue
 		}
 		items = append(items, secret, replacement)

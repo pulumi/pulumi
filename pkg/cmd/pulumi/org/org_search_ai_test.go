@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ func TestSearchAI_cmd(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), nil /* args */)
+	err := cmd.Run(t.Context(), nil /* args */)
 	require.NoError(t, err)
 
 	assert.Contains(t, buff.String(), name)
@@ -125,6 +125,6 @@ func TestAISearchUserOrgFailure_cmd(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{})
+	err := cmd.Run(t.Context(), []string{})
 	assert.ErrorContains(t, err, "user is an individual account, not an organization")
 }

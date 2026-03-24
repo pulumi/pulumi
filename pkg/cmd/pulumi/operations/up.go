@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -516,11 +516,11 @@ func NewUpCmd() *cobra.Command {
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
-			return errors.New("update cancelled")
+			return backenderr.CancelledError{Operation: "update"}
 		case err != nil:
 			return err
 		case expectNop && changes != nil && engine.HasChanges(changes):
-			return errors.New("no changes were expected but changes occurred")
+			return backenderr.NoChangesExpectedError{Operation: "update"}
 		default:
 			return nil
 		}

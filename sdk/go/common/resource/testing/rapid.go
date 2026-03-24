@@ -1,4 +1,4 @@
-// Copyright 2021-2024, Pulumi Corporation.
+// Copyright 2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -295,6 +295,8 @@ func resourceReferenceGenerator(ctx *StackContext) *rapid.Generator[resource.Res
 
 		return resource.ResourceReference{
 			URN:            r.URN,
+			Name:           r.URN.Name(),
+			Type:           string(r.URN.Type()),
 			ID:             id,
 			PackageVersion: SemverStringGenerator().Draw(t, "package version"),
 		}

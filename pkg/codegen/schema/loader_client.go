@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,11 +40,12 @@ var _ ReferenceLoader = (*LoaderClient)(nil)
 func NewLoaderClient(target string) (*LoaderClient, error) {
 	contract.Assertf(target != "", "unexpected empty target for loader")
 
-	conn, err := grpc.NewClient(
-		target,
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
+	conn, err := grpc.NewClient(target, dialOpts...)
 	if err != nil {
 		return nil, err
 	}

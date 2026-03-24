@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -944,6 +944,9 @@ func moduleName(module string, pkg schema.PackageReference) string {
 			}
 		}
 	}
+	if module == "index" {
+		return ""
+	}
 	return strings.ToLower(strings.ReplaceAll(module, "/", "."))
 }
 
@@ -1074,6 +1077,8 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema
 							switch key.AsString() {
 							case "name":
 								g.Fgenf(&buffer, "name: %v", item.Value)
+							case "type":
+								g.Fgenf(&buffer, "type: %v", item.Value)
 							case "noParent":
 								g.Fgenf(&buffer, "parent: (%v ? pulumi.rootStackResource : undefined)", item.Value)
 							case "parent":
@@ -1377,7 +1382,9 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				loweredExpression := g.lowerExpression(attr.Value, attr.Value.Type())
+				destType, diagnostics := component.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+				loweredExpression := g.lowerExpression(attr.Value, destType.(model.Type))
 				g.Fgenf(w, fmtString, propertyName, loweredExpression)
 			}
 		})

@@ -1,4 +1,4 @@
-// Copyright 2022-2025, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -744,6 +744,7 @@ func TestAnalyzerCancellation(t *testing.T) {
 		}, deploytest.WithGrpc),
 	}
 
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		time.Sleep(1 * time.Second)

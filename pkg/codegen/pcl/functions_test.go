@@ -1,4 +1,4 @@
-// Copyright 2023-2025, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -288,7 +288,7 @@ func TestRootDirectoryFailsWithArguments(t *testing.T) {
 
 func TestBindingPulumiResourceTypeName(t *testing.T) {
 	t.Parallel()
-	source := `resource "res" "range:index:Root" { }
+	source := `resource "res" "other:index:Thing" { }
 type = pulumiResourceType(res)
 name = pulumiResourceName(res)`
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")

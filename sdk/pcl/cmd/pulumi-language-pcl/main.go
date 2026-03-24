@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -230,7 +230,9 @@ func (host *pclLanguageHost) bindProgramFromDirectory(
 	loader := schema.NewCachedLoader(client)
 	defer contract.IgnoreClose(client)
 
-	options := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
+	options := []pcl.BindOption{
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !strict {
 		options = append(options, pcl.NonStrictBindOptions()...)
 	}
@@ -491,7 +493,9 @@ func (host *pclLanguageHost) GenerateProject(
 	}
 	defer loader.Close()
 
-	bindOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
+	bindOptions := []pcl.BindOption{
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !req.Strict {
 		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
 	}
@@ -549,7 +553,15 @@ func (host *pclLanguageHost) GenerateProject(
 		return nil, fmt.Errorf("copy source directory: %w", err)
 	}
 
+	// Only copy local dependencies that the program actually references.
+	referencedPackages := map[string]bool{}
+	for _, ref := range program.PackageReferences() {
+		referencedPackages[ref.Name()] = true
+	}
 	for name, content := range req.LocalDependencies {
+		if !referencedPackages[name] {
+			continue
+		}
 		outPath := path.Join(directory, name+".pp")
 		err := fsutil.CopyFile(outPath, content, nil)
 		if err != nil {
@@ -579,7 +591,10 @@ func (host *pclLanguageHost) GenerateProgram(
 		}
 	}
 
-	options := []pcl.BindOption{pcl.Loader(schema.NewCachedLoader(loader)), pcl.PreferOutputVersionedInvokes}
+	options := []pcl.BindOption{
+		pcl.Loader(schema.NewCachedLoader(loader)),
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !req.Strict {
 		options = append(options, pcl.NonStrictBindOptions()...)
 	}

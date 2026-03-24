@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package config
 
 import (
 	"bytes"
-	"context"
 	"strings"
 	"testing"
 
@@ -44,7 +43,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := add.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
@@ -76,7 +75,7 @@ aws:region  us-west-2
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, "", env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent, yes: true}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := add.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
@@ -100,7 +99,7 @@ aws:region  us-west-2
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(nil, &stdout, projectYAML, "", env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent, yes: true}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := add.run(ctx, []string{"env"})
 		require.NoError(t, err)
 
@@ -136,7 +135,7 @@ aws:region  us-west-2
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := add.run(ctx, []string{"env2"})
 		require.NoError(t, err)
 
@@ -175,7 +174,7 @@ aws:region    us-west-2
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForTest(stdin, &stdout, projectYAML, stackYAML, env, nil, &newStackYAML)
 		add := &configEnvAddCmd{parent: parent, showSecrets: true}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := add.run(ctx, []string{"env2"})
 		require.NoError(t, err)
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,6 +75,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
@@ -382,6 +383,43 @@ func (host *nodeLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Clos
 	// Make a client around that connection.
 	engineClient := pulumirpc.NewEngineClient(conn)
 	return engineClient, conn, nil
+}
+
+// minBunPulumiSDKVersion is the minimum @pulumi/pulumi version required for the bun runtime.
+var minBunPulumiSDKVersion = semver.MustParse("3.226.0")
+
+// checkPulumiSDKVersion verifies that the installed @pulumi/pulumi package meets the minimum version required by the
+// bun runtime.
+func checkPulumiSDKVersion(ctx context.Context, programDirectory string) error {
+	pm, err := npm.ResolvePackageManager(npm.BunPackageManager, programDirectory)
+	if err != nil {
+		return fmt.Errorf("could not resolve package manager: %w", err)
+	}
+
+	packages, err := pm.ListPackages(ctx, programDirectory, true /*transitive*/)
+	if err != nil {
+		logging.V(5).Infof("skipping @pulumi/pulumi version check: %v", err)
+		return nil
+	}
+
+	for _, pkg := range packages {
+		if pkg.Name == "@pulumi/pulumi" {
+			v, err := semver.Parse(pkg.Version)
+			if err != nil {
+				logging.V(5).Infof("skipping @pulumi/pulumi version check: could not parse version %q: %v",
+					pkg.Version, err)
+				continue
+			}
+			if v.LT(minBunPulumiSDKVersion) {
+				return fmt.Errorf("the bun runtime requires @pulumi/pulumi >= %s, but %s is installed; "+
+					"ensure all copies of @pulumi/pulumi are updated to >= %s and re-run `pulumi install`",
+					minBunPulumiSDKVersion, v, minBunPulumiSDKVersion)
+			}
+		}
+	}
+
+	logging.V(5).Info("skipping @pulumi/pulumi version check: package not found in lockfile")
+	return nil
 }
 
 func compatibleVersions(a, b semver.Version) (bool, string) {
@@ -765,6 +803,12 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		}, nil
 	}
 
+	if host.runtime == "bun" {
+		if err := checkPulumiSDKVersion(ctx, req.Info.ProgramDirectory); err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}, nil
+		}
+	}
+
 	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
 	if runPath == "" {
 		runPath = defaultRunPath
@@ -1092,7 +1136,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	tracer := otel.Tracer("pulumi-language-nodejs")
 	ctx, otelSpan := tracer.Start(ctx, "InstallDependencies",
-		trace.WithAttributes(append(programInfoAttributes(req.Info),
+		trace.WithAttributes(append(tracing.ProgramInfoAttributes(req.Info),
 			attribute.Bool("useLanguageVersionTools", req.UseLanguageVersionTools),
 			attribute.Bool("isPlugin", req.IsPlugin),
 		)...),
@@ -1494,6 +1538,12 @@ func (host *nodeLanguageHost) RunPlugin(
 	}
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
+
+	if host.runtime == "bun" {
+		if err := checkPulumiSDKVersion(ctx, req.Info.ProgramDirectory); err != nil {
+			return err
+		}
+	}
 
 	runtimeExec := host.runtime
 	if runtimeExec == "nodejs" {
@@ -2194,13 +2244,5 @@ func setOptionsAttributes(opts nodeOptions) []attribute.KeyValue {
 		attribute.String("nodeOptions.packageManager", string(opts.packagemanager)),
 		attribute.String("nodeOptions.tsConfigPath", opts.tsconfigpath),
 		attribute.String("nodeOptions.nodeArgs", opts.nodeargs),
-	}
-}
-
-func programInfoAttributes(info *pulumirpc.ProgramInfo) []attribute.KeyValue {
-	return []attribute.KeyValue{
-		attribute.String("programInfo.entryPoint", info.EntryPoint),
-		attribute.String("programInfo.programDirectory", info.ProgramDirectory),
-		attribute.String("programInfo.rootDirectory", info.RootDirectory),
 	}
 }

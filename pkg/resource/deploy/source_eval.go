@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -837,7 +837,10 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 		return client, nil
 	}
 
-	dialOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if rm.grpcDialOptions != nil {
 		opts := rm.grpcDialOptions(map[string]any{
 			"mode": "client",
@@ -3226,6 +3229,8 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 			return resource.NewProperty(
 				resource.ResourceReference{
 					URN:            ref.URN,
+					Name:           ref.Name,
+					Type:           ref.Type,
 					ID:             downgradeOutputPropertyValue(ref.ID),
 					PackageVersion: ref.PackageVersion,
 				})

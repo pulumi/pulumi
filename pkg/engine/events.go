@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -388,6 +388,8 @@ type StepEventStateMetadata struct {
 	Protect bool
 	// true to force replacement of this resource on the next update.
 	Taint bool
+	// External is true if this resource is "external" to Pulumi and we don't control the lifecycle.
+	External bool
 	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
 	RetainOnDelete bool `json:"retainOnDelete"`
 	// the resource's input properties (as specified by the program). Note: because this will cross
@@ -544,6 +546,7 @@ func makeStepEventStateMetadata(state *resource.State, debug bool, showSecrets b
 		Parent:         state.Parent,
 		Protect:        state.Protect,
 		Taint:          state.Taint,
+		External:       state.External,
 		RetainOnDelete: state.RetainOnDelete,
 		Inputs:         filterResourceProperties(state.Inputs, debug, showSecrets),
 		Outputs:        filterResourceProperties(state.Outputs, debug, showSecrets),
@@ -835,6 +838,8 @@ func filterPropertyValue(v resource.PropertyValue, debug bool, showSecrets bool)
 		ref := v.ResourceReferenceValue()
 		return resource.NewProperty(resource.ResourceReference{
 			URN:            resource.URN(logging.FilterString(string(ref.URN))),
+			Name:           logging.FilterString(ref.Name),
+			Type:           logging.FilterString(ref.Type),
 			ID:             filterPropertyValue(ref.ID, debug, showSecrets),
 			PackageVersion: logging.FilterString(ref.PackageVersion),
 		})

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -189,7 +189,7 @@ type Options struct {
 	ExcludeDependents bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 	ProgressStreams []io.Writer
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
+	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
 	ErrorProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent

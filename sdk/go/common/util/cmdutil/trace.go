@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -290,10 +290,11 @@ func InitOtelTracing(serviceName, endpoint string) error {
 		return fmt.Errorf("failed to create trace exporter: %w", err)
 	}
 
-	res := resource.NewWithAttributes(
-		"",
-		semconv.ServiceName(serviceName),
+	res, err := resource.Merge(
+		resource.Environment(),
+		resource.NewWithAttributes("", semconv.ServiceName(serviceName)),
 	)
+	contract.AssertNoErrorf(err, "resource.Merge should never fail")
 
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(traceExporter),

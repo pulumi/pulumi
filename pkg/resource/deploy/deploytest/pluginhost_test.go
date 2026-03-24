@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package deploytest
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -48,7 +47,7 @@ func TestHostEngine(t *testing.T) {
 			engine := &hostEngine{}
 			req := &pulumirpc.GetRootResourceRequest{}
 
-			_, err := engine.GetRootResource(context.Background(), req)
+			_, err := engine.GetRootResource(t.Context(), req)
 			assert.ErrorContains(t, err, "unsupported")
 		})
 
@@ -57,7 +56,7 @@ func TestHostEngine(t *testing.T) {
 			engine := &hostEngine{}
 			req := &pulumirpc.SetRootResourceRequest{}
 
-			_, err := engine.SetRootResource(context.Background(), req)
+			_, err := engine.SetRootResource(t.Context(), req)
 			assert.ErrorContains(t, err, "unsupported")
 		})
 	})
@@ -107,7 +106,7 @@ func TestHostEngine(t *testing.T) {
 				for _, tt := range tests {
 					tt.req.Ephemeral = ephemeral
 					t.Run(tt.name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
-						output, err := hostEngine.Log(context.Background(), tt.req)
+						output, err := hostEngine.Log(t.Context(), tt.req)
 						assert.Equal(t, tt.expectedError, err)
 						assert.Equal(t, tt.expectedOutput, output)
 					})

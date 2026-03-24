@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,6 +85,10 @@ func newStackSelectCmd() *cobra.Command {
 
 				s, stackErr := b.GetStack(ctx, stackRef)
 				if stackErr != nil {
+					var notFound backenderr.NotFoundError
+					if errors.As(stackErr, &notFound) {
+						return backenderr.StackNotFoundError{StackName: stackRef.String()}
+					}
 					return stackErr
 				} else if s != nil {
 					return state.SetCurrentStack(ws, stackRef.FullyQualifiedName().String())

@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package pcl
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -34,7 +33,7 @@ func BenchmarkLoadPackage(b *testing.B) {
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	for n := 0; n < b.N; n++ {
-		_, err := NewPackageCache().loadPackageSchema(context.Background(), loader, "aws", "", "")
+		_, err := NewPackageCache().loadPackageSchema(b.Context(), loader, "aws", "", "")
 		if err != nil {
 			b.Fatalf("failed to load package schema: %v", err)
 		}

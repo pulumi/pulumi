@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/bun
-  description: Add support for Bun as a plugin runtime

@@ -16,7 +16,6 @@ package toolchain
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -52,7 +51,7 @@ func TestValidateVenv(t *testing.T) {
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
-			err = tc.ValidateVenv(context.Background())
+			err = tc.ValidateVenv(t.Context())
 			require.Error(t, err)
 		})
 		t.Run("Exists-"+Name(opts.Toolchain), func(t *testing.T) {
@@ -64,9 +63,9 @@ func TestValidateVenv(t *testing.T) {
 
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
-			err = tc.InstallDependencies(context.Background(), opts.Root, false, true, os.Stdout, os.Stderr)
+			err = tc.InstallDependencies(t.Context(), opts.Root, false, true, os.Stdout, os.Stderr)
 			require.NoError(t, err)
-			err = tc.ValidateVenv(context.Background())
+			err = tc.ValidateVenv(t.Context())
 			require.NoError(t, err)
 		})
 	}
@@ -101,7 +100,7 @@ func TestCommand(t *testing.T) {
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
-			cmd, err := tc.Command(context.Background())
+			cmd, err := tc.Command(t.Context())
 			require.NoError(t, err)
 
 			var venvBin string
@@ -193,7 +192,7 @@ func TestListPackages(t *testing.T) {
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
-			packages, err := tc.ListPackages(context.Background(), false)
+			packages, err := tc.ListPackages(t.Context(), false)
 
 			require.NoError(t, err)
 			packageNames := make([]string, len(packages))
@@ -214,7 +213,7 @@ func TestListPackages(t *testing.T) {
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
-			packages, err := tc.ListPackages(context.Background(), false)
+			packages, err := tc.ListPackages(t.Context(), false)
 
 			require.NoError(t, err)
 			packageNames := make([]string, len(packages))
@@ -236,7 +235,7 @@ func TestListPackages(t *testing.T) {
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
 
-			packages, err := tc.ListPackages(context.Background(), false)
+			packages, err := tc.ListPackages(t.Context(), false)
 
 			require.NoError(t, err)
 			packageNames := make([]string, len(packages))
@@ -279,7 +278,7 @@ func TestAbout(t *testing.T) {
 
 			tc, err := ResolveToolchain(opts)
 			require.NoError(t, err)
-			info, err := tc.About(context.Background())
+			info, err := tc.About(t.Context())
 			require.NoError(t, err)
 			require.NotEqual(t, semver.Version{}, info.PythonVersion)
 			require.True(t, info.PythonVersion.Major > 0)
@@ -462,7 +461,7 @@ func TestPyenvInstall(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	err := installPython(context.Background(), tmpDir, false, stdout, stderr)
+	err := installPython(t.Context(), tmpDir, false, stdout, stderr)
 	require.NoError(t, err)
 
 	b, err := os.ReadFile(outPath)
@@ -474,15 +473,15 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 	t.Helper()
 
 	switch opts.Toolchain {
-	case Pip:
+	case Auto, Pip:
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+		err = tc.InstallDependencies(t.Context(), opts.Root, false, /*useLanguageVersionTools*/
 			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
 		for _, pkg := range packages {
-			cmd, err := tc.Command(context.Background(), "-m", "pip", "install", pkg)
+			cmd, err := tc.Command(t.Context(), "-m", "pip", "install", pkg)
 			require.NoError(t, err)
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, string(out))
@@ -494,7 +493,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		writePoetryToml(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+		err = tc.InstallDependencies(t.Context(), opts.Root, false, /*useLanguageVersionTools*/
 			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
@@ -508,7 +507,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 		writePyprojectForUv(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
-		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
+		err = tc.InstallDependencies(t.Context(), opts.Root, false, /*useLanguageVersionTools*/
 			true /*showOutput */, os.Stdout, os.Stderr)
 		require.NoError(t, err)
 
@@ -608,6 +607,54 @@ func (p *ProcessState) Pid() int {
 
 func (p *ProcessState) String() string {
 	return "exit status 139 "
+}
+
+func TestResolveToolchainAuto(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name      string
+		tc        toolchain
+		lockFiles []string
+		expected  string
+	}{
+		{"Auto defaults to pip", Auto, []string{}, "Pip"},
+		{"Auto picks pip with requirements.txt only", Auto, []string{"requirements.txt"}, "Pip"},
+		{"Auto detects uv from uv.lock", Auto, []string{"uv.lock"}, "Uv"},
+		{"Auto detects poetry from poetry.lock", Auto, []string{"poetry.lock"}, "Poetry"},
+		{"Auto uv takes priority over poetry", Auto, []string{"uv.lock", "poetry.lock"}, "Uv"},
+		{"Auto uv takes priority over requirements.txt", Auto, []string{"uv.lock", "requirements.txt"}, "Uv"},
+		{"Auto poetry takes priority over requirements.txt", Auto, []string{"poetry.lock", "requirements.txt"}, "Poetry"},
+		{"explicit Pip ignores lockfiles", Pip, []string{"uv.lock", "poetry.lock"}, "Pip"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			for _, lockFile := range tt.lockFiles {
+				f, err := os.Create(filepath.Join(dir, lockFile))
+				require.NoError(t, err)
+				require.NoError(t, f.Close())
+			}
+			tc, err := ResolveToolchain(PythonOptions{
+				Toolchain:  tt.tc,
+				Root:       dir,
+				ProgramDir: dir,
+			})
+			require.NoError(t, err)
+			var got string
+			switch tc.(type) {
+			case *pip:
+				got = "Pip"
+			case *poetry:
+				got = "Poetry"
+			case *uv:
+				got = "Uv"
+			default:
+				require.Fail(t, "unexpected toolchain type: %T", tc)
+			}
+			require.Equal(t, tt.expected, got)
+		})
+	}
 }
 
 func TestErrorWithStderr(t *testing.T) {

@@ -16,6 +16,7 @@ type SomeResource struct {
 	pulumi.CustomResourceState
 
 	Builtins pulumi.StringOutput `pulumi:"builtins"`
+	Lambda   pulumi.StringOutput `pulumi:"lambda"`
 	Property pulumi.StringOutput `pulumi:"property"`
 }
 
@@ -28,6 +29,9 @@ func NewSomeResource(ctx *pulumi.Context,
 
 	if args.Builtins == nil {
 		return nil, errors.New("invalid value for required argument 'Builtins'")
+	}
+	if args.Lambda == nil {
+		return nil, errors.New("invalid value for required argument 'Lambda'")
 	}
 	if args.Property == nil {
 		return nil, errors.New("invalid value for required argument 'Property'")
@@ -66,12 +70,14 @@ func (SomeResourceState) ElementType() reflect.Type {
 
 type someResourceArgs struct {
 	Builtins string `pulumi:"builtins"`
+	Lambda   string `pulumi:"lambda"`
 	Property string `pulumi:"property"`
 }
 
 // The set of arguments for constructing a SomeResource resource.
 type SomeResourceArgs struct {
 	Builtins pulumi.StringInput
+	Lambda   pulumi.StringInput
 	Property pulumi.StringInput
 }
 
@@ -114,6 +120,10 @@ func (o SomeResourceOutput) ToSomeResourceOutputWithContext(ctx context.Context)
 
 func (o SomeResourceOutput) Builtins() pulumi.StringOutput {
 	return o.ApplyT(func(v *SomeResource) pulumi.StringOutput { return v.Builtins }).(pulumi.StringOutput)
+}
+
+func (o SomeResourceOutput) Lambda() pulumi.StringOutput {
+	return o.ApplyT(func(v *SomeResource) pulumi.StringOutput { return v.Lambda }).(pulumi.StringOutput)
 }
 
 func (o SomeResourceOutput) Property() pulumi.StringOutput {

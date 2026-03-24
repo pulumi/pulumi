@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,7 +85,7 @@ func TestGeneratePackage(t *testing.T) {
 				virtualEnvLock.Lock()
 				defer virtualEnvLock.Unlock()
 				if !virtualEnvBuilt {
-					err := buildVirtualEnv(context.Background())
+					err := buildVirtualEnv(t.Context())
 					if err != nil {
 						t.Error(err)
 						t.FailNow()
@@ -217,7 +217,7 @@ func pyTestCheck(t *testing.T, codeDir string) {
 			return err
 		}
 
-		cmd, err := tc.ModuleCommand(context.Background(), module, args...)
+		cmd, err := tc.ModuleCommand(t.Context(), module, args...)
 		if err != nil {
 			return err
 		}

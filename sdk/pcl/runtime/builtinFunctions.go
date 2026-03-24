@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/customdecode"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -32,6 +34,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
 )
 
 func (i *Interpreter) builtinFunctions() map[string]function.Function {
@@ -206,22 +209,21 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, errors.New("invoke token must be a string")
 			}
 			token := args[0].AsString()
-			components := strings.Split(token, ":")
-			contract.Assertf(len(components) == 3, "invalid token format: %s", token)
-			if components[1] == "" {
-				components[1] = "index"
+			pkg, mod, member, diags := pcl.DecomposeToken(token, hcl.Range{})
+			if diags.HasErrors() {
+				return cty.NilVal, fmt.Errorf("invalid token format: %s", token)
 			}
-			token = fmt.Sprintf("%s:%s:%s", components[0], components[1], components[2])
+			token = fmt.Sprintf("%s:%s:%s", pkg, mod, member)
 
 			// Fall back to just the package name and passed in version if we don't have a descriptor.
 			descriptor := &schema.PackageDescriptor{
-				Name: components[0],
+				Name: pkg,
 			}
-			pkg, err := i.loader.LoadPackageReferenceV2(context.TODO(), descriptor)
+			pkgref, err := i.loader.LoadPackageReferenceV2(context.TODO(), descriptor)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("load package for token %s: %w", token, err)
 			}
-			functions := pkg.Functions()
+			functions := pkgref.Functions()
 			fun, ok, err := functions.Get(token)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("get function from package for token %s: %w", token, err)
@@ -233,10 +235,15 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				for iter.Next() {
 					fnToken := iter.Token()
 					// Canonicalize the functions token via TokenToModule
-					mod := pkg.TokenToModule(fnToken)
-					components := strings.Split(fnToken, ":")
-					fnToken = fmt.Sprintf("%s:%s:%s", components[0], mod, components[2])
+					mod := pkgref.TokenToModule(fnToken)
+					if mod == "" {
+						mod = "index"
+					}
+					pkg, _, member, diags := pcl.DecomposeToken(fnToken, hcl.Range{})
+					contract.Assertf(!diags.HasErrors(), "invalid token format in package %s: %s", pkg, fnToken)
+					fnToken = fmt.Sprintf("%s:%s:%s", pkg, mod, member)
 					if token == fnToken {
+						var err error
 						fun, err = iter.Function()
 						if err != nil {
 							return cty.NilVal, fmt.Errorf("get function from package for token %s: %w", token, err)
@@ -817,6 +824,39 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	toJSONFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name:             "value",
+				Type:             cty.DynamicPseudoType,
+				AllowMarked:      true,
+				AllowNull:        true,
+				AllowDynamicType: true,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if len(args) != 1 {
+				return cty.NilVal, errors.New("toJSON requires a value argument")
+			}
+			// UnmarkDeep strips marks from the value and all nested values, collecting them all.
+			// We re-apply them to the resulting string so that e.g. a secret nested anywhere in
+			// the input causes the JSON output to be secret too.
+			val, marks := args[0].UnmarkDeep()
+			if !val.IsWhollyKnown() {
+				return cty.UnknownVal(cty.String).WithMarks(marks), nil
+			}
+			if val.IsNull() {
+				return cty.StringVal("null").WithMarks(marks), nil
+			}
+			buf, err := ctyjson.Marshal(val, val.Type())
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("toJSON: %w", err)
+			}
+			return cty.StringVal(string(buf)).WithMarks(marks), nil
+		},
+	})
+
 	return map[string]function.Function{
 		"cwd":                literalStringFn(i.info.WorkingDir),
 		"rootDirectory":      literalStringFn(i.info.RootDirectory),
@@ -848,5 +888,6 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		"lookup":             stdlib.LookupFunc,
 		"toBase64":           toBase64Fn,
 		"fromBase64":         fromBase64Fn,
+		"toJSON":             toJSONFn,
 	}
 }

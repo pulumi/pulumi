@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -445,7 +445,8 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 }
 
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
-	if attr.Name == "ignoreChanges" || attr.Name == "hideDiffs" || attr.Name == "replaceOnChanges" {
+	switch attr.Name {
+	case "ignoreChanges", "hideDiffs", "replaceOnChanges", "additionalSecretOutputs":
 		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
 		if !ok {
 			return nil, nil
@@ -458,8 +459,9 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 			})
 		}
 		return scope, nil
+	default:
+		return s.root, nil
 	}
-	return s.root, nil
 }
 
 func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostics) {
@@ -499,16 +501,16 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.IgnoreChanges = item.Value
 			case "hideDiffs":
-				t = model.NewListType(ResourcePropertyType) // Property paths
+				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.HideDiffs = item.Value
 			case "replaceOnChanges":
-				t = model.NewListType(ResourcePropertyType) // Property paths
+				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.ReplaceOnChanges = item.Value
 			case "deleteBeforeReplace":
 				t = model.BoolType
 				resourceOptions.DeleteBeforeReplace = item.Value
 			case "additionalSecretOutputs":
-				t = model.NewListType(model.StringType)
+				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.AdditionalSecretOutputs = item.Value
 			case "version":
 				t = model.StringType

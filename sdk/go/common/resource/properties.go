@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -114,6 +114,8 @@ type Secret struct {
 //nolint:revive
 type ResourceReference struct {
 	URN            URN
+	Name           string
+	Type           string
 	ID             PropertyValue
 	PackageVersion string
 }
@@ -263,8 +265,16 @@ func MakeSecret(v PropertyValue) PropertyValue {
 
 // MakeComponentResourceReference creates a reference to a component resource.
 func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValue {
+	name, typ := "", ""
+	if urn.IsValid() {
+		name = urn.Name()
+		typ = string(urn.Type())
+	}
+
 	return NewProperty(ResourceReference{
 		URN:            urn,
+		Name:           name,
+		Type:           typ,
 		PackageVersion: packageVersion,
 	})
 }
@@ -276,10 +286,17 @@ func MakeCustomResourceReference(urn URN, id ID, packageVersion string) Property
 	if id == "" {
 		idProp = MakeComputed(NewProperty(""))
 	}
+	name, typ := "", ""
+	if urn.IsValid() {
+		name = urn.Name()
+		typ = string(urn.Type())
+	}
 
 	return NewProperty(ResourceReference{
 		ID:             idProp,
 		URN:            urn,
+		Name:           name,
+		Type:           typ,
 		PackageVersion: packageVersion,
 	})
 }

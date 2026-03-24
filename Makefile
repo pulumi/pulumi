@@ -77,7 +77,7 @@ generate-cli-spec::
 
 .PHONY: generate-nodejs-automation-api
 generate-nodejs-automation-api:: generate-cli-spec
-	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts
+	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
 
 .PHONY: test-nodejs-automation-api
 test-nodejs-automation-api:: generate-cli-spec
@@ -112,9 +112,6 @@ build_cover::
 
 install_cover:: build_cover
 	cp bin/pulumi $(PULUMI_BIN)
-
-developer_docs::
-	cd developer-docs && make html
 
 dist::
 	cd pkg && go install -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}

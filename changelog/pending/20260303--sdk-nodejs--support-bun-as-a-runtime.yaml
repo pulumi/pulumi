@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/bun
-  description: Support bun as a runtime

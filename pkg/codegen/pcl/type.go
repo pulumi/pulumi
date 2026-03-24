@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ var (
 	// (with "name" and "parent", etc fields).
 	AliasType = model.NewUnionType(model.StringType, model.NewObjectType(map[string]model.Type{
 		"name":     model.NewOptionalType(model.StringType),
+		"type":     model.NewOptionalType(model.StringType),
 		"noParent": model.NewOptionalType(model.BoolType),
 		"parent":   model.NewOptionalType(model.DynamicType),
 	}))

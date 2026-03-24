@@ -1,4 +1,4 @@
-// Copyright 2020-2026, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -852,7 +852,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 			g.addPulumiImport(pkg, vPath, mod, name)
 		}
-		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar {
+		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar && !g.isComponent {
 			g.importer.Import("github.com/pulumi/pulumi/sdk/v3/go/pulumi/config", "config")
 		}
 
@@ -1283,6 +1283,8 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 					switch key.AsString() {
 					case "name":
 						g.Fgenf(valBuffer, "Name: pulumi.String(%v), ", item.Value)
+					case "type":
+						g.Fgenf(valBuffer, "Type: pulumi.String(%v), ", item.Value)
 					case "noParent":
 						g.Fgenf(valBuffer, "NoParent: pulumi.Bool(%v), ", item.Value)
 					case "parent":
@@ -2017,6 +2019,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	configType := model.ResolveOutputs(v.Type())
 
 	getType := ""
+	// useObjectConfig indicates the config value must be deserialized via
+	// RequireObject/GetObject which populate a pointer rather than returning
+	// a value.
+	useObjectConfig := false
 	switch configType {
 	case model.StringType: // Already default
 	case model.NumberType:
@@ -2027,6 +2033,12 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getType = "Bool"
 	case model.DynamicType:
 		getType = "Object"
+		useObjectConfig = true
+	default:
+		if _, ok := configType.(*model.ObjectType); ok {
+			getType = "Object"
+			useObjectConfig = true
+		}
 	}
 
 	getOrRequire := "Get"
@@ -2045,7 +2057,13 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 
 	name := makeValidIdentifier(v.Name())
 	if v.DefaultValue == nil {
-		g.Fgenf(w, "%s := cfg.%s%s(\"%s\")\n", name, getOrRequire, getType, v.LogicalName())
+		if useObjectConfig {
+			goType := g.argumentTypeName(configType, false)
+			g.Fgenf(w, "var %s %s\n", name, goType)
+			g.Fgenf(w, "cfg.%s%s(\"%s\", &%s)\n", getOrRequire, getType, v.LogicalName(), name)
+		} else {
+			g.Fgenf(w, "%s := cfg.%s%s(\"%s\")\n", name, getOrRequire, getType, v.LogicalName())
+		}
 	} else {
 		expr, temps := g.lowerExpression(v.DefaultValue, v.DefaultValue.Type())
 		g.genTemps(w, temps)

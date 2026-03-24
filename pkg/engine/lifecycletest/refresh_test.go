@@ -1,4 +1,4 @@
-// Copyright 2020-2026, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -993,6 +993,7 @@ func TestCanceledRefresh(t *testing.T) {
 	}
 
 	// Set up a cancelable context for the refresh operation.
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Serialize all refreshes s.t. we can cancel after the first is issued.
@@ -3412,9 +3413,6 @@ func TestRefreshV2DependencyNotInOriginalSnapshot(t *testing.T) {
 
 func TestRefreshV2ExcludesChildWithExcludedParent(t *testing.T) {
 	t.Parallel()
-
-	// TODO[pulumi/pulumi#21672]: Re-enable this when the underlying issue is fixed
-	t.Skip("Skipping test, repro for snapshot integrity issue")
 
 	p := &lt.TestPlan{Stack: "stack", Project: "project"}
 	snap := &deploy.Snapshot{}

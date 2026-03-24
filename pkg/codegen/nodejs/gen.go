@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -2042,9 +2042,18 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 		config, err := mod.pkg.Config()
 		contract.AssertNoErrorf(err, "failed to get config for package %q", mod.pkg.Name())
 		return len(config) > 0
-	default:
-		return false
 	}
+
+	// A source file "foo.ts" conflicts with a child module directory "foo/" because
+	// TypeScript resolves `import "./foo"` to the file rather than the directory.
+	baseName := strings.TrimSuffix(name, ".ts")
+	for _, child := range mod.children {
+		if getChildMod(child.mod) == baseName {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (mod *modContext) gen(fs codegen.Fs) error {
