@@ -110,7 +110,6 @@ var expectedFailures = map[string]string{
 	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
 
 	// pulumi/pulumi#18345
-	"l2-snake-names":                      "nesting apply is not generated correctly",
 	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
 	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
 	"l2-discriminated-union":              "pulumi#21829: does not compile",
