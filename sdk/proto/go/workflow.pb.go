@@ -1532,11 +1532,12 @@ func (x *ErrorRecord) GetCategory() string {
 }
 
 type GenerateJobRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Context             *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Path                string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	GraphMonitorAddress string                 `protobuf:"bytes,3,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *GenerateJobRequest) Reset() {
@@ -1579,6 +1580,13 @@ func (x *GenerateJobRequest) GetContext() *WorkflowContext {
 func (x *GenerateJobRequest) GetPath() string {
 	if x != nil {
 		return x.Path
+	}
+	return ""
+}
+
+func (x *GenerateJobRequest) GetGraphMonitorAddress() string {
+	if x != nil {
+		return x.GraphMonitorAddress
 	}
 	return ""
 }
@@ -2847,10 +2855,11 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\vErrorRecord\x12\x1b\n" +
 	"\tstep_path\x18\x01 \x01(\tR\bstepPath\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1a\n" +
-	"\bcategory\x18\x03 \x01(\tR\bcategory\"^\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\"\x92\x01\n" +
 	"\x12GenerateJobRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\"\x94\x01\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x122\n" +
+	"\x15graph_monitor_address\x18\x03 \x01(\tR\x13graphMonitorAddress\"\x94\x01\n" +
 	"\x14GenerateGraphRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x122\n" +

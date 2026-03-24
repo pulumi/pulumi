@@ -634,6 +634,8 @@ export class GenerateJobRequest extends jspb.Message {
     setContext(value?: WorkflowContext): GenerateJobRequest;
     getPath(): string;
     setPath(value: string): GenerateJobRequest;
+    getGraphMonitorAddress(): string;
+    setGraphMonitorAddress(value: string): GenerateJobRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateJobRequest.AsObject;
@@ -649,6 +651,7 @@ export namespace GenerateJobRequest {
     export type AsObject = {
         context?: WorkflowContext.AsObject,
         path: string,
+        graphMonitorAddress: string,
     }
 }
 

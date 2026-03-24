@@ -257,6 +257,7 @@ message ErrorRecord {
 message GenerateJobRequest {
     WorkflowContext context = 1;
     string path = 2;
+    string graph_monitor_address = 3;
 }
 
 message GenerateGraphRequest {

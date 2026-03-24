@@ -577,7 +577,9 @@ class GenerateJobRequest(google.protobuf.message.Message):
 
     CONTEXT_FIELD_NUMBER: builtins.int
     PATH_FIELD_NUMBER: builtins.int
+    GRAPH_MONITOR_ADDRESS_FIELD_NUMBER: builtins.int
     path: builtins.str
+    graph_monitor_address: builtins.str
     @property
     def context(self) -> global___WorkflowContext: ...
     def __init__(
@@ -585,9 +587,10 @@ class GenerateJobRequest(google.protobuf.message.Message):
         *,
         context: global___WorkflowContext | None = ...,
         path: builtins.str = ...,
+        graph_monitor_address: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["context", b"context"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["context", b"context", "path", b"path"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["context", b"context", "graph_monitor_address", b"graph_monitor_address", "path", b"path"]) -> None: ...
 
 global___GenerateJobRequest = GenerateJobRequest
 

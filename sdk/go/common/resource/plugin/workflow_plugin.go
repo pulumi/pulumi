@@ -183,6 +183,18 @@ func (p *workflowPlugin) GenerateJob(
 	return p.clientRaw.GenerateJob(ctx, req)
 }
 
+func (p *workflowPlugin) RunStep(
+	ctx context.Context, req *pulumirpc.RunStepRequest,
+) (*pulumirpc.RunStepResponse, error) {
+	return p.clientRaw.RunStep(ctx, req)
+}
+
+func (p *workflowPlugin) RunOnError(
+	ctx context.Context, req *pulumirpc.RunOnErrorRequest,
+) (*pulumirpc.RunOnErrorResponse, error) {
+	return p.clientRaw.RunOnError(ctx, req)
+}
+
 func (p *workflowPlugin) ResolveStepResult(
 	ctx context.Context, req *pulumirpc.ResolveStepResultRequest,
 ) (*pulumirpc.ResolveStepResultResponse, error) {
