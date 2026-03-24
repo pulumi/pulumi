@@ -501,7 +501,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		var runtimeInfo workspace.ProjectRuntimeInfo
 		var pulumiVersionRange string
 		switch kind { //nolint:exhaustive // golangci-lint v2 upgrade
-		case apitype.ResourcePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
+		case apitype.ResourcePlugin, apitype.WorkflowPlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)

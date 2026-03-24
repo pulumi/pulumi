@@ -1842,6 +1842,7 @@ const (
 	AnalyzerPlugin  = apitype.AnalyzerPlugin
 	LanguagePlugin  = apitype.LanguagePlugin
 	ResourcePlugin  = apitype.ResourcePlugin
+	WorkflowPlugin  = apitype.WorkflowPlugin
 	ConverterPlugin = apitype.ConverterPlugin
 	ToolPlugin      = apitype.ToolPlugin
 )

@@ -405,7 +405,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 				return nil, err
 			}
 
-		case apitype.LanguagePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
+		case apitype.LanguagePlugin, apitype.WorkflowPlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 			// We don't support gRPC wrapping for these plugin types yet.
 		}
 	}
@@ -431,7 +431,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 			}
 		}
 		host.providers = append(host.providers, provider)
-	case apitype.LanguagePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
+	case apitype.LanguagePlugin, apitype.WorkflowPlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 		// Nothing to do for these to plugins.
 	}
 
@@ -455,6 +455,20 @@ func (host *pluginHost) Provider(descriptor workspace.PluginDescriptor, e env.En
 		return nil, fmt.Errorf("Could not find plugin for (%s, %s)", descriptor.Name, v)
 	}
 	return plug.(plugin.Provider), nil
+}
+
+func (host *pluginHost) Workflow(programPath string) (plugin.Workflow, error) {
+	if host.isClosed() {
+		return nil, ErrHostIsClosed
+	}
+	plug, err := host.plugin(apitype.WorkflowPlugin, programPath, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	if plug == nil {
+		return nil, fmt.Errorf("Could not find workflow plugin for %s", programPath)
+	}
+	return plug.(plugin.Workflow), nil
 }
 
 func (host *pluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime, error) {

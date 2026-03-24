@@ -81,7 +81,7 @@ func NewWorkflow(host Host, ctx *Context, programPath string) (Workflow, error) 
 		ctx.Pwd,
 		pythonBin,
 		prefix,
-		apitype.ToolPlugin,
+		apitype.WorkflowPlugin,
 		[]string{absProgramPath},
 		env.Global(),
 		handshake,

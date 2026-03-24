@@ -689,6 +689,8 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kin
 						fmt.Errorf("failed to load resource plugin %s: %w", plugin.Name, err))
 				}
 			}
+		case apitype.WorkflowPlugin:
+			// Workflow plugins are loaded by program path via Host.Workflow, not by plugin name.
 		case apitype.ConverterPlugin, apitype.ToolPlugin:
 			contract.Failf("unexpected plugin kind: %s", plugin.Kind)
 		}
@@ -790,4 +792,6 @@ const (
 	LanguagePlugins
 	// ResourcePlugins is used to only load resource provider plugins.
 	ResourcePlugins
+	// WorkflowPlugins is used to only load workflow evaluator plugins.
+	WorkflowPlugins
 )
