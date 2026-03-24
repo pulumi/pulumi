@@ -14,6 +14,7 @@
 
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 
 package pulumirpc;
@@ -42,9 +43,16 @@ service WorkflowEvaluator {
     rpc RunOnError(RunOnErrorRequest) returns (RunOnErrorResponse) {}
 }
 
-// WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
-// ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
-service WorkflowMonitor {
+// WorkflowRegistry is called by workflow SDKs/plugins during startup to register
+// exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
+// how MLC packages register callable exports.
+service WorkflowRegistry {
+    rpc RegisterComponent(RegisterComponentRequest) returns (google.protobuf.Empty) {}
+}
+
+// GraphMonitor is called while evaluating a concrete graph execution/generation.
+// It records the graph shape for that evaluation and resolves prior node outputs.
+service GraphMonitor {
     rpc RegisterTrigger(RegisterTriggerRequest) returns (RegisterNodeResponse) {}
     rpc RegisterSensor(RegisterSensorRequest) returns (RegisterNodeResponse) {}
     rpc RegisterJob(RegisterJobRequest) returns (RegisterNodeResponse) {}
@@ -65,6 +73,30 @@ message WorkflowContext {
 
     // The workflow execution identifier for a single trigger fire.
     string executionId = 3;
+}
+
+enum WorkflowComponentKind {
+    WORKFLOW_COMPONENT_KIND_UNSPECIFIED = 0;
+    WORKFLOW_COMPONENT_KIND_GRAPH = 1;
+    WORKFLOW_COMPONENT_KIND_JOB = 2;
+    WORKFLOW_COMPONENT_KIND_SUBGRAPH = 3;
+    WORKFLOW_COMPONENT_KIND_STEP = 4;
+    WORKFLOW_COMPONENT_KIND_FUNCTION = 5;
+}
+
+message RegisterComponentRequest {
+    // Context for the definition being registered. executionId is typically empty
+    // at startup-time registration.
+    WorkflowContext context = 1;
+
+    // Fully-qualified export token, e.g. workflow:index:myGraph.
+    string token = 2;
+
+    // Component kind (graph/job/subgraph/step/function).
+    WorkflowComponentKind kind = 3;
+
+    // Optional structured metadata (display name, schemas, docs, etc.).
+    google.protobuf.Struct metadata = 4;
 }
 
 // WorkflowError represents an execution or generation error.

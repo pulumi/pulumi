@@ -18,6 +18,7 @@ limitations under the License.
 
 import abc
 import collections.abc
+import google.protobuf.empty_pb2
 import grpc
 import grpc.aio
 import typing
@@ -170,9 +171,47 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
 
 def add_WorkflowEvaluatorServicer_to_server(servicer: WorkflowEvaluatorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
 
-class WorkflowMonitorStub:
-    """WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
-    ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
+class WorkflowRegistryStub:
+    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
+    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
+    how MLC packages register callable exports.
+    """
+
+    def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
+    RegisterComponent: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.RegisterComponentRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
+
+class WorkflowRegistryAsyncStub:
+    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
+    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
+    how MLC packages register callable exports.
+    """
+
+    RegisterComponent: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.RegisterComponentRequest,
+        google.protobuf.empty_pb2.Empty,
+    ]
+
+class WorkflowRegistryServicer(metaclass=abc.ABCMeta):
+    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
+    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
+    how MLC packages register callable exports.
+    """
+
+    
+    def RegisterComponent(
+        self,
+        request: pulumi.workflow_pb2.RegisterComponentRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]: ...
+
+def add_WorkflowRegistryServicer_to_server(servicer: WorkflowRegistryServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
+
+class GraphMonitorStub:
+    """GraphMonitor is called while evaluating a concrete graph execution/generation.
+    It records the graph shape for that evaluation and resolves prior node outputs.
     """
 
     def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
@@ -207,9 +246,9 @@ class WorkflowMonitorStub:
     ]
     """GetStepResult asks for a previously completed step output."""
 
-class WorkflowMonitorAsyncStub:
-    """WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
-    ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
+class GraphMonitorAsyncStub:
+    """GraphMonitor is called while evaluating a concrete graph execution/generation.
+    It records the graph shape for that evaluation and resolves prior node outputs.
     """
 
     RegisterTrigger: grpc.aio.UnaryUnaryMultiCallable[
@@ -243,9 +282,9 @@ class WorkflowMonitorAsyncStub:
     ]
     """GetStepResult asks for a previously completed step output."""
 
-class WorkflowMonitorServicer(metaclass=abc.ABCMeta):
-    """WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
-    ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
+class GraphMonitorServicer(metaclass=abc.ABCMeta):
+    """GraphMonitor is called while evaluating a concrete graph execution/generation.
+    It records the graph shape for that evaluation and resolves prior node outputs.
     """
 
     
@@ -291,4 +330,4 @@ class WorkflowMonitorServicer(metaclass=abc.ABCMeta):
     ) -> typing.Union[pulumi.workflow_pb2.GetStepResultResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetStepResultResponse]]:
         """GetStepResult asks for a previously completed step output."""
 
-def add_WorkflowMonitorServicer_to_server(servicer: WorkflowMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
+def add_GraphMonitorServicer_to_server(servicer: GraphMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

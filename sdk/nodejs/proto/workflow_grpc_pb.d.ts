@@ -6,6 +6,7 @@
 
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_workflow_pb from "./workflow_pb";
+import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 interface IWorkflowEvaluatorService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
@@ -126,17 +127,50 @@ export class WorkflowEvaluatorClient extends grpc.Client implements IWorkflowEva
     public runOnError(request: pulumi_workflow_pb.RunOnErrorRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunOnErrorResponse) => void): grpc.ClientUnaryCall;
 }
 
-interface IWorkflowMonitorService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
-    registerTrigger: IWorkflowMonitorService_IRegisterTrigger;
-    registerSensor: IWorkflowMonitorService_IRegisterSensor;
-    registerJob: IWorkflowMonitorService_IRegisterJob;
-    registerGraph: IWorkflowMonitorService_IRegisterGraph;
-    registerStep: IWorkflowMonitorService_IRegisterStep;
-    getStepResult: IWorkflowMonitorService_IGetStepResult;
+interface IWorkflowRegistryService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
+    registerComponent: IWorkflowRegistryService_IRegisterComponent;
 }
 
-interface IWorkflowMonitorService_IRegisterTrigger extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterTriggerRequest, pulumi_workflow_pb.RegisterNodeResponse> {
-    path: "/pulumirpc.WorkflowMonitor/RegisterTrigger";
+interface IWorkflowRegistryService_IRegisterComponent extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterComponentRequest, google_protobuf_empty_pb.Empty> {
+    path: "/pulumirpc.WorkflowRegistry/RegisterComponent";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.RegisterComponentRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.RegisterComponentRequest>;
+    responseSerialize: grpc.serialize<google_protobuf_empty_pb.Empty>;
+    responseDeserialize: grpc.deserialize<google_protobuf_empty_pb.Empty>;
+}
+
+export const WorkflowRegistryService: IWorkflowRegistryService;
+
+export interface IWorkflowRegistryServer extends grpc.UntypedServiceImplementation {
+    registerComponent: grpc.handleUnaryCall<pulumi_workflow_pb.RegisterComponentRequest, google_protobuf_empty_pb.Empty>;
+}
+
+export interface IWorkflowRegistryClient {
+    registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+}
+
+export class WorkflowRegistryClient extends grpc.Client implements IWorkflowRegistryClient {
+    constructor(address: string, credentials: grpc.ChannelCredentials, options?: Partial<grpc.ClientOptions>);
+    public registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    public registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    public registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+}
+
+interface IGraphMonitorService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
+    registerTrigger: IGraphMonitorService_IRegisterTrigger;
+    registerSensor: IGraphMonitorService_IRegisterSensor;
+    registerJob: IGraphMonitorService_IRegisterJob;
+    registerGraph: IGraphMonitorService_IRegisterGraph;
+    registerStep: IGraphMonitorService_IRegisterStep;
+    getStepResult: IGraphMonitorService_IGetStepResult;
+}
+
+interface IGraphMonitorService_IRegisterTrigger extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterTriggerRequest, pulumi_workflow_pb.RegisterNodeResponse> {
+    path: "/pulumirpc.GraphMonitor/RegisterTrigger";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<pulumi_workflow_pb.RegisterTriggerRequest>;
@@ -144,8 +178,8 @@ interface IWorkflowMonitorService_IRegisterTrigger extends grpc.MethodDefinition
     responseSerialize: grpc.serialize<pulumi_workflow_pb.RegisterNodeResponse>;
     responseDeserialize: grpc.deserialize<pulumi_workflow_pb.RegisterNodeResponse>;
 }
-interface IWorkflowMonitorService_IRegisterSensor extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterSensorRequest, pulumi_workflow_pb.RegisterNodeResponse> {
-    path: "/pulumirpc.WorkflowMonitor/RegisterSensor";
+interface IGraphMonitorService_IRegisterSensor extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterSensorRequest, pulumi_workflow_pb.RegisterNodeResponse> {
+    path: "/pulumirpc.GraphMonitor/RegisterSensor";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<pulumi_workflow_pb.RegisterSensorRequest>;
@@ -153,8 +187,8 @@ interface IWorkflowMonitorService_IRegisterSensor extends grpc.MethodDefinition<
     responseSerialize: grpc.serialize<pulumi_workflow_pb.RegisterNodeResponse>;
     responseDeserialize: grpc.deserialize<pulumi_workflow_pb.RegisterNodeResponse>;
 }
-interface IWorkflowMonitorService_IRegisterJob extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterJobRequest, pulumi_workflow_pb.RegisterNodeResponse> {
-    path: "/pulumirpc.WorkflowMonitor/RegisterJob";
+interface IGraphMonitorService_IRegisterJob extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterJobRequest, pulumi_workflow_pb.RegisterNodeResponse> {
+    path: "/pulumirpc.GraphMonitor/RegisterJob";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<pulumi_workflow_pb.RegisterJobRequest>;
@@ -162,8 +196,8 @@ interface IWorkflowMonitorService_IRegisterJob extends grpc.MethodDefinition<pul
     responseSerialize: grpc.serialize<pulumi_workflow_pb.RegisterNodeResponse>;
     responseDeserialize: grpc.deserialize<pulumi_workflow_pb.RegisterNodeResponse>;
 }
-interface IWorkflowMonitorService_IRegisterGraph extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterGraphRequest, pulumi_workflow_pb.RegisterNodeResponse> {
-    path: "/pulumirpc.WorkflowMonitor/RegisterGraph";
+interface IGraphMonitorService_IRegisterGraph extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterGraphRequest, pulumi_workflow_pb.RegisterNodeResponse> {
+    path: "/pulumirpc.GraphMonitor/RegisterGraph";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<pulumi_workflow_pb.RegisterGraphRequest>;
@@ -171,8 +205,8 @@ interface IWorkflowMonitorService_IRegisterGraph extends grpc.MethodDefinition<p
     responseSerialize: grpc.serialize<pulumi_workflow_pb.RegisterNodeResponse>;
     responseDeserialize: grpc.deserialize<pulumi_workflow_pb.RegisterNodeResponse>;
 }
-interface IWorkflowMonitorService_IRegisterStep extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterStepRequest, pulumi_workflow_pb.RegisterNodeResponse> {
-    path: "/pulumirpc.WorkflowMonitor/RegisterStep";
+interface IGraphMonitorService_IRegisterStep extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterStepRequest, pulumi_workflow_pb.RegisterNodeResponse> {
+    path: "/pulumirpc.GraphMonitor/RegisterStep";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<pulumi_workflow_pb.RegisterStepRequest>;
@@ -180,8 +214,8 @@ interface IWorkflowMonitorService_IRegisterStep extends grpc.MethodDefinition<pu
     responseSerialize: grpc.serialize<pulumi_workflow_pb.RegisterNodeResponse>;
     responseDeserialize: grpc.deserialize<pulumi_workflow_pb.RegisterNodeResponse>;
 }
-interface IWorkflowMonitorService_IGetStepResult extends grpc.MethodDefinition<pulumi_workflow_pb.GetStepResultRequest, pulumi_workflow_pb.GetStepResultResponse> {
-    path: "/pulumirpc.WorkflowMonitor/GetStepResult";
+interface IGraphMonitorService_IGetStepResult extends grpc.MethodDefinition<pulumi_workflow_pb.GetStepResultRequest, pulumi_workflow_pb.GetStepResultResponse> {
+    path: "/pulumirpc.GraphMonitor/GetStepResult";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<pulumi_workflow_pb.GetStepResultRequest>;
@@ -190,9 +224,9 @@ interface IWorkflowMonitorService_IGetStepResult extends grpc.MethodDefinition<p
     responseDeserialize: grpc.deserialize<pulumi_workflow_pb.GetStepResultResponse>;
 }
 
-export const WorkflowMonitorService: IWorkflowMonitorService;
+export const GraphMonitorService: IGraphMonitorService;
 
-export interface IWorkflowMonitorServer extends grpc.UntypedServiceImplementation {
+export interface IGraphMonitorServer extends grpc.UntypedServiceImplementation {
     registerTrigger: grpc.handleUnaryCall<pulumi_workflow_pb.RegisterTriggerRequest, pulumi_workflow_pb.RegisterNodeResponse>;
     registerSensor: grpc.handleUnaryCall<pulumi_workflow_pb.RegisterSensorRequest, pulumi_workflow_pb.RegisterNodeResponse>;
     registerJob: grpc.handleUnaryCall<pulumi_workflow_pb.RegisterJobRequest, pulumi_workflow_pb.RegisterNodeResponse>;
@@ -201,7 +235,7 @@ export interface IWorkflowMonitorServer extends grpc.UntypedServiceImplementatio
     getStepResult: grpc.handleUnaryCall<pulumi_workflow_pb.GetStepResultRequest, pulumi_workflow_pb.GetStepResultResponse>;
 }
 
-export interface IWorkflowMonitorClient {
+export interface IGraphMonitorClient {
     registerTrigger(request: pulumi_workflow_pb.RegisterTriggerRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;
     registerTrigger(request: pulumi_workflow_pb.RegisterTriggerRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;
     registerTrigger(request: pulumi_workflow_pb.RegisterTriggerRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;
@@ -222,7 +256,7 @@ export interface IWorkflowMonitorClient {
     getStepResult(request: pulumi_workflow_pb.GetStepResultRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResultResponse) => void): grpc.ClientUnaryCall;
 }
 
-export class WorkflowMonitorClient extends grpc.Client implements IWorkflowMonitorClient {
+export class GraphMonitorClient extends grpc.Client implements IGraphMonitorClient {
     constructor(address: string, credentials: grpc.ChannelCredentials, options?: Partial<grpc.ClientOptions>);
     public registerTrigger(request: pulumi_workflow_pb.RegisterTriggerRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;
     public registerTrigger(request: pulumi_workflow_pb.RegisterTriggerRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;

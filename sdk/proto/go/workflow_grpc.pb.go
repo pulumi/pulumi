@@ -25,6 +25,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -343,21 +344,131 @@ var WorkflowEvaluator_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	WorkflowMonitor_RegisterTrigger_FullMethodName = "/pulumirpc.WorkflowMonitor/RegisterTrigger"
-	WorkflowMonitor_RegisterSensor_FullMethodName  = "/pulumirpc.WorkflowMonitor/RegisterSensor"
-	WorkflowMonitor_RegisterJob_FullMethodName     = "/pulumirpc.WorkflowMonitor/RegisterJob"
-	WorkflowMonitor_RegisterGraph_FullMethodName   = "/pulumirpc.WorkflowMonitor/RegisterGraph"
-	WorkflowMonitor_RegisterStep_FullMethodName    = "/pulumirpc.WorkflowMonitor/RegisterStep"
-	WorkflowMonitor_GetStepResult_FullMethodName   = "/pulumirpc.WorkflowMonitor/GetStepResult"
+	WorkflowRegistry_RegisterComponent_FullMethodName = "/pulumirpc.WorkflowRegistry/RegisterComponent"
 )
 
-// WorkflowMonitorClient is the client API for WorkflowMonitor service.
+// WorkflowRegistryClient is the client API for WorkflowRegistry service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
-// ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
-type WorkflowMonitorClient interface {
+// WorkflowRegistry is called by workflow SDKs/plugins during startup to register
+// exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
+// how MLC packages register callable exports.
+type WorkflowRegistryClient interface {
+	RegisterComponent(ctx context.Context, in *RegisterComponentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+}
+
+type workflowRegistryClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewWorkflowRegistryClient(cc grpc.ClientConnInterface) WorkflowRegistryClient {
+	return &workflowRegistryClient{cc}
+}
+
+func (c *workflowRegistryClient) RegisterComponent(ctx context.Context, in *RegisterComponentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, WorkflowRegistry_RegisterComponent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// WorkflowRegistryServer is the server API for WorkflowRegistry service.
+// All implementations must embed UnimplementedWorkflowRegistryServer
+// for forward compatibility.
+//
+// WorkflowRegistry is called by workflow SDKs/plugins during startup to register
+// exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
+// how MLC packages register callable exports.
+type WorkflowRegistryServer interface {
+	RegisterComponent(context.Context, *RegisterComponentRequest) (*emptypb.Empty, error)
+	mustEmbedUnimplementedWorkflowRegistryServer()
+}
+
+// UnimplementedWorkflowRegistryServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedWorkflowRegistryServer struct{}
+
+func (UnimplementedWorkflowRegistryServer) RegisterComponent(context.Context, *RegisterComponentRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterComponent not implemented")
+}
+func (UnimplementedWorkflowRegistryServer) mustEmbedUnimplementedWorkflowRegistryServer() {}
+func (UnimplementedWorkflowRegistryServer) testEmbeddedByValue()                          {}
+
+// UnsafeWorkflowRegistryServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to WorkflowRegistryServer will
+// result in compilation errors.
+type UnsafeWorkflowRegistryServer interface {
+	mustEmbedUnimplementedWorkflowRegistryServer()
+}
+
+func RegisterWorkflowRegistryServer(s grpc.ServiceRegistrar, srv WorkflowRegistryServer) {
+	// If the following call pancis, it indicates UnimplementedWorkflowRegistryServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&WorkflowRegistry_ServiceDesc, srv)
+}
+
+func _WorkflowRegistry_RegisterComponent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterComponentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowRegistryServer).RegisterComponent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowRegistry_RegisterComponent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowRegistryServer).RegisterComponent(ctx, req.(*RegisterComponentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// WorkflowRegistry_ServiceDesc is the grpc.ServiceDesc for WorkflowRegistry service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var WorkflowRegistry_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "pulumirpc.WorkflowRegistry",
+	HandlerType: (*WorkflowRegistryServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "RegisterComponent",
+			Handler:    _WorkflowRegistry_RegisterComponent_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "pulumi/workflow.proto",
+}
+
+const (
+	GraphMonitor_RegisterTrigger_FullMethodName = "/pulumirpc.GraphMonitor/RegisterTrigger"
+	GraphMonitor_RegisterSensor_FullMethodName  = "/pulumirpc.GraphMonitor/RegisterSensor"
+	GraphMonitor_RegisterJob_FullMethodName     = "/pulumirpc.GraphMonitor/RegisterJob"
+	GraphMonitor_RegisterGraph_FullMethodName   = "/pulumirpc.GraphMonitor/RegisterGraph"
+	GraphMonitor_RegisterStep_FullMethodName    = "/pulumirpc.GraphMonitor/RegisterStep"
+	GraphMonitor_GetStepResult_FullMethodName   = "/pulumirpc.GraphMonitor/GetStepResult"
+)
+
+// GraphMonitorClient is the client API for GraphMonitor service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// GraphMonitor is called while evaluating a concrete graph execution/generation.
+// It records the graph shape for that evaluation and resolves prior node outputs.
+type GraphMonitorClient interface {
 	RegisterTrigger(ctx context.Context, in *RegisterTriggerRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
 	RegisterSensor(ctx context.Context, in *RegisterSensorRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
 	RegisterJob(ctx context.Context, in *RegisterJobRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
@@ -367,81 +478,81 @@ type WorkflowMonitorClient interface {
 	GetStepResult(ctx context.Context, in *GetStepResultRequest, opts ...grpc.CallOption) (*GetStepResultResponse, error)
 }
 
-type workflowMonitorClient struct {
+type graphMonitorClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewWorkflowMonitorClient(cc grpc.ClientConnInterface) WorkflowMonitorClient {
-	return &workflowMonitorClient{cc}
+func NewGraphMonitorClient(cc grpc.ClientConnInterface) GraphMonitorClient {
+	return &graphMonitorClient{cc}
 }
 
-func (c *workflowMonitorClient) RegisterTrigger(ctx context.Context, in *RegisterTriggerRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
+func (c *graphMonitorClient) RegisterTrigger(ctx context.Context, in *RegisterTriggerRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RegisterNodeResponse)
-	err := c.cc.Invoke(ctx, WorkflowMonitor_RegisterTrigger_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GraphMonitor_RegisterTrigger_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *workflowMonitorClient) RegisterSensor(ctx context.Context, in *RegisterSensorRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
+func (c *graphMonitorClient) RegisterSensor(ctx context.Context, in *RegisterSensorRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RegisterNodeResponse)
-	err := c.cc.Invoke(ctx, WorkflowMonitor_RegisterSensor_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GraphMonitor_RegisterSensor_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *workflowMonitorClient) RegisterJob(ctx context.Context, in *RegisterJobRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
+func (c *graphMonitorClient) RegisterJob(ctx context.Context, in *RegisterJobRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RegisterNodeResponse)
-	err := c.cc.Invoke(ctx, WorkflowMonitor_RegisterJob_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GraphMonitor_RegisterJob_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *workflowMonitorClient) RegisterGraph(ctx context.Context, in *RegisterGraphRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
+func (c *graphMonitorClient) RegisterGraph(ctx context.Context, in *RegisterGraphRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RegisterNodeResponse)
-	err := c.cc.Invoke(ctx, WorkflowMonitor_RegisterGraph_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GraphMonitor_RegisterGraph_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *workflowMonitorClient) RegisterStep(ctx context.Context, in *RegisterStepRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
+func (c *graphMonitorClient) RegisterStep(ctx context.Context, in *RegisterStepRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RegisterNodeResponse)
-	err := c.cc.Invoke(ctx, WorkflowMonitor_RegisterStep_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GraphMonitor_RegisterStep_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *workflowMonitorClient) GetStepResult(ctx context.Context, in *GetStepResultRequest, opts ...grpc.CallOption) (*GetStepResultResponse, error) {
+func (c *graphMonitorClient) GetStepResult(ctx context.Context, in *GetStepResultRequest, opts ...grpc.CallOption) (*GetStepResultResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStepResultResponse)
-	err := c.cc.Invoke(ctx, WorkflowMonitor_GetStepResult_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, GraphMonitor_GetStepResult_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// WorkflowMonitorServer is the server API for WorkflowMonitor service.
-// All implementations must embed UnimplementedWorkflowMonitorServer
+// GraphMonitorServer is the server API for GraphMonitor service.
+// All implementations must embed UnimplementedGraphMonitorServer
 // for forward compatibility.
 //
-// WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
-// ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
-type WorkflowMonitorServer interface {
+// GraphMonitor is called while evaluating a concrete graph execution/generation.
+// It records the graph shape for that evaluation and resolves prior node outputs.
+type GraphMonitorServer interface {
 	RegisterTrigger(context.Context, *RegisterTriggerRequest) (*RegisterNodeResponse, error)
 	RegisterSensor(context.Context, *RegisterSensorRequest) (*RegisterNodeResponse, error)
 	RegisterJob(context.Context, *RegisterJobRequest) (*RegisterNodeResponse, error)
@@ -449,193 +560,193 @@ type WorkflowMonitorServer interface {
 	RegisterStep(context.Context, *RegisterStepRequest) (*RegisterNodeResponse, error)
 	// GetStepResult asks for a previously completed step output.
 	GetStepResult(context.Context, *GetStepResultRequest) (*GetStepResultResponse, error)
-	mustEmbedUnimplementedWorkflowMonitorServer()
+	mustEmbedUnimplementedGraphMonitorServer()
 }
 
-// UnimplementedWorkflowMonitorServer must be embedded to have
+// UnimplementedGraphMonitorServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedWorkflowMonitorServer struct{}
+type UnimplementedGraphMonitorServer struct{}
 
-func (UnimplementedWorkflowMonitorServer) RegisterTrigger(context.Context, *RegisterTriggerRequest) (*RegisterNodeResponse, error) {
+func (UnimplementedGraphMonitorServer) RegisterTrigger(context.Context, *RegisterTriggerRequest) (*RegisterNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterTrigger not implemented")
 }
-func (UnimplementedWorkflowMonitorServer) RegisterSensor(context.Context, *RegisterSensorRequest) (*RegisterNodeResponse, error) {
+func (UnimplementedGraphMonitorServer) RegisterSensor(context.Context, *RegisterSensorRequest) (*RegisterNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterSensor not implemented")
 }
-func (UnimplementedWorkflowMonitorServer) RegisterJob(context.Context, *RegisterJobRequest) (*RegisterNodeResponse, error) {
+func (UnimplementedGraphMonitorServer) RegisterJob(context.Context, *RegisterJobRequest) (*RegisterNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterJob not implemented")
 }
-func (UnimplementedWorkflowMonitorServer) RegisterGraph(context.Context, *RegisterGraphRequest) (*RegisterNodeResponse, error) {
+func (UnimplementedGraphMonitorServer) RegisterGraph(context.Context, *RegisterGraphRequest) (*RegisterNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterGraph not implemented")
 }
-func (UnimplementedWorkflowMonitorServer) RegisterStep(context.Context, *RegisterStepRequest) (*RegisterNodeResponse, error) {
+func (UnimplementedGraphMonitorServer) RegisterStep(context.Context, *RegisterStepRequest) (*RegisterNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterStep not implemented")
 }
-func (UnimplementedWorkflowMonitorServer) GetStepResult(context.Context, *GetStepResultRequest) (*GetStepResultResponse, error) {
+func (UnimplementedGraphMonitorServer) GetStepResult(context.Context, *GetStepResultRequest) (*GetStepResultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStepResult not implemented")
 }
-func (UnimplementedWorkflowMonitorServer) mustEmbedUnimplementedWorkflowMonitorServer() {}
-func (UnimplementedWorkflowMonitorServer) testEmbeddedByValue()                         {}
+func (UnimplementedGraphMonitorServer) mustEmbedUnimplementedGraphMonitorServer() {}
+func (UnimplementedGraphMonitorServer) testEmbeddedByValue()                      {}
 
-// UnsafeWorkflowMonitorServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to WorkflowMonitorServer will
+// UnsafeGraphMonitorServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to GraphMonitorServer will
 // result in compilation errors.
-type UnsafeWorkflowMonitorServer interface {
-	mustEmbedUnimplementedWorkflowMonitorServer()
+type UnsafeGraphMonitorServer interface {
+	mustEmbedUnimplementedGraphMonitorServer()
 }
 
-func RegisterWorkflowMonitorServer(s grpc.ServiceRegistrar, srv WorkflowMonitorServer) {
-	// If the following call pancis, it indicates UnimplementedWorkflowMonitorServer was
+func RegisterGraphMonitorServer(s grpc.ServiceRegistrar, srv GraphMonitorServer) {
+	// If the following call pancis, it indicates UnimplementedGraphMonitorServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&WorkflowMonitor_ServiceDesc, srv)
+	s.RegisterService(&GraphMonitor_ServiceDesc, srv)
 }
 
-func _WorkflowMonitor_RegisterTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GraphMonitor_RegisterTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegisterTriggerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowMonitorServer).RegisterTrigger(ctx, in)
+		return srv.(GraphMonitorServer).RegisterTrigger(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowMonitor_RegisterTrigger_FullMethodName,
+		FullMethod: GraphMonitor_RegisterTrigger_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowMonitorServer).RegisterTrigger(ctx, req.(*RegisterTriggerRequest))
+		return srv.(GraphMonitorServer).RegisterTrigger(ctx, req.(*RegisterTriggerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowMonitor_RegisterSensor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GraphMonitor_RegisterSensor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegisterSensorRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowMonitorServer).RegisterSensor(ctx, in)
+		return srv.(GraphMonitorServer).RegisterSensor(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowMonitor_RegisterSensor_FullMethodName,
+		FullMethod: GraphMonitor_RegisterSensor_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowMonitorServer).RegisterSensor(ctx, req.(*RegisterSensorRequest))
+		return srv.(GraphMonitorServer).RegisterSensor(ctx, req.(*RegisterSensorRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowMonitor_RegisterJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GraphMonitor_RegisterJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegisterJobRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowMonitorServer).RegisterJob(ctx, in)
+		return srv.(GraphMonitorServer).RegisterJob(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowMonitor_RegisterJob_FullMethodName,
+		FullMethod: GraphMonitor_RegisterJob_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowMonitorServer).RegisterJob(ctx, req.(*RegisterJobRequest))
+		return srv.(GraphMonitorServer).RegisterJob(ctx, req.(*RegisterJobRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowMonitor_RegisterGraph_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GraphMonitor_RegisterGraph_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegisterGraphRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowMonitorServer).RegisterGraph(ctx, in)
+		return srv.(GraphMonitorServer).RegisterGraph(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowMonitor_RegisterGraph_FullMethodName,
+		FullMethod: GraphMonitor_RegisterGraph_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowMonitorServer).RegisterGraph(ctx, req.(*RegisterGraphRequest))
+		return srv.(GraphMonitorServer).RegisterGraph(ctx, req.(*RegisterGraphRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowMonitor_RegisterStep_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GraphMonitor_RegisterStep_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegisterStepRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowMonitorServer).RegisterStep(ctx, in)
+		return srv.(GraphMonitorServer).RegisterStep(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowMonitor_RegisterStep_FullMethodName,
+		FullMethod: GraphMonitor_RegisterStep_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowMonitorServer).RegisterStep(ctx, req.(*RegisterStepRequest))
+		return srv.(GraphMonitorServer).RegisterStep(ctx, req.(*RegisterStepRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowMonitor_GetStepResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _GraphMonitor_GetStepResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetStepResultRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowMonitorServer).GetStepResult(ctx, in)
+		return srv.(GraphMonitorServer).GetStepResult(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowMonitor_GetStepResult_FullMethodName,
+		FullMethod: GraphMonitor_GetStepResult_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowMonitorServer).GetStepResult(ctx, req.(*GetStepResultRequest))
+		return srv.(GraphMonitorServer).GetStepResult(ctx, req.(*GetStepResultRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// WorkflowMonitor_ServiceDesc is the grpc.ServiceDesc for WorkflowMonitor service.
+// GraphMonitor_ServiceDesc is the grpc.ServiceDesc for GraphMonitor service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var WorkflowMonitor_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.WorkflowMonitor",
-	HandlerType: (*WorkflowMonitorServer)(nil),
+var GraphMonitor_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "pulumirpc.GraphMonitor",
+	HandlerType: (*GraphMonitorServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "RegisterTrigger",
-			Handler:    _WorkflowMonitor_RegisterTrigger_Handler,
+			Handler:    _GraphMonitor_RegisterTrigger_Handler,
 		},
 		{
 			MethodName: "RegisterSensor",
-			Handler:    _WorkflowMonitor_RegisterSensor_Handler,
+			Handler:    _GraphMonitor_RegisterSensor_Handler,
 		},
 		{
 			MethodName: "RegisterJob",
-			Handler:    _WorkflowMonitor_RegisterJob_Handler,
+			Handler:    _GraphMonitor_RegisterJob_Handler,
 		},
 		{
 			MethodName: "RegisterGraph",
-			Handler:    _WorkflowMonitor_RegisterGraph_Handler,
+			Handler:    _GraphMonitor_RegisterGraph_Handler,
 		},
 		{
 			MethodName: "RegisterStep",
-			Handler:    _WorkflowMonitor_RegisterStep_Handler,
+			Handler:    _GraphMonitor_RegisterStep_Handler,
 		},
 		{
 			MethodName: "GetStepResult",
-			Handler:    _WorkflowMonitor_GetStepResult_Handler,
+			Handler:    _GraphMonitor_GetStepResult_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

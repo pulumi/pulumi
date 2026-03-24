@@ -18,7 +18,19 @@
 'use strict';
 var grpc = require('@grpc/grpc-js');
 var pulumi_workflow_pb = require('./workflow_pb.js');
+var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
+
+function serialize_google_protobuf_Empty(arg) {
+  if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
+    throw new Error('Expected argument of type google.protobuf.Empty');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_google_protobuf_Empty(buffer_arg) {
+  return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
+}
 
 function serialize_pulumirpc_GenerateGraphRequest(arg) {
   if (!(arg instanceof pulumi_workflow_pb.GenerateGraphRequest)) {
@@ -73,6 +85,17 @@ function serialize_pulumirpc_GetStepResultResponse(arg) {
 
 function deserialize_pulumirpc_GetStepResultResponse(buffer_arg) {
   return pulumi_workflow_pb.GetStepResultResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RegisterComponentRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.RegisterComponentRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterComponentRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterComponentRequest(buffer_arg) {
+  return pulumi_workflow_pb.RegisterComponentRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_RegisterGraphRequest(arg) {
@@ -308,11 +331,29 @@ runOnError: {
 };
 
 exports.WorkflowEvaluatorClient = grpc.makeGenericClientConstructor(WorkflowEvaluatorService, 'WorkflowEvaluator');
-// WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
-// ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
-var WorkflowMonitorService = exports.WorkflowMonitorService = {
+// WorkflowRegistry is called by workflow SDKs/plugins during startup to register
+// exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
+// how MLC packages register callable exports.
+var WorkflowRegistryService = exports.WorkflowRegistryService = {
+  registerComponent: {
+    path: '/pulumirpc.WorkflowRegistry/RegisterComponent',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.RegisterComponentRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_RegisterComponentRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterComponentRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+};
+
+exports.WorkflowRegistryClient = grpc.makeGenericClientConstructor(WorkflowRegistryService, 'WorkflowRegistry');
+// GraphMonitor is called while evaluating a concrete graph execution/generation.
+// It records the graph shape for that evaluation and resolves prior node outputs.
+var GraphMonitorService = exports.GraphMonitorService = {
   registerTrigger: {
-    path: '/pulumirpc.WorkflowMonitor/RegisterTrigger',
+    path: '/pulumirpc.GraphMonitor/RegisterTrigger',
     requestStream: false,
     responseStream: false,
     requestType: pulumi_workflow_pb.RegisterTriggerRequest,
@@ -323,7 +364,7 @@ var WorkflowMonitorService = exports.WorkflowMonitorService = {
     responseDeserialize: deserialize_pulumirpc_RegisterNodeResponse,
   },
   registerSensor: {
-    path: '/pulumirpc.WorkflowMonitor/RegisterSensor',
+    path: '/pulumirpc.GraphMonitor/RegisterSensor',
     requestStream: false,
     responseStream: false,
     requestType: pulumi_workflow_pb.RegisterSensorRequest,
@@ -334,7 +375,7 @@ var WorkflowMonitorService = exports.WorkflowMonitorService = {
     responseDeserialize: deserialize_pulumirpc_RegisterNodeResponse,
   },
   registerJob: {
-    path: '/pulumirpc.WorkflowMonitor/RegisterJob',
+    path: '/pulumirpc.GraphMonitor/RegisterJob',
     requestStream: false,
     responseStream: false,
     requestType: pulumi_workflow_pb.RegisterJobRequest,
@@ -345,7 +386,7 @@ var WorkflowMonitorService = exports.WorkflowMonitorService = {
     responseDeserialize: deserialize_pulumirpc_RegisterNodeResponse,
   },
   registerGraph: {
-    path: '/pulumirpc.WorkflowMonitor/RegisterGraph',
+    path: '/pulumirpc.GraphMonitor/RegisterGraph',
     requestStream: false,
     responseStream: false,
     requestType: pulumi_workflow_pb.RegisterGraphRequest,
@@ -356,7 +397,7 @@ var WorkflowMonitorService = exports.WorkflowMonitorService = {
     responseDeserialize: deserialize_pulumirpc_RegisterNodeResponse,
   },
   registerStep: {
-    path: '/pulumirpc.WorkflowMonitor/RegisterStep',
+    path: '/pulumirpc.GraphMonitor/RegisterStep',
     requestStream: false,
     responseStream: false,
     requestType: pulumi_workflow_pb.RegisterStepRequest,
@@ -368,7 +409,7 @@ var WorkflowMonitorService = exports.WorkflowMonitorService = {
   },
   // GetStepResult asks for a previously completed step output.
 getStepResult: {
-    path: '/pulumirpc.WorkflowMonitor/GetStepResult',
+    path: '/pulumirpc.GraphMonitor/GetStepResult',
     requestStream: false,
     responseStream: false,
     requestType: pulumi_workflow_pb.GetStepResultRequest,
@@ -380,4 +421,4 @@ getStepResult: {
   },
 };
 
-exports.WorkflowMonitorClient = grpc.makeGenericClientConstructor(WorkflowMonitorService, 'WorkflowMonitor');
+exports.GraphMonitorClient = grpc.makeGenericClientConstructor(GraphMonitorService, 'GraphMonitor');

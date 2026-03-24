@@ -5,6 +5,7 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
+import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 export class WorkflowContext extends jspb.Message { 
@@ -30,6 +31,41 @@ export namespace WorkflowContext {
         workflowname: string,
         workflowversion: string,
         executionid: string,
+    }
+}
+
+export class RegisterComponentRequest extends jspb.Message { 
+
+    hasContext(): boolean;
+    clearContext(): void;
+    getContext(): WorkflowContext | undefined;
+    setContext(value?: WorkflowContext): RegisterComponentRequest;
+    getToken(): string;
+    setToken(value: string): RegisterComponentRequest;
+    getKind(): WorkflowComponentKind;
+    setKind(value: WorkflowComponentKind): RegisterComponentRequest;
+
+    hasMetadata(): boolean;
+    clearMetadata(): void;
+    getMetadata(): google_protobuf_struct_pb.Struct | undefined;
+    setMetadata(value?: google_protobuf_struct_pb.Struct): RegisterComponentRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RegisterComponentRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RegisterComponentRequest): RegisterComponentRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RegisterComponentRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RegisterComponentRequest;
+    static deserializeBinaryFromReader(message: RegisterComponentRequest, reader: jspb.BinaryReader): RegisterComponentRequest;
+}
+
+export namespace RegisterComponentRequest {
+    export type AsObject = {
+        context?: WorkflowContext.AsObject,
+        token: string,
+        kind: WorkflowComponentKind,
+        metadata?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -836,4 +872,13 @@ export namespace GetStepResultResponse {
     export type AsObject = {
         result?: WorkflowValue.AsObject,
     }
+}
+
+export enum WorkflowComponentKind {
+    WORKFLOW_COMPONENT_KIND_UNSPECIFIED = 0,
+    WORKFLOW_COMPONENT_KIND_GRAPH = 1,
+    WORKFLOW_COMPONENT_KIND_JOB = 2,
+    WORKFLOW_COMPONENT_KIND_SUBGRAPH = 3,
+    WORKFLOW_COMPONENT_KIND_STEP = 4,
+    WORKFLOW_COMPONENT_KIND_FUNCTION = 5,
 }

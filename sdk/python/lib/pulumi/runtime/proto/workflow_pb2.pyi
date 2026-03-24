@@ -33,6 +33,29 @@ else:
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
+class _WorkflowComponentKind:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _WorkflowComponentKindEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_WorkflowComponentKind.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    WORKFLOW_COMPONENT_KIND_UNSPECIFIED: _WorkflowComponentKind.ValueType  # 0
+    WORKFLOW_COMPONENT_KIND_GRAPH: _WorkflowComponentKind.ValueType  # 1
+    WORKFLOW_COMPONENT_KIND_JOB: _WorkflowComponentKind.ValueType  # 2
+    WORKFLOW_COMPONENT_KIND_SUBGRAPH: _WorkflowComponentKind.ValueType  # 3
+    WORKFLOW_COMPONENT_KIND_STEP: _WorkflowComponentKind.ValueType  # 4
+    WORKFLOW_COMPONENT_KIND_FUNCTION: _WorkflowComponentKind.ValueType  # 5
+
+class WorkflowComponentKind(_WorkflowComponentKind, metaclass=_WorkflowComponentKindEnumTypeWrapper): ...
+
+WORKFLOW_COMPONENT_KIND_UNSPECIFIED: WorkflowComponentKind.ValueType  # 0
+WORKFLOW_COMPONENT_KIND_GRAPH: WorkflowComponentKind.ValueType  # 1
+WORKFLOW_COMPONENT_KIND_JOB: WorkflowComponentKind.ValueType  # 2
+WORKFLOW_COMPONENT_KIND_SUBGRAPH: WorkflowComponentKind.ValueType  # 3
+WORKFLOW_COMPONENT_KIND_STEP: WorkflowComponentKind.ValueType  # 4
+WORKFLOW_COMPONENT_KIND_FUNCTION: WorkflowComponentKind.ValueType  # 5
+global___WorkflowComponentKind = WorkflowComponentKind
+
 @typing.final
 class WorkflowContext(google.protobuf.message.Message):
     """WorkflowContext identifies a workflow definition and execution."""
@@ -58,6 +81,41 @@ class WorkflowContext(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["executionId", b"executionId", "workflowName", b"workflowName", "workflowVersion", b"workflowVersion"]) -> None: ...
 
 global___WorkflowContext = WorkflowContext
+
+@typing.final
+class RegisterComponentRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    CONTEXT_FIELD_NUMBER: builtins.int
+    TOKEN_FIELD_NUMBER: builtins.int
+    KIND_FIELD_NUMBER: builtins.int
+    METADATA_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    """Fully-qualified export token, e.g. workflow:index:myGraph."""
+    kind: global___WorkflowComponentKind.ValueType
+    """Component kind (graph/job/subgraph/step/function)."""
+    @property
+    def context(self) -> global___WorkflowContext:
+        """Context for the definition being registered. executionId is typically empty
+        at startup-time registration.
+        """
+
+    @property
+    def metadata(self) -> google.protobuf.struct_pb2.Struct:
+        """Optional structured metadata (display name, schemas, docs, etc.)."""
+
+    def __init__(
+        self,
+        *,
+        context: global___WorkflowContext | None = ...,
+        token: builtins.str = ...,
+        kind: global___WorkflowComponentKind.ValueType = ...,
+        metadata: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["context", b"context", "metadata", b"metadata"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["context", b"context", "kind", b"kind", "metadata", b"metadata", "token", b"token"]) -> None: ...
+
+global___RegisterComponentRequest = RegisterComponentRequest
 
 @typing.final
 class WorkflowError(google.protobuf.message.Message):

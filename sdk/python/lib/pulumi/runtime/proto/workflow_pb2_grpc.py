@@ -2,6 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from . import workflow_pb2 as pulumi_dot_workflow__pb2
 
 
@@ -243,9 +244,79 @@ class WorkflowEvaluator(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
 
-class WorkflowMonitorStub(object):
-    """WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
-    ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
+class WorkflowRegistryStub(object):
+    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
+    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
+    how MLC packages register callable exports.
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.RegisterComponent = channel.unary_unary(
+                '/pulumirpc.WorkflowRegistry/RegisterComponent',
+                request_serializer=pulumi_dot_workflow__pb2.RegisterComponentRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+
+
+class WorkflowRegistryServicer(object):
+    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
+    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
+    how MLC packages register callable exports.
+    """
+
+    def RegisterComponent(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_WorkflowRegistryServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'RegisterComponent': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterComponent,
+                    request_deserializer=pulumi_dot_workflow__pb2.RegisterComponentRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'pulumirpc.WorkflowRegistry', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class WorkflowRegistry(object):
+    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
+    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
+    how MLC packages register callable exports.
+    """
+
+    @staticmethod
+    def RegisterComponent(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowRegistry/RegisterComponent',
+            pulumi_dot_workflow__pb2.RegisterComponentRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+
+class GraphMonitorStub(object):
+    """GraphMonitor is called while evaluating a concrete graph execution/generation.
+    It records the graph shape for that evaluation and resolves prior node outputs.
     """
 
     def __init__(self, channel):
@@ -255,40 +326,40 @@ class WorkflowMonitorStub(object):
             channel: A grpc.Channel.
         """
         self.RegisterTrigger = channel.unary_unary(
-                '/pulumirpc.WorkflowMonitor/RegisterTrigger',
+                '/pulumirpc.GraphMonitor/RegisterTrigger',
                 request_serializer=pulumi_dot_workflow__pb2.RegisterTriggerRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
                 )
         self.RegisterSensor = channel.unary_unary(
-                '/pulumirpc.WorkflowMonitor/RegisterSensor',
+                '/pulumirpc.GraphMonitor/RegisterSensor',
                 request_serializer=pulumi_dot_workflow__pb2.RegisterSensorRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
                 )
         self.RegisterJob = channel.unary_unary(
-                '/pulumirpc.WorkflowMonitor/RegisterJob',
+                '/pulumirpc.GraphMonitor/RegisterJob',
                 request_serializer=pulumi_dot_workflow__pb2.RegisterJobRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
                 )
         self.RegisterGraph = channel.unary_unary(
-                '/pulumirpc.WorkflowMonitor/RegisterGraph',
+                '/pulumirpc.GraphMonitor/RegisterGraph',
                 request_serializer=pulumi_dot_workflow__pb2.RegisterGraphRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
                 )
         self.RegisterStep = channel.unary_unary(
-                '/pulumirpc.WorkflowMonitor/RegisterStep',
+                '/pulumirpc.GraphMonitor/RegisterStep',
                 request_serializer=pulumi_dot_workflow__pb2.RegisterStepRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
                 )
         self.GetStepResult = channel.unary_unary(
-                '/pulumirpc.WorkflowMonitor/GetStepResult',
+                '/pulumirpc.GraphMonitor/GetStepResult',
                 request_serializer=pulumi_dot_workflow__pb2.GetStepResultRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetStepResultResponse.FromString,
                 )
 
 
-class WorkflowMonitorServicer(object):
-    """WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
-    ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
+class GraphMonitorServicer(object):
+    """GraphMonitor is called while evaluating a concrete graph execution/generation.
+    It records the graph shape for that evaluation and resolves prior node outputs.
     """
 
     def RegisterTrigger(self, request, context):
@@ -329,7 +400,7 @@ class WorkflowMonitorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_WorkflowMonitorServicer_to_server(servicer, server):
+def add_GraphMonitorServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'RegisterTrigger': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterTrigger,
@@ -363,14 +434,14 @@ def add_WorkflowMonitorServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'pulumirpc.WorkflowMonitor', rpc_method_handlers)
+            'pulumirpc.GraphMonitor', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class WorkflowMonitor(object):
-    """WorkflowMonitor is called by workflow SDKs while graph code runs, similar to
-    ResourceMonitor in IaC. It records graph shape and resolves prior node outputs.
+class GraphMonitor(object):
+    """GraphMonitor is called while evaluating a concrete graph execution/generation.
+    It records the graph shape for that evaluation and resolves prior node outputs.
     """
 
     @staticmethod
@@ -384,7 +455,7 @@ class WorkflowMonitor(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowMonitor/RegisterTrigger',
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.GraphMonitor/RegisterTrigger',
             pulumi_dot_workflow__pb2.RegisterTriggerRequest.SerializeToString,
             pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
             options, channel_credentials,
@@ -401,7 +472,7 @@ class WorkflowMonitor(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowMonitor/RegisterSensor',
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.GraphMonitor/RegisterSensor',
             pulumi_dot_workflow__pb2.RegisterSensorRequest.SerializeToString,
             pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
             options, channel_credentials,
@@ -418,7 +489,7 @@ class WorkflowMonitor(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowMonitor/RegisterJob',
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.GraphMonitor/RegisterJob',
             pulumi_dot_workflow__pb2.RegisterJobRequest.SerializeToString,
             pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
             options, channel_credentials,
@@ -435,7 +506,7 @@ class WorkflowMonitor(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowMonitor/RegisterGraph',
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.GraphMonitor/RegisterGraph',
             pulumi_dot_workflow__pb2.RegisterGraphRequest.SerializeToString,
             pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
             options, channel_credentials,
@@ -452,7 +523,7 @@ class WorkflowMonitor(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowMonitor/RegisterStep',
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.GraphMonitor/RegisterStep',
             pulumi_dot_workflow__pb2.RegisterStepRequest.SerializeToString,
             pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
             options, channel_credentials,
@@ -469,7 +540,7 @@ class WorkflowMonitor(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowMonitor/GetStepResult',
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.GraphMonitor/GetStepResult',
             pulumi_dot_workflow__pb2.GetStepResultRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetStepResultResponse.FromString,
             options, channel_credentials,
