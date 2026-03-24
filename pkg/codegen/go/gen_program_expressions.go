@@ -763,6 +763,14 @@ func (g *generator) genObjectConsExpression(
 ) {
 	isInput = isInput || isInputty(destType)
 
+	// Track plain object context for nested rendering. If we enter a
+	// non-plain (input) context, clear the flag so nested objects get &.
+	savedPlain := g.inPlainObjectField
+	if isInput {
+		g.inPlainObjectField = false
+	}
+	defer func() { g.inPlainObjectField = savedPlain }()
+
 	typeName := g.argumentTypeName(destType, isInput)
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
@@ -807,6 +815,8 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 			g.Fgenf(w, "&%s", typeName)
 		}
 	} else if isMap || !strings.HasSuffix(typeName, "Args") || strings.HasSuffix(typeName, "OutputArgs") {
+		g.Fgenf(w, "%s", typeName)
+	} else if g.inPlainObjectField {
 		g.Fgenf(w, "%s", typeName)
 	} else {
 		g.Fgenf(w, "&%s", typeName)
