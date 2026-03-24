@@ -92,7 +92,7 @@ class Context:
         """Registers a trigger in the current graph."""
 
         request = workflow_pb2.RegisterTriggerRequest()
-        trigger_path = f"{self._state.graph_path}/triggers/{name}"
+        trigger_path = f"{self._state.graph_path}/{name}"
         if self._state.target_job_name is not None:
             return _new_workflow_output(trigger_path, _workflow_input_value(self._state.context, trigger_path))
         request.context.CopyFrom(self._state.context)
