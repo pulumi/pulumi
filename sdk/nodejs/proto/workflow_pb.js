@@ -5377,7 +5377,8 @@ proto.pulumirpc.GenerateGraphRequest.prototype.toObject = function(opt_includeIn
 proto.pulumirpc.GenerateGraphRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(includeInstance, f),
-path: jspb.Message.getFieldWithDefault(msg, 2, "")
+path: jspb.Message.getFieldWithDefault(msg, 2, ""),
+graphmonitoraddress: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -5423,6 +5424,10 @@ proto.pulumirpc.GenerateGraphRequest.deserializeBinaryFromReader = function(msg,
       var value = /** @type {string} */ (reader.readString());
       msg.setPath(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setGraphmonitoraddress(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -5464,6 +5469,13 @@ proto.pulumirpc.GenerateGraphRequest.serializeBinaryToWriter = function(message,
   if (f.length > 0) {
     writer.writeString(
       2,
+      f
+    );
+  }
+  f = message.getGraphmonitoraddress();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
       f
     );
   }
@@ -5522,6 +5534,24 @@ proto.pulumirpc.GenerateGraphRequest.prototype.getPath = function() {
  */
 proto.pulumirpc.GenerateGraphRequest.prototype.setPath = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string graphMonitorAddress = 3;
+ * @return {string}
+ */
+proto.pulumirpc.GenerateGraphRequest.prototype.getGraphmonitoraddress = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.GenerateGraphRequest} returns this
+ */
+proto.pulumirpc.GenerateGraphRequest.prototype.setGraphmonitoraddress = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

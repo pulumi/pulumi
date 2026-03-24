@@ -1535,11 +1535,12 @@ func (x *GenerateJobRequest) GetPath() string {
 }
 
 type GenerateGraphRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Context             *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Path                string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	GraphMonitorAddress string                 `protobuf:"bytes,3,opt,name=graphMonitorAddress,proto3" json:"graphMonitorAddress,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *GenerateGraphRequest) Reset() {
@@ -1582,6 +1583,13 @@ func (x *GenerateGraphRequest) GetContext() *WorkflowContext {
 func (x *GenerateGraphRequest) GetPath() string {
 	if x != nil {
 		return x.Path
+	}
+	return ""
+}
+
+func (x *GenerateGraphRequest) GetGraphMonitorAddress() string {
+	if x != nil {
+		return x.GraphMonitorAddress
 	}
 	return ""
 }
@@ -2711,10 +2719,11 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\bcategory\x18\x03 \x01(\tR\bcategory\"^\n" +
 	"\x12GenerateJobRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\"`\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\"\x92\x01\n" +
 	"\x14GenerateGraphRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\"F\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x120\n" +
+	"\x13graphMonitorAddress\x18\x03 \x01(\tR\x13graphMonitorAddress\"F\n" +
 	"\x14GenerateNodeResponse\x12.\n" +
 	"\x05error\x18\x01 \x01(\v2\x18.pulumirpc.WorkflowErrorR\x05error\"\x8e\x01\n" +
 	"\x10RunSensorRequest\x124\n" +

@@ -98,10 +98,6 @@ class WorkflowRegistry:
 
 
 def _new_workflow_context() -> workflow_pb2.WorkflowContext:
-    graph_monitor_address = os.getenv("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS")
-    if not graph_monitor_address:
-        raise WorkflowError("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS is required")
-
     workflow_name = os.getenv("PULUMI_WORKFLOW_NAME", "workflow")
     workflow_version = os.getenv("PULUMI_WORKFLOW_VERSION", "dev")
     execution_id = os.getenv("PULUMI_WORKFLOW_EXECUTION_ID", "")
@@ -113,10 +109,14 @@ def _new_workflow_context() -> workflow_pb2.WorkflowContext:
     return context
 
 
-def _evaluate_graph(token: str, graph_fn: Callable[[Context], None], context: workflow_pb2.WorkflowContext) -> None:
-    graph_monitor_address = os.getenv("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS")
+def _evaluate_graph(
+    token: str,
+    graph_fn: Callable[[Context], None],
+    context: workflow_pb2.WorkflowContext,
+    graph_monitor_address: str,
+) -> None:
     if not graph_monitor_address:
-        raise WorkflowError("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS is required")
+        raise WorkflowError("graph monitor address is required")
 
     with contextlib.ExitStack() as stack:
         graph_channel = stack.enter_context(grpc.insecure_channel(graph_monitor_address))
@@ -208,7 +208,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         graph_fn = self._workflow_registry._graphs.get(request.path)
         if graph_fn is None:
             context.abort(grpc.StatusCode.NOT_FOUND, f"unknown graph path {request.path}")
-        _evaluate_graph(request.path, graph_fn, request.context)
+        _evaluate_graph(request.path, graph_fn, request.context, request.graphMonitorAddress)
         return workflow_pb2.GenerateNodeResponse()
 
     def GenerateJob(
@@ -223,11 +223,15 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
 def run(register: Callable[[WorkflowRegistry], None]) -> None:
     """Executes graph evaluation once against the graph monitor."""
 
+    graph_monitor_address = os.getenv("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS")
+    if not graph_monitor_address:
+        raise WorkflowError("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS is required")
+
     context = _new_workflow_context()
     workflow_registry = WorkflowRegistry()
     register(workflow_registry)
     for token, graph_fn in workflow_registry._graphs.items():
-        _evaluate_graph(token, graph_fn, context)
+        _evaluate_graph(token, graph_fn, context, graph_monitor_address)
 
 
 def run_plugin(register: Callable[[WorkflowRegistry], None]) -> None:

@@ -262,6 +262,7 @@ message GenerateJobRequest {
 message GenerateGraphRequest {
     WorkflowContext context = 1;
     string path = 2;
+    string graphMonitorAddress = 3;
 }
 
 message GenerateNodeResponse {

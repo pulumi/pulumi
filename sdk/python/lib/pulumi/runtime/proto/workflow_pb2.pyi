@@ -597,7 +597,9 @@ class GenerateGraphRequest(google.protobuf.message.Message):
 
     CONTEXT_FIELD_NUMBER: builtins.int
     PATH_FIELD_NUMBER: builtins.int
+    GRAPHMONITORADDRESS_FIELD_NUMBER: builtins.int
     path: builtins.str
+    graphMonitorAddress: builtins.str
     @property
     def context(self) -> global___WorkflowContext: ...
     def __init__(
@@ -605,9 +607,10 @@ class GenerateGraphRequest(google.protobuf.message.Message):
         *,
         context: global___WorkflowContext | None = ...,
         path: builtins.str = ...,
+        graphMonitorAddress: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["context", b"context"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["context", b"context", "path", b"path"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["context", b"context", "graphMonitorAddress", b"graphMonitorAddress", "path", b"path"]) -> None: ...
 
 global___GenerateGraphRequest = GenerateGraphRequest
 

@@ -660,6 +660,8 @@ export class GenerateGraphRequest extends jspb.Message {
     setContext(value?: WorkflowContext): GenerateGraphRequest;
     getPath(): string;
     setPath(value: string): GenerateGraphRequest;
+    getGraphmonitoraddress(): string;
+    setGraphmonitoraddress(value: string): GenerateGraphRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateGraphRequest.AsObject;
@@ -675,6 +677,7 @@ export namespace GenerateGraphRequest {
     export type AsObject = {
         context?: WorkflowContext.AsObject,
         path: string,
+        graphmonitoraddress: string,
     }
 }
 
