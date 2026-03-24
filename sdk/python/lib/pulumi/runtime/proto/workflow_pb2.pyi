@@ -42,20 +42,31 @@ class WorkflowContext(google.protobuf.message.Message):
     WORKFLOW_NAME_FIELD_NUMBER: builtins.int
     WORKFLOW_VERSION_FIELD_NUMBER: builtins.int
     EXECUTION_ID_FIELD_NUMBER: builtins.int
+    INPUT_PATH_FIELD_NUMBER: builtins.int
+    INPUT_VALUE_FIELD_NUMBER: builtins.int
     workflow_name: builtins.str
     """A stable name for the workflow definition."""
     workflow_version: builtins.str
     """A scheduler-defined immutable workflow version identifier."""
     execution_id: builtins.str
     """The workflow execution identifier for a single trigger fire."""
+    input_path: builtins.str
+    """The full graph node path whose output value is being passed as workflow input."""
+    @property
+    def input_value(self) -> google.protobuf.struct_pb2.Value:
+        """The encoded input value for input_path."""
+
     def __init__(
         self,
         *,
         workflow_name: builtins.str = ...,
         workflow_version: builtins.str = ...,
         execution_id: builtins.str = ...,
+        input_path: builtins.str = ...,
+        input_value: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["execution_id", b"execution_id", "workflow_name", b"workflow_name", "workflow_version", b"workflow_version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["input_value", b"input_value"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["execution_id", b"execution_id", "input_path", b"input_path", "input_value", b"input_value", "workflow_name", b"workflow_name", "workflow_version", b"workflow_version"]) -> None: ...
 
 global___WorkflowContext = WorkflowContext
 

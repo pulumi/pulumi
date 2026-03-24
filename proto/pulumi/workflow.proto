@@ -86,6 +86,12 @@ message WorkflowContext {
 
     // The workflow execution identifier for a single trigger fire.
     string execution_id = 3;
+
+    // The full graph node path whose output value is being passed as workflow input.
+    string input_path = 4;
+
+    // The encoded input value for input_path.
+    google.protobuf.Value input_value = 5;
 }
 
 // `WorkflowHandshakeRequest` is the type of requests sent as part of a

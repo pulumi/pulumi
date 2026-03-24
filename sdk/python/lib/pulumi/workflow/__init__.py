@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import grpc
+from google.protobuf import json_format
 from google.protobuf import struct_pb2
 
 from pulumi.runtime.proto import workflow_pb2
@@ -33,7 +34,7 @@ from pulumi.runtime.proto import workflow_pb2_grpc
 
 OnErrorHandler = Callable[[List[workflow_pb2.ErrorRecord]], Union[bool, Tuple[bool, str], None]]
 StepCallback = Callable[[], Any]
-JobCallback = Callable[["JobContext"], None]
+JobCallback = Callable[..., None]
 GraphCallback = Callable[["Context"], None]
 
 
@@ -47,6 +48,7 @@ class _StepDefinition:
 class _JobDefinition:
     fn: JobCallback
     on_error: Optional[OnErrorHandler]
+    inputs: List[Any]
 
 
 @dataclass
@@ -66,6 +68,21 @@ class _JobEvalState:
     steps: Dict[str, _StepDefinition]
 
 
+class Output:
+    """Represents a workflow node output value."""
+
+    def __init__(self, path: str, value: Any) -> None:
+        self._path = path
+        self._value = value
+
+    @property
+    def path(self) -> str:
+        return self._path
+
+    def get(self) -> Any:
+        return self._value
+
+
 class Context:
     """Execution/evaluation context passed to graph functions."""
 
@@ -79,14 +96,15 @@ class Context:
         spec: Optional[Dict[str, Any]] = None,
         *,
         has_filter: bool = False,
-    ) -> None:
+    ) -> Output:
         """Registers a trigger in the current graph."""
 
         request = workflow_pb2.RegisterTriggerRequest()
+        trigger_path = f"{self._state.graph_path}/triggers/{name}"
         if self._state.target_job_name is not None:
-            return
+            return Output(trigger_path, _workflow_input_value(self._state.context, trigger_path))
         request.context.CopyFrom(self._state.context)
-        request.path = f"{self._state.graph_path}/triggers/{name}"
+        request.path = trigger_path
         request.type = trigger_type
         request.has_filter = has_filter
         if spec:
@@ -95,16 +113,21 @@ class Context:
             request.spec.CopyFrom(trigger_spec)
 
         self._state.monitor.RegisterTrigger(request)
+        return Output(trigger_path, _workflow_input_value(self._state.context, trigger_path))
 
     def job(
         self,
         name: str,
+        *inputs_or_fn: Any,
         fn: Optional[JobCallback] = None,
-        *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
     ) -> Union[JobCallback, Callable[[JobCallback], JobCallback]]:
         """Registers a job in the current graph."""
+        inputs: List[Any] = list(inputs_or_fn)
+        if fn is None and len(inputs) == 1 and callable(inputs[0]):
+            fn = inputs[0]
+            inputs = []
 
         def register(registered_fn: JobCallback) -> JobCallback:
             if not name:
@@ -124,8 +147,9 @@ class Context:
                     term = request.dependencies.terms.add()
                     term.path = _normalize_job_dependency(self._state.graph_path, dep)
 
+            resolved_inputs = [_resolve_job_input(value) for value in inputs]
             self._state.monitor.RegisterJob(request)
-            self._state.jobs[job_path] = _JobDefinition(fn=registered_fn, on_error=on_error)
+            self._state.jobs[job_path] = _JobDefinition(fn=registered_fn, on_error=on_error, inputs=resolved_inputs)
             return registered_fn
 
         if fn is not None:
@@ -237,6 +261,37 @@ def _to_proto_value(value: Any) -> struct_pb2.Value:
     return result
 
 
+def _from_proto_value(value: struct_pb2.Value) -> Any:
+    kind = value.WhichOneof("kind")
+    if kind == "null_value":
+        return None
+    if kind == "number_value":
+        return value.number_value
+    if kind == "string_value":
+        return value.string_value
+    if kind == "bool_value":
+        return value.bool_value
+    if kind == "struct_value":
+        return json_format.MessageToDict(value.struct_value)
+    if kind == "list_value":
+        return [_from_proto_value(item) for item in value.list_value.values]
+    return None
+
+
+def _workflow_input_value(context: workflow_pb2.WorkflowContext, path: str) -> Any:
+    if context.input_path != path:
+        return None
+    if not context.HasField("input_value"):
+        return None
+    return _from_proto_value(context.input_value)
+
+
+def _resolve_job_input(value: Any) -> Any:
+    if isinstance(value, Output):
+        return value.get()
+    return value
+
+
 def _evaluate_graph(
     token: str,
     graph_fn: GraphCallback,
@@ -287,7 +342,7 @@ def _evaluate_job(
         monitor = workflow_pb2_grpc.GraphMonitorStub(graph_channel)
 
         steps: Dict[str, _StepDefinition] = {}
-        job.fn(JobContext(_JobEvalState(monitor=monitor, context=context, job_path=job_path, steps=steps)))
+        job.fn(JobContext(_JobEvalState(monitor=monitor, context=context, job_path=job_path, steps=steps)), *job.inputs)
         return steps
 
 
@@ -486,6 +541,7 @@ def run(package_name: str, package_version: str, register: Callable[[WorkflowReg
 
 __all__ = [
     "Context",
+    "Output",
     "JobContext",
     "WorkflowRegistry",
     "WorkflowError",

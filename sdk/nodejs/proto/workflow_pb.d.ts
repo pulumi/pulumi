@@ -14,6 +14,13 @@ export class WorkflowContext extends jspb.Message {
     setWorkflowVersion(value: string): WorkflowContext;
     getExecutionId(): string;
     setExecutionId(value: string): WorkflowContext;
+    getInputPath(): string;
+    setInputPath(value: string): WorkflowContext;
+
+    hasInputValue(): boolean;
+    clearInputValue(): void;
+    getInputValue(): google_protobuf_struct_pb.Value | undefined;
+    setInputValue(value?: google_protobuf_struct_pb.Value): WorkflowContext;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): WorkflowContext.AsObject;
@@ -30,6 +37,8 @@ export namespace WorkflowContext {
         workflowName: string,
         workflowVersion: string,
         executionId: string,
+        inputPath: string,
+        inputValue?: google_protobuf_struct_pb.Value.AsObject,
     }
 }
 

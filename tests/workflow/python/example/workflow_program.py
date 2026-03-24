@@ -4,7 +4,7 @@ import string
 
 
 def main_graph(ctx: workflow.Context) -> None:
-    ctx.trigger(
+    trigger_output = ctx.trigger(
         "every-minute",
         "cloud:cron",
         {
@@ -19,6 +19,15 @@ def main_graph(ctx: workflow.Context) -> None:
         def run_step() -> str:
             print("running main step", flush=True)
             return "".join(random.choices(string.ascii_lowercase + string.digits, k=12))
+
+    @ctx.job("from-trigger", trigger_output)
+    def from_trigger_job(job: workflow.JobContext, cron: object) -> None:
+        @job.step("consume")
+        def consume_step() -> str:
+            print(f"consuming trigger {trigger_output.path}: {cron}", flush=True)
+            if isinstance(cron, dict) and "triggerPath" in cron:
+                return str(cron["triggerPath"])
+            return str(cron)
 
 
 def register_workflows(registry: workflow.WorkflowRegistry) -> None:

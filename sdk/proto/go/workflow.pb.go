@@ -250,7 +250,11 @@ type WorkflowContext struct {
 	// A scheduler-defined immutable workflow version identifier.
 	WorkflowVersion string `protobuf:"bytes,2,opt,name=workflow_version,json=workflowVersion,proto3" json:"workflow_version,omitempty"`
 	// The workflow execution identifier for a single trigger fire.
-	ExecutionId   string `protobuf:"bytes,3,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	ExecutionId string `protobuf:"bytes,3,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	// The full graph node path whose output value is being passed as workflow input.
+	InputPath string `protobuf:"bytes,4,opt,name=input_path,json=inputPath,proto3" json:"input_path,omitempty"`
+	// The encoded input value for input_path.
+	InputValue    *structpb.Value `protobuf:"bytes,5,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -304,6 +308,20 @@ func (x *WorkflowContext) GetExecutionId() string {
 		return x.ExecutionId
 	}
 	return ""
+}
+
+func (x *WorkflowContext) GetInputPath() string {
+	if x != nil {
+		return x.InputPath
+	}
+	return ""
+}
+
+func (x *WorkflowContext) GetInputValue() *structpb.Value {
+	if x != nil {
+		return x.InputValue
+	}
+	return nil
 }
 
 // `WorkflowHandshakeRequest` is the type of requests sent as part of a
@@ -2701,11 +2719,15 @@ var File_pulumi_workflow_proto protoreflect.FileDescriptor
 
 const file_pulumi_workflow_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/workflow.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\"\x84\x01\n" +
+	"\x15pulumi/workflow.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\"\xdc\x01\n" +
 	"\x0fWorkflowContext\x12#\n" +
 	"\rworkflow_name\x18\x01 \x01(\tR\fworkflowName\x12)\n" +
 	"\x10workflow_version\x18\x02 \x01(\tR\x0fworkflowVersion\x12!\n" +
-	"\fexecution_id\x18\x03 \x01(\tR\vexecutionId\"\xc8\x01\n" +
+	"\fexecution_id\x18\x03 \x01(\tR\vexecutionId\x12\x1d\n" +
+	"\n" +
+	"input_path\x18\x04 \x01(\tR\tinputPath\x127\n" +
+	"\vinput_value\x18\x05 \x01(\v2\x16.google.protobuf.ValueR\n" +
+	"inputValue\"\xc8\x01\n" +
 	"\x18WorkflowHandshakeRequest\x12%\n" +
 	"\x0eengine_address\x18\x01 \x01(\tR\rengineAddress\x12*\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tH\x00R\rrootDirectory\x88\x01\x01\x120\n" +
@@ -2968,100 +2990,101 @@ var file_pulumi_workflow_proto_goTypes = []any{
 	(*RegisterGraphRequest)(nil),       // 44: pulumirpc.RegisterGraphRequest
 	(*RegisterStepRequest)(nil),        // 45: pulumirpc.RegisterStepRequest
 	(*RegisterNodeResponse)(nil),       // 46: pulumirpc.RegisterNodeResponse
-	(*structpb.Struct)(nil),            // 47: google.protobuf.Struct
-	(*structpb.Value)(nil),             // 48: google.protobuf.Value
+	(*structpb.Value)(nil),             // 47: google.protobuf.Value
+	(*structpb.Struct)(nil),            // 48: google.protobuf.Struct
 }
 var file_pulumi_workflow_proto_depIdxs = []int32{
-	7,  // 0: pulumirpc.GraphInfo.input_type:type_name -> pulumirpc.TypeReference
-	7,  // 1: pulumirpc.GraphInfo.output_type:type_name -> pulumirpc.TypeReference
-	7,  // 2: pulumirpc.JobInfo.input_type:type_name -> pulumirpc.TypeReference
-	7,  // 3: pulumirpc.JobInfo.output_type:type_name -> pulumirpc.TypeReference
-	8,  // 4: pulumirpc.GetPackageInfoResponse.package:type_name -> pulumirpc.PackageInfo
-	9,  // 5: pulumirpc.GetGraphsResponse.graphs:type_name -> pulumirpc.GraphInfo
-	9,  // 6: pulumirpc.GetGraphResponse.graph:type_name -> pulumirpc.GraphInfo
-	10, // 7: pulumirpc.GetJobsResponse.jobs:type_name -> pulumirpc.JobInfo
-	10, // 8: pulumirpc.GetJobResponse.job:type_name -> pulumirpc.JobInfo
-	47, // 9: pulumirpc.WorkflowError.details:type_name -> google.protobuf.Struct
-	23, // 10: pulumirpc.DependencyTerm.expression:type_name -> pulumirpc.DependencyExpression
-	0,  // 11: pulumirpc.DependencyExpression.operator:type_name -> pulumirpc.DependencyExpression.Operator
-	22, // 12: pulumirpc.DependencyExpression.terms:type_name -> pulumirpc.DependencyTerm
-	24, // 13: pulumirpc.PlatformSelector.requirements:type_name -> pulumirpc.PlatformRequirements
-	1,  // 14: pulumirpc.PlatformSelector.match_policy:type_name -> pulumirpc.PlatformSelector.MatchPolicy
-	4,  // 15: pulumirpc.GenerateJobRequest.context:type_name -> pulumirpc.WorkflowContext
-	4,  // 16: pulumirpc.GenerateGraphRequest.context:type_name -> pulumirpc.WorkflowContext
-	21, // 17: pulumirpc.GenerateNodeResponse.error:type_name -> pulumirpc.WorkflowError
-	4,  // 18: pulumirpc.RunSensorRequest.context:type_name -> pulumirpc.WorkflowContext
-	48, // 19: pulumirpc.RunSensorRequest.cursor:type_name -> google.protobuf.Value
-	21, // 20: pulumirpc.RunSensorResponse.error:type_name -> pulumirpc.WorkflowError
-	2,  // 21: pulumirpc.RunSensorResponse.decision:type_name -> pulumirpc.RunSensorResponse.Decision
-	48, // 22: pulumirpc.RunSensorResponse.cursor:type_name -> google.protobuf.Value
-	48, // 23: pulumirpc.RunSensorResponse.event:type_name -> google.protobuf.Value
-	4,  // 24: pulumirpc.RunStepRequest.context:type_name -> pulumirpc.WorkflowContext
-	21, // 25: pulumirpc.RunStepResponse.error:type_name -> pulumirpc.WorkflowError
-	48, // 26: pulumirpc.RunStepResponse.result:type_name -> google.protobuf.Value
-	3,  // 27: pulumirpc.StepResult.status:type_name -> pulumirpc.StepResult.Status
-	4,  // 28: pulumirpc.ResolveStepResultRequest.context:type_name -> pulumirpc.WorkflowContext
-	34, // 29: pulumirpc.ResolveStepResultRequest.step:type_name -> pulumirpc.StepResult
-	48, // 30: pulumirpc.ResolveStepResultRequest.result:type_name -> google.protobuf.Value
-	21, // 31: pulumirpc.ResolveStepResultResponse.error:type_name -> pulumirpc.WorkflowError
-	4,  // 32: pulumirpc.RunFilterRequest.context:type_name -> pulumirpc.WorkflowContext
-	21, // 33: pulumirpc.RunFilterResponse.error:type_name -> pulumirpc.WorkflowError
-	4,  // 34: pulumirpc.RunOnErrorRequest.context:type_name -> pulumirpc.WorkflowContext
-	26, // 35: pulumirpc.RunOnErrorRequest.errors:type_name -> pulumirpc.ErrorRecord
-	21, // 36: pulumirpc.RunOnErrorResponse.error:type_name -> pulumirpc.WorkflowError
-	4,  // 37: pulumirpc.RegisterTriggerRequest.context:type_name -> pulumirpc.WorkflowContext
-	47, // 38: pulumirpc.RegisterTriggerRequest.spec:type_name -> google.protobuf.Struct
-	4,  // 39: pulumirpc.RegisterSensorRequest.context:type_name -> pulumirpc.WorkflowContext
-	47, // 40: pulumirpc.RegisterSensorRequest.spec:type_name -> google.protobuf.Struct
-	4,  // 41: pulumirpc.RegisterJobRequest.context:type_name -> pulumirpc.WorkflowContext
-	23, // 42: pulumirpc.RegisterJobRequest.dependencies:type_name -> pulumirpc.DependencyExpression
-	25, // 43: pulumirpc.RegisterJobRequest.platform:type_name -> pulumirpc.PlatformSelector
-	4,  // 44: pulumirpc.RegisterGraphRequest.context:type_name -> pulumirpc.WorkflowContext
-	23, // 45: pulumirpc.RegisterGraphRequest.dependencies:type_name -> pulumirpc.DependencyExpression
-	4,  // 46: pulumirpc.RegisterStepRequest.context:type_name -> pulumirpc.WorkflowContext
-	23, // 47: pulumirpc.RegisterStepRequest.dependencies:type_name -> pulumirpc.DependencyExpression
-	48, // 48: pulumirpc.RegisterNodeResponse.value:type_name -> google.protobuf.Value
-	5,  // 49: pulumirpc.WorkflowEvaluator.Handshake:input_type -> pulumirpc.WorkflowHandshakeRequest
-	11, // 50: pulumirpc.WorkflowEvaluator.GetPackageInfo:input_type -> pulumirpc.GetPackageInfoRequest
-	13, // 51: pulumirpc.WorkflowEvaluator.GetGraphs:input_type -> pulumirpc.GetGraphsRequest
-	15, // 52: pulumirpc.WorkflowEvaluator.GetGraph:input_type -> pulumirpc.GetGraphRequest
-	17, // 53: pulumirpc.WorkflowEvaluator.GetJobs:input_type -> pulumirpc.GetJobsRequest
-	19, // 54: pulumirpc.WorkflowEvaluator.GetJob:input_type -> pulumirpc.GetJobRequest
-	27, // 55: pulumirpc.WorkflowEvaluator.GenerateJob:input_type -> pulumirpc.GenerateJobRequest
-	28, // 56: pulumirpc.WorkflowEvaluator.GenerateGraph:input_type -> pulumirpc.GenerateGraphRequest
-	30, // 57: pulumirpc.WorkflowEvaluator.RunSensor:input_type -> pulumirpc.RunSensorRequest
-	32, // 58: pulumirpc.WorkflowEvaluator.RunStep:input_type -> pulumirpc.RunStepRequest
-	35, // 59: pulumirpc.WorkflowEvaluator.ResolveStepResult:input_type -> pulumirpc.ResolveStepResultRequest
-	37, // 60: pulumirpc.WorkflowEvaluator.RunFilter:input_type -> pulumirpc.RunFilterRequest
-	39, // 61: pulumirpc.WorkflowEvaluator.RunOnError:input_type -> pulumirpc.RunOnErrorRequest
-	41, // 62: pulumirpc.GraphMonitor.RegisterTrigger:input_type -> pulumirpc.RegisterTriggerRequest
-	42, // 63: pulumirpc.GraphMonitor.RegisterSensor:input_type -> pulumirpc.RegisterSensorRequest
-	43, // 64: pulumirpc.GraphMonitor.RegisterJob:input_type -> pulumirpc.RegisterJobRequest
-	44, // 65: pulumirpc.GraphMonitor.RegisterGraph:input_type -> pulumirpc.RegisterGraphRequest
-	45, // 66: pulumirpc.GraphMonitor.RegisterStep:input_type -> pulumirpc.RegisterStepRequest
-	6,  // 67: pulumirpc.WorkflowEvaluator.Handshake:output_type -> pulumirpc.WorkflowHandshakeResponse
-	12, // 68: pulumirpc.WorkflowEvaluator.GetPackageInfo:output_type -> pulumirpc.GetPackageInfoResponse
-	14, // 69: pulumirpc.WorkflowEvaluator.GetGraphs:output_type -> pulumirpc.GetGraphsResponse
-	16, // 70: pulumirpc.WorkflowEvaluator.GetGraph:output_type -> pulumirpc.GetGraphResponse
-	18, // 71: pulumirpc.WorkflowEvaluator.GetJobs:output_type -> pulumirpc.GetJobsResponse
-	20, // 72: pulumirpc.WorkflowEvaluator.GetJob:output_type -> pulumirpc.GetJobResponse
-	29, // 73: pulumirpc.WorkflowEvaluator.GenerateJob:output_type -> pulumirpc.GenerateNodeResponse
-	29, // 74: pulumirpc.WorkflowEvaluator.GenerateGraph:output_type -> pulumirpc.GenerateNodeResponse
-	31, // 75: pulumirpc.WorkflowEvaluator.RunSensor:output_type -> pulumirpc.RunSensorResponse
-	33, // 76: pulumirpc.WorkflowEvaluator.RunStep:output_type -> pulumirpc.RunStepResponse
-	36, // 77: pulumirpc.WorkflowEvaluator.ResolveStepResult:output_type -> pulumirpc.ResolveStepResultResponse
-	38, // 78: pulumirpc.WorkflowEvaluator.RunFilter:output_type -> pulumirpc.RunFilterResponse
-	40, // 79: pulumirpc.WorkflowEvaluator.RunOnError:output_type -> pulumirpc.RunOnErrorResponse
-	46, // 80: pulumirpc.GraphMonitor.RegisterTrigger:output_type -> pulumirpc.RegisterNodeResponse
-	46, // 81: pulumirpc.GraphMonitor.RegisterSensor:output_type -> pulumirpc.RegisterNodeResponse
-	46, // 82: pulumirpc.GraphMonitor.RegisterJob:output_type -> pulumirpc.RegisterNodeResponse
-	46, // 83: pulumirpc.GraphMonitor.RegisterGraph:output_type -> pulumirpc.RegisterNodeResponse
-	46, // 84: pulumirpc.GraphMonitor.RegisterStep:output_type -> pulumirpc.RegisterNodeResponse
-	67, // [67:85] is the sub-list for method output_type
-	49, // [49:67] is the sub-list for method input_type
-	49, // [49:49] is the sub-list for extension type_name
-	49, // [49:49] is the sub-list for extension extendee
-	0,  // [0:49] is the sub-list for field type_name
+	47, // 0: pulumirpc.WorkflowContext.input_value:type_name -> google.protobuf.Value
+	7,  // 1: pulumirpc.GraphInfo.input_type:type_name -> pulumirpc.TypeReference
+	7,  // 2: pulumirpc.GraphInfo.output_type:type_name -> pulumirpc.TypeReference
+	7,  // 3: pulumirpc.JobInfo.input_type:type_name -> pulumirpc.TypeReference
+	7,  // 4: pulumirpc.JobInfo.output_type:type_name -> pulumirpc.TypeReference
+	8,  // 5: pulumirpc.GetPackageInfoResponse.package:type_name -> pulumirpc.PackageInfo
+	9,  // 6: pulumirpc.GetGraphsResponse.graphs:type_name -> pulumirpc.GraphInfo
+	9,  // 7: pulumirpc.GetGraphResponse.graph:type_name -> pulumirpc.GraphInfo
+	10, // 8: pulumirpc.GetJobsResponse.jobs:type_name -> pulumirpc.JobInfo
+	10, // 9: pulumirpc.GetJobResponse.job:type_name -> pulumirpc.JobInfo
+	48, // 10: pulumirpc.WorkflowError.details:type_name -> google.protobuf.Struct
+	23, // 11: pulumirpc.DependencyTerm.expression:type_name -> pulumirpc.DependencyExpression
+	0,  // 12: pulumirpc.DependencyExpression.operator:type_name -> pulumirpc.DependencyExpression.Operator
+	22, // 13: pulumirpc.DependencyExpression.terms:type_name -> pulumirpc.DependencyTerm
+	24, // 14: pulumirpc.PlatformSelector.requirements:type_name -> pulumirpc.PlatformRequirements
+	1,  // 15: pulumirpc.PlatformSelector.match_policy:type_name -> pulumirpc.PlatformSelector.MatchPolicy
+	4,  // 16: pulumirpc.GenerateJobRequest.context:type_name -> pulumirpc.WorkflowContext
+	4,  // 17: pulumirpc.GenerateGraphRequest.context:type_name -> pulumirpc.WorkflowContext
+	21, // 18: pulumirpc.GenerateNodeResponse.error:type_name -> pulumirpc.WorkflowError
+	4,  // 19: pulumirpc.RunSensorRequest.context:type_name -> pulumirpc.WorkflowContext
+	47, // 20: pulumirpc.RunSensorRequest.cursor:type_name -> google.protobuf.Value
+	21, // 21: pulumirpc.RunSensorResponse.error:type_name -> pulumirpc.WorkflowError
+	2,  // 22: pulumirpc.RunSensorResponse.decision:type_name -> pulumirpc.RunSensorResponse.Decision
+	47, // 23: pulumirpc.RunSensorResponse.cursor:type_name -> google.protobuf.Value
+	47, // 24: pulumirpc.RunSensorResponse.event:type_name -> google.protobuf.Value
+	4,  // 25: pulumirpc.RunStepRequest.context:type_name -> pulumirpc.WorkflowContext
+	21, // 26: pulumirpc.RunStepResponse.error:type_name -> pulumirpc.WorkflowError
+	47, // 27: pulumirpc.RunStepResponse.result:type_name -> google.protobuf.Value
+	3,  // 28: pulumirpc.StepResult.status:type_name -> pulumirpc.StepResult.Status
+	4,  // 29: pulumirpc.ResolveStepResultRequest.context:type_name -> pulumirpc.WorkflowContext
+	34, // 30: pulumirpc.ResolveStepResultRequest.step:type_name -> pulumirpc.StepResult
+	47, // 31: pulumirpc.ResolveStepResultRequest.result:type_name -> google.protobuf.Value
+	21, // 32: pulumirpc.ResolveStepResultResponse.error:type_name -> pulumirpc.WorkflowError
+	4,  // 33: pulumirpc.RunFilterRequest.context:type_name -> pulumirpc.WorkflowContext
+	21, // 34: pulumirpc.RunFilterResponse.error:type_name -> pulumirpc.WorkflowError
+	4,  // 35: pulumirpc.RunOnErrorRequest.context:type_name -> pulumirpc.WorkflowContext
+	26, // 36: pulumirpc.RunOnErrorRequest.errors:type_name -> pulumirpc.ErrorRecord
+	21, // 37: pulumirpc.RunOnErrorResponse.error:type_name -> pulumirpc.WorkflowError
+	4,  // 38: pulumirpc.RegisterTriggerRequest.context:type_name -> pulumirpc.WorkflowContext
+	48, // 39: pulumirpc.RegisterTriggerRequest.spec:type_name -> google.protobuf.Struct
+	4,  // 40: pulumirpc.RegisterSensorRequest.context:type_name -> pulumirpc.WorkflowContext
+	48, // 41: pulumirpc.RegisterSensorRequest.spec:type_name -> google.protobuf.Struct
+	4,  // 42: pulumirpc.RegisterJobRequest.context:type_name -> pulumirpc.WorkflowContext
+	23, // 43: pulumirpc.RegisterJobRequest.dependencies:type_name -> pulumirpc.DependencyExpression
+	25, // 44: pulumirpc.RegisterJobRequest.platform:type_name -> pulumirpc.PlatformSelector
+	4,  // 45: pulumirpc.RegisterGraphRequest.context:type_name -> pulumirpc.WorkflowContext
+	23, // 46: pulumirpc.RegisterGraphRequest.dependencies:type_name -> pulumirpc.DependencyExpression
+	4,  // 47: pulumirpc.RegisterStepRequest.context:type_name -> pulumirpc.WorkflowContext
+	23, // 48: pulumirpc.RegisterStepRequest.dependencies:type_name -> pulumirpc.DependencyExpression
+	47, // 49: pulumirpc.RegisterNodeResponse.value:type_name -> google.protobuf.Value
+	5,  // 50: pulumirpc.WorkflowEvaluator.Handshake:input_type -> pulumirpc.WorkflowHandshakeRequest
+	11, // 51: pulumirpc.WorkflowEvaluator.GetPackageInfo:input_type -> pulumirpc.GetPackageInfoRequest
+	13, // 52: pulumirpc.WorkflowEvaluator.GetGraphs:input_type -> pulumirpc.GetGraphsRequest
+	15, // 53: pulumirpc.WorkflowEvaluator.GetGraph:input_type -> pulumirpc.GetGraphRequest
+	17, // 54: pulumirpc.WorkflowEvaluator.GetJobs:input_type -> pulumirpc.GetJobsRequest
+	19, // 55: pulumirpc.WorkflowEvaluator.GetJob:input_type -> pulumirpc.GetJobRequest
+	27, // 56: pulumirpc.WorkflowEvaluator.GenerateJob:input_type -> pulumirpc.GenerateJobRequest
+	28, // 57: pulumirpc.WorkflowEvaluator.GenerateGraph:input_type -> pulumirpc.GenerateGraphRequest
+	30, // 58: pulumirpc.WorkflowEvaluator.RunSensor:input_type -> pulumirpc.RunSensorRequest
+	32, // 59: pulumirpc.WorkflowEvaluator.RunStep:input_type -> pulumirpc.RunStepRequest
+	35, // 60: pulumirpc.WorkflowEvaluator.ResolveStepResult:input_type -> pulumirpc.ResolveStepResultRequest
+	37, // 61: pulumirpc.WorkflowEvaluator.RunFilter:input_type -> pulumirpc.RunFilterRequest
+	39, // 62: pulumirpc.WorkflowEvaluator.RunOnError:input_type -> pulumirpc.RunOnErrorRequest
+	41, // 63: pulumirpc.GraphMonitor.RegisterTrigger:input_type -> pulumirpc.RegisterTriggerRequest
+	42, // 64: pulumirpc.GraphMonitor.RegisterSensor:input_type -> pulumirpc.RegisterSensorRequest
+	43, // 65: pulumirpc.GraphMonitor.RegisterJob:input_type -> pulumirpc.RegisterJobRequest
+	44, // 66: pulumirpc.GraphMonitor.RegisterGraph:input_type -> pulumirpc.RegisterGraphRequest
+	45, // 67: pulumirpc.GraphMonitor.RegisterStep:input_type -> pulumirpc.RegisterStepRequest
+	6,  // 68: pulumirpc.WorkflowEvaluator.Handshake:output_type -> pulumirpc.WorkflowHandshakeResponse
+	12, // 69: pulumirpc.WorkflowEvaluator.GetPackageInfo:output_type -> pulumirpc.GetPackageInfoResponse
+	14, // 70: pulumirpc.WorkflowEvaluator.GetGraphs:output_type -> pulumirpc.GetGraphsResponse
+	16, // 71: pulumirpc.WorkflowEvaluator.GetGraph:output_type -> pulumirpc.GetGraphResponse
+	18, // 72: pulumirpc.WorkflowEvaluator.GetJobs:output_type -> pulumirpc.GetJobsResponse
+	20, // 73: pulumirpc.WorkflowEvaluator.GetJob:output_type -> pulumirpc.GetJobResponse
+	29, // 74: pulumirpc.WorkflowEvaluator.GenerateJob:output_type -> pulumirpc.GenerateNodeResponse
+	29, // 75: pulumirpc.WorkflowEvaluator.GenerateGraph:output_type -> pulumirpc.GenerateNodeResponse
+	31, // 76: pulumirpc.WorkflowEvaluator.RunSensor:output_type -> pulumirpc.RunSensorResponse
+	33, // 77: pulumirpc.WorkflowEvaluator.RunStep:output_type -> pulumirpc.RunStepResponse
+	36, // 78: pulumirpc.WorkflowEvaluator.ResolveStepResult:output_type -> pulumirpc.ResolveStepResultResponse
+	38, // 79: pulumirpc.WorkflowEvaluator.RunFilter:output_type -> pulumirpc.RunFilterResponse
+	40, // 80: pulumirpc.WorkflowEvaluator.RunOnError:output_type -> pulumirpc.RunOnErrorResponse
+	46, // 81: pulumirpc.GraphMonitor.RegisterTrigger:output_type -> pulumirpc.RegisterNodeResponse
+	46, // 82: pulumirpc.GraphMonitor.RegisterSensor:output_type -> pulumirpc.RegisterNodeResponse
+	46, // 83: pulumirpc.GraphMonitor.RegisterJob:output_type -> pulumirpc.RegisterNodeResponse
+	46, // 84: pulumirpc.GraphMonitor.RegisterGraph:output_type -> pulumirpc.RegisterNodeResponse
+	46, // 85: pulumirpc.GraphMonitor.RegisterStep:output_type -> pulumirpc.RegisterNodeResponse
+	68, // [68:86] is the sub-list for method output_type
+	50, // [50:68] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_workflow_proto_init() }
