@@ -3,14 +3,6 @@ import random
 import string
 
 
-def main_job(job: workflow.JobContext) -> None:
-    def run_step() -> str:
-        print("running main step", flush=True)
-        return "".join(random.choices(string.ascii_lowercase + string.digits, k=12))
-
-    job.step("run", run_step)
-
-
 def main_graph(ctx: workflow.Context) -> None:
     ctx.trigger(
         "every-minute",
@@ -20,7 +12,13 @@ def main_graph(ctx: workflow.Context) -> None:
             "timezone": "UTC",
         },
     )
-    ctx.job("main", main_job)
+
+    @ctx.job("main")
+    def main_job(job: workflow.JobContext) -> None:
+        @job.step("run")
+        def run_step() -> str:
+            print("running main step", flush=True)
+            return "".join(random.choices(string.ascii_lowercase + string.digits, k=12))
 
 
 def register_workflows(registry: workflow.WorkflowRegistry) -> None:

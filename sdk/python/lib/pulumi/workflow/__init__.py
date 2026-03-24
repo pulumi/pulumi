@@ -99,32 +99,38 @@ class Context:
     def job(
         self,
         name: str,
-        fn: JobCallback,
+        fn: Optional[JobCallback] = None,
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
-    ) -> None:
+    ) -> Union[JobCallback, Callable[[JobCallback], JobCallback]]:
         """Registers a job in the current graph."""
 
-        if not name:
-            raise WorkflowError("job name is required")
-        if self._state.target_job_name is not None and name != self._state.target_job_name:
-            return
+        def register(registered_fn: JobCallback) -> JobCallback:
+            if not name:
+                raise WorkflowError("job name is required")
+            if self._state.target_job_name is not None and name != self._state.target_job_name:
+                return registered_fn
 
-        job_path = f"{self._state.graph_path}/jobs/{name}"
+            job_path = f"{self._state.graph_path}/jobs/{name}"
 
-        request = workflow_pb2.RegisterJobRequest()
-        request.context.CopyFrom(self._state.context)
-        request.path = job_path
-        request.has_on_error = on_error is not None
-        request.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
-        if dependencies:
-            for dep in dependencies:
-                term = request.dependencies.terms.add()
-                term.path = _normalize_job_dependency(self._state.graph_path, dep)
+            request = workflow_pb2.RegisterJobRequest()
+            request.context.CopyFrom(self._state.context)
+            request.path = job_path
+            request.has_on_error = on_error is not None
+            request.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
+            if dependencies:
+                for dep in dependencies:
+                    term = request.dependencies.terms.add()
+                    term.path = _normalize_job_dependency(self._state.graph_path, dep)
 
-        self._state.monitor.RegisterJob(request)
-        self._state.jobs[job_path] = _JobDefinition(fn=fn, on_error=on_error)
+            self._state.monitor.RegisterJob(request)
+            self._state.jobs[job_path] = _JobDefinition(fn=registered_fn, on_error=on_error)
+            return registered_fn
+
+        if fn is not None:
+            return register(fn)
+        return register
 
 
 class JobContext:
@@ -136,29 +142,35 @@ class JobContext:
     def step(
         self,
         name: str,
-        fn: StepCallback,
+        fn: Optional[StepCallback] = None,
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
-    ) -> None:
-        if not name:
-            raise WorkflowError("step name is required")
+    ) -> Union[StepCallback, Callable[[StepCallback], StepCallback]]:
+        def register(registered_fn: StepCallback) -> StepCallback:
+            if not name:
+                raise WorkflowError("step name is required")
 
-        step_path = f"{self._state.job_path}/steps/{name}"
+            step_path = f"{self._state.job_path}/steps/{name}"
 
-        request = workflow_pb2.RegisterStepRequest()
-        request.context.CopyFrom(self._state.context)
-        request.path = step_path
-        request.job_path = self._state.job_path
-        request.has_on_error = on_error is not None
-        request.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
-        if dependencies:
-            for dep in dependencies:
-                term = request.dependencies.terms.add()
-                term.path = _normalize_step_dependency(self._state.job_path, dep)
+            request = workflow_pb2.RegisterStepRequest()
+            request.context.CopyFrom(self._state.context)
+            request.path = step_path
+            request.job_path = self._state.job_path
+            request.has_on_error = on_error is not None
+            request.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
+            if dependencies:
+                for dep in dependencies:
+                    term = request.dependencies.terms.add()
+                    term.path = _normalize_step_dependency(self._state.job_path, dep)
 
-        self._state.monitor.RegisterStep(request)
-        self._state.steps[step_path] = _StepDefinition(fn=fn, on_error=on_error)
+            self._state.monitor.RegisterStep(request)
+            self._state.steps[step_path] = _StepDefinition(fn=registered_fn, on_error=on_error)
+            return registered_fn
+
+        if fn is not None:
+            return register(fn)
+        return register
 
 
 class WorkflowError(RuntimeError):
