@@ -84,7 +84,7 @@ type Interpreter struct {
 	evalLock    sync.Mutex
 	evalContext *hcl.EvalContext
 	stackURN    string
-  
+
 	// namePrefix is prepended to resource and component names when this interpreter is executing
 	// inside a component. For example, if a component named "myComp" contains a resource "res",
 	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
