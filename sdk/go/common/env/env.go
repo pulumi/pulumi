@@ -132,7 +132,7 @@ var Parallel = env.Int("PARALLEL",
 	"Allow P resource operations to run in parallel at once (1 for no parallelism)")
 
 var AccessToken = env.String("ACCESS_TOKEN",
-	"The access token used to authenticate with the Pulumi Service.")
+	"The access token used to authenticate with the Pulumi Service.", env.Secret)
 
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
