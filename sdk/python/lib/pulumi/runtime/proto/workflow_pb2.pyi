@@ -33,29 +33,6 @@ else:
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-class _WorkflowComponentKind:
-    ValueType = typing.NewType("ValueType", builtins.int)
-    V: typing_extensions.TypeAlias = ValueType
-
-class _WorkflowComponentKindEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_WorkflowComponentKind.ValueType], builtins.type):
-    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
-    WORKFLOW_COMPONENT_KIND_UNSPECIFIED: _WorkflowComponentKind.ValueType  # 0
-    WORKFLOW_COMPONENT_KIND_GRAPH: _WorkflowComponentKind.ValueType  # 1
-    WORKFLOW_COMPONENT_KIND_JOB: _WorkflowComponentKind.ValueType  # 2
-    WORKFLOW_COMPONENT_KIND_SUBGRAPH: _WorkflowComponentKind.ValueType  # 3
-    WORKFLOW_COMPONENT_KIND_STEP: _WorkflowComponentKind.ValueType  # 4
-    WORKFLOW_COMPONENT_KIND_FUNCTION: _WorkflowComponentKind.ValueType  # 5
-
-class WorkflowComponentKind(_WorkflowComponentKind, metaclass=_WorkflowComponentKindEnumTypeWrapper): ...
-
-WORKFLOW_COMPONENT_KIND_UNSPECIFIED: WorkflowComponentKind.ValueType  # 0
-WORKFLOW_COMPONENT_KIND_GRAPH: WorkflowComponentKind.ValueType  # 1
-WORKFLOW_COMPONENT_KIND_JOB: WorkflowComponentKind.ValueType  # 2
-WORKFLOW_COMPONENT_KIND_SUBGRAPH: WorkflowComponentKind.ValueType  # 3
-WORKFLOW_COMPONENT_KIND_STEP: WorkflowComponentKind.ValueType  # 4
-WORKFLOW_COMPONENT_KIND_FUNCTION: WorkflowComponentKind.ValueType  # 5
-global___WorkflowComponentKind = WorkflowComponentKind
-
 @typing.final
 class WorkflowContext(google.protobuf.message.Message):
     """WorkflowContext identifies a workflow definition and execution."""
@@ -83,44 +60,9 @@ class WorkflowContext(google.protobuf.message.Message):
 global___WorkflowContext = WorkflowContext
 
 @typing.final
-class RegisterComponentRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    CONTEXT_FIELD_NUMBER: builtins.int
-    TOKEN_FIELD_NUMBER: builtins.int
-    KIND_FIELD_NUMBER: builtins.int
-    METADATA_FIELD_NUMBER: builtins.int
-    token: builtins.str
-    """Fully-qualified export token, e.g. workflow:index:myGraph."""
-    kind: global___WorkflowComponentKind.ValueType
-    """Component kind (graph/job/subgraph/step/function)."""
-    @property
-    def context(self) -> global___WorkflowContext:
-        """Context for the definition being registered. executionId is typically empty
-        at startup-time registration.
-        """
-
-    @property
-    def metadata(self) -> google.protobuf.struct_pb2.Struct:
-        """Optional structured metadata (display name, schemas, docs, etc.)."""
-
-    def __init__(
-        self,
-        *,
-        context: global___WorkflowContext | None = ...,
-        token: builtins.str = ...,
-        kind: global___WorkflowComponentKind.ValueType = ...,
-        metadata: google.protobuf.struct_pb2.Struct | None = ...,
-    ) -> None: ...
-    def HasField(self, field_name: typing.Literal["context", b"context", "metadata", b"metadata"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["context", b"context", "kind", b"kind", "metadata", b"metadata", "token", b"token"]) -> None: ...
-
-global___RegisterComponentRequest = RegisterComponentRequest
-
-@typing.final
-class WorkflowRegistryHandshakeRequest(google.protobuf.message.Message):
-    """`WorkflowRegistryHandshakeRequest` is the type of requests sent as part of a
-    [](pulumirpc.WorkflowRegistry.Handshake) call.
+class WorkflowHandshakeRequest(google.protobuf.message.Message):
+    """`WorkflowHandshakeRequest` is the type of requests sent as part of a
+    [](pulumirpc.WorkflowEvaluator.Handshake) call.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
@@ -128,44 +70,43 @@ class WorkflowRegistryHandshakeRequest(google.protobuf.message.Message):
     ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
     ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
     PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
-    GRAPH_MONITOR_ADDRESS_FIELD_NUMBER: builtins.int
-    GRAPH_MONITOR_CONTEXT_TOKEN_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
-    """The gRPC address of the engine/scheduler handshaking with the workflow registry.
-    At minimum this address exposes an instance of [](pulumirpc.Engine).
+    """The gRPC address of the engine handshaking with the workflow evaluator. At a minimum, this
+    address will expose an instance of the [](pulumirpc.Engine) service.
     """
     root_directory: builtins.str
-    """Optional root directory where the workflow plugin/program source is located."""
-    program_directory: builtins.str
-    """Optional program directory in which the workflow plugin/program should execute."""
-    graph_monitor_address: builtins.str
-    """The gRPC address of the graph monitor service for this session. The plugin uses this
-    target for per-evaluation graph registration (jobs/steps/triggers/etc.).
+    """A *root directory* where the workflow program source is located. In the event that the
+    workflow evaluator is *not* being booted by the engine (e.g. in the case that the engine
+    has been asked to attach to an existing running workflow evaluator instance via a host/port
+    number), this field will be empty.
     """
-    graph_monitor_context_token: builtins.str
-    """Optional opaque context token to present to GraphMonitor calls if required by the host."""
+    program_directory: builtins.str
+    """A *program directory* in which the workflow evaluator should execute. This is generally a
+    subdirectory of the root directory, though this is not required. In the event that the
+    workflow evaluator is *not* being booted by the engine (e.g. in the case that the engine
+    has been asked to attach to an existing running workflow evaluator instance via a host/port
+    number), this field will be empty.
+    """
     def __init__(
         self,
         *,
         engine_address: builtins.str = ...,
         root_directory: builtins.str | None = ...,
         program_directory: builtins.str | None = ...,
-        graph_monitor_address: builtins.str = ...,
-        graph_monitor_context_token: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "engine_address", b"engine_address", "graph_monitor_address", b"graph_monitor_address", "graph_monitor_context_token", b"graph_monitor_context_token", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_program_directory", b"_program_directory"]) -> typing.Literal["program_directory"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_root_directory", b"_root_directory"]) -> typing.Literal["root_directory"] | None: ...
 
-global___WorkflowRegistryHandshakeRequest = WorkflowRegistryHandshakeRequest
+global___WorkflowHandshakeRequest = WorkflowHandshakeRequest
 
 @typing.final
-class WorkflowRegistryHandshakeResponse(google.protobuf.message.Message):
-    """`WorkflowRegistryHandshakeResponse` is the type of responses sent by a
-    [](pulumirpc.WorkflowRegistry.Handshake) call.
+class WorkflowHandshakeResponse(google.protobuf.message.Message):
+    """`WorkflowHandshakeResponse` is the type of responses sent by a
+    [](pulumirpc.WorkflowEvaluator.Handshake) call.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
@@ -174,7 +115,241 @@ class WorkflowRegistryHandshakeResponse(google.protobuf.message.Message):
         self,
     ) -> None: ...
 
-global___WorkflowRegistryHandshakeResponse = WorkflowRegistryHandshakeResponse
+global___WorkflowHandshakeResponse = WorkflowHandshakeResponse
+
+@typing.final
+class TypeReference(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    """Package-qualified type token, e.g. workflow:index:TriggerInput."""
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
+
+global___TypeReference = TypeReference
+
+@typing.final
+class PackageInfo(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    DISPLAYNAME_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    version: builtins.str
+    displayName: builtins.str
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str = ...,
+        displayName: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["displayName", b"displayName", "name", b"name", "version", b"version"]) -> None: ...
+
+global___PackageInfo = PackageInfo
+
+@typing.final
+class GraphInfo(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    INPUTTYPE_FIELD_NUMBER: builtins.int
+    OUTPUTTYPE_FIELD_NUMBER: builtins.int
+    HASONERROR_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    hasOnError: builtins.bool
+    @property
+    def inputType(self) -> global___TypeReference: ...
+    @property
+    def outputType(self) -> global___TypeReference: ...
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+        inputType: global___TypeReference | None = ...,
+        outputType: global___TypeReference | None = ...,
+        hasOnError: builtins.bool = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputType", b"inputType", "outputType", b"outputType"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["hasOnError", b"hasOnError", "inputType", b"inputType", "outputType", b"outputType", "token", b"token"]) -> None: ...
+
+global___GraphInfo = GraphInfo
+
+@typing.final
+class JobInfo(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    INPUTTYPE_FIELD_NUMBER: builtins.int
+    OUTPUTTYPE_FIELD_NUMBER: builtins.int
+    HASONERROR_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    hasOnError: builtins.bool
+    @property
+    def inputType(self) -> global___TypeReference: ...
+    @property
+    def outputType(self) -> global___TypeReference: ...
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+        inputType: global___TypeReference | None = ...,
+        outputType: global___TypeReference | None = ...,
+        hasOnError: builtins.bool = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputType", b"inputType", "outputType", b"outputType"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["hasOnError", b"hasOnError", "inputType", b"inputType", "outputType", b"outputType", "token", b"token"]) -> None: ...
+
+global___JobInfo = JobInfo
+
+@typing.final
+class GetPackageInfoRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___GetPackageInfoRequest = GetPackageInfoRequest
+
+@typing.final
+class GetPackageInfoResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_FIELD_NUMBER: builtins.int
+    @property
+    def package(self) -> global___PackageInfo: ...
+    def __init__(
+        self,
+        *,
+        package: global___PackageInfo | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["package", b"package"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["package", b"package"]) -> None: ...
+
+global___GetPackageInfoResponse = GetPackageInfoResponse
+
+@typing.final
+class GetGraphsRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___GetGraphsRequest = GetGraphsRequest
+
+@typing.final
+class GetGraphsResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    GRAPHS_FIELD_NUMBER: builtins.int
+    @property
+    def graphs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___GraphInfo]: ...
+    def __init__(
+        self,
+        *,
+        graphs: collections.abc.Iterable[global___GraphInfo] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["graphs", b"graphs"]) -> None: ...
+
+global___GetGraphsResponse = GetGraphsResponse
+
+@typing.final
+class GetGraphRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
+
+global___GetGraphRequest = GetGraphRequest
+
+@typing.final
+class GetGraphResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    GRAPH_FIELD_NUMBER: builtins.int
+    @property
+    def graph(self) -> global___GraphInfo: ...
+    def __init__(
+        self,
+        *,
+        graph: global___GraphInfo | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["graph", b"graph"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["graph", b"graph"]) -> None: ...
+
+global___GetGraphResponse = GetGraphResponse
+
+@typing.final
+class GetJobsRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___GetJobsRequest = GetJobsRequest
+
+@typing.final
+class GetJobsResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    JOBS_FIELD_NUMBER: builtins.int
+    @property
+    def jobs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___JobInfo]: ...
+    def __init__(
+        self,
+        *,
+        jobs: collections.abc.Iterable[global___JobInfo] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["jobs", b"jobs"]) -> None: ...
+
+global___GetJobsResponse = GetJobsResponse
+
+@typing.final
+class GetJobRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
+
+global___GetJobRequest = GetJobRequest
+
+@typing.final
+class GetJobResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    JOB_FIELD_NUMBER: builtins.int
+    @property
+    def job(self) -> global___JobInfo: ...
+    def __init__(
+        self,
+        *,
+        job: global___JobInfo | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["job", b"job"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["job", b"job"]) -> None: ...
+
+global___GetJobResponse = GetJobResponse
 
 @typing.final
 class WorkflowError(google.protobuf.message.Message):

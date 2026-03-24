@@ -14,16 +14,36 @@
 
 syntax = "proto3";
 
-import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
 option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 
-// WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
-// evaluator process to materialize graph shape and execute specific callable nodes.
+// WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
+// schema metadata and execute/materialize specific workflow callable nodes.
 service WorkflowEvaluator {
+    // `Handshake` is the first call made by the engine to a workflow evaluator. It is used to
+    // pass the engine's address to the evaluator so that it may establish its own connections
+    // back, and to establish protocol configuration that will be used to communicate between the
+    // two parties.
+    rpc Handshake(WorkflowHandshakeRequest) returns (WorkflowHandshakeResponse) {}
+
+    // Returns high-level package metadata (name/version/display name/etc).
+    rpc GetPackageInfo(GetPackageInfoRequest) returns (GetPackageInfoResponse) {}
+
+    // Returns the list of exported graph tokens.
+    rpc GetGraphs(GetGraphsRequest) returns (GetGraphsResponse) {}
+
+    // Returns the schema for one exported graph.
+    rpc GetGraph(GetGraphRequest) returns (GetGraphResponse) {}
+
+    // Returns the list of exported job tokens.
+    rpc GetJobs(GetJobsRequest) returns (GetJobsResponse) {}
+
+    // Returns the schema for one exported job.
+    rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
+
     // GenerateJob asks the evaluator to generate the job shape for a path.
     rpc GenerateJob(GenerateJobRequest) returns (GenerateNodeResponse) {}
 
@@ -41,18 +61,6 @@ service WorkflowEvaluator {
 
     // RunOnError executes a node's on-error callback and returns retry behavior.
     rpc RunOnError(RunOnErrorRequest) returns (RunOnErrorResponse) {}
-}
-
-// WorkflowRegistry is called by workflow SDKs/plugins during startup to register
-// exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
-// how MLC packages register callable exports.
-service WorkflowRegistry {
-    // `Handshake` is the first call made to a workflow registry plugin. It establishes
-    // protocol/session configuration for subsequent component registration and graph
-    // evaluation.
-    rpc Handshake(WorkflowRegistryHandshakeRequest) returns (WorkflowRegistryHandshakeResponse) {}
-
-    rpc RegisterComponent(RegisterComponentRequest) returns (google.protobuf.Empty) {}
 }
 
 // GraphMonitor is called while evaluating a concrete graph execution/generation.
@@ -80,54 +88,83 @@ message WorkflowContext {
     string executionId = 3;
 }
 
-enum WorkflowComponentKind {
-    WORKFLOW_COMPONENT_KIND_UNSPECIFIED = 0;
-    WORKFLOW_COMPONENT_KIND_GRAPH = 1;
-    WORKFLOW_COMPONENT_KIND_JOB = 2;
-    WORKFLOW_COMPONENT_KIND_SUBGRAPH = 3;
-    WORKFLOW_COMPONENT_KIND_STEP = 4;
-    WORKFLOW_COMPONENT_KIND_FUNCTION = 5;
-}
-
-message RegisterComponentRequest {
-    // Context for the definition being registered. executionId is typically empty
-    // at startup-time registration.
-    WorkflowContext context = 1;
-
-    // Fully-qualified export token, e.g. workflow:index:myGraph.
-    string token = 2;
-
-    // Component kind (graph/job/subgraph/step/function).
-    WorkflowComponentKind kind = 3;
-
-    // Optional structured metadata (display name, schemas, docs, etc.).
-    google.protobuf.Struct metadata = 4;
-}
-
-// `WorkflowRegistryHandshakeRequest` is the type of requests sent as part of a
-// [](pulumirpc.WorkflowRegistry.Handshake) call.
-message WorkflowRegistryHandshakeRequest {
-    // The gRPC address of the engine/scheduler handshaking with the workflow registry.
-    // At minimum this address exposes an instance of [](pulumirpc.Engine).
+// `WorkflowHandshakeRequest` is the type of requests sent as part of a
+// [](pulumirpc.WorkflowEvaluator.Handshake) call.
+message WorkflowHandshakeRequest {
+    // The gRPC address of the engine handshaking with the workflow evaluator. At a minimum, this
+    // address will expose an instance of the [](pulumirpc.Engine) service.
     string engine_address = 1;
 
-    // Optional root directory where the workflow plugin/program source is located.
+    // A *root directory* where the workflow program source is located. In the event that the
+    // workflow evaluator is *not* being booted by the engine (e.g. in the case that the engine
+    // has been asked to attach to an existing running workflow evaluator instance via a host/port
+    // number), this field will be empty.
     optional string root_directory = 2;
 
-    // Optional program directory in which the workflow plugin/program should execute.
+    // A *program directory* in which the workflow evaluator should execute. This is generally a
+    // subdirectory of the root directory, though this is not required. In the event that the
+    // workflow evaluator is *not* being booted by the engine (e.g. in the case that the engine
+    // has been asked to attach to an existing running workflow evaluator instance via a host/port
+    // number), this field will be empty.
     optional string program_directory = 3;
-
-    // The gRPC address of the graph monitor service for this session. The plugin uses this
-    // target for per-evaluation graph registration (jobs/steps/triggers/etc.).
-    string graph_monitor_address = 4;
-
-    // Optional opaque context token to present to GraphMonitor calls if required by the host.
-    string graph_monitor_context_token = 5;
 }
 
-// `WorkflowRegistryHandshakeResponse` is the type of responses sent by a
-// [](pulumirpc.WorkflowRegistry.Handshake) call.
-message WorkflowRegistryHandshakeResponse {
+// `WorkflowHandshakeResponse` is the type of responses sent by a
+// [](pulumirpc.WorkflowEvaluator.Handshake) call.
+message WorkflowHandshakeResponse {}
+
+message TypeReference {
+    // Package-qualified type token, e.g. workflow:index:TriggerInput.
+    string token = 1;
+}
+
+message PackageInfo {
+    string name = 1;
+    string version = 2;
+    string displayName = 3;
+}
+
+message GraphInfo {
+    string token = 1;
+    TypeReference inputType = 2;
+    TypeReference outputType = 3;
+    bool hasOnError = 4;
+}
+
+message JobInfo {
+    string token = 1;
+    TypeReference inputType = 2;
+    TypeReference outputType = 3;
+    bool hasOnError = 4;
+}
+
+message GetPackageInfoRequest {}
+message GetPackageInfoResponse {
+    PackageInfo package = 1;
+}
+
+message GetGraphsRequest {}
+message GetGraphsResponse {
+    repeated GraphInfo graphs = 1;
+}
+
+message GetGraphRequest {
+    string token = 1;
+}
+message GetGraphResponse {
+    GraphInfo graph = 1;
+}
+
+message GetJobsRequest {}
+message GetJobsResponse {
+    repeated JobInfo jobs = 1;
+}
+
+message GetJobRequest {
+    string token = 1;
+}
+message GetJobResponse {
+    JobInfo job = 1;
 }
 
 // WorkflowError represents an execution or generation error.

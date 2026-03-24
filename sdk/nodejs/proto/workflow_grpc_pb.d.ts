@@ -6,10 +6,15 @@
 
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_workflow_pb from "./workflow_pb";
-import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 interface IWorkflowEvaluatorService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
+    handshake: IWorkflowEvaluatorService_IHandshake;
+    getPackageInfo: IWorkflowEvaluatorService_IGetPackageInfo;
+    getGraphs: IWorkflowEvaluatorService_IGetGraphs;
+    getGraph: IWorkflowEvaluatorService_IGetGraph;
+    getJobs: IWorkflowEvaluatorService_IGetJobs;
+    getJob: IWorkflowEvaluatorService_IGetJob;
     generateJob: IWorkflowEvaluatorService_IGenerateJob;
     generateGraph: IWorkflowEvaluatorService_IGenerateGraph;
     runSensor: IWorkflowEvaluatorService_IRunSensor;
@@ -18,6 +23,60 @@ interface IWorkflowEvaluatorService extends grpc.ServiceDefinition<grpc.UntypedS
     runOnError: IWorkflowEvaluatorService_IRunOnError;
 }
 
+interface IWorkflowEvaluatorService_IHandshake extends grpc.MethodDefinition<pulumi_workflow_pb.WorkflowHandshakeRequest, pulumi_workflow_pb.WorkflowHandshakeResponse> {
+    path: "/pulumirpc.WorkflowEvaluator/Handshake";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.WorkflowHandshakeRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.WorkflowHandshakeRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.WorkflowHandshakeResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.WorkflowHandshakeResponse>;
+}
+interface IWorkflowEvaluatorService_IGetPackageInfo extends grpc.MethodDefinition<pulumi_workflow_pb.GetPackageInfoRequest, pulumi_workflow_pb.GetPackageInfoResponse> {
+    path: "/pulumirpc.WorkflowEvaluator/GetPackageInfo";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.GetPackageInfoRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.GetPackageInfoRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.GetPackageInfoResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.GetPackageInfoResponse>;
+}
+interface IWorkflowEvaluatorService_IGetGraphs extends grpc.MethodDefinition<pulumi_workflow_pb.GetGraphsRequest, pulumi_workflow_pb.GetGraphsResponse> {
+    path: "/pulumirpc.WorkflowEvaluator/GetGraphs";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.GetGraphsRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.GetGraphsRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.GetGraphsResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.GetGraphsResponse>;
+}
+interface IWorkflowEvaluatorService_IGetGraph extends grpc.MethodDefinition<pulumi_workflow_pb.GetGraphRequest, pulumi_workflow_pb.GetGraphResponse> {
+    path: "/pulumirpc.WorkflowEvaluator/GetGraph";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.GetGraphRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.GetGraphRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.GetGraphResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.GetGraphResponse>;
+}
+interface IWorkflowEvaluatorService_IGetJobs extends grpc.MethodDefinition<pulumi_workflow_pb.GetJobsRequest, pulumi_workflow_pb.GetJobsResponse> {
+    path: "/pulumirpc.WorkflowEvaluator/GetJobs";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.GetJobsRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.GetJobsRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.GetJobsResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.GetJobsResponse>;
+}
+interface IWorkflowEvaluatorService_IGetJob extends grpc.MethodDefinition<pulumi_workflow_pb.GetJobRequest, pulumi_workflow_pb.GetJobResponse> {
+    path: "/pulumirpc.WorkflowEvaluator/GetJob";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.GetJobRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.GetJobRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.GetJobResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.GetJobResponse>;
+}
 interface IWorkflowEvaluatorService_IGenerateJob extends grpc.MethodDefinition<pulumi_workflow_pb.GenerateJobRequest, pulumi_workflow_pb.GenerateNodeResponse> {
     path: "/pulumirpc.WorkflowEvaluator/GenerateJob";
     requestStream: false;
@@ -76,6 +135,12 @@ interface IWorkflowEvaluatorService_IRunOnError extends grpc.MethodDefinition<pu
 export const WorkflowEvaluatorService: IWorkflowEvaluatorService;
 
 export interface IWorkflowEvaluatorServer extends grpc.UntypedServiceImplementation {
+    handshake: grpc.handleUnaryCall<pulumi_workflow_pb.WorkflowHandshakeRequest, pulumi_workflow_pb.WorkflowHandshakeResponse>;
+    getPackageInfo: grpc.handleUnaryCall<pulumi_workflow_pb.GetPackageInfoRequest, pulumi_workflow_pb.GetPackageInfoResponse>;
+    getGraphs: grpc.handleUnaryCall<pulumi_workflow_pb.GetGraphsRequest, pulumi_workflow_pb.GetGraphsResponse>;
+    getGraph: grpc.handleUnaryCall<pulumi_workflow_pb.GetGraphRequest, pulumi_workflow_pb.GetGraphResponse>;
+    getJobs: grpc.handleUnaryCall<pulumi_workflow_pb.GetJobsRequest, pulumi_workflow_pb.GetJobsResponse>;
+    getJob: grpc.handleUnaryCall<pulumi_workflow_pb.GetJobRequest, pulumi_workflow_pb.GetJobResponse>;
     generateJob: grpc.handleUnaryCall<pulumi_workflow_pb.GenerateJobRequest, pulumi_workflow_pb.GenerateNodeResponse>;
     generateGraph: grpc.handleUnaryCall<pulumi_workflow_pb.GenerateGraphRequest, pulumi_workflow_pb.GenerateNodeResponse>;
     runSensor: grpc.handleUnaryCall<pulumi_workflow_pb.RunSensorRequest, pulumi_workflow_pb.RunSensorResponse>;
@@ -85,6 +150,24 @@ export interface IWorkflowEvaluatorServer extends grpc.UntypedServiceImplementat
 }
 
 export interface IWorkflowEvaluatorClient {
+    handshake(request: pulumi_workflow_pb.WorkflowHandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowHandshakeResponse) => void): grpc.ClientUnaryCall;
+    handshake(request: pulumi_workflow_pb.WorkflowHandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowHandshakeResponse) => void): grpc.ClientUnaryCall;
+    handshake(request: pulumi_workflow_pb.WorkflowHandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowHandshakeResponse) => void): grpc.ClientUnaryCall;
+    getPackageInfo(request: pulumi_workflow_pb.GetPackageInfoRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetPackageInfoResponse) => void): grpc.ClientUnaryCall;
+    getPackageInfo(request: pulumi_workflow_pb.GetPackageInfoRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetPackageInfoResponse) => void): grpc.ClientUnaryCall;
+    getPackageInfo(request: pulumi_workflow_pb.GetPackageInfoRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetPackageInfoResponse) => void): grpc.ClientUnaryCall;
+    getGraphs(request: pulumi_workflow_pb.GetGraphsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphsResponse) => void): grpc.ClientUnaryCall;
+    getGraphs(request: pulumi_workflow_pb.GetGraphsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphsResponse) => void): grpc.ClientUnaryCall;
+    getGraphs(request: pulumi_workflow_pb.GetGraphsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphsResponse) => void): grpc.ClientUnaryCall;
+    getGraph(request: pulumi_workflow_pb.GetGraphRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphResponse) => void): grpc.ClientUnaryCall;
+    getGraph(request: pulumi_workflow_pb.GetGraphRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphResponse) => void): grpc.ClientUnaryCall;
+    getGraph(request: pulumi_workflow_pb.GetGraphRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphResponse) => void): grpc.ClientUnaryCall;
+    getJobs(request: pulumi_workflow_pb.GetJobsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobsResponse) => void): grpc.ClientUnaryCall;
+    getJobs(request: pulumi_workflow_pb.GetJobsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobsResponse) => void): grpc.ClientUnaryCall;
+    getJobs(request: pulumi_workflow_pb.GetJobsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobsResponse) => void): grpc.ClientUnaryCall;
+    getJob(request: pulumi_workflow_pb.GetJobRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
+    getJob(request: pulumi_workflow_pb.GetJobRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
+    getJob(request: pulumi_workflow_pb.GetJobRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
     generateJob(request: pulumi_workflow_pb.GenerateJobRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
     generateJob(request: pulumi_workflow_pb.GenerateJobRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
     generateJob(request: pulumi_workflow_pb.GenerateJobRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
@@ -107,6 +190,24 @@ export interface IWorkflowEvaluatorClient {
 
 export class WorkflowEvaluatorClient extends grpc.Client implements IWorkflowEvaluatorClient {
     constructor(address: string, credentials: grpc.ChannelCredentials, options?: Partial<grpc.ClientOptions>);
+    public handshake(request: pulumi_workflow_pb.WorkflowHandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowHandshakeResponse) => void): grpc.ClientUnaryCall;
+    public handshake(request: pulumi_workflow_pb.WorkflowHandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowHandshakeResponse) => void): grpc.ClientUnaryCall;
+    public handshake(request: pulumi_workflow_pb.WorkflowHandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowHandshakeResponse) => void): grpc.ClientUnaryCall;
+    public getPackageInfo(request: pulumi_workflow_pb.GetPackageInfoRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetPackageInfoResponse) => void): grpc.ClientUnaryCall;
+    public getPackageInfo(request: pulumi_workflow_pb.GetPackageInfoRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetPackageInfoResponse) => void): grpc.ClientUnaryCall;
+    public getPackageInfo(request: pulumi_workflow_pb.GetPackageInfoRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetPackageInfoResponse) => void): grpc.ClientUnaryCall;
+    public getGraphs(request: pulumi_workflow_pb.GetGraphsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphsResponse) => void): grpc.ClientUnaryCall;
+    public getGraphs(request: pulumi_workflow_pb.GetGraphsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphsResponse) => void): grpc.ClientUnaryCall;
+    public getGraphs(request: pulumi_workflow_pb.GetGraphsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphsResponse) => void): grpc.ClientUnaryCall;
+    public getGraph(request: pulumi_workflow_pb.GetGraphRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphResponse) => void): grpc.ClientUnaryCall;
+    public getGraph(request: pulumi_workflow_pb.GetGraphRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphResponse) => void): grpc.ClientUnaryCall;
+    public getGraph(request: pulumi_workflow_pb.GetGraphRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetGraphResponse) => void): grpc.ClientUnaryCall;
+    public getJobs(request: pulumi_workflow_pb.GetJobsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobsResponse) => void): grpc.ClientUnaryCall;
+    public getJobs(request: pulumi_workflow_pb.GetJobsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobsResponse) => void): grpc.ClientUnaryCall;
+    public getJobs(request: pulumi_workflow_pb.GetJobsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobsResponse) => void): grpc.ClientUnaryCall;
+    public getJob(request: pulumi_workflow_pb.GetJobRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
+    public getJob(request: pulumi_workflow_pb.GetJobRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
+    public getJob(request: pulumi_workflow_pb.GetJobRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
     public generateJob(request: pulumi_workflow_pb.GenerateJobRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
     public generateJob(request: pulumi_workflow_pb.GenerateJobRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
     public generateJob(request: pulumi_workflow_pb.GenerateJobRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
@@ -125,56 +226,6 @@ export class WorkflowEvaluatorClient extends grpc.Client implements IWorkflowEva
     public runOnError(request: pulumi_workflow_pb.RunOnErrorRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunOnErrorResponse) => void): grpc.ClientUnaryCall;
     public runOnError(request: pulumi_workflow_pb.RunOnErrorRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunOnErrorResponse) => void): grpc.ClientUnaryCall;
     public runOnError(request: pulumi_workflow_pb.RunOnErrorRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunOnErrorResponse) => void): grpc.ClientUnaryCall;
-}
-
-interface IWorkflowRegistryService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
-    handshake: IWorkflowRegistryService_IHandshake;
-    registerComponent: IWorkflowRegistryService_IRegisterComponent;
-}
-
-interface IWorkflowRegistryService_IHandshake extends grpc.MethodDefinition<pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, pulumi_workflow_pb.WorkflowRegistryHandshakeResponse> {
-    path: "/pulumirpc.WorkflowRegistry/Handshake";
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<pulumi_workflow_pb.WorkflowRegistryHandshakeRequest>;
-    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.WorkflowRegistryHandshakeRequest>;
-    responseSerialize: grpc.serialize<pulumi_workflow_pb.WorkflowRegistryHandshakeResponse>;
-    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.WorkflowRegistryHandshakeResponse>;
-}
-interface IWorkflowRegistryService_IRegisterComponent extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterComponentRequest, google_protobuf_empty_pb.Empty> {
-    path: "/pulumirpc.WorkflowRegistry/RegisterComponent";
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<pulumi_workflow_pb.RegisterComponentRequest>;
-    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.RegisterComponentRequest>;
-    responseSerialize: grpc.serialize<google_protobuf_empty_pb.Empty>;
-    responseDeserialize: grpc.deserialize<google_protobuf_empty_pb.Empty>;
-}
-
-export const WorkflowRegistryService: IWorkflowRegistryService;
-
-export interface IWorkflowRegistryServer extends grpc.UntypedServiceImplementation {
-    handshake: grpc.handleUnaryCall<pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, pulumi_workflow_pb.WorkflowRegistryHandshakeResponse>;
-    registerComponent: grpc.handleUnaryCall<pulumi_workflow_pb.RegisterComponentRequest, google_protobuf_empty_pb.Empty>;
-}
-
-export interface IWorkflowRegistryClient {
-    handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
-    handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
-    handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
-    registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
-    registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
-    registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
-}
-
-export class WorkflowRegistryClient extends grpc.Client implements IWorkflowRegistryClient {
-    constructor(address: string, credentials: grpc.ChannelCredentials, options?: Partial<grpc.ClientOptions>);
-    public handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
-    public handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
-    public handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
-    public registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
-    public registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
-    public registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
 }
 
 interface IGraphMonitorService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {

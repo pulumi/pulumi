@@ -14,8 +14,8 @@
 
 """Minimal workflow runtime scaffolding for preview-time graph registration.
 
-This module is intentionally tiny: enough to register exported graphs with a
-WorkflowRegistry and register graph/trigger shape with a GraphMonitor.
+This module is intentionally tiny: enough to register exported graphs and
+register graph/trigger shape with a GraphMonitor.
 """
 
 from __future__ import annotations
@@ -99,20 +99,13 @@ class WorkflowRegistry:
 def run(register: Callable[[WorkflowRegistry], None]) -> None:
     """Executes workflow registration + graph evaluation against monitor services."""
 
-    registry_address = os.getenv("PULUMI_WORKFLOW_REGISTRY_ADDRESS")
     graph_monitor_address = os.getenv("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS")
-    if not registry_address:
-        raise WorkflowError("PULUMI_WORKFLOW_REGISTRY_ADDRESS is required")
     if not graph_monitor_address:
         raise WorkflowError("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS is required")
 
-    engine_address = os.getenv("PULUMI_WORKFLOW_ENGINE_ADDRESS", "")
     workflow_name = os.getenv("PULUMI_WORKFLOW_NAME", "workflow")
     workflow_version = os.getenv("PULUMI_WORKFLOW_VERSION", "dev")
     execution_id = os.getenv("PULUMI_WORKFLOW_EXECUTION_ID", "")
-    root_directory = os.getenv("PULUMI_WORKFLOW_ROOT_DIRECTORY")
-    program_directory = os.getenv("PULUMI_WORKFLOW_PROGRAM_DIRECTORY")
-    graph_monitor_context_token = os.getenv("PULUMI_WORKFLOW_GRAPH_MONITOR_CONTEXT_TOKEN", "")
 
     context = workflow_pb2.WorkflowContext()
     context.workflowName = workflow_name
@@ -120,32 +113,12 @@ def run(register: Callable[[WorkflowRegistry], None]) -> None:
     context.executionId = execution_id
 
     with contextlib.ExitStack() as stack:
-        registry_channel = stack.enter_context(grpc.insecure_channel(registry_address))
         graph_channel = stack.enter_context(grpc.insecure_channel(graph_monitor_address))
 
-        registry = workflow_pb2_grpc.WorkflowRegistryStub(registry_channel)
         monitor = workflow_pb2_grpc.GraphMonitorStub(graph_channel)
-
-        handshake = workflow_pb2.WorkflowRegistryHandshakeRequest()
-        handshake.engine_address = engine_address
-        handshake.graph_monitor_address = graph_monitor_address
-        handshake.graph_monitor_context_token = graph_monitor_context_token
-        if root_directory:
-            handshake.root_directory = root_directory
-        if program_directory:
-            handshake.program_directory = program_directory
-        registry.Handshake(handshake)
 
         workflow_registry = WorkflowRegistry()
         register(workflow_registry)
-
-        for token in workflow_registry._graphs:
-            register_component = workflow_pb2.RegisterComponentRequest()
-            register_component.context.CopyFrom(context)
-            register_component.token = token
-            register_component.kind = workflow_pb2.WORKFLOW_COMPONENT_KIND_GRAPH
-            register_component.metadata.CopyFrom(struct_pb2.Struct())
-            registry.RegisterComponent(register_component)
 
         for token, graph_fn in workflow_registry._graphs.items():
             register_graph = workflow_pb2.RegisterGraphRequest()

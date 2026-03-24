@@ -18,19 +18,7 @@
 'use strict';
 var grpc = require('@grpc/grpc-js');
 var pulumi_workflow_pb = require('./workflow_pb.js');
-var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
-
-function serialize_google_protobuf_Empty(arg) {
-  if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
-    throw new Error('Expected argument of type google.protobuf.Empty');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_google_protobuf_Empty(buffer_arg) {
-  return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
-}
 
 function serialize_pulumirpc_GenerateGraphRequest(arg) {
   if (!(arg instanceof pulumi_workflow_pb.GenerateGraphRequest)) {
@@ -65,6 +53,116 @@ function deserialize_pulumirpc_GenerateNodeResponse(buffer_arg) {
   return pulumi_workflow_pb.GenerateNodeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_GetGraphRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetGraphRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetGraphRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetGraphRequest(buffer_arg) {
+  return pulumi_workflow_pb.GetGraphRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetGraphResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetGraphResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetGraphResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetGraphResponse(buffer_arg) {
+  return pulumi_workflow_pb.GetGraphResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetGraphsRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetGraphsRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetGraphsRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetGraphsRequest(buffer_arg) {
+  return pulumi_workflow_pb.GetGraphsRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetGraphsResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetGraphsResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetGraphsResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetGraphsResponse(buffer_arg) {
+  return pulumi_workflow_pb.GetGraphsResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetJobRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetJobRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetJobRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetJobRequest(buffer_arg) {
+  return pulumi_workflow_pb.GetJobRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetJobResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetJobResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetJobResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetJobResponse(buffer_arg) {
+  return pulumi_workflow_pb.GetJobResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetJobsRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetJobsRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetJobsRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetJobsRequest(buffer_arg) {
+  return pulumi_workflow_pb.GetJobsRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetJobsResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetJobsResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetJobsResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetJobsResponse(buffer_arg) {
+  return pulumi_workflow_pb.GetJobsResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetPackageInfoRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetPackageInfoRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetPackageInfoRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetPackageInfoRequest(buffer_arg) {
+  return pulumi_workflow_pb.GetPackageInfoRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetPackageInfoResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetPackageInfoResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetPackageInfoResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetPackageInfoResponse(buffer_arg) {
+  return pulumi_workflow_pb.GetPackageInfoResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_GetStepResultRequest(arg) {
   if (!(arg instanceof pulumi_workflow_pb.GetStepResultRequest)) {
     throw new Error('Expected argument of type pulumirpc.GetStepResultRequest');
@@ -85,17 +183,6 @@ function serialize_pulumirpc_GetStepResultResponse(arg) {
 
 function deserialize_pulumirpc_GetStepResultResponse(buffer_arg) {
   return pulumi_workflow_pb.GetStepResultResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_RegisterComponentRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.RegisterComponentRequest)) {
-    throw new Error('Expected argument of type pulumirpc.RegisterComponentRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_RegisterComponentRequest(buffer_arg) {
-  return pulumi_workflow_pb.RegisterComponentRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_RegisterGraphRequest(arg) {
@@ -252,32 +339,107 @@ function deserialize_pulumirpc_RunStepResponse(buffer_arg) {
   return pulumi_workflow_pb.RunStepResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_WorkflowRegistryHandshakeRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.WorkflowRegistryHandshakeRequest)) {
-    throw new Error('Expected argument of type pulumirpc.WorkflowRegistryHandshakeRequest');
+function serialize_pulumirpc_WorkflowHandshakeRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.WorkflowHandshakeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.WorkflowHandshakeRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_pulumirpc_WorkflowRegistryHandshakeRequest(buffer_arg) {
-  return pulumi_workflow_pb.WorkflowRegistryHandshakeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_pulumirpc_WorkflowHandshakeRequest(buffer_arg) {
+  return pulumi_workflow_pb.WorkflowHandshakeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_WorkflowRegistryHandshakeResponse(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.WorkflowRegistryHandshakeResponse)) {
-    throw new Error('Expected argument of type pulumirpc.WorkflowRegistryHandshakeResponse');
+function serialize_pulumirpc_WorkflowHandshakeResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.WorkflowHandshakeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.WorkflowHandshakeResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_pulumirpc_WorkflowRegistryHandshakeResponse(buffer_arg) {
-  return pulumi_workflow_pb.WorkflowRegistryHandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_pulumirpc_WorkflowHandshakeResponse(buffer_arg) {
+  return pulumi_workflow_pb.WorkflowHandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
-// WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
-// evaluator process to materialize graph shape and execute specific callable nodes.
+// WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
+// schema metadata and execute/materialize specific workflow callable nodes.
 var WorkflowEvaluatorService = exports.WorkflowEvaluatorService = {
+  // `Handshake` is the first call made by the engine to a workflow evaluator. It is used to
+// pass the engine's address to the evaluator so that it may establish its own connections
+// back, and to establish protocol configuration that will be used to communicate between the
+// two parties.
+handshake: {
+    path: '/pulumirpc.WorkflowEvaluator/Handshake',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.WorkflowHandshakeRequest,
+    responseType: pulumi_workflow_pb.WorkflowHandshakeResponse,
+    requestSerialize: serialize_pulumirpc_WorkflowHandshakeRequest,
+    requestDeserialize: deserialize_pulumirpc_WorkflowHandshakeRequest,
+    responseSerialize: serialize_pulumirpc_WorkflowHandshakeResponse,
+    responseDeserialize: deserialize_pulumirpc_WorkflowHandshakeResponse,
+  },
+  // Returns high-level package metadata (name/version/display name/etc).
+getPackageInfo: {
+    path: '/pulumirpc.WorkflowEvaluator/GetPackageInfo',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.GetPackageInfoRequest,
+    responseType: pulumi_workflow_pb.GetPackageInfoResponse,
+    requestSerialize: serialize_pulumirpc_GetPackageInfoRequest,
+    requestDeserialize: deserialize_pulumirpc_GetPackageInfoRequest,
+    responseSerialize: serialize_pulumirpc_GetPackageInfoResponse,
+    responseDeserialize: deserialize_pulumirpc_GetPackageInfoResponse,
+  },
+  // Returns the list of exported graph tokens.
+getGraphs: {
+    path: '/pulumirpc.WorkflowEvaluator/GetGraphs',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.GetGraphsRequest,
+    responseType: pulumi_workflow_pb.GetGraphsResponse,
+    requestSerialize: serialize_pulumirpc_GetGraphsRequest,
+    requestDeserialize: deserialize_pulumirpc_GetGraphsRequest,
+    responseSerialize: serialize_pulumirpc_GetGraphsResponse,
+    responseDeserialize: deserialize_pulumirpc_GetGraphsResponse,
+  },
+  // Returns the schema for one exported graph.
+getGraph: {
+    path: '/pulumirpc.WorkflowEvaluator/GetGraph',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.GetGraphRequest,
+    responseType: pulumi_workflow_pb.GetGraphResponse,
+    requestSerialize: serialize_pulumirpc_GetGraphRequest,
+    requestDeserialize: deserialize_pulumirpc_GetGraphRequest,
+    responseSerialize: serialize_pulumirpc_GetGraphResponse,
+    responseDeserialize: deserialize_pulumirpc_GetGraphResponse,
+  },
+  // Returns the list of exported job tokens.
+getJobs: {
+    path: '/pulumirpc.WorkflowEvaluator/GetJobs',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.GetJobsRequest,
+    responseType: pulumi_workflow_pb.GetJobsResponse,
+    requestSerialize: serialize_pulumirpc_GetJobsRequest,
+    requestDeserialize: deserialize_pulumirpc_GetJobsRequest,
+    responseSerialize: serialize_pulumirpc_GetJobsResponse,
+    responseDeserialize: deserialize_pulumirpc_GetJobsResponse,
+  },
+  // Returns the schema for one exported job.
+getJob: {
+    path: '/pulumirpc.WorkflowEvaluator/GetJob',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.GetJobRequest,
+    responseType: pulumi_workflow_pb.GetJobResponse,
+    requestSerialize: serialize_pulumirpc_GetJobRequest,
+    requestDeserialize: deserialize_pulumirpc_GetJobRequest,
+    responseSerialize: serialize_pulumirpc_GetJobResponse,
+    responseDeserialize: deserialize_pulumirpc_GetJobResponse,
+  },
   // GenerateJob asks the evaluator to generate the job shape for a path.
 generateJob: {
     path: '/pulumirpc.WorkflowEvaluator/GenerateJob',
@@ -353,38 +515,6 @@ runOnError: {
 };
 
 exports.WorkflowEvaluatorClient = grpc.makeGenericClientConstructor(WorkflowEvaluatorService, 'WorkflowEvaluator');
-// WorkflowRegistry is called by workflow SDKs/plugins during startup to register
-// exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
-// how MLC packages register callable exports.
-var WorkflowRegistryService = exports.WorkflowRegistryService = {
-  // `Handshake` is the first call made to a workflow registry plugin. It establishes
-// protocol/session configuration for subsequent component registration and graph
-// evaluation.
-handshake: {
-    path: '/pulumirpc.WorkflowRegistry/Handshake',
-    requestStream: false,
-    responseStream: false,
-    requestType: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest,
-    responseType: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse,
-    requestSerialize: serialize_pulumirpc_WorkflowRegistryHandshakeRequest,
-    requestDeserialize: deserialize_pulumirpc_WorkflowRegistryHandshakeRequest,
-    responseSerialize: serialize_pulumirpc_WorkflowRegistryHandshakeResponse,
-    responseDeserialize: deserialize_pulumirpc_WorkflowRegistryHandshakeResponse,
-  },
-  registerComponent: {
-    path: '/pulumirpc.WorkflowRegistry/RegisterComponent',
-    requestStream: false,
-    responseStream: false,
-    requestType: pulumi_workflow_pb.RegisterComponentRequest,
-    responseType: google_protobuf_empty_pb.Empty,
-    requestSerialize: serialize_pulumirpc_RegisterComponentRequest,
-    requestDeserialize: deserialize_pulumirpc_RegisterComponentRequest,
-    responseSerialize: serialize_google_protobuf_Empty,
-    responseDeserialize: deserialize_google_protobuf_Empty,
-  },
-};
-
-exports.WorkflowRegistryClient = grpc.makeGenericClientConstructor(WorkflowRegistryService, 'WorkflowRegistry');
 // GraphMonitor is called while evaluating a concrete graph execution/generation.
 // It records the graph shape for that evaluation and resolves prior node outputs.
 var GraphMonitorService = exports.GraphMonitorService = {

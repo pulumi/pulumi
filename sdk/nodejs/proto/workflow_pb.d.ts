@@ -5,7 +5,6 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
-import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 export class WorkflowContext extends jspb.Message { 
@@ -34,93 +33,372 @@ export namespace WorkflowContext {
     }
 }
 
-export class RegisterComponentRequest extends jspb.Message { 
-
-    hasContext(): boolean;
-    clearContext(): void;
-    getContext(): WorkflowContext | undefined;
-    setContext(value?: WorkflowContext): RegisterComponentRequest;
-    getToken(): string;
-    setToken(value: string): RegisterComponentRequest;
-    getKind(): WorkflowComponentKind;
-    setKind(value: WorkflowComponentKind): RegisterComponentRequest;
-
-    hasMetadata(): boolean;
-    clearMetadata(): void;
-    getMetadata(): google_protobuf_struct_pb.Struct | undefined;
-    setMetadata(value?: google_protobuf_struct_pb.Struct): RegisterComponentRequest;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RegisterComponentRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: RegisterComponentRequest): RegisterComponentRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RegisterComponentRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RegisterComponentRequest;
-    static deserializeBinaryFromReader(message: RegisterComponentRequest, reader: jspb.BinaryReader): RegisterComponentRequest;
-}
-
-export namespace RegisterComponentRequest {
-    export type AsObject = {
-        context?: WorkflowContext.AsObject,
-        token: string,
-        kind: WorkflowComponentKind,
-        metadata?: google_protobuf_struct_pb.Struct.AsObject,
-    }
-}
-
-export class WorkflowRegistryHandshakeRequest extends jspb.Message { 
+export class WorkflowHandshakeRequest extends jspb.Message { 
     getEngineAddress(): string;
-    setEngineAddress(value: string): WorkflowRegistryHandshakeRequest;
+    setEngineAddress(value: string): WorkflowHandshakeRequest;
 
     hasRootDirectory(): boolean;
     clearRootDirectory(): void;
     getRootDirectory(): string | undefined;
-    setRootDirectory(value: string): WorkflowRegistryHandshakeRequest;
+    setRootDirectory(value: string): WorkflowHandshakeRequest;
 
     hasProgramDirectory(): boolean;
     clearProgramDirectory(): void;
     getProgramDirectory(): string | undefined;
-    setProgramDirectory(value: string): WorkflowRegistryHandshakeRequest;
-    getGraphMonitorAddress(): string;
-    setGraphMonitorAddress(value: string): WorkflowRegistryHandshakeRequest;
-    getGraphMonitorContextToken(): string;
-    setGraphMonitorContextToken(value: string): WorkflowRegistryHandshakeRequest;
+    setProgramDirectory(value: string): WorkflowHandshakeRequest;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): WorkflowRegistryHandshakeRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: WorkflowRegistryHandshakeRequest): WorkflowRegistryHandshakeRequest.AsObject;
+    toObject(includeInstance?: boolean): WorkflowHandshakeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: WorkflowHandshakeRequest): WorkflowHandshakeRequest.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: WorkflowRegistryHandshakeRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): WorkflowRegistryHandshakeRequest;
-    static deserializeBinaryFromReader(message: WorkflowRegistryHandshakeRequest, reader: jspb.BinaryReader): WorkflowRegistryHandshakeRequest;
+    static serializeBinaryToWriter(message: WorkflowHandshakeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): WorkflowHandshakeRequest;
+    static deserializeBinaryFromReader(message: WorkflowHandshakeRequest, reader: jspb.BinaryReader): WorkflowHandshakeRequest;
 }
 
-export namespace WorkflowRegistryHandshakeRequest {
+export namespace WorkflowHandshakeRequest {
     export type AsObject = {
         engineAddress: string,
         rootDirectory?: string,
         programDirectory?: string,
-        graphMonitorAddress: string,
-        graphMonitorContextToken: string,
     }
 }
 
-export class WorkflowRegistryHandshakeResponse extends jspb.Message { 
+export class WorkflowHandshakeResponse extends jspb.Message { 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): WorkflowRegistryHandshakeResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: WorkflowRegistryHandshakeResponse): WorkflowRegistryHandshakeResponse.AsObject;
+    toObject(includeInstance?: boolean): WorkflowHandshakeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: WorkflowHandshakeResponse): WorkflowHandshakeResponse.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: WorkflowRegistryHandshakeResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): WorkflowRegistryHandshakeResponse;
-    static deserializeBinaryFromReader(message: WorkflowRegistryHandshakeResponse, reader: jspb.BinaryReader): WorkflowRegistryHandshakeResponse;
+    static serializeBinaryToWriter(message: WorkflowHandshakeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): WorkflowHandshakeResponse;
+    static deserializeBinaryFromReader(message: WorkflowHandshakeResponse, reader: jspb.BinaryReader): WorkflowHandshakeResponse;
 }
 
-export namespace WorkflowRegistryHandshakeResponse {
+export namespace WorkflowHandshakeResponse {
     export type AsObject = {
+    }
+}
+
+export class TypeReference extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): TypeReference;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TypeReference.AsObject;
+    static toObject(includeInstance: boolean, msg: TypeReference): TypeReference.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TypeReference, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TypeReference;
+    static deserializeBinaryFromReader(message: TypeReference, reader: jspb.BinaryReader): TypeReference;
+}
+
+export namespace TypeReference {
+    export type AsObject = {
+        token: string,
+    }
+}
+
+export class PackageInfo extends jspb.Message { 
+    getName(): string;
+    setName(value: string): PackageInfo;
+    getVersion(): string;
+    setVersion(value: string): PackageInfo;
+    getDisplayname(): string;
+    setDisplayname(value: string): PackageInfo;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackageInfo.AsObject;
+    static toObject(includeInstance: boolean, msg: PackageInfo): PackageInfo.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackageInfo, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackageInfo;
+    static deserializeBinaryFromReader(message: PackageInfo, reader: jspb.BinaryReader): PackageInfo;
+}
+
+export namespace PackageInfo {
+    export type AsObject = {
+        name: string,
+        version: string,
+        displayname: string,
+    }
+}
+
+export class GraphInfo extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): GraphInfo;
+
+    hasInputtype(): boolean;
+    clearInputtype(): void;
+    getInputtype(): TypeReference | undefined;
+    setInputtype(value?: TypeReference): GraphInfo;
+
+    hasOutputtype(): boolean;
+    clearOutputtype(): void;
+    getOutputtype(): TypeReference | undefined;
+    setOutputtype(value?: TypeReference): GraphInfo;
+    getHasonerror(): boolean;
+    setHasonerror(value: boolean): GraphInfo;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GraphInfo.AsObject;
+    static toObject(includeInstance: boolean, msg: GraphInfo): GraphInfo.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GraphInfo, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GraphInfo;
+    static deserializeBinaryFromReader(message: GraphInfo, reader: jspb.BinaryReader): GraphInfo;
+}
+
+export namespace GraphInfo {
+    export type AsObject = {
+        token: string,
+        inputtype?: TypeReference.AsObject,
+        outputtype?: TypeReference.AsObject,
+        hasonerror: boolean,
+    }
+}
+
+export class JobInfo extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): JobInfo;
+
+    hasInputtype(): boolean;
+    clearInputtype(): void;
+    getInputtype(): TypeReference | undefined;
+    setInputtype(value?: TypeReference): JobInfo;
+
+    hasOutputtype(): boolean;
+    clearOutputtype(): void;
+    getOutputtype(): TypeReference | undefined;
+    setOutputtype(value?: TypeReference): JobInfo;
+    getHasonerror(): boolean;
+    setHasonerror(value: boolean): JobInfo;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): JobInfo.AsObject;
+    static toObject(includeInstance: boolean, msg: JobInfo): JobInfo.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: JobInfo, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): JobInfo;
+    static deserializeBinaryFromReader(message: JobInfo, reader: jspb.BinaryReader): JobInfo;
+}
+
+export namespace JobInfo {
+    export type AsObject = {
+        token: string,
+        inputtype?: TypeReference.AsObject,
+        outputtype?: TypeReference.AsObject,
+        hasonerror: boolean,
+    }
+}
+
+export class GetPackageInfoRequest extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetPackageInfoRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetPackageInfoRequest): GetPackageInfoRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetPackageInfoRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetPackageInfoRequest;
+    static deserializeBinaryFromReader(message: GetPackageInfoRequest, reader: jspb.BinaryReader): GetPackageInfoRequest;
+}
+
+export namespace GetPackageInfoRequest {
+    export type AsObject = {
+    }
+}
+
+export class GetPackageInfoResponse extends jspb.Message { 
+
+    hasPackage(): boolean;
+    clearPackage(): void;
+    getPackage(): PackageInfo | undefined;
+    setPackage(value?: PackageInfo): GetPackageInfoResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetPackageInfoResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GetPackageInfoResponse): GetPackageInfoResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetPackageInfoResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetPackageInfoResponse;
+    static deserializeBinaryFromReader(message: GetPackageInfoResponse, reader: jspb.BinaryReader): GetPackageInfoResponse;
+}
+
+export namespace GetPackageInfoResponse {
+    export type AsObject = {
+        pb_package?: PackageInfo.AsObject,
+    }
+}
+
+export class GetGraphsRequest extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetGraphsRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetGraphsRequest): GetGraphsRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetGraphsRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetGraphsRequest;
+    static deserializeBinaryFromReader(message: GetGraphsRequest, reader: jspb.BinaryReader): GetGraphsRequest;
+}
+
+export namespace GetGraphsRequest {
+    export type AsObject = {
+    }
+}
+
+export class GetGraphsResponse extends jspb.Message { 
+    clearGraphsList(): void;
+    getGraphsList(): Array<GraphInfo>;
+    setGraphsList(value: Array<GraphInfo>): GetGraphsResponse;
+    addGraphs(value?: GraphInfo, index?: number): GraphInfo;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetGraphsResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GetGraphsResponse): GetGraphsResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetGraphsResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetGraphsResponse;
+    static deserializeBinaryFromReader(message: GetGraphsResponse, reader: jspb.BinaryReader): GetGraphsResponse;
+}
+
+export namespace GetGraphsResponse {
+    export type AsObject = {
+        graphsList: Array<GraphInfo.AsObject>,
+    }
+}
+
+export class GetGraphRequest extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): GetGraphRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetGraphRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetGraphRequest): GetGraphRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetGraphRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetGraphRequest;
+    static deserializeBinaryFromReader(message: GetGraphRequest, reader: jspb.BinaryReader): GetGraphRequest;
+}
+
+export namespace GetGraphRequest {
+    export type AsObject = {
+        token: string,
+    }
+}
+
+export class GetGraphResponse extends jspb.Message { 
+
+    hasGraph(): boolean;
+    clearGraph(): void;
+    getGraph(): GraphInfo | undefined;
+    setGraph(value?: GraphInfo): GetGraphResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetGraphResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GetGraphResponse): GetGraphResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetGraphResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetGraphResponse;
+    static deserializeBinaryFromReader(message: GetGraphResponse, reader: jspb.BinaryReader): GetGraphResponse;
+}
+
+export namespace GetGraphResponse {
+    export type AsObject = {
+        graph?: GraphInfo.AsObject,
+    }
+}
+
+export class GetJobsRequest extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetJobsRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetJobsRequest): GetJobsRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetJobsRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetJobsRequest;
+    static deserializeBinaryFromReader(message: GetJobsRequest, reader: jspb.BinaryReader): GetJobsRequest;
+}
+
+export namespace GetJobsRequest {
+    export type AsObject = {
+    }
+}
+
+export class GetJobsResponse extends jspb.Message { 
+    clearJobsList(): void;
+    getJobsList(): Array<JobInfo>;
+    setJobsList(value: Array<JobInfo>): GetJobsResponse;
+    addJobs(value?: JobInfo, index?: number): JobInfo;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetJobsResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GetJobsResponse): GetJobsResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetJobsResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetJobsResponse;
+    static deserializeBinaryFromReader(message: GetJobsResponse, reader: jspb.BinaryReader): GetJobsResponse;
+}
+
+export namespace GetJobsResponse {
+    export type AsObject = {
+        jobsList: Array<JobInfo.AsObject>,
+    }
+}
+
+export class GetJobRequest extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): GetJobRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetJobRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetJobRequest): GetJobRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetJobRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetJobRequest;
+    static deserializeBinaryFromReader(message: GetJobRequest, reader: jspb.BinaryReader): GetJobRequest;
+}
+
+export namespace GetJobRequest {
+    export type AsObject = {
+        token: string,
+    }
+}
+
+export class GetJobResponse extends jspb.Message { 
+
+    hasJob(): boolean;
+    clearJob(): void;
+    getJob(): JobInfo | undefined;
+    setJob(value?: JobInfo): GetJobResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetJobResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GetJobResponse): GetJobResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetJobResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetJobResponse;
+    static deserializeBinaryFromReader(message: GetJobResponse, reader: jspb.BinaryReader): GetJobResponse;
+}
+
+export namespace GetJobResponse {
+    export type AsObject = {
+        job?: JobInfo.AsObject,
     }
 }
 
@@ -927,13 +1205,4 @@ export namespace GetStepResultResponse {
     export type AsObject = {
         result?: WorkflowValue.AsObject,
     }
-}
-
-export enum WorkflowComponentKind {
-    WORKFLOW_COMPONENT_KIND_UNSPECIFIED = 0,
-    WORKFLOW_COMPONENT_KIND_GRAPH = 1,
-    WORKFLOW_COMPONENT_KIND_JOB = 2,
-    WORKFLOW_COMPONENT_KIND_SUBGRAPH = 3,
-    WORKFLOW_COMPONENT_KIND_STEP = 4,
-    WORKFLOW_COMPONENT_KIND_FUNCTION = 5,
 }

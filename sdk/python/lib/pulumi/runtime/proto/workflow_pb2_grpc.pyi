@@ -18,7 +18,6 @@ limitations under the License.
 
 import abc
 import collections.abc
-import google.protobuf.empty_pb2
 import grpc
 import grpc.aio
 import typing
@@ -34,11 +33,51 @@ class _ServicerContext(grpc.ServicerContext, grpc.aio.ServicerContext):  # type:
     ...
 
 class WorkflowEvaluatorStub:
-    """WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
-    evaluator process to materialize graph shape and execute specific callable nodes.
+    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
+    schema metadata and execute/materialize specific workflow callable nodes.
     """
 
     def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
+    Handshake: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.WorkflowHandshakeRequest,
+        pulumi.workflow_pb2.WorkflowHandshakeResponse,
+    ]
+    """`Handshake` is the first call made by the engine to a workflow evaluator. It is used to
+    pass the engine's address to the evaluator so that it may establish its own connections
+    back, and to establish protocol configuration that will be used to communicate between the
+    two parties.
+    """
+
+    GetPackageInfo: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetPackageInfoRequest,
+        pulumi.workflow_pb2.GetPackageInfoResponse,
+    ]
+    """Returns high-level package metadata (name/version/display name/etc)."""
+
+    GetGraphs: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetGraphsRequest,
+        pulumi.workflow_pb2.GetGraphsResponse,
+    ]
+    """Returns the list of exported graph tokens."""
+
+    GetGraph: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetGraphRequest,
+        pulumi.workflow_pb2.GetGraphResponse,
+    ]
+    """Returns the schema for one exported graph."""
+
+    GetJobs: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetJobsRequest,
+        pulumi.workflow_pb2.GetJobsResponse,
+    ]
+    """Returns the list of exported job tokens."""
+
+    GetJob: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetJobRequest,
+        pulumi.workflow_pb2.GetJobResponse,
+    ]
+    """Returns the schema for one exported job."""
+
     GenerateJob: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GenerateJobRequest,
         pulumi.workflow_pb2.GenerateNodeResponse,
@@ -76,9 +115,49 @@ class WorkflowEvaluatorStub:
     """RunOnError executes a node's on-error callback and returns retry behavior."""
 
 class WorkflowEvaluatorAsyncStub:
-    """WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
-    evaluator process to materialize graph shape and execute specific callable nodes.
+    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
+    schema metadata and execute/materialize specific workflow callable nodes.
     """
+
+    Handshake: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.WorkflowHandshakeRequest,
+        pulumi.workflow_pb2.WorkflowHandshakeResponse,
+    ]
+    """`Handshake` is the first call made by the engine to a workflow evaluator. It is used to
+    pass the engine's address to the evaluator so that it may establish its own connections
+    back, and to establish protocol configuration that will be used to communicate between the
+    two parties.
+    """
+
+    GetPackageInfo: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetPackageInfoRequest,
+        pulumi.workflow_pb2.GetPackageInfoResponse,
+    ]
+    """Returns high-level package metadata (name/version/display name/etc)."""
+
+    GetGraphs: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetGraphsRequest,
+        pulumi.workflow_pb2.GetGraphsResponse,
+    ]
+    """Returns the list of exported graph tokens."""
+
+    GetGraph: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetGraphRequest,
+        pulumi.workflow_pb2.GetGraphResponse,
+    ]
+    """Returns the schema for one exported graph."""
+
+    GetJobs: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetJobsRequest,
+        pulumi.workflow_pb2.GetJobsResponse,
+    ]
+    """Returns the list of exported job tokens."""
+
+    GetJob: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetJobRequest,
+        pulumi.workflow_pb2.GetJobResponse,
+    ]
+    """Returns the schema for one exported job."""
 
     GenerateJob: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GenerateJobRequest,
@@ -117,9 +196,61 @@ class WorkflowEvaluatorAsyncStub:
     """RunOnError executes a node's on-error callback and returns retry behavior."""
 
 class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
-    """WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
-    evaluator process to materialize graph shape and execute specific callable nodes.
+    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
+    schema metadata and execute/materialize specific workflow callable nodes.
     """
+
+    
+    def Handshake(
+        self,
+        request: pulumi.workflow_pb2.WorkflowHandshakeRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.WorkflowHandshakeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.WorkflowHandshakeResponse]]:
+        """`Handshake` is the first call made by the engine to a workflow evaluator. It is used to
+        pass the engine's address to the evaluator so that it may establish its own connections
+        back, and to establish protocol configuration that will be used to communicate between the
+        two parties.
+        """
+
+    
+    def GetPackageInfo(
+        self,
+        request: pulumi.workflow_pb2.GetPackageInfoRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.GetPackageInfoResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetPackageInfoResponse]]:
+        """Returns high-level package metadata (name/version/display name/etc)."""
+
+    
+    def GetGraphs(
+        self,
+        request: pulumi.workflow_pb2.GetGraphsRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.GetGraphsResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetGraphsResponse]]:
+        """Returns the list of exported graph tokens."""
+
+    
+    def GetGraph(
+        self,
+        request: pulumi.workflow_pb2.GetGraphRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.GetGraphResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetGraphResponse]]:
+        """Returns the schema for one exported graph."""
+
+    
+    def GetJobs(
+        self,
+        request: pulumi.workflow_pb2.GetJobsRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.GetJobsResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetJobsResponse]]:
+        """Returns the list of exported job tokens."""
+
+    
+    def GetJob(
+        self,
+        request: pulumi.workflow_pb2.GetJobRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.GetJobResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetJobResponse]]:
+        """Returns the schema for one exported job."""
 
     
     def GenerateJob(
@@ -170,73 +301,6 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         """RunOnError executes a node's on-error callback and returns retry behavior."""
 
 def add_WorkflowEvaluatorServicer_to_server(servicer: WorkflowEvaluatorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
-
-class WorkflowRegistryStub:
-    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
-    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
-    how MLC packages register callable exports.
-    """
-
-    def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
-    Handshake: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.WorkflowRegistryHandshakeRequest,
-        pulumi.workflow_pb2.WorkflowRegistryHandshakeResponse,
-    ]
-    """`Handshake` is the first call made to a workflow registry plugin. It establishes
-    protocol/session configuration for subsequent component registration and graph
-    evaluation.
-    """
-
-    RegisterComponent: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.RegisterComponentRequest,
-        google.protobuf.empty_pb2.Empty,
-    ]
-
-class WorkflowRegistryAsyncStub:
-    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
-    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
-    how MLC packages register callable exports.
-    """
-
-    Handshake: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.WorkflowRegistryHandshakeRequest,
-        pulumi.workflow_pb2.WorkflowRegistryHandshakeResponse,
-    ]
-    """`Handshake` is the first call made to a workflow registry plugin. It establishes
-    protocol/session configuration for subsequent component registration and graph
-    evaluation.
-    """
-
-    RegisterComponent: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.RegisterComponentRequest,
-        google.protobuf.empty_pb2.Empty,
-    ]
-
-class WorkflowRegistryServicer(metaclass=abc.ABCMeta):
-    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
-    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
-    how MLC packages register callable exports.
-    """
-
-    
-    def Handshake(
-        self,
-        request: pulumi.workflow_pb2.WorkflowRegistryHandshakeRequest,
-        context: _ServicerContext,
-    ) -> typing.Union[pulumi.workflow_pb2.WorkflowRegistryHandshakeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.WorkflowRegistryHandshakeResponse]]:
-        """`Handshake` is the first call made to a workflow registry plugin. It establishes
-        protocol/session configuration for subsequent component registration and graph
-        evaluation.
-        """
-
-    
-    def RegisterComponent(
-        self,
-        request: pulumi.workflow_pb2.RegisterComponentRequest,
-        context: _ServicerContext,
-    ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]: ...
-
-def add_WorkflowRegistryServicer_to_server(servicer: WorkflowRegistryServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
 
 class GraphMonitorStub:
     """GraphMonitor is called while evaluating a concrete graph execution/generation.

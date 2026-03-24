@@ -25,7 +25,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -34,21 +33,42 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WorkflowEvaluator_GenerateJob_FullMethodName   = "/pulumirpc.WorkflowEvaluator/GenerateJob"
-	WorkflowEvaluator_GenerateGraph_FullMethodName = "/pulumirpc.WorkflowEvaluator/GenerateGraph"
-	WorkflowEvaluator_RunSensor_FullMethodName     = "/pulumirpc.WorkflowEvaluator/RunSensor"
-	WorkflowEvaluator_RunStep_FullMethodName       = "/pulumirpc.WorkflowEvaluator/RunStep"
-	WorkflowEvaluator_RunFilter_FullMethodName     = "/pulumirpc.WorkflowEvaluator/RunFilter"
-	WorkflowEvaluator_RunOnError_FullMethodName    = "/pulumirpc.WorkflowEvaluator/RunOnError"
+	WorkflowEvaluator_Handshake_FullMethodName      = "/pulumirpc.WorkflowEvaluator/Handshake"
+	WorkflowEvaluator_GetPackageInfo_FullMethodName = "/pulumirpc.WorkflowEvaluator/GetPackageInfo"
+	WorkflowEvaluator_GetGraphs_FullMethodName      = "/pulumirpc.WorkflowEvaluator/GetGraphs"
+	WorkflowEvaluator_GetGraph_FullMethodName       = "/pulumirpc.WorkflowEvaluator/GetGraph"
+	WorkflowEvaluator_GetJobs_FullMethodName        = "/pulumirpc.WorkflowEvaluator/GetJobs"
+	WorkflowEvaluator_GetJob_FullMethodName         = "/pulumirpc.WorkflowEvaluator/GetJob"
+	WorkflowEvaluator_GenerateJob_FullMethodName    = "/pulumirpc.WorkflowEvaluator/GenerateJob"
+	WorkflowEvaluator_GenerateGraph_FullMethodName  = "/pulumirpc.WorkflowEvaluator/GenerateGraph"
+	WorkflowEvaluator_RunSensor_FullMethodName      = "/pulumirpc.WorkflowEvaluator/RunSensor"
+	WorkflowEvaluator_RunStep_FullMethodName        = "/pulumirpc.WorkflowEvaluator/RunStep"
+	WorkflowEvaluator_RunFilter_FullMethodName      = "/pulumirpc.WorkflowEvaluator/RunFilter"
+	WorkflowEvaluator_RunOnError_FullMethodName     = "/pulumirpc.WorkflowEvaluator/RunOnError"
 )
 
 // WorkflowEvaluatorClient is the client API for WorkflowEvaluator service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
-// evaluator process to materialize graph shape and execute specific callable nodes.
+// WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
+// schema metadata and execute/materialize specific workflow callable nodes.
 type WorkflowEvaluatorClient interface {
+	// `Handshake` is the first call made by the engine to a workflow evaluator. It is used to
+	// pass the engine's address to the evaluator so that it may establish its own connections
+	// back, and to establish protocol configuration that will be used to communicate between the
+	// two parties.
+	Handshake(ctx context.Context, in *WorkflowHandshakeRequest, opts ...grpc.CallOption) (*WorkflowHandshakeResponse, error)
+	// Returns high-level package metadata (name/version/display name/etc).
+	GetPackageInfo(ctx context.Context, in *GetPackageInfoRequest, opts ...grpc.CallOption) (*GetPackageInfoResponse, error)
+	// Returns the list of exported graph tokens.
+	GetGraphs(ctx context.Context, in *GetGraphsRequest, opts ...grpc.CallOption) (*GetGraphsResponse, error)
+	// Returns the schema for one exported graph.
+	GetGraph(ctx context.Context, in *GetGraphRequest, opts ...grpc.CallOption) (*GetGraphResponse, error)
+	// Returns the list of exported job tokens.
+	GetJobs(ctx context.Context, in *GetJobsRequest, opts ...grpc.CallOption) (*GetJobsResponse, error)
+	// Returns the schema for one exported job.
+	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
 	// GenerateJob asks the evaluator to generate the job shape for a path.
 	GenerateJob(ctx context.Context, in *GenerateJobRequest, opts ...grpc.CallOption) (*GenerateNodeResponse, error)
 	// GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path.
@@ -69,6 +89,66 @@ type workflowEvaluatorClient struct {
 
 func NewWorkflowEvaluatorClient(cc grpc.ClientConnInterface) WorkflowEvaluatorClient {
 	return &workflowEvaluatorClient{cc}
+}
+
+func (c *workflowEvaluatorClient) Handshake(ctx context.Context, in *WorkflowHandshakeRequest, opts ...grpc.CallOption) (*WorkflowHandshakeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkflowHandshakeResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_Handshake_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowEvaluatorClient) GetPackageInfo(ctx context.Context, in *GetPackageInfoRequest, opts ...grpc.CallOption) (*GetPackageInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPackageInfoResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetPackageInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowEvaluatorClient) GetGraphs(ctx context.Context, in *GetGraphsRequest, opts ...grpc.CallOption) (*GetGraphsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetGraphsResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetGraphs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowEvaluatorClient) GetGraph(ctx context.Context, in *GetGraphRequest, opts ...grpc.CallOption) (*GetGraphResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetGraphResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetGraph_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowEvaluatorClient) GetJobs(ctx context.Context, in *GetJobsRequest, opts ...grpc.CallOption) (*GetJobsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetJobsResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetJobs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowEvaluatorClient) GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetJobResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetJob_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *workflowEvaluatorClient) GenerateJob(ctx context.Context, in *GenerateJobRequest, opts ...grpc.CallOption) (*GenerateNodeResponse, error) {
@@ -135,9 +215,24 @@ func (c *workflowEvaluatorClient) RunOnError(ctx context.Context, in *RunOnError
 // All implementations must embed UnimplementedWorkflowEvaluatorServer
 // for forward compatibility.
 //
-// WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
-// evaluator process to materialize graph shape and execute specific callable nodes.
+// WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
+// schema metadata and execute/materialize specific workflow callable nodes.
 type WorkflowEvaluatorServer interface {
+	// `Handshake` is the first call made by the engine to a workflow evaluator. It is used to
+	// pass the engine's address to the evaluator so that it may establish its own connections
+	// back, and to establish protocol configuration that will be used to communicate between the
+	// two parties.
+	Handshake(context.Context, *WorkflowHandshakeRequest) (*WorkflowHandshakeResponse, error)
+	// Returns high-level package metadata (name/version/display name/etc).
+	GetPackageInfo(context.Context, *GetPackageInfoRequest) (*GetPackageInfoResponse, error)
+	// Returns the list of exported graph tokens.
+	GetGraphs(context.Context, *GetGraphsRequest) (*GetGraphsResponse, error)
+	// Returns the schema for one exported graph.
+	GetGraph(context.Context, *GetGraphRequest) (*GetGraphResponse, error)
+	// Returns the list of exported job tokens.
+	GetJobs(context.Context, *GetJobsRequest) (*GetJobsResponse, error)
+	// Returns the schema for one exported job.
+	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
 	// GenerateJob asks the evaluator to generate the job shape for a path.
 	GenerateJob(context.Context, *GenerateJobRequest) (*GenerateNodeResponse, error)
 	// GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path.
@@ -160,6 +255,24 @@ type WorkflowEvaluatorServer interface {
 // pointer dereference when methods are called.
 type UnimplementedWorkflowEvaluatorServer struct{}
 
+func (UnimplementedWorkflowEvaluatorServer) Handshake(context.Context, *WorkflowHandshakeRequest) (*WorkflowHandshakeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
+}
+func (UnimplementedWorkflowEvaluatorServer) GetPackageInfo(context.Context, *GetPackageInfoRequest) (*GetPackageInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPackageInfo not implemented")
+}
+func (UnimplementedWorkflowEvaluatorServer) GetGraphs(context.Context, *GetGraphsRequest) (*GetGraphsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGraphs not implemented")
+}
+func (UnimplementedWorkflowEvaluatorServer) GetGraph(context.Context, *GetGraphRequest) (*GetGraphResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGraph not implemented")
+}
+func (UnimplementedWorkflowEvaluatorServer) GetJobs(context.Context, *GetJobsRequest) (*GetJobsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetJobs not implemented")
+}
+func (UnimplementedWorkflowEvaluatorServer) GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetJob not implemented")
+}
 func (UnimplementedWorkflowEvaluatorServer) GenerateJob(context.Context, *GenerateJobRequest) (*GenerateNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateJob not implemented")
 }
@@ -197,6 +310,114 @@ func RegisterWorkflowEvaluatorServer(s grpc.ServiceRegistrar, srv WorkflowEvalua
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&WorkflowEvaluator_ServiceDesc, srv)
+}
+
+func _WorkflowEvaluator_Handshake_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WorkflowHandshakeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).Handshake(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_Handshake_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).Handshake(ctx, req.(*WorkflowHandshakeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowEvaluator_GetPackageInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPackageInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).GetPackageInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_GetPackageInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).GetPackageInfo(ctx, req.(*GetPackageInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowEvaluator_GetGraphs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGraphsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).GetGraphs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_GetGraphs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).GetGraphs(ctx, req.(*GetGraphsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowEvaluator_GetGraph_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGraphRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).GetGraph(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_GetGraph_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).GetGraph(ctx, req.(*GetGraphRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowEvaluator_GetJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetJobsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).GetJobs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_GetJobs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).GetJobs(ctx, req.(*GetJobsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowEvaluator_GetJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).GetJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_GetJob_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).GetJob(ctx, req.(*GetJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkflowEvaluator_GenerateJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -315,6 +536,30 @@ var WorkflowEvaluator_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*WorkflowEvaluatorServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "Handshake",
+			Handler:    _WorkflowEvaluator_Handshake_Handler,
+		},
+		{
+			MethodName: "GetPackageInfo",
+			Handler:    _WorkflowEvaluator_GetPackageInfo_Handler,
+		},
+		{
+			MethodName: "GetGraphs",
+			Handler:    _WorkflowEvaluator_GetGraphs_Handler,
+		},
+		{
+			MethodName: "GetGraph",
+			Handler:    _WorkflowEvaluator_GetGraph_Handler,
+		},
+		{
+			MethodName: "GetJobs",
+			Handler:    _WorkflowEvaluator_GetJobs_Handler,
+		},
+		{
+			MethodName: "GetJob",
+			Handler:    _WorkflowEvaluator_GetJob_Handler,
+		},
+		{
 			MethodName: "GenerateJob",
 			Handler:    _WorkflowEvaluator_GenerateJob_Handler,
 		},
@@ -337,160 +582,6 @@ var WorkflowEvaluator_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RunOnError",
 			Handler:    _WorkflowEvaluator_RunOnError_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "pulumi/workflow.proto",
-}
-
-const (
-	WorkflowRegistry_Handshake_FullMethodName         = "/pulumirpc.WorkflowRegistry/Handshake"
-	WorkflowRegistry_RegisterComponent_FullMethodName = "/pulumirpc.WorkflowRegistry/RegisterComponent"
-)
-
-// WorkflowRegistryClient is the client API for WorkflowRegistry service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// WorkflowRegistry is called by workflow SDKs/plugins during startup to register
-// exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
-// how MLC packages register callable exports.
-type WorkflowRegistryClient interface {
-	// `Handshake` is the first call made to a workflow registry plugin. It establishes
-	// protocol/session configuration for subsequent component registration and graph
-	// evaluation.
-	Handshake(ctx context.Context, in *WorkflowRegistryHandshakeRequest, opts ...grpc.CallOption) (*WorkflowRegistryHandshakeResponse, error)
-	RegisterComponent(ctx context.Context, in *RegisterComponentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-}
-
-type workflowRegistryClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewWorkflowRegistryClient(cc grpc.ClientConnInterface) WorkflowRegistryClient {
-	return &workflowRegistryClient{cc}
-}
-
-func (c *workflowRegistryClient) Handshake(ctx context.Context, in *WorkflowRegistryHandshakeRequest, opts ...grpc.CallOption) (*WorkflowRegistryHandshakeResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(WorkflowRegistryHandshakeResponse)
-	err := c.cc.Invoke(ctx, WorkflowRegistry_Handshake_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *workflowRegistryClient) RegisterComponent(ctx context.Context, in *RegisterComponentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorkflowRegistry_RegisterComponent_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// WorkflowRegistryServer is the server API for WorkflowRegistry service.
-// All implementations must embed UnimplementedWorkflowRegistryServer
-// for forward compatibility.
-//
-// WorkflowRegistry is called by workflow SDKs/plugins during startup to register
-// exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
-// how MLC packages register callable exports.
-type WorkflowRegistryServer interface {
-	// `Handshake` is the first call made to a workflow registry plugin. It establishes
-	// protocol/session configuration for subsequent component registration and graph
-	// evaluation.
-	Handshake(context.Context, *WorkflowRegistryHandshakeRequest) (*WorkflowRegistryHandshakeResponse, error)
-	RegisterComponent(context.Context, *RegisterComponentRequest) (*emptypb.Empty, error)
-	mustEmbedUnimplementedWorkflowRegistryServer()
-}
-
-// UnimplementedWorkflowRegistryServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedWorkflowRegistryServer struct{}
-
-func (UnimplementedWorkflowRegistryServer) Handshake(context.Context, *WorkflowRegistryHandshakeRequest) (*WorkflowRegistryHandshakeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
-}
-func (UnimplementedWorkflowRegistryServer) RegisterComponent(context.Context, *RegisterComponentRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RegisterComponent not implemented")
-}
-func (UnimplementedWorkflowRegistryServer) mustEmbedUnimplementedWorkflowRegistryServer() {}
-func (UnimplementedWorkflowRegistryServer) testEmbeddedByValue()                          {}
-
-// UnsafeWorkflowRegistryServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to WorkflowRegistryServer will
-// result in compilation errors.
-type UnsafeWorkflowRegistryServer interface {
-	mustEmbedUnimplementedWorkflowRegistryServer()
-}
-
-func RegisterWorkflowRegistryServer(s grpc.ServiceRegistrar, srv WorkflowRegistryServer) {
-	// If the following call pancis, it indicates UnimplementedWorkflowRegistryServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&WorkflowRegistry_ServiceDesc, srv)
-}
-
-func _WorkflowRegistry_Handshake_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WorkflowRegistryHandshakeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorkflowRegistryServer).Handshake(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorkflowRegistry_Handshake_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowRegistryServer).Handshake(ctx, req.(*WorkflowRegistryHandshakeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorkflowRegistry_RegisterComponent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterComponentRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorkflowRegistryServer).RegisterComponent(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorkflowRegistry_RegisterComponent_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowRegistryServer).RegisterComponent(ctx, req.(*RegisterComponentRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// WorkflowRegistry_ServiceDesc is the grpc.ServiceDesc for WorkflowRegistry service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var WorkflowRegistry_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.WorkflowRegistry",
-	HandlerType: (*WorkflowRegistryServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Handshake",
-			Handler:    _WorkflowRegistry_Handshake_Handler,
-		},
-		{
-			MethodName: "RegisterComponent",
-			Handler:    _WorkflowRegistry_RegisterComponent_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -2,13 +2,12 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from . import workflow_pb2 as pulumi_dot_workflow__pb2
 
 
 class WorkflowEvaluatorStub(object):
-    """WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
-    evaluator process to materialize graph shape and execute specific callable nodes.
+    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
+    schema metadata and execute/materialize specific workflow callable nodes.
     """
 
     def __init__(self, channel):
@@ -17,6 +16,36 @@ class WorkflowEvaluatorStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Handshake = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/Handshake',
+                request_serializer=pulumi_dot_workflow__pb2.WorkflowHandshakeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.WorkflowHandshakeResponse.FromString,
+                )
+        self.GetPackageInfo = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/GetPackageInfo',
+                request_serializer=pulumi_dot_workflow__pb2.GetPackageInfoRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.GetPackageInfoResponse.FromString,
+                )
+        self.GetGraphs = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/GetGraphs',
+                request_serializer=pulumi_dot_workflow__pb2.GetGraphsRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.GetGraphsResponse.FromString,
+                )
+        self.GetGraph = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/GetGraph',
+                request_serializer=pulumi_dot_workflow__pb2.GetGraphRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.GetGraphResponse.FromString,
+                )
+        self.GetJobs = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/GetJobs',
+                request_serializer=pulumi_dot_workflow__pb2.GetJobsRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.GetJobsResponse.FromString,
+                )
+        self.GetJob = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/GetJob',
+                request_serializer=pulumi_dot_workflow__pb2.GetJobRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.GetJobResponse.FromString,
+                )
         self.GenerateJob = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GenerateJob',
                 request_serializer=pulumi_dot_workflow__pb2.GenerateJobRequest.SerializeToString,
@@ -50,9 +79,54 @@ class WorkflowEvaluatorStub(object):
 
 
 class WorkflowEvaluatorServicer(object):
-    """WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
-    evaluator process to materialize graph shape and execute specific callable nodes.
+    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
+    schema metadata and execute/materialize specific workflow callable nodes.
     """
+
+    def Handshake(self, request, context):
+        """`Handshake` is the first call made by the engine to a workflow evaluator. It is used to
+        pass the engine's address to the evaluator so that it may establish its own connections
+        back, and to establish protocol configuration that will be used to communicate between the
+        two parties.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetPackageInfo(self, request, context):
+        """Returns high-level package metadata (name/version/display name/etc).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetGraphs(self, request, context):
+        """Returns the list of exported graph tokens.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetGraph(self, request, context):
+        """Returns the schema for one exported graph.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetJobs(self, request, context):
+        """Returns the list of exported job tokens.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetJob(self, request, context):
+        """Returns the schema for one exported job.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GenerateJob(self, request, context):
         """GenerateJob asks the evaluator to generate the job shape for a path.
@@ -99,6 +173,36 @@ class WorkflowEvaluatorServicer(object):
 
 def add_WorkflowEvaluatorServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Handshake': grpc.unary_unary_rpc_method_handler(
+                    servicer.Handshake,
+                    request_deserializer=pulumi_dot_workflow__pb2.WorkflowHandshakeRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.WorkflowHandshakeResponse.SerializeToString,
+            ),
+            'GetPackageInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPackageInfo,
+                    request_deserializer=pulumi_dot_workflow__pb2.GetPackageInfoRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.GetPackageInfoResponse.SerializeToString,
+            ),
+            'GetGraphs': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetGraphs,
+                    request_deserializer=pulumi_dot_workflow__pb2.GetGraphsRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.GetGraphsResponse.SerializeToString,
+            ),
+            'GetGraph': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetGraph,
+                    request_deserializer=pulumi_dot_workflow__pb2.GetGraphRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.GetGraphResponse.SerializeToString,
+            ),
+            'GetJobs': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetJobs,
+                    request_deserializer=pulumi_dot_workflow__pb2.GetJobsRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.GetJobsResponse.SerializeToString,
+            ),
+            'GetJob': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetJob,
+                    request_deserializer=pulumi_dot_workflow__pb2.GetJobRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.GetJobResponse.SerializeToString,
+            ),
             'GenerateJob': grpc.unary_unary_rpc_method_handler(
                     servicer.GenerateJob,
                     request_deserializer=pulumi_dot_workflow__pb2.GenerateJobRequest.FromString,
@@ -137,9 +241,111 @@ def add_WorkflowEvaluatorServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class WorkflowEvaluator(object):
-    """WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
-    evaluator process to materialize graph shape and execute specific callable nodes.
+    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
+    schema metadata and execute/materialize specific workflow callable nodes.
     """
+
+    @staticmethod
+    def Handshake(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/Handshake',
+            pulumi_dot_workflow__pb2.WorkflowHandshakeRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.WorkflowHandshakeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetPackageInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetPackageInfo',
+            pulumi_dot_workflow__pb2.GetPackageInfoRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.GetPackageInfoResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetGraphs(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetGraphs',
+            pulumi_dot_workflow__pb2.GetGraphsRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.GetGraphsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetGraph(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetGraph',
+            pulumi_dot_workflow__pb2.GetGraphRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.GetGraphResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetJobs(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetJobs',
+            pulumi_dot_workflow__pb2.GetJobsRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.GetJobsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetJob(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetJob',
+            pulumi_dot_workflow__pb2.GetJobRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.GetJobResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def GenerateJob(request,
@@ -240,112 +446,6 @@ class WorkflowEvaluator(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/RunOnError',
             pulumi_dot_workflow__pb2.RunOnErrorRequest.SerializeToString,
             pulumi_dot_workflow__pb2.RunOnErrorResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-
-class WorkflowRegistryStub(object):
-    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
-    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
-    how MLC packages register callable exports.
-    """
-
-    def __init__(self, channel):
-        """Constructor.
-
-        Args:
-            channel: A grpc.Channel.
-        """
-        self.Handshake = channel.unary_unary(
-                '/pulumirpc.WorkflowRegistry/Handshake',
-                request_serializer=pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeRequest.SerializeToString,
-                response_deserializer=pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeResponse.FromString,
-                )
-        self.RegisterComponent = channel.unary_unary(
-                '/pulumirpc.WorkflowRegistry/RegisterComponent',
-                request_serializer=pulumi_dot_workflow__pb2.RegisterComponentRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                )
-
-
-class WorkflowRegistryServicer(object):
-    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
-    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
-    how MLC packages register callable exports.
-    """
-
-    def Handshake(self, request, context):
-        """`Handshake` is the first call made to a workflow registry plugin. It establishes
-        protocol/session configuration for subsequent component registration and graph
-        evaluation.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def RegisterComponent(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-
-def add_WorkflowRegistryServicer_to_server(servicer, server):
-    rpc_method_handlers = {
-            'Handshake': grpc.unary_unary_rpc_method_handler(
-                    servicer.Handshake,
-                    request_deserializer=pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeRequest.FromString,
-                    response_serializer=pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeResponse.SerializeToString,
-            ),
-            'RegisterComponent': grpc.unary_unary_rpc_method_handler(
-                    servicer.RegisterComponent,
-                    request_deserializer=pulumi_dot_workflow__pb2.RegisterComponentRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            ),
-    }
-    generic_handler = grpc.method_handlers_generic_handler(
-            'pulumirpc.WorkflowRegistry', rpc_method_handlers)
-    server.add_generic_rpc_handlers((generic_handler,))
-
-
- # This class is part of an EXPERIMENTAL API.
-class WorkflowRegistry(object):
-    """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
-    exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
-    how MLC packages register callable exports.
-    """
-
-    @staticmethod
-    def Handshake(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowRegistry/Handshake',
-            pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeRequest.SerializeToString,
-            pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def RegisterComponent(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowRegistry/RegisterComponent',
-            pulumi_dot_workflow__pb2.RegisterComponentRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
