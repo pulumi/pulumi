@@ -349,10 +349,8 @@ global___GetTriggerRequest = GetTriggerRequest
 class GetTriggerResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    TOKEN_FIELD_NUMBER: builtins.int
     INPUT_TYPE_FIELD_NUMBER: builtins.int
     OUTPUT_TYPE_FIELD_NUMBER: builtins.int
-    token: builtins.str
     @property
     def input_type(self) -> global___TypeReference: ...
     @property
@@ -360,12 +358,11 @@ class GetTriggerResponse(google.protobuf.message.Message):
     def __init__(
         self,
         *,
-        token: builtins.str = ...,
         input_type: global___TypeReference | None = ...,
         output_type: global___TypeReference | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["input_type", b"input_type", "output_type", b"output_type"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["input_type", b"input_type", "output_type", b"output_type", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["input_type", b"input_type", "output_type", b"output_type"]) -> None: ...
 
 global___GetTriggerResponse = GetTriggerResponse
 

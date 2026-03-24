@@ -3755,7 +3755,6 @@ proto.pulumirpc.GetTriggerResponse.prototype.toObject = function(opt_includeInst
  */
 proto.pulumirpc.GetTriggerResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-token: jspb.Message.getFieldWithDefault(msg, 1, ""),
 inputType: (f = msg.getInputType()) && proto.pulumirpc.TypeReference.toObject(includeInstance, f),
 outputType: (f = msg.getOutputType()) && proto.pulumirpc.TypeReference.toObject(includeInstance, f)
   };
@@ -3795,15 +3794,11 @@ proto.pulumirpc.GetTriggerResponse.deserializeBinaryFromReader = function(msg, r
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setToken(value);
-      break;
-    case 2:
       var value = new proto.pulumirpc.TypeReference;
       reader.readMessage(value,proto.pulumirpc.TypeReference.deserializeBinaryFromReader);
       msg.setInputType(value);
       break;
-    case 3:
+    case 2:
       var value = new proto.pulumirpc.TypeReference;
       reader.readMessage(value,proto.pulumirpc.TypeReference.deserializeBinaryFromReader);
       msg.setOutputType(value);
@@ -3837,17 +3832,10 @@ proto.pulumirpc.GetTriggerResponse.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.GetTriggerResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getToken();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
   f = message.getInputType();
   if (f != null) {
     writer.writeMessage(
-      2,
+      1,
       f,
       proto.pulumirpc.TypeReference.serializeBinaryToWriter
     );
@@ -3855,7 +3843,7 @@ proto.pulumirpc.GetTriggerResponse.serializeBinaryToWriter = function(message, w
   f = message.getOutputType();
   if (f != null) {
     writer.writeMessage(
-      3,
+      2,
       f,
       proto.pulumirpc.TypeReference.serializeBinaryToWriter
     );
@@ -3864,30 +3852,12 @@ proto.pulumirpc.GetTriggerResponse.serializeBinaryToWriter = function(message, w
 
 
 /**
- * optional string token = 1;
- * @return {string}
- */
-proto.pulumirpc.GetTriggerResponse.prototype.getToken = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.GetTriggerResponse} returns this
- */
-proto.pulumirpc.GetTriggerResponse.prototype.setToken = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional TypeReference input_type = 2;
+ * optional TypeReference input_type = 1;
  * @return {?proto.pulumirpc.TypeReference}
  */
 proto.pulumirpc.GetTriggerResponse.prototype.getInputType = function() {
   return /** @type{?proto.pulumirpc.TypeReference} */ (
-    jspb.Message.getWrapperField(this, proto.pulumirpc.TypeReference, 2));
+    jspb.Message.getWrapperField(this, proto.pulumirpc.TypeReference, 1));
 };
 
 
@@ -3896,7 +3866,7 @@ proto.pulumirpc.GetTriggerResponse.prototype.getInputType = function() {
  * @return {!proto.pulumirpc.GetTriggerResponse} returns this
 */
 proto.pulumirpc.GetTriggerResponse.prototype.setInputType = function(value) {
-  return jspb.Message.setWrapperField(this, 2, value);
+  return jspb.Message.setWrapperField(this, 1, value);
 };
 
 
@@ -3914,17 +3884,17 @@ proto.pulumirpc.GetTriggerResponse.prototype.clearInputType = function() {
  * @return {boolean}
  */
 proto.pulumirpc.GetTriggerResponse.prototype.hasInputType = function() {
-  return jspb.Message.getField(this, 2) != null;
+  return jspb.Message.getField(this, 1) != null;
 };
 
 
 /**
- * optional TypeReference output_type = 3;
+ * optional TypeReference output_type = 2;
  * @return {?proto.pulumirpc.TypeReference}
  */
 proto.pulumirpc.GetTriggerResponse.prototype.getOutputType = function() {
   return /** @type{?proto.pulumirpc.TypeReference} */ (
-    jspb.Message.getWrapperField(this, proto.pulumirpc.TypeReference, 3));
+    jspb.Message.getWrapperField(this, proto.pulumirpc.TypeReference, 2));
 };
 
 
@@ -3933,7 +3903,7 @@ proto.pulumirpc.GetTriggerResponse.prototype.getOutputType = function() {
  * @return {!proto.pulumirpc.GetTriggerResponse} returns this
 */
 proto.pulumirpc.GetTriggerResponse.prototype.setOutputType = function(value) {
-  return jspb.Message.setWrapperField(this, 3, value);
+  return jspb.Message.setWrapperField(this, 2, value);
 };
 
 
@@ -3951,7 +3921,7 @@ proto.pulumirpc.GetTriggerResponse.prototype.clearOutputType = function() {
  * @return {boolean}
  */
 proto.pulumirpc.GetTriggerResponse.prototype.hasOutputType = function() {
-  return jspb.Message.getField(this, 3) != null;
+  return jspb.Message.getField(this, 2) != null;
 };
 
 

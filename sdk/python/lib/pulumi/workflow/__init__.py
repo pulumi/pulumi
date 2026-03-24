@@ -635,7 +635,6 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             )
 
         response = workflow_pb2.GetTriggerResponse()
-        response.token = trigger.token
         response.input_type.token = _type_token(trigger.input_type)
         response.output_type.token = _type_token(trigger.output_type)
         return response

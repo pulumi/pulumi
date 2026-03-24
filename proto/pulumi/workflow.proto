@@ -179,9 +179,8 @@ message GetTriggerRequest {
     string token = 1;
 }
 message GetTriggerResponse {
-    string token = 1;
-    TypeReference input_type = 2;
-    TypeReference output_type = 3;
+    TypeReference input_type = 1;
+    TypeReference output_type = 2;
 }
 
 message GetJobsRequest {}

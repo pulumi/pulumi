@@ -1050,9 +1050,8 @@ func (x *GetTriggerRequest) GetToken() string {
 
 type GetTriggerResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	InputType     *TypeReference         `protobuf:"bytes,2,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
-	OutputType    *TypeReference         `protobuf:"bytes,3,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
+	InputType     *TypeReference         `protobuf:"bytes,1,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
+	OutputType    *TypeReference         `protobuf:"bytes,2,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1085,13 +1084,6 @@ func (x *GetTriggerResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetTriggerResponse.ProtoReflect.Descriptor instead.
 func (*GetTriggerResponse) Descriptor() ([]byte, []int) {
 	return file_pulumi_workflow_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *GetTriggerResponse) GetToken() string {
-	if x != nil {
-		return x.Token
-	}
-	return ""
 }
 
 func (x *GetTriggerResponse) GetInputType() *TypeReference {
@@ -3043,12 +3035,11 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\x13GetTriggersResponse\x12\x1a\n" +
 	"\btriggers\x18\x01 \x03(\tR\btriggers\")\n" +
 	"\x11GetTriggerRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"\x9e\x01\n" +
-	"\x12GetTriggerResponse\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\x127\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\x88\x01\n" +
+	"\x12GetTriggerResponse\x127\n" +
 	"\n" +
-	"input_type\x18\x02 \x01(\v2\x18.pulumirpc.TypeReferenceR\tinputType\x129\n" +
-	"\voutput_type\x18\x03 \x01(\v2\x18.pulumirpc.TypeReferenceR\n" +
+	"input_type\x18\x01 \x01(\v2\x18.pulumirpc.TypeReferenceR\tinputType\x129\n" +
+	"\voutput_type\x18\x02 \x01(\v2\x18.pulumirpc.TypeReferenceR\n" +
 	"outputType\"\x10\n" +
 	"\x0eGetJobsRequest\"9\n" +
 	"\x0fGetJobsResponse\x12&\n" +

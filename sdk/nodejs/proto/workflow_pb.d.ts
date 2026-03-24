@@ -389,8 +389,6 @@ export namespace GetTriggerRequest {
 }
 
 export class GetTriggerResponse extends jspb.Message { 
-    getToken(): string;
-    setToken(value: string): GetTriggerResponse;
 
     hasInputType(): boolean;
     clearInputType(): void;
@@ -414,7 +412,6 @@ export class GetTriggerResponse extends jspb.Message {
 
 export namespace GetTriggerResponse {
     export type AsObject = {
-        token: string,
         inputType?: TypeReference.AsObject,
         outputType?: TypeReference.AsObject,
     }
