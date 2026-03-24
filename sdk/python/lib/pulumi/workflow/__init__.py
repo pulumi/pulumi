@@ -60,7 +60,7 @@ class Context:
         request.context.CopyFrom(self._state.context)
         request.path = f"{self._state.graph_path}/triggers/{name}"
         request.type = trigger_type
-        request.hasFilter = has_filter
+        request.has_filter = has_filter
         if spec:
             trigger_spec = struct_pb2.Struct()
             trigger_spec.update(spec)
@@ -103,9 +103,9 @@ def _new_workflow_context() -> workflow_pb2.WorkflowContext:
     execution_id = os.getenv("PULUMI_WORKFLOW_EXECUTION_ID", "")
 
     context = workflow_pb2.WorkflowContext()
-    context.workflowName = workflow_name
-    context.workflowVersion = workflow_version
-    context.executionId = execution_id
+    context.workflow_name = workflow_name
+    context.workflow_version = workflow_version
+    context.execution_id = execution_id
     return context
 
 
@@ -124,7 +124,7 @@ def _evaluate_graph(
         register_graph = workflow_pb2.RegisterGraphRequest()
         register_graph.context.CopyFrom(context)
         register_graph.path = token
-        register_graph.hasOnError = False
+        register_graph.has_on_error = False
         register_graph.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
         monitor.RegisterGraph(register_graph)
         graph_fn(Context(_EvalState(monitor=monitor, context=context, graph_path=token)))
@@ -154,7 +154,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         response = workflow_pb2.GetPackageInfoResponse()
         response.package.name = os.getenv("PULUMI_WORKFLOW_PACKAGE_NAME", os.getenv("PULUMI_WORKFLOW_NAME", "workflow"))
         response.package.version = os.getenv("PULUMI_WORKFLOW_PACKAGE_VERSION", os.getenv("PULUMI_WORKFLOW_VERSION", "dev"))
-        response.package.displayName = os.getenv("PULUMI_WORKFLOW_PACKAGE_DISPLAY_NAME", "Workflow")
+        response.package.display_name = os.getenv("PULUMI_WORKFLOW_PACKAGE_DISPLAY_NAME", "Workflow")
         return response
 
     def GetGraphs(
@@ -168,7 +168,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         for token in self._workflow_registry._graphs:
             graph = response.graphs.add()
             graph.token = token
-            graph.hasOnError = False
+            graph.has_on_error = False
         return response
 
     def GetGraph(
@@ -180,7 +180,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             context.abort(grpc.StatusCode.NOT_FOUND, f"unknown graph token {request.token}")
         response = workflow_pb2.GetGraphResponse()
         response.graph.token = request.token
-        response.graph.hasOnError = False
+        response.graph.has_on_error = False
         return response
 
     def GetJobs(
@@ -208,7 +208,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         graph_fn = self._workflow_registry._graphs.get(request.path)
         if graph_fn is None:
             context.abort(grpc.StatusCode.NOT_FOUND, f"unknown graph path {request.path}")
-        _evaluate_graph(request.path, graph_fn, request.context, request.graphMonitorAddress)
+        _evaluate_graph(request.path, graph_fn, request.context, request.graph_monitor_address)
         return workflow_pb2.GenerateNodeResponse()
 
     def GenerateJob(

@@ -197,11 +197,11 @@ func (RunSensorResponse_Decision) EnumDescriptor() ([]byte, []int) {
 type WorkflowContext struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A stable name for the workflow definition.
-	WorkflowName string `protobuf:"bytes,1,opt,name=workflowName,proto3" json:"workflowName,omitempty"`
+	WorkflowName string `protobuf:"bytes,1,opt,name=workflow_name,json=workflowName,proto3" json:"workflow_name,omitempty"`
 	// A scheduler-defined immutable workflow version identifier.
-	WorkflowVersion string `protobuf:"bytes,2,opt,name=workflowVersion,proto3" json:"workflowVersion,omitempty"`
+	WorkflowVersion string `protobuf:"bytes,2,opt,name=workflow_version,json=workflowVersion,proto3" json:"workflow_version,omitempty"`
 	// The workflow execution identifier for a single trigger fire.
-	ExecutionId   string `protobuf:"bytes,3,opt,name=executionId,proto3" json:"executionId,omitempty"`
+	ExecutionId   string `protobuf:"bytes,3,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -417,7 +417,7 @@ type PackageInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	DisplayName   string                 `protobuf:"bytes,3,opt,name=displayName,proto3" json:"displayName,omitempty"`
+	DisplayName   string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -476,9 +476,9 @@ func (x *PackageInfo) GetDisplayName() string {
 type GraphInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	InputType     *TypeReference         `protobuf:"bytes,2,opt,name=inputType,proto3" json:"inputType,omitempty"`
-	OutputType    *TypeReference         `protobuf:"bytes,3,opt,name=outputType,proto3" json:"outputType,omitempty"`
-	HasOnError    bool                   `protobuf:"varint,4,opt,name=hasOnError,proto3" json:"hasOnError,omitempty"`
+	InputType     *TypeReference         `protobuf:"bytes,2,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
+	OutputType    *TypeReference         `protobuf:"bytes,3,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
+	HasOnError    bool                   `protobuf:"varint,4,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -544,9 +544,9 @@ func (x *GraphInfo) GetHasOnError() bool {
 type JobInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	InputType     *TypeReference         `protobuf:"bytes,2,opt,name=inputType,proto3" json:"inputType,omitempty"`
-	OutputType    *TypeReference         `protobuf:"bytes,3,opt,name=outputType,proto3" json:"outputType,omitempty"`
-	HasOnError    bool                   `protobuf:"varint,4,opt,name=hasOnError,proto3" json:"hasOnError,omitempty"`
+	InputType     *TypeReference         `protobuf:"bytes,2,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
+	OutputType    *TypeReference         `protobuf:"bytes,3,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
+	HasOnError    bool                   `protobuf:"varint,4,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1295,8 +1295,8 @@ type PlatformRequirements struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Os            string                 `protobuf:"bytes,1,opt,name=os,proto3" json:"os,omitempty"`
 	Arch          string                 `protobuf:"bytes,2,opt,name=arch,proto3" json:"arch,omitempty"`
-	MinVcpu       int32                  `protobuf:"varint,3,opt,name=minVcpu,proto3" json:"minVcpu,omitempty"`
-	MinMemoryGib  int32                  `protobuf:"varint,4,opt,name=minMemoryGib,proto3" json:"minMemoryGib,omitempty"`
+	MinVcpu       int32                  `protobuf:"varint,3,opt,name=min_vcpu,json=minVcpu,proto3" json:"min_vcpu,omitempty"`
+	MinMemoryGib  int32                  `protobuf:"varint,4,opt,name=min_memory_gib,json=minMemoryGib,proto3" json:"min_memory_gib,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1363,7 +1363,7 @@ type PlatformSelector struct {
 	state         protoimpl.MessageState       `protogen:"open.v1"`
 	Target        string                       `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
 	Requirements  *PlatformRequirements        `protobuf:"bytes,2,opt,name=requirements,proto3" json:"requirements,omitempty"`
-	MatchPolicy   PlatformSelector_MatchPolicy `protobuf:"varint,3,opt,name=matchPolicy,proto3,enum=pulumirpc.PlatformSelector_MatchPolicy" json:"matchPolicy,omitempty"`
+	MatchPolicy   PlatformSelector_MatchPolicy `protobuf:"varint,3,opt,name=match_policy,json=matchPolicy,proto3,enum=pulumirpc.PlatformSelector_MatchPolicy" json:"match_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1422,7 +1422,7 @@ func (x *PlatformSelector) GetMatchPolicy() PlatformSelector_MatchPolicy {
 type ErrorRecord struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Empty when the failure occurred during node generation instead of a concrete step.
-	StepPath string `protobuf:"bytes,1,opt,name=stepPath,proto3" json:"stepPath,omitempty"`
+	StepPath string `protobuf:"bytes,1,opt,name=step_path,json=stepPath,proto3" json:"step_path,omitempty"`
 	// Human-readable reason for the failure.
 	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
 	// Optional machine-friendly category.
@@ -1538,7 +1538,7 @@ type GenerateGraphRequest struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Context             *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
 	Path                string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	GraphMonitorAddress string                 `protobuf:"bytes,3,opt,name=graphMonitorAddress,proto3" json:"graphMonitorAddress,omitempty"`
+	GraphMonitorAddress string                 `protobuf:"bytes,3,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1710,7 +1710,7 @@ type RunSensorResponse struct {
 	// Trigger payload emitted when decision is FIRE.
 	Event *WorkflowValue `protobuf:"bytes,4,opt,name=event,proto3" json:"event,omitempty"`
 	// Optional scheduler hint for next poll cadence (e.g. "30s").
-	NextInterval  string `protobuf:"bytes,5,opt,name=nextInterval,proto3" json:"nextInterval,omitempty"`
+	NextInterval  string `protobuf:"bytes,5,opt,name=next_interval,json=nextInterval,proto3" json:"next_interval,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2054,7 +2054,7 @@ type RunOnErrorResponse struct {
 	// True when execution should be retried.
 	Retry bool `protobuf:"varint,2,opt,name=retry,proto3" json:"retry,omitempty"`
 	// Optional scheduler hint for how long to delay before retrying (e.g. "250ms").
-	RetryAfter    string `protobuf:"bytes,3,opt,name=retryAfter,proto3" json:"retryAfter,omitempty"`
+	RetryAfter    string `protobuf:"bytes,3,opt,name=retry_after,json=retryAfter,proto3" json:"retry_after,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2119,7 +2119,7 @@ type RegisterTriggerRequest struct {
 	// Scheduler-owned declarative trigger specification.
 	Spec *structpb.Struct `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
 	// If true, trigger has a filter function that can be executed via RunFilter.
-	HasFilter     bool `protobuf:"varint,5,opt,name=hasFilter,proto3" json:"hasFilter,omitempty"`
+	HasFilter     bool `protobuf:"varint,5,opt,name=has_filter,json=hasFilter,proto3" json:"has_filter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2265,7 +2265,7 @@ type RegisterJobRequest struct {
 	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	Dependencies  *DependencyExpression  `protobuf:"bytes,3,opt,name=dependencies,proto3" json:"dependencies,omitempty"`
 	Platform      *PlatformSelector      `protobuf:"bytes,4,opt,name=platform,proto3" json:"platform,omitempty"`
-	HasOnError    bool                   `protobuf:"varint,5,opt,name=hasOnError,proto3" json:"hasOnError,omitempty"`
+	HasOnError    bool                   `protobuf:"varint,5,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2340,7 +2340,7 @@ type RegisterGraphRequest struct {
 	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
 	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	Dependencies  *DependencyExpression  `protobuf:"bytes,3,opt,name=dependencies,proto3" json:"dependencies,omitempty"`
-	HasOnError    bool                   `protobuf:"varint,4,opt,name=hasOnError,proto3" json:"hasOnError,omitempty"`
+	HasOnError    bool                   `protobuf:"varint,4,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2407,9 +2407,9 @@ type RegisterStepRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
 	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	JobPath       string                 `protobuf:"bytes,3,opt,name=jobPath,proto3" json:"jobPath,omitempty"`
+	JobPath       string                 `protobuf:"bytes,3,opt,name=job_path,json=jobPath,proto3" json:"job_path,omitempty"`
 	Dependencies  *DependencyExpression  `protobuf:"bytes,4,opt,name=dependencies,proto3" json:"dependencies,omitempty"`
-	HasOnError    bool                   `protobuf:"varint,5,opt,name=hasOnError,proto3" json:"hasOnError,omitempty"`
+	HasOnError    bool                   `protobuf:"varint,5,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2624,11 +2624,11 @@ var File_pulumi_workflow_proto protoreflect.FileDescriptor
 
 const file_pulumi_workflow_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/workflow.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\"\x81\x01\n" +
-	"\x0fWorkflowContext\x12\"\n" +
-	"\fworkflowName\x18\x01 \x01(\tR\fworkflowName\x12(\n" +
-	"\x0fworkflowVersion\x18\x02 \x01(\tR\x0fworkflowVersion\x12 \n" +
-	"\vexecutionId\x18\x03 \x01(\tR\vexecutionId\"\xc8\x01\n" +
+	"\x15pulumi/workflow.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\"\x84\x01\n" +
+	"\x0fWorkflowContext\x12#\n" +
+	"\rworkflow_name\x18\x01 \x01(\tR\fworkflowName\x12)\n" +
+	"\x10workflow_version\x18\x02 \x01(\tR\x0fworkflowVersion\x12!\n" +
+	"\fexecution_id\x18\x03 \x01(\tR\vexecutionId\"\xc8\x01\n" +
 	"\x18WorkflowHandshakeRequest\x12%\n" +
 	"\x0eengine_address\x18\x01 \x01(\tR\rengineAddress\x12*\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tH\x00R\rrootDirectory\x88\x01\x01\x120\n" +
@@ -2637,28 +2637,26 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\x12_program_directory\"\x1b\n" +
 	"\x19WorkflowHandshakeResponse\"%\n" +
 	"\rTypeReference\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"]\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"^\n" +
 	"\vPackageInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
-	"\aversion\x18\x02 \x01(\tR\aversion\x12 \n" +
-	"\vdisplayName\x18\x03 \x01(\tR\vdisplayName\"\xb3\x01\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\"\xb7\x01\n" +
 	"\tGraphInfo\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\x126\n" +
-	"\tinputType\x18\x02 \x01(\v2\x18.pulumirpc.TypeReferenceR\tinputType\x128\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x127\n" +
 	"\n" +
-	"outputType\x18\x03 \x01(\v2\x18.pulumirpc.TypeReferenceR\n" +
-	"outputType\x12\x1e\n" +
-	"\n" +
-	"hasOnError\x18\x04 \x01(\bR\n" +
-	"hasOnError\"\xb1\x01\n" +
+	"input_type\x18\x02 \x01(\v2\x18.pulumirpc.TypeReferenceR\tinputType\x129\n" +
+	"\voutput_type\x18\x03 \x01(\v2\x18.pulumirpc.TypeReferenceR\n" +
+	"outputType\x12 \n" +
+	"\fhas_on_error\x18\x04 \x01(\bR\n" +
+	"hasOnError\"\xb5\x01\n" +
 	"\aJobInfo\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\x126\n" +
-	"\tinputType\x18\x02 \x01(\v2\x18.pulumirpc.TypeReferenceR\tinputType\x128\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x127\n" +
 	"\n" +
-	"outputType\x18\x03 \x01(\v2\x18.pulumirpc.TypeReferenceR\n" +
-	"outputType\x12\x1e\n" +
-	"\n" +
-	"hasOnError\x18\x04 \x01(\bR\n" +
+	"input_type\x18\x02 \x01(\v2\x18.pulumirpc.TypeReferenceR\tinputType\x129\n" +
+	"\voutput_type\x18\x03 \x01(\v2\x18.pulumirpc.TypeReferenceR\n" +
+	"outputType\x12 \n" +
+	"\fhas_on_error\x18\x04 \x01(\bR\n" +
 	"hasOnError\"\x17\n" +
 	"\x15GetPackageInfoRequest\"J\n" +
 	"\x16GetPackageInfoResponse\x120\n" +
@@ -2699,43 +2697,43 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\fOPERATOR_ALL\x10\x01\x12\x10\n" +
 	"\fOPERATOR_ANY\x10\x02\x12\x13\n" +
 	"\x0fOPERATOR_STRICT\x10\x03\x12\x15\n" +
-	"\x11OPERATOR_UNSTRICT\x10\x04\"x\n" +
+	"\x11OPERATOR_UNSTRICT\x10\x04\"{\n" +
 	"\x14PlatformRequirements\x12\x0e\n" +
 	"\x02os\x18\x01 \x01(\tR\x02os\x12\x12\n" +
-	"\x04arch\x18\x02 \x01(\tR\x04arch\x12\x18\n" +
-	"\aminVcpu\x18\x03 \x01(\x05R\aminVcpu\x12\"\n" +
-	"\fminMemoryGib\x18\x04 \x01(\x05R\fminMemoryGib\"\x99\x02\n" +
+	"\x04arch\x18\x02 \x01(\tR\x04arch\x12\x19\n" +
+	"\bmin_vcpu\x18\x03 \x01(\x05R\aminVcpu\x12$\n" +
+	"\x0emin_memory_gib\x18\x04 \x01(\x05R\fminMemoryGib\"\x9a\x02\n" +
 	"\x10PlatformSelector\x12\x16\n" +
 	"\x06target\x18\x01 \x01(\tR\x06target\x12C\n" +
-	"\frequirements\x18\x02 \x01(\v2\x1f.pulumirpc.PlatformRequirementsR\frequirements\x12I\n" +
-	"\vmatchPolicy\x18\x03 \x01(\x0e2'.pulumirpc.PlatformSelector.MatchPolicyR\vmatchPolicy\"]\n" +
+	"\frequirements\x18\x02 \x01(\v2\x1f.pulumirpc.PlatformRequirementsR\frequirements\x12J\n" +
+	"\fmatch_policy\x18\x03 \x01(\x0e2'.pulumirpc.PlatformSelector.MatchPolicyR\vmatchPolicy\"]\n" +
 	"\vMatchPolicy\x12\x1c\n" +
 	"\x18MATCH_POLICY_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12MATCH_POLICY_EXACT\x10\x01\x12\x18\n" +
-	"\x14MATCH_POLICY_CLOSEST\x10\x02\"]\n" +
-	"\vErrorRecord\x12\x1a\n" +
-	"\bstepPath\x18\x01 \x01(\tR\bstepPath\x12\x16\n" +
+	"\x14MATCH_POLICY_CLOSEST\x10\x02\"^\n" +
+	"\vErrorRecord\x12\x1b\n" +
+	"\tstep_path\x18\x01 \x01(\tR\bstepPath\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1a\n" +
 	"\bcategory\x18\x03 \x01(\tR\bcategory\"^\n" +
 	"\x12GenerateJobRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\"\x92\x01\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\"\x94\x01\n" +
 	"\x14GenerateGraphRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\x120\n" +
-	"\x13graphMonitorAddress\x18\x03 \x01(\tR\x13graphMonitorAddress\"F\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x122\n" +
+	"\x15graph_monitor_address\x18\x03 \x01(\tR\x13graphMonitorAddress\"F\n" +
 	"\x14GenerateNodeResponse\x12.\n" +
 	"\x05error\x18\x01 \x01(\v2\x18.pulumirpc.WorkflowErrorR\x05error\"\x8e\x01\n" +
 	"\x10RunSensorRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x120\n" +
-	"\x06cursor\x18\x03 \x01(\v2\x18.pulumirpc.WorkflowValueR\x06cursor\"\xd8\x02\n" +
+	"\x06cursor\x18\x03 \x01(\v2\x18.pulumirpc.WorkflowValueR\x06cursor\"\xd9\x02\n" +
 	"\x11RunSensorResponse\x12.\n" +
 	"\x05error\x18\x01 \x01(\v2\x18.pulumirpc.WorkflowErrorR\x05error\x12A\n" +
 	"\bdecision\x18\x02 \x01(\x0e2%.pulumirpc.RunSensorResponse.DecisionR\bdecision\x120\n" +
 	"\x06cursor\x18\x03 \x01(\v2\x18.pulumirpc.WorkflowValueR\x06cursor\x12.\n" +
-	"\x05event\x18\x04 \x01(\v2\x18.pulumirpc.WorkflowValueR\x05event\x12\"\n" +
-	"\fnextInterval\x18\x05 \x01(\tR\fnextInterval\"J\n" +
+	"\x05event\x18\x04 \x01(\v2\x18.pulumirpc.WorkflowValueR\x05event\x12#\n" +
+	"\rnext_interval\x18\x05 \x01(\tR\fnextInterval\"J\n" +
 	"\bDecision\x12\x18\n" +
 	"\x14DECISION_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rDECISION_SKIP\x10\x01\x12\x11\n" +
@@ -2755,46 +2753,43 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\x11RunOnErrorRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12.\n" +
-	"\x06errors\x18\x03 \x03(\v2\x16.pulumirpc.ErrorRecordR\x06errors\"z\n" +
+	"\x06errors\x18\x03 \x03(\v2\x16.pulumirpc.ErrorRecordR\x06errors\"{\n" +
 	"\x12RunOnErrorResponse\x12.\n" +
 	"\x05error\x18\x01 \x01(\v2\x18.pulumirpc.WorkflowErrorR\x05error\x12\x14\n" +
-	"\x05retry\x18\x02 \x01(\bR\x05retry\x12\x1e\n" +
-	"\n" +
-	"retryAfter\x18\x03 \x01(\tR\n" +
-	"retryAfter\"\xc1\x01\n" +
+	"\x05retry\x18\x02 \x01(\bR\x05retry\x12\x1f\n" +
+	"\vretry_after\x18\x03 \x01(\tR\n" +
+	"retryAfter\"\xc2\x01\n" +
 	"\x16RegisterTriggerRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12\x12\n" +
 	"\x04type\x18\x03 \x01(\tR\x04type\x12+\n" +
-	"\x04spec\x18\x04 \x01(\v2\x17.google.protobuf.StructR\x04spec\x12\x1c\n" +
-	"\thasFilter\x18\x05 \x01(\bR\thasFilter\"\xaa\x01\n" +
+	"\x04spec\x18\x04 \x01(\v2\x17.google.protobuf.StructR\x04spec\x12\x1d\n" +
+	"\n" +
+	"has_filter\x18\x05 \x01(\bR\thasFilter\"\xaa\x01\n" +
 	"\x15RegisterSensorRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12+\n" +
 	"\x04spec\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x04spec\x12\x1a\n" +
-	"\binterval\x18\x04 \x01(\tR\binterval\"\xfc\x01\n" +
+	"\binterval\x18\x04 \x01(\tR\binterval\"\xfe\x01\n" +
 	"\x12RegisterJobRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12C\n" +
 	"\fdependencies\x18\x03 \x01(\v2\x1f.pulumirpc.DependencyExpressionR\fdependencies\x127\n" +
-	"\bplatform\x18\x04 \x01(\v2\x1b.pulumirpc.PlatformSelectorR\bplatform\x12\x1e\n" +
-	"\n" +
-	"hasOnError\x18\x05 \x01(\bR\n" +
-	"hasOnError\"\xc5\x01\n" +
+	"\bplatform\x18\x04 \x01(\v2\x1b.pulumirpc.PlatformSelectorR\bplatform\x12 \n" +
+	"\fhas_on_error\x18\x05 \x01(\bR\n" +
+	"hasOnError\"\xc7\x01\n" +
 	"\x14RegisterGraphRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12C\n" +
-	"\fdependencies\x18\x03 \x01(\v2\x1f.pulumirpc.DependencyExpressionR\fdependencies\x12\x1e\n" +
-	"\n" +
-	"hasOnError\x18\x04 \x01(\bR\n" +
-	"hasOnError\"\xde\x01\n" +
+	"\fdependencies\x18\x03 \x01(\v2\x1f.pulumirpc.DependencyExpressionR\fdependencies\x12 \n" +
+	"\fhas_on_error\x18\x04 \x01(\bR\n" +
+	"hasOnError\"\xe1\x01\n" +
 	"\x13RegisterStepRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\x12\x18\n" +
-	"\ajobPath\x18\x03 \x01(\tR\ajobPath\x12C\n" +
-	"\fdependencies\x18\x04 \x01(\v2\x1f.pulumirpc.DependencyExpressionR\fdependencies\x12\x1e\n" +
-	"\n" +
-	"hasOnError\x18\x05 \x01(\bR\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x12\x19\n" +
+	"\bjob_path\x18\x03 \x01(\tR\ajobPath\x12C\n" +
+	"\fdependencies\x18\x04 \x01(\v2\x1f.pulumirpc.DependencyExpressionR\fdependencies\x12 \n" +
+	"\fhas_on_error\x18\x05 \x01(\bR\n" +
 	"hasOnError\"F\n" +
 	"\x14RegisterNodeResponse\x12.\n" +
 	"\x05value\x18\x01 \x01(\v2\x18.pulumirpc.WorkflowValueR\x05value\"`\n" +
@@ -2890,10 +2885,10 @@ var file_pulumi_workflow_proto_goTypes = []any{
 	(*structpb.Value)(nil),             // 47: google.protobuf.Value
 }
 var file_pulumi_workflow_proto_depIdxs = []int32{
-	6,  // 0: pulumirpc.GraphInfo.inputType:type_name -> pulumirpc.TypeReference
-	6,  // 1: pulumirpc.GraphInfo.outputType:type_name -> pulumirpc.TypeReference
-	6,  // 2: pulumirpc.JobInfo.inputType:type_name -> pulumirpc.TypeReference
-	6,  // 3: pulumirpc.JobInfo.outputType:type_name -> pulumirpc.TypeReference
+	6,  // 0: pulumirpc.GraphInfo.input_type:type_name -> pulumirpc.TypeReference
+	6,  // 1: pulumirpc.GraphInfo.output_type:type_name -> pulumirpc.TypeReference
+	6,  // 2: pulumirpc.JobInfo.input_type:type_name -> pulumirpc.TypeReference
+	6,  // 3: pulumirpc.JobInfo.output_type:type_name -> pulumirpc.TypeReference
 	7,  // 4: pulumirpc.GetPackageInfoResponse.package:type_name -> pulumirpc.PackageInfo
 	8,  // 5: pulumirpc.GetGraphsResponse.graphs:type_name -> pulumirpc.GraphInfo
 	8,  // 6: pulumirpc.GetGraphResponse.graph:type_name -> pulumirpc.GraphInfo
@@ -2906,7 +2901,7 @@ var file_pulumi_workflow_proto_depIdxs = []int32{
 	0,  // 13: pulumirpc.DependencyExpression.operator:type_name -> pulumirpc.DependencyExpression.Operator
 	22, // 14: pulumirpc.DependencyExpression.terms:type_name -> pulumirpc.DependencyTerm
 	24, // 15: pulumirpc.PlatformSelector.requirements:type_name -> pulumirpc.PlatformRequirements
-	1,  // 16: pulumirpc.PlatformSelector.matchPolicy:type_name -> pulumirpc.PlatformSelector.MatchPolicy
+	1,  // 16: pulumirpc.PlatformSelector.match_policy:type_name -> pulumirpc.PlatformSelector.MatchPolicy
 	3,  // 17: pulumirpc.GenerateJobRequest.context:type_name -> pulumirpc.WorkflowContext
 	3,  // 18: pulumirpc.GenerateGraphRequest.context:type_name -> pulumirpc.WorkflowContext
 	20, // 19: pulumirpc.GenerateNodeResponse.error:type_name -> pulumirpc.WorkflowError

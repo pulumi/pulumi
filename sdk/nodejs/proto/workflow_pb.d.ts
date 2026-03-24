@@ -8,12 +8,12 @@ import * as jspb from "google-protobuf";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 export class WorkflowContext extends jspb.Message { 
-    getWorkflowname(): string;
-    setWorkflowname(value: string): WorkflowContext;
-    getWorkflowversion(): string;
-    setWorkflowversion(value: string): WorkflowContext;
-    getExecutionid(): string;
-    setExecutionid(value: string): WorkflowContext;
+    getWorkflowName(): string;
+    setWorkflowName(value: string): WorkflowContext;
+    getWorkflowVersion(): string;
+    setWorkflowVersion(value: string): WorkflowContext;
+    getExecutionId(): string;
+    setExecutionId(value: string): WorkflowContext;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): WorkflowContext.AsObject;
@@ -27,9 +27,9 @@ export class WorkflowContext extends jspb.Message {
 
 export namespace WorkflowContext {
     export type AsObject = {
-        workflowname: string,
-        workflowversion: string,
-        executionid: string,
+        workflowName: string,
+        workflowVersion: string,
+        executionId: string,
     }
 }
 
@@ -107,8 +107,8 @@ export class PackageInfo extends jspb.Message {
     setName(value: string): PackageInfo;
     getVersion(): string;
     setVersion(value: string): PackageInfo;
-    getDisplayname(): string;
-    setDisplayname(value: string): PackageInfo;
+    getDisplayName(): string;
+    setDisplayName(value: string): PackageInfo;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PackageInfo.AsObject;
@@ -124,7 +124,7 @@ export namespace PackageInfo {
     export type AsObject = {
         name: string,
         version: string,
-        displayname: string,
+        displayName: string,
     }
 }
 
@@ -132,17 +132,17 @@ export class GraphInfo extends jspb.Message {
     getToken(): string;
     setToken(value: string): GraphInfo;
 
-    hasInputtype(): boolean;
-    clearInputtype(): void;
-    getInputtype(): TypeReference | undefined;
-    setInputtype(value?: TypeReference): GraphInfo;
+    hasInputType(): boolean;
+    clearInputType(): void;
+    getInputType(): TypeReference | undefined;
+    setInputType(value?: TypeReference): GraphInfo;
 
-    hasOutputtype(): boolean;
-    clearOutputtype(): void;
-    getOutputtype(): TypeReference | undefined;
-    setOutputtype(value?: TypeReference): GraphInfo;
-    getHasonerror(): boolean;
-    setHasonerror(value: boolean): GraphInfo;
+    hasOutputType(): boolean;
+    clearOutputType(): void;
+    getOutputType(): TypeReference | undefined;
+    setOutputType(value?: TypeReference): GraphInfo;
+    getHasOnError(): boolean;
+    setHasOnError(value: boolean): GraphInfo;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GraphInfo.AsObject;
@@ -157,9 +157,9 @@ export class GraphInfo extends jspb.Message {
 export namespace GraphInfo {
     export type AsObject = {
         token: string,
-        inputtype?: TypeReference.AsObject,
-        outputtype?: TypeReference.AsObject,
-        hasonerror: boolean,
+        inputType?: TypeReference.AsObject,
+        outputType?: TypeReference.AsObject,
+        hasOnError: boolean,
     }
 }
 
@@ -167,17 +167,17 @@ export class JobInfo extends jspb.Message {
     getToken(): string;
     setToken(value: string): JobInfo;
 
-    hasInputtype(): boolean;
-    clearInputtype(): void;
-    getInputtype(): TypeReference | undefined;
-    setInputtype(value?: TypeReference): JobInfo;
+    hasInputType(): boolean;
+    clearInputType(): void;
+    getInputType(): TypeReference | undefined;
+    setInputType(value?: TypeReference): JobInfo;
 
-    hasOutputtype(): boolean;
-    clearOutputtype(): void;
-    getOutputtype(): TypeReference | undefined;
-    setOutputtype(value?: TypeReference): JobInfo;
-    getHasonerror(): boolean;
-    setHasonerror(value: boolean): JobInfo;
+    hasOutputType(): boolean;
+    clearOutputType(): void;
+    getOutputType(): TypeReference | undefined;
+    setOutputType(value?: TypeReference): JobInfo;
+    getHasOnError(): boolean;
+    setHasOnError(value: boolean): JobInfo;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): JobInfo.AsObject;
@@ -192,9 +192,9 @@ export class JobInfo extends jspb.Message {
 export namespace JobInfo {
     export type AsObject = {
         token: string,
-        inputtype?: TypeReference.AsObject,
-        outputtype?: TypeReference.AsObject,
-        hasonerror: boolean,
+        inputType?: TypeReference.AsObject,
+        outputType?: TypeReference.AsObject,
+        hasOnError: boolean,
     }
 }
 
@@ -540,10 +540,10 @@ export class PlatformRequirements extends jspb.Message {
     setOs(value: string): PlatformRequirements;
     getArch(): string;
     setArch(value: string): PlatformRequirements;
-    getMinvcpu(): number;
-    setMinvcpu(value: number): PlatformRequirements;
-    getMinmemorygib(): number;
-    setMinmemorygib(value: number): PlatformRequirements;
+    getMinVcpu(): number;
+    setMinVcpu(value: number): PlatformRequirements;
+    getMinMemoryGib(): number;
+    setMinMemoryGib(value: number): PlatformRequirements;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PlatformRequirements.AsObject;
@@ -559,8 +559,8 @@ export namespace PlatformRequirements {
     export type AsObject = {
         os: string,
         arch: string,
-        minvcpu: number,
-        minmemorygib: number,
+        minVcpu: number,
+        minMemoryGib: number,
     }
 }
 
@@ -572,8 +572,8 @@ export class PlatformSelector extends jspb.Message {
     clearRequirements(): void;
     getRequirements(): PlatformRequirements | undefined;
     setRequirements(value?: PlatformRequirements): PlatformSelector;
-    getMatchpolicy(): PlatformSelector.MatchPolicy;
-    setMatchpolicy(value: PlatformSelector.MatchPolicy): PlatformSelector;
+    getMatchPolicy(): PlatformSelector.MatchPolicy;
+    setMatchPolicy(value: PlatformSelector.MatchPolicy): PlatformSelector;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PlatformSelector.AsObject;
@@ -589,7 +589,7 @@ export namespace PlatformSelector {
     export type AsObject = {
         target: string,
         requirements?: PlatformRequirements.AsObject,
-        matchpolicy: PlatformSelector.MatchPolicy,
+        matchPolicy: PlatformSelector.MatchPolicy,
     }
 
     export enum MatchPolicy {
@@ -601,8 +601,8 @@ export namespace PlatformSelector {
 }
 
 export class ErrorRecord extends jspb.Message { 
-    getSteppath(): string;
-    setSteppath(value: string): ErrorRecord;
+    getStepPath(): string;
+    setStepPath(value: string): ErrorRecord;
     getReason(): string;
     setReason(value: string): ErrorRecord;
     getCategory(): string;
@@ -620,7 +620,7 @@ export class ErrorRecord extends jspb.Message {
 
 export namespace ErrorRecord {
     export type AsObject = {
-        steppath: string,
+        stepPath: string,
         reason: string,
         category: string,
     }
@@ -660,8 +660,8 @@ export class GenerateGraphRequest extends jspb.Message {
     setContext(value?: WorkflowContext): GenerateGraphRequest;
     getPath(): string;
     setPath(value: string): GenerateGraphRequest;
-    getGraphmonitoraddress(): string;
-    setGraphmonitoraddress(value: string): GenerateGraphRequest;
+    getGraphMonitorAddress(): string;
+    setGraphMonitorAddress(value: string): GenerateGraphRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateGraphRequest.AsObject;
@@ -677,7 +677,7 @@ export namespace GenerateGraphRequest {
     export type AsObject = {
         context?: WorkflowContext.AsObject,
         path: string,
-        graphmonitoraddress: string,
+        graphMonitorAddress: string,
     }
 }
 
@@ -754,8 +754,8 @@ export class RunSensorResponse extends jspb.Message {
     clearEvent(): void;
     getEvent(): WorkflowValue | undefined;
     setEvent(value?: WorkflowValue): RunSensorResponse;
-    getNextinterval(): string;
-    setNextinterval(value: string): RunSensorResponse;
+    getNextInterval(): string;
+    setNextInterval(value: string): RunSensorResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunSensorResponse.AsObject;
@@ -773,7 +773,7 @@ export namespace RunSensorResponse {
         decision: RunSensorResponse.Decision,
         cursor?: WorkflowValue.AsObject,
         event?: WorkflowValue.AsObject,
-        nextinterval: string,
+        nextInterval: string,
     }
 
     export enum Decision {
@@ -930,8 +930,8 @@ export class RunOnErrorResponse extends jspb.Message {
     setError(value?: WorkflowError): RunOnErrorResponse;
     getRetry(): boolean;
     setRetry(value: boolean): RunOnErrorResponse;
-    getRetryafter(): string;
-    setRetryafter(value: string): RunOnErrorResponse;
+    getRetryAfter(): string;
+    setRetryAfter(value: string): RunOnErrorResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunOnErrorResponse.AsObject;
@@ -947,7 +947,7 @@ export namespace RunOnErrorResponse {
     export type AsObject = {
         error?: WorkflowError.AsObject,
         retry: boolean,
-        retryafter: string,
+        retryAfter: string,
     }
 }
 
@@ -966,8 +966,8 @@ export class RegisterTriggerRequest extends jspb.Message {
     clearSpec(): void;
     getSpec(): google_protobuf_struct_pb.Struct | undefined;
     setSpec(value?: google_protobuf_struct_pb.Struct): RegisterTriggerRequest;
-    getHasfilter(): boolean;
-    setHasfilter(value: boolean): RegisterTriggerRequest;
+    getHasFilter(): boolean;
+    setHasFilter(value: boolean): RegisterTriggerRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterTriggerRequest.AsObject;
@@ -985,7 +985,7 @@ export namespace RegisterTriggerRequest {
         path: string,
         type: string,
         spec?: google_protobuf_struct_pb.Struct.AsObject,
-        hasfilter: boolean,
+        hasFilter: boolean,
     }
 }
 
@@ -1042,8 +1042,8 @@ export class RegisterJobRequest extends jspb.Message {
     clearPlatform(): void;
     getPlatform(): PlatformSelector | undefined;
     setPlatform(value?: PlatformSelector): RegisterJobRequest;
-    getHasonerror(): boolean;
-    setHasonerror(value: boolean): RegisterJobRequest;
+    getHasOnError(): boolean;
+    setHasOnError(value: boolean): RegisterJobRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterJobRequest.AsObject;
@@ -1061,7 +1061,7 @@ export namespace RegisterJobRequest {
         path: string,
         dependencies?: DependencyExpression.AsObject,
         platform?: PlatformSelector.AsObject,
-        hasonerror: boolean,
+        hasOnError: boolean,
     }
 }
 
@@ -1078,8 +1078,8 @@ export class RegisterGraphRequest extends jspb.Message {
     clearDependencies(): void;
     getDependencies(): DependencyExpression | undefined;
     setDependencies(value?: DependencyExpression): RegisterGraphRequest;
-    getHasonerror(): boolean;
-    setHasonerror(value: boolean): RegisterGraphRequest;
+    getHasOnError(): boolean;
+    setHasOnError(value: boolean): RegisterGraphRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterGraphRequest.AsObject;
@@ -1096,7 +1096,7 @@ export namespace RegisterGraphRequest {
         context?: WorkflowContext.AsObject,
         path: string,
         dependencies?: DependencyExpression.AsObject,
-        hasonerror: boolean,
+        hasOnError: boolean,
     }
 }
 
@@ -1108,15 +1108,15 @@ export class RegisterStepRequest extends jspb.Message {
     setContext(value?: WorkflowContext): RegisterStepRequest;
     getPath(): string;
     setPath(value: string): RegisterStepRequest;
-    getJobpath(): string;
-    setJobpath(value: string): RegisterStepRequest;
+    getJobPath(): string;
+    setJobPath(value: string): RegisterStepRequest;
 
     hasDependencies(): boolean;
     clearDependencies(): void;
     getDependencies(): DependencyExpression | undefined;
     setDependencies(value?: DependencyExpression): RegisterStepRequest;
-    getHasonerror(): boolean;
-    setHasonerror(value: boolean): RegisterStepRequest;
+    getHasOnError(): boolean;
+    setHasOnError(value: boolean): RegisterStepRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterStepRequest.AsObject;
@@ -1132,9 +1132,9 @@ export namespace RegisterStepRequest {
     export type AsObject = {
         context?: WorkflowContext.AsObject,
         path: string,
-        jobpath: string,
+        jobPath: string,
         dependencies?: DependencyExpression.AsObject,
-        hasonerror: boolean,
+        hasOnError: boolean,
     }
 }
 

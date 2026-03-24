@@ -79,13 +79,13 @@ service GraphMonitor {
 // WorkflowContext identifies a workflow definition and execution.
 message WorkflowContext {
     // A stable name for the workflow definition.
-    string workflowName = 1;
+    string workflow_name = 1;
 
     // A scheduler-defined immutable workflow version identifier.
-    string workflowVersion = 2;
+    string workflow_version = 2;
 
     // The workflow execution identifier for a single trigger fire.
-    string executionId = 3;
+    string execution_id = 3;
 }
 
 // `WorkflowHandshakeRequest` is the type of requests sent as part of a
@@ -121,21 +121,21 @@ message TypeReference {
 message PackageInfo {
     string name = 1;
     string version = 2;
-    string displayName = 3;
+    string display_name = 3;
 }
 
 message GraphInfo {
     string token = 1;
-    TypeReference inputType = 2;
-    TypeReference outputType = 3;
-    bool hasOnError = 4;
+    TypeReference input_type = 2;
+    TypeReference output_type = 3;
+    bool has_on_error = 4;
 }
 
 message JobInfo {
     string token = 1;
-    TypeReference inputType = 2;
-    TypeReference outputType = 3;
-    bool hasOnError = 4;
+    TypeReference input_type = 2;
+    TypeReference output_type = 3;
+    bool has_on_error = 4;
 }
 
 message GetPackageInfoRequest {}
@@ -227,8 +227,8 @@ message DependencyExpression {
 message PlatformRequirements {
     string os = 1;
     string arch = 2;
-    int32 minVcpu = 3;
-    int32 minMemoryGib = 4;
+    int32 min_vcpu = 3;
+    int32 min_memory_gib = 4;
 }
 
 message PlatformSelector {
@@ -240,12 +240,12 @@ message PlatformSelector {
 
     string target = 1;
     PlatformRequirements requirements = 2;
-    MatchPolicy matchPolicy = 3;
+    MatchPolicy match_policy = 3;
 }
 
 message ErrorRecord {
     // Empty when the failure occurred during node generation instead of a concrete step.
-    string stepPath = 1;
+    string step_path = 1;
 
     // Human-readable reason for the failure.
     string reason = 2;
@@ -262,7 +262,7 @@ message GenerateJobRequest {
 message GenerateGraphRequest {
     WorkflowContext context = 1;
     string path = 2;
-    string graphMonitorAddress = 3;
+    string graph_monitor_address = 3;
 }
 
 message GenerateNodeResponse {
@@ -297,7 +297,7 @@ message RunSensorResponse {
     WorkflowValue event = 4;
 
     // Optional scheduler hint for next poll cadence (e.g. "30s").
-    string nextInterval = 5;
+    string next_interval = 5;
 }
 
 message RunStepRequest {
@@ -333,7 +333,7 @@ message RunOnErrorResponse {
     bool retry = 2;
 
     // Optional scheduler hint for how long to delay before retrying (e.g. "250ms").
-    string retryAfter = 3;
+    string retry_after = 3;
 }
 
 message RegisterTriggerRequest {
@@ -347,7 +347,7 @@ message RegisterTriggerRequest {
     google.protobuf.Struct spec = 4;
 
     // If true, trigger has a filter function that can be executed via RunFilter.
-    bool hasFilter = 5;
+    bool has_filter = 5;
 }
 
 message RegisterSensorRequest {
@@ -366,22 +366,22 @@ message RegisterJobRequest {
     string path = 2;
     DependencyExpression dependencies = 3;
     PlatformSelector platform = 4;
-    bool hasOnError = 5;
+    bool has_on_error = 5;
 }
 
 message RegisterGraphRequest {
     WorkflowContext context = 1;
     string path = 2;
     DependencyExpression dependencies = 3;
-    bool hasOnError = 4;
+    bool has_on_error = 4;
 }
 
 message RegisterStepRequest {
     WorkflowContext context = 1;
     string path = 2;
-    string jobPath = 3;
+    string job_path = 3;
     DependencyExpression dependencies = 4;
-    bool hasOnError = 5;
+    bool has_on_error = 5;
 }
 
 message RegisterNodeResponse {

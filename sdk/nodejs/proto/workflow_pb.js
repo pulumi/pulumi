@@ -999,9 +999,9 @@ proto.pulumirpc.WorkflowContext.prototype.toObject = function(opt_includeInstanc
  */
 proto.pulumirpc.WorkflowContext.toObject = function(includeInstance, msg) {
   var f, obj = {
-workflowname: jspb.Message.getFieldWithDefault(msg, 1, ""),
-workflowversion: jspb.Message.getFieldWithDefault(msg, 2, ""),
-executionid: jspb.Message.getFieldWithDefault(msg, 3, "")
+workflowName: jspb.Message.getFieldWithDefault(msg, 1, ""),
+workflowVersion: jspb.Message.getFieldWithDefault(msg, 2, ""),
+executionId: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -1040,15 +1040,15 @@ proto.pulumirpc.WorkflowContext.deserializeBinaryFromReader = function(msg, read
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setWorkflowname(value);
+      msg.setWorkflowName(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setWorkflowversion(value);
+      msg.setWorkflowVersion(value);
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setExecutionid(value);
+      msg.setExecutionId(value);
       break;
     default:
       reader.skipField();
@@ -1079,21 +1079,21 @@ proto.pulumirpc.WorkflowContext.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.WorkflowContext.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getWorkflowname();
+  f = message.getWorkflowName();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getWorkflowversion();
+  f = message.getWorkflowVersion();
   if (f.length > 0) {
     writer.writeString(
       2,
       f
     );
   }
-  f = message.getExecutionid();
+  f = message.getExecutionId();
   if (f.length > 0) {
     writer.writeString(
       3,
@@ -1104,10 +1104,10 @@ proto.pulumirpc.WorkflowContext.serializeBinaryToWriter = function(message, writ
 
 
 /**
- * optional string workflowName = 1;
+ * optional string workflow_name = 1;
  * @return {string}
  */
-proto.pulumirpc.WorkflowContext.prototype.getWorkflowname = function() {
+proto.pulumirpc.WorkflowContext.prototype.getWorkflowName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -1116,16 +1116,16 @@ proto.pulumirpc.WorkflowContext.prototype.getWorkflowname = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.WorkflowContext} returns this
  */
-proto.pulumirpc.WorkflowContext.prototype.setWorkflowname = function(value) {
+proto.pulumirpc.WorkflowContext.prototype.setWorkflowName = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional string workflowVersion = 2;
+ * optional string workflow_version = 2;
  * @return {string}
  */
-proto.pulumirpc.WorkflowContext.prototype.getWorkflowversion = function() {
+proto.pulumirpc.WorkflowContext.prototype.getWorkflowVersion = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -1134,16 +1134,16 @@ proto.pulumirpc.WorkflowContext.prototype.getWorkflowversion = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.WorkflowContext} returns this
  */
-proto.pulumirpc.WorkflowContext.prototype.setWorkflowversion = function(value) {
+proto.pulumirpc.WorkflowContext.prototype.setWorkflowVersion = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional string executionId = 3;
+ * optional string execution_id = 3;
  * @return {string}
  */
-proto.pulumirpc.WorkflowContext.prototype.getExecutionid = function() {
+proto.pulumirpc.WorkflowContext.prototype.getExecutionId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
@@ -1152,7 +1152,7 @@ proto.pulumirpc.WorkflowContext.prototype.getExecutionid = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.WorkflowContext} returns this
  */
-proto.pulumirpc.WorkflowContext.prototype.setExecutionid = function(value) {
+proto.pulumirpc.WorkflowContext.prototype.setExecutionId = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 
@@ -1648,7 +1648,7 @@ proto.pulumirpc.PackageInfo.toObject = function(includeInstance, msg) {
   var f, obj = {
 name: jspb.Message.getFieldWithDefault(msg, 1, ""),
 version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-displayname: jspb.Message.getFieldWithDefault(msg, 3, "")
+displayName: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -1695,7 +1695,7 @@ proto.pulumirpc.PackageInfo.deserializeBinaryFromReader = function(msg, reader) 
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setDisplayname(value);
+      msg.setDisplayName(value);
       break;
     default:
       reader.skipField();
@@ -1740,7 +1740,7 @@ proto.pulumirpc.PackageInfo.serializeBinaryToWriter = function(message, writer) 
       f
     );
   }
-  f = message.getDisplayname();
+  f = message.getDisplayName();
   if (f.length > 0) {
     writer.writeString(
       3,
@@ -1787,10 +1787,10 @@ proto.pulumirpc.PackageInfo.prototype.setVersion = function(value) {
 
 
 /**
- * optional string displayName = 3;
+ * optional string display_name = 3;
  * @return {string}
  */
-proto.pulumirpc.PackageInfo.prototype.getDisplayname = function() {
+proto.pulumirpc.PackageInfo.prototype.getDisplayName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
@@ -1799,7 +1799,7 @@ proto.pulumirpc.PackageInfo.prototype.getDisplayname = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.PackageInfo} returns this
  */
-proto.pulumirpc.PackageInfo.prototype.setDisplayname = function(value) {
+proto.pulumirpc.PackageInfo.prototype.setDisplayName = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 
@@ -1837,9 +1837,9 @@ proto.pulumirpc.GraphInfo.prototype.toObject = function(opt_includeInstance) {
 proto.pulumirpc.GraphInfo.toObject = function(includeInstance, msg) {
   var f, obj = {
 token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-inputtype: (f = msg.getInputtype()) && proto.pulumirpc.TypeReference.toObject(includeInstance, f),
-outputtype: (f = msg.getOutputtype()) && proto.pulumirpc.TypeReference.toObject(includeInstance, f),
-hasonerror: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+inputType: (f = msg.getInputType()) && proto.pulumirpc.TypeReference.toObject(includeInstance, f),
+outputType: (f = msg.getOutputType()) && proto.pulumirpc.TypeReference.toObject(includeInstance, f),
+hasOnError: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -1883,16 +1883,16 @@ proto.pulumirpc.GraphInfo.deserializeBinaryFromReader = function(msg, reader) {
     case 2:
       var value = new proto.pulumirpc.TypeReference;
       reader.readMessage(value,proto.pulumirpc.TypeReference.deserializeBinaryFromReader);
-      msg.setInputtype(value);
+      msg.setInputType(value);
       break;
     case 3:
       var value = new proto.pulumirpc.TypeReference;
       reader.readMessage(value,proto.pulumirpc.TypeReference.deserializeBinaryFromReader);
-      msg.setOutputtype(value);
+      msg.setOutputType(value);
       break;
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setHasonerror(value);
+      msg.setHasOnError(value);
       break;
     default:
       reader.skipField();
@@ -1930,7 +1930,7 @@ proto.pulumirpc.GraphInfo.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getInputtype();
+  f = message.getInputType();
   if (f != null) {
     writer.writeMessage(
       2,
@@ -1938,7 +1938,7 @@ proto.pulumirpc.GraphInfo.serializeBinaryToWriter = function(message, writer) {
       proto.pulumirpc.TypeReference.serializeBinaryToWriter
     );
   }
-  f = message.getOutputtype();
+  f = message.getOutputType();
   if (f != null) {
     writer.writeMessage(
       3,
@@ -1946,7 +1946,7 @@ proto.pulumirpc.GraphInfo.serializeBinaryToWriter = function(message, writer) {
       proto.pulumirpc.TypeReference.serializeBinaryToWriter
     );
   }
-  f = message.getHasonerror();
+  f = message.getHasOnError();
   if (f) {
     writer.writeBool(
       4,
@@ -1975,10 +1975,10 @@ proto.pulumirpc.GraphInfo.prototype.setToken = function(value) {
 
 
 /**
- * optional TypeReference inputType = 2;
+ * optional TypeReference input_type = 2;
  * @return {?proto.pulumirpc.TypeReference}
  */
-proto.pulumirpc.GraphInfo.prototype.getInputtype = function() {
+proto.pulumirpc.GraphInfo.prototype.getInputType = function() {
   return /** @type{?proto.pulumirpc.TypeReference} */ (
     jspb.Message.getWrapperField(this, proto.pulumirpc.TypeReference, 2));
 };
@@ -1988,7 +1988,7 @@ proto.pulumirpc.GraphInfo.prototype.getInputtype = function() {
  * @param {?proto.pulumirpc.TypeReference|undefined} value
  * @return {!proto.pulumirpc.GraphInfo} returns this
 */
-proto.pulumirpc.GraphInfo.prototype.setInputtype = function(value) {
+proto.pulumirpc.GraphInfo.prototype.setInputType = function(value) {
   return jspb.Message.setWrapperField(this, 2, value);
 };
 
@@ -1997,8 +1997,8 @@ proto.pulumirpc.GraphInfo.prototype.setInputtype = function(value) {
  * Clears the message field making it undefined.
  * @return {!proto.pulumirpc.GraphInfo} returns this
  */
-proto.pulumirpc.GraphInfo.prototype.clearInputtype = function() {
-  return this.setInputtype(undefined);
+proto.pulumirpc.GraphInfo.prototype.clearInputType = function() {
+  return this.setInputType(undefined);
 };
 
 
@@ -2006,16 +2006,16 @@ proto.pulumirpc.GraphInfo.prototype.clearInputtype = function() {
  * Returns whether this field is set.
  * @return {boolean}
  */
-proto.pulumirpc.GraphInfo.prototype.hasInputtype = function() {
+proto.pulumirpc.GraphInfo.prototype.hasInputType = function() {
   return jspb.Message.getField(this, 2) != null;
 };
 
 
 /**
- * optional TypeReference outputType = 3;
+ * optional TypeReference output_type = 3;
  * @return {?proto.pulumirpc.TypeReference}
  */
-proto.pulumirpc.GraphInfo.prototype.getOutputtype = function() {
+proto.pulumirpc.GraphInfo.prototype.getOutputType = function() {
   return /** @type{?proto.pulumirpc.TypeReference} */ (
     jspb.Message.getWrapperField(this, proto.pulumirpc.TypeReference, 3));
 };
@@ -2025,7 +2025,7 @@ proto.pulumirpc.GraphInfo.prototype.getOutputtype = function() {
  * @param {?proto.pulumirpc.TypeReference|undefined} value
  * @return {!proto.pulumirpc.GraphInfo} returns this
 */
-proto.pulumirpc.GraphInfo.prototype.setOutputtype = function(value) {
+proto.pulumirpc.GraphInfo.prototype.setOutputType = function(value) {
   return jspb.Message.setWrapperField(this, 3, value);
 };
 
@@ -2034,8 +2034,8 @@ proto.pulumirpc.GraphInfo.prototype.setOutputtype = function(value) {
  * Clears the message field making it undefined.
  * @return {!proto.pulumirpc.GraphInfo} returns this
  */
-proto.pulumirpc.GraphInfo.prototype.clearOutputtype = function() {
-  return this.setOutputtype(undefined);
+proto.pulumirpc.GraphInfo.prototype.clearOutputType = function() {
+  return this.setOutputType(undefined);
 };
 
 
@@ -2043,16 +2043,16 @@ proto.pulumirpc.GraphInfo.prototype.clearOutputtype = function() {
  * Returns whether this field is set.
  * @return {boolean}
  */
-proto.pulumirpc.GraphInfo.prototype.hasOutputtype = function() {
+proto.pulumirpc.GraphInfo.prototype.hasOutputType = function() {
   return jspb.Message.getField(this, 3) != null;
 };
 
 
 /**
- * optional bool hasOnError = 4;
+ * optional bool has_on_error = 4;
  * @return {boolean}
  */
-proto.pulumirpc.GraphInfo.prototype.getHasonerror = function() {
+proto.pulumirpc.GraphInfo.prototype.getHasOnError = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
 };
 
@@ -2061,7 +2061,7 @@ proto.pulumirpc.GraphInfo.prototype.getHasonerror = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.GraphInfo} returns this
  */
-proto.pulumirpc.GraphInfo.prototype.setHasonerror = function(value) {
+proto.pulumirpc.GraphInfo.prototype.setHasOnError = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
@@ -2099,9 +2099,9 @@ proto.pulumirpc.JobInfo.prototype.toObject = function(opt_includeInstance) {
 proto.pulumirpc.JobInfo.toObject = function(includeInstance, msg) {
   var f, obj = {
 token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-inputtype: (f = msg.getInputtype()) && proto.pulumirpc.TypeReference.toObject(includeInstance, f),
-outputtype: (f = msg.getOutputtype()) && proto.pulumirpc.TypeReference.toObject(includeInstance, f),
-hasonerror: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+inputType: (f = msg.getInputType()) && proto.pulumirpc.TypeReference.toObject(includeInstance, f),
+outputType: (f = msg.getOutputType()) && proto.pulumirpc.TypeReference.toObject(includeInstance, f),
+hasOnError: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -2145,16 +2145,16 @@ proto.pulumirpc.JobInfo.deserializeBinaryFromReader = function(msg, reader) {
     case 2:
       var value = new proto.pulumirpc.TypeReference;
       reader.readMessage(value,proto.pulumirpc.TypeReference.deserializeBinaryFromReader);
-      msg.setInputtype(value);
+      msg.setInputType(value);
       break;
     case 3:
       var value = new proto.pulumirpc.TypeReference;
       reader.readMessage(value,proto.pulumirpc.TypeReference.deserializeBinaryFromReader);
-      msg.setOutputtype(value);
+      msg.setOutputType(value);
       break;
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setHasonerror(value);
+      msg.setHasOnError(value);
       break;
     default:
       reader.skipField();
@@ -2192,7 +2192,7 @@ proto.pulumirpc.JobInfo.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getInputtype();
+  f = message.getInputType();
   if (f != null) {
     writer.writeMessage(
       2,
@@ -2200,7 +2200,7 @@ proto.pulumirpc.JobInfo.serializeBinaryToWriter = function(message, writer) {
       proto.pulumirpc.TypeReference.serializeBinaryToWriter
     );
   }
-  f = message.getOutputtype();
+  f = message.getOutputType();
   if (f != null) {
     writer.writeMessage(
       3,
@@ -2208,7 +2208,7 @@ proto.pulumirpc.JobInfo.serializeBinaryToWriter = function(message, writer) {
       proto.pulumirpc.TypeReference.serializeBinaryToWriter
     );
   }
-  f = message.getHasonerror();
+  f = message.getHasOnError();
   if (f) {
     writer.writeBool(
       4,
@@ -2237,10 +2237,10 @@ proto.pulumirpc.JobInfo.prototype.setToken = function(value) {
 
 
 /**
- * optional TypeReference inputType = 2;
+ * optional TypeReference input_type = 2;
  * @return {?proto.pulumirpc.TypeReference}
  */
-proto.pulumirpc.JobInfo.prototype.getInputtype = function() {
+proto.pulumirpc.JobInfo.prototype.getInputType = function() {
   return /** @type{?proto.pulumirpc.TypeReference} */ (
     jspb.Message.getWrapperField(this, proto.pulumirpc.TypeReference, 2));
 };
@@ -2250,7 +2250,7 @@ proto.pulumirpc.JobInfo.prototype.getInputtype = function() {
  * @param {?proto.pulumirpc.TypeReference|undefined} value
  * @return {!proto.pulumirpc.JobInfo} returns this
 */
-proto.pulumirpc.JobInfo.prototype.setInputtype = function(value) {
+proto.pulumirpc.JobInfo.prototype.setInputType = function(value) {
   return jspb.Message.setWrapperField(this, 2, value);
 };
 
@@ -2259,8 +2259,8 @@ proto.pulumirpc.JobInfo.prototype.setInputtype = function(value) {
  * Clears the message field making it undefined.
  * @return {!proto.pulumirpc.JobInfo} returns this
  */
-proto.pulumirpc.JobInfo.prototype.clearInputtype = function() {
-  return this.setInputtype(undefined);
+proto.pulumirpc.JobInfo.prototype.clearInputType = function() {
+  return this.setInputType(undefined);
 };
 
 
@@ -2268,16 +2268,16 @@ proto.pulumirpc.JobInfo.prototype.clearInputtype = function() {
  * Returns whether this field is set.
  * @return {boolean}
  */
-proto.pulumirpc.JobInfo.prototype.hasInputtype = function() {
+proto.pulumirpc.JobInfo.prototype.hasInputType = function() {
   return jspb.Message.getField(this, 2) != null;
 };
 
 
 /**
- * optional TypeReference outputType = 3;
+ * optional TypeReference output_type = 3;
  * @return {?proto.pulumirpc.TypeReference}
  */
-proto.pulumirpc.JobInfo.prototype.getOutputtype = function() {
+proto.pulumirpc.JobInfo.prototype.getOutputType = function() {
   return /** @type{?proto.pulumirpc.TypeReference} */ (
     jspb.Message.getWrapperField(this, proto.pulumirpc.TypeReference, 3));
 };
@@ -2287,7 +2287,7 @@ proto.pulumirpc.JobInfo.prototype.getOutputtype = function() {
  * @param {?proto.pulumirpc.TypeReference|undefined} value
  * @return {!proto.pulumirpc.JobInfo} returns this
 */
-proto.pulumirpc.JobInfo.prototype.setOutputtype = function(value) {
+proto.pulumirpc.JobInfo.prototype.setOutputType = function(value) {
   return jspb.Message.setWrapperField(this, 3, value);
 };
 
@@ -2296,8 +2296,8 @@ proto.pulumirpc.JobInfo.prototype.setOutputtype = function(value) {
  * Clears the message field making it undefined.
  * @return {!proto.pulumirpc.JobInfo} returns this
  */
-proto.pulumirpc.JobInfo.prototype.clearOutputtype = function() {
-  return this.setOutputtype(undefined);
+proto.pulumirpc.JobInfo.prototype.clearOutputType = function() {
+  return this.setOutputType(undefined);
 };
 
 
@@ -2305,16 +2305,16 @@ proto.pulumirpc.JobInfo.prototype.clearOutputtype = function() {
  * Returns whether this field is set.
  * @return {boolean}
  */
-proto.pulumirpc.JobInfo.prototype.hasOutputtype = function() {
+proto.pulumirpc.JobInfo.prototype.hasOutputType = function() {
   return jspb.Message.getField(this, 3) != null;
 };
 
 
 /**
- * optional bool hasOnError = 4;
+ * optional bool has_on_error = 4;
  * @return {boolean}
  */
-proto.pulumirpc.JobInfo.prototype.getHasonerror = function() {
+proto.pulumirpc.JobInfo.prototype.getHasOnError = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
 };
 
@@ -2323,7 +2323,7 @@ proto.pulumirpc.JobInfo.prototype.getHasonerror = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.JobInfo} returns this
  */
-proto.pulumirpc.JobInfo.prototype.setHasonerror = function(value) {
+proto.pulumirpc.JobInfo.prototype.setHasOnError = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
@@ -4567,8 +4567,8 @@ proto.pulumirpc.PlatformRequirements.toObject = function(includeInstance, msg) {
   var f, obj = {
 os: jspb.Message.getFieldWithDefault(msg, 1, ""),
 arch: jspb.Message.getFieldWithDefault(msg, 2, ""),
-minvcpu: jspb.Message.getFieldWithDefault(msg, 3, 0),
-minmemorygib: jspb.Message.getFieldWithDefault(msg, 4, 0)
+minVcpu: jspb.Message.getFieldWithDefault(msg, 3, 0),
+minMemoryGib: jspb.Message.getFieldWithDefault(msg, 4, 0)
   };
 
   if (includeInstance) {
@@ -4615,11 +4615,11 @@ proto.pulumirpc.PlatformRequirements.deserializeBinaryFromReader = function(msg,
       break;
     case 3:
       var value = /** @type {number} */ (reader.readInt32());
-      msg.setMinvcpu(value);
+      msg.setMinVcpu(value);
       break;
     case 4:
       var value = /** @type {number} */ (reader.readInt32());
-      msg.setMinmemorygib(value);
+      msg.setMinMemoryGib(value);
       break;
     default:
       reader.skipField();
@@ -4664,14 +4664,14 @@ proto.pulumirpc.PlatformRequirements.serializeBinaryToWriter = function(message,
       f
     );
   }
-  f = message.getMinvcpu();
+  f = message.getMinVcpu();
   if (f !== 0) {
     writer.writeInt32(
       3,
       f
     );
   }
-  f = message.getMinmemorygib();
+  f = message.getMinMemoryGib();
   if (f !== 0) {
     writer.writeInt32(
       4,
@@ -4718,10 +4718,10 @@ proto.pulumirpc.PlatformRequirements.prototype.setArch = function(value) {
 
 
 /**
- * optional int32 minVcpu = 3;
+ * optional int32 min_vcpu = 3;
  * @return {number}
  */
-proto.pulumirpc.PlatformRequirements.prototype.getMinvcpu = function() {
+proto.pulumirpc.PlatformRequirements.prototype.getMinVcpu = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
@@ -4730,16 +4730,16 @@ proto.pulumirpc.PlatformRequirements.prototype.getMinvcpu = function() {
  * @param {number} value
  * @return {!proto.pulumirpc.PlatformRequirements} returns this
  */
-proto.pulumirpc.PlatformRequirements.prototype.setMinvcpu = function(value) {
+proto.pulumirpc.PlatformRequirements.prototype.setMinVcpu = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
 };
 
 
 /**
- * optional int32 minMemoryGib = 4;
+ * optional int32 min_memory_gib = 4;
  * @return {number}
  */
-proto.pulumirpc.PlatformRequirements.prototype.getMinmemorygib = function() {
+proto.pulumirpc.PlatformRequirements.prototype.getMinMemoryGib = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
 };
 
@@ -4748,7 +4748,7 @@ proto.pulumirpc.PlatformRequirements.prototype.getMinmemorygib = function() {
  * @param {number} value
  * @return {!proto.pulumirpc.PlatformRequirements} returns this
  */
-proto.pulumirpc.PlatformRequirements.prototype.setMinmemorygib = function(value) {
+proto.pulumirpc.PlatformRequirements.prototype.setMinMemoryGib = function(value) {
   return jspb.Message.setProto3IntField(this, 4, value);
 };
 
@@ -4787,7 +4787,7 @@ proto.pulumirpc.PlatformSelector.toObject = function(includeInstance, msg) {
   var f, obj = {
 target: jspb.Message.getFieldWithDefault(msg, 1, ""),
 requirements: (f = msg.getRequirements()) && proto.pulumirpc.PlatformRequirements.toObject(includeInstance, f),
-matchpolicy: jspb.Message.getFieldWithDefault(msg, 3, 0)
+matchPolicy: jspb.Message.getFieldWithDefault(msg, 3, 0)
   };
 
   if (includeInstance) {
@@ -4835,7 +4835,7 @@ proto.pulumirpc.PlatformSelector.deserializeBinaryFromReader = function(msg, rea
       break;
     case 3:
       var value = /** @type {!proto.pulumirpc.PlatformSelector.MatchPolicy} */ (reader.readEnum());
-      msg.setMatchpolicy(value);
+      msg.setMatchPolicy(value);
       break;
     default:
       reader.skipField();
@@ -4881,7 +4881,7 @@ proto.pulumirpc.PlatformSelector.serializeBinaryToWriter = function(message, wri
       proto.pulumirpc.PlatformRequirements.serializeBinaryToWriter
     );
   }
-  f = message.getMatchpolicy();
+  f = message.getMatchPolicy();
   if (f !== 0.0) {
     writer.writeEnum(
       3,
@@ -4956,10 +4956,10 @@ proto.pulumirpc.PlatformSelector.prototype.hasRequirements = function() {
 
 
 /**
- * optional MatchPolicy matchPolicy = 3;
+ * optional MatchPolicy match_policy = 3;
  * @return {!proto.pulumirpc.PlatformSelector.MatchPolicy}
  */
-proto.pulumirpc.PlatformSelector.prototype.getMatchpolicy = function() {
+proto.pulumirpc.PlatformSelector.prototype.getMatchPolicy = function() {
   return /** @type {!proto.pulumirpc.PlatformSelector.MatchPolicy} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
@@ -4968,7 +4968,7 @@ proto.pulumirpc.PlatformSelector.prototype.getMatchpolicy = function() {
  * @param {!proto.pulumirpc.PlatformSelector.MatchPolicy} value
  * @return {!proto.pulumirpc.PlatformSelector} returns this
  */
-proto.pulumirpc.PlatformSelector.prototype.setMatchpolicy = function(value) {
+proto.pulumirpc.PlatformSelector.prototype.setMatchPolicy = function(value) {
   return jspb.Message.setProto3EnumField(this, 3, value);
 };
 
@@ -5005,7 +5005,7 @@ proto.pulumirpc.ErrorRecord.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.ErrorRecord.toObject = function(includeInstance, msg) {
   var f, obj = {
-steppath: jspb.Message.getFieldWithDefault(msg, 1, ""),
+stepPath: jspb.Message.getFieldWithDefault(msg, 1, ""),
 reason: jspb.Message.getFieldWithDefault(msg, 2, ""),
 category: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
@@ -5046,7 +5046,7 @@ proto.pulumirpc.ErrorRecord.deserializeBinaryFromReader = function(msg, reader) 
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setSteppath(value);
+      msg.setStepPath(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
@@ -5085,7 +5085,7 @@ proto.pulumirpc.ErrorRecord.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.ErrorRecord.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getSteppath();
+  f = message.getStepPath();
   if (f.length > 0) {
     writer.writeString(
       1,
@@ -5110,10 +5110,10 @@ proto.pulumirpc.ErrorRecord.serializeBinaryToWriter = function(message, writer) 
 
 
 /**
- * optional string stepPath = 1;
+ * optional string step_path = 1;
  * @return {string}
  */
-proto.pulumirpc.ErrorRecord.prototype.getSteppath = function() {
+proto.pulumirpc.ErrorRecord.prototype.getStepPath = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -5122,7 +5122,7 @@ proto.pulumirpc.ErrorRecord.prototype.getSteppath = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.ErrorRecord} returns this
  */
-proto.pulumirpc.ErrorRecord.prototype.setSteppath = function(value) {
+proto.pulumirpc.ErrorRecord.prototype.setStepPath = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
@@ -5378,7 +5378,7 @@ proto.pulumirpc.GenerateGraphRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(includeInstance, f),
 path: jspb.Message.getFieldWithDefault(msg, 2, ""),
-graphmonitoraddress: jspb.Message.getFieldWithDefault(msg, 3, "")
+graphMonitorAddress: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -5426,7 +5426,7 @@ proto.pulumirpc.GenerateGraphRequest.deserializeBinaryFromReader = function(msg,
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setGraphmonitoraddress(value);
+      msg.setGraphMonitorAddress(value);
       break;
     default:
       reader.skipField();
@@ -5472,7 +5472,7 @@ proto.pulumirpc.GenerateGraphRequest.serializeBinaryToWriter = function(message,
       f
     );
   }
-  f = message.getGraphmonitoraddress();
+  f = message.getGraphMonitorAddress();
   if (f.length > 0) {
     writer.writeString(
       3,
@@ -5538,10 +5538,10 @@ proto.pulumirpc.GenerateGraphRequest.prototype.setPath = function(value) {
 
 
 /**
- * optional string graphMonitorAddress = 3;
+ * optional string graph_monitor_address = 3;
  * @return {string}
  */
-proto.pulumirpc.GenerateGraphRequest.prototype.getGraphmonitoraddress = function() {
+proto.pulumirpc.GenerateGraphRequest.prototype.getGraphMonitorAddress = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
@@ -5550,7 +5550,7 @@ proto.pulumirpc.GenerateGraphRequest.prototype.getGraphmonitoraddress = function
  * @param {string} value
  * @return {!proto.pulumirpc.GenerateGraphRequest} returns this
  */
-proto.pulumirpc.GenerateGraphRequest.prototype.setGraphmonitoraddress = function(value) {
+proto.pulumirpc.GenerateGraphRequest.prototype.setGraphMonitorAddress = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 
@@ -5974,7 +5974,7 @@ error: (f = msg.getError()) && proto.pulumirpc.WorkflowError.toObject(includeIns
 decision: jspb.Message.getFieldWithDefault(msg, 2, 0),
 cursor: (f = msg.getCursor()) && proto.pulumirpc.WorkflowValue.toObject(includeInstance, f),
 event: (f = msg.getEvent()) && proto.pulumirpc.WorkflowValue.toObject(includeInstance, f),
-nextinterval: jspb.Message.getFieldWithDefault(msg, 5, "")
+nextInterval: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -6032,7 +6032,7 @@ proto.pulumirpc.RunSensorResponse.deserializeBinaryFromReader = function(msg, re
       break;
     case 5:
       var value = /** @type {string} */ (reader.readString());
-      msg.setNextinterval(value);
+      msg.setNextInterval(value);
       break;
     default:
       reader.skipField();
@@ -6094,7 +6094,7 @@ proto.pulumirpc.RunSensorResponse.serializeBinaryToWriter = function(message, wr
       proto.pulumirpc.WorkflowValue.serializeBinaryToWriter
     );
   }
-  f = message.getNextinterval();
+  f = message.getNextInterval();
   if (f.length > 0) {
     writer.writeString(
       5,
@@ -6243,10 +6243,10 @@ proto.pulumirpc.RunSensorResponse.prototype.hasEvent = function() {
 
 
 /**
- * optional string nextInterval = 5;
+ * optional string next_interval = 5;
  * @return {string}
  */
-proto.pulumirpc.RunSensorResponse.prototype.getNextinterval = function() {
+proto.pulumirpc.RunSensorResponse.prototype.getNextInterval = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
 };
 
@@ -6255,7 +6255,7 @@ proto.pulumirpc.RunSensorResponse.prototype.getNextinterval = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.RunSensorResponse} returns this
  */
-proto.pulumirpc.RunSensorResponse.prototype.setNextinterval = function(value) {
+proto.pulumirpc.RunSensorResponse.prototype.setNextInterval = function(value) {
   return jspb.Message.setProto3StringField(this, 5, value);
 };
 
@@ -7280,7 +7280,7 @@ proto.pulumirpc.RunOnErrorResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
 error: (f = msg.getError()) && proto.pulumirpc.WorkflowError.toObject(includeInstance, f),
 retry: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
-retryafter: jspb.Message.getFieldWithDefault(msg, 3, "")
+retryAfter: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -7328,7 +7328,7 @@ proto.pulumirpc.RunOnErrorResponse.deserializeBinaryFromReader = function(msg, r
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setRetryafter(value);
+      msg.setRetryAfter(value);
       break;
     default:
       reader.skipField();
@@ -7374,7 +7374,7 @@ proto.pulumirpc.RunOnErrorResponse.serializeBinaryToWriter = function(message, w
       f
     );
   }
-  f = message.getRetryafter();
+  f = message.getRetryAfter();
   if (f.length > 0) {
     writer.writeString(
       3,
@@ -7440,10 +7440,10 @@ proto.pulumirpc.RunOnErrorResponse.prototype.setRetry = function(value) {
 
 
 /**
- * optional string retryAfter = 3;
+ * optional string retry_after = 3;
  * @return {string}
  */
-proto.pulumirpc.RunOnErrorResponse.prototype.getRetryafter = function() {
+proto.pulumirpc.RunOnErrorResponse.prototype.getRetryAfter = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
@@ -7452,7 +7452,7 @@ proto.pulumirpc.RunOnErrorResponse.prototype.getRetryafter = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.RunOnErrorResponse} returns this
  */
-proto.pulumirpc.RunOnErrorResponse.prototype.setRetryafter = function(value) {
+proto.pulumirpc.RunOnErrorResponse.prototype.setRetryAfter = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 
@@ -7493,7 +7493,7 @@ context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(incl
 path: jspb.Message.getFieldWithDefault(msg, 2, ""),
 type: jspb.Message.getFieldWithDefault(msg, 3, ""),
 spec: (f = msg.getSpec()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-hasfilter: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+hasFilter: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -7550,7 +7550,7 @@ proto.pulumirpc.RegisterTriggerRequest.deserializeBinaryFromReader = function(ms
       break;
     case 5:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setHasfilter(value);
+      msg.setHasFilter(value);
       break;
     default:
       reader.skipField();
@@ -7611,7 +7611,7 @@ proto.pulumirpc.RegisterTriggerRequest.serializeBinaryToWriter = function(messag
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getHasfilter();
+  f = message.getHasFilter();
   if (f) {
     writer.writeBool(
       5,
@@ -7732,10 +7732,10 @@ proto.pulumirpc.RegisterTriggerRequest.prototype.hasSpec = function() {
 
 
 /**
- * optional bool hasFilter = 5;
+ * optional bool has_filter = 5;
  * @return {boolean}
  */
-proto.pulumirpc.RegisterTriggerRequest.prototype.getHasfilter = function() {
+proto.pulumirpc.RegisterTriggerRequest.prototype.getHasFilter = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
 };
 
@@ -7744,7 +7744,7 @@ proto.pulumirpc.RegisterTriggerRequest.prototype.getHasfilter = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.RegisterTriggerRequest} returns this
  */
-proto.pulumirpc.RegisterTriggerRequest.prototype.setHasfilter = function(value) {
+proto.pulumirpc.RegisterTriggerRequest.prototype.setHasFilter = function(value) {
   return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
@@ -8047,7 +8047,7 @@ context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(incl
 path: jspb.Message.getFieldWithDefault(msg, 2, ""),
 dependencies: (f = msg.getDependencies()) && proto.pulumirpc.DependencyExpression.toObject(includeInstance, f),
 platform: (f = msg.getPlatform()) && proto.pulumirpc.PlatformSelector.toObject(includeInstance, f),
-hasonerror: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+hasOnError: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -8105,7 +8105,7 @@ proto.pulumirpc.RegisterJobRequest.deserializeBinaryFromReader = function(msg, r
       break;
     case 5:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setHasonerror(value);
+      msg.setHasOnError(value);
       break;
     default:
       reader.skipField();
@@ -8167,7 +8167,7 @@ proto.pulumirpc.RegisterJobRequest.serializeBinaryToWriter = function(message, w
       proto.pulumirpc.PlatformSelector.serializeBinaryToWriter
     );
   }
-  f = message.getHasonerror();
+  f = message.getHasOnError();
   if (f) {
     writer.writeBool(
       5,
@@ -8307,10 +8307,10 @@ proto.pulumirpc.RegisterJobRequest.prototype.hasPlatform = function() {
 
 
 /**
- * optional bool hasOnError = 5;
+ * optional bool has_on_error = 5;
  * @return {boolean}
  */
-proto.pulumirpc.RegisterJobRequest.prototype.getHasonerror = function() {
+proto.pulumirpc.RegisterJobRequest.prototype.getHasOnError = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
 };
 
@@ -8319,7 +8319,7 @@ proto.pulumirpc.RegisterJobRequest.prototype.getHasonerror = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.RegisterJobRequest} returns this
  */
-proto.pulumirpc.RegisterJobRequest.prototype.setHasonerror = function(value) {
+proto.pulumirpc.RegisterJobRequest.prototype.setHasOnError = function(value) {
   return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
@@ -8359,7 +8359,7 @@ proto.pulumirpc.RegisterGraphRequest.toObject = function(includeInstance, msg) {
 context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(includeInstance, f),
 path: jspb.Message.getFieldWithDefault(msg, 2, ""),
 dependencies: (f = msg.getDependencies()) && proto.pulumirpc.DependencyExpression.toObject(includeInstance, f),
-hasonerror: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+hasOnError: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -8412,7 +8412,7 @@ proto.pulumirpc.RegisterGraphRequest.deserializeBinaryFromReader = function(msg,
       break;
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setHasonerror(value);
+      msg.setHasOnError(value);
       break;
     default:
       reader.skipField();
@@ -8466,7 +8466,7 @@ proto.pulumirpc.RegisterGraphRequest.serializeBinaryToWriter = function(message,
       proto.pulumirpc.DependencyExpression.serializeBinaryToWriter
     );
   }
-  f = message.getHasonerror();
+  f = message.getHasOnError();
   if (f) {
     writer.writeBool(
       4,
@@ -8569,10 +8569,10 @@ proto.pulumirpc.RegisterGraphRequest.prototype.hasDependencies = function() {
 
 
 /**
- * optional bool hasOnError = 4;
+ * optional bool has_on_error = 4;
  * @return {boolean}
  */
-proto.pulumirpc.RegisterGraphRequest.prototype.getHasonerror = function() {
+proto.pulumirpc.RegisterGraphRequest.prototype.getHasOnError = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
 };
 
@@ -8581,7 +8581,7 @@ proto.pulumirpc.RegisterGraphRequest.prototype.getHasonerror = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.RegisterGraphRequest} returns this
  */
-proto.pulumirpc.RegisterGraphRequest.prototype.setHasonerror = function(value) {
+proto.pulumirpc.RegisterGraphRequest.prototype.setHasOnError = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
@@ -8620,9 +8620,9 @@ proto.pulumirpc.RegisterStepRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(includeInstance, f),
 path: jspb.Message.getFieldWithDefault(msg, 2, ""),
-jobpath: jspb.Message.getFieldWithDefault(msg, 3, ""),
+jobPath: jspb.Message.getFieldWithDefault(msg, 3, ""),
 dependencies: (f = msg.getDependencies()) && proto.pulumirpc.DependencyExpression.toObject(includeInstance, f),
-hasonerror: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+hasOnError: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -8670,7 +8670,7 @@ proto.pulumirpc.RegisterStepRequest.deserializeBinaryFromReader = function(msg, 
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setJobpath(value);
+      msg.setJobPath(value);
       break;
     case 4:
       var value = new proto.pulumirpc.DependencyExpression;
@@ -8679,7 +8679,7 @@ proto.pulumirpc.RegisterStepRequest.deserializeBinaryFromReader = function(msg, 
       break;
     case 5:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setHasonerror(value);
+      msg.setHasOnError(value);
       break;
     default:
       reader.skipField();
@@ -8725,7 +8725,7 @@ proto.pulumirpc.RegisterStepRequest.serializeBinaryToWriter = function(message, 
       f
     );
   }
-  f = message.getJobpath();
+  f = message.getJobPath();
   if (f.length > 0) {
     writer.writeString(
       3,
@@ -8740,7 +8740,7 @@ proto.pulumirpc.RegisterStepRequest.serializeBinaryToWriter = function(message, 
       proto.pulumirpc.DependencyExpression.serializeBinaryToWriter
     );
   }
-  f = message.getHasonerror();
+  f = message.getHasOnError();
   if (f) {
     writer.writeBool(
       5,
@@ -8806,10 +8806,10 @@ proto.pulumirpc.RegisterStepRequest.prototype.setPath = function(value) {
 
 
 /**
- * optional string jobPath = 3;
+ * optional string job_path = 3;
  * @return {string}
  */
-proto.pulumirpc.RegisterStepRequest.prototype.getJobpath = function() {
+proto.pulumirpc.RegisterStepRequest.prototype.getJobPath = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
@@ -8818,7 +8818,7 @@ proto.pulumirpc.RegisterStepRequest.prototype.getJobpath = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.RegisterStepRequest} returns this
  */
-proto.pulumirpc.RegisterStepRequest.prototype.setJobpath = function(value) {
+proto.pulumirpc.RegisterStepRequest.prototype.setJobPath = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 
@@ -8861,10 +8861,10 @@ proto.pulumirpc.RegisterStepRequest.prototype.hasDependencies = function() {
 
 
 /**
- * optional bool hasOnError = 5;
+ * optional bool has_on_error = 5;
  * @return {boolean}
  */
-proto.pulumirpc.RegisterStepRequest.prototype.getHasonerror = function() {
+proto.pulumirpc.RegisterStepRequest.prototype.getHasOnError = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
 };
 
@@ -8873,7 +8873,7 @@ proto.pulumirpc.RegisterStepRequest.prototype.getHasonerror = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.RegisterStepRequest} returns this
  */
-proto.pulumirpc.RegisterStepRequest.prototype.setHasonerror = function(value) {
+proto.pulumirpc.RegisterStepRequest.prototype.setHasOnError = function(value) {
   return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
