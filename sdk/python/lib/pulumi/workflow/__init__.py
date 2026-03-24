@@ -34,7 +34,9 @@ from pulumi.runtime.sync_await import _sync_await
 from pulumi.runtime.proto import workflow_pb2
 from pulumi.runtime.proto import workflow_pb2_grpc
 
-OnErrorHandler = Callable[[List[workflow_pb2.ErrorRecord]], Union[bool, Tuple[bool, str], None]]
+OnErrorHandler = Callable[
+    [List[workflow_pb2.ErrorRecord]], Union[bool, Tuple[bool, str], None]
+]
 StepCallback = Callable[[], Any]
 JobCallback = Callable[..., None]
 GraphCallback = Callable[["Context"], None]
@@ -94,7 +96,9 @@ class Context:
         request = workflow_pb2.RegisterTriggerRequest()
         trigger_path = f"{self._state.graph_path}/{name}"
         if self._state.target_job_name is not None:
-            return _new_workflow_output(trigger_path, _workflow_input_value(self._state.context, trigger_path))
+            return _new_workflow_output(
+                trigger_path, _workflow_input_value(self._state.context, trigger_path)
+            )
         request.context.CopyFrom(self._state.context)
         request.path = trigger_path
         request.type = trigger_type
@@ -105,7 +109,9 @@ class Context:
             request.spec.CopyFrom(trigger_spec)
 
         self._state.monitor.RegisterTrigger(request)
-        return _new_workflow_output(trigger_path, _workflow_input_value(self._state.context, trigger_path))
+        return _new_workflow_output(
+            trigger_path, _workflow_input_value(self._state.context, trigger_path)
+        )
 
     def job(
         self,
@@ -124,7 +130,10 @@ class Context:
         def register(registered_fn: JobCallback) -> JobCallback:
             if not name:
                 raise WorkflowError("job name is required")
-            if self._state.target_job_name is not None and name != self._state.target_job_name:
+            if (
+                self._state.target_job_name is not None
+                and name != self._state.target_job_name
+            ):
                 return registered_fn
 
             job_path = f"{self._state.graph_path}/jobs/{name}"
@@ -133,11 +142,15 @@ class Context:
             request.context.CopyFrom(self._state.context)
             request.path = job_path
             request.has_on_error = on_error is not None
-            request.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
+            request.dependencies.operator = (
+                workflow_pb2.DependencyExpression.OPERATOR_ALL
+            )
             dependency_paths = set()
             if dependencies:
                 for dep in dependencies:
-                    dependency_paths.add(_normalize_job_dependency(self._state.graph_path, dep))
+                    dependency_paths.add(
+                        _normalize_job_dependency(self._state.graph_path, dep)
+                    )
             dependency_paths.update(_workflow_dependency_paths(inputs))
             for dep in sorted(dependency_paths):
                 term = request.dependencies.terms.add()
@@ -145,7 +158,9 @@ class Context:
 
             resolved_inputs = [_resolve_job_input(value) for value in inputs]
             self._state.monitor.RegisterJob(request)
-            self._state.jobs[job_path] = _JobDefinition(fn=registered_fn, on_error=on_error, inputs=resolved_inputs)
+            self._state.jobs[job_path] = _JobDefinition(
+                fn=registered_fn, on_error=on_error, inputs=resolved_inputs
+            )
             return registered_fn
 
         if fn is not None:
@@ -178,14 +193,18 @@ class JobContext:
             request.path = step_path
             request.job_path = self._state.job_path
             request.has_on_error = on_error is not None
-            request.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
+            request.dependencies.operator = (
+                workflow_pb2.DependencyExpression.OPERATOR_ALL
+            )
             if dependencies:
                 for dep in dependencies:
                     term = request.dependencies.terms.add()
                     term.path = _normalize_step_dependency(self._state.job_path, dep)
 
             self._state.monitor.RegisterStep(request)
-            self._state.steps[step_path] = _StepDefinition(fn=registered_fn, on_error=on_error)
+            self._state.steps[step_path] = _StepDefinition(
+                fn=registered_fn, on_error=on_error
+            )
             return registered_fn
 
         if fn is not None:
@@ -370,14 +389,18 @@ def _evaluate_graph(
         raise WorkflowError("graph monitor address is required")
 
     with contextlib.ExitStack() as stack:
-        graph_channel = stack.enter_context(grpc.insecure_channel(graph_monitor_address))
+        graph_channel = stack.enter_context(
+            grpc.insecure_channel(graph_monitor_address)
+        )
         monitor = workflow_pb2_grpc.GraphMonitorStub(graph_channel)
 
         register_graph = workflow_pb2.RegisterGraphRequest()
         register_graph.context.CopyFrom(context)
         register_graph.path = token
         register_graph.has_on_error = False
-        register_graph.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
+        register_graph.dependencies.operator = (
+            workflow_pb2.DependencyExpression.OPERATOR_ALL
+        )
         monitor.RegisterGraph(register_graph)
 
         jobs: Dict[str, _JobDefinition] = {}
@@ -405,16 +428,30 @@ def _evaluate_job(
         raise WorkflowError("graph monitor address is required")
 
     with contextlib.ExitStack() as stack:
-        graph_channel = stack.enter_context(grpc.insecure_channel(graph_monitor_address))
+        graph_channel = stack.enter_context(
+            grpc.insecure_channel(graph_monitor_address)
+        )
         monitor = workflow_pb2_grpc.GraphMonitorStub(graph_channel)
 
         steps: Dict[str, _StepDefinition] = {}
-        job.fn(JobContext(_JobEvalState(monitor=monitor, context=context, job_path=job_path, steps=steps)), *job.inputs)
+        job.fn(
+            JobContext(
+                _JobEvalState(
+                    monitor=monitor, context=context, job_path=job_path, steps=steps
+                )
+            ),
+            *job.inputs,
+        )
         return steps
 
 
 class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
-    def __init__(self, package_name: str, package_version: str, register: Callable[[WorkflowRegistry], None]) -> None:
+    def __init__(
+        self,
+        package_name: str,
+        package_version: str,
+        register: Callable[[WorkflowRegistry], None],
+    ) -> None:
         self._package_name = package_name
         self._package_version = package_version
 
@@ -466,7 +503,9 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         context: grpc.ServicerContext,
     ) -> workflow_pb2.GetGraphResponse:
         if request.token not in self._workflow_registry._graphs:
-            context.abort(grpc.StatusCode.NOT_FOUND, f"unknown graph token {request.token}")
+            context.abort(
+                grpc.StatusCode.NOT_FOUND, f"unknown graph token {request.token}"
+            )
         response = workflow_pb2.GetGraphResponse()
         response.graph.token = request.token
         response.graph.has_on_error = False
@@ -496,9 +535,13 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
     ) -> workflow_pb2.GenerateNodeResponse:
         graph_fn = self._workflow_registry._graphs.get(request.path)
         if graph_fn is None:
-            context.abort(grpc.StatusCode.NOT_FOUND, f"unknown graph path {request.path}")
+            context.abort(
+                grpc.StatusCode.NOT_FOUND, f"unknown graph path {request.path}"
+            )
 
-        jobs = _evaluate_graph(request.path, graph_fn, request.context, request.graph_monitor_address)
+        jobs = _evaluate_graph(
+            request.path, graph_fn, request.context, request.graph_monitor_address
+        )
         self._jobs_by_path.update(jobs)
         return workflow_pb2.GenerateNodeResponse()
 
@@ -508,11 +551,15 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         context: grpc.ServicerContext,
     ) -> workflow_pb2.GenerateNodeResponse:
         if not request.graph_monitor_address:
-            context.abort(grpc.StatusCode.INVALID_ARGUMENT, "graph_monitor_address is required")
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT, "graph_monitor_address is required"
+            )
 
         segments = request.path.split("/jobs/", 1)
         if len(segments) != 2 or not segments[0] or not segments[1]:
-            context.abort(grpc.StatusCode.INVALID_ARGUMENT, f"invalid job path {request.path}")
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT, f"invalid job path {request.path}"
+            )
         graph_path = segments[0]
         job_name = segments[1].split("/", 1)[0]
 
@@ -533,7 +580,9 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         if job is None:
             context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job path {request.path}")
 
-        steps = _evaluate_job(request.path, job, request.context, request.graph_monitor_address)
+        steps = _evaluate_job(
+            request.path, job, request.context, request.graph_monitor_address
+        )
         self._steps_by_path.update(steps)
         return workflow_pb2.GenerateNodeResponse()
 
@@ -544,7 +593,9 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
     ) -> workflow_pb2.RunStepResponse:
         step = self._steps_by_path.get(request.path)
         if step is None:
-            context.abort(grpc.StatusCode.NOT_FOUND, f"unknown step path {request.path}")
+            context.abort(
+                grpc.StatusCode.NOT_FOUND, f"unknown step path {request.path}"
+            )
 
         response = workflow_pb2.RunStepResponse()
         try:
@@ -587,7 +638,11 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         return response
 
 
-def run(package_name: str, package_version: str, register: Callable[[WorkflowRegistry], None]) -> None:
+def run(
+    package_name: str,
+    package_version: str,
+    register: Callable[[WorkflowRegistry], None],
+) -> None:
     """Runs a WorkflowEvaluator gRPC server and prints the bound port on stdout."""
 
     if not package_name:
