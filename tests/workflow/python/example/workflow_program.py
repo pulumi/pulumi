@@ -1,8 +1,9 @@
 import pulumi.workflow as workflow
 import random
 import string
+import dateparser
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import timezone
 from typing import Any
 
 @dataclass
@@ -50,7 +51,9 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
     def cron_trigger_mock(args: list[str]) -> CronTriggerOutput:
         if len(args) != 1:
             raise ValueError("cron trigger expects exactly one arg: timestamp")
-        timestamp = datetime.fromisoformat(args[0])
+        timestamp = dateparser.parse(args[0])
+        if timestamp is None:
+            raise ValueError(f"could not parse timestamp arg: {args[0]}")
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         return CronTriggerOutput(timestamp=timestamp.isoformat())
