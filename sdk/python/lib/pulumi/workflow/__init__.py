@@ -78,6 +78,7 @@ class _EvalState:
     monitor: workflow_pb2_grpc.GraphMonitorStub
     context: workflow_pb2.WorkflowContext
     graph_path: str
+    registry: "WorkflowRegistry"
     jobs: Dict[str, _JobDefinition]
     filters: Dict[str, FilterCallback]
     target_job_name: Optional[str]
@@ -116,7 +117,7 @@ class Context:
             )
         request.context.CopyFrom(self._state.context)
         request.path = trigger_path
-        request.type = trigger_type
+        request.type = self._state.registry.resolve_trigger_token(trigger_type)
         request.has_filter = filter_fn is not None
         if spec is not None:
             trigger_spec = struct_pb2.Struct()
@@ -241,7 +242,8 @@ class TriggerOptions:
 class WorkflowRegistry:
     """Collects exported workflow components before evaluation."""
 
-    def __init__(self) -> None:
+    def __init__(self, package_name: str) -> None:
+        self._package_name = package_name
         self._graphs: Dict[str, GraphCallback] = {}
         self._triggers: Dict[str, _TriggerDefinition] = {}
 
@@ -271,8 +273,9 @@ class WorkflowRegistry:
         """Registers an exported trigger by token with typed input/output and mock behavior."""
         if not token:
             raise WorkflowError("trigger token is required")
-        if token in self._triggers:
-            raise WorkflowError(f"trigger '{token}' is already registered")
+        resolved_token = self.resolve_trigger_token(token)
+        if resolved_token in self._triggers:
+            raise WorkflowError(f"trigger '{resolved_token}' is already registered")
         if not callable(mock):
             raise WorkflowError("trigger mock must be callable")
 
@@ -280,12 +283,18 @@ class WorkflowRegistry:
         output_type = _mock_return_type(mock)
         _validate_record_type(output_type, "trigger output type")
 
-        self._triggers[token] = _TriggerDefinition(
-            token=token,
+        self._triggers[resolved_token] = _TriggerDefinition(
+            token=resolved_token,
             input_type=input_type,
             output_type=output_type,
             mock=mock,
         )
+
+    def resolve_trigger_token(self, token: str) -> str:
+        if token in self._triggers:
+            return token
+        qualified = _qualify_trigger_token(self._package_name, token)
+        return qualified
 
 
 def _normalize_job_dependency(graph_path: str, dependency: str) -> str:
@@ -369,6 +378,12 @@ def _type_token(record_type: Type[Any]) -> str:
     return f"{record_type.__module__}.{record_type.__qualname__}"
 
 
+def _qualify_trigger_token(package_name: str, token: str) -> str:
+    if ":" in token:
+        return token
+    return f"{package_name}:index:{token}"
+
+
 def _from_proto_value(value: struct_pb2.Value) -> Any:
     kind = value.WhichOneof("kind")
     if kind == "null_value":
@@ -450,6 +465,7 @@ def _ensure_event_loop() -> None:
 
 def _evaluate_graph(
     token: str,
+    registry: WorkflowRegistry,
     graph_fn: GraphCallback,
     context: workflow_pb2.WorkflowContext,
     graph_monitor_address: str,
@@ -481,6 +497,7 @@ def _evaluate_graph(
                     monitor=monitor,
                     context=context,
                     graph_path=token,
+                    registry=registry,
                     jobs=jobs,
                     filters=filters,
                     target_job_name=target_job_name,
@@ -527,7 +544,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         self._package_name = package_name
         self._package_version = package_version
 
-        self._workflow_registry = WorkflowRegistry()
+        self._workflow_registry = WorkflowRegistry(package_name)
         register(self._workflow_registry)
 
         self._jobs_by_path: Dict[str, _JobDefinition] = {}
@@ -610,7 +627,8 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         request: workflow_pb2.GetTriggerRequest,
         context: grpc.ServicerContext,
     ) -> workflow_pb2.GetTriggerResponse:
-        trigger = self._workflow_registry._triggers.get(request.token)
+        resolved_token = self._workflow_registry.resolve_trigger_token(request.token)
+        trigger = self._workflow_registry._triggers.get(resolved_token)
         if trigger is None:
             context.abort(
                 grpc.StatusCode.NOT_FOUND, f"unknown trigger token {request.token}"
@@ -635,7 +653,8 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         request: workflow_pb2.RunTriggerMockRequest,
         context: grpc.ServicerContext,
     ) -> workflow_pb2.RunTriggerMockResponse:
-        trigger = self._workflow_registry._triggers.get(request.token)
+        resolved_token = self._workflow_registry.resolve_trigger_token(request.token)
+        trigger = self._workflow_registry._triggers.get(resolved_token)
         if trigger is None:
             context.abort(
                 grpc.StatusCode.NOT_FOUND, f"unknown trigger token {request.token}"
@@ -666,7 +685,11 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             )
 
         jobs, filters = _evaluate_graph(
-            request.path, graph_fn, request.context, request.graph_monitor_address
+            request.path,
+            self._workflow_registry,
+            graph_fn,
+            request.context,
+            request.graph_monitor_address,
         )
         self._jobs_by_path.update(jobs)
         self._filters_by_path.update(filters)
@@ -696,6 +719,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
 
         jobs, filters = _evaluate_graph(
             graph_path,
+            self._workflow_registry,
             graph_fn,
             request.context,
             request.graph_monitor_address,

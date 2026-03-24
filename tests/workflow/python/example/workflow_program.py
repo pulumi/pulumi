@@ -5,9 +5,6 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-CRON_TRIGGER_TOKEN = "example:index:CronTrigger"
-
-
 @dataclass
 class CronTriggerInput:
     schedule: str
@@ -27,7 +24,7 @@ def main_graph(ctx: workflow.Context) -> None:
 
     trigger_output = ctx.trigger(
         "every-minute",
-        CRON_TRIGGER_TOKEN,
+        "cron",
         CronTriggerInput(schedule="* * * * *", timezone="UTC"),
         options=workflow.TriggerOptions(filter=cron_filter),
     )
@@ -59,7 +56,7 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
         return CronTriggerOutput(timestamp=timestamp.isoformat())
 
     registry.trigger(
-        CRON_TRIGGER_TOKEN,
+        "cron",
         CronTriggerInput,
         cron_trigger_mock,
     )
