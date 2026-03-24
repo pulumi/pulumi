@@ -427,12 +427,10 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         response = workflow_pb2.RunStepResponse()
         try:
             result = step.fn()
-            response.result.known = True
-            response.result.value.CopyFrom(_to_proto_value(result))
+            response.result.CopyFrom(_to_proto_value(result))
         except Exception as error:  # pylint: disable=broad-except
             response.error.reason = str(error)
             response.error.category = "step_failed"
-            response.result.known = False
         return response
 
     def RunOnError(

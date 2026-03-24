@@ -431,38 +431,6 @@ export namespace WorkflowError {
     }
 }
 
-export class WorkflowValue extends jspb.Message { 
-    getKnown(): boolean;
-    setKnown(value: boolean): WorkflowValue;
-
-    hasValue(): boolean;
-    clearValue(): void;
-    getValue(): google_protobuf_struct_pb.Value | undefined;
-    setValue(value?: google_protobuf_struct_pb.Value): WorkflowValue;
-
-    hasError(): boolean;
-    clearError(): void;
-    getError(): WorkflowError | undefined;
-    setError(value?: WorkflowError): WorkflowValue;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): WorkflowValue.AsObject;
-    static toObject(includeInstance: boolean, msg: WorkflowValue): WorkflowValue.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: WorkflowValue, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): WorkflowValue;
-    static deserializeBinaryFromReader(message: WorkflowValue, reader: jspb.BinaryReader): WorkflowValue;
-}
-
-export namespace WorkflowValue {
-    export type AsObject = {
-        known: boolean,
-        value?: google_protobuf_struct_pb.Value.AsObject,
-        error?: WorkflowError.AsObject,
-    }
-}
-
 export class DependencyTerm extends jspb.Message { 
 
     hasPath(): boolean;
@@ -718,8 +686,8 @@ export class RunSensorRequest extends jspb.Message {
 
     hasCursor(): boolean;
     clearCursor(): void;
-    getCursor(): WorkflowValue | undefined;
-    setCursor(value?: WorkflowValue): RunSensorRequest;
+    getCursor(): google_protobuf_struct_pb.Value | undefined;
+    setCursor(value?: google_protobuf_struct_pb.Value): RunSensorRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunSensorRequest.AsObject;
@@ -735,7 +703,7 @@ export namespace RunSensorRequest {
     export type AsObject = {
         context?: WorkflowContext.AsObject,
         path: string,
-        cursor?: WorkflowValue.AsObject,
+        cursor?: google_protobuf_struct_pb.Value.AsObject,
     }
 }
 
@@ -750,13 +718,13 @@ export class RunSensorResponse extends jspb.Message {
 
     hasCursor(): boolean;
     clearCursor(): void;
-    getCursor(): WorkflowValue | undefined;
-    setCursor(value?: WorkflowValue): RunSensorResponse;
+    getCursor(): google_protobuf_struct_pb.Value | undefined;
+    setCursor(value?: google_protobuf_struct_pb.Value): RunSensorResponse;
 
     hasEvent(): boolean;
     clearEvent(): void;
-    getEvent(): WorkflowValue | undefined;
-    setEvent(value?: WorkflowValue): RunSensorResponse;
+    getEvent(): google_protobuf_struct_pb.Value | undefined;
+    setEvent(value?: google_protobuf_struct_pb.Value): RunSensorResponse;
     getNextInterval(): string;
     setNextInterval(value: string): RunSensorResponse;
 
@@ -774,8 +742,8 @@ export namespace RunSensorResponse {
     export type AsObject = {
         error?: WorkflowError.AsObject,
         decision: RunSensorResponse.Decision,
-        cursor?: WorkflowValue.AsObject,
-        event?: WorkflowValue.AsObject,
+        cursor?: google_protobuf_struct_pb.Value.AsObject,
+        event?: google_protobuf_struct_pb.Value.AsObject,
         nextInterval: string,
     }
 
@@ -822,8 +790,8 @@ export class RunStepResponse extends jspb.Message {
 
     hasResult(): boolean;
     clearResult(): void;
-    getResult(): WorkflowValue | undefined;
-    setResult(value?: WorkflowValue): RunStepResponse;
+    getResult(): google_protobuf_struct_pb.Value | undefined;
+    setResult(value?: google_protobuf_struct_pb.Value): RunStepResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunStepResponse.AsObject;
@@ -838,7 +806,7 @@ export class RunStepResponse extends jspb.Message {
 export namespace RunStepResponse {
     export type AsObject = {
         error?: WorkflowError.AsObject,
-        result?: WorkflowValue.AsObject,
+        result?: google_protobuf_struct_pb.Value.AsObject,
     }
 }
 
@@ -1242,8 +1210,8 @@ export class RegisterNodeResponse extends jspb.Message {
 
     hasValue(): boolean;
     clearValue(): void;
-    getValue(): WorkflowValue | undefined;
-    setValue(value?: WorkflowValue): RegisterNodeResponse;
+    getValue(): google_protobuf_struct_pb.Value | undefined;
+    setValue(value?: google_protobuf_struct_pb.Value): RegisterNodeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterNodeResponse.AsObject;
@@ -1257,6 +1225,6 @@ export class RegisterNodeResponse extends jspb.Message {
 
 export namespace RegisterNodeResponse {
     export type AsObject = {
-        value?: WorkflowValue.AsObject,
+        value?: google_protobuf_struct_pb.Value.AsObject,
     }
 }

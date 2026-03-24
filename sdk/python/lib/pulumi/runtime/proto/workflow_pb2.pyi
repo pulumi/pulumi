@@ -381,37 +381,6 @@ class WorkflowError(google.protobuf.message.Message):
 global___WorkflowError = WorkflowError
 
 @typing.final
-class WorkflowValue(google.protobuf.message.Message):
-    """WorkflowValue transports PropertyValue-like payloads."""
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    KNOWN_FIELD_NUMBER: builtins.int
-    VALUE_FIELD_NUMBER: builtins.int
-    ERROR_FIELD_NUMBER: builtins.int
-    known: builtins.bool
-    """If false, value is unknown (like preview-time unknowns in IaC)."""
-    @property
-    def value(self) -> google.protobuf.struct_pb2.Value:
-        """The value encoded as protobuf Value/Struct/List/scalar."""
-
-    @property
-    def error(self) -> global___WorkflowError:
-        """If set, this value is faulted and downstream consumers should treat it as failed."""
-
-    def __init__(
-        self,
-        *,
-        known: builtins.bool = ...,
-        value: google.protobuf.struct_pb2.Value | None = ...,
-        error: global___WorkflowError | None = ...,
-    ) -> None: ...
-    def HasField(self, field_name: typing.Literal["error", b"error", "value", b"value"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["error", b"error", "known", b"known", "value", b"value"]) -> None: ...
-
-global___WorkflowValue = WorkflowValue
-
-@typing.final
 class DependencyTerm(google.protobuf.message.Message):
     """A dependency term can be a direct path or a nested dependency expression."""
 
@@ -645,7 +614,7 @@ class RunSensorRequest(google.protobuf.message.Message):
     @property
     def context(self) -> global___WorkflowContext: ...
     @property
-    def cursor(self) -> global___WorkflowValue:
+    def cursor(self) -> google.protobuf.struct_pb2.Value:
         """Last persisted sensor cursor."""
 
     def __init__(
@@ -653,7 +622,7 @@ class RunSensorRequest(google.protobuf.message.Message):
         *,
         context: global___WorkflowContext | None = ...,
         path: builtins.str = ...,
-        cursor: global___WorkflowValue | None = ...,
+        cursor: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["context", b"context", "cursor", b"cursor"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing.Literal["context", b"context", "cursor", b"cursor", "path", b"path"]) -> None: ...
@@ -693,11 +662,11 @@ class RunSensorResponse(google.protobuf.message.Message):
         """Non-empty error indicates poll failure."""
 
     @property
-    def cursor(self) -> global___WorkflowValue:
+    def cursor(self) -> google.protobuf.struct_pb2.Value:
         """Updated cursor to persist before the next poll."""
 
     @property
-    def event(self) -> global___WorkflowValue:
+    def event(self) -> google.protobuf.struct_pb2.Value:
         """Trigger payload emitted when decision is FIRE."""
 
     def __init__(
@@ -705,8 +674,8 @@ class RunSensorResponse(google.protobuf.message.Message):
         *,
         error: global___WorkflowError | None = ...,
         decision: global___RunSensorResponse.Decision.ValueType = ...,
-        cursor: global___WorkflowValue | None = ...,
-        event: global___WorkflowValue | None = ...,
+        cursor: google.protobuf.struct_pb2.Value | None = ...,
+        event: google.protobuf.struct_pb2.Value | None = ...,
         next_interval: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["cursor", b"cursor", "error", b"error", "event", b"event"]) -> builtins.bool: ...
@@ -743,12 +712,12 @@ class RunStepResponse(google.protobuf.message.Message):
     @property
     def error(self) -> global___WorkflowError: ...
     @property
-    def result(self) -> global___WorkflowValue: ...
+    def result(self) -> google.protobuf.struct_pb2.Value: ...
     def __init__(
         self,
         *,
         error: global___WorkflowError | None = ...,
-        result: global___WorkflowValue | None = ...,
+        result: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["error", b"error", "result", b"result"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing.Literal["error", b"error", "result", b"result"]) -> None: ...
@@ -1084,13 +1053,13 @@ class RegisterNodeResponse(google.protobuf.message.Message):
 
     VALUE_FIELD_NUMBER: builtins.int
     @property
-    def value(self) -> global___WorkflowValue:
+    def value(self) -> google.protobuf.struct_pb2.Value:
         """Current state for the node if known in the provided execution state."""
 
     def __init__(
         self,
         *,
-        value: global___WorkflowValue | None = ...,
+        value: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing.Literal["value", b"value"]) -> None: ...

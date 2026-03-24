@@ -179,18 +179,6 @@ message WorkflowError {
     google.protobuf.Struct details = 3;
 }
 
-// WorkflowValue transports PropertyValue-like payloads.
-message WorkflowValue {
-    // If false, value is unknown (like preview-time unknowns in IaC).
-    bool known = 1;
-
-    // The value encoded as protobuf Value/Struct/List/scalar.
-    google.protobuf.Value value = 2;
-
-    // If set, this value is faulted and downstream consumers should treat it as failed.
-    WorkflowError error = 3;
-}
-
 // A dependency term can be a direct path or a nested dependency expression.
 message DependencyTerm {
     oneof term {
@@ -275,7 +263,7 @@ message RunSensorRequest {
     string path = 2;
 
     // Last persisted sensor cursor.
-    WorkflowValue cursor = 3;
+    google.protobuf.Value cursor = 3;
 }
 
 message RunSensorResponse {
@@ -292,10 +280,10 @@ message RunSensorResponse {
     Decision decision = 2;
 
     // Updated cursor to persist before the next poll.
-    WorkflowValue cursor = 3;
+    google.protobuf.Value cursor = 3;
 
     // Trigger payload emitted when decision is FIRE.
-    WorkflowValue event = 4;
+    google.protobuf.Value event = 4;
 
     // Optional scheduler hint for next poll cadence (e.g. "30s").
     string next_interval = 5;
@@ -308,7 +296,7 @@ message RunStepRequest {
 
 message RunStepResponse {
     WorkflowError error = 1;
-    WorkflowValue result = 2;
+    google.protobuf.Value result = 2;
 }
 
 message StepResult {
@@ -411,5 +399,5 @@ message RegisterStepRequest {
 
 message RegisterNodeResponse {
     // Current state for the node if known in the provided execution state.
-    WorkflowValue value = 1;
+    google.protobuf.Value value = 1;
 }
