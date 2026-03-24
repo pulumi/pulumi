@@ -1,6 +1,7 @@
 import pulumi.workflow as workflow
 import random
 import string
+from typing import Any
 
 
 def main_graph(ctx: workflow.Context) -> None:
@@ -21,10 +22,10 @@ def main_graph(ctx: workflow.Context) -> None:
             return "".join(random.choices(string.ascii_lowercase + string.digits, k=12))
 
     @ctx.job("from-trigger", trigger_output)
-    def from_trigger_job(job: workflow.JobContext, cron: object) -> None:
+    def from_trigger_job(job: workflow.JobContext, cron: Any) -> None:
         @job.step("consume")
         def consume_step() -> str:
-            print(f"consuming trigger {trigger_output.path}: {cron}", flush=True)
+            print(f"consuming trigger payload: {cron}", flush=True)
             if isinstance(cron, dict) and "triggerPath" in cron:
                 return str(cron["triggerPath"])
             return str(cron)
