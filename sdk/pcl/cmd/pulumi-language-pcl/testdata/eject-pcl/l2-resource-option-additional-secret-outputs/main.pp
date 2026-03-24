@@ -1,7 +1,7 @@
 resource "withSecret" "simple:index:Resource" {
     value = true
     options {
-        additionalSecretOutputs = ["value"]
+        additionalSecretOutputs = [value]
     }
 }
 

@@ -213,8 +213,9 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("pulumi#21830: Expected to fail")
 					}
 
-					if config.typechecker == "pyright" && tt == "l3-component-simple" {
-						t.Skip("Skipping l3-component-simple test with pyright due to issues with optional properties")
+					if config.typechecker == "pyright" &&
+						(tt == "l3-component-simple" || tt == "l3-rewrite-conversions") {
+						t.Skipf("Skipping %s test with pyright due to issues with optional properties", tt)
 					}
 
 					if config.name == "classes" && tt == "l2-snake-names" {

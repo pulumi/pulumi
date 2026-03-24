@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Allow setting a GRPC endpoint for performance tests

@@ -415,7 +415,7 @@ func renderDiff(
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options,
 ) {
-	indent := getIndent(metadata, seen)
+	indent := getIndent(metadata, seen, opts)
 	summary := getResourcePropertiesSummary(metadata, indent)
 
 	var details string
@@ -505,7 +505,7 @@ func renderDiffResourceOutputsEvent(
 		// * As with other `--show-sames`-related checks, we always display the root stack.
 		// * If we have been asked to suppress outputs (e.g., because they contain sensitive information), then we will not
 		//   display them.
-		indent := getIndent(payload.Metadata, seen)
+		indent := getIndent(payload.Metadata, seen, opts)
 
 		text := getResourceOutputsPropertiesString(
 			payload.Metadata,

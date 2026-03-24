@@ -62,6 +62,20 @@ func TracingServerInterceptorOptions(parentSpan opentracing.Span, options ...otg
 	}
 }
 
+// OTelServerInterceptorOptions configures gRPC server interceptors with only OpenTelemetry tracing.
+func OTelServerInterceptorOptions() []grpc.ServerOption {
+	return []grpc.ServerOption{
+		grpc.ChainUnaryInterceptor(
+			otelUnaryServerInterceptor(),
+			stackTraceUnaryServerInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			otelStreamServerInterceptor(),
+			stackTraceStreamServerInterceptor(),
+		),
+	}
+}
+
 // Configures gRPC clients with OpenTracing and OpenTelemetry interceptors.
 func TracingInterceptorDialOptions(opts ...otgrpc.Option) []grpc.DialOption {
 	return []grpc.DialOption{
@@ -349,6 +363,9 @@ func otelStreamClientInterceptor() grpc.StreamClientInterceptor {
 func startClientSpan(ctx context.Context, method, target string) (context.Context, trace.Span) {
 	// Parse method name: "/package.Service/Method" -> "package.Service/Method"
 	name := strings.TrimPrefix(method, "/")
+	if name == "" {
+		name = "<empty method>"
+	}
 
 	var attrs []attribute.KeyValue
 	if idx := strings.LastIndex(name, "/"); idx >= 0 {
@@ -390,7 +407,9 @@ type trackedClientStream struct {
 
 func (s *trackedClientStream) RecvMsg(m any) error {
 	err := s.ClientStream.RecvMsg(m)
-	if err != nil && err != io.EOF {
+	if err == io.EOF {
+		s.span.End()
+	} else if err != nil {
 		setSpanStatus(s.span, err)
 		s.span.End()
 	}

@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/pkg/v3
 
-go 1.25.6
+go 1.25.8
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
@@ -97,6 +97,7 @@ require (
 	github.com/spf13/afero v1.9.5
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e
 	go.opentelemetry.io/otel v1.42.0
+	go.opentelemetry.io/otel/bridge/opentracing v1.33.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.42.0
 	go.opentelemetry.io/otel/sdk v1.42.0
 	go.opentelemetry.io/otel/trace v1.42.0

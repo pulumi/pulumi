@@ -205,7 +205,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		}
 
 		var conn *grpc.ClientConn
-		conn, handshakeRes, err = dialPlugin(port, pkg.String(), prefix,
+		conn, handshakeRes, err = dialPlugin(ctx.Base(), port, pkg.String(), prefix,
 			handshake, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err

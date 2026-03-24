@@ -837,7 +837,10 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 		return client, nil
 	}
 
-	dialOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if rm.grpcDialOptions != nil {
 		opts := rm.grpcDialOptions(map[string]any{
 			"mode": "client",

@@ -17,8 +17,10 @@ package pcl_test
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -1242,5 +1244,93 @@ resource "ptfeServiceRecord" "aws:route53/record:Record" {
 		expr, diags := pcl.RewriteApplies(value, nameInfo(0), false)
 		require.False(t, diags.HasErrors(), "there are no diagnostics")
 		require.NotNil(t, expr, "the expression is not nil")
+	}
+}
+
+func TestComponentInputTypeMismatchGivesError(t *testing.T) {
+	t.Parallel()
+
+	// Create a temp dir with a component that declares a number input, and a main
+	// program that passes a list (NoConversion from list to number).
+	dir := t.TempDir()
+	componentDir := filepath.Join(dir, "myComponent")
+	require.NoError(t, os.MkdirAll(componentDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(componentDir, "main.pp"),
+		[]byte("config myInput number { }"),
+		0o600))
+
+	mainSource := `
+component myComp "./myComponent" {
+    myInput = [1, 2, 3]
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(mainSource), "main.pp")
+	require.NoError(t, err)
+	require.False(t, parser.Diagnostics.HasErrors())
+
+	absDir, err := filepath.Abs(dir)
+	require.NoError(t, err)
+
+	_, diags, _ := pcl.BindProgram(parser.Files,
+		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.DirPath(absDir),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+
+	require.True(t, diags.HasErrors(), "expected a type error for mismatched component input type")
+}
+
+func TestRewriteConversionsOnComponentInputs(t *testing.T) {
+	t.Parallel()
+
+	// Create a component that declares a number input, and a main program that passes a string for it — an
+	// valid conversion. RewriteConversions should rewrite the literal when given the correct target type,
+	// which is obtained via Component.InputType.
+	dir := t.TempDir()
+	componentDir := filepath.Join(dir, "myComponent")
+	require.NoError(t, os.MkdirAll(componentDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(componentDir, "main.pp"),
+		[]byte(`config myInput number { }`),
+		0o600))
+
+	mainSource := `
+component myComp "./myComponent" {
+    myInput = "42.5"
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(mainSource), "main.pp")
+	require.NoError(t, err)
+	require.False(t, parser.Diagnostics.HasErrors())
+
+	absDir, err := filepath.Abs(dir)
+	require.NoError(t, err)
+
+	program, diags, bindErr := pcl.BindProgram(parser.Files,
+		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.DirPath(absDir),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+	require.NoError(t, bindErr)
+	require.False(t, diags.HasErrors())
+	require.NotNil(t, program)
+
+	var component *pcl.Component
+	for _, node := range program.Nodes {
+		if c, ok := node.(*pcl.Component); ok && c.Name() == "myComp" {
+			component = c
+			break
+		}
+	}
+	require.NotNil(t, component, "expected a component named myComp")
+
+	for _, attr := range component.Inputs {
+		targetType := component.InputType.(*model.ObjectType).Properties[attr.Name]
+		require.NotNil(t, targetType, "expected a target type for input %q", attr.Name)
+
+		expr, convertDiags := pcl.RewriteConversions(attr.Value, model.InputType(targetType))
+		require.False(t, convertDiags.HasErrors())
+		require.Equal(t, " 42.5\n", fmt.Sprintf("%v", expr))
 	}
 }
