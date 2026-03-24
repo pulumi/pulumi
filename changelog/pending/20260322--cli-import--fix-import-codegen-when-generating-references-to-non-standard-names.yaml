@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/import
+  description: Fix import codegen when generating references to non-standard names

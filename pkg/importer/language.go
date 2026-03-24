@@ -125,15 +125,19 @@ func sanitizeName(name string) string {
 func createImportState(states []*resource.State, snapshot []*resource.State, names NameTable) ImportState {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for _, state := range states {
+		// Ensure all names are sanitized, at this point
+		name := state.URN.Name()
+		if mappedName, ok := names[state.URN]; ok {
+			name = mappedName
+		}
+		name = sanitizeName(name)
+		names[state.URN] = name
+
 		resourceID := state.ID.String()
 		if resourceID == "" {
 			continue
 		}
 
-		name := state.URN.Name()
-		if mappedName, ok := names[state.URN]; ok {
-			name = mappedName
-		}
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
 			Root:  name,
 			Value: resourceID,
@@ -283,6 +287,10 @@ func GenerateLanguageDefinitions(
 		}
 
 		return pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+	}
+
+	if names == nil {
+		names = NameTable{}
 	}
 
 	importState := createImportState(states, snapshot, names)
