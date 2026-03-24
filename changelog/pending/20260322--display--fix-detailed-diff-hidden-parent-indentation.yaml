@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: display
+  description: Fix detailed diff indentation so changed resources are not visually nested under unrelated visible resources when unchanged parents are hidden.
