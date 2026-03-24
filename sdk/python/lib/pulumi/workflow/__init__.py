@@ -23,12 +23,13 @@ from __future__ import annotations
 import contextlib
 from concurrent import futures
 from dataclasses import dataclass
+import asyncio
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import grpc
-import pulumi
 from google.protobuf import json_format
 from google.protobuf import struct_pb2
+from pulumi.output import Output as PulumiOutput
 from pulumi.runtime.sync_await import _sync_await
 
 from pulumi.runtime.proto import workflow_pb2
@@ -40,11 +41,10 @@ OnErrorHandler = Callable[
 StepCallback = Callable[[], Any]
 JobCallback = Callable[..., None]
 GraphCallback = Callable[["Context"], None]
-Output = pulumi.Output[Any]
+Output = PulumiOutput[Any]
 
 _WORKFLOW_OUTPUT_PATHS_ATTR = "_pulumi_workflow_output_paths"
 _WORKFLOW_OUTPUT_VALUE_ATTR = "_pulumi_workflow_output_value"
-_OUTPUT_PATCHED = False
 
 
 @dataclass
@@ -90,7 +90,7 @@ class Context:
         spec: Optional[Dict[str, Any]] = None,
         *,
         has_filter: bool = False,
-    ) -> pulumi.Output[Any]:
+    ) -> PulumiOutput[Any]:
         """Registers a trigger in the current graph."""
 
         request = workflow_pb2.RegisterTriggerRequest()
@@ -302,7 +302,7 @@ def _workflow_input_value(context: workflow_pb2.WorkflowContext, path: str) -> A
 
 
 def _workflow_output_paths(value: Any) -> Set[str]:
-    if not isinstance(value, pulumi.Output):
+    if not isinstance(value, PulumiOutput):
         return set()
     paths = getattr(value, _WORKFLOW_OUTPUT_PATHS_ATTR, None)
     if paths is None:
@@ -311,7 +311,7 @@ def _workflow_output_paths(value: Any) -> Set[str]:
 
 
 def _is_workflow_output(value: Any) -> bool:
-    return isinstance(value, pulumi.Output) and len(_workflow_output_paths(value)) > 0
+    return isinstance(value, PulumiOutput) and len(_workflow_output_paths(value)) > 0
 
 
 def _workflow_dependency_paths(values: List[Any]) -> Set[str]:
@@ -321,61 +321,38 @@ def _workflow_dependency_paths(values: List[Any]) -> Set[str]:
     return paths
 
 
-def _new_workflow_output(path: str, value: Any) -> pulumi.Output[Any]:
-    output = pulumi.Output.from_input(value)
+def _new_workflow_output(path: str, value: Any) -> PulumiOutput[Any]:
+    _ensure_event_loop()
+    output = PulumiOutput.from_input(value)
     setattr(output, _WORKFLOW_OUTPUT_PATHS_ATTR, {path})
     setattr(output, _WORKFLOW_OUTPUT_VALUE_ATTR, value)
     return output
 
 
 def _resolve_job_input(value: Any) -> Any:
-    if isinstance(value, pulumi.Output):
+    if isinstance(value, PulumiOutput):
         if not _is_workflow_output(value):
             raise WorkflowError(
                 "workflow jobs may only accept workflow outputs; resource outputs are not supported"
             )
         if hasattr(value, _WORKFLOW_OUTPUT_VALUE_ATTR):
             return getattr(value, _WORKFLOW_OUTPUT_VALUE_ATTR)
+        _ensure_event_loop()
         return _sync_await(value.future(with_unknowns=True))
     return value
 
 
-def _patch_output_apis_for_workflow() -> None:
-    global _OUTPUT_PATCHED
-    if _OUTPUT_PATCHED:
+def _ensure_event_loop() -> None:
+    try:
+        asyncio.get_running_loop()
         return
+    except RuntimeError:
+        pass
 
-    original_all = pulumi.Output.all
-    original_apply = pulumi.Output.apply
-
-    def workflow_safe_all(*args: Any, **kwargs: Any) -> pulumi.Output[Any]:
-        values = list(args) + list(kwargs.values())
-        has_workflow_output = any(_is_workflow_output(v) for v in values)
-        has_nonworkflow_output = any(
-            isinstance(v, pulumi.Output) and not _is_workflow_output(v) for v in values
-        )
-        if has_workflow_output and has_nonworkflow_output:
-            raise WorkflowError("cannot mix workflow outputs with resource outputs")
-
-        result = original_all(*args, **kwargs)
-        if has_workflow_output:
-            paths = _workflow_dependency_paths(values)
-            setattr(result, _WORKFLOW_OUTPUT_PATHS_ATTR, paths)
-        return result
-
-    def workflow_safe_apply(
-        self: pulumi.Output[Any],
-        func: Callable[[Any], Any],
-        run_with_unknowns: bool = False,
-    ) -> pulumi.Output[Any]:
-        result = original_apply(self, func, run_with_unknowns)
-        if _is_workflow_output(self):
-            setattr(result, _WORKFLOW_OUTPUT_PATHS_ATTR, _workflow_output_paths(self))
-        return result
-
-    pulumi.Output.all = staticmethod(workflow_safe_all)  # type: ignore[assignment]
-    pulumi.Output.apply = workflow_safe_apply  # type: ignore[assignment]
-    _OUTPUT_PATCHED = True
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
 
 
 def _evaluate_graph(
@@ -649,8 +626,6 @@ def run(
         raise WorkflowError("package_name is required")
     if not package_version:
         raise WorkflowError("package_version is required")
-
-    _patch_output_apis_for_workflow()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
     workflow_pb2_grpc.add_WorkflowEvaluatorServicer_to_server(
