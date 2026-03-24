@@ -25,7 +25,9 @@ func main() {
 				"env": pulumi.String("prod"),
 			},
 		}, pulumi.IgnoreChanges([]string{
-			"tags.env",
+			"tags[\"env\"]",
+			"tags[\"with.dot\"]",
+			"tags[\"with escaped \\\"\"]",
 		}))
 		if err != nil {
 			return err

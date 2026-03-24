@@ -43,7 +43,11 @@ func init() {
 					assert.Equal(l, []string{"details[0].key"}, receiverIgnore.IgnoreChanges)
 
 					mapIgnore := RequireSingleNamedResource(l, snap.Resources, "mapIgnore")
-					assert.Equal(l, []string{"tags.env"}, mapIgnore.IgnoreChanges)
+					assert.Equal(l, []string{
+						`tags["env"]`,
+						`tags["with.dot"]`,
+						`tags["with escaped \""]`,
+					}, mapIgnore.IgnoreChanges)
 
 					noIgnore := RequireSingleNamedResource(l, snap.Resources, "noIgnore")
 					assert.Empty(l, noIgnore.IgnoreChanges)

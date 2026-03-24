@@ -10,6 +10,10 @@ const receiverIgnore = new nestedobject.Receiver("receiverIgnore", {details: [{
 const mapIgnore = new nestedobject.MapContainer("mapIgnore", {tags: {
     env: "prod",
 }}, {
-    ignoreChanges: ["tags.env"],
+    ignoreChanges: [
+        "tags[\"env\"]",
+        "tags[\"with.dot\"]",
+        "tags[\"with escaped \\\"\"]",
+    ],
 });
 const noIgnore = new nestedobject.Target("noIgnore", {name: "nothing"});

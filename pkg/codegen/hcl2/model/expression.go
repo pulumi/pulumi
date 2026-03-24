@@ -1322,7 +1322,7 @@ func literalText(value cty.Value, rawBytes []byte, escaped, quoted bool) string 
 		if !escaped {
 			return value.AsString()
 		}
-		s := escapeString(value.AsString())
+		s := EscapeString(value.AsString())
 		if quoted {
 			return fmt.Sprintf(`"%s"`, s)
 		}
@@ -1332,7 +1332,7 @@ func literalText(value cty.Value, rawBytes []byte, escaped, quoted bool) string 
 	}
 }
 
-func escapeString(s string) string {
+func EscapeString(s string) string {
 	// Escape the string using only HCL-compatible escape sequences.
 	// HCL supports: \n, \r, \t, \\, \", \uXXXX, \UXXXXXXXX
 	// Go's strconv.Quote produces \a, \b, \f, \v, \xHH which are NOT valid HCL.
