@@ -1,0 +1,14 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC <{%fg 1%}>deleted<{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

@@ -1,0 +1,16 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
+ <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%fg 1%}>deleted<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>urn:pulumi:test::test::pkgA:m:typA::resA:<{%reset%}>
+    <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

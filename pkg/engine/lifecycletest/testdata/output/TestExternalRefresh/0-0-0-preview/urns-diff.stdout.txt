@@ -1,0 +1,2 @@
+<{%fg 14%}>> urn:pulumi:test::test::pkgA:m:typA::resA: (read)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
