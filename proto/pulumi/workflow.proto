@@ -56,6 +56,9 @@ service WorkflowEvaluator {
     // RunStep executes a single step and returns a PropertyValue-compatible result.
     rpc RunStep(RunStepRequest) returns (RunStepResponse) {}
 
+    // ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
+    rpc ResolveStepResult(ResolveStepResultRequest) returns (ResolveStepResultResponse) {}
+
     // RunFilter executes a trigger filter and returns pass/fail.
     rpc RunFilter(RunFilterRequest) returns (RunFilterResponse) {}
 
@@ -71,9 +74,6 @@ service GraphMonitor {
     rpc RegisterJob(RegisterJobRequest) returns (RegisterNodeResponse) {}
     rpc RegisterGraph(RegisterGraphRequest) returns (RegisterNodeResponse) {}
     rpc RegisterStep(RegisterStepRequest) returns (RegisterNodeResponse) {}
-
-    // GetStepResult asks for a previously completed step output.
-    rpc GetStepResult(GetStepResultRequest) returns (GetStepResultResponse) {}
 }
 
 // WorkflowContext identifies a workflow definition and execution.
@@ -310,6 +310,30 @@ message RunStepResponse {
     WorkflowValue result = 2;
 }
 
+message StepResult {
+    enum Status {
+        STATUS_UNSPECIFIED = 0;
+        STATUS_PASSED = 1;
+        STATUS_FAILED = 2;
+    }
+
+    string step_path = 1;
+    Status status = 2;
+    int64 started_at_unix_millis = 3;
+    int64 finished_at_unix_millis = 4;
+    string reason = 5;
+}
+
+message ResolveStepResultRequest {
+    WorkflowContext context = 1;
+    StepResult step = 2;
+    google.protobuf.Value result = 3;
+}
+
+message ResolveStepResultResponse {
+    WorkflowError error = 1;
+}
+
 message RunFilterRequest {
     WorkflowContext context = 1;
     string path = 2;
@@ -387,13 +411,4 @@ message RegisterStepRequest {
 message RegisterNodeResponse {
     // Current state for the node if known in the provided execution state.
     WorkflowValue value = 1;
-}
-
-message GetStepResultRequest {
-    WorkflowContext context = 1;
-    string path = 2;
-}
-
-message GetStepResultResponse {
-    WorkflowValue result = 1;
 }

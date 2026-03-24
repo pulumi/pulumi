@@ -31,4 +31,5 @@ type Workflow interface {
 	GetJob(context.Context, *pulumirpc.GetJobRequest) (*pulumirpc.GetJobResponse, error)
 	GenerateGraph(context.Context, *pulumirpc.GenerateGraphRequest) (*pulumirpc.GenerateNodeResponse, error)
 	GenerateJob(context.Context, *pulumirpc.GenerateJobRequest) (*pulumirpc.GenerateNodeResponse, error)
+	ResolveStepResult(context.Context, *pulumirpc.ResolveStepResultRequest) (*pulumirpc.ResolveStepResultResponse, error)
 }

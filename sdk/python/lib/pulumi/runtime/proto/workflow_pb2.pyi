@@ -753,6 +753,90 @@ class RunStepResponse(google.protobuf.message.Message):
 global___RunStepResponse = RunStepResponse
 
 @typing.final
+class StepResult(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    class _Status:
+        ValueType = typing.NewType("ValueType", builtins.int)
+        V: typing_extensions.TypeAlias = ValueType
+
+    class _StatusEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[StepResult._Status.ValueType], builtins.type):
+        DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+        STATUS_UNSPECIFIED: StepResult._Status.ValueType  # 0
+        STATUS_PASSED: StepResult._Status.ValueType  # 1
+        STATUS_FAILED: StepResult._Status.ValueType  # 2
+
+    class Status(_Status, metaclass=_StatusEnumTypeWrapper): ...
+    STATUS_UNSPECIFIED: StepResult.Status.ValueType  # 0
+    STATUS_PASSED: StepResult.Status.ValueType  # 1
+    STATUS_FAILED: StepResult.Status.ValueType  # 2
+
+    STEP_PATH_FIELD_NUMBER: builtins.int
+    STATUS_FIELD_NUMBER: builtins.int
+    STARTED_AT_UNIX_MILLIS_FIELD_NUMBER: builtins.int
+    FINISHED_AT_UNIX_MILLIS_FIELD_NUMBER: builtins.int
+    REASON_FIELD_NUMBER: builtins.int
+    step_path: builtins.str
+    status: global___StepResult.Status.ValueType
+    started_at_unix_millis: builtins.int
+    finished_at_unix_millis: builtins.int
+    reason: builtins.str
+    def __init__(
+        self,
+        *,
+        step_path: builtins.str = ...,
+        status: global___StepResult.Status.ValueType = ...,
+        started_at_unix_millis: builtins.int = ...,
+        finished_at_unix_millis: builtins.int = ...,
+        reason: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["finished_at_unix_millis", b"finished_at_unix_millis", "reason", b"reason", "started_at_unix_millis", b"started_at_unix_millis", "status", b"status", "step_path", b"step_path"]) -> None: ...
+
+global___StepResult = StepResult
+
+@typing.final
+class ResolveStepResultRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    CONTEXT_FIELD_NUMBER: builtins.int
+    STEP_FIELD_NUMBER: builtins.int
+    RESULT_FIELD_NUMBER: builtins.int
+    @property
+    def context(self) -> global___WorkflowContext: ...
+    @property
+    def step(self) -> global___StepResult: ...
+    @property
+    def result(self) -> google.protobuf.struct_pb2.Value: ...
+    def __init__(
+        self,
+        *,
+        context: global___WorkflowContext | None = ...,
+        step: global___StepResult | None = ...,
+        result: google.protobuf.struct_pb2.Value | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["context", b"context", "result", b"result", "step", b"step"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["context", b"context", "result", b"result", "step", b"step"]) -> None: ...
+
+global___ResolveStepResultRequest = ResolveStepResultRequest
+
+@typing.final
+class ResolveStepResultResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ERROR_FIELD_NUMBER: builtins.int
+    @property
+    def error(self) -> global___WorkflowError: ...
+    def __init__(
+        self,
+        *,
+        error: global___WorkflowError | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["error", b"error"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["error", b"error"]) -> None: ...
+
+global___ResolveStepResultResponse = ResolveStepResultResponse
+
+@typing.final
 class RunFilterRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -1009,40 +1093,3 @@ class RegisterNodeResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["value", b"value"]) -> None: ...
 
 global___RegisterNodeResponse = RegisterNodeResponse
-
-@typing.final
-class GetStepResultRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    CONTEXT_FIELD_NUMBER: builtins.int
-    PATH_FIELD_NUMBER: builtins.int
-    path: builtins.str
-    @property
-    def context(self) -> global___WorkflowContext: ...
-    def __init__(
-        self,
-        *,
-        context: global___WorkflowContext | None = ...,
-        path: builtins.str = ...,
-    ) -> None: ...
-    def HasField(self, field_name: typing.Literal["context", b"context"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["context", b"context", "path", b"path"]) -> None: ...
-
-global___GetStepResultRequest = GetStepResultRequest
-
-@typing.final
-class GetStepResultResponse(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    RESULT_FIELD_NUMBER: builtins.int
-    @property
-    def result(self) -> global___WorkflowValue: ...
-    def __init__(
-        self,
-        *,
-        result: global___WorkflowValue | None = ...,
-    ) -> None: ...
-    def HasField(self, field_name: typing.Literal["result", b"result"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["result", b"result"]) -> None: ...
-
-global___GetStepResultResponse = GetStepResultResponse

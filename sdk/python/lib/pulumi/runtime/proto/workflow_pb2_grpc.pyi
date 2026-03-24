@@ -102,6 +102,12 @@ class WorkflowEvaluatorStub:
     ]
     """RunStep executes a single step and returns a PropertyValue-compatible result."""
 
+    ResolveStepResult: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.ResolveStepResultRequest,
+        pulumi.workflow_pb2.ResolveStepResultResponse,
+    ]
+    """ResolveStepResult pushes a completed step result and resolved output value to the evaluator."""
+
     RunFilter: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunFilterRequest,
         pulumi.workflow_pb2.RunFilterResponse,
@@ -182,6 +188,12 @@ class WorkflowEvaluatorAsyncStub:
         pulumi.workflow_pb2.RunStepResponse,
     ]
     """RunStep executes a single step and returns a PropertyValue-compatible result."""
+
+    ResolveStepResult: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.ResolveStepResultRequest,
+        pulumi.workflow_pb2.ResolveStepResultResponse,
+    ]
+    """ResolveStepResult pushes a completed step result and resolved output value to the evaluator."""
 
     RunFilter: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunFilterRequest,
@@ -285,6 +297,14 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         """RunStep executes a single step and returns a PropertyValue-compatible result."""
 
     
+    def ResolveStepResult(
+        self,
+        request: pulumi.workflow_pb2.ResolveStepResultRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.ResolveStepResultResponse, collections.abc.Awaitable[pulumi.workflow_pb2.ResolveStepResultResponse]]:
+        """ResolveStepResult pushes a completed step result and resolved output value to the evaluator."""
+
+    
     def RunFilter(
         self,
         request: pulumi.workflow_pb2.RunFilterRequest,
@@ -333,12 +353,6 @@ class GraphMonitorStub:
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
 
-    GetStepResult: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetStepResultRequest,
-        pulumi.workflow_pb2.GetStepResultResponse,
-    ]
-    """GetStepResult asks for a previously completed step output."""
-
 class GraphMonitorAsyncStub:
     """GraphMonitor is called while evaluating a concrete graph execution/generation.
     It records the graph shape for that evaluation and resolves prior node outputs.
@@ -368,12 +382,6 @@ class GraphMonitorAsyncStub:
         pulumi.workflow_pb2.RegisterStepRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
-
-    GetStepResult: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetStepResultRequest,
-        pulumi.workflow_pb2.GetStepResultResponse,
-    ]
-    """GetStepResult asks for a previously completed step output."""
 
 class GraphMonitorServicer(metaclass=abc.ABCMeta):
     """GraphMonitor is called while evaluating a concrete graph execution/generation.
@@ -414,13 +422,5 @@ class GraphMonitorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.RegisterStepRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]: ...
-
-    
-    def GetStepResult(
-        self,
-        request: pulumi.workflow_pb2.GetStepResultRequest,
-        context: _ServicerContext,
-    ) -> typing.Union[pulumi.workflow_pb2.GetStepResultResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetStepResultResponse]]:
-        """GetStepResult asks for a previously completed step output."""
 
 def add_GraphMonitorServicer_to_server(servicer: GraphMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

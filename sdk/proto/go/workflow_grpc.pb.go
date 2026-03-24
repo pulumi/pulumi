@@ -33,18 +33,19 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WorkflowEvaluator_Handshake_FullMethodName      = "/pulumirpc.WorkflowEvaluator/Handshake"
-	WorkflowEvaluator_GetPackageInfo_FullMethodName = "/pulumirpc.WorkflowEvaluator/GetPackageInfo"
-	WorkflowEvaluator_GetGraphs_FullMethodName      = "/pulumirpc.WorkflowEvaluator/GetGraphs"
-	WorkflowEvaluator_GetGraph_FullMethodName       = "/pulumirpc.WorkflowEvaluator/GetGraph"
-	WorkflowEvaluator_GetJobs_FullMethodName        = "/pulumirpc.WorkflowEvaluator/GetJobs"
-	WorkflowEvaluator_GetJob_FullMethodName         = "/pulumirpc.WorkflowEvaluator/GetJob"
-	WorkflowEvaluator_GenerateJob_FullMethodName    = "/pulumirpc.WorkflowEvaluator/GenerateJob"
-	WorkflowEvaluator_GenerateGraph_FullMethodName  = "/pulumirpc.WorkflowEvaluator/GenerateGraph"
-	WorkflowEvaluator_RunSensor_FullMethodName      = "/pulumirpc.WorkflowEvaluator/RunSensor"
-	WorkflowEvaluator_RunStep_FullMethodName        = "/pulumirpc.WorkflowEvaluator/RunStep"
-	WorkflowEvaluator_RunFilter_FullMethodName      = "/pulumirpc.WorkflowEvaluator/RunFilter"
-	WorkflowEvaluator_RunOnError_FullMethodName     = "/pulumirpc.WorkflowEvaluator/RunOnError"
+	WorkflowEvaluator_Handshake_FullMethodName         = "/pulumirpc.WorkflowEvaluator/Handshake"
+	WorkflowEvaluator_GetPackageInfo_FullMethodName    = "/pulumirpc.WorkflowEvaluator/GetPackageInfo"
+	WorkflowEvaluator_GetGraphs_FullMethodName         = "/pulumirpc.WorkflowEvaluator/GetGraphs"
+	WorkflowEvaluator_GetGraph_FullMethodName          = "/pulumirpc.WorkflowEvaluator/GetGraph"
+	WorkflowEvaluator_GetJobs_FullMethodName           = "/pulumirpc.WorkflowEvaluator/GetJobs"
+	WorkflowEvaluator_GetJob_FullMethodName            = "/pulumirpc.WorkflowEvaluator/GetJob"
+	WorkflowEvaluator_GenerateJob_FullMethodName       = "/pulumirpc.WorkflowEvaluator/GenerateJob"
+	WorkflowEvaluator_GenerateGraph_FullMethodName     = "/pulumirpc.WorkflowEvaluator/GenerateGraph"
+	WorkflowEvaluator_RunSensor_FullMethodName         = "/pulumirpc.WorkflowEvaluator/RunSensor"
+	WorkflowEvaluator_RunStep_FullMethodName           = "/pulumirpc.WorkflowEvaluator/RunStep"
+	WorkflowEvaluator_ResolveStepResult_FullMethodName = "/pulumirpc.WorkflowEvaluator/ResolveStepResult"
+	WorkflowEvaluator_RunFilter_FullMethodName         = "/pulumirpc.WorkflowEvaluator/RunFilter"
+	WorkflowEvaluator_RunOnError_FullMethodName        = "/pulumirpc.WorkflowEvaluator/RunOnError"
 )
 
 // WorkflowEvaluatorClient is the client API for WorkflowEvaluator service.
@@ -77,6 +78,8 @@ type WorkflowEvaluatorClient interface {
 	RunSensor(ctx context.Context, in *RunSensorRequest, opts ...grpc.CallOption) (*RunSensorResponse, error)
 	// RunStep executes a single step and returns a PropertyValue-compatible result.
 	RunStep(ctx context.Context, in *RunStepRequest, opts ...grpc.CallOption) (*RunStepResponse, error)
+	// ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
+	ResolveStepResult(ctx context.Context, in *ResolveStepResultRequest, opts ...grpc.CallOption) (*ResolveStepResultResponse, error)
 	// RunFilter executes a trigger filter and returns pass/fail.
 	RunFilter(ctx context.Context, in *RunFilterRequest, opts ...grpc.CallOption) (*RunFilterResponse, error)
 	// RunOnError executes a node's on-error callback and returns retry behavior.
@@ -191,6 +194,16 @@ func (c *workflowEvaluatorClient) RunStep(ctx context.Context, in *RunStepReques
 	return out, nil
 }
 
+func (c *workflowEvaluatorClient) ResolveStepResult(ctx context.Context, in *ResolveStepResultRequest, opts ...grpc.CallOption) (*ResolveStepResultResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveStepResultResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_ResolveStepResult_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *workflowEvaluatorClient) RunFilter(ctx context.Context, in *RunFilterRequest, opts ...grpc.CallOption) (*RunFilterResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RunFilterResponse)
@@ -241,6 +254,8 @@ type WorkflowEvaluatorServer interface {
 	RunSensor(context.Context, *RunSensorRequest) (*RunSensorResponse, error)
 	// RunStep executes a single step and returns a PropertyValue-compatible result.
 	RunStep(context.Context, *RunStepRequest) (*RunStepResponse, error)
+	// ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
+	ResolveStepResult(context.Context, *ResolveStepResultRequest) (*ResolveStepResultResponse, error)
 	// RunFilter executes a trigger filter and returns pass/fail.
 	RunFilter(context.Context, *RunFilterRequest) (*RunFilterResponse, error)
 	// RunOnError executes a node's on-error callback and returns retry behavior.
@@ -284,6 +299,9 @@ func (UnimplementedWorkflowEvaluatorServer) RunSensor(context.Context, *RunSenso
 }
 func (UnimplementedWorkflowEvaluatorServer) RunStep(context.Context, *RunStepRequest) (*RunStepResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunStep not implemented")
+}
+func (UnimplementedWorkflowEvaluatorServer) ResolveStepResult(context.Context, *ResolveStepResultRequest) (*ResolveStepResultResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResolveStepResult not implemented")
 }
 func (UnimplementedWorkflowEvaluatorServer) RunFilter(context.Context, *RunFilterRequest) (*RunFilterResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunFilter not implemented")
@@ -492,6 +510,24 @@ func _WorkflowEvaluator_RunStep_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkflowEvaluator_ResolveStepResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveStepResultRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).ResolveStepResult(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_ResolveStepResult_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).ResolveStepResult(ctx, req.(*ResolveStepResultRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WorkflowEvaluator_RunFilter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RunFilterRequest)
 	if err := dec(in); err != nil {
@@ -576,6 +612,10 @@ var WorkflowEvaluator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorkflowEvaluator_RunStep_Handler,
 		},
 		{
+			MethodName: "ResolveStepResult",
+			Handler:    _WorkflowEvaluator_ResolveStepResult_Handler,
+		},
+		{
 			MethodName: "RunFilter",
 			Handler:    _WorkflowEvaluator_RunFilter_Handler,
 		},
@@ -594,7 +634,6 @@ const (
 	GraphMonitor_RegisterJob_FullMethodName     = "/pulumirpc.GraphMonitor/RegisterJob"
 	GraphMonitor_RegisterGraph_FullMethodName   = "/pulumirpc.GraphMonitor/RegisterGraph"
 	GraphMonitor_RegisterStep_FullMethodName    = "/pulumirpc.GraphMonitor/RegisterStep"
-	GraphMonitor_GetStepResult_FullMethodName   = "/pulumirpc.GraphMonitor/GetStepResult"
 )
 
 // GraphMonitorClient is the client API for GraphMonitor service.
@@ -609,8 +648,6 @@ type GraphMonitorClient interface {
 	RegisterJob(ctx context.Context, in *RegisterJobRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
 	RegisterGraph(ctx context.Context, in *RegisterGraphRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
 	RegisterStep(ctx context.Context, in *RegisterStepRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
-	// GetStepResult asks for a previously completed step output.
-	GetStepResult(ctx context.Context, in *GetStepResultRequest, opts ...grpc.CallOption) (*GetStepResultResponse, error)
 }
 
 type graphMonitorClient struct {
@@ -671,16 +708,6 @@ func (c *graphMonitorClient) RegisterStep(ctx context.Context, in *RegisterStepR
 	return out, nil
 }
 
-func (c *graphMonitorClient) GetStepResult(ctx context.Context, in *GetStepResultRequest, opts ...grpc.CallOption) (*GetStepResultResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetStepResultResponse)
-	err := c.cc.Invoke(ctx, GraphMonitor_GetStepResult_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // GraphMonitorServer is the server API for GraphMonitor service.
 // All implementations must embed UnimplementedGraphMonitorServer
 // for forward compatibility.
@@ -693,8 +720,6 @@ type GraphMonitorServer interface {
 	RegisterJob(context.Context, *RegisterJobRequest) (*RegisterNodeResponse, error)
 	RegisterGraph(context.Context, *RegisterGraphRequest) (*RegisterNodeResponse, error)
 	RegisterStep(context.Context, *RegisterStepRequest) (*RegisterNodeResponse, error)
-	// GetStepResult asks for a previously completed step output.
-	GetStepResult(context.Context, *GetStepResultRequest) (*GetStepResultResponse, error)
 	mustEmbedUnimplementedGraphMonitorServer()
 }
 
@@ -719,9 +744,6 @@ func (UnimplementedGraphMonitorServer) RegisterGraph(context.Context, *RegisterG
 }
 func (UnimplementedGraphMonitorServer) RegisterStep(context.Context, *RegisterStepRequest) (*RegisterNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterStep not implemented")
-}
-func (UnimplementedGraphMonitorServer) GetStepResult(context.Context, *GetStepResultRequest) (*GetStepResultResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetStepResult not implemented")
 }
 func (UnimplementedGraphMonitorServer) mustEmbedUnimplementedGraphMonitorServer() {}
 func (UnimplementedGraphMonitorServer) testEmbeddedByValue()                      {}
@@ -834,24 +856,6 @@ func _GraphMonitor_RegisterStep_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GraphMonitor_GetStepResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetStepResultRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GraphMonitorServer).GetStepResult(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GraphMonitor_GetStepResult_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GraphMonitorServer).GetStepResult(ctx, req.(*GetStepResultRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // GraphMonitor_ServiceDesc is the grpc.ServiceDesc for GraphMonitor service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -878,10 +882,6 @@ var GraphMonitor_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterStep",
 			Handler:    _GraphMonitor_RegisterStep_Handler,
-		},
-		{
-			MethodName: "GetStepResult",
-			Handler:    _GraphMonitor_GetStepResult_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

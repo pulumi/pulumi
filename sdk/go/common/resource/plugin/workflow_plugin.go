@@ -182,3 +182,9 @@ func (p *workflowPlugin) GenerateJob(
 ) (*pulumirpc.GenerateNodeResponse, error) {
 	return p.clientRaw.GenerateJob(ctx, req)
 }
+
+func (p *workflowPlugin) ResolveStepResult(
+	ctx context.Context, req *pulumirpc.ResolveStepResultRequest,
+) (*pulumirpc.ResolveStepResultResponse, error) {
+	return p.clientRaw.ResolveStepResult(ctx, req)
+}

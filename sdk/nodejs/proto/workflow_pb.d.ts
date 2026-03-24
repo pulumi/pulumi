@@ -839,6 +839,103 @@ export namespace RunStepResponse {
     }
 }
 
+export class StepResult extends jspb.Message { 
+    getStepPath(): string;
+    setStepPath(value: string): StepResult;
+    getStatus(): StepResult.Status;
+    setStatus(value: StepResult.Status): StepResult;
+    getStartedAtUnixMillis(): number;
+    setStartedAtUnixMillis(value: number): StepResult;
+    getFinishedAtUnixMillis(): number;
+    setFinishedAtUnixMillis(value: number): StepResult;
+    getReason(): string;
+    setReason(value: string): StepResult;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): StepResult.AsObject;
+    static toObject(includeInstance: boolean, msg: StepResult): StepResult.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: StepResult, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): StepResult;
+    static deserializeBinaryFromReader(message: StepResult, reader: jspb.BinaryReader): StepResult;
+}
+
+export namespace StepResult {
+    export type AsObject = {
+        stepPath: string,
+        status: StepResult.Status,
+        startedAtUnixMillis: number,
+        finishedAtUnixMillis: number,
+        reason: string,
+    }
+
+    export enum Status {
+    STATUS_UNSPECIFIED = 0,
+    STATUS_PASSED = 1,
+    STATUS_FAILED = 2,
+    }
+
+}
+
+export class ResolveStepResultRequest extends jspb.Message { 
+
+    hasContext(): boolean;
+    clearContext(): void;
+    getContext(): WorkflowContext | undefined;
+    setContext(value?: WorkflowContext): ResolveStepResultRequest;
+
+    hasStep(): boolean;
+    clearStep(): void;
+    getStep(): StepResult | undefined;
+    setStep(value?: StepResult): ResolveStepResultRequest;
+
+    hasResult(): boolean;
+    clearResult(): void;
+    getResult(): google_protobuf_struct_pb.Value | undefined;
+    setResult(value?: google_protobuf_struct_pb.Value): ResolveStepResultRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResolveStepResultRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ResolveStepResultRequest): ResolveStepResultRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResolveStepResultRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResolveStepResultRequest;
+    static deserializeBinaryFromReader(message: ResolveStepResultRequest, reader: jspb.BinaryReader): ResolveStepResultRequest;
+}
+
+export namespace ResolveStepResultRequest {
+    export type AsObject = {
+        context?: WorkflowContext.AsObject,
+        step?: StepResult.AsObject,
+        result?: google_protobuf_struct_pb.Value.AsObject,
+    }
+}
+
+export class ResolveStepResultResponse extends jspb.Message { 
+
+    hasError(): boolean;
+    clearError(): void;
+    getError(): WorkflowError | undefined;
+    setError(value?: WorkflowError): ResolveStepResultResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResolveStepResultResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ResolveStepResultResponse): ResolveStepResultResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResolveStepResultResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResolveStepResultResponse;
+    static deserializeBinaryFromReader(message: ResolveStepResultResponse, reader: jspb.BinaryReader): ResolveStepResultResponse;
+}
+
+export namespace ResolveStepResultResponse {
+    export type AsObject = {
+        error?: WorkflowError.AsObject,
+    }
+}
+
 export class RunFilterRequest extends jspb.Message { 
 
     hasContext(): boolean;
@@ -1158,54 +1255,5 @@ export class RegisterNodeResponse extends jspb.Message {
 export namespace RegisterNodeResponse {
     export type AsObject = {
         value?: WorkflowValue.AsObject,
-    }
-}
-
-export class GetStepResultRequest extends jspb.Message { 
-
-    hasContext(): boolean;
-    clearContext(): void;
-    getContext(): WorkflowContext | undefined;
-    setContext(value?: WorkflowContext): GetStepResultRequest;
-    getPath(): string;
-    setPath(value: string): GetStepResultRequest;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetStepResultRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetStepResultRequest): GetStepResultRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetStepResultRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetStepResultRequest;
-    static deserializeBinaryFromReader(message: GetStepResultRequest, reader: jspb.BinaryReader): GetStepResultRequest;
-}
-
-export namespace GetStepResultRequest {
-    export type AsObject = {
-        context?: WorkflowContext.AsObject,
-        path: string,
-    }
-}
-
-export class GetStepResultResponse extends jspb.Message { 
-
-    hasResult(): boolean;
-    clearResult(): void;
-    getResult(): WorkflowValue | undefined;
-    setResult(value?: WorkflowValue): GetStepResultResponse;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetStepResultResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: GetStepResultResponse): GetStepResultResponse.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetStepResultResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetStepResultResponse;
-    static deserializeBinaryFromReader(message: GetStepResultResponse, reader: jspb.BinaryReader): GetStepResultResponse;
-}
-
-export namespace GetStepResultResponse {
-    export type AsObject = {
-        result?: WorkflowValue.AsObject,
     }
 }

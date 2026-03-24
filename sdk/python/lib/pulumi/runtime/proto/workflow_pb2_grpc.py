@@ -66,6 +66,11 @@ class WorkflowEvaluatorStub(object):
                 request_serializer=pulumi_dot_workflow__pb2.RunStepRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.RunStepResponse.FromString,
                 )
+        self.ResolveStepResult = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/ResolveStepResult',
+                request_serializer=pulumi_dot_workflow__pb2.ResolveStepResultRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.ResolveStepResultResponse.FromString,
+                )
         self.RunFilter = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/RunFilter',
                 request_serializer=pulumi_dot_workflow__pb2.RunFilterRequest.SerializeToString,
@@ -156,6 +161,13 @@ class WorkflowEvaluatorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ResolveStepResult(self, request, context):
+        """ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def RunFilter(self, request, context):
         """RunFilter executes a trigger filter and returns pass/fail.
         """
@@ -222,6 +234,11 @@ def add_WorkflowEvaluatorServicer_to_server(servicer, server):
                     servicer.RunStep,
                     request_deserializer=pulumi_dot_workflow__pb2.RunStepRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.RunStepResponse.SerializeToString,
+            ),
+            'ResolveStepResult': grpc.unary_unary_rpc_method_handler(
+                    servicer.ResolveStepResult,
+                    request_deserializer=pulumi_dot_workflow__pb2.ResolveStepResultRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.ResolveStepResultResponse.SerializeToString,
             ),
             'RunFilter': grpc.unary_unary_rpc_method_handler(
                     servicer.RunFilter,
@@ -416,6 +433,23 @@ class WorkflowEvaluator(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def ResolveStepResult(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/ResolveStepResult',
+            pulumi_dot_workflow__pb2.ResolveStepResultRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.ResolveStepResultResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def RunFilter(request,
             target,
             options=(),
@@ -486,11 +520,6 @@ class GraphMonitorStub(object):
                 request_serializer=pulumi_dot_workflow__pb2.RegisterStepRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
                 )
-        self.GetStepResult = channel.unary_unary(
-                '/pulumirpc.GraphMonitor/GetStepResult',
-                request_serializer=pulumi_dot_workflow__pb2.GetStepResultRequest.SerializeToString,
-                response_deserializer=pulumi_dot_workflow__pb2.GetStepResultResponse.FromString,
-                )
 
 
 class GraphMonitorServicer(object):
@@ -528,13 +557,6 @@ class GraphMonitorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetStepResult(self, request, context):
-        """GetStepResult asks for a previously completed step output.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
 
 def add_GraphMonitorServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -562,11 +584,6 @@ def add_GraphMonitorServicer_to_server(servicer, server):
                     servicer.RegisterStep,
                     request_deserializer=pulumi_dot_workflow__pb2.RegisterStepRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.RegisterNodeResponse.SerializeToString,
-            ),
-            'GetStepResult': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetStepResult,
-                    request_deserializer=pulumi_dot_workflow__pb2.GetStepResultRequest.FromString,
-                    response_serializer=pulumi_dot_workflow__pb2.GetStepResultResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -662,22 +679,5 @@ class GraphMonitor(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.GraphMonitor/RegisterStep',
             pulumi_dot_workflow__pb2.RegisterStepRequest.SerializeToString,
             pulumi_dot_workflow__pb2.RegisterNodeResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def GetStepResult(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.GraphMonitor/GetStepResult',
-            pulumi_dot_workflow__pb2.GetStepResultRequest.SerializeToString,
-            pulumi_dot_workflow__pb2.GetStepResultResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

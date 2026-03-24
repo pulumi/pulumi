@@ -19,6 +19,7 @@ interface IWorkflowEvaluatorService extends grpc.ServiceDefinition<grpc.UntypedS
     generateGraph: IWorkflowEvaluatorService_IGenerateGraph;
     runSensor: IWorkflowEvaluatorService_IRunSensor;
     runStep: IWorkflowEvaluatorService_IRunStep;
+    resolveStepResult: IWorkflowEvaluatorService_IResolveStepResult;
     runFilter: IWorkflowEvaluatorService_IRunFilter;
     runOnError: IWorkflowEvaluatorService_IRunOnError;
 }
@@ -113,6 +114,15 @@ interface IWorkflowEvaluatorService_IRunStep extends grpc.MethodDefinition<pulum
     responseSerialize: grpc.serialize<pulumi_workflow_pb.RunStepResponse>;
     responseDeserialize: grpc.deserialize<pulumi_workflow_pb.RunStepResponse>;
 }
+interface IWorkflowEvaluatorService_IResolveStepResult extends grpc.MethodDefinition<pulumi_workflow_pb.ResolveStepResultRequest, pulumi_workflow_pb.ResolveStepResultResponse> {
+    path: "/pulumirpc.WorkflowEvaluator/ResolveStepResult";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.ResolveStepResultRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.ResolveStepResultRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.ResolveStepResultResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.ResolveStepResultResponse>;
+}
 interface IWorkflowEvaluatorService_IRunFilter extends grpc.MethodDefinition<pulumi_workflow_pb.RunFilterRequest, pulumi_workflow_pb.RunFilterResponse> {
     path: "/pulumirpc.WorkflowEvaluator/RunFilter";
     requestStream: false;
@@ -145,6 +155,7 @@ export interface IWorkflowEvaluatorServer extends grpc.UntypedServiceImplementat
     generateGraph: grpc.handleUnaryCall<pulumi_workflow_pb.GenerateGraphRequest, pulumi_workflow_pb.GenerateNodeResponse>;
     runSensor: grpc.handleUnaryCall<pulumi_workflow_pb.RunSensorRequest, pulumi_workflow_pb.RunSensorResponse>;
     runStep: grpc.handleUnaryCall<pulumi_workflow_pb.RunStepRequest, pulumi_workflow_pb.RunStepResponse>;
+    resolveStepResult: grpc.handleUnaryCall<pulumi_workflow_pb.ResolveStepResultRequest, pulumi_workflow_pb.ResolveStepResultResponse>;
     runFilter: grpc.handleUnaryCall<pulumi_workflow_pb.RunFilterRequest, pulumi_workflow_pb.RunFilterResponse>;
     runOnError: grpc.handleUnaryCall<pulumi_workflow_pb.RunOnErrorRequest, pulumi_workflow_pb.RunOnErrorResponse>;
 }
@@ -180,6 +191,9 @@ export interface IWorkflowEvaluatorClient {
     runStep(request: pulumi_workflow_pb.RunStepRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
     runStep(request: pulumi_workflow_pb.RunStepRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
     runStep(request: pulumi_workflow_pb.RunStepRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
+    resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
+    resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
+    resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
     runFilter(request: pulumi_workflow_pb.RunFilterRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunFilterResponse) => void): grpc.ClientUnaryCall;
     runFilter(request: pulumi_workflow_pb.RunFilterRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunFilterResponse) => void): grpc.ClientUnaryCall;
     runFilter(request: pulumi_workflow_pb.RunFilterRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunFilterResponse) => void): grpc.ClientUnaryCall;
@@ -220,6 +234,9 @@ export class WorkflowEvaluatorClient extends grpc.Client implements IWorkflowEva
     public runStep(request: pulumi_workflow_pb.RunStepRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
     public runStep(request: pulumi_workflow_pb.RunStepRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
     public runStep(request: pulumi_workflow_pb.RunStepRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
+    public resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
+    public resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
+    public resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
     public runFilter(request: pulumi_workflow_pb.RunFilterRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunFilterResponse) => void): grpc.ClientUnaryCall;
     public runFilter(request: pulumi_workflow_pb.RunFilterRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunFilterResponse) => void): grpc.ClientUnaryCall;
     public runFilter(request: pulumi_workflow_pb.RunFilterRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunFilterResponse) => void): grpc.ClientUnaryCall;
@@ -234,7 +251,6 @@ interface IGraphMonitorService extends grpc.ServiceDefinition<grpc.UntypedServic
     registerJob: IGraphMonitorService_IRegisterJob;
     registerGraph: IGraphMonitorService_IRegisterGraph;
     registerStep: IGraphMonitorService_IRegisterStep;
-    getStepResult: IGraphMonitorService_IGetStepResult;
 }
 
 interface IGraphMonitorService_IRegisterTrigger extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterTriggerRequest, pulumi_workflow_pb.RegisterNodeResponse> {
@@ -282,15 +298,6 @@ interface IGraphMonitorService_IRegisterStep extends grpc.MethodDefinition<pulum
     responseSerialize: grpc.serialize<pulumi_workflow_pb.RegisterNodeResponse>;
     responseDeserialize: grpc.deserialize<pulumi_workflow_pb.RegisterNodeResponse>;
 }
-interface IGraphMonitorService_IGetStepResult extends grpc.MethodDefinition<pulumi_workflow_pb.GetStepResultRequest, pulumi_workflow_pb.GetStepResultResponse> {
-    path: "/pulumirpc.GraphMonitor/GetStepResult";
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<pulumi_workflow_pb.GetStepResultRequest>;
-    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.GetStepResultRequest>;
-    responseSerialize: grpc.serialize<pulumi_workflow_pb.GetStepResultResponse>;
-    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.GetStepResultResponse>;
-}
 
 export const GraphMonitorService: IGraphMonitorService;
 
@@ -300,7 +307,6 @@ export interface IGraphMonitorServer extends grpc.UntypedServiceImplementation {
     registerJob: grpc.handleUnaryCall<pulumi_workflow_pb.RegisterJobRequest, pulumi_workflow_pb.RegisterNodeResponse>;
     registerGraph: grpc.handleUnaryCall<pulumi_workflow_pb.RegisterGraphRequest, pulumi_workflow_pb.RegisterNodeResponse>;
     registerStep: grpc.handleUnaryCall<pulumi_workflow_pb.RegisterStepRequest, pulumi_workflow_pb.RegisterNodeResponse>;
-    getStepResult: grpc.handleUnaryCall<pulumi_workflow_pb.GetStepResultRequest, pulumi_workflow_pb.GetStepResultResponse>;
 }
 
 export interface IGraphMonitorClient {
@@ -319,9 +325,6 @@ export interface IGraphMonitorClient {
     registerStep(request: pulumi_workflow_pb.RegisterStepRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;
     registerStep(request: pulumi_workflow_pb.RegisterStepRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;
     registerStep(request: pulumi_workflow_pb.RegisterStepRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;
-    getStepResult(request: pulumi_workflow_pb.GetStepResultRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResultResponse) => void): grpc.ClientUnaryCall;
-    getStepResult(request: pulumi_workflow_pb.GetStepResultRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResultResponse) => void): grpc.ClientUnaryCall;
-    getStepResult(request: pulumi_workflow_pb.GetStepResultRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResultResponse) => void): grpc.ClientUnaryCall;
 }
 
 export class GraphMonitorClient extends grpc.Client implements IGraphMonitorClient {
@@ -341,7 +344,4 @@ export class GraphMonitorClient extends grpc.Client implements IGraphMonitorClie
     public registerStep(request: pulumi_workflow_pb.RegisterStepRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;
     public registerStep(request: pulumi_workflow_pb.RegisterStepRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;
     public registerStep(request: pulumi_workflow_pb.RegisterStepRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RegisterNodeResponse) => void): grpc.ClientUnaryCall;
-    public getStepResult(request: pulumi_workflow_pb.GetStepResultRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResultResponse) => void): grpc.ClientUnaryCall;
-    public getStepResult(request: pulumi_workflow_pb.GetStepResultRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResultResponse) => void): grpc.ClientUnaryCall;
-    public getStepResult(request: pulumi_workflow_pb.GetStepResultRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResultResponse) => void): grpc.ClientUnaryCall;
 }

@@ -163,28 +163,6 @@ function deserialize_pulumirpc_GetPackageInfoResponse(buffer_arg) {
   return pulumi_workflow_pb.GetPackageInfoResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_GetStepResultRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetStepResultRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GetStepResultRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetStepResultRequest(buffer_arg) {
-  return pulumi_workflow_pb.GetStepResultRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_GetStepResultResponse(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetStepResultResponse)) {
-    throw new Error('Expected argument of type pulumirpc.GetStepResultResponse');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetStepResultResponse(buffer_arg) {
-  return pulumi_workflow_pb.GetStepResultResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_RegisterGraphRequest(arg) {
   if (!(arg instanceof pulumi_workflow_pb.RegisterGraphRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterGraphRequest');
@@ -249,6 +227,28 @@ function serialize_pulumirpc_RegisterTriggerRequest(arg) {
 
 function deserialize_pulumirpc_RegisterTriggerRequest(buffer_arg) {
   return pulumi_workflow_pb.RegisterTriggerRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ResolveStepResultRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.ResolveStepResultRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ResolveStepResultRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ResolveStepResultRequest(buffer_arg) {
+  return pulumi_workflow_pb.ResolveStepResultRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ResolveStepResultResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.ResolveStepResultResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ResolveStepResultResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ResolveStepResultResponse(buffer_arg) {
+  return pulumi_workflow_pb.ResolveStepResultResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_RunFilterRequest(arg) {
@@ -488,6 +488,18 @@ runStep: {
     responseSerialize: serialize_pulumirpc_RunStepResponse,
     responseDeserialize: deserialize_pulumirpc_RunStepResponse,
   },
+  // ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
+resolveStepResult: {
+    path: '/pulumirpc.WorkflowEvaluator/ResolveStepResult',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.ResolveStepResultRequest,
+    responseType: pulumi_workflow_pb.ResolveStepResultResponse,
+    requestSerialize: serialize_pulumirpc_ResolveStepResultRequest,
+    requestDeserialize: deserialize_pulumirpc_ResolveStepResultRequest,
+    responseSerialize: serialize_pulumirpc_ResolveStepResultResponse,
+    responseDeserialize: deserialize_pulumirpc_ResolveStepResultResponse,
+  },
   // RunFilter executes a trigger filter and returns pass/fail.
 runFilter: {
     path: '/pulumirpc.WorkflowEvaluator/RunFilter',
@@ -572,18 +584,6 @@ var GraphMonitorService = exports.GraphMonitorService = {
     requestDeserialize: deserialize_pulumirpc_RegisterStepRequest,
     responseSerialize: serialize_pulumirpc_RegisterNodeResponse,
     responseDeserialize: deserialize_pulumirpc_RegisterNodeResponse,
-  },
-  // GetStepResult asks for a previously completed step output.
-getStepResult: {
-    path: '/pulumirpc.GraphMonitor/GetStepResult',
-    requestStream: false,
-    responseStream: false,
-    requestType: pulumi_workflow_pb.GetStepResultRequest,
-    responseType: pulumi_workflow_pb.GetStepResultResponse,
-    requestSerialize: serialize_pulumirpc_GetStepResultRequest,
-    requestDeserialize: deserialize_pulumirpc_GetStepResultRequest,
-    responseSerialize: serialize_pulumirpc_GetStepResultResponse,
-    responseDeserialize: deserialize_pulumirpc_GetStepResultResponse,
   },
 };
 
