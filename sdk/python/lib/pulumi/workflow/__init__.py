@@ -23,7 +23,7 @@ from __future__ import annotations
 import contextlib
 import os
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union
 
 import grpc
 from google.protobuf import struct_pb2
@@ -39,50 +39,64 @@ class _EvalState:
     graph_path: str
 
 
-_graphs: Dict[str, Callable[["Context"], None]] = {}
-_active_eval: Optional[_EvalState] = None
-
-
 class Context:
     """Execution/evaluation context passed to graph functions."""
+
+    def __init__(self, state: _EvalState) -> None:
+        self._state = state
+
+    def trigger(
+        self,
+        name: str,
+        trigger_type: str,
+        spec: Optional[Dict[str, Any]] = None,
+        *,
+        has_filter: bool = False,
+    ) -> None:
+        """Registers a trigger in the current graph."""
+
+        request = workflow_pb2.RegisterTriggerRequest()
+        request.context.CopyFrom(self._state.context)
+        request.path = f"{self._state.graph_path}/triggers/{name}"
+        request.type = trigger_type
+        request.hasFilter = has_filter
+        if spec:
+            trigger_spec = struct_pb2.Struct()
+            trigger_spec.update(spec)
+            request.spec.CopyFrom(trigger_spec)
+
+        self._state.monitor.RegisterTrigger(request)
 
 
 class WorkflowError(RuntimeError):
     """Raised for invalid workflow runtime usage."""
 
 
-def graph(name: str) -> Callable[[Callable[[Context], None]], Callable[[Context], None]]:
-    """Registers a graph export by name/token."""
+class WorkflowRegistry:
+    """Collects exported workflow components before evaluation."""
 
-    def decorator(fn: Callable[[Context], None]) -> Callable[[Context], None]:
-        if name in _graphs:
-            raise WorkflowError(f"graph '{name}' is already registered")
-        _graphs[name] = fn
-        return fn
+    def __init__(self) -> None:
+        self._graphs: Dict[str, Callable[[Context], None]] = {}
 
-    return decorator
+    def graph(
+        self,
+        name: str,
+        fn: Optional[Callable[[Context], None]] = None,
+    ) -> Union[Callable[[Context], None], Callable[[Callable[[Context], None]], Callable[[Context], None]]]:
+        """Registers a graph export by name/token."""
 
+        def register(registered_fn: Callable[[Context], None]) -> Callable[[Context], None]:
+            if name in self._graphs:
+                raise WorkflowError(f"graph '{name}' is already registered")
+            self._graphs[name] = registered_fn
+            return registered_fn
 
-def trigger(name: str, trigger_type: str, spec: Optional[Dict[str, Any]] = None, *, has_filter: bool = False) -> None:
-    """Registers a trigger in the currently-evaluated graph."""
-
-    if _active_eval is None:
-        raise WorkflowError("trigger() must be called while a graph is being evaluated via run()")
-
-    request = workflow_pb2.RegisterTriggerRequest()
-    request.context.CopyFrom(_active_eval.context)
-    request.path = f"{_active_eval.graph_path}/triggers/{name}"
-    request.type = trigger_type
-    request.hasFilter = has_filter
-    if spec:
-        trigger_spec = struct_pb2.Struct()
-        trigger_spec.update(spec)
-        request.spec.CopyFrom(trigger_spec)
-
-    _active_eval.monitor.RegisterTrigger(request)
+        if fn is not None:
+            return register(fn)
+        return register
 
 
-def run() -> None:
+def run(register: Callable[[WorkflowRegistry], None]) -> None:
     """Executes workflow registration + graph evaluation against monitor services."""
 
     registry_address = os.getenv("PULUMI_WORKFLOW_REGISTRY_ADDRESS")
@@ -122,16 +136,18 @@ def run() -> None:
             handshake.program_directory = program_directory
         registry.Handshake(handshake)
 
-        for token in _graphs:
-            register = workflow_pb2.RegisterComponentRequest()
-            register.context.CopyFrom(context)
-            register.token = token
-            register.kind = workflow_pb2.WORKFLOW_COMPONENT_KIND_GRAPH
-            register.metadata.CopyFrom(struct_pb2.Struct())
-            registry.RegisterComponent(register)
+        workflow_registry = WorkflowRegistry()
+        register(workflow_registry)
 
-        global _active_eval
-        for token, graph_fn in _graphs.items():
+        for token in workflow_registry._graphs:
+            register_component = workflow_pb2.RegisterComponentRequest()
+            register_component.context.CopyFrom(context)
+            register_component.token = token
+            register_component.kind = workflow_pb2.WORKFLOW_COMPONENT_KIND_GRAPH
+            register_component.metadata.CopyFrom(struct_pb2.Struct())
+            registry.RegisterComponent(register_component)
+
+        for token, graph_fn in workflow_registry._graphs.items():
             register_graph = workflow_pb2.RegisterGraphRequest()
             register_graph.context.CopyFrom(context)
             register_graph.path = token
@@ -139,17 +155,12 @@ def run() -> None:
             register_graph.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
             monitor.RegisterGraph(register_graph)
 
-            _active_eval = _EvalState(monitor=monitor, context=context, graph_path=token)
-            try:
-                graph_fn(Context())
-            finally:
-                _active_eval = None
+            graph_fn(Context(_EvalState(monitor=monitor, context=context, graph_path=token)))
 
 
 __all__ = [
     "Context",
+    "WorkflowRegistry",
     "WorkflowError",
-    "graph",
-    "trigger",
     "run",
 ]

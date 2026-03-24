@@ -1,9 +1,8 @@
 import pulumi.workflow as workflow
 
 
-@workflow.graph("example:index:main")
 def main_graph(ctx: workflow.Context) -> None:
-    workflow.trigger(
+    ctx.trigger(
         "every-minute",
         "cloud:cron",
         {
@@ -13,5 +12,9 @@ def main_graph(ctx: workflow.Context) -> None:
     )
 
 
+def register_workflows(registry: workflow.WorkflowRegistry) -> None:
+    registry.graph("example:index:main", main_graph)
+
+
 if __name__ == "__main__":
-    workflow.run()
+    workflow.run(register_workflows)
