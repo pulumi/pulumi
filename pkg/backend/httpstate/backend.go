@@ -2466,7 +2466,7 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 				// find the associated update and show the normal rendering of the operation's events.
 				if l.Header == fmt.Sprintf("pulumi %v", req.Op) {
 					fmt.Println()
-					return b.showDeploymentEvents(ctx, stackID, apitype.UpdateKind(req.Op), id, opts)
+					return b.showDeploymentEvents(ctx, stackID, apitype.UpdateKind(req.Op), id, opts, logs.NextToken)
 				}
 			} else {
 				fmt.Print(l.Line)
@@ -2491,6 +2491,7 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 
 func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.StackIdentifier,
 	kind apitype.UpdateKind, deploymentID string, opts display.Options,
+	deploymentLogsToken string,
 ) error {
 	getUpdateID := func() (string, int, error) {
 		for tries := 0; tries < 10; tries++ {
@@ -2548,9 +2549,33 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 		}
 
 		continuationToken = resp.ContinuationToken
-		// A nil continuation token means there are no more events to read and the update has finished.
+		// A nil continuation token normally means there are no more events and the update has
+		// finished. However, when using deployment run, there is a race where the local CLI
+		// queries for events before the deployment executor has written any. In that case, the
+		// service prematurely marks the update as having no events ("NoState"), and every
+		// subsequent call returns empty + nil. When that batch was empty, check whether the
+		// deployment is still alive before concluding — if it is, retry so the executor has
+		// time to write its events and clear the NoState marker.
 		if continuationToken == nil {
-			// If the event stream does not terminate with a cancel event, synthesize one here.
+			if len(resp.Events) == 0 {
+				// Check whether the deployment is still running. This is best-effort: if the
+				// logs API call fails, fall through and treat the update as done rather than
+				// propagating a new failure mode for an otherwise-successful deployment.
+				logs, logsErr := b.client.GetDeploymentLogs(ctx, stackID, deploymentID, deploymentLogsToken)
+				if logsErr == nil && logs.NextToken != "" {
+					// Deployment is still in progress. Advance the logs cursor and retry.
+					deploymentLogsToken = logs.NextToken
+					time.Sleep(500 * time.Millisecond)
+					continue
+				}
+			}
+
+			// NOTE: There is no hard retry limit here. The ctx deadline/cancellation serves as
+			// the ultimate timeout for long-running deployments. The 500ms sleep above bounds
+			// throughput to ~2 checks/sec.
+
+			// The update has finished (or we could not check). Synthesize a cancel event if
+			// the event stream did not end with one naturally.
 			if lastEvent.Type != engine.CancelEvent {
 				events <- engine.NewCancelEvent()
 			}
