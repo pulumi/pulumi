@@ -1126,20 +1126,6 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 	return "To" + outputTypeName
 }
 
-// tokenOfRef extracts the token string from a bound schema.DocRef.
-func tokenOfRef(ref schema.DocRef) string {
-	if rt, ok := ref.Type.(*schema.ResourceType); ok {
-		return rt.Token
-	}
-	if ref.Type != nil {
-		return ref.Type.String()
-	}
-	if ref.Function != nil {
-		return ref.Function.Token
-	}
-	return ""
-}
-
 // printComment filters examples for the Go languages and prepends double forward slash to each line in the given
 // comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
 // resulting comment. It guarantees that each line is terminated with newline character.
@@ -1153,17 +1139,17 @@ func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
-			base = pkg.tokenToResource(tokenOfRef(ref))
+			base = pkg.tokenToResource(ref.ResourceToken())
 		case schema.DocRefKindResourceInputProperty:
-			base = pkg.tokenToResource(tokenOfRef(ref)) + "Args"
+			base = pkg.tokenToResource(ref.ResourceToken()) + "Args"
 		case schema.DocRefKindFunction:
-			base = tokenToName(tokenOfRef(ref))
+			base = tokenToName(ref.Function.Token)
 		case schema.DocRefKindFunctionInputProperty:
-			base = tokenToName(tokenOfRef(ref)) + "Args"
+			base = tokenToName(ref.Function.Token) + "Args"
 		case schema.DocRefKindFunctionOutputProperty:
-			base = tokenToName(tokenOfRef(ref))
+			base = tokenToName(ref.Function.Token)
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
-			base = pkg.tokenToType(tokenOfRef(ref))
+			base = pkg.tokenToType(ref.Type.String())
 		case schema.DocRefKindUnknown:
 			return "", false
 		}

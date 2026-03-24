@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type PulumiRefResolver func(ref DocRef) (string, bool)
@@ -123,6 +124,15 @@ type DocRef struct {
 	Function *Function
 	// The referenced property name, or empty if not applicable.
 	Property string
+}
+
+// ResourceToken returns the token of the resource this ref points to.
+// Only valid for resource-kind refs (DocRefKindResource, DocRefKindResourceProperty,
+// DocRefKindResourceInputProperty).
+func (r DocRef) ResourceToken() string {
+	rt, ok := r.Type.(*ResourceType)
+	contract.Assertf(ok, "ResourceToken called on non-resource ref (kind=%v)", r.Kind)
+	return rt.Token
 }
 
 // IsWithin returns true if r is a property ref within the entity described by other.

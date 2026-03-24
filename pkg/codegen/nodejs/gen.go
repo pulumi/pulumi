@@ -126,20 +126,6 @@ func pascal(s string) string {
 	return strings.Join(words, "")
 }
 
-// tokenOfRef extracts the token string from a bound schema.DocRef.
-func tokenOfRef(ref schema.DocRef) string {
-	if rt, ok := ref.Type.(*schema.ResourceType); ok {
-		return rt.Token
-	}
-	if ref.Type != nil {
-		return ref.Type.String()
-	}
-	if ref.Function != nil {
-		return ref.Function.Token
-	}
-	return ""
-}
-
 // externalModuleName Formats the name of package to comply with an external
 // module.
 func externalModuleName(s string) string {
@@ -413,17 +399,17 @@ func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, in
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
-			base = tokenToName(tokenOfRef(ref))
+			base = tokenToName(ref.ResourceToken())
 		case schema.DocRefKindResourceInputProperty:
-			base = tokenToName(tokenOfRef(ref)) + "Args"
+			base = tokenToName(ref.ResourceToken()) + "Args"
 		case schema.DocRefKindFunction:
-			base = tokenToFunctionName(tokenOfRef(ref))
+			base = tokenToFunctionName(ref.Function.Token)
 		case schema.DocRefKindFunctionInputProperty:
-			base = tokenToName(tokenOfRef(ref)) + "Args"
+			base = tokenToName(ref.Function.Token) + "Args"
 		case schema.DocRefKindFunctionOutputProperty:
-			base = tokenToName(tokenOfRef(ref)) + "Result"
+			base = tokenToName(ref.Function.Token) + "Result"
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
-			base = tokenToName(tokenOfRef(ref))
+			base = tokenToName(ref.Type.String())
 		case schema.DocRefKindUnknown:
 			return "", false
 		}

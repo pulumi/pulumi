@@ -51,20 +51,6 @@ const (
 	InputTypesSettingClassesAndDicts = "classes-and-dicts"
 )
 
-// tokenOfRef extracts the token string from a bound schema.DocRef.
-func tokenOfRef(ref schema.DocRef) string {
-	if rt, ok := ref.Type.(*schema.ResourceType); ok {
-		return rt.Token
-	}
-	if ref.Type != nil {
-		return ref.Type.String()
-	}
-	if ref.Function != nil {
-		return ref.Function.Token
-	}
-	return ""
-}
-
 func typedDictEnabled(setting string) bool {
 	return setting != InputTypesSettingClasses
 }
@@ -2570,17 +2556,17 @@ func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterE
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
-			base = mod.tokenToResource(tokenOfRef(ref))
+			base = mod.tokenToResource(ref.ResourceToken())
 		case schema.DocRefKindResourceInputProperty:
-			base = mod.tokenToResource(tokenOfRef(ref)) + "Args"
+			base = mod.tokenToResource(ref.ResourceToken()) + "Args"
 		case schema.DocRefKindFunction:
-			base = PyName(tokenToName(tokenOfRef(ref)))
+			base = PyName(tokenToName(ref.Function.Token))
 		case schema.DocRefKindFunctionInputProperty:
-			base = title(PyName(tokenToName(tokenOfRef(ref)))) + "Args"
+			base = title(PyName(tokenToName(ref.Function.Token))) + "Args"
 		case schema.DocRefKindFunctionOutputProperty:
-			base = title(PyName(tokenToName(tokenOfRef(ref)))) + "Result"
+			base = title(PyName(tokenToName(ref.Function.Token))) + "Result"
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
-			base = title(PyName(tokenOfRef(ref)))
+			base = title(PyName(ref.Type.String()))
 		case schema.DocRefKindUnknown:
 			return "", false
 		}
