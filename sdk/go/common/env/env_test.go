@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest
 func TestAccessTokenIsRedacted(t *testing.T) {
 	// Not parallel: temporarily modifies the global env store.
 	old := utilenv.Global
