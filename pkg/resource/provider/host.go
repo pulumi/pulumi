@@ -45,13 +45,12 @@ func init() { grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
-	conn, err := grpc.NewClient(
-		addr,
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
-		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
 		rpcutil.GrpcChannelOptions(),
 	)
+	conn, err := grpc.NewClient(addr, dialOpts...)
 	if err != nil {
 		return nil, err
 	}

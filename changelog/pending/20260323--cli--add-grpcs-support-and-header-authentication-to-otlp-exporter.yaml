@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add grpcs:// support and header authentication to OTLP exporter

@@ -1382,7 +1382,9 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				loweredExpression := g.lowerExpression(attr.Value, attr.Value.Type())
+				destType, diagnostics := component.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+				loweredExpression := g.lowerExpression(attr.Value, destType.(model.Type))
 				g.Fgenf(w, fmtString, propertyName, loweredExpression)
 			}
 		})
