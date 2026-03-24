@@ -202,6 +202,19 @@ func (pc *Client) restCallWithOptions(
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
 
+// GetResourceContext calls the Context Engine API to assemble context for a resource.
+func (pc *Client) GetResourceContext(
+	ctx context.Context, orgName, urn string,
+) (json.RawMessage, error) {
+	var resp json.RawMessage
+	apiPath := fmt.Sprintf("/api/preview/orgs/%s/context/resources/%s",
+		url.PathEscape(orgName), url.PathEscape(urn))
+	if err := pc.restCall(ctx, "GET", apiPath, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. The call is authorized with the indicated update token. If a response object is provided, the server's
 // response is deserialized into that object.
