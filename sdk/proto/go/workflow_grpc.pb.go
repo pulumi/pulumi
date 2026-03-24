@@ -344,6 +344,7 @@ var WorkflowEvaluator_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	WorkflowRegistry_Handshake_FullMethodName         = "/pulumirpc.WorkflowRegistry/Handshake"
 	WorkflowRegistry_RegisterComponent_FullMethodName = "/pulumirpc.WorkflowRegistry/RegisterComponent"
 )
 
@@ -355,6 +356,10 @@ const (
 // exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
 // how MLC packages register callable exports.
 type WorkflowRegistryClient interface {
+	// `Handshake` is the first call made to a workflow registry plugin. It establishes
+	// protocol/session configuration for subsequent component registration and graph
+	// evaluation.
+	Handshake(ctx context.Context, in *WorkflowRegistryHandshakeRequest, opts ...grpc.CallOption) (*WorkflowRegistryHandshakeResponse, error)
 	RegisterComponent(ctx context.Context, in *RegisterComponentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -364,6 +369,16 @@ type workflowRegistryClient struct {
 
 func NewWorkflowRegistryClient(cc grpc.ClientConnInterface) WorkflowRegistryClient {
 	return &workflowRegistryClient{cc}
+}
+
+func (c *workflowRegistryClient) Handshake(ctx context.Context, in *WorkflowRegistryHandshakeRequest, opts ...grpc.CallOption) (*WorkflowRegistryHandshakeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkflowRegistryHandshakeResponse)
+	err := c.cc.Invoke(ctx, WorkflowRegistry_Handshake_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *workflowRegistryClient) RegisterComponent(ctx context.Context, in *RegisterComponentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -384,6 +399,10 @@ func (c *workflowRegistryClient) RegisterComponent(ctx context.Context, in *Regi
 // exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
 // how MLC packages register callable exports.
 type WorkflowRegistryServer interface {
+	// `Handshake` is the first call made to a workflow registry plugin. It establishes
+	// protocol/session configuration for subsequent component registration and graph
+	// evaluation.
+	Handshake(context.Context, *WorkflowRegistryHandshakeRequest) (*WorkflowRegistryHandshakeResponse, error)
 	RegisterComponent(context.Context, *RegisterComponentRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedWorkflowRegistryServer()
 }
@@ -395,6 +414,9 @@ type WorkflowRegistryServer interface {
 // pointer dereference when methods are called.
 type UnimplementedWorkflowRegistryServer struct{}
 
+func (UnimplementedWorkflowRegistryServer) Handshake(context.Context, *WorkflowRegistryHandshakeRequest) (*WorkflowRegistryHandshakeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
+}
 func (UnimplementedWorkflowRegistryServer) RegisterComponent(context.Context, *RegisterComponentRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterComponent not implemented")
 }
@@ -417,6 +439,24 @@ func RegisterWorkflowRegistryServer(s grpc.ServiceRegistrar, srv WorkflowRegistr
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&WorkflowRegistry_ServiceDesc, srv)
+}
+
+func _WorkflowRegistry_Handshake_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WorkflowRegistryHandshakeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowRegistryServer).Handshake(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowRegistry_Handshake_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowRegistryServer).Handshake(ctx, req.(*WorkflowRegistryHandshakeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkflowRegistry_RegisterComponent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -444,6 +484,10 @@ var WorkflowRegistry_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "pulumirpc.WorkflowRegistry",
 	HandlerType: (*WorkflowRegistryServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Handshake",
+			Handler:    _WorkflowRegistry_Handshake_Handler,
+		},
 		{
 			MethodName: "RegisterComponent",
 			Handler:    _WorkflowRegistry_RegisterComponent_Handler,

@@ -128,9 +128,19 @@ export class WorkflowEvaluatorClient extends grpc.Client implements IWorkflowEva
 }
 
 interface IWorkflowRegistryService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
+    handshake: IWorkflowRegistryService_IHandshake;
     registerComponent: IWorkflowRegistryService_IRegisterComponent;
 }
 
+interface IWorkflowRegistryService_IHandshake extends grpc.MethodDefinition<pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, pulumi_workflow_pb.WorkflowRegistryHandshakeResponse> {
+    path: "/pulumirpc.WorkflowRegistry/Handshake";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.WorkflowRegistryHandshakeRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.WorkflowRegistryHandshakeRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.WorkflowRegistryHandshakeResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.WorkflowRegistryHandshakeResponse>;
+}
 interface IWorkflowRegistryService_IRegisterComponent extends grpc.MethodDefinition<pulumi_workflow_pb.RegisterComponentRequest, google_protobuf_empty_pb.Empty> {
     path: "/pulumirpc.WorkflowRegistry/RegisterComponent";
     requestStream: false;
@@ -144,10 +154,14 @@ interface IWorkflowRegistryService_IRegisterComponent extends grpc.MethodDefinit
 export const WorkflowRegistryService: IWorkflowRegistryService;
 
 export interface IWorkflowRegistryServer extends grpc.UntypedServiceImplementation {
+    handshake: grpc.handleUnaryCall<pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, pulumi_workflow_pb.WorkflowRegistryHandshakeResponse>;
     registerComponent: grpc.handleUnaryCall<pulumi_workflow_pb.RegisterComponentRequest, google_protobuf_empty_pb.Empty>;
 }
 
 export interface IWorkflowRegistryClient {
+    handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
+    handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
+    handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
     registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
@@ -155,6 +169,9 @@ export interface IWorkflowRegistryClient {
 
 export class WorkflowRegistryClient extends grpc.Client implements IWorkflowRegistryClient {
     constructor(address: string, credentials: grpc.ChannelCredentials, options?: Partial<grpc.ClientOptions>);
+    public handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
+    public handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
+    public handshake(request: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse) => void): grpc.ClientUnaryCall;
     public registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public registerComponent(request: pulumi_workflow_pb.RegisterComponentRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;

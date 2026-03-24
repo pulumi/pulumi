@@ -178,6 +178,15 @@ class WorkflowRegistryStub:
     """
 
     def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
+    Handshake: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.WorkflowRegistryHandshakeRequest,
+        pulumi.workflow_pb2.WorkflowRegistryHandshakeResponse,
+    ]
+    """`Handshake` is the first call made to a workflow registry plugin. It establishes
+    protocol/session configuration for subsequent component registration and graph
+    evaluation.
+    """
+
     RegisterComponent: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RegisterComponentRequest,
         google.protobuf.empty_pb2.Empty,
@@ -187,6 +196,15 @@ class WorkflowRegistryAsyncStub:
     """WorkflowRegistry is called by workflow SDKs/plugins during startup to register
     exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
     how MLC packages register callable exports.
+    """
+
+    Handshake: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.WorkflowRegistryHandshakeRequest,
+        pulumi.workflow_pb2.WorkflowRegistryHandshakeResponse,
+    ]
+    """`Handshake` is the first call made to a workflow registry plugin. It establishes
+    protocol/session configuration for subsequent component registration and graph
+    evaluation.
     """
 
     RegisterComponent: grpc.aio.UnaryUnaryMultiCallable[
@@ -199,6 +217,17 @@ class WorkflowRegistryServicer(metaclass=abc.ABCMeta):
     exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
     how MLC packages register callable exports.
     """
+
+    
+    def Handshake(
+        self,
+        request: pulumi.workflow_pb2.WorkflowRegistryHandshakeRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.WorkflowRegistryHandshakeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.WorkflowRegistryHandshakeResponse]]:
+        """`Handshake` is the first call made to a workflow registry plugin. It establishes
+        protocol/session configuration for subsequent component registration and graph
+        evaluation.
+        """
 
     
     def RegisterComponent(

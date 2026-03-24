@@ -256,6 +256,11 @@ class WorkflowRegistryStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Handshake = channel.unary_unary(
+                '/pulumirpc.WorkflowRegistry/Handshake',
+                request_serializer=pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeResponse.FromString,
+                )
         self.RegisterComponent = channel.unary_unary(
                 '/pulumirpc.WorkflowRegistry/RegisterComponent',
                 request_serializer=pulumi_dot_workflow__pb2.RegisterComponentRequest.SerializeToString,
@@ -269,6 +274,15 @@ class WorkflowRegistryServicer(object):
     how MLC packages register callable exports.
     """
 
+    def Handshake(self, request, context):
+        """`Handshake` is the first call made to a workflow registry plugin. It establishes
+        protocol/session configuration for subsequent component registration and graph
+        evaluation.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def RegisterComponent(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -278,6 +292,11 @@ class WorkflowRegistryServicer(object):
 
 def add_WorkflowRegistryServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Handshake': grpc.unary_unary_rpc_method_handler(
+                    servicer.Handshake,
+                    request_deserializer=pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeResponse.SerializeToString,
+            ),
             'RegisterComponent': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterComponent,
                     request_deserializer=pulumi_dot_workflow__pb2.RegisterComponentRequest.FromString,
@@ -295,6 +314,23 @@ class WorkflowRegistry(object):
     exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
     how MLC packages register callable exports.
     """
+
+    @staticmethod
+    def Handshake(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowRegistry/Handshake',
+            pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.WorkflowRegistryHandshakeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def RegisterComponent(request,

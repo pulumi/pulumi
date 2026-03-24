@@ -252,6 +252,28 @@ function deserialize_pulumirpc_RunStepResponse(buffer_arg) {
   return pulumi_workflow_pb.RunStepResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_WorkflowRegistryHandshakeRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.WorkflowRegistryHandshakeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.WorkflowRegistryHandshakeRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_WorkflowRegistryHandshakeRequest(buffer_arg) {
+  return pulumi_workflow_pb.WorkflowRegistryHandshakeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_WorkflowRegistryHandshakeResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.WorkflowRegistryHandshakeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.WorkflowRegistryHandshakeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_WorkflowRegistryHandshakeResponse(buffer_arg) {
+  return pulumi_workflow_pb.WorkflowRegistryHandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // WorkflowEvaluator is called by a scheduler/coordinator to ask a running workflow
 // evaluator process to materialize graph shape and execute specific callable nodes.
@@ -335,6 +357,20 @@ exports.WorkflowEvaluatorClient = grpc.makeGenericClientConstructor(WorkflowEval
 // exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
 // how MLC packages register callable exports.
 var WorkflowRegistryService = exports.WorkflowRegistryService = {
+  // `Handshake` is the first call made to a workflow registry plugin. It establishes
+// protocol/session configuration for subsequent component registration and graph
+// evaluation.
+handshake: {
+    path: '/pulumirpc.WorkflowRegistry/Handshake',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.WorkflowRegistryHandshakeRequest,
+    responseType: pulumi_workflow_pb.WorkflowRegistryHandshakeResponse,
+    requestSerialize: serialize_pulumirpc_WorkflowRegistryHandshakeRequest,
+    requestDeserialize: deserialize_pulumirpc_WorkflowRegistryHandshakeRequest,
+    responseSerialize: serialize_pulumirpc_WorkflowRegistryHandshakeResponse,
+    responseDeserialize: deserialize_pulumirpc_WorkflowRegistryHandshakeResponse,
+  },
   registerComponent: {
     path: '/pulumirpc.WorkflowRegistry/RegisterComponent',
     requestStream: false,

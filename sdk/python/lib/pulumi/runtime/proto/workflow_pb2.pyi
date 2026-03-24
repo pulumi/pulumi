@@ -118,6 +118,65 @@ class RegisterComponentRequest(google.protobuf.message.Message):
 global___RegisterComponentRequest = RegisterComponentRequest
 
 @typing.final
+class WorkflowRegistryHandshakeRequest(google.protobuf.message.Message):
+    """`WorkflowRegistryHandshakeRequest` is the type of requests sent as part of a
+    [](pulumirpc.WorkflowRegistry.Handshake) call.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
+    ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
+    PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
+    GRAPH_MONITOR_ADDRESS_FIELD_NUMBER: builtins.int
+    GRAPH_MONITOR_CONTEXT_TOKEN_FIELD_NUMBER: builtins.int
+    engine_address: builtins.str
+    """The gRPC address of the engine/scheduler handshaking with the workflow registry.
+    At minimum this address exposes an instance of [](pulumirpc.Engine).
+    """
+    root_directory: builtins.str
+    """Optional root directory where the workflow plugin/program source is located."""
+    program_directory: builtins.str
+    """Optional program directory in which the workflow plugin/program should execute."""
+    graph_monitor_address: builtins.str
+    """The gRPC address of the graph monitor service for this session. The plugin uses this
+    target for per-evaluation graph registration (jobs/steps/triggers/etc.).
+    """
+    graph_monitor_context_token: builtins.str
+    """Optional opaque context token to present to GraphMonitor calls if required by the host."""
+    def __init__(
+        self,
+        *,
+        engine_address: builtins.str = ...,
+        root_directory: builtins.str | None = ...,
+        program_directory: builtins.str | None = ...,
+        graph_monitor_address: builtins.str = ...,
+        graph_monitor_context_token: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "engine_address", b"engine_address", "graph_monitor_address", b"graph_monitor_address", "graph_monitor_context_token", b"graph_monitor_context_token", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_program_directory", b"_program_directory"]) -> typing.Literal["program_directory"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_root_directory", b"_root_directory"]) -> typing.Literal["root_directory"] | None: ...
+
+global___WorkflowRegistryHandshakeRequest = WorkflowRegistryHandshakeRequest
+
+@typing.final
+class WorkflowRegistryHandshakeResponse(google.protobuf.message.Message):
+    """`WorkflowRegistryHandshakeResponse` is the type of responses sent by a
+    [](pulumirpc.WorkflowRegistry.Handshake) call.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___WorkflowRegistryHandshakeResponse = WorkflowRegistryHandshakeResponse
+
+@typing.final
 class WorkflowError(google.protobuf.message.Message):
     """WorkflowError represents an execution or generation error."""
 

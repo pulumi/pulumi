@@ -47,6 +47,11 @@ service WorkflowEvaluator {
 // exported workflow components (graphs/jobs/subgraphs/steps/functions), similar to
 // how MLC packages register callable exports.
 service WorkflowRegistry {
+    // `Handshake` is the first call made to a workflow registry plugin. It establishes
+    // protocol/session configuration for subsequent component registration and graph
+    // evaluation.
+    rpc Handshake(WorkflowRegistryHandshakeRequest) returns (WorkflowRegistryHandshakeResponse) {}
+
     rpc RegisterComponent(RegisterComponentRequest) returns (google.protobuf.Empty) {}
 }
 
@@ -97,6 +102,32 @@ message RegisterComponentRequest {
 
     // Optional structured metadata (display name, schemas, docs, etc.).
     google.protobuf.Struct metadata = 4;
+}
+
+// `WorkflowRegistryHandshakeRequest` is the type of requests sent as part of a
+// [](pulumirpc.WorkflowRegistry.Handshake) call.
+message WorkflowRegistryHandshakeRequest {
+    // The gRPC address of the engine/scheduler handshaking with the workflow registry.
+    // At minimum this address exposes an instance of [](pulumirpc.Engine).
+    string engine_address = 1;
+
+    // Optional root directory where the workflow plugin/program source is located.
+    optional string root_directory = 2;
+
+    // Optional program directory in which the workflow plugin/program should execute.
+    optional string program_directory = 3;
+
+    // The gRPC address of the graph monitor service for this session. The plugin uses this
+    // target for per-evaluation graph registration (jobs/steps/triggers/etc.).
+    string graph_monitor_address = 4;
+
+    // Optional opaque context token to present to GraphMonitor calls if required by the host.
+    string graph_monitor_context_token = 5;
+}
+
+// `WorkflowRegistryHandshakeResponse` is the type of responses sent by a
+// [](pulumirpc.WorkflowRegistry.Handshake) call.
+message WorkflowRegistryHandshakeResponse {
 }
 
 // WorkflowError represents an execution or generation error.

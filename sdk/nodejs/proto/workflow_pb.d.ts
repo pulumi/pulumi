@@ -69,6 +69,61 @@ export namespace RegisterComponentRequest {
     }
 }
 
+export class WorkflowRegistryHandshakeRequest extends jspb.Message { 
+    getEngineAddress(): string;
+    setEngineAddress(value: string): WorkflowRegistryHandshakeRequest;
+
+    hasRootDirectory(): boolean;
+    clearRootDirectory(): void;
+    getRootDirectory(): string | undefined;
+    setRootDirectory(value: string): WorkflowRegistryHandshakeRequest;
+
+    hasProgramDirectory(): boolean;
+    clearProgramDirectory(): void;
+    getProgramDirectory(): string | undefined;
+    setProgramDirectory(value: string): WorkflowRegistryHandshakeRequest;
+    getGraphMonitorAddress(): string;
+    setGraphMonitorAddress(value: string): WorkflowRegistryHandshakeRequest;
+    getGraphMonitorContextToken(): string;
+    setGraphMonitorContextToken(value: string): WorkflowRegistryHandshakeRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): WorkflowRegistryHandshakeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: WorkflowRegistryHandshakeRequest): WorkflowRegistryHandshakeRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: WorkflowRegistryHandshakeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): WorkflowRegistryHandshakeRequest;
+    static deserializeBinaryFromReader(message: WorkflowRegistryHandshakeRequest, reader: jspb.BinaryReader): WorkflowRegistryHandshakeRequest;
+}
+
+export namespace WorkflowRegistryHandshakeRequest {
+    export type AsObject = {
+        engineAddress: string,
+        rootDirectory?: string,
+        programDirectory?: string,
+        graphMonitorAddress: string,
+        graphMonitorContextToken: string,
+    }
+}
+
+export class WorkflowRegistryHandshakeResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): WorkflowRegistryHandshakeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: WorkflowRegistryHandshakeResponse): WorkflowRegistryHandshakeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: WorkflowRegistryHandshakeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): WorkflowRegistryHandshakeResponse;
+    static deserializeBinaryFromReader(message: WorkflowRegistryHandshakeResponse, reader: jspb.BinaryReader): WorkflowRegistryHandshakeResponse;
+}
+
+export namespace WorkflowRegistryHandshakeResponse {
+    export type AsObject = {
+    }
+}
+
 export class WorkflowError extends jspb.Message { 
     getReason(): string;
     setReason(value: string): WorkflowError;
