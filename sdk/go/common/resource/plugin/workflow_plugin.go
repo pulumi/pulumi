@@ -1,0 +1,184 @@
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package plugin
+
+import (
+	"context"
+	"fmt"
+	"os/exec"
+	"path/filepath"
+
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+)
+
+type workflowPlugin struct {
+	path      string
+	plug      *Plugin
+	clientRaw pulumirpc.WorkflowEvaluatorClient
+}
+
+// NewWorkflow launches a workflow evaluator plugin and establishes a gRPC connection.
+func NewWorkflow(host Host, ctx *Context, programPath string) (Workflow, error) {
+	absProgramPath, err := filepath.Abs(programPath)
+	if err != nil {
+		return nil, fmt.Errorf("resolve workflow program path: %w", err)
+	}
+
+	pythonBin, err := exec.LookPath("python3")
+	if err != nil {
+		return nil, fmt.Errorf("find python3: %w", err)
+	}
+
+	prefix := fmt.Sprintf("%v (workflow)", filepath.Base(absProgramPath))
+	pluginDir := filepath.Dir(absProgramPath)
+
+	handshake := func(
+		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+	) (*pulumirpc.WorkflowHandshakeResponse, error) {
+		client := pulumirpc.NewWorkflowEvaluatorClient(conn)
+		res, err := client.Handshake(ctx, &pulumirpc.WorkflowHandshakeRequest{
+			EngineAddress:    host.ServerAddr(),
+			RootDirectory:    &pluginDir,
+			ProgramDirectory: &pluginDir,
+		})
+		if err != nil {
+			rpcStatus, ok := status.FromError(err)
+			if ok && rpcStatus.Code() == codes.Unimplemented {
+				logging.V(7).Infof("Workflow handshake not supported by '%v'", bin)
+				return &pulumirpc.WorkflowHandshakeResponse{}, nil
+			}
+			return nil, err
+		}
+		logging.V(7).Infof("Workflow handshake succeeded [%v]", bin)
+		return res, nil
+	}
+
+	plug, _, err := newPlugin(
+		ctx,
+		ctx.Pwd,
+		pythonBin,
+		prefix,
+		apitype.ToolPlugin,
+		[]string{absProgramPath},
+		env.Global(),
+		handshake,
+		workflowPluginDialOptions(ctx, absProgramPath),
+		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: filepath.Base(absProgramPath)}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	contract.Assertf(plug != nil, "unexpected nil workflow plugin for %s", absProgramPath)
+
+	return &workflowPlugin{
+		path:      absProgramPath,
+		plug:      plug,
+		clientRaw: pulumirpc.NewWorkflowEvaluatorClient(plug.Conn),
+	}, nil
+}
+
+func workflowPluginDialOptions(ctx *Context, path string) []grpc.DialOption {
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(otgrpc.SpanDecorator(decorateProviderSpans)),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+
+	if ctx.DialOptions != nil {
+		metadata := map[string]any{
+			"mode": "client",
+			"kind": "workflow",
+			"path": path,
+		}
+		dialOpts = append(dialOpts, ctx.DialOptions(metadata)...)
+	}
+
+	return dialOpts
+}
+
+func (p *workflowPlugin) Close() error {
+	if p.plug == nil {
+		return nil
+	}
+	return p.plug.Close()
+}
+
+func (p *workflowPlugin) Handshake(
+	ctx context.Context, req *pulumirpc.WorkflowHandshakeRequest,
+) (*pulumirpc.WorkflowHandshakeResponse, error) {
+	return p.clientRaw.Handshake(ctx, req)
+}
+
+func (p *workflowPlugin) GetPackageInfo(
+	ctx context.Context, req *pulumirpc.GetPackageInfoRequest,
+) (*pulumirpc.GetPackageInfoResponse, error) {
+	label := fmt.Sprintf("Workflow[%s, %p].GetPackageInfo", p.path, p)
+	logging.V(7).Infof("%s executing", label)
+	resp, err := p.clientRaw.GetPackageInfo(ctx, req)
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(8).Infof("%s rpc error `%s`: `%s`", label, rpcError.Code(), rpcError.Message())
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (p *workflowPlugin) GetGraphs(
+	ctx context.Context, req *pulumirpc.GetGraphsRequest,
+) (*pulumirpc.GetGraphsResponse, error) {
+	return p.clientRaw.GetGraphs(ctx, req)
+}
+
+func (p *workflowPlugin) GetGraph(
+	ctx context.Context, req *pulumirpc.GetGraphRequest,
+) (*pulumirpc.GetGraphResponse, error) {
+	return p.clientRaw.GetGraph(ctx, req)
+}
+
+func (p *workflowPlugin) GetJobs(
+	ctx context.Context, req *pulumirpc.GetJobsRequest,
+) (*pulumirpc.GetJobsResponse, error) {
+	return p.clientRaw.GetJobs(ctx, req)
+}
+
+func (p *workflowPlugin) GetJob(
+	ctx context.Context, req *pulumirpc.GetJobRequest,
+) (*pulumirpc.GetJobResponse, error) {
+	return p.clientRaw.GetJob(ctx, req)
+}
+
+func (p *workflowPlugin) GenerateGraph(
+	ctx context.Context, req *pulumirpc.GenerateGraphRequest,
+) (*pulumirpc.GenerateNodeResponse, error) {
+	return p.clientRaw.GenerateGraph(ctx, req)
+}
+
+func (p *workflowPlugin) GenerateJob(
+	ctx context.Context, req *pulumirpc.GenerateJobRequest,
+) (*pulumirpc.GenerateNodeResponse, error) {
+	return p.clientRaw.GenerateJob(ctx, req)
+}

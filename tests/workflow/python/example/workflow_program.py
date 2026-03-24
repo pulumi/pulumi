@@ -17,4 +17,4 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
 
 
 if __name__ == "__main__":
-    workflow.run(register_workflows)
+    workflow.run_plugin(register_workflows)

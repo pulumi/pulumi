@@ -74,6 +74,8 @@ type Host interface {
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
 	Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
+	// Workflow loads a new workflow evaluator plugin for the given program path.
+	Workflow(programPath string) (Workflow, error)
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
 	LanguageRuntime(runtime string) (LanguageRuntime, error)
@@ -228,6 +230,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]any,
 		analyzerPlugins:         make(map[tokens.QName]*analyzerPlugin),
 		languagePlugins:         make(map[string]*languagePlugin),
 		resourcePlugins:         make(map[Provider]*resourcePlugin),
+		workflowPlugins:         make(map[Workflow]*workflowPluginInfo),
 		reportedResourcePlugins: make(map[string]struct{}),
 		languageLoadRequests:    make(chan pluginLoadRequest),
 		loadRequests:            make(chan pluginLoadRequest),
@@ -345,6 +348,7 @@ type defaultHost struct {
 	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
 	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
 	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
+	workflowPlugins         map[Workflow]*workflowPluginInfo // the set of loaded workflow plugins.
 	reportedResourcePlugins map[string]struct{}              // the set of unique resource plugins we'll report.
 	languageLoadRequests    chan pluginLoadRequest           // a channel used to satisfy language load requests.
 	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
@@ -381,6 +385,11 @@ type resourcePlugin struct {
 	Plugin Provider
 	Info   PluginInfo
 	Name   string
+}
+
+type workflowPluginInfo struct {
+	Plugin Workflow
+	Path   string
 }
 
 func (host *defaultHost) ServerAddr() string {
@@ -567,9 +576,32 @@ func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor, e env.E
 	return hostManagedProvider{provider, host}, nil
 }
 
+func (host *defaultHost) Workflow(programPath string) (Workflow, error) {
+	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
+		plug, err := NewWorkflow(host, host.ctx, programPath)
+		if err != nil {
+			return nil, err
+		}
+		host.workflowPlugins[plug] = &workflowPluginInfo{Plugin: plug, Path: programPath}
+		return plug, nil
+	})
+	if plugin == nil || err != nil {
+		return nil, err
+	}
+
+	workflow := plugin.(Workflow)
+	return hostManagedWorkflow{workflow, host}, nil
+}
+
 // hostManagedProvider wraps a Provider such that it can be closed by the host that created it.
 type hostManagedProvider struct {
 	Provider
+
+	host *defaultHost
+}
+
+type hostManagedWorkflow struct {
+	Workflow
 
 	host *defaultHost
 }
@@ -583,6 +615,17 @@ func (pc hostManagedProvider) Close() error {
 			return nil, err
 		}
 		delete(pc.host.resourcePlugins, pc.Provider)
+		return nil, nil
+	})
+	return err
+}
+
+func (wc hostManagedWorkflow) Close() error {
+	_, err := wc.host.loadPlugin(wc.host.loadRequests, func() (any, error) {
+		if err := wc.Workflow.Close(); err != nil {
+			return nil, err
+		}
+		delete(wc.host.workflowPlugins, wc.Workflow)
 		return nil, nil
 	})
 	return err
@@ -710,6 +753,11 @@ func (host *defaultHost) Close() (err error) {
 				logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Name, err)
 			}
 		}
+		for _, plug := range host.workflowPlugins {
+			if err := plug.Plugin.Close(); err != nil {
+				logging.V(5).Infof("Error closing workflow plugin '%s' during shutdown; ignoring: %v", plug.Path, err)
+			}
+		}
 		for _, plug := range host.languagePlugins {
 			if err := plug.Plugin.Close(); err != nil {
 				logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Name, err)
@@ -720,6 +768,7 @@ func (host *defaultHost) Close() (err error) {
 		host.analyzerPlugins = make(map[tokens.QName]*analyzerPlugin)
 		host.languagePlugins = make(map[string]*languagePlugin)
 		host.resourcePlugins = make(map[Provider]*resourcePlugin)
+		host.workflowPlugins = make(map[Workflow]*workflowPluginInfo)
 
 		// Shut down the plugin loader.
 		close(host.languageLoadRequests)

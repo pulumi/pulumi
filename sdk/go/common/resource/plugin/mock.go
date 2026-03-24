@@ -35,6 +35,7 @@ type MockHost struct {
 	PolicyAnalyzerF     func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
 	ListAnalyzersF      func() []Analyzer
 	ProviderF           func(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
+	WorkflowF           func(programPath string) (Workflow, error)
 	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
 	EnsurePluginsF      func(plugins []workspace.PluginDescriptor, kinds Flags) error
 	ResolvePluginF      func(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
@@ -99,6 +100,13 @@ func (m *MockHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (P
 		return m.ProviderF(descriptor, e)
 	}
 	return nil, errors.New("Provider not implemented")
+}
+
+func (m *MockHost) Workflow(programPath string) (Workflow, error) {
+	if m.WorkflowF != nil {
+		return m.WorkflowF(programPath)
+	}
+	return nil, errors.New("Workflow not implemented")
 }
 
 func (m *MockHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+from concurrent import futures
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union
 
@@ -96,9 +97,7 @@ class WorkflowRegistry:
         return register
 
 
-def run(register: Callable[[WorkflowRegistry], None]) -> None:
-    """Executes workflow registration + graph evaluation against monitor services."""
-
+def _new_workflow_context() -> workflow_pb2.WorkflowContext:
     graph_monitor_address = os.getenv("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS")
     if not graph_monitor_address:
         raise WorkflowError("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS is required")
@@ -111,24 +110,135 @@ def run(register: Callable[[WorkflowRegistry], None]) -> None:
     context.workflowName = workflow_name
     context.workflowVersion = workflow_version
     context.executionId = execution_id
+    return context
+
+
+def _evaluate_graph(token: str, graph_fn: Callable[[Context], None], context: workflow_pb2.WorkflowContext) -> None:
+    graph_monitor_address = os.getenv("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS")
+    if not graph_monitor_address:
+        raise WorkflowError("PULUMI_WORKFLOW_GRAPH_MONITOR_ADDRESS is required")
 
     with contextlib.ExitStack() as stack:
         graph_channel = stack.enter_context(grpc.insecure_channel(graph_monitor_address))
-
         monitor = workflow_pb2_grpc.GraphMonitorStub(graph_channel)
+        register_graph = workflow_pb2.RegisterGraphRequest()
+        register_graph.context.CopyFrom(context)
+        register_graph.path = token
+        register_graph.hasOnError = False
+        register_graph.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
+        monitor.RegisterGraph(register_graph)
+        graph_fn(Context(_EvalState(monitor=monitor, context=context, graph_path=token)))
 
-        workflow_registry = WorkflowRegistry()
-        register(workflow_registry)
 
-        for token, graph_fn in workflow_registry._graphs.items():
-            register_graph = workflow_pb2.RegisterGraphRequest()
-            register_graph.context.CopyFrom(context)
-            register_graph.path = token
-            register_graph.hasOnError = False
-            register_graph.dependencies.operator = workflow_pb2.DependencyExpression.OPERATOR_ALL
-            monitor.RegisterGraph(register_graph)
+class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
+    def __init__(self, register: Callable[[WorkflowRegistry], None]) -> None:
+        self._workflow_registry = WorkflowRegistry()
+        register(self._workflow_registry)
 
-            graph_fn(Context(_EvalState(monitor=monitor, context=context, graph_path=token)))
+    def Handshake(
+        self,
+        request: workflow_pb2.WorkflowHandshakeRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.WorkflowHandshakeResponse:
+        _ = request
+        _ = context
+        return workflow_pb2.WorkflowHandshakeResponse()
+
+    def GetPackageInfo(
+        self,
+        request: workflow_pb2.GetPackageInfoRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GetPackageInfoResponse:
+        _ = request
+        _ = context
+        response = workflow_pb2.GetPackageInfoResponse()
+        response.package.name = os.getenv("PULUMI_WORKFLOW_PACKAGE_NAME", os.getenv("PULUMI_WORKFLOW_NAME", "workflow"))
+        response.package.version = os.getenv("PULUMI_WORKFLOW_PACKAGE_VERSION", os.getenv("PULUMI_WORKFLOW_VERSION", "dev"))
+        response.package.displayName = os.getenv("PULUMI_WORKFLOW_PACKAGE_DISPLAY_NAME", "Workflow")
+        return response
+
+    def GetGraphs(
+        self,
+        request: workflow_pb2.GetGraphsRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GetGraphsResponse:
+        _ = request
+        _ = context
+        response = workflow_pb2.GetGraphsResponse()
+        for token in self._workflow_registry._graphs:
+            graph = response.graphs.add()
+            graph.token = token
+            graph.hasOnError = False
+        return response
+
+    def GetGraph(
+        self,
+        request: workflow_pb2.GetGraphRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GetGraphResponse:
+        if request.token not in self._workflow_registry._graphs:
+            context.abort(grpc.StatusCode.NOT_FOUND, f"unknown graph token {request.token}")
+        response = workflow_pb2.GetGraphResponse()
+        response.graph.token = request.token
+        response.graph.hasOnError = False
+        return response
+
+    def GetJobs(
+        self,
+        request: workflow_pb2.GetJobsRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GetJobsResponse:
+        _ = request
+        _ = context
+        return workflow_pb2.GetJobsResponse()
+
+    def GetJob(
+        self,
+        request: workflow_pb2.GetJobRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GetJobResponse:
+        _ = request
+        context.abort(grpc.StatusCode.NOT_FOUND, "no jobs exported")
+
+    def GenerateGraph(
+        self,
+        request: workflow_pb2.GenerateGraphRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GenerateNodeResponse:
+        graph_fn = self._workflow_registry._graphs.get(request.path)
+        if graph_fn is None:
+            context.abort(grpc.StatusCode.NOT_FOUND, f"unknown graph path {request.path}")
+        _evaluate_graph(request.path, graph_fn, request.context)
+        return workflow_pb2.GenerateNodeResponse()
+
+    def GenerateJob(
+        self,
+        request: workflow_pb2.GenerateJobRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GenerateNodeResponse:
+        _ = request
+        context.abort(grpc.StatusCode.UNIMPLEMENTED, "GenerateJob is not implemented")
+
+
+def run(register: Callable[[WorkflowRegistry], None]) -> None:
+    """Executes graph evaluation once against the graph monitor."""
+
+    context = _new_workflow_context()
+    workflow_registry = WorkflowRegistry()
+    register(workflow_registry)
+    for token, graph_fn in workflow_registry._graphs.items():
+        _evaluate_graph(token, graph_fn, context)
+
+
+def run_plugin(register: Callable[[WorkflowRegistry], None]) -> None:
+    """Runs a WorkflowEvaluator gRPC server and prints the bound port on stdout."""
+
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
+    workflow_pb2_grpc.add_WorkflowEvaluatorServicer_to_server(_WorkflowEvaluatorServer(register), server)
+    port = server.add_insecure_port("127.0.0.1:0")
+    server.start()
+    print(port, flush=True)
+    server.wait_for_termination()
 
 
 __all__ = [
@@ -136,4 +246,5 @@ __all__ = [
     "WorkflowRegistry",
     "WorkflowError",
     "run",
+    "run_plugin",
 ]
