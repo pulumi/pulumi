@@ -179,68 +179,71 @@ resource obj "aws:s3/bucketObject:BucketObject" {
 	assert.Equal(t, expectedCode, generatedProgram.String())
 }
 
-func testAttributeHelper(t *testing.T, names NameTable, expectedCode string) {
-	t.Helper()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-
-	var generatedProgram strings.Builder
-	generator := func(_ io.Writer, p *pcl.Program) error {
-		for _, content := range p.Source() {
-			generatedProgram.WriteString(content)
-		}
-		return nil
-	}
-
-	snapshot := []*resource.State{
-		{
-			ID:     "123",
-			Custom: true,
-			Type:   "pulumi:providers:aws",
-			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
-		},
-	}
-
-	resources := []apitype.ResourceV3{
-		{
-			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::my.Bucket.com",
-			ID:       "bucket-1",
-			Custom:   true,
-			Type:     "aws:s3/bucket:Bucket",
-			Inputs:   map[string]any{},
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-		},
-		{
-			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::obj",
-			ID:     "bucket-object-1",
-			Custom: true,
-			Type:   "aws:s3/bucketObject:BucketObject",
-			Inputs: map[string]any{
-				"bucket": "bucket-1",
-			},
-			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
-		},
-	}
-
-	states := slice.Prealloc[*resource.State](len(resources))
-	for _, r := range resources {
-		state, err := stack.DeserializeResource(r, config.NopDecrypter)
-		require.NoError(t, err)
-		states = append(states, state)
-	}
-
-	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, names)
-	require.NoError(t, err)
-	assert.Equal(t, expectedCode, generatedProgram.String())
-}
-
-// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that given names are used in attribute
-// lookups
-func TestGenerateLanguageDefinitionsReferencesOtherResourcesByGivenName(t *testing.T) {
+func TestGenerateLanguageDefinitionsReferencesOtherResourcesByName(t *testing.T) {
 	t.Parallel()
-	names := NameTable{
-		"urn:pulumi:stack::project::aws:s3/bucket:Bucket::my.Bucket.com": "myBucket",
+
+	testAttribute := func(t *testing.T, names NameTable, expectedCode string) {
+		t.Helper()
+		loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+		var generatedProgram strings.Builder
+		generator := func(_ io.Writer, p *pcl.Program) error {
+			for _, content := range p.Source() {
+				generatedProgram.WriteString(content)
+			}
+			return nil
+		}
+
+		snapshot := []*resource.State{
+			{
+				ID:     "123",
+				Custom: true,
+				Type:   "pulumi:providers:aws",
+				URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			},
+		}
+
+		resources := []apitype.ResourceV3{
+			{
+				URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::my.Bucket.com",
+				ID:       "bucket-1",
+				Custom:   true,
+				Type:     "aws:s3/bucket:Bucket",
+				Inputs:   map[string]any{},
+				Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			},
+			{
+				URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::obj",
+				ID:     "bucket-object-1",
+				Custom: true,
+				Type:   "aws:s3/bucketObject:BucketObject",
+				Inputs: map[string]any{
+					"bucket": "bucket-1",
+				},
+				Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			},
+		}
+
+		states := slice.Prealloc[*resource.State](len(resources))
+		for _, r := range resources {
+			state, err := stack.DeserializeResource(r, config.NopDecrypter)
+			require.NoError(t, err)
+			states = append(states, state)
+		}
+
+		err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, names)
+		require.NoError(t, err)
+		assert.Equal(t, expectedCode, generatedProgram.String())
 	}
-	expectedCode := `package aws {
+
+	// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that given names are used in
+	// attribute lookups.
+	t.Run("TestGenerateLanguageDefinitionsReferencesOtherResourcesByGivenName", func(t *testing.T) {
+		t.Parallel()
+		names := NameTable{
+			"urn:pulumi:stack::project::aws:s3/bucket:Bucket::my.Bucket.com": "myBucket",
+		}
+		expectedCode := `package aws {
     baseProviderName = "aws"
 
 }
@@ -255,15 +258,15 @@ resource obj "aws:s3/bucketObject:BucketObject" {
 
 }
 `
-	testAttributeHelper(t, names, expectedCode)
-}
+		testAttribute(t, names, expectedCode)
+	})
 
-// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that sanitized names are used in attribute
-// lookups
-func TestGenerateLanguageDefinitionsReferencesOtherResourcesBySanitizedName(t *testing.T) {
-	t.Parallel()
-	var names NameTable
-	expectedCode := `package aws {
+	// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that sanitized names are used in
+	// attribute lookups.
+	t.Run("TestGenerateLanguageDefinitionsReferencesOtherResourcesBySanitizedName", func(t *testing.T) {
+		t.Parallel()
+		var names NameTable
+		expectedCode := `package aws {
     baseProviderName = "aws"
 
 }
@@ -278,7 +281,8 @@ resource obj "aws:s3/bucketObject:BucketObject" {
 
 }
 `
-	testAttributeHelper(t, names, expectedCode)
+		testAttribute(t, names, expectedCode)
+	})
 }
 
 func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularReferences(t *testing.T) {
