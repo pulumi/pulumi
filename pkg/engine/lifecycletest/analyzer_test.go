@@ -733,22 +733,31 @@ func TestAnalyzerCancellation(t *testing.T) {
 	t.Parallel()
 
 	gracefulShutdown := false
+	analyzerCanceled := make(chan struct{})
 	loaders := []*deploytest.PluginLoader{
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
 				CancelF: func() error {
 					gracefulShutdown = true
+					close(analyzerCanceled)
 					return nil
 				},
 			}, nil
 		}, deploytest.WithGrpc),
 	}
 
-	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// Sleep to ensure the executor's SignalCancellation goroutine sees
+		// callerCtx.Done() before the done channel is closed. Without this,
+		// CancelF may never be called due to a race in the executor.
 		time.Sleep(1 * time.Second)
 		cancel()
+		// Wait for the engine to signal cancellation to the analyzer before
+		// returning. Without this, the program's nil return races with context
+		// cancellation in the deployment executor's select loop, causing a
+		// non-deterministic event stream.
+		<-analyzerCanceled
 		return nil
 	})
 
