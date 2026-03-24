@@ -364,8 +364,12 @@ func newProviderServer(provider plugin.Provider) pulumirpc.ResourceProviderServe
 }
 
 const (
-	// bufconn buffer size: 256KB is plenty for in-process RPC messages.
-	bufconnBufSize = 256 * 1024
+	// bufconn buffer size: must be large enough for gRPC HTTP/2 flow control
+	// to work without deadlocking. The "large" provider returns ~100MB
+	// responses; with a too-small buffer, the writer blocks waiting for the
+	// reader to drain while the reader blocks waiting for a complete HTTP/2
+	// frame, causing a deadlock.
+	bufconnBufSize = 8 * 1024 * 1024 // 8MB
 
 	// maxRPCMessageSize matches the 400MB limit used by rpcutil.ServeWithOptions.
 	maxRPCMessageSize = 1024 * 1024 * 400

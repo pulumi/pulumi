@@ -85,6 +85,9 @@ func (b *diyBackend) getTarget(
 	if err != nil {
 		return nil, err
 	}
+	if stack == nil {
+		return nil, fmt.Errorf("stack %q not found", ref.Name())
+	}
 	snapshot, err := stack.Snapshot(ctx, secretsProvider)
 	if err != nil {
 		return nil, err

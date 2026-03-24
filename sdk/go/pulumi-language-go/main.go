@@ -1110,11 +1110,14 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
+	// Check the build cache — if the same program directory was compiled before and the
+	// binary still exists on disk, reuse it to avoid redundant compilation (e.g. preview then update).
 	var program string
 	if opts.buildTarget == "" && !req.GetAttachDebugger() {
 		if cached, ok := host.buildCache.Load(req.Info.ProgramDirectory); ok {
 			cachedPath := cached.(string)
 			if _, err := os.Stat(cachedPath); err == nil {
+				logging.V(5).Infof("Reusing cached binary %s for %s", cachedPath, req.Info.ProgramDirectory)
 				program = cachedPath
 			}
 		}
@@ -1132,10 +1135,12 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 			host.buildCache.Store(req.Info.ProgramDirectory, program)
 		}
 	}
-	if opts.buildTarget == "" {
-		// If there is no specified buildTarget, delete the temporary program after running it.
+	// Only delete the temporary binary if it's NOT being cached for reuse.
+	// When buildTarget is set or debugger is attached, we don't cache, so clean up.
+	if opts.buildTarget != "" || req.GetAttachDebugger() {
 		defer os.Remove(program)
 	}
+	// Otherwise the binary is in buildCache and must survive for subsequent Run calls.
 
 	return runProgram(ctx, engineClient, req, req.Pwd, program, env), nil
 }
