@@ -41,6 +41,7 @@ OnErrorHandler = Callable[
 StepCallback = Callable[[], Any]
 JobCallback = Callable[..., None]
 GraphCallback = Callable[["Context"], None]
+FilterCallback = Callable[[Any], bool]
 Output = PulumiOutput[Any]
 
 _WORKFLOW_OUTPUT_PATHS_ATTR = "_pulumi_workflow_output_paths"
@@ -66,6 +67,7 @@ class _EvalState:
     context: workflow_pb2.WorkflowContext
     graph_path: str
     jobs: Dict[str, _JobDefinition]
+    filters: Dict[str, FilterCallback]
     target_job_name: Optional[str]
 
 
@@ -89,12 +91,13 @@ class Context:
         trigger_type: str,
         spec: Optional[Dict[str, Any]] = None,
         *,
-        has_filter: bool = False,
+        options: Optional[TriggerOptions] = None,
     ) -> PulumiOutput[Any]:
         """Registers a trigger in the current graph."""
 
         request = workflow_pb2.RegisterTriggerRequest()
         trigger_path = f"{self._state.graph_path}/{name}"
+        filter_fn = options.filter if options is not None else None
         if self._state.target_job_name is not None:
             return _new_workflow_output(
                 trigger_path, _workflow_input_value(self._state.context, trigger_path)
@@ -102,13 +105,15 @@ class Context:
         request.context.CopyFrom(self._state.context)
         request.path = trigger_path
         request.type = trigger_type
-        request.has_filter = has_filter
+        request.has_filter = filter_fn is not None
         if spec:
             trigger_spec = struct_pb2.Struct()
             trigger_spec.update(spec)
             request.spec.CopyFrom(trigger_spec)
 
         self._state.monitor.RegisterTrigger(request)
+        if filter_fn is not None:
+            self._state.filters[trigger_path] = filter_fn
         return _new_workflow_output(
             trigger_path, _workflow_input_value(self._state.context, trigger_path)
         )
@@ -214,6 +219,11 @@ class JobContext:
 
 class WorkflowError(RuntimeError):
     """Raised for invalid workflow runtime usage."""
+
+
+@dataclass
+class TriggerOptions:
+    filter: Optional[FilterCallback] = None
 
 
 class WorkflowRegistry:
@@ -361,7 +371,7 @@ def _evaluate_graph(
     context: workflow_pb2.WorkflowContext,
     graph_monitor_address: str,
     target_job_name: Optional[str] = None,
-) -> Dict[str, _JobDefinition]:
+) -> Tuple[Dict[str, _JobDefinition], Dict[str, FilterCallback]]:
     if not graph_monitor_address:
         raise WorkflowError("graph monitor address is required")
 
@@ -381,6 +391,7 @@ def _evaluate_graph(
         monitor.RegisterGraph(register_graph)
 
         jobs: Dict[str, _JobDefinition] = {}
+        filters: Dict[str, FilterCallback] = {}
         graph_fn(
             Context(
                 _EvalState(
@@ -388,11 +399,12 @@ def _evaluate_graph(
                     context=context,
                     graph_path=token,
                     jobs=jobs,
+                    filters=filters,
                     target_job_name=target_job_name,
                 )
             )
         )
-        return jobs
+        return jobs, filters
 
 
 def _evaluate_job(
@@ -437,6 +449,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
 
         self._jobs_by_path: Dict[str, _JobDefinition] = {}
         self._steps_by_path: Dict[str, _StepDefinition] = {}
+        self._filters_by_path: Dict[str, FilterCallback] = {}
 
     def Handshake(
         self,
@@ -516,10 +529,11 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 grpc.StatusCode.NOT_FOUND, f"unknown graph path {request.path}"
             )
 
-        jobs = _evaluate_graph(
+        jobs, filters = _evaluate_graph(
             request.path, graph_fn, request.context, request.graph_monitor_address
         )
         self._jobs_by_path.update(jobs)
+        self._filters_by_path.update(filters)
         return workflow_pb2.GenerateNodeResponse()
 
     def GenerateJob(
@@ -544,7 +558,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         if graph_fn is None:
             context.abort(grpc.StatusCode.NOT_FOUND, f"unknown graph path {graph_path}")
 
-        jobs = _evaluate_graph(
+        jobs, filters = _evaluate_graph(
             graph_path,
             graph_fn,
             request.context,
@@ -552,6 +566,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             target_job_name=job_name,
         )
         self._jobs_by_path.update(jobs)
+        self._filters_by_path.update(filters)
 
         job = self._jobs_by_path.get(request.path)
         if job is None:
@@ -562,6 +577,23 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         )
         self._steps_by_path.update(steps)
         return workflow_pb2.GenerateNodeResponse()
+
+    def RunFilter(
+        self,
+        request: workflow_pb2.RunFilterRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.RunFilterResponse:
+        _ = context
+        response = workflow_pb2.RunFilterResponse()
+
+        filter_fn = self._filters_by_path.get(request.path)
+        if filter_fn is None:
+            setattr(response, "pass", True)
+            return response
+
+        value = _from_proto_value(request.value) if request.value is not None else None
+        setattr(response, "pass", bool(filter_fn(value)))
+        return response
 
     def RunStep(
         self,
@@ -641,6 +673,7 @@ def run(
 __all__ = [
     "Context",
     "JobContext",
+    "TriggerOptions",
     "WorkflowRegistry",
     "WorkflowError",
     "Output",

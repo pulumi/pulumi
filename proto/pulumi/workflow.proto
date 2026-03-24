@@ -330,13 +330,12 @@ message ResolveStepResultResponse {
 }
 
 message RunFilterRequest {
-    WorkflowContext context = 1;
-    string path = 2;
+    string path = 1;
+    google.protobuf.Value value = 2;
 }
 
 message RunFilterResponse {
-    WorkflowError error = 1;
-    bool pass = 2;
+    bool pass = 1;
 }
 
 message RunOnErrorRequest {

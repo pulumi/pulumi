@@ -823,19 +823,19 @@ global___ResolveStepResultResponse = ResolveStepResultResponse
 class RunFilterRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    CONTEXT_FIELD_NUMBER: builtins.int
     PATH_FIELD_NUMBER: builtins.int
+    VALUE_FIELD_NUMBER: builtins.int
     path: builtins.str
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def value(self) -> google.protobuf.struct_pb2.Value: ...
     def __init__(
         self,
         *,
-        context: global___WorkflowContext | None = ...,
         path: builtins.str = ...,
+        value: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["context", b"context"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["context", b"context", "path", b"path"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["path", b"path", "value", b"value"]) -> None: ...
 
 global___RunFilterRequest = RunFilterRequest
 
@@ -843,17 +843,11 @@ global___RunFilterRequest = RunFilterRequest
 class RunFilterResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    ERROR_FIELD_NUMBER: builtins.int
     PASS_FIELD_NUMBER: builtins.int
-    @property
-    def error(self) -> global___WorkflowError: ...
     def __init__(
         self,
-        *,
-        error: global___WorkflowError | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["error", b"error"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["error", b"error", "pass", b"pass"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["pass", b"pass"]) -> None: ...
 
 global___RunFilterResponse = RunFilterResponse
 

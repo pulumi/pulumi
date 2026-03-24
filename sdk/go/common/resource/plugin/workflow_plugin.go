@@ -183,6 +183,12 @@ func (p *workflowPlugin) GenerateJob(
 	return p.clientRaw.GenerateJob(ctx, req)
 }
 
+func (p *workflowPlugin) RunFilter(
+	ctx context.Context, req *pulumirpc.RunFilterRequest,
+) (*pulumirpc.RunFilterResponse, error) {
+	return p.clientRaw.RunFilter(ctx, req)
+}
+
 func (p *workflowPlugin) RunStep(
 	ctx context.Context, req *pulumirpc.RunStepRequest,
 ) (*pulumirpc.RunStepResponse, error) {

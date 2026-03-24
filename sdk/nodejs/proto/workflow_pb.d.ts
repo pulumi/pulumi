@@ -917,13 +917,13 @@ export namespace ResolveStepResultResponse {
 }
 
 export class RunFilterRequest extends jspb.Message { 
-
-    hasContext(): boolean;
-    clearContext(): void;
-    getContext(): WorkflowContext | undefined;
-    setContext(value?: WorkflowContext): RunFilterRequest;
     getPath(): string;
     setPath(value: string): RunFilterRequest;
+
+    hasValue(): boolean;
+    clearValue(): void;
+    getValue(): google_protobuf_struct_pb.Value | undefined;
+    setValue(value?: google_protobuf_struct_pb.Value): RunFilterRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunFilterRequest.AsObject;
@@ -937,17 +937,12 @@ export class RunFilterRequest extends jspb.Message {
 
 export namespace RunFilterRequest {
     export type AsObject = {
-        context?: WorkflowContext.AsObject,
         path: string,
+        value?: google_protobuf_struct_pb.Value.AsObject,
     }
 }
 
 export class RunFilterResponse extends jspb.Message { 
-
-    hasError(): boolean;
-    clearError(): void;
-    getError(): WorkflowError | undefined;
-    setError(value?: WorkflowError): RunFilterResponse;
     getPass(): boolean;
     setPass(value: boolean): RunFilterResponse;
 
@@ -963,7 +958,6 @@ export class RunFilterResponse extends jspb.Message {
 
 export namespace RunFilterResponse {
     export type AsObject = {
-        error?: WorkflowError.AsObject,
         pass: boolean,
     }
 }

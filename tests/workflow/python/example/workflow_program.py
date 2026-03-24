@@ -5,6 +5,11 @@ from typing import Any
 
 
 def main_graph(ctx: workflow.Context) -> None:
+    def cron_filter(value: Any) -> bool:
+        if not isinstance(value, dict):
+            return False
+        return bool(value.get("allow", False))
+
     trigger_output = ctx.trigger(
         "every-minute",
         "cloud:cron",
@@ -12,6 +17,7 @@ def main_graph(ctx: workflow.Context) -> None:
             "schedule": "* * * * *",
             "timezone": "UTC",
         },
+        options=workflow.TriggerOptions(filter=cron_filter),
     )
 
     @ctx.job("main")
