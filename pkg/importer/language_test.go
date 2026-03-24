@@ -238,7 +238,7 @@ func TestGenerateLanguageDefinitionsReferencesOtherResourcesByName(t *testing.T)
 
 	// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that given names are used in
 	// attribute lookups.
-	t.Run("TestGenerateLanguageDefinitionsReferencesOtherResourcesByGivenName", func(t *testing.T) {
+	t.Run("GivenName", func(t *testing.T) {
 		t.Parallel()
 		names := NameTable{
 			"urn:pulumi:stack::project::aws:s3/bucket:Bucket::my.Bucket.com": "myBucket",
@@ -263,7 +263,7 @@ resource obj "aws:s3/bucketObject:BucketObject" {
 
 	// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that sanitized names are used in
 	// attribute lookups.
-	t.Run("TestGenerateLanguageDefinitionsReferencesOtherResourcesBySanitizedName", func(t *testing.T) {
+	t.Run("SanitizedName", func(t *testing.T) {
 		t.Parallel()
 		var names NameTable
 		expectedCode := `package aws {
