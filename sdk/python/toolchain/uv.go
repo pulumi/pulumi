@@ -35,9 +35,11 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"go.opentelemetry.io/otel"
 	"gopkg.in/yaml.v3"
 )
 
@@ -159,10 +161,17 @@ func newUv(root, virtualenv string) (*uv, error) {
 func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools,
 	showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
+	tracer := otel.Tracer("pulumi-language-python")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "uv/InstallDependencies")
+	defer span.End()
+
 	if useLanguageVersionTools {
+		_, pySpan := cmdutil.StartSpan(ctx, tracer, "uv/InstallDependencies/installPython")
 		if err := installPython(ctx, cwd, showOutput, infoWriter, errorWriter); err != nil {
+			pySpan.End()
 			return err
 		}
+		pySpan.End()
 	}
 
 	// If there's no `uv.lock` or `pyproject.toml` file, we first need to prepare the project.
@@ -198,9 +207,12 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 					projectName = string(pulumiConfig.Name)
 				}
 			}
+			_, prepSpan := cmdutil.StartSpan(ctx, tracer, "uv/InstallDependencies/prepareProject")
 			if err := u.PrepareProject(ctx, projectName, cwd, showOutput, infoWriter, errorWriter); err != nil {
+				prepSpan.End()
 				return fmt.Errorf("error preparing project: %w", err)
 			}
+			prepSpan.End()
 		}
 	}
 
@@ -217,9 +229,11 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 		// Suppress progress output when the caller doesn't need it.
 		syncArgs = append(syncArgs, "--no-progress")
 	}
+	_, syncSpan := cmdutil.StartSpan(ctx, tracer, "uv/InstallDependencies/uvSync")
 	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, syncArgs...)
 	if !showOutput {
 		_, err := syncCmd.Output()
+		syncSpan.End()
 		if err != nil {
 			return errutil.ErrorWithStderr(err, "error installing dependencies")
 		}
@@ -227,8 +241,10 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 		return nil
 	} else {
 		if err := syncCmd.Run(); err != nil {
+			syncSpan.End()
 			return err
 		}
+		syncSpan.End()
 		u.markSynced()
 		return nil
 	}
@@ -342,6 +358,10 @@ func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools
 	if u.isSynced() {
 		return nil
 	}
+	tracer := otel.Tracer("pulumi-language-python")
+	_, span := cmdutil.StartSpan(ctx, tracer, "uv/EnsureVenv")
+	defer span.End()
+
 	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet",
 		"--allow-existing", u.virtualenvPath)
 	if err := venvCmd.Run(); err != nil {
@@ -358,7 +378,11 @@ func (u *uv) ValidateVenv(ctx context.Context) error {
 	return nil
 }
 
-func (u *uv) ListPackages(_ context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
+func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
+	tracer := otel.Tracer("pulumi-language-python")
+	_, span := cmdutil.StartSpan(ctx, tracer, "uv/ListPackages")
+	defer span.End()
+
 	lockDir, err := searchup(u.root, "uv.lock")
 	if err != nil {
 		return nil, fmt.Errorf("could not find uv.lock: %w", err)
@@ -458,6 +482,8 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 			}
 		}
 		if hasPyproject {
+			tracer := otel.Tracer("pulumi-language-python")
+			_, syncSpan := cmdutil.StartSpan(ctx, tracer, "uv/Command/uvSyncInexact")
 			// uv run does an "inexact" sync, that is it leaves extraneous
 			// dependencies alone and does not remove them.
 			syncArgs := []string{"sync", "--inexact", "--no-progress"}
@@ -467,8 +493,10 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 			}
 			venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, syncArgs...)
 			if _, err := venvCmd.Output(); err != nil {
+				syncSpan.End()
 				return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
 			}
+			syncSpan.End()
 			u.markSynced()
 		}
 	}

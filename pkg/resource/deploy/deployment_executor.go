@@ -21,12 +21,15 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	"go.opentelemetry.io/otel"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -129,6 +132,10 @@ func (ex *deploymentExecutor) reportError(urn resource.URN, err error) {
 // Execute executes a deployment to completion, using the given cancellation context and running a preview
 // or update.
 func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err error) {
+	tracer := otel.Tracer("pulumi-deploy")
+	callerCtx, execSpan := cmdutil.StartSpan(callerCtx, tracer, "deployment-executor-execute")
+	defer execSpan.End()
+
 	// Set up a goroutine that will signal cancellation to the deployment's plugins if the caller context is cancelled.
 	// We do not hang this off of the context we create below because we do not want the failure of a single step to
 	// cause other steps to fail.
@@ -190,7 +197,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	}
 
 	// Begin iterating the source.
+	_, iterSpan := cmdutil.StartSpan(callerCtx, tracer, "source-iterate")
 	src, err := ex.deployment.source.Iterate(callerCtx, ex.deployment)
+	iterSpan.End()
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +274,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
+	_, eventLoopSpan := cmdutil.StartSpan(callerCtx, tracer, "deployment-event-loop")
 	canceled, err := func() (bool, error) {
+		defer eventLoopSpan.End()
 		logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
 
 		// We're ingesting events from two sources: the source iterator and the step generator. We need to make sure
@@ -439,6 +450,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 func (ex *deploymentExecutor) performPostSteps(
 	ctx context.Context, targetsOpt UrnTargets, excludesOpt UrnTargets,
 ) error {
+	tracer := otel.Tracer("pulumi-deploy")
+	_, postSpan := cmdutil.StartSpan(ctx, tracer, "perform-post-steps")
+	defer postSpan.End()
+
 	signaled := false
 	defer func() {
 		// We're done here - signal completion so that the step executor knows to terminate.
@@ -564,6 +579,10 @@ func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
 // to be executed and schedules the chain for execution.
 func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	contract.Requiref(event != nil, "event", "must not be nil")
+
+	tracer := otel.Tracer("pulumi-deploy")
+	_, span := cmdutil.StartSpan(context.Background(), tracer, "handle-single-event")
+	defer span.End()
 
 	var steps []Step
 	var err error

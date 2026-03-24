@@ -32,10 +32,10 @@ func TestNPMInstallCmd(t *testing.T) {
 	}{
 		{
 			production:   true,
-			expectedArgs: []string{"false", "install", "--loglevel=error", "--production"},
+			expectedArgs: []string{"false", "install", "--loglevel=error", "--no-fund", "--prefer-offline", "--production"},
 		}, {
 			production:   false,
-			expectedArgs: []string{"false", "install", "--loglevel=error"},
+			expectedArgs: []string{"false", "install", "--loglevel=error", "--no-fund", "--prefer-offline"},
 		},
 	}
 

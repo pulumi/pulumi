@@ -203,8 +203,12 @@ func newDeployment(
 	// Create a context for plugins.
 	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
 	baseCtx := trace.ContextWithSpan(ctx.Cancel.Base(), info.otelSpan)
-	pwd, main, plugctx, err := ProjectInfoContext(baseCtx, projinfo, opts.Host,
+
+	tracer := otel.Tracer("pulumi-engine")
+	pctx, piSpan := cmdutil.StartSpan(baseCtx, tracer, "project-info-context")
+	pwd, main, plugctx, err := ProjectInfoContext(pctx, projinfo, opts.Host,
 		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
+	piSpan.End()
 	if err != nil {
 		return nil, err
 	}
@@ -225,14 +229,19 @@ func newDeployment(
 
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
+	sfCtx, sfSpan := cmdutil.StartSpan(cancelCtx, tracer, "new-update-source")
 	source, err := opts.SourceFunc(
-		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, resourceHooks, panicErrsChannel)
+		sfCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, resourceHooks, panicErrsChannel)
+	sfSpan.End()
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
 	}
 
 	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
+
+	_, ndSpan := cmdutil.StartSpan(baseCtx, tracer, "new-deployment-object")
+	defer ndSpan.End()
 
 	deplOpts := &deploy.Options{
 		ParallelDiff:              opts.ParallelDiff,
@@ -376,6 +385,11 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 	// Inject our opentracing span into the context.
 	if deployment.Ctx.TracingSpan != nil {
 		ctx = opentracing.ContextWithSpan(ctx, deployment.Ctx.TracingSpan)
+	}
+
+	// Inject the OTel span into the context so child spans are connected to the trace.
+	if deployment.Ctx.otelSpan != nil {
+		ctx = trace.ContextWithSpan(ctx, deployment.Ctx.otelSpan)
 	}
 
 	// Emit an appropriate prelude event.

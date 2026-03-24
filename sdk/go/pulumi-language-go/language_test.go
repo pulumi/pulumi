@@ -37,6 +37,7 @@ import (
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -52,15 +53,23 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 		})
 	}
 
+	tracer := otel.Tracer("pulumi-test-go")
+
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
 	binary := t.TempDir() + "/pulumi-test-language"
-	cmd := exec.Command("go", "build", "-C", "../../../pkg", "-buildvcs=false", "-ldflags=-s -w", "-o", binary, "./testing/pulumi-test-language")
-	output, err := cmd.CombinedOutput()
-	t.Logf("build output: %s", output)
-	require.NoError(t, err)
+	func() {
+		_, buildSpan := cmdutil.StartSpan(t.Context(), tracer, "build-test-language-binary")
+		defer buildSpan.End()
+		cmd := exec.Command("go", "build", "-C", "../../../pkg", "-buildvcs=false", "-ldflags=-s -w", "-o", binary, "./testing/pulumi-test-language")
+		output, err := cmd.CombinedOutput()
+		t.Logf("build output: %s", output)
+		require.NoError(t, err)
+	}()
 
-	cmd = exec.Command(binary)
+	ctx, startSpan := cmdutil.StartSpan(t.Context(), tracer, "start-test-language-host")
+
+	cmd := exec.Command(binary)
 	// Pass the otel endpoint to the test host subprocess so it can forward to providers.
 	if otelEp := cmdutil.OTelEndpoint(); otelEp != "" {
 		cmd.Env = append(os.Environ(), "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+otelEp)
@@ -100,6 +109,9 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 		rpcutil.GrpcChannelOptions(),
 	)
 	require.NoError(t, err)
+
+	startSpan.End()
+	_ = ctx // ctx from span used only to scope the span
 
 	client := testingrpc.NewLanguageTestClient(conn)
 

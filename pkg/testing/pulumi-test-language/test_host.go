@@ -19,13 +19,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"slices"
 	"strings"
 	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
@@ -34,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -339,13 +345,15 @@ func (h *testHost) AttachDebugger(plugin.DebugSpec) bool {
 	return false
 }
 
+// grpcWrapper manages the lifecycle of an in-process gRPC server for a provider.
 type grpcWrapper struct {
-	stop chan bool
+	srv *grpc.Server
+	lis *bufconn.Listener
 }
 
 func (w *grpcWrapper) Close() error {
-	go func() { w.stop <- true }()
-	return nil
+	w.srv.GracefulStop()
+	return w.lis.Close()
 }
 
 func newProviderServer(provider plugin.Provider) pulumirpc.ResourceProviderServer {
@@ -355,30 +363,52 @@ func newProviderServer(provider plugin.Provider) pulumirpc.ResourceProviderServe
 	return plugin.NewProviderServer(provider)
 }
 
+const (
+	// bufconn buffer size: 256KB is plenty for in-process RPC messages.
+	bufconnBufSize = 256 * 1024
+
+	// maxRPCMessageSize matches the 400MB limit used by rpcutil.ServeWithOptions.
+	maxRPCMessageSize = 1024 * 1024 * 400
+)
+
 func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer, error) {
-	wrapper := &grpcWrapper{stop: make(chan bool)}
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: wrapper.stop,
-		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterResourceProviderServer(srv, newProviderServer(provider))
-			return nil
-		},
-		Options: rpcutil.TracingServerInterceptorOptions(nil),
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
-	}
+	tracer := otel.Tracer("pulumi-test-language")
+	_, span := cmdutil.StartSpan(context.Background(), tracer, "wrap-provider-with-grpc",
+		trace.WithAttributes(attribute.String("provider.package", string(provider.Pkg()))))
+	defer span.End()
+
+	lis := bufconn.Listen(bufconnBufSize)
+
+	srv := grpc.NewServer(
+		append(
+			rpcutil.TracingServerInterceptorOptions(nil),
+			grpc.MaxRecvMsgSize(maxRPCMessageSize),
+		)...,
+	)
+	pulumirpc.RegisterResourceProviderServer(srv, newProviderServer(provider))
+
+	go func() {
+		// Serve blocks until the server is stopped. Errors after GracefulStop are benign.
+		if err := srv.Serve(lis); err != nil && !rpcutil.IsBenignCloseErr(err) {
+			contract.Failf("bufconn provider server failed: %v", err)
+		}
+	}()
+
 	conn, err := grpc.NewClient(
-		fmt.Sprintf("127.0.0.1:%v", handle.Port),
+		"passthrough:///bufconn",
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return lis.DialContext(ctx)
+		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
 		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
-		contract.IgnoreClose(wrapper)
+		srv.Stop()
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
+	wrapper := &grpcWrapper{srv: srv, lis: lis}
 	wrapped := plugin.NewProviderWithClient(
 		nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil

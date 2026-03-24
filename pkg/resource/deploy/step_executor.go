@@ -20,9 +20,14 @@ import (
 	"fmt"
 	"sync"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
@@ -456,6 +461,13 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 // executeStep executes a single step, returning true if the step execution was successful and
 // false if it was not.
 func (se *stepExecutor) executeStep(workerID int, step Step) error {
+	tracer := otel.Tracer("pulumi-deploy")
+	_, span := cmdutil.StartSpan(se.ctx, tracer, "execute-step",
+		trace.WithAttributes(
+			attribute.String("step.op", string(step.Op())),
+			attribute.String("step.urn", string(step.URN()))))
+	defer span.End()
+
 	var payload any
 	events := se.deployment.events
 

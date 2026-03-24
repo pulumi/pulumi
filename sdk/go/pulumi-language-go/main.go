@@ -55,7 +55,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
@@ -1027,6 +1026,10 @@ func runProgram(
 
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	tracer := otel.Tracer("pulumi-language-go")
+	ctx, runSpan := cmdutil.StartSpan(ctx, tracer, "Run")
+	defer runSpan.End()
+
 	if host.engineAddress == "" {
 		return nil, errors.New("when debugging or running explicitly, must call Handshake before Run")
 	}
@@ -1049,7 +1052,6 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, fmt.Errorf("failed to prepare environment: %w", err)
 	}
 
-	tracer := otel.Tracer("pulumi-language-go")
 	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, "execGo",
 		trace.WithAttributes(
 			attribute.String("component", "exec.Command"),
@@ -1118,9 +1120,11 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		}
 	}
 	if program == "" {
+		_, compileSpan := cmdutil.StartSpan(ctx, tracer, "compileProgram")
 		var err error
 		program, err = compileProgram(
 			ctx, engineClient, req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger(), os.Stdout, os.Stderr)
+		compileSpan.End()
 		if err != nil {
 			return nil, errutil.ErrorWithStderr(err, "error in compiling Go")
 		}
@@ -1558,14 +1562,21 @@ func (host *goLanguageHost) GeneratePackage(
 }
 
 func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	tracer := otel.Tracer("pulumi-language-go")
+	ctx, packSpan := cmdutil.StartSpan(ctx, tracer, "Pack/internal")
+	defer packSpan.End()
+
 	// Go is very simple, there's nothing it can do to pack so it just copies the source to the target.
 
 	// First read the modfile in the package directory to decide the folder name.
+	_, readModSpan := cmdutil.StartSpan(ctx, tracer, "Pack/readGoMod")
 	data, err := os.ReadFile(filepath.Join(req.PackageDirectory, "go.mod"))
 	if err != nil {
+		readModSpan.End()
 		return nil, fmt.Errorf("read go.mod: %w", err)
 	}
 	mod, err := modfile.Parse("go.mod", data, nil)
+	readModSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("parse go.mod: %w", err)
 	}
@@ -1574,7 +1585,9 @@ func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest
 	folderName := strings.ReplaceAll(mod.Module.Mod.Path, "/", "_")
 	artifactPath := filepath.Join(req.DestinationDirectory, folderName)
 
-	err = fsutil.CopyFile(artifactPath, req.PackageDirectory, nil)
+	_, copySpan := cmdutil.StartSpan(ctx, tracer, "Pack/copyGoModule")
+	err = copyGoModule(artifactPath, req.PackageDirectory)
+	copySpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("copy package: %w", err)
 	}
@@ -1582,6 +1595,107 @@ func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest
 	return &pulumirpc.PackResponse{
 		ArtifactPath: artifactPath,
 	}, nil
+}
+
+// copyGoModule copies a Go module directory to dst, skipping subdirectories that
+// contain their own go.mod (separate modules) and known non-Go artifact directories
+// like node_modules. This avoids copying hundreds of megabytes of unrelated content
+// when the module root is shared with other language SDKs.
+func copyGoModule(dst, src string) error {
+	var stats copyStats
+	err := copyGoModuleDir(dst, src, true, &stats)
+	logging.V(5).Infof("copyGoModule: copied %d files (%d bytes), visited %d dirs, skipped %d dirs",
+		stats.filesCopied, stats.bytesCopied, stats.dirsVisited, stats.dirsSkipped)
+	return err
+}
+
+type copyStats struct {
+	filesCopied int64
+	bytesCopied int64
+	dirsVisited int64
+	dirsSkipped int64
+}
+
+func copyGoModuleDir(dst, src string, isRoot bool, stats *copyStats) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		// Skip well-known non-Go artifact/dependency directories that can be very large
+		// (e.g. node_modules can be hundreds of MB) and are never part of a Go module.
+		name := info.Name()
+		switch name {
+		case "node_modules", "__pycache__", ".git",
+			".mypy_cache", ".pytest_cache", ".tox",
+			"venv", ".venv":
+			stats.dirsSkipped++
+			return nil
+		}
+
+		// Skip subdirectories that are separate Go modules (contain their own go.mod).
+		// The root directory is the module we're packing, so don't skip it.
+		if !isRoot {
+			if _, err := os.Stat(filepath.Join(src, "go.mod")); err == nil {
+				stats.dirsSkipped++
+				return nil
+			}
+		}
+
+		stats.dirsVisited++
+		files, err := os.ReadDir(src)
+		if err != nil {
+			return fmt.Errorf("read dir: %w", err)
+		}
+		for _, file := range files {
+			if err := copyGoModuleDir(
+				filepath.Join(dst, file.Name()),
+				filepath.Join(src, file.Name()),
+				false,
+				stats,
+			); err != nil {
+				return err
+			}
+		}
+	} else if info.Mode().IsRegular() {
+		// Only copy files the Go toolchain needs. This avoids copying large non-Go
+		// artifacts (JS bundles, Python wheels, proto output) that happen to live
+		// in the same module tree but aren't needed for Go compilation.
+		ext := filepath.Ext(info.Name())
+		switch ext {
+		case ".go", ".s", ".c", ".h", ".syso", // source files
+			".mod", ".sum",       // module files (go.mod, go.sum)
+			".json", ".tmpl",     // embedded files used by Go packages
+			".version", ".txt",   // version/metadata files
+			".proto":             // proto definitions
+			// copy these
+		default:
+			// Also copy files without extensions if they're small (LICENSE, README, etc.)
+			if ext != "" || info.Size() > 1024*1024 {
+				return nil
+			}
+		}
+
+		srcFile, err := os.Open(src)
+		if err != nil {
+			return fmt.Errorf("open file: %w", err)
+		}
+		dstdir := filepath.Dir(dst)
+		if err = os.MkdirAll(dstdir, 0o700); err != nil {
+			return errors.Join(err, srcFile.Close())
+		}
+		dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
+		if err != nil {
+			return errors.Join(err, srcFile.Close())
+		}
+		n, err := srcFile.WriteTo(dstFile)
+		stats.filesCopied++
+		stats.bytesCopied += n
+		return errors.Join(err, dstFile.Close(), srcFile.Close())
+	}
+
+	return nil
 }
 
 func (host *goLanguageHost) Handshake(

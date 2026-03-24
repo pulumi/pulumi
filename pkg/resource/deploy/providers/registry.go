@@ -24,6 +24,9 @@ import (
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -34,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -371,6 +375,11 @@ var _ plugin.Provider = (*Registry)(nil)
 func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
 	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider, e env.Env,
 ) (plugin.Provider, error) {
+	tracer := otel.Tracer("pulumi-engine")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "load-provider",
+		trace.WithAttributes(attribute.String("provider.package", string(pkg))))
+	defer span.End()
+
 	if builtins != nil && pkg == builtins.Pkg() {
 		return builtins, nil
 	}
@@ -583,6 +592,11 @@ func (r *Registry) Configure(context.Context, plugin.ConfigureRequest) (plugin.C
 //   - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
 //     (we would normally configure the provider in Create or Update).
 func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+	tracer := otel.Tracer("pulumi-engine")
+	ctx, checkSpan := cmdutil.StartSpan(ctx, tracer, "registry-check",
+		trace.WithAttributes(attribute.String("provider.urn", string(req.URN))))
+	defer checkSpan.End()
+
 	contract.Requiref(providers.IsProviderType(req.URN.Type()), "urn", "must be a provider type, got %v", req.URN.Type())
 
 	label := fmt.Sprintf("%s.Check(%s)", r.label(), req.URN)
@@ -745,6 +759,11 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 // Same executes as part of the "Same" step for a provider that has not changed. It configures the provider
 // instance with the given state and fixes up aliases.
 func (r *Registry) Same(ctx context.Context, res *resource.State) error {
+	tracer := otel.Tracer("pulumi-engine")
+	ctx, sameSpan := cmdutil.StartSpan(ctx, tracer, "registry-same",
+		trace.WithAttributes(attribute.String("provider.urn", string(res.URN))))
+	defer sameSpan.End()
+
 	urn := res.URN
 	if !providers.IsProviderType(urn.Type()) {
 		return fmt.Errorf("urn %v is not a provider type", urn)
@@ -809,6 +828,8 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	name := urn.Name()
 	typ := urn.Type()
 
+	_, configureSpan := cmdutil.StartSpan(ctx, tracer, "registry-same-configure",
+		trace.WithAttributes(attribute.String("provider.urn", string(urn))))
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
 		URN:    &urn,
 		Name:   &name,
@@ -816,9 +837,11 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		ID:     &res.ID,
 		Inputs: FilterProviderConfig(res.Inputs),
 	}); err != nil {
+		configureSpan.End()
 		contract.IgnoreClose(provider)
 		return fmt.Errorf("configure provider '%v': %w", urn, err)
 	}
+	configureSpan.End()
 
 	logging.V(7).Infof("loaded provider %v", ref)
 

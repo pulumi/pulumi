@@ -374,13 +374,13 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 // This avoids recreating the venv and reinstalling build for every Pack call.
 var (
 	cachedBuildVenvOnce sync.Once
-	cachedBuildVenvPath string
 	cachedBuildVenvUv   bool
 	cachedBuildVenvTC   toolchain.Toolchain
 	cachedBuildVenvErr  error
 )
 
 func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
+	tracer := otel.Tracer("pulumi-language-python")
 	cachedBuildVenvOnce.Do(func() {
 		// Create a persistent temp directory for the build venv.
 		tmp, err := os.MkdirTemp("", "pulumi-python-build-venv")
@@ -388,22 +388,29 @@ func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
 			cachedBuildVenvErr = fmt.Errorf("create build venv directory: %w", err)
 			return
 		}
-		cachedBuildVenvPath = tmp
 		venv := filepath.Join(tmp, ".venv")
 
 		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 			Toolchain:  toolchain.Uv,
 			Virtualenv: venv,
+			ProgramDir: tmp,
 		})
 		useUv := err == nil
 		if useUv {
 			logging.V(5).Infof("Creating build virtual environment using uv at %s", venv)
+			_, createVenvSpan := cmdutil.StartSpan(ctx, tracer, "ensureBuildVenv/createVenv",
+				trace.WithAttributes(attribute.Bool("useUv", true)))
 			cmd := exec.CommandContext(ctx, "uv", "venv", "--quiet", venv)
 			cmd.Env = append(os.Environ(), "UV_NO_PROGRESS=1")
 			if out, err := cmd.CombinedOutput(); err != nil {
+				createVenvSpan.End()
 				cachedBuildVenvErr = fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
 				return
 			}
+			createVenvSpan.End()
+
+			_, installBuildSpan := cmdutil.StartSpan(ctx, tracer, "ensureBuildVenv/installBuild",
+				trace.WithAttributes(attribute.Bool("useUv", true)))
 			cmd = exec.CommandContext(ctx, "uv", "pip", "install", "build")
 			cmd.Env = append(toolchain.ActivateVirtualEnv(os.Environ(), venv),
 				"PYTHONDONTWRITEBYTECODE=1",
@@ -412,18 +419,25 @@ func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
 				"UV_NO_PROGRESS=1",
 			)
 			if out, err := cmd.CombinedOutput(); err != nil {
+				installBuildSpan.End()
 				cachedBuildVenvErr = fmt.Errorf("install build using uv: %w\n%s", err, string(out))
 				return
 			}
+			installBuildSpan.End()
 			cachedBuildVenvTC = tc
 			cachedBuildVenvUv = true
 		} else {
 			logging.V(5).Infof("Creating build virtual environment using pip+venv at %s", venv)
+			_, createVenvSpan := cmdutil.StartSpan(ctx, tracer, "ensureBuildVenv/createVenv",
+				trace.WithAttributes(attribute.Bool("useUv", false)))
 			cmd := exec.CommandContext(ctx, "python", "-m", "venv", venv)
 			if out, err := cmd.CombinedOutput(); err != nil {
+				createVenvSpan.End()
 				cachedBuildVenvErr = fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
 				return
 			}
+			createVenvSpan.End()
+
 			tc, err = toolchain.ResolveToolchain(toolchain.PythonOptions{
 				Toolchain:  toolchain.Pip,
 				Virtualenv: venv,
@@ -432,15 +446,21 @@ func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
 				cachedBuildVenvErr = fmt.Errorf("setup pip toolchain: %w", err)
 				return
 			}
+
+			_, installBuildSpan := cmdutil.StartSpan(ctx, tracer, "ensureBuildVenv/installBuild",
+				trace.WithAttributes(attribute.Bool("useUv", false)))
 			cmd, err = tc.ModuleCommand(ctx, "pip", "install", "build")
 			if err != nil {
+				installBuildSpan.End()
 				cachedBuildVenvErr = err
 				return
 			}
 			if out, err := cmd.CombinedOutput(); err != nil {
+				installBuildSpan.End()
 				cachedBuildVenvErr = fmt.Errorf("install build using pip: %w\n%s", err, string(out))
 				return
 			}
+			installBuildSpan.End()
 			cachedBuildVenvTC = tc
 			cachedBuildVenvUv = false
 		}
@@ -449,13 +469,24 @@ func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
 }
 
 func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	tracer := otel.Tracer("pulumi-language-python")
+	ctx, packSpan := cmdutil.StartSpan(ctx, tracer, "Pack",
+		trace.WithAttributes(
+			attribute.String("packageDirectory", req.PackageDirectory),
+		))
+	defer packSpan.End()
+
+	ctx, buildVenvSpan := cmdutil.StartSpan(ctx, tracer, "Pack/ensureBuildVenv")
 	tc, useUv, err := ensureBuildVenv(ctx)
+	buildVenvSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("ensure build venv: %w", err)
 	}
 
 	// Create a temporary output directory for this pack operation.
+	_, tmpSpan := cmdutil.StartSpan(ctx, tracer, "Pack/createTempDir")
 	tmp, err := os.MkdirTemp("", "pulumi-python-pack")
+	tmpSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("create temporary directory: %w", err)
 	}
@@ -481,7 +512,13 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	buildCmd.Stdout = &stdout
 	buildCmd.Stderr = &stderr
 
+	_, buildRunSpan := cmdutil.StartSpan(ctx, tracer, "Pack/pythonBuild",
+		trace.WithAttributes(
+			attribute.String("packageDirectory", req.PackageDirectory),
+			attribute.Bool("useUv", useUv),
+		))
 	err = buildCmd.Run()
+	buildRunSpan.End()
 	logging.V(5).Infof("Pack stdout: %s", stdout.String())
 	logging.V(5).Infof("Pack stderr: %s", stderr.String())
 	if err != nil {
@@ -489,8 +526,10 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	}
 
 	// prefer .whl but return .tar.gz if no .whl is found
+	_, findSpan := cmdutil.StartSpan(ctx, tracer, "Pack/findArtifact")
 	files, err := os.ReadDir(tmp)
 	if err != nil {
+		findSpan.End()
 		return nil, fmt.Errorf("read temporary directory: %w", err)
 	}
 
@@ -504,6 +543,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 			found = file.Name()
 		}
 	}
+	findSpan.End()
 
 	// Copy the found file to the destination directory
 	if found == "" {
@@ -512,7 +552,11 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 
 	src := filepath.Join(tmp, found)
 	dst := filepath.Join(req.DestinationDirectory, found)
+
+	_, copySpan := cmdutil.StartSpan(ctx, tracer, "Pack/copyArtifact",
+		trace.WithAttributes(attribute.String("artifact", found)))
 	err = fsutil.CopyFile(dst, src, nil)
+	copySpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("copy file: %w", err)
 	}
@@ -1025,6 +1069,14 @@ func checkForPackage(ctx context.Context, pkg string, opts toolchain.PythonOptio
 
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	runTracer := otel.Tracer("pulumi-language-python")
+	ctx, runSpan := cmdutil.StartSpan(ctx, runTracer, "Run",
+		trace.WithAttributes(
+			attribute.String("program", req.Info.ProgramDirectory),
+			attribute.Bool("dryRun", req.DryRun),
+		))
+	defer runSpan.End()
+
 	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
 		return nil, err
@@ -1125,14 +1177,20 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 
 	if typechecker != "" {
+		_, typecheckerSpan := cmdutil.StartSpan(ctx, runTracer, "Run/typechecker",
+			trace.WithAttributes(
+				attribute.String("typechecker", typechecker),
+			))
 		typecheckerArgs := []string{"-m", typechecker}
 		if typechecker == "mypy" {
 			virtualenvPath, err := tc.VirtualEnvPath(ctx)
 			if err != nil {
+				typecheckerSpan.End()
 				return nil, err
 			}
 			relPath, err := filepath.Rel(req.Info.ProgramDirectory, virtualenvPath)
 			if err != nil {
+				typecheckerSpan.End()
 				return nil, err
 			}
 			typecheckerArgs = append(typecheckerArgs, "--exclude", relPath)
@@ -1144,6 +1202,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		typecheckerArgs = append(typecheckerArgs, req.Info.ProgramDirectory)
 		typecheckerCmd, err := tc.Command(ctx, typecheckerArgs...)
 		if err != nil {
+			typecheckerSpan.End()
 			return nil, err
 		}
 		typecheckerCmd.Stdout = os.Stdout
@@ -1151,6 +1210,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts, tc)
 		if err != nil {
+			typecheckerSpan.End()
 			var installError *NotInstalledError
 			if errors.As(err, &installError) {
 				return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
@@ -1160,12 +1220,14 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 
 		if err := typecheckerCmd.Run(); err != nil {
+			typecheckerSpan.End()
 			var exiterr *exec.ExitError
 			if errors.As(err, &exiterr) && len(exiterr.Stderr) > 0 {
 				return nil, fmt.Errorf("%s failed: %w: %s", typechecker, exiterr, exiterr.Stderr)
 			}
 			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
 		}
+		typecheckerSpan.End()
 	}
 	var errResult string
 	run := func() error {
@@ -1376,10 +1438,11 @@ func (host *pythonLanguageHost) InstallDependencies(
 	defer closer.Close()
 
 	tracer := otel.Tracer("pulumi-language-python")
-	_, otelSpan := cmdutil.StartSpan(server.Context(), tracer, "InstallDependencies",
+	ctx, otelSpan := cmdutil.StartSpan(server.Context(), tracer, "InstallDependencies",
 		trace.WithAttributes(append(tracing.ProgramInfoAttributes(req.Info),
 			attribute.Bool("useLanguageVersionTools", req.UseLanguageVersionTools),
 			attribute.Bool("isPlugin", req.IsPlugin),
+			attribute.String("programDirectory", req.Info.ProgramDirectory),
 		)...))
 	defer otelSpan.End()
 	otelSpan.SetAttributes(pythonOptionsAttributes(opts)...)
@@ -1400,28 +1463,38 @@ func (host *pythonLanguageHost) InstallDependencies(
 		}
 		if buildable {
 			// Ensure the virtual environment exists first
-			if err := tc.EnsureVenv(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
+			_, ensureVenvSpan := cmdutil.StartSpan(ctx, tracer, "InstallDependencies/ensureVenv")
+			if err := tc.EnsureVenv(ctx, req.Info.ProgramDirectory, req.UseLanguageVersionTools,
 				true /*showOutput*/, stdout, stderr); err != nil {
+				ensureVenvSpan.End()
 				return fmt.Errorf("creating virtual environment: %w", err)
 			}
+			ensureVenvSpan.End()
 
 			// Install the package itself (pip install .)
-			cmd, err := tc.ModuleCommand(server.Context(), "pip", "install", req.Info.ProgramDirectory)
+			_, pipInstallSpan := cmdutil.StartSpan(ctx, tracer, "InstallDependencies/pipInstallPackage")
+			cmd, err := tc.ModuleCommand(ctx, "pip", "install", req.Info.ProgramDirectory)
 			if err != nil {
+				pipInstallSpan.End()
 				return fmt.Errorf("preparing pip install command: %w", err)
 			}
 			cmd.Stdout = stdout
 			cmd.Stderr = stderr
 			if err := cmd.Run(); err != nil {
+				pipInstallSpan.End()
 				return fmt.Errorf("installing package: %w", err)
 			}
+			pipInstallSpan.End()
 		}
 	}
 
-	if err := tc.InstallDependencies(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
+	_, installSpan := cmdutil.StartSpan(ctx, tracer, "InstallDependencies/toolchainInstall")
+	if err := tc.InstallDependencies(ctx, req.Info.ProgramDirectory, req.UseLanguageVersionTools,
 		true /*showOutput*/, stdout, stderr); err != nil {
+		installSpan.End()
 		return err
 	}
+	installSpan.End()
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
@@ -1783,6 +1856,13 @@ func (host *pythonLanguageHost) RunPlugin(
 func (host *pythonLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
+	tracer := otel.Tracer("pulumi-language-python")
+	ctx, genProjSpan := cmdutil.StartSpan(ctx, tracer, "GenerateProject",
+		trace.WithAttributes(
+			attribute.String("targetDirectory", req.TargetDirectory),
+		))
+	defer genProjSpan.End()
+
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
@@ -1797,7 +1877,9 @@ func (host *pythonLanguageHost) GenerateProject(
 	// for python, prefer output-versioned invokes
 	extraOptions = append(extraOptions, pcl.PreferOutputVersionedInvokes)
 
+	_, bindSpan := cmdutil.StartSpan(ctx, tracer, "GenerateProject/bindDirectory")
 	program, diags, err := pcl.BindDirectory(req.SourceDirectory, schema.NewCachedLoader(loader), extraOptions...)
+	bindSpan.End()
 	if err != nil {
 		return nil, err
 	}
@@ -1889,6 +1971,13 @@ func (host *pythonLanguageHost) GenerateProgram(
 func (host *pythonLanguageHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
+	tracer := otel.Tracer("pulumi-language-python")
+	ctx, genPkgSpan := cmdutil.StartSpan(ctx, tracer, "GeneratePackage",
+		trace.WithAttributes(
+			attribute.String("directory", req.Directory),
+		))
+	defer genPkgSpan.End()
+
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
@@ -1901,9 +1990,11 @@ func (host *pythonLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
+	_, bindSpecSpan := cmdutil.StartSpan(ctx, tracer, "GeneratePackage/bindSpec")
 	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
+	bindSpecSpan.End()
 	if err != nil {
 		return nil, err
 	}
@@ -1914,7 +2005,9 @@ func (host *pythonLanguageHost) GeneratePackage(
 		}, nil
 	}
 
+	_, codegenSpan := cmdutil.StartSpan(ctx, tracer, "GeneratePackage/codegen")
 	files, err := codegen.GeneratePackage("pulumi-language-python", pkg, req.ExtraFiles, schema.NewCachedLoader(loader))
+	codegenSpan.End()
 	if err != nil {
 		return nil, err
 	}

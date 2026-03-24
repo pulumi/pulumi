@@ -32,6 +32,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -52,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -142,10 +144,13 @@ func (src *evalSource) Stack() tokens.StackName {
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
+	tracer := otel.Tracer("pulumi-engine")
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	// Decrypt the configuration.
+	_, dcSpan := cmdutil.StartSpan(ctx, tracer, "decrypt-config")
 	config, err := src.runinfo.Target.Config.Decrypt(src.runinfo.Target.Decrypter)
+	dcSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt config: %w", err)
 	}
@@ -160,6 +165,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	finChan := make(chan error)
 	programComplete := &promise.CompletionSource[struct{}]{}
 
+	_, monSpan := cmdutil.StartSpan(ctx, tracer, "new-resource-monitor")
 	mon, err := newResourceMonitor(
 		src,
 		providers,
@@ -172,14 +178,17 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 		configSecretKeys,
 		tracingSpan,
 	)
+	monSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
 
 	// Also start up a schema loader for the language runtime to use to fetch schema information.
+	_, lsSpan := cmdutil.StartSpan(ctx, tracer, "new-schema-loader-server")
 	loaderRegistration := schema.LoaderRegistration(
 		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx.Host)))
 	loaderServer, err := plugin.NewServer(src.plugctx, loaderRegistration)
+	lsSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("failed to start loader server: %w", err)
 	}
@@ -199,7 +208,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	iter.forkRun(config, configSecretKeys)
+	iter.forkRun(ctx, config, configSecretKeys)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return iter, nil
@@ -276,32 +285,42 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 
 // forkRun performs the evaluation from a distinct goroutine. This function blocks until it's our turn to go.
 func (iter *evalSourceIterator) forkRun(
+	ctx context.Context,
 	config map[config.Key]string,
 	configSecretKeys []config.Key,
 ) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go PanicRecovery(iter.panicErrs, func() {
+		tracer := otel.Tracer("pulumi-engine")
+		_, forkRunSpan := cmdutil.StartSpan(ctx, tracer, "fork-run-goroutine")
+		defer forkRunSpan.End()
+
 		// Next, launch the language plugin.
 		run := func() error {
 			defer contract.IgnoreClose(iter.loaderServer)
 
 			rt := iter.src.runinfo.Proj.Runtime.Name()
 
+			_, lrSpan := cmdutil.StartSpan(ctx, tracer, "get-language-runtime")
 			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
+			lrSpan.End()
 			if err != nil {
 				return fmt.Errorf("failed to launch language host %s: %w", rt, err)
 			}
 			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
+			_, setupSpan := cmdutil.StartSpan(ctx, tracer, "prepare-program-info")
 			rtopts := iter.src.runinfo.Proj.Runtime.Options()
 			programInfo := plugin.NewProgramInfo(
 				/* rootDirectory */ iter.src.runinfo.ProjectRoot,
 				/* programDirectory */ iter.src.runinfo.Pwd,
 				/* entryPoint */ iter.src.runinfo.Program,
 				/* options */ rtopts)
+			setupSpan.End()
 
 			// Now run the actual program.
+			_, runSpan := cmdutil.StartSpan(ctx, tracer, "language-host-run")
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
 				MonitorAddress:   iter.mon.Address(),
 				Stack:            iter.src.runinfo.Target.Name.String(),
@@ -317,6 +336,7 @@ func (iter *evalSourceIterator) forkRun(
 				LoaderAddress:    iter.loaderServer.Addr(),
 				AttachDebugger:   iter.src.plugctx.Host.AttachDebugger(plugin.DebugSpec{Type: plugin.DebugTypeProgram}),
 			})
+			runSpan.End()
 
 			// Check if we were asked to Bail.  This a special random constant used for that
 			// purpose.

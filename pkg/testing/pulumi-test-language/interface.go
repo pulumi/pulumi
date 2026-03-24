@@ -82,7 +82,7 @@ type LanguageTestServer interface {
 func newLanguageTestServer() *languageTestServer {
 	return &languageTestServer{
 		providersLock:  gsync.Map[string, *sync.Mutex]{},
-		providersCache: make(map[string]bool),
+		providersCache: gsync.Map[string, bool]{},
 		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
 		artifactMap:    gsync.Map[string, string]{},
 	}
@@ -165,7 +165,7 @@ func Start(ctx context.Context) (LanguageTestServer, error) {
 		ctx:            ctx,
 		cancel:         make(chan bool),
 		providersLock:  gsync.Map[string, *sync.Mutex]{},
-		providersCache: make(map[string]bool),
+		providersCache: gsync.Map[string, bool]{},
 		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
 		artifactMap:    gsync.Map[string, string]{},
 		cliVersion:     "3.200.0",
@@ -203,9 +203,10 @@ type languageTestServer struct {
 	sdkLocks gsync.Map[string, *sync.Mutex]
 
 	providersLock  gsync.Map[string, *sync.Mutex]
-	providersCache map[string]bool
+	providersCache gsync.Map[string, bool]
 
-	// A map storing the paths to the generated package artifacts
+	// A map storing the paths to the generated package artifacts.
+	// Also used to cache the core SDK artifact keyed by the absolute source directory.
 	artifactMap gsync.Map[string, string]
 
 	// Used by _bad snapshot_ tests to disable snapshot writing.
@@ -528,13 +529,21 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		return nil, fmt.Errorf("create artifacts directory: %w", err)
 	}
 
+	prepTracer := otel.Tracer("pulumi-test-language")
+
 	var coreArtifact string
 	if req.CoreSdkDirectory != "" {
-		coreArtifact, err = languageClient.Pack(
-			req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
+		_, packCoreSpan := cmdutil.StartSpan(ctx, prepTracer, "Pack/coreSdk")
+
+		// Pack the core SDK into the per-test artifacts directory so the artifact path
+		// is under TemporaryDirectory and gets properly normalized by snapshot edits.
+		coreArtifactsDir := filepath.Join(req.TemporaryDirectory, "artifacts")
+		coreArtifact, err = languageClient.Pack(req.CoreSdkDirectory, coreArtifactsDir)
 		if err != nil {
+			packCoreSpan.End()
 			return nil, fmt.Errorf("pack core SDK: %w", err)
 		}
+		packCoreSpan.End()
 	}
 
 	edits := []replacement{}
@@ -635,6 +644,10 @@ func hasDependency(pkg *schema.Package, dep string) bool {
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (*testingrpc.RunLanguageTestResponse, error) {
+	tracer := otel.Tracer("pulumi-test-language")
+	ctx, topSpan := cmdutil.StartSpan(ctx, tracer, "RunLanguageTest/"+req.Test)
+	defer topSpan.End()
+
 	test, has := tests.LanguageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
@@ -727,10 +740,12 @@ func (eng *languageTestServer) RunLanguageTest(
 	host.loaderAddress = grpcServer.Addr()
 
 	// And fill that host with our test providers
+	ctx, setupProvidersSpan := cmdutil.StartSpan(ctx, tracer, "setupProviders")
 	for _, provider := range test.Providers {
 		p := provider()
 		version, err := getProviderVersion(p)
 		if err != nil {
+			setupProvidersSpan.End()
 			return nil, err
 		}
 		key := fmt.Sprintf("%s@%s", p.Pkg(), version)
@@ -738,65 +753,83 @@ func (eng *languageTestServer) RunLanguageTest(
 		// If this is a provider that should be overridden using the languages plugin directory try and do that now.
 		pkg := p.Pkg().String()
 		if slices.Contains(test.LanguageProviders, pkg) {
-			cacheKey := fmt.Sprintf("%s@%s", key, token.TemporaryDirectory)
-			// The second return value indicates whether the result was loaded or stored
-			// in the map. We don't care here, the end result is always that there's a
-			// mutex that we can lock safely in the map.
-			lock, _ := eng.providersLock.LoadOrStore(cacheKey, &sync.Mutex{})
-			lock.Lock()
-			defer lock.Unlock()
-			targetDirectory := filepath.Join(token.TemporaryDirectory, "providers", pkg)
-			if eng.providersCache[cacheKey] {
-				host.providers[key] = func() (plugin.Provider, error) {
-					pluginProvider, err := plugin.NewProviderFromPath(host, pctx, p.Pkg(), targetDirectory)
-					if err != nil {
-						return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
+			response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
+				_, provSpan := cmdutil.StartSpan(ctx, tracer, "setupProvider/"+pkg)
+				defer provSpan.End()
+
+				cacheKey := fmt.Sprintf("%s@%s", key, token.TemporaryDirectory)
+				// The second return value indicates whether the result was loaded or stored
+				// in the map. We don't care here, the end result is always that there's a
+				// mutex that we can lock safely in the map.
+				lock, _ := eng.providersLock.LoadOrStore(cacheKey, &sync.Mutex{})
+				lock.Lock()
+				defer lock.Unlock()
+				targetDirectory := filepath.Join(token.TemporaryDirectory, "providers", pkg)
+				if cached, _ := eng.providersCache.Load(cacheKey); cached {
+					host.providers[key] = func() (plugin.Provider, error) {
+						pluginProvider, err := plugin.NewProviderFromPath(host, pctx, p.Pkg(), targetDirectory)
+						if err != nil {
+							return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
+						}
+						return pluginProvider, nil
 					}
-					return pluginProvider, nil
-				}
-			} else {
-				if token.ProvidersDirectory == "" {
-					return nil, fmt.Errorf("provider %s should be loaded from language providers directory, "+
-						"but no providers directory was specified", pkg)
-				}
+				} else {
+					if token.ProvidersDirectory == "" {
+						return nil, fmt.Errorf("provider %s should be loaded from language providers directory, "+
+							"but no providers directory was specified", pkg)
+					}
 
-				sourceDirectory := filepath.Join(token.ProvidersDirectory, pkg)
+					sourceDirectory := filepath.Join(token.ProvidersDirectory, pkg)
 
-				// Copy to a new targetDirectory so we don't mutate the original test data
-				err = copyDirectory(os.DirFS(sourceDirectory), ".", targetDirectory, nil, nil)
-				if err != nil {
-					return nil, fmt.Errorf("copy provider test data: %w", err)
-				}
+					// Copy to a new targetDirectory so we don't mutate the original test data
+					func() {
+						_, copySpan := cmdutil.StartSpan(ctx, tracer, "copyDirectory/provider/"+pkg)
+						defer copySpan.End()
+						err = copyDirectory(os.DirFS(sourceDirectory), ".", targetDirectory, nil, nil)
+					}()
+					if err != nil {
+						return nil, fmt.Errorf("copy provider test data: %w", err)
+					}
 
-				// Link the provider program to the core SDK and install its dependencies
-				providerInfo := plugin.NewProgramInfo(targetDirectory, targetDirectory, ".", nil)
+					// Link the provider program to the core SDK and install its dependencies
+					providerInfo := plugin.NewProgramInfo(targetDirectory, targetDirectory, ".", nil)
 
-				linkDeps := []workspace.LinkablePackageDescriptor{{
-					Path: token.CoreArtifact,
-					Descriptor: workspace.PackageDescriptor{
-						PluginDescriptor: workspace.PluginDescriptor{
-							Name: "pulumi",
+					linkDeps := []workspace.LinkablePackageDescriptor{{
+						Path: token.CoreArtifact,
+						Descriptor: workspace.PackageDescriptor{
+							PluginDescriptor: workspace.PluginDescriptor{
+								Name: "pulumi",
+							},
 						},
-					},
-				}}
-				_, err = languageClient.Link(providerInfo, linkDeps, grpcServer.Addr())
-				if err != nil {
-					return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
-				}
-
-				resp := installDependencies(languageClient, providerInfo, true /* isPlugin */)
-				if resp != nil {
-					return resp, nil
-				}
-
-				host.providers[key] = func() (plugin.Provider, error) {
-					pluginProvider, err := plugin.NewProviderFromPath(host, pctx, p.Pkg(), targetDirectory)
+					}}
+					_, linkSpan := cmdutil.StartSpan(ctx, tracer, "Link/provider/"+pkg)
+					_, err = languageClient.Link(providerInfo, linkDeps, grpcServer.Addr())
+					linkSpan.End()
 					if err != nil {
-						return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
+						return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
 					}
-					return pluginProvider, nil
+
+					_, installSpan := cmdutil.StartSpan(ctx, tracer, "installDependencies/provider/"+pkg)
+					resp := installDependencies(languageClient, providerInfo, true /* isPlugin */)
+					installSpan.End()
+					if resp != nil {
+						return resp, nil
+					}
+
+					host.providers[key] = func() (plugin.Provider, error) {
+						pluginProvider, err := plugin.NewProviderFromPath(host, pctx, p.Pkg(), targetDirectory)
+						if err != nil {
+							return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
+						}
+						return pluginProvider, nil
+					}
+					eng.providersCache.Store(cacheKey, true)
 				}
-				eng.providersCache[cacheKey] = true
+				return nil, nil
+			}()
+			if response != nil || err != nil {
+				setupProvidersSpan.End()
+				return response, err
 			}
 		} else {
 			host.providers[key] = func() (plugin.Provider, error) {
@@ -804,6 +837,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 	}
+	setupProvidersSpan.End()
 
 	// Generate SDKs for all the packages we need
 	initTracer := otel.Tracer("pulumi-test-language")
@@ -812,6 +846,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	// For each test run collect the packages reported by PCL.
 	// Also collect the per-run package references so we can pass them to runLanguageTests
 	// and avoid re-binding the same PCL programs.
+	ctx, collectPkgsSpan := cmdutil.StartSpan(ctx, initTracer, "collectPackageReferences")
 	packages := []*schema.Package{}
 	runPackageRefs := make([][]schema.PackageReference, len(test.Runs))
 	for i, run := range test.Runs {
@@ -826,6 +861,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 		err = os.MkdirAll(sourceDir, 0o700)
 		if err != nil {
+			collectPkgsSpan.End()
 			return nil, fmt.Errorf("create source dir: %w", err)
 		}
 
@@ -834,8 +870,13 @@ func (eng *languageTestServer) RunLanguageTest(
 		if len(test.Runs) > 1 && !test.RunsShareSource {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
+		func() {
+			_, copySpan := cmdutil.StartSpan(ctx, initTracer, "copyDirectory/initial-source")
+			defer copySpan.End()
+			err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
+		}()
 		if err != nil {
+			collectPkgsSpan.End()
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
 		if run.Main != "" {
@@ -846,9 +887,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
 		initBindSpan.End()
 		if err != nil {
+			collectPkgsSpan.End()
 			return nil, fmt.Errorf("bind PCL program: %v", err)
 		}
 		if diagnostics.HasErrors() {
+			collectPkgsSpan.End()
 			return nil, fmt.Errorf("bind PCL program: %v", diagnostics)
 		}
 
@@ -862,6 +905,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 			def, err := pkg.Definition()
 			if err != nil {
+				collectPkgsSpan.End()
 				return nil, fmt.Errorf("get package definition: %w", err)
 			}
 			exists := false
@@ -875,6 +919,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 	}
+
+	collectPkgsSpan.End()
 
 	// We always override the core "pulumi" package to point to the local core SDK we built as part of test
 	// setup.
@@ -960,7 +1006,9 @@ func (eng *languageTestServer) RunLanguageTest(
 
 				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
 				// any intermediate build files don't end up getting captured in the snapshot folder.
+				_, packSpan := cmdutil.StartSpan(ctx, initTracer, "Pack/sdk/"+pkg.Name)
 				sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
+				packSpan.End()
 				if err != nil {
 					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
 				}
@@ -992,20 +1040,25 @@ func (eng *languageTestServer) RunLanguageTest(
 	sm := b64secrets.NewBase64SecretsManager()
 
 	// Create a temp dir for the a diy backend to run in for the test
+	_, setupBackendSpan := cmdutil.StartSpan(ctx, tracer, "setupBackend")
 	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
 	err = os.MkdirAll(backendDir, 0o755)
 	if err != nil {
+		setupBackendSpan.End()
 		return nil, fmt.Errorf("create temp backend dir: %w", err)
 	}
 	testBackend, err := diy.New(ctx, snk, "file://"+backendDir, nil)
 	if err != nil {
+		setupBackendSpan.End()
 		return nil, fmt.Errorf("create diy backend: %w", err)
 	}
 
 	// Create any stack references needed for the test
 	if err := createStackReferences(ctx, sm, testBackend, test.StackReferences); err != nil {
+		setupBackendSpan.End()
 		return nil, err
 	}
+	setupBackendSpan.End()
 
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages, runPackageRefs,
 		sdks, localDependencies, languageClient, grpcServer,
@@ -1128,6 +1181,10 @@ func runLanguageTests(
 	var result tests.LResult
 
 	for i, run := range test.Runs {
+		resp, err := func() (*testingrpc.RunLanguageTestResponse, error) {
+			_, iterSpan := cmdutil.StartSpan(ctx, tracer, fmt.Sprintf("run-iteration/%d", i))
+			defer iterSpan.End()
+
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", testName)
 		projectSubDir := projectDir
 		projectDir := filepath.Join(token.TemporaryDirectory, projectDir, testName)
@@ -1491,22 +1548,27 @@ func runLanguageTests(
 		testBackend.SetCurrentProject(project)
 
 		// Create a new stack for the test
+		_, initStackSpan := cmdutil.StartSpan(ctx, tracer, "initializeStack")
 		stackReference, err := testBackend.ParseStackReference("test")
 		if err != nil {
+			initStackSpan.End()
 			return nil, fmt.Errorf("parse test stack reference: %w", err)
 		}
 		var s backend.Stack
 		if i == 0 {
 			s, err = testBackend.CreateStack(ctx, stackReference, projectDir, nil, nil)
 			if err != nil {
+				initStackSpan.End()
 				return nil, fmt.Errorf("create test stack: %w", err)
 			}
 		} else {
 			s, err = testBackend.GetStack(ctx, stackReference)
 			if err != nil {
+				initStackSpan.End()
 				return nil, fmt.Errorf("get test stack: %w", err)
 			}
 		}
+		initStackSpan.End()
 		// Update the stack tags for the test run, nil is not valid so check for that and use an empty map
 		// instead if needed.
 		tags := run.StackTags
@@ -1527,59 +1589,79 @@ func runLanguageTests(
 		}
 
 		for policyPack, policyConfig := range run.PolicyPacks {
-			// Write the policy config to a JSON file
-			var policyConfigFile string
-			if len(policyConfig) != 0 {
-				policyConfigFile = filepath.Join(projectDir, policyPack+".json")
-				jsonBytes, err := json.Marshal(policyConfig)
-				if err != nil {
-					return nil, fmt.Errorf("marshal policy config: %w", err)
+			resp, err := func() (*testingrpc.RunLanguageTestResponse, error) {
+				_, policySpan := cmdutil.StartSpan(ctx, tracer, "setupPolicyPack/"+policyPack)
+				defer policySpan.End()
+
+				// Write the policy config to a JSON file
+				var policyConfigFile string
+				if len(policyConfig) != 0 {
+					policyConfigFile = filepath.Join(projectDir, policyPack+".json")
+					jsonBytes, err := json.Marshal(policyConfig)
+					if err != nil {
+						return nil, fmt.Errorf("marshal policy config: %w", err)
+					}
+					err = os.WriteFile(policyConfigFile, jsonBytes, 0o600)
+					if err != nil {
+						return nil, fmt.Errorf("write policy config: %w", err)
+					}
 				}
-				err = os.WriteFile(policyConfigFile, jsonBytes, 0o600)
+
+				// Copy the policy pack to a temporary directory and link in the core SDK into it
+				policyPackDir := filepath.Join(token.TemporaryDirectory, "policy_packs", policyPack)
+				err := os.MkdirAll(policyPackDir, 0o755)
 				if err != nil {
-					return nil, fmt.Errorf("write policy config: %w", err)
+					return nil, fmt.Errorf("create policy pack dir: %w", err)
 				}
-			}
+				func() {
+					_, copySpan := cmdutil.StartSpan(ctx, tracer, "copyDirectory/policyPack/"+policyPack)
+					defer copySpan.End()
+					err = copyDirectory(os.DirFS(token.PolicyPackDirectory), policyPack, policyPackDir, nil, nil)
+				}()
+				if err != nil {
+					return nil, fmt.Errorf("copy policy pack: %w", err)
+				}
 
-			// Copy the policy pack to a temporary directory and link in the core SDK into it
-			policyPackDir := filepath.Join(token.TemporaryDirectory, "policy_packs", policyPack)
-			err = os.MkdirAll(policyPackDir, 0o755)
-			if err != nil {
-				return nil, fmt.Errorf("create policy pack dir: %w", err)
-			}
-			err = copyDirectory(os.DirFS(token.PolicyPackDirectory), policyPack, policyPackDir, nil, nil)
-			if err != nil {
-				return nil, fmt.Errorf("copy policy pack: %w", err)
-			}
+				policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
 
-			policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
-
-			// Link the core SDK into the policy pack
-			linkDeps := []workspace.LinkablePackageDescriptor{{
-				Path: token.CoreArtifact,
-				Descriptor: workspace.PackageDescriptor{
-					PluginDescriptor: workspace.PluginDescriptor{
-						Name: "pulumi",
+				// Link the core SDK into the policy pack
+				linkDeps := []workspace.LinkablePackageDescriptor{{
+					Path: token.CoreArtifact,
+					Descriptor: workspace.PackageDescriptor{
+						PluginDescriptor: workspace.PluginDescriptor{
+							Name: "pulumi",
+						},
 					},
-				},
-			}}
-			_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
-			if err != nil {
-				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
-			}
+				}}
+				_, linkSpan := cmdutil.StartSpan(ctx, tracer, "Link/policyPack/"+policyPack)
+				_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
+				linkSpan.End()
+				if err != nil {
+					return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
+				}
 
-			// Install the dependencies for the policy pack
-			resp := installDependencies(languageClient, policyInfo, true /* isPlugin */)
+				// Install the dependencies for the policy pack
+				_, installSpan := cmdutil.StartSpan(ctx, tracer, "installDependencies/policyPack/"+policyPack)
+				resp := installDependencies(languageClient, policyInfo, true /* isPlugin */)
+				installSpan.End()
+				if resp != nil {
+					return resp, nil
+				}
+
+				pack := engine.LocalPolicyPack{
+					Path:   policyPackDir,
+					Config: policyConfigFile,
+				}
+
+				updateOptions.LocalPolicyPacks = append(updateOptions.LocalPolicyPacks, pack)
+				return nil, nil
+			}()
+			if err != nil {
+				return nil, err
+			}
 			if resp != nil {
 				return resp, nil
 			}
-
-			pack := engine.LocalPolicyPack{
-				Path:   policyPackDir,
-				Config: policyConfigFile,
-			}
-
-			updateOptions.LocalPolicyPacks = append(updateOptions.LocalPolicyPacks, pack)
 		}
 
 		// Set up the stack and engine configuration
@@ -1718,6 +1800,15 @@ func runLanguageTests(
 				Stdout:   stdout.String(),
 				Stderr:   stderr.String(),
 			}, nil
+		}
+
+		return nil, nil
+		}()
+		if err != nil {
+			return nil, err
+		}
+		if resp != nil {
+			return resp, nil
 		}
 	}
 

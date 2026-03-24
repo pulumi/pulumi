@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -178,7 +179,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
 						Path:        "package\\.json",
-						Pattern:     fmt.Sprintf("pulumi-pulumi-%s\\.tgz", sdk.Version.String()),
+						Pattern:     fmt.Sprintf(`pulumi-pulumi-%s[^"]*\.tgz`, regexp.QuoteMeta(sdk.Version.String())),
 						Replacement: "pulumi-pulumi-CORE.VERSION.tgz",
 					},
 					{
