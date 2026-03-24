@@ -303,6 +303,98 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 	}
 }
 
+func TestGracefulCommandCancel_gracefulShutdown(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+		prog testProgram
+	}{
+		{desc: "go", prog: goTestProgram.From("graceful.go")},
+		{desc: "node", prog: nodeTestProgram.From("graceful.js")},
+		{desc: "python", prog: pythonTestProgram.From("graceful.py")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cmd := tt.prog.BuildContext(t, ctx)
+
+			var stdout lockedBuffer
+			cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "stdout: "))
+			cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
+
+			GracefulCommandCancel(cmd, 5*time.Second)
+			require.NoError(t, cmd.Start(), "error starting child process")
+
+			// Wait until the child process is ready to receive signals.
+			for stdout.Len() == 0 {
+				time.Sleep(10 * time.Millisecond)
+			}
+
+			cancel()
+
+			err := cmd.Wait()
+			// The child exits with code 0 on SIGINT, but cmd.Wait always returns context.Canceled because the context
+			// was cancelled.
+			require.ErrorIs(t, err, context.Canceled)
+		})
+	}
+}
+
+func TestGracefulCommandCancel_forceKill(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+		prog testProgram
+	}{
+		{desc: "go", prog: goTestProgram.From("frozen.go")},
+		{desc: "node", prog: nodeTestProgram.From("frozen.js")},
+		{desc: "python", prog: pythonTestProgram.From("frozen.py")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cmd := tt.prog.BuildContext(t, ctx)
+
+			var stdout lockedBuffer
+			cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "stdout: "))
+			cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
+
+			GracefulCommandCancel(cmd, 200*time.Millisecond)
+			require.NoError(t, cmd.Start(), "error starting child process")
+
+			// Wait until the child process is ready to receive signals.
+			for stdout.Len() == 0 {
+				time.Sleep(10 * time.Millisecond)
+			}
+
+			pid := cmd.Process.Pid
+			cancel()
+
+			done := make(chan error, 1)
+			go func() { done <- cmd.Wait() }()
+
+			select {
+			case err := <-done:
+				var exitErr *exec.ExitError
+				require.ErrorAs(t, err, &exitErr)
+				require.False(t, exitErr.Success(), "process should not have exited successfully")
+			case <-time.After(5 * time.Second):
+				t.Fatal("Took too long to kill child process")
+			}
+
+			require.NoError(t, waitPidDead(pid, 1*time.Second), "process should be dead after force kill")
+		})
+	}
+}
+
 type testProgramKind int
 
 const (
@@ -357,7 +449,17 @@ func (p testProgram) Args(args ...string) testProgram {
 
 // Build builds an exec.Cmd for the test program.
 // It skips the test if the program runner is not found.
-func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
+func (p testProgram) Build(t *testing.T) *exec.Cmd {
+	return p.buildCmd(t, nil)
+}
+
+// BuildContext builds an exec.Cmd for the test program with the given context.
+// It skips the test if the program runner is not found.
+func (p testProgram) BuildContext(t *testing.T, ctx context.Context) *exec.Cmd {
+	return p.buildCmd(t, &ctx)
+}
+
+func (p testProgram) buildCmd(t *testing.T, ctx *context.Context) (cmd *exec.Cmd) {
 	t.Helper()
 
 	defer func() {
@@ -367,6 +469,13 @@ func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
 			RegisterProcessGroup(cmd)
 		}
 	}()
+
+	newCommand := func(name string, args ...string) *exec.Cmd {
+		if ctx != nil {
+			return exec.CommandContext(*ctx, name, args...)
+		}
+		return exec.Command(name, args...)
+	}
 
 	src := filepath.Join("testdata", p.src)
 	switch p.kind {
@@ -383,11 +492,11 @@ func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
 		buildCmd.Stderr = buildOutput
 		require.NoError(t, buildCmd.Run(), "error building test program")
 
-		return exec.Command(bin, p.args...)
+		return newCommand(bin, p.args...)
 
 	case nodeTestProgram:
 		nodeBin := lookPathOrSkip(t, "node")
-		return exec.Command(nodeBin, append([]string{src}, p.args...)...)
+		return newCommand(nodeBin, append([]string{src}, p.args...)...)
 
 	case pythonTestProgram:
 		pythonCmds := []string{"python3", "python"}
@@ -406,7 +515,7 @@ func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
 			t.Skipf("Skipping test: could not find python3 or python executable")
 			return nil
 		}
-		return exec.Command(pythonBin, append([]string{src}, p.args...)...) //nolint:gosec
+		return newCommand(pythonBin, append([]string{src}, p.args...)...) //nolint:gosec
 
 	default:
 		t.Fatalf("unknown test program kind: %v", p.kind)

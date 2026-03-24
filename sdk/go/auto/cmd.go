@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 )
 
@@ -294,15 +295,7 @@ func (p pulumiCommand) Run(ctx context.Context,
 	cmd.Stdout = io.MultiWriter(additionalOutput...)
 	cmd.Stderr = io.MultiWriter(additionalErrorOutput...)
 	cmd.Stdin = stdin
-	setSysprocAttrNewProcessGroup(cmd)
-	cmd.Cancel = func() error {
-		err := interruptProcess(cmd.Process)
-		if err != nil {
-			_ = cmd.Process.Kill()
-		}
-		return nil
-	}
-	cmd.WaitDelay = 10 * time.Second
+	cmdutil.GracefulCommandCancel(cmd, 10*time.Second)
 
 	code := unknownErrorCode
 	err := cmd.Run()

@@ -1,0 +1,6 @@
+name: cancel-no-leak
+description: A Python program that ignores SIGINT to test process cleanup
+runtime:
+  name: python
+  options:
+    toolchain: uv

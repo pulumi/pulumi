@@ -20,7 +20,34 @@ import (
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
+
+// GracefulCommandCancel configures cmd so that when its context is cancelled it receives SIGINT (or CTRL_BREAK_EVENT on
+// Windows) first, giving it up to waitDelay to exit cleanly before being forcibly killed.
+//
+// This should be called before cmd.Start(). The cmd must have been created with exec.CommandContext.
+func GracefulCommandCancel(cmd *exec.Cmd, waitDelay time.Duration) {
+	RegisterProcessGroup(cmd)
+
+	cmd.Cancel = func() error {
+		proc := cmd.Process
+		if proc == nil {
+			return os.ErrProcessDone
+		}
+		logging.V(5).Infof("Sending interrupt to process %d", proc.Pid)
+		if err := Interrupt(proc.Pid); err != nil {
+			logging.V(5).Infof("Interrupt failed for process %d: %v, killing", proc.Pid, err)
+			_ = proc.Kill()
+			return os.ErrProcessDone
+		}
+		return nil
+	}
+	// WaitDelay is the grace period after Cancel returns. If the process is still running after this, exec will SIGKILL
+	// it.
+	cmd.WaitDelay = waitDelay
+}
 
 // TerminateProcessGroup terminates the process group
 // of the given process by sending a termination signal to it.
