@@ -55,6 +55,17 @@ func interpretPulumiRefs(
 						iref.Ref[1:], types.pkg.Name)}
 				} else {
 					ref.Type = res
+					if iref.Kind == DocRefKindResourceProperty {
+						if !hasPropertyNamed(res.Resource.Properties, iref.Property) {
+							subdiags = hcl.Diagnostics{errorf(path,
+								"property '%s' not found on resource '%s'", iref.Property, iref.Token)}
+						}
+					} else if iref.Kind == DocRefKindResourceInputProperty {
+						if !hasPropertyNamed(res.Resource.InputProperties, iref.Property) {
+							subdiags = hcl.Diagnostics{errorf(path,
+								"input property '%s' not found on resource '%s'", iref.Property, iref.Token)}
+						}
+					}
 				}
 			case DocRefKindType, DocRefKindTypeProperty:
 				typ, ok := types.typeDefs[string(iref.Token)]
@@ -63,13 +74,48 @@ func interpretPulumiRefs(
 						iref.Ref[1:], types.pkg.Name)}
 				} else {
 					ref.Type = typ
+					if iref.Kind == DocRefKindTypeProperty {
+						obj, isObj := typ.(*ObjectType)
+						if !isObj {
+							subdiags = hcl.Diagnostics{errorf(path,
+								"type '%s' is not an object type", iref.Token)}
+						} else if _, ok := obj.Property(iref.Property); !ok {
+							subdiags = hcl.Diagnostics{errorf(path,
+								"property '%s' not found on type '%s'", iref.Property, iref.Token)}
+						}
+					}
 				}
 			case DocRefKindFunction, DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
 				fun, has := types.functionDefs[string(iref.Token)]
 				if !has {
-					subdiags = hcl.Diagnostics{errorf(path, "function %s not found", iref.Token)}
+					subdiags = hcl.Diagnostics{errorf(path, "reference to function '%s' not found in package %s",
+						iref.Ref[1:], types.pkg.Name)}
+				} else {
+					ref.Function = fun
+					if iref.Kind == DocRefKindFunctionInputProperty {
+						if fun.Inputs == nil {
+							subdiags = hcl.Diagnostics{errorf(path,
+								"function '%s' has no inputs", iref.Token)}
+						} else if _, ok := fun.Inputs.Property(iref.Property); !ok {
+							subdiags = hcl.Diagnostics{errorf(path,
+								"input property '%s' not found on function '%s'", iref.Property, iref.Token)}
+						}
+					} else if iref.Kind == DocRefKindFunctionOutputProperty {
+						outputs := fun.Outputs
+						if outputs == nil {
+							if obj, ok := fun.ReturnType.(*ObjectType); ok {
+								outputs = obj
+							}
+						}
+						if outputs == nil {
+							subdiags = hcl.Diagnostics{errorf(path,
+								"function '%s' has no outputs", iref.Token)}
+						} else if _, ok := outputs.Property(iref.Property); !ok {
+							subdiags = hcl.Diagnostics{errorf(path,
+								"output property '%s' not found on function '%s'", iref.Property, iref.Token)}
+						}
+					}
 				}
-				ref.Function = fun
 			}
 
 			var name string
@@ -97,6 +143,15 @@ func interpretPulumiRefs(
 		}
 	}
 	return diags
+}
+
+func hasPropertyNamed(props []*Property, name string) bool {
+	for _, p := range props {
+		if p.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 type DocRefKind string
