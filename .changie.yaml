@@ -1,0 +1,41 @@
+changesDir: changelog
+unreleasedDir: pending
+headerPath: ""
+changelogPath: CHANGELOG.md
+versionExt: md
+versionFormat: '## {{.Version}} ({{.Time.Format "2006-01-02"}})'
+kindFormat: '### {{.Kind}}'
+changeFormat: '- [{{.Custom.Scope}}] {{.Body}}{{if .Custom.PR}} [#{{.Custom.PR}}](https://github.com/pulumi/pulumi/pull/{{.Custom.PR}}){{end}}'
+
+kinds:
+  - label: Features
+    key: feat
+    auto: minor
+  - label: Bug Fixes
+    key: fix
+    auto: patch
+  - label: Improvements
+    key: improvement
+    auto: minor
+  - label: Miscellaneous
+    key: chore
+    auto: patch
+
+custom:
+  - key: Scope
+    label: "Component scope (e.g. cli, sdk/go, engine, programgen/nodejs)"
+    type: string
+    minLength: 1
+  - key: PR
+    label: "Pull request number (leave empty if unknown)"
+    type: string
+
+body:
+  minLength: 1
+
+newlines:
+  afterChange: 0
+  beforeChange: 0
+  afterKind: 1
+  beforeKind: 1
+  endOfVersion: 1

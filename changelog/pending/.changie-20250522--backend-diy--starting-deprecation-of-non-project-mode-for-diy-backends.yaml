@@ -1,0 +1,6 @@
+kind: chore
+body: Start deprecation of non-project mode for DIY backends
+custom:
+  Scope: backend/diy
+  PR: ''
+time: '2025-05-22T00:00:00Z'

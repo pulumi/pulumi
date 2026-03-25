@@ -1,0 +1,6 @@
+kind: feat
+body: Read OTEL_RESOURCE_ATTRIBUTES
+custom:
+  Scope: cli
+  PR: ''
+time: '2026-03-23T00:00:00Z'

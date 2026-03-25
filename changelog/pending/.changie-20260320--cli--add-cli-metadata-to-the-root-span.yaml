@@ -1,0 +1,6 @@
+kind: chore
+body: Add CLI metadata to the root span
+custom:
+  Scope: cli
+  PR: ''
+time: '2026-03-20T00:00:00Z'

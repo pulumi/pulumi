@@ -1,0 +1,6 @@
+kind: feat
+body: Add low-level "cancel" command to the auto-generated interface
+custom:
+  Scope: auto/nodejs
+  PR: ''
+time: '2026-03-18T00:00:00Z'

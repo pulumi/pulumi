@@ -1,0 +1,6 @@
+kind: fix
+body: Fix import codegen when generating references to non-standard names
+custom:
+  Scope: cli/import
+  PR: ''
+time: '2026-03-22T00:00:00Z'

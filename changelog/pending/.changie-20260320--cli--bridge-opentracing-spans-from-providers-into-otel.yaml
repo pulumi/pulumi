@@ -1,0 +1,6 @@
+kind: fix
+body: Bridge opentracing spans from providers into OTel
+custom:
+  Scope: cli
+  PR: ''
+time: '2026-03-20T00:00:00Z'
