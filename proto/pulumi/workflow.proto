@@ -427,8 +427,8 @@ message RegisterGraphRequest {
 
 message RegisterStepRequest {
     WorkflowContext context = 1;
-    string path = 2;
-    string job_path = 3;
+    string name = 2;
+    string job = 3;
     DependencyExpression dependencies = 4;
     bool has_on_error = 5;
 }

@@ -25,7 +25,7 @@ from concurrent import futures
 from dataclasses import asdict, dataclass, is_dataclass
 import asyncio
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union, get_type_hints
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union, cast, get_type_hints
 
 import grpc
 from google.protobuf import json_format
@@ -39,7 +39,9 @@ from pulumi.runtime.proto import workflow_pb2_grpc
 OnErrorHandler = Callable[
     [List[workflow_pb2.ErrorRecord]], Union[bool, Tuple[bool, str], None]
 ]
-StepCallback = Callable[[], Any]
+T = TypeVar("T")
+U = TypeVar("U")
+
 JobCallback = Callable[..., None]
 GraphCallback = Callable[["Context"], None]
 FilterCallback = Callable[[Any], bool]
@@ -54,7 +56,9 @@ _WORKFLOW_OUTPUT_VALUE_ATTR = "_pulumi_workflow_output_value"
 
 @dataclass
 class _StepDefinition:
-    fn: StepCallback
+    has_arg: bool
+    arg: Any
+    fn: Callable[..., Any]
     on_error: Optional[OnErrorHandler]
 
 
@@ -195,35 +199,53 @@ class JobContext:
     def step(
         self,
         name: str,
-        fn: Optional[StepCallback] = None,
+        arg: Any = None,
+        fn: Optional[Callable[..., Any]] = None,
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
-    ) -> Union[StepCallback, Callable[[StepCallback], StepCallback]]:
-        def register(registered_fn: StepCallback) -> StepCallback:
+    ) -> Union[Output, Callable[[Callable[..., Any]], Output]]:
+        """Registers a step in the current job."""
+        if fn is None and callable(arg):
+            fn = cast(Callable[..., Any], arg)
+            arg = None
+
+        def register(registered_fn: Callable[..., Any]) -> Output:
             if not name:
                 raise WorkflowError("step name is required")
+            if isinstance(arg, PulumiOutput) and not _is_workflow_output(arg):
+                raise WorkflowError(
+                    "workflow steps may only accept workflow outputs; resource outputs are not supported"
+                )
 
             step_path = f"{self._state.job_path}/steps/{name}"
-
             request = workflow_pb2.RegisterStepRequest()
             request.context.CopyFrom(self._state.context)
-            request.path = step_path
-            request.job_path = self._state.job_path
+            if hasattr(request, "path"):
+                request.path = step_path
+            else:
+                request.name = name
+                request.job = self._state.job_path
             request.has_on_error = on_error is not None
             request.dependencies.operator = (
                 workflow_pb2.DependencyExpression.OPERATOR_ALL
             )
+            dependency_paths = set()
             if dependencies:
                 for dep in dependencies:
-                    term = request.dependencies.terms.add()
-                    term.path = _normalize_step_dependency(self._state.job_path, dep)
+                    dependency_paths.add(
+                        _normalize_step_dependency(self._state.job_path, dep)
+                    )
+            dependency_paths.update(_workflow_output_paths(arg))
+            for dep in sorted(dependency_paths):
+                term = request.dependencies.terms.add()
+                term.path = dep
 
             self._state.monitor.RegisterStep(request)
             self._state.steps[step_path] = _StepDefinition(
-                fn=registered_fn, on_error=on_error
+                has_arg=arg is not None, arg=arg, fn=registered_fn, on_error=on_error
             )
-            return registered_fn
+            return _new_workflow_output(step_path, None)
 
         if fn is not None:
             return register(fn)
@@ -450,6 +472,48 @@ def _resolve_job_input(value: Any) -> Any:
     return value
 
 
+def _resolve_step_arg(arg: Any, step_results_by_path: Dict[str, Any]) -> Any:
+    if not isinstance(arg, PulumiOutput):
+        return arg
+    if not _is_workflow_output(arg):
+        raise WorkflowError(
+            "workflow steps may only accept workflow outputs; resource outputs are not supported"
+        )
+
+    paths = sorted(_workflow_output_paths(arg))
+    if len(paths) == 0:
+        return None
+    if len(paths) == 1:
+        path = paths[0]
+        if path in step_results_by_path:
+            return step_results_by_path[path]
+        if hasattr(arg, _WORKFLOW_OUTPUT_VALUE_ATTR):
+            return getattr(arg, _WORKFLOW_OUTPUT_VALUE_ATTR)
+        return None
+    return [step_results_by_path.get(path) for path in paths]
+
+
+def _invoke_step_fn(fn: Callable[..., Any], arg: Any, *, has_arg: bool) -> Any:
+    if not has_arg:
+        return fn()
+
+    signature = inspect.signature(fn)
+    parameters = list(signature.parameters.values())
+    has_var_args = any(
+        parameter.kind == inspect.Parameter.VAR_POSITIONAL
+        for parameter in parameters
+    )
+    positional = [
+        parameter
+        for parameter in parameters
+        if parameter.kind
+        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    ]
+    if has_var_args or len(positional) > 0:
+        return fn(arg)
+    return fn()
+
+
 def _ensure_event_loop() -> None:
     try:
         asyncio.get_running_loop()
@@ -549,6 +613,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
 
         self._jobs_by_path: Dict[str, _JobDefinition] = {}
         self._steps_by_path: Dict[str, _StepDefinition] = {}
+        self._step_results_by_path: Dict[str, Any] = {}
         self._filters_by_path: Dict[str, FilterCallback] = {}
 
     def Handshake(
@@ -767,7 +832,12 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
 
         response = workflow_pb2.RunStepResponse()
         try:
-            result = step.fn()
+            if step.has_arg:
+                arg_value = _resolve_step_arg(step.arg, self._step_results_by_path)
+                result = _invoke_step_fn(step.fn, arg_value, has_arg=True)
+            else:
+                result = _invoke_step_fn(step.fn, None, has_arg=False)
+            self._step_results_by_path[request.path] = result
             response.result.CopyFrom(_to_proto_value(result))
         except Exception as error:  # pylint: disable=broad-except
             response.error.reason = str(error)
