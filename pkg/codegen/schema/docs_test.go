@@ -183,6 +183,65 @@ func TestParseAndRenderDocs(t *testing.T) {
 	}
 }
 
+func TestRefParser(t *testing.T) {
+	t.Parallel()
+
+	// collectRefs walks a parsed doc AST and returns all Ref nodes found.
+	collectRefs := func(node ast.Node) []*Ref {
+		var refs []*Ref
+		ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+			if entering {
+				if ref, ok := n.(*Ref); ok {
+					refs = append(refs, ref)
+				}
+			}
+			return ast.WalkContinue, nil
+		})
+		return refs
+	}
+
+	t.Run("ValidRefWithSpace", func(t *testing.T) {
+		t.Parallel()
+		doc := ParseDocs([]byte("{{% ref #/resources/aws:s3:bucket %}}"))
+		refs := collectRefs(doc)
+		assert.Len(t, refs, 1)
+		if len(refs) == 1 {
+			assert.Equal(t, "#/resources/aws:s3:bucket", refs[0].Destination)
+		}
+	})
+
+	t.Run("ValidRefWithExtraWhitespace", func(t *testing.T) {
+		t.Parallel()
+		doc := ParseDocs([]byte("{{% ref   #/resources/aws:s3:bucket   %}}"))
+		refs := collectRefs(doc)
+		assert.Len(t, refs, 1)
+		if len(refs) == 1 {
+			assert.Equal(t, "#/resources/aws:s3:bucket", refs[0].Destination)
+		}
+	})
+
+	t.Run("InvalidRefNoSpaceBeforeDestination", func(t *testing.T) {
+		t.Parallel()
+		doc := ParseDocs([]byte("{{% ref#/resources/aws:s3:bucket %}}"))
+		refs := collectRefs(doc)
+		assert.Empty(t, refs)
+	})
+
+	t.Run("InvalidRefWithSuffixedName", func(t *testing.T) {
+		t.Parallel()
+		doc := ParseDocs([]byte("{{% refXxx %}}"))
+		refs := collectRefs(doc)
+		assert.Empty(t, refs)
+	})
+
+	t.Run("InvalidRefEmptyDestination", func(t *testing.T) {
+		t.Parallel()
+		doc := ParseDocs([]byte("{{% ref %}}"))
+		refs := collectRefs(doc)
+		assert.Empty(t, refs)
+	})
+}
+
 func TestParseDocRef(t *testing.T) {
 	t.Parallel()
 

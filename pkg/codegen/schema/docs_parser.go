@@ -249,9 +249,16 @@ func (refParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) as
 	// Trim leading and trailing whitespace.
 	content = bytes.TrimSpace(content)
 
-	// Check if this is a `ref` shortcode.
+	// Check if this is a `ref` shortcode. Require that "ref" is followed by
+	// whitespace (or nothing) to avoid matching shortcodes like `{{% refXxx %}}`.
 	if !bytes.HasPrefix(content, []byte("ref")) {
 		return nil
+	}
+	if len(content) > 3 {
+		r, _ := utf8.DecodeRune(content[3:])
+		if !unicode.IsSpace(r) {
+			return nil
+		}
 	}
 
 	// Extract the destination (everything after "ref").
