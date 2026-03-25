@@ -16,9 +16,22 @@ package pcl
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+)
+
+type ProgramKind int
+
+const (
+	ProgramKindResource ProgramKind = iota
+	ProgramKindWorkflow
+	ProgramKindMixed
 )
 
 type WorkflowProgram struct {
@@ -85,16 +98,44 @@ type WorkflowGraphJob struct {
 }
 
 func BindWorkflowProgram(programPath string) (*WorkflowProgram, error) {
-	parser := hclparse.NewParser()
-	hclFile, diags := parser.ParseHCLFile(programPath)
-	if diags.HasErrors() {
-		return nil, fmt.Errorf("parse workflow pcl file %q: %s", programPath, diags.Error())
+	source, err := os.ReadFile(programPath)
+	if err != nil {
+		return nil, fmt.Errorf("read workflow pcl file %q: %w", programPath, err)
 	}
+	return BindWorkflowSource(map[string]string{programPath: string(source)})
+}
+
+func BindWorkflowDirectory(dir string) (*WorkflowProgram, error) {
+	source, err := ReadProgramSourcesFromDirectory(dir)
+	if err != nil {
+		return nil, err
+	}
+	return BindWorkflowSource(source)
+}
+
+func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
+	parser := hclparse.NewParser()
+	keys := make([]string, 0, len(source))
+	for path := range source {
+		keys = append(keys, path)
+	}
+	sort.Strings(keys)
 
 	var p WorkflowProgram
-	decodeDiags := gohcl.DecodeBody(hclFile.Body, nil, &p)
-	if decodeDiags.HasErrors() {
-		return nil, fmt.Errorf("decode workflow pcl file %q: %s", programPath, decodeDiags.Error())
+	for _, filePath := range keys {
+		hclFile, diags := parser.ParseHCL([]byte(source[filePath]), filePath)
+		if diags.HasErrors() {
+			return nil, fmt.Errorf("parse workflow pcl file %q: %s", filePath, diags.Error())
+		}
+		var file WorkflowProgram
+		decodeDiags := gohcl.DecodeBody(hclFile.Body, nil, &file)
+		if decodeDiags.HasErrors() {
+			return nil, fmt.Errorf("decode workflow pcl file %q: %s", filePath, decodeDiags.Error())
+		}
+		p.Triggers = append(p.Triggers, file.Triggers...)
+		p.Steps = append(p.Steps, file.Steps...)
+		p.Jobs = append(p.Jobs, file.Jobs...)
+		p.Workflows = append(p.Workflows, file.Workflows...)
 	}
 
 	p.graphsByName = map[string]WorkflowGraph{}
@@ -130,10 +171,83 @@ func BindWorkflowProgram(programPath string) (*WorkflowProgram, error) {
 	}
 
 	if len(p.graphsByName) == 0 {
-		return nil, fmt.Errorf("no workflow blocks found in %q", programPath)
+		return nil, fmt.Errorf("no workflow blocks found")
 	}
 
 	return &p, nil
+}
+
+func DetectProgramKindFromDirectory(dir string) (ProgramKind, error) {
+	source, err := ReadProgramSourcesFromDirectory(dir)
+	if err != nil {
+		return ProgramKindResource, err
+	}
+	return DetectProgramKindFromSource(source)
+}
+
+func DetectProgramKindFromSource(source map[string]string) (ProgramKind, error) {
+	hasWorkflowBlocks := false
+	hasResourceBlocks := false
+
+	for filePath, contents := range source {
+		hclFile, diags := hclsyntax.ParseConfig([]byte(contents), filePath, hcl.Pos{})
+		if diags.HasErrors() {
+			return ProgramKindResource, fmt.Errorf("parse pcl file %q: %s", filePath, diags.Error())
+		}
+		body, ok := hclFile.Body.(*hclsyntax.Body)
+		if !ok {
+			continue
+		}
+		for _, block := range body.Blocks {
+			switch block.Type {
+			case "workflow", "graph", "trigger", "job", "step":
+				hasWorkflowBlocks = true
+			case "resource", "config", "output", "local", "component", "pulumi", "package":
+				hasResourceBlocks = true
+			}
+		}
+	}
+
+	switch {
+	case hasWorkflowBlocks && hasResourceBlocks:
+		return ProgramKindMixed, nil
+	case hasWorkflowBlocks:
+		return ProgramKindWorkflow, nil
+	default:
+		return ProgramKindResource, nil
+	}
+}
+
+func ReadProgramSourcesFromDirectory(dir string) (map[string]string, error) {
+	source := map[string]string{}
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) != ".pp" {
+			return nil
+		}
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read %q: %w", path, err)
+		}
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return fmt.Errorf("relative path %q: %w", path, err)
+		}
+		source[filepath.ToSlash(relPath)] = string(contents)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(source) == 0 {
+		return nil, fmt.Errorf("no .pp files found in %q", dir)
+	}
+	return source, nil
 }
 
 func (p *WorkflowProgram) GraphByName(name string) (WorkflowGraph, bool) {

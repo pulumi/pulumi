@@ -27,6 +27,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func writeFile(t *testing.T, path, contents string) {
+	t.Helper()
+	err := os.MkdirAll(filepath.Dir(path), 0o700)
+	require.NoError(t, err)
+	err = os.WriteFile(path, []byte(contents), 0o600)
+	require.NoError(t, err)
+}
+
 // TestYamlConvert is an entrypoint for debugging `pulumi convert`. To use this with an editor such as
 // VS Code, drop a Pulumi.yaml in the testdata folder and with the VS Code Go extension, the
 // code lens (grayed out text above TestConvert) should display an option to "debug test".
@@ -153,4 +161,73 @@ func TestProjectNameOverrides(t *testing.T) {
 	yamlBytes, err := os.ReadFile(filepath.Join(outDir, "Pulumi.yaml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(yamlBytes), "name: "+name)
+}
+
+func TestPclWorkflowConvertWritesPluginProject(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	writeFile(t, filepath.Join(sourceDir, "main.pp"), `
+workflow "main" {
+  job "hello" {
+    step "run" {
+      expr = "ok"
+    }
+  }
+}
+`)
+
+	outDir := t.TempDir()
+	err := runConvert(
+		t.Context(),
+		pkgWorkspace.Instance,
+		env.Global(),
+		[]string{},
+		sourceDir,
+		[]string{},
+		"pcl",
+		"pcl",
+		outDir,
+		true,
+		true,
+		"workflow-test",
+	)
+	require.NoError(t, err)
+
+	_, err = os.Stat(filepath.Join(outDir, "PulumiPlugin.yaml"))
+	require.NoError(t, err)
+	_, err = os.Stat(filepath.Join(outDir, "main.pp"))
+	require.NoError(t, err)
+}
+
+func TestPclMixedProgramConvertFails(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	writeFile(t, filepath.Join(sourceDir, "main.pp"), `
+resource "r" "random:index/randomPet:RandomPet" {}
+workflow "main" {
+  job "hello" {
+    step "run" { expr = "ok" }
+  }
+}
+`)
+
+	outDir := t.TempDir()
+	err := runConvert(
+		t.Context(),
+		pkgWorkspace.Instance,
+		env.Global(),
+		[]string{},
+		sourceDir,
+		[]string{},
+		"pcl",
+		"pcl",
+		outDir,
+		true,
+		true,
+		"mixed-test",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "mixes workflow blocks with resource")
 }

@@ -1753,6 +1753,24 @@ func (host *pythonLanguageHost) GenerateProject(
 func (host *pythonLanguageHost) GenerateProgram(
 	ctx context.Context, req *pulumirpc.GenerateProgramRequest,
 ) (*pulumirpc.GenerateProgramResponse, error) {
+	programKind, err := pcl.DetectProgramKindFromSource(req.Source)
+	if err != nil {
+		return nil, err
+	}
+	if programKind == pcl.ProgramKindMixed {
+		return nil, errors.New("PCL program mixes workflow and resource blocks")
+	}
+	if programKind == pcl.ProgramKindWorkflow {
+		files, err := generatePythonWorkflowProgram(req.Source)
+		if err != nil {
+			return nil, err
+		}
+		return &pulumirpc.GenerateProgramResponse{
+			Source:      files,
+			Diagnostics: nil,
+		}, nil
+	}
+
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
@@ -1807,6 +1825,181 @@ func (host *pythonLanguageHost) GenerateProgram(
 		Source:      files,
 		Diagnostics: rpcDiagnostics,
 	}, nil
+}
+
+func pythonIdentifier(name string) string {
+	if name == "" {
+		return "generated"
+	}
+	var b strings.Builder
+	for i, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_' || (i > 0 && r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('_')
+		}
+	}
+	result := b.String()
+	if result == "" {
+		return "generated"
+	}
+	if result[0] >= '0' && result[0] <= '9' {
+		return "_" + result
+	}
+	return result
+}
+
+func pythonQuoteString(v string) string {
+	b, _ := json.Marshal(v)
+	return string(b)
+}
+
+func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte, error) {
+	program, err := pcl.BindWorkflowSource(source)
+	if err != nil {
+		return nil, err
+	}
+
+	var b strings.Builder
+	b.WriteString("import subprocess\n")
+	b.WriteString("from pulumi import Output\n")
+	b.WriteString("import pulumi.workflow as workflow\n\n\n")
+
+	for _, graph := range program.Workflows {
+		graphFn := pythonIdentifier(graph.Name) + "_graph"
+		b.WriteString("def " + graphFn + "(ctx: workflow.Context) -> None:\n")
+
+		if len(graph.Triggers) == 0 && len(graph.TriggerRefs) == 0 && len(graph.Jobs) == 0 {
+			b.WriteString("    pass\n\n")
+			continue
+		}
+
+		for _, trigger := range graph.Triggers {
+			spec := "{}"
+			if trigger.Schedule != "" {
+				spec = "{\"schedule\": " + pythonQuoteString(trigger.Schedule) + "}"
+			}
+			triggerToken := trigger.Uses
+			if triggerToken == "" {
+				triggerToken = trigger.Name
+			}
+			b.WriteString("    ctx.trigger(" +
+				pythonQuoteString(trigger.Name) + ", " +
+				pythonQuoteString(triggerToken) + ", " +
+				spec + ")\n")
+		}
+		for _, triggerRef := range graph.TriggerRefs {
+			b.WriteString("    ctx.trigger(" +
+				pythonQuoteString(triggerRef.Name) + ", " +
+				pythonQuoteString(triggerRef.Name) + ", {})\n")
+		}
+
+		for _, graphJob := range graph.Jobs {
+			if graphJob.Uses != "" && strings.Contains(graphJob.Uses, ":") {
+				options := []string{"name=" + pythonQuoteString(graphJob.Name)}
+				if len(graphJob.DependsOn) > 0 {
+					deps := make([]string, 0, len(graphJob.DependsOn))
+					for _, dep := range graphJob.DependsOn {
+						deps = append(deps, pythonQuoteString(dep))
+					}
+					options = append(options, "dependencies=["+strings.Join(deps, ", ")+"]")
+				}
+				if graphJob.Filter != nil {
+					options = append(options, fmt.Sprintf("filter=Output.from_input(%t)", *graphJob.Filter))
+				}
+				b.WriteString("    ctx.job(" + pythonQuoteString(graphJob.Uses) +
+					", workflow.JobOptions(" + strings.Join(options, ", ") + "))\n")
+				continue
+			}
+
+			jobSteps := graphJob.Steps
+			if graphJob.Uses != "" {
+				if jobDef, ok := program.JobDefinitionForUse(graphJob.Uses); ok {
+					jobSteps = jobDef.Steps
+				}
+			}
+
+			jobDecoratorOptions := []string{}
+			if len(graphJob.DependsOn) > 0 {
+				deps := make([]string, 0, len(graphJob.DependsOn))
+				for _, dep := range graphJob.DependsOn {
+					deps = append(deps, pythonQuoteString(dep))
+				}
+				jobDecoratorOptions = append(jobDecoratorOptions, "dependencies=["+strings.Join(deps, ", ")+"]")
+			}
+			if graphJob.Filter != nil {
+				jobDecoratorOptions = append(jobDecoratorOptions, fmt.Sprintf("filter=Output.from_input(%t)", *graphJob.Filter))
+			}
+			if len(jobDecoratorOptions) == 0 {
+				b.WriteString("    @ctx.job(" + pythonQuoteString(graphJob.Name) + ")\n")
+			} else {
+				b.WriteString("    @ctx.job(" + pythonQuoteString(graphJob.Name) + ", workflow.JobOptions(" +
+					strings.Join(jobDecoratorOptions, ", ") + "))\n")
+			}
+			jobFn := pythonIdentifier(graph.Name + "_" + graphJob.Name + "_job")
+			b.WriteString("    def " + jobFn + "(job: workflow.JobContext) -> None:\n")
+			if len(jobSteps) == 0 {
+				b.WriteString("        pass\n")
+				continue
+			}
+			for _, step := range jobSteps {
+				stepDef := pcl.WorkflowStepDefinition{
+					Name:    step.Name,
+					Command: step.Command,
+					Expr:    step.Expr,
+				}
+				if step.Uses != "" {
+					if resolved, ok := program.StepDefinitionForUse(step.Uses); ok {
+						stepDef = resolved
+					}
+				}
+				stepDecoratorOptions := []string{}
+				if len(step.DependsOn) > 0 {
+					deps := make([]string, 0, len(step.DependsOn))
+					for _, dep := range step.DependsOn {
+						deps = append(deps, pythonQuoteString(dep))
+					}
+					stepDecoratorOptions = append(stepDecoratorOptions, "dependencies=["+strings.Join(deps, ", ")+"]")
+				}
+				if step.Filter != nil {
+					stepDecoratorOptions = append(stepDecoratorOptions, fmt.Sprintf("filter=Output.from_input(%t)", *step.Filter))
+				}
+				if len(stepDecoratorOptions) == 0 {
+					b.WriteString("        @job.step(" + pythonQuoteString(step.Name) + ")\n")
+				} else {
+					b.WriteString("        @job.step(" + pythonQuoteString(step.Name) + ", workflow.StepOptions(" +
+						strings.Join(stepDecoratorOptions, ", ") + "))\n")
+				}
+				stepFn := pythonIdentifier(graph.Name + "_" + graphJob.Name + "_" + step.Name + "_step")
+				b.WriteString("        def " + stepFn + "() -> str:\n")
+				switch {
+				case stepDef.Command != "":
+					b.WriteString("            return subprocess.check_output(" + pythonQuoteString(stepDef.Command) +
+						", shell=True, text=True).strip()\n")
+				case stepDef.Expr != "":
+					b.WriteString("            return " + pythonQuoteString(stepDef.Expr) + "\n")
+				default:
+					b.WriteString("            return \"\"\n")
+				}
+			}
+		}
+		b.WriteByte('\n')
+	}
+
+	b.WriteString("def register_workflows(registry: workflow.WorkflowRegistry) -> None:\n")
+	if len(program.Workflows) == 0 {
+		b.WriteString("    pass\n")
+	} else {
+		for _, graph := range program.Workflows {
+			graphFn := pythonIdentifier(graph.Name) + "_graph"
+			b.WriteString("    registry.graph(" + pythonQuoteString(graph.Name) + ", " + graphFn + ")\n")
+		}
+	}
+
+	b.WriteString("\n\nif __name__ == \"__main__\":\n")
+	b.WriteString("    workflow.run(\"converted\", \"0.1.0\", register_workflows)\n")
+
+	return map[string][]byte{"__main__.py": []byte(b.String())}, nil
 }
 
 func (host *pythonLanguageHost) GeneratePackage(

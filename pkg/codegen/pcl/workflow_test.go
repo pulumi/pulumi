@@ -93,3 +93,38 @@ workflow "main" {}
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestDetectProgramKindFromSource(t *testing.T) {
+	t.Parallel()
+
+	kind, err := DetectProgramKindFromSource(map[string]string{
+		"main.pp": `workflow "main" {}`,
+	})
+	if err != nil {
+		t.Fatalf("detect kind failed: %v", err)
+	}
+	if kind != ProgramKindWorkflow {
+		t.Fatalf("expected workflow kind, got %v", kind)
+	}
+
+	kind, err = DetectProgramKindFromSource(map[string]string{
+		"main.pp": `resource r "random:index/randomPet:RandomPet" {}`,
+	})
+	if err != nil {
+		t.Fatalf("detect kind failed: %v", err)
+	}
+	if kind != ProgramKindResource {
+		t.Fatalf("expected resource kind, got %v", kind)
+	}
+
+	kind, err = DetectProgramKindFromSource(map[string]string{
+		"main.pp": `resource r "random:index/randomPet:RandomPet" {}
+workflow "main" {}`,
+	})
+	if err != nil {
+		t.Fatalf("detect kind failed: %v", err)
+	}
+	if kind != ProgramKindMixed {
+		t.Fatalf("expected mixed kind, got %v", kind)
+	}
+}

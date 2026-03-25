@@ -145,6 +145,27 @@ func TestLanguageConvertSmoke(t *testing.T) {
 	}
 }
 
+func TestLanguageConvertWorkflowSmoke(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("testdata/workflow_pp")
+	e.RunCommand(
+		"pulumi", "convert", "--strict", "--generate-only",
+		"--language", "python", "--from", "pcl", "--out", "out")
+
+	pluginProject, err := os.ReadFile(filepath.Join(e.RootPath, "out", "PulumiPlugin.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(pluginProject), "runtime: python")
+
+	mainProgram, err := os.ReadFile(filepath.Join(e.RootPath, "out", "__main__.py"))
+	require.NoError(t, err)
+	assert.Contains(t, string(mainProgram), "workflow.run(")
+	assert.Contains(t, string(mainProgram), "@ctx.job(\"build\")")
+}
+
 // Quick sanity tests for each downstream language to check that non-strict convert works.
 func TestLanguageConvertLenientSmoke(t *testing.T) {
 	t.Parallel()

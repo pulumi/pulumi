@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -177,6 +178,84 @@ func pclGenerateProject(
 type projectGeneratorFunction func(
 	string, string, *workspace.Project, schema.ReferenceLoader, bool,
 ) (hcl.Diagnostics, error)
+
+func writePluginProject(targetDirectory, runtimeName string) error {
+	pluginProject := workspace.PluginProject{
+		Runtime: workspace.NewProjectRuntimeInfo(runtimeName, nil),
+	}
+	return pluginProject.Save(filepath.Join(targetDirectory, "PulumiPlugin.yaml"))
+}
+
+func writeGeneratedSourceFiles(targetDirectory string, files map[string][]byte) error {
+	for filename, contents := range files {
+		outPath := filepath.Join(targetDirectory, filename)
+		err := os.MkdirAll(filepath.Dir(outPath), 0o755)
+		if err != nil {
+			return fmt.Errorf("create output directory for %q: %w", filename, err)
+		}
+		if err = os.WriteFile(outPath, contents, 0o600); err != nil {
+			return fmt.Errorf("write generated file %q: %w", filename, err)
+		}
+	}
+	return nil
+}
+
+func generateWorkflowProject(
+	pCtx *plugin.Context,
+	languagePlugin plugin.LanguageRuntime,
+	language string,
+	sourceDirectory string,
+	targetDirectory string,
+	loader schema.ReferenceLoader,
+	strict bool,
+) (hcl.Diagnostics, error) {
+	loaderServer := schema.NewLoaderServer(loader)
+	grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(grpcServer)
+
+	sourceFiles, err := pcl.ReadProgramSourcesFromDirectory(sourceDirectory)
+	if err != nil {
+		return nil, err
+	}
+	files, diags, err := languagePlugin.GenerateProgram(sourceFiles, grpcServer.Addr(), strict)
+	if err != nil {
+		return diags, err
+	}
+	if diags.HasErrors() {
+		return diags, nil
+	}
+	if err = writeGeneratedSourceFiles(targetDirectory, files); err != nil {
+		return diags, err
+	}
+
+	// Copy non-PCL files from source into target (excluding both project manifest types).
+	err = aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory, func(file fs.FileInfo) bool {
+		if file.IsDir() {
+			sourceAbsPath, err := filepath.Abs(filepath.Join(sourceDirectory, file.Name()))
+			if err != nil {
+				return false
+			}
+			targetAbsPath, err := filepath.Abs(targetDirectory)
+			if err != nil {
+				return false
+			}
+			return sourceAbsPath != targetAbsPath
+		}
+		return file.Name() != "Pulumi.yaml" &&
+			file.Name() != "PulumiPlugin.yaml" &&
+			path.Ext(file.Name()) != ".pp"
+	})
+	if err != nil {
+		return diags, fmt.Errorf("copying files from source directory: %w", err)
+	}
+	if err = writePluginProject(targetDirectory, language); err != nil {
+		return diags, fmt.Errorf("write PulumiPlugin.yaml: %w", err)
+	}
+	return diags, nil
+}
 
 func runConvert(
 	ctx context.Context,
@@ -428,19 +507,65 @@ func runConvert(
 		}
 	}
 
+	programKind, err := pcl.DetectProgramKindFromDirectory(pclDirectory)
+	if err != nil {
+		return fmt.Errorf("detect converted pcl program type: %w", err)
+	}
+	if programKind == pcl.ProgramKindMixed {
+		return errors.New(
+			"converted PCL mixes workflow blocks with resource/program blocks; split these into separate programs",
+		)
+	}
+	if programKind == pcl.ProgramKindWorkflow {
+		// Workflow outputs are plugin projects today; dependency installation for app projects does not apply.
+		generateOnly = true
+	}
+
 	// Load the project from the pcl directory if there is one. We default to a project with just
 	// the name of the original directory.
 	proj := &workspace.Project{Name: tokens.PackageName(name)}
-	path, _ := workspace.DetectProjectPathFrom(pclDirectory)
-	if path != "" {
-		proj, err = workspace.LoadProject(path)
-		if err != nil {
-			return fmt.Errorf("load project: %w", err)
+	if programKind == pcl.ProgramKindResource {
+		path, _ := workspace.DetectProjectPathFrom(pclDirectory)
+		if path != "" {
+			proj, err = workspace.LoadProject(path)
+			if err != nil {
+				return fmt.Errorf("load project: %w", err)
+			}
 		}
 	}
 
 	pCtx.Diag.Infof(diag.Message("", "Converting to %s..."), language)
-	diagnostics, err := projectGenerator(pclDirectory, outDir, proj, loader, strict)
+	var diagnostics hcl.Diagnostics
+	if programKind == pcl.ProgramKindWorkflow {
+		if language == "pcl" {
+			_, err := pcl.BindWorkflowDirectory(pclDirectory)
+			if err != nil {
+				return fmt.Errorf("could not bind workflow program: %w", err)
+			}
+			if err = aferoUtil.CopyDir(afero.NewOsFs(), pclDirectory, outDir, nil); err != nil {
+				return fmt.Errorf("copy workflow project: %w", err)
+			}
+			if _, err = os.Stat(filepath.Join(outDir, "PulumiPlugin.yaml")); err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					if err = writePluginProject(outDir, "pcl"); err != nil {
+						return fmt.Errorf("write PulumiPlugin.yaml: %w", err)
+					}
+				} else {
+					return fmt.Errorf("stat PulumiPlugin.yaml: %w", err)
+				}
+			}
+		} else {
+			languagePlugin, err := pCtx.Host.LanguageRuntime(language)
+			if err != nil {
+				return err
+			}
+			diagnostics, err = generateWorkflowProject(
+				pCtx, languagePlugin, language, pclDirectory, outDir, loader, strict,
+			)
+		}
+	} else {
+		diagnostics, err = projectGenerator(pclDirectory, outDir, proj, loader, strict)
+	}
 	// If we have error diagnostics then program generation failed, print an error to the user that they
 	// should raise an issue about this
 	if diagnostics.HasErrors() {
