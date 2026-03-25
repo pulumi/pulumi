@@ -731,29 +731,37 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 func TestAnalyzerCancellation(t *testing.T) {
 	t.Parallel()
 
+	ctx, cancel := context.WithCancel(t.Context())
+
 	gracefulShutdown := false
-	analyzerCanceled := make(chan struct{})
 	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+					if r.Type == "pkgA:m:typA" {
+						// Cancel from inside AnalyzeF so the executor is
+						// mid-event processing and can't close its done
+						// channel yet. This guarantees the
+						// SignalCancellation goroutine picks
+						// callerCtx.Done() and calls CancelF.
+						cancel()
+					}
+					return plugin.AnalyzeResponse{}, nil
+				},
 				CancelF: func() error {
 					gracefulShutdown = true
-					close(analyzerCanceled)
 					return nil
 				},
 			}, nil
 		}, deploytest.WithGrpc),
 	}
 
-	ctx, cancel := context.WithCancel(t.Context())
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		cancel()
-		// Wait for the engine to signal cancellation to the analyzer before
-		// returning. Without this, the program's nil return races with context
-		// cancellation in the deployment executor's select loop, causing a
-		// non-deterministic event stream.
-		<-analyzerCanceled
-		return nil
+		_, err := monitor.RegisterResource("pkgA:m:typA", "res", true)
+		return err
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)

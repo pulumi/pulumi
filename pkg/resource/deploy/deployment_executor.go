@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync/atomic"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -130,39 +129,20 @@ func (ex *deploymentExecutor) reportError(urn resource.URN, err error) {
 // Execute executes a deployment to completion, using the given cancellation context and running a preview
 // or update.
 func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err error) {
-	// Signal cancellation to the deployment's plugins when the caller context is cancelled. We do not hang
-	// this off of the context we create below because we do not want the failure of a single step to cause
-	// other steps to fail.
-	//
-	// We signal in two places:
-	//   1. A goroutine that races with the deployment — this allows cancellation to interrupt long-running
-	//      provider operations while the deployment is still executing.
-	//   2. Synchronously before returning — this covers the case where the goroutine's select picks <-done
-	//      over callerCtx.Done() when both are ready (Go selects randomly among ready cases).
+	// Set up a goroutine that will signal cancellation to the deployment's plugins if the caller context is cancelled.
+	// We do not hang this off of the context we create below because we do not want the failure of a single step to
+	// cause other steps to fail.
 	ex.skipped = mapset.NewSet[urn.URN]()
 	done := make(chan bool)
 	defer close(done)
-	var signalledCancellation atomic.Bool
-	signalCancellation := func(label string) {
-		if callerCtx.Err() == nil {
-			return
-		}
-		if !signalledCancellation.CompareAndSwap(false, true) {
-			return
-		}
-		logging.V(4).Infof("deploymentExecutor.Execute(...): signalling cancellation to providers (%s)...", label)
-		cancelErr := ex.deployment.ctx.Host.SignalCancellation()
-		if cancelErr != nil {
-			logging.V(4).Infof(
-				"deploymentExecutor.Execute(...): failed to signal cancellation to providers (%s): %v",
-				label, cancelErr)
-		}
-	}
-	defer signalCancellation("deferred")
 	go PanicRecovery(ex.deployment.panicErrs, func() {
 		select {
 		case <-callerCtx.Done():
-			signalCancellation("goroutine")
+			logging.V(4).Infof("deploymentExecutor.Execute(...): signalling cancellation to providers...")
+			cancelErr := ex.deployment.ctx.Host.SignalCancellation()
+			if cancelErr != nil {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): failed to signal cancellation to providers: %v", cancelErr)
+			}
 		case <-done:
 			logging.V(4).Infof("deploymentExecutor.Execute(...): exiting provider canceller")
 		}
