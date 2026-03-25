@@ -391,10 +391,12 @@ export async function run(
             // We're not in ESM mode, or running an older version of ts-node.
             // Let ts-node deal with registration.
             const tsn: typeof tsnode = require(tsnodeRequire);
+            // Use nodenext for TS >= 4.7, fall back to commonjs/node for older versions (e.g. vendored TS 3.8.3).
+            const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
             options.compilerOptions = {
                 target: "ES2020", // TypeScript 3.8 supports this
-                module: "commonjs",
-                moduleResolution: "node",
+                module: useNodeNext ? "nodenext" : "commonjs",
+                moduleResolution: useNodeNext ? "nodenext" : "node",
                 sourceMap: "true",
                 ...compilerOptions,
             };

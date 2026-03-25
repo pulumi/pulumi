@@ -3144,9 +3144,9 @@ log-symbols@^4.1.0:
     is-unicode-supported "^0.1.0"
 
 long@^5.0.0:
-  version "5.2.3"
-  resolved "https://registry.npmjs.org/long/-/long-5.2.3.tgz"
-  integrity sha512-lcHwpNoggQTObv5apGNCTdJrO69eHOZMi4BNC+rTLER8iHAqGrUVeLh/irVIM7zTw2bOXA8T6uNPeujwOLg/2Q==
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/long/-/long-5.3.2.tgz#1d84463095999262d7d7b7f8bfd4a8cc55167f83"
+  integrity sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==
 
 lowercase-keys@^2.0.0:
   version "2.0.0"
