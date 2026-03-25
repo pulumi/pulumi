@@ -1,4 +1,4 @@
-module example.com/pulumi-simple/sdk/go/v2
+module example.com/pulumi-nestedobject/sdk/go
 
 go 1.25
 

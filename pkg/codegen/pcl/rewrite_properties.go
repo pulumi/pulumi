@@ -25,6 +25,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// RewritePropertyReferences replaces [model.ScopeTraversalExpression]s with [model.TemplateExpression]s of equivalent
+// value.
 func RewritePropertyReferences(expr model.Expression) model.Expression {
 	rewriter := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 		traversal, ok := expr.(*model.ScopeTraversalExpression)
@@ -48,7 +50,7 @@ func RewritePropertyReferences(expr model.Expression) model.Expression {
 			case hcl.TraverseIndex:
 				switch t.Key.Type() {
 				case cty.String:
-					_, err = fmt.Fprintf(&buffer, ".%s", t.Key.AsString())
+					_, err = fmt.Fprintf(&buffer, `["%s"]`, model.EscapeString(t.Key.AsString()))
 				case cty.Number:
 					idx, _ := t.Key.AsBigFloat().Int64()
 					_, err = fmt.Fprintf(&buffer, "[%d]", idx)

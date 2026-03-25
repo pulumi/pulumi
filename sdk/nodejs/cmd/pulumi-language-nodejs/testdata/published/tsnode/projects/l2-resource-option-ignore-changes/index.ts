@@ -1,7 +1,19 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as simple from "@pulumi/simple";
+import * as nestedobject from "@pulumi/nestedobject";
 
-const ignoreChanges = new simple.Resource("ignoreChanges", {value: true}, {
-    ignoreChanges: ["value"],
+const receiverIgnore = new nestedobject.Receiver("receiverIgnore", {details: [{
+    key: "a",
+    value: "b",
+}]}, {
+    ignoreChanges: ["details[0].key"],
 });
-const notIgnoreChanges = new simple.Resource("notIgnoreChanges", {value: true});
+const mapIgnore = new nestedobject.MapContainer("mapIgnore", {tags: {
+    env: "prod",
+}}, {
+    ignoreChanges: [
+        "tags[\"env\"]",
+        "tags[\"with.dot\"]",
+        "tags[\"with escaped \\\"\"]",
+    ],
+});
+const noIgnore = new nestedobject.Target("noIgnore", {name: "nothing"});
