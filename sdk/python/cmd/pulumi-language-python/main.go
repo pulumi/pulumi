@@ -227,6 +227,16 @@ type pythonLanguageHost struct {
 	typechecker string
 	// This is used by conformance testing to set the toolchain to use in ProgramGen.
 	toolchain string
+
+	// packCache caches Pack results keyed by the absolute source directory.
+	// When the same directory is packed again (e.g. core SDK packed for multiple test configs),
+	// the cached wheel is copied instead of rebuilding.
+	packCache sync.Map // map[string]string (abs source dir → wheel file path)
+
+	// typecheckerCache tracks program directories that have already passed
+	// type-checking. When the same directory is Run again (e.g. preview then
+	// update in conformance tests), the typechecker is skipped.
+	typecheckerCache sync.Map // map[string]bool (abs program dir → true)
 }
 
 func parseOptions(
@@ -476,6 +486,25 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		))
 	defer packSpan.End()
 
+	// Check the pack cache — if we already built a wheel for this source directory,
+	// just copy the cached artifact instead of rebuilding.
+	absSrc, err := filepath.Abs(req.PackageDirectory)
+	if err != nil {
+		return nil, fmt.Errorf("abs path: %w", err)
+	}
+	if cached, ok := host.packCache.Load(absSrc); ok {
+		cachedPath := cached.(string)
+		if _, err := os.Stat(cachedPath); err == nil {
+			found := filepath.Base(cachedPath)
+			dst := filepath.Join(req.DestinationDirectory, found)
+			logging.V(5).Infof("Pack cache hit for %s, copying %s -> %s", absSrc, cachedPath, dst)
+			if err := fsutil.CopyFile(dst, cachedPath, nil); err != nil {
+				return nil, fmt.Errorf("copy cached artifact: %w", err)
+			}
+			return &pulumirpc.PackResponse{ArtifactPath: dst}, nil
+		}
+	}
+
 	ctx, buildVenvSpan := cmdutil.StartSpan(ctx, tracer, "Pack/ensureBuildVenv")
 	tc, useUv, err := ensureBuildVenv(ctx)
 	buildVenvSpan.End()
@@ -560,6 +589,9 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	if err != nil {
 		return nil, fmt.Errorf("copy file: %w", err)
 	}
+
+	// Cache the artifact for future Pack calls with the same source directory
+	host.packCache.Store(absSrc, dst)
 
 	return &pulumirpc.PackResponse{
 		ArtifactPath: dst,
@@ -690,18 +722,22 @@ func listPulumiPackageInfos(ctx context.Context, tc toolchain.Toolchain) ([]pulu
 		return nil, err
 	}
 
-	pluginJSONPaths, err := readAllPulumiPluginJSONPaths(ctx, tc, packages)
+	// Pre-filter to skip packages that are known not to have plugins.
+	candidates := make([]plugin.DependencyInfo, 0, len(packages))
+	for _, pkg := range packages {
+		if _, ok := packagesWithoutPlugins[pkg.Name]; ok {
+			continue
+		}
+		candidates = append(candidates, pkg)
+	}
+
+	pluginJSONPaths, err := readAllPulumiPluginJSONPaths(ctx, tc, candidates)
 	if err != nil {
 		return nil, err
 	}
 
 	var result []pulumiPackageInfo
-	for _, pkg := range packages {
-		// Skip packages that are known not to have an associated plugin.
-		if _, ok := packagesWithoutPlugins[pkg.Name]; ok {
-			continue
-		}
-
+	for _, pkg := range candidates {
 		var pluginJSON *plugin.PulumiPluginJSON
 		if path := pluginJSONPaths[pkg.Name]; path != "" {
 			data, err := os.ReadFile(path)
@@ -715,9 +751,7 @@ func listPulumiPackageInfos(ctx context.Context, tc toolchain.Toolchain) ([]pulu
 			}
 		}
 
-		// A package is a Pulumi package if it has a pulumi-plugin.json or its name starts with "pulumi-". Packages are
-		// generated with a pulumi-plugin.json for a while now, and eventually we should get rid of the name prefix
-		// check.
+		// A package is a Pulumi package if it has a pulumi-plugin.json or its name starts with "pulumi-".
 		if pluginJSON == nil && !strings.HasPrefix(pkg.Name, "pulumi-") {
 			continue
 		}
@@ -1177,57 +1211,65 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 
 	if typechecker != "" {
-		_, typecheckerSpan := cmdutil.StartSpan(ctx, runTracer, "Run/typechecker",
-			trace.WithAttributes(
-				attribute.String("typechecker", typechecker),
-			))
-		typecheckerArgs := []string{"-m", typechecker}
-		if typechecker == "mypy" {
-			virtualenvPath, err := tc.VirtualEnvPath(ctx)
+		// Skip the typechecker if we already successfully checked this program directory.
+		// This avoids redundant type-checking when the same program is Run multiple times
+		// (e.g. preview then update in conformance tests).
+		absProgramDir, _ := filepath.Abs(req.Info.ProgramDirectory)
+		tcCacheKey := typechecker + ":" + absProgramDir
+		if _, cached := host.typecheckerCache.Load(tcCacheKey); !cached {
+			_, typecheckerSpan := cmdutil.StartSpan(ctx, runTracer, "Run/typechecker",
+				trace.WithAttributes(
+					attribute.String("typechecker", typechecker),
+				))
+			typecheckerArgs := []string{"-m", typechecker}
+			if typechecker == "mypy" {
+				virtualenvPath, err := tc.VirtualEnvPath(ctx)
+				if err != nil {
+					typecheckerSpan.End()
+					return nil, err
+				}
+				relPath, err := filepath.Rel(req.Info.ProgramDirectory, virtualenvPath)
+				if err != nil {
+					typecheckerSpan.End()
+					return nil, err
+				}
+				typecheckerArgs = append(typecheckerArgs, "--exclude", relPath)
+				// Use a shared mypy cache directory so that type stubs for the
+				// Pulumi SDK and other dependencies are computed once and reused
+				// across multiple program runs within the same process.
+				typecheckerArgs = append(typecheckerArgs, "--cache-dir", sharedMypyCacheDir())
+			}
+			typecheckerArgs = append(typecheckerArgs, req.Info.ProgramDirectory)
+			typecheckerCmd, err := tc.Command(ctx, typecheckerArgs...)
 			if err != nil {
 				typecheckerSpan.End()
 				return nil, err
 			}
-			relPath, err := filepath.Rel(req.Info.ProgramDirectory, virtualenvPath)
+			typecheckerCmd.Stdout = os.Stdout
+			typecheckerCmd.Stderr = os.Stderr
+			typecheckerCmd.Dir = req.Info.ProgramDirectory
+			err = checkForPackage(ctx, typechecker, opts, tc)
 			if err != nil {
 				typecheckerSpan.End()
+				var installError *NotInstalledError
+				if errors.As(err, &installError) {
+					return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
+						typechecker, typechecker, installError.InstallMessage)
+				}
 				return nil, err
 			}
-			typecheckerArgs = append(typecheckerArgs, "--exclude", relPath)
-			// Use a shared mypy cache directory so that type stubs for the
-			// Pulumi SDK and other dependencies are computed once and reused
-			// across multiple program runs within the same process.
-			typecheckerArgs = append(typecheckerArgs, "--cache-dir", sharedMypyCacheDir())
-		}
-		typecheckerArgs = append(typecheckerArgs, req.Info.ProgramDirectory)
-		typecheckerCmd, err := tc.Command(ctx, typecheckerArgs...)
-		if err != nil {
-			typecheckerSpan.End()
-			return nil, err
-		}
-		typecheckerCmd.Stdout = os.Stdout
-		typecheckerCmd.Stderr = os.Stderr
-		typecheckerCmd.Dir = req.Info.ProgramDirectory
-		err = checkForPackage(ctx, typechecker, opts, tc)
-		if err != nil {
-			typecheckerSpan.End()
-			var installError *NotInstalledError
-			if errors.As(err, &installError) {
-				return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
-					typechecker, typechecker, installError.InstallMessage)
-			}
-			return nil, err
-		}
 
-		if err := typecheckerCmd.Run(); err != nil {
-			typecheckerSpan.End()
-			var exiterr *exec.ExitError
-			if errors.As(err, &exiterr) && len(exiterr.Stderr) > 0 {
-				return nil, fmt.Errorf("%s failed: %w: %s", typechecker, exiterr, exiterr.Stderr)
+			if err := typecheckerCmd.Run(); err != nil {
+				typecheckerSpan.End()
+				var exiterr *exec.ExitError
+				if errors.As(err, &exiterr) && len(exiterr.Stderr) > 0 {
+					return nil, fmt.Errorf("%s failed: %w: %s", typechecker, exiterr, exiterr.Stderr)
+				}
+				return nil, fmt.Errorf("%s failed: %w", typechecker, err)
 			}
-			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
+			typecheckerSpan.End()
+			host.typecheckerCache.Store(tcCacheKey, true)
 		}
-		typecheckerSpan.End()
 	}
 	var errResult string
 	run := func() error {

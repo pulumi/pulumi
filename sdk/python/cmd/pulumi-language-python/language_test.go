@@ -46,7 +46,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
 	binary := t.TempDir() + "/pulumi-test-language"
 	cmd := exec.Command("go", "build", "-C", "../../../../pkg",
-		"-buildvcs=false", "-ldflags=-s -w", "-o", binary,
+		"-buildvcs=false", "-trimpath", "-ldflags=-s -w", "-o", binary,
 		"./testing/pulumi-test-language")
 	output, err := cmd.CombinedOutput()
 	t.Logf("build output: %s", output)
@@ -123,6 +123,10 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
 	require.NoError(t, err)
 	t.Setenv("PATH", fmt.Sprintf("%s%c%s", dist, os.PathListSeparator, os.Getenv("PATH")))
+
+	// Skip writing .pyc bytecode files — reduces disk I/O during testing
+	// and startup time for short-lived Python subprocesses.
+	t.Setenv("PYTHONDONTWRITEBYTECODE", "1")
 
 	engineAddress, engine := runTestingHost(t)
 

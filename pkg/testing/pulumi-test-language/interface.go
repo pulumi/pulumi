@@ -535,8 +535,6 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	if req.CoreSdkDirectory != "" {
 		_, packCoreSpan := cmdutil.StartSpan(ctx, prepTracer, "Pack/coreSdk")
 
-		// Pack the core SDK into the per-test artifacts directory so the artifact path
-		// is under TemporaryDirectory and gets properly normalized by snapshot edits.
 		coreArtifactsDir := filepath.Join(req.TemporaryDirectory, "artifacts")
 		coreArtifact, err = languageClient.Pack(req.CoreSdkDirectory, coreArtifactsDir)
 		if err != nil {
@@ -1567,6 +1565,10 @@ func runLanguageTests(
 				initStackSpan.End()
 				return nil, fmt.Errorf("get test stack: %w", err)
 			}
+			if s == nil {
+				initStackSpan.End()
+				return nil, fmt.Errorf("stack %q not found", stackReference)
+			}
 		}
 		initStackSpan.End()
 		// Update the stack tags for the test run, nil is not valid so check for that and use an empty map
@@ -1769,6 +1771,9 @@ func runLanguageTests(
 			if err != nil {
 				return nil, fmt.Errorf("get stack: %w", err)
 			}
+			if s == nil {
+				return nil, fmt.Errorf("stack %q not found after update", stackReference)
+			}
 
 			snap, err = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
 			if err != nil {
@@ -1778,7 +1783,7 @@ func runLanguageTests(
 			// We still want to try to get a snapshot, but won't error out
 			// if we can't.
 			s, err = testBackend.GetStack(ctx, stackReference)
-			if err == nil {
+			if err == nil && s != nil {
 				snap, _ = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
 			}
 		}
