@@ -40,9 +40,10 @@ type workflowFile struct {
 }
 
 type workflowGraph struct {
-	Name        string               `hcl:"name,label"`
-	TriggerRefs []workflowTriggerRef `hcl:"trigger_ref,block"`
-	Jobs        []workflowGraphJob   `hcl:"job,block"`
+	Name        string                 `hcl:"name,label"`
+	TriggerRefs []workflowTriggerRef   `hcl:"trigger_ref,block"`
+	Triggers    []workflowGraphTrigger `hcl:"trigger,block"`
+	Jobs        []workflowGraphJob     `hcl:"job,block"`
 }
 
 type workflowTriggerDef struct {
@@ -53,6 +54,12 @@ type workflowTriggerDef struct {
 
 type workflowTriggerRef struct {
 	Name string `hcl:"name,label"`
+}
+
+type workflowGraphTrigger struct {
+	Name     string `hcl:"name,label"`
+	Uses     string `hcl:"uses,optional"`
+	Schedule string `hcl:"schedule,optional"`
 }
 
 type workflowStepDef struct {
@@ -69,13 +76,16 @@ type workflowJobDef struct {
 type workflowJobStep struct {
 	Name      string   `hcl:"name,label"`
 	Uses      string   `hcl:"uses,optional"`
+	Command   string   `hcl:"command,optional"`
+	Expr      string   `hcl:"expr,optional"`
 	DependsOn []string `hcl:"depends_on,optional"`
 }
 
 type workflowGraphJob struct {
-	Name      string   `hcl:"name,label"`
-	Uses      string   `hcl:"uses,optional"`
-	DependsOn []string `hcl:"depends_on,optional"`
+	Name      string            `hcl:"name,label"`
+	Uses      string            `hcl:"uses,optional"`
+	Steps     []workflowJobStep `hcl:"step,block"`
+	DependsOn []string          `hcl:"depends_on,optional"`
 }
 
 type WorkflowEvaluator struct {
@@ -243,23 +253,8 @@ func (e *WorkflowEvaluator) GenerateGraph(
 		return nil, err
 	}
 
-	for _, triggerRef := range graph.TriggerRefs {
-		trigger, ok := e.triggersByName[triggerRef.Name]
-		if !ok {
-			return nil, status.Errorf(codes.NotFound, "unknown trigger ref %q", triggerRef.Name)
-		}
-		spec := &structpb.Struct{Fields: map[string]*structpb.Value{}}
-		if trigger.Schedule != "" {
-			spec.Fields["schedule"] = structpb.NewStringValue(trigger.Schedule)
-		}
-		if _, err := monitor.RegisterTrigger(ctx, &pulumirpc.RegisterTriggerRequest{
-			Context: req.GetContext(),
-			Path:    req.GetPath() + "/" + triggerRef.Name,
-			Type:    e.triggerToken(triggerRef.Name),
-			Spec:    spec,
-		}); err != nil {
-			return nil, err
-		}
+	if err := e.registerGraphTriggers(ctx, req.GetContext(), req.GetPath(), graph, monitor); err != nil {
+		return nil, err
 	}
 	return &pulumirpc.GenerateNodeResponse{}, nil
 }
@@ -291,21 +286,8 @@ func (e *WorkflowEvaluator) GenerateJob(
 		},
 	})
 
-	for _, triggerRef := range graph.TriggerRefs {
-		trigger, ok := e.triggersByName[triggerRef.Name]
-		if !ok {
-			return nil, status.Errorf(codes.NotFound, "unknown trigger ref %q", triggerRef.Name)
-		}
-		spec := &structpb.Struct{Fields: map[string]*structpb.Value{}}
-		if trigger.Schedule != "" {
-			spec.Fields["schedule"] = structpb.NewStringValue(trigger.Schedule)
-		}
-		_, _ = monitor.RegisterTrigger(ctx, &pulumirpc.RegisterTriggerRequest{
-			Context: req.GetContext(),
-			Path:    graphName + "/" + triggerRef.Name,
-			Type:    e.triggerToken(triggerRef.Name),
-			Spec:    spec,
-		})
+	if err := e.registerGraphTriggers(ctx, req.GetContext(), graphName, graph, monitor); err != nil {
+		return nil, err
 	}
 
 	var selected *workflowGraphJob
@@ -319,9 +301,13 @@ func (e *WorkflowEvaluator) GenerateJob(
 	if selected == nil {
 		return nil, status.Errorf(codes.NotFound, "unknown job %q", req.GetPath())
 	}
-	jobDef, ok := e.jobDefinitionForUse(selected.Uses)
-	if !ok {
-		return nil, status.Errorf(codes.NotFound, "unknown job definition %q", selected.Uses)
+	jobSteps := selected.Steps
+	if selected.Uses != "" {
+		jobDef, ok := e.jobDefinitionForUse(selected.Uses)
+		if !ok {
+			return nil, status.Errorf(codes.NotFound, "unknown job definition %q", selected.Uses)
+		}
+		jobSteps = jobDef.Steps
 	}
 
 	jobPath := graphName + "/jobs/" + jobName
@@ -341,10 +327,10 @@ func (e *WorkflowEvaluator) GenerateJob(
 		return nil, err
 	}
 
-	for _, step := range jobDef.Steps {
-		stepDef, ok := e.stepDefinitionForUse(step.Uses)
-		if !ok {
-			return nil, status.Errorf(codes.NotFound, "unknown step definition %q", step.Uses)
+	for _, step := range jobSteps {
+		stepDef, err := e.stepDefinitionForJobStep(step)
+		if err != nil {
+			return nil, err
 		}
 		stepPath := jobPath + "/steps/" + step.Name
 		stepDependencies := &pulumirpc.DependencyExpression{
@@ -495,4 +481,106 @@ func (e *WorkflowEvaluator) jobDefinitionForUse(uses string) (workflowJobDef, bo
 	}
 	job, ok := e.jobsByName[name]
 	return job, ok
+}
+
+func (e *WorkflowEvaluator) stepDefinitionForJobStep(step workflowJobStep) (workflowStepDef, error) {
+	if step.Uses != "" {
+		stepDef, ok := e.stepDefinitionForUse(step.Uses)
+		if !ok {
+			return workflowStepDef{}, status.Errorf(codes.NotFound, "unknown step definition %q", step.Uses)
+		}
+		return stepDef, nil
+	}
+
+	if step.Command != "" || step.Expr != "" {
+		return workflowStepDef{
+			Name:    step.Name,
+			Command: step.Command,
+			Expr:    step.Expr,
+		}, nil
+	}
+
+	return workflowStepDef{}, status.Errorf(
+		codes.InvalidArgument,
+		"step %q must set one of uses, command, or expr",
+		step.Name,
+	)
+}
+
+func (e *WorkflowEvaluator) registerGraphTriggers(
+	ctx context.Context,
+	wfContext *pulumirpc.WorkflowContext,
+	graphPath string,
+	graph workflowGraph,
+	monitor pulumirpc.GraphMonitorClient,
+) error {
+	if len(graph.Triggers) > 0 {
+		for _, graphTrigger := range graph.Triggers {
+			triggerName := graphTrigger.Name
+			if graphTrigger.Uses != "" {
+				if _, resolved, ok := e.resolveTriggerNameFromUse(graphTrigger.Uses); ok {
+					triggerName = resolved
+				}
+			}
+			trigger, ok := e.triggersByName[triggerName]
+			if !ok {
+				return status.Errorf(codes.NotFound, "unknown trigger %q", graphTrigger.Uses)
+			}
+			spec := &structpb.Struct{Fields: map[string]*structpb.Value{}}
+			schedule := graphTrigger.Schedule
+			if schedule == "" {
+				schedule = trigger.Schedule
+			}
+			if schedule != "" {
+				spec.Fields["schedule"] = structpb.NewStringValue(schedule)
+			}
+			if _, err := monitor.RegisterTrigger(ctx, &pulumirpc.RegisterTriggerRequest{
+				Context: wfContext,
+				Path:    graphPath + "/" + graphTrigger.Name,
+				Type:    e.triggerToken(triggerName),
+				Spec:    spec,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for _, triggerRef := range graph.TriggerRefs {
+		trigger, ok := e.triggersByName[triggerRef.Name]
+		if !ok {
+			return status.Errorf(codes.NotFound, "unknown trigger ref %q", triggerRef.Name)
+		}
+		spec := &structpb.Struct{Fields: map[string]*structpb.Value{}}
+		if trigger.Schedule != "" {
+			spec.Fields["schedule"] = structpb.NewStringValue(trigger.Schedule)
+		}
+		if _, err := monitor.RegisterTrigger(ctx, &pulumirpc.RegisterTriggerRequest{
+			Context: wfContext,
+			Path:    graphPath + "/" + triggerRef.Name,
+			Type:    e.triggerToken(triggerRef.Name),
+			Spec:    spec,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (e *WorkflowEvaluator) resolveTriggerNameFromUse(uses string) (string, string, bool) {
+	if uses == "" {
+		return "", "", false
+	}
+	if name, ok := e.triggersByName[uses]; ok {
+		return name.Name, uses, true
+	}
+	if !strings.Contains(uses, ":") {
+		return "", "", false
+	}
+	_, name, found := strings.Cut(uses, ":")
+	if !found || name == "" {
+		return "", "", false
+	}
+	_, ok := e.triggersByName[name]
+	return uses, name, ok
 }
