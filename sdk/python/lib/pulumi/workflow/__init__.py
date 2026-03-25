@@ -65,9 +65,10 @@ class _StepDefinition:
 
 @dataclass
 class _JobDefinition:
-    fn: JobCallback
+    fn: Optional[JobCallback]
     on_error: Optional[OnErrorHandler]
     inputs: List[Any]
+    external_token: Optional[str] = None
 
 
 @dataclass
@@ -160,34 +161,61 @@ class Context:
         fn: Optional[JobCallback] = None,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
-    ) -> Union[JobCallback, Callable[[JobCallback], JobCallback]]:
+    ) -> Union[None, JobCallback, Callable[[JobCallback], JobCallback]]:
         """Registers a job in the current graph."""
         inputs: List[Any] = list(inputs_or_fn)
+        options: Optional[JobOptions] = None
+        if len(inputs) > 0 and isinstance(inputs[-1], JobOptions):
+            options = cast(JobOptions, inputs.pop())
+
+        if options is not None and dependencies is not None and options.dependencies is not None:
+            raise WorkflowError("job dependencies must be set either directly or via JobOptions, not both")
+        if options is not None and on_error is not None and options.on_error is not None:
+            raise WorkflowError("job on_error must be set either directly or via JobOptions, not both")
+
+        effective_dependencies = dependencies
+        if effective_dependencies is None and options is not None:
+            effective_dependencies = options.dependencies
+
+        effective_on_error = on_error
+        if effective_on_error is None and options is not None:
+            effective_on_error = options.on_error
+
         if fn is None and len(inputs) == 1 and callable(inputs[0]):
             fn = inputs[0]
             inputs = []
 
+        is_external_job = fn is None and ":" in name
+        registered_name = name
+        external_token: Optional[str] = None
+        if is_external_job:
+            external_token = self._state.registry.resolve_job_token(name)
+            if options is not None and options.name:
+                registered_name = options.name
+            else:
+                registered_name = _default_job_name_for_token(name)
+
         def register(registered_fn: JobCallback) -> JobCallback:
-            if not name:
+            if not registered_name:
                 raise WorkflowError("job name is required")
             if (
                 self._state.target_job_name is not None
-                and name != self._state.target_job_name
+                and registered_name != self._state.target_job_name
             ):
                 return registered_fn
 
-            job_path = f"{self._state.graph_path}/jobs/{name}"
+            job_path = f"{self._state.graph_path}/jobs/{registered_name}"
 
             request = workflow_pb2.RegisterJobRequest()
             request.context.CopyFrom(self._state.context)
             request.path = job_path
-            request.has_on_error = on_error is not None
+            request.has_on_error = effective_on_error is not None
             request.dependencies.operator = (
                 workflow_pb2.DependencyExpression.OPERATOR_ALL
             )
             dependency_paths = set()
-            if dependencies:
-                for dep in dependencies:
+            if effective_dependencies:
+                for dep in effective_dependencies:
                     dependency_paths.add(
                         _normalize_job_dependency(self._state.graph_path, dep)
                     )
@@ -199,9 +227,16 @@ class Context:
             resolved_inputs = [_resolve_job_input(value) for value in inputs]
             self._state.monitor.RegisterJob(request)
             self._state.jobs[job_path] = _JobDefinition(
-                fn=registered_fn, on_error=on_error, inputs=resolved_inputs
+                fn=registered_fn,
+                on_error=effective_on_error,
+                inputs=resolved_inputs,
+                external_token=external_token,
             )
             return registered_fn
+
+        if is_external_job:
+            register(lambda *_args: None)
+            return None
 
         if fn is not None:
             return register(fn)
@@ -305,6 +340,13 @@ class WorkflowError(RuntimeError):
 @dataclass
 class TriggerOptions:
     filter: Optional[FilterCallback] = None
+
+
+@dataclass
+class JobOptions:
+    name: Optional[str] = None
+    dependencies: Optional[List[str]] = None
+    on_error: Optional[OnErrorHandler] = None
 
 
 class WorkflowRegistry:
@@ -488,9 +530,17 @@ def _qualify_trigger_token(package_name: str, token: str) -> str:
 
 
 def _qualify_job_token(package_name: str, token: str) -> str:
-    if ":" in token:
+    if token.count(":") >= 2:
         return token
+    if token.count(":") == 1:
+        package, name = token.split(":", 1)
+        return f"{package}:index:{name}"
     return f"{package_name}:index:{token}"
+
+
+def _default_job_name_for_token(token: str) -> str:
+    parts = token.split(":")
+    return parts[-1] if len(parts) > 0 else token
 
 
 def _job_return_output_type(fn: Callable[..., Any]) -> Type[Any]:
@@ -739,6 +789,8 @@ def _evaluate_job(
         monitor = workflow_pb2_grpc.GraphMonitorStub(graph_channel)
 
         steps: Dict[str, _StepDefinition] = {}
+        if job.fn is None:
+            raise WorkflowError(f"job {job_path} has no evaluator callback")
         job.fn(
             JobContext(
                 _JobEvalState(
@@ -769,6 +821,35 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         self._jobs_by_path: Dict[str, _JobDefinition] = {}
         self._steps_by_path: Dict[str, _StepDefinition] = {}
         self._filters_by_path: Dict[str, FilterCallback] = {}
+
+    def _materialize_graph_job(
+        self,
+        request_name: str,
+        job_path: str,
+        job: _JobDefinition,
+    ) -> _JobDefinition:
+        if job.external_token is None:
+            return job
+
+        exported = self._workflow_registry._jobs.get(job.external_token)
+        if exported is None:
+            raise WorkflowError(f"unknown external job token {job.external_token}")
+        if len(job.inputs) != 1:
+            raise WorkflowError(
+                f"external graph job {request_name} must have exactly one input argument"
+            )
+
+        coerced_input = _coerce_record_instance(
+            exported.input_type,
+            job.inputs[0],
+            f"job input for {request_name}",
+        )
+        return _JobDefinition(
+            fn=lambda job_ctx: exported.fn(job_ctx, coerced_input),
+            on_error=job.on_error,
+            inputs=[],
+            external_token=job.external_token,
+        )
 
     def Handshake(
         self,
@@ -973,9 +1054,10 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             if job is None:
                 context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job path {request.path}")
 
+            materialized_job = self._materialize_graph_job(request.path, request.path, job)
             steps = _evaluate_job(
                 request.path,
-                job,
+                materialized_job,
                 request.context,
                 request.graph_monitor_address,
                 default_workflow_version=self._package_version,

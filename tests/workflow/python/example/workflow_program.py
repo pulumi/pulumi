@@ -99,6 +99,12 @@ def main_graph(ctx: workflow.Context) -> None:
             "result": results[1]["jobResult"],
         })
 
+    ctx.job(
+        "example:compose-message",
+        ExportedJobInput(message="hello", repeat=2),
+        workflow.JobOptions(name="external-compose"),
+    )
+
 
 def register_workflows(registry: workflow.WorkflowRegistry) -> None:
     def cron_trigger_mock(args: list[str]) -> CronTriggerOutput:
