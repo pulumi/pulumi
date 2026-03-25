@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/about
-  description: Do not include the access token in plain text
