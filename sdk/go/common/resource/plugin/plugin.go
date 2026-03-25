@@ -312,6 +312,27 @@ func newPlugin[T any](
 	type streamID int32
 	outStreamID := streamID(atomic.AddInt32(&nextStreamID, 1))
 	errStreamID := streamID(atomic.AddInt32(&nextStreamID, 1))
+	const stderrCaptureLimit = 8 * 1024
+	var stderrCapture bytes.Buffer
+	var stderrCaptureLock sync.Mutex
+	captureStderr := func(msg string) {
+		if msg == "" {
+			return
+		}
+		stderrCaptureLock.Lock()
+		defer stderrCaptureLock.Unlock()
+		stderrCapture.WriteString(msg)
+		if stderrCapture.Len() > stderrCaptureLimit {
+			current := stderrCapture.Bytes()
+			stderrCapture.Reset()
+			stderrCapture.Write(current[len(current)-stderrCaptureLimit:])
+		}
+	}
+	stderrTail := func() string {
+		stderrCaptureLock.Lock()
+		defer stderrCaptureLock.Unlock()
+		return strings.TrimSpace(stderrCapture.String())
+	}
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	var sawPolicyModuleNotFoundErr bool
@@ -326,6 +347,9 @@ func newPlugin[T any](
 			msg, readerr := reader.ReadString('\n')
 			if plug.unstructuredOutput != nil {
 				plug.unstructuredOutput.WriteString(msg)
+			}
+			if streamID == errStreamID {
+				captureStderr(msg)
 			}
 
 			// Even if we've hit the end of the stream, we want to check for non-empty content.
@@ -402,6 +426,9 @@ func newPlugin[T any](
 				errMsg = detailed.Error()
 			} else {
 				errMsg = readerr.Error()
+			}
+			if stderr := stderrTail(); stderr != "" {
+				errMsg = fmt.Sprintf("%s\nplugin stderr:\n%s", errMsg, stderr)
 			}
 			// Fall back to a generic, opaque error.
 			if portString == "" {
