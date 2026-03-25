@@ -61,7 +61,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	func() {
 		_, buildSpan := cmdutil.StartSpan(t.Context(), tracer, "build-test-language-binary")
 		defer buildSpan.End()
-		cmd := exec.Command("go", "build", "-C", "../../../pkg", "-buildvcs=false", "-ldflags=-s -w", "-o", binary, "./testing/pulumi-test-language")
+		cmd := exec.Command("go", "build", "-C", "../../../pkg", //nolint:lll
+			"-buildvcs=false", "-ldflags=-s -w", "-o", binary, "./testing/pulumi-test-language")
 		output, err := cmd.CombinedOutput()
 		t.Logf("build output: %s", output)
 		require.NoError(t, err)

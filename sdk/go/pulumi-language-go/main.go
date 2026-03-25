@@ -1247,9 +1247,11 @@ func (host *goLanguageHost) InstallDependencies(
 	cmd := exec.Command(gobin, "mod", "tidy", "-compat=1.18")
 	cmd.Dir = req.Info.ProgramDirectory
 	cmd.Env = append(os.Environ(),
+		// Skip sum DB verification to avoid round-trips to sum.golang.org.
+		// Don't set GOPROXY=direct here — go mod tidy needs the proxy to resolve
+		// modules whose source repos may have removed tags (e.g. nhooyr.io/websocket@v1.8.10).
 		"GONOSUMDB=*",
 		"GONOSUMCHECK=*",
-		"GOPROXY=direct",
 	)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
@@ -1669,11 +1671,12 @@ func copyGoModuleDir(dst, src string, isRoot bool, stats *copyStats) error {
 		// in the same module tree but aren't needed for Go compilation.
 		ext := filepath.Ext(info.Name())
 		switch ext {
-		case ".go", ".s", ".c", ".h", ".syso", // source files
-			".mod", ".sum",       // module files (go.mod, go.sum)
-			".json", ".tmpl",     // embedded files used by Go packages
-			".version", ".txt",   // version/metadata files
-			".proto":             // proto definitions
+		case ".go", ".s", ".c", ".h", ".syso",
+			".mod", ".sum",
+			".json", ".tmpl",
+			".version", ".txt",
+			".proto":
+			// source, module, embedded, version/metadata, and proto files
 			// copy these
 		default:
 			// Also copy files without extensions if they're small (LICENSE, README, etc.)
