@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -41,15 +40,16 @@ segment:
 	for i, p := range g {
 		switch p := p.(type) {
 		case KeySegment:
-			if len(p.string) == 0 {
+			bare := len(p.string) > 0
+			for j, c := range p.string {
+				if !isPlainPathCharacter(c, j == 0) {
+					bare = false
+					break
+				}
+			}
+			if !bare {
 				fmt.Fprintf(&b, "[%q]", p.string)
 				continue segment
-			}
-			for _, c := range p.string {
-				if !unicode.IsLetter(c) {
-					fmt.Fprintf(&b, "[%q]", p.string)
-					continue segment
-				}
 			}
 			if i != 0 {
 				b.WriteRune('.')
@@ -80,7 +80,7 @@ func (g *Glob) UnmarshalText(text []byte) error {
 		case runes[0] == '*' && len(*g) == 0:
 			*g = append(*g, Splat)
 			runes = runes[1:]
-		case unicode.IsLetter(runes[0]) && len(*g) == 0:
+		case isPlainPathCharacter(runes[0], true) && len(*g) == 0:
 			key, remainder, err := parseKey(runes)
 			if err != nil {
 				return err
@@ -116,21 +116,30 @@ func (g *Glob) UnmarshalText(text []byte) error {
 	return nil
 }
 
+func isPlainPathCharacter(c rune, first bool) bool {
+	if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' {
+		return true
+	}
+	return !first && isNumberCharacter(c)
+}
+
+func isNumberCharacter(c rune) bool { return c >= '0' && c <= '9' }
+
 func parseKey(runes []rune) (GlobSegment, []rune, error) {
 	if len(runes) == 0 {
 		return nil, nil, errors.New("expected character")
 	}
 	var s strings.Builder
-	for len(runes) > 0 {
-		if !unicode.IsLetter(runes[0]) {
+	for i := 0; i < len(runes); i++ {
+		if !isPlainPathCharacter(runes[i], i == 0) {
 			break
 		}
-		s.WriteRune(runes[0])
-		runes = runes[1:]
+		s.WriteRune(runes[i])
 	}
 	if s.Len() == 0 {
 		return nil, runes, fmt.Errorf("expected letter, found '%c'", runes[0])
 	}
+	runes = runes[s.Len():]
 
 	return KeySegment{s.String()}, runes, nil
 }
@@ -145,13 +154,13 @@ func parseIndex(runes []rune) (GlobSegment, []rune, error) {
 	}
 
 	switch {
-	case unicode.IsNumber(runes[0]):
+	case isNumberCharacter(runes[0]):
 		i := 1
 		for ; ; i++ {
 			if len(runes) <= i {
 				return nil, nil, fmt.Errorf("unclosed number [%s", string(runes[:i]))
 			}
-			if !unicode.IsNumber(runes[i]) {
+			if !isNumberCharacter(runes[i]) {
 				break
 			}
 		}
