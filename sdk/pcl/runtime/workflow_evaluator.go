@@ -33,30 +33,47 @@ import (
 )
 
 type workflowFile struct {
-	Workflows []workflowGraph `hcl:"workflow,block"`
+	Triggers  []workflowTriggerDef `hcl:"trigger,block"`
+	Steps     []workflowStepDef    `hcl:"step,block"`
+	Jobs      []workflowJobDef     `hcl:"job,block"`
+	Workflows []workflowGraph      `hcl:"workflow,block"`
 }
 
 type workflowGraph struct {
-	Name     string            `hcl:"name,label"`
-	Triggers []workflowTrigger `hcl:"trigger,block"`
-	Jobs     []workflowJob     `hcl:"job,block"`
+	Name        string                `hcl:"name,label"`
+	TriggerRefs []workflowTriggerRef  `hcl:"trigger_ref,block"`
+	JobRefs     []workflowGraphJobRef `hcl:"job_ref,block"`
 }
 
-type workflowTrigger struct {
+type workflowTriggerDef struct {
 	Name     string `hcl:"name,label"`
 	Type     string `hcl:"type,optional"`
 	Schedule string `hcl:"schedule,optional"`
 }
 
-type workflowJob struct {
-	Name  string         `hcl:"name,label"`
-	Steps []workflowStep `hcl:"step,block"`
+type workflowTriggerRef struct {
+	Name string `hcl:"name,label"`
 }
 
-type workflowStep struct {
+type workflowStepDef struct {
 	Name    string `hcl:"name,label"`
 	Command string `hcl:"command,optional"`
 	Expr    string `hcl:"expr,optional"`
+}
+
+type workflowJobDef struct {
+	Name     string               `hcl:"name,label"`
+	StepRefs []workflowJobStepRef `hcl:"step_ref,block"`
+}
+
+type workflowJobStepRef struct {
+	Name      string   `hcl:"name,label"`
+	DependsOn []string `hcl:"depends_on,optional"`
+}
+
+type workflowGraphJobRef struct {
+	Name      string   `hcl:"name,label"`
+	DependsOn []string `hcl:"depends_on,optional"`
 }
 
 type WorkflowEvaluator struct {
@@ -65,7 +82,10 @@ type WorkflowEvaluator struct {
 	packageName    string
 	packageVersion string
 	graphsByName   map[string]workflowGraph
-	stepsByPath    map[string]workflowStep
+	triggersByName map[string]workflowTriggerDef
+	stepsByName    map[string]workflowStepDef
+	jobsByName     map[string]workflowJobDef
+	stepsByPath    map[string]workflowStepDef
 }
 
 func NewWorkflowEvaluator(programPath string) (*WorkflowEvaluator, error) {
@@ -88,6 +108,27 @@ func NewWorkflowEvaluator(programPath string) (*WorkflowEvaluator, error) {
 		}
 		graphsByName[graph.Name] = graph
 	}
+	triggersByName := map[string]workflowTriggerDef{}
+	for _, trigger := range file.Triggers {
+		if _, exists := triggersByName[trigger.Name]; exists {
+			return nil, fmt.Errorf("duplicate trigger definition %q", trigger.Name)
+		}
+		triggersByName[trigger.Name] = trigger
+	}
+	stepsByName := map[string]workflowStepDef{}
+	for _, step := range file.Steps {
+		if _, exists := stepsByName[step.Name]; exists {
+			return nil, fmt.Errorf("duplicate step definition %q", step.Name)
+		}
+		stepsByName[step.Name] = step
+	}
+	jobsByName := map[string]workflowJobDef{}
+	for _, job := range file.Jobs {
+		if _, exists := jobsByName[job.Name]; exists {
+			return nil, fmt.Errorf("duplicate job definition %q", job.Name)
+		}
+		jobsByName[job.Name] = job
+	}
 
 	if len(graphsByName) == 0 {
 		return nil, fmt.Errorf("no workflow blocks found in %q", programPath)
@@ -98,7 +139,10 @@ func NewWorkflowEvaluator(programPath string) (*WorkflowEvaluator, error) {
 		packageName:    name,
 		packageVersion: "0.0.1",
 		graphsByName:   graphsByName,
-		stepsByPath:    map[string]workflowStep{},
+		triggersByName: triggersByName,
+		stepsByName:    stepsByName,
+		jobsByName:     jobsByName,
+		stepsByPath:    map[string]workflowStepDef{},
 	}, nil
 }
 
@@ -144,10 +188,8 @@ func (e *WorkflowEvaluator) GetTriggers(
 ) (*pulumirpc.GetTriggersResponse, error) {
 	_ = req
 	resp := &pulumirpc.GetTriggersResponse{}
-	for _, graph := range e.graphsByName {
-		for _, trigger := range graph.Triggers {
-			resp.Triggers = append(resp.Triggers, e.triggerToken(trigger.Name))
-		}
+	for name := range e.triggersByName {
+		resp.Triggers = append(resp.Triggers, e.triggerToken(name))
 	}
 	return resp, nil
 }
@@ -199,15 +241,19 @@ func (e *WorkflowEvaluator) GenerateGraph(
 		return nil, err
 	}
 
-	for _, trigger := range graph.Triggers {
+	for _, triggerRef := range graph.TriggerRefs {
+		trigger, ok := e.triggersByName[triggerRef.Name]
+		if !ok {
+			return nil, status.Errorf(codes.NotFound, "unknown trigger ref %q", triggerRef.Name)
+		}
 		spec := &structpb.Struct{Fields: map[string]*structpb.Value{}}
 		if trigger.Schedule != "" {
 			spec.Fields["schedule"] = structpb.NewStringValue(trigger.Schedule)
 		}
 		if _, err := monitor.RegisterTrigger(ctx, &pulumirpc.RegisterTriggerRequest{
 			Context: req.GetContext(),
-			Path:    req.GetPath() + "/" + trigger.Name,
-			Type:    e.triggerToken(trigger.Name),
+			Path:    req.GetPath() + "/" + triggerRef.Name,
+			Type:    e.triggerToken(triggerRef.Name),
 			Spec:    spec,
 		}); err != nil {
 			return nil, err
@@ -243,23 +289,27 @@ func (e *WorkflowEvaluator) GenerateJob(
 		},
 	})
 
-	for _, trigger := range graph.Triggers {
+	for _, triggerRef := range graph.TriggerRefs {
+		trigger, ok := e.triggersByName[triggerRef.Name]
+		if !ok {
+			return nil, status.Errorf(codes.NotFound, "unknown trigger ref %q", triggerRef.Name)
+		}
 		spec := &structpb.Struct{Fields: map[string]*structpb.Value{}}
 		if trigger.Schedule != "" {
 			spec.Fields["schedule"] = structpb.NewStringValue(trigger.Schedule)
 		}
 		_, _ = monitor.RegisterTrigger(ctx, &pulumirpc.RegisterTriggerRequest{
 			Context: req.GetContext(),
-			Path:    graphName + "/" + trigger.Name,
-			Type:    e.triggerToken(trigger.Name),
+			Path:    graphName + "/" + triggerRef.Name,
+			Type:    e.triggerToken(triggerRef.Name),
 			Spec:    spec,
 		})
 	}
 
-	var selected *workflowJob
-	for _, job := range graph.Jobs {
-		if job.Name == jobName {
-			j := job
+	var selected *workflowGraphJobRef
+	for _, jobRef := range graph.JobRefs {
+		if jobRef.Name == jobName {
+			j := jobRef
 			selected = &j
 			break
 		}
@@ -267,31 +317,51 @@ func (e *WorkflowEvaluator) GenerateJob(
 	if selected == nil {
 		return nil, status.Errorf(codes.NotFound, "unknown job %q", req.GetPath())
 	}
+	jobDef, ok := e.jobsByName[selected.Name]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "unknown job definition %q", selected.Name)
+	}
 
 	jobPath := graphName + "/jobs/" + jobName
+	jobDependencies := &pulumirpc.DependencyExpression{
+		Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
+	}
+	for _, dep := range selected.DependsOn {
+		jobDependencies.Terms = append(jobDependencies.Terms, &pulumirpc.DependencyTerm{
+			Term: &pulumirpc.DependencyTerm_Path{Path: graphName + "/jobs/" + dep},
+		})
+	}
 	if _, err := monitor.RegisterJob(ctx, &pulumirpc.RegisterJobRequest{
-		Context: req.GetContext(),
-		Path:    jobPath,
-		Dependencies: &pulumirpc.DependencyExpression{
-			Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
-		},
+		Context:      req.GetContext(),
+		Path:         jobPath,
+		Dependencies: jobDependencies,
 	}); err != nil {
 		return nil, err
 	}
 
-	for _, step := range selected.Steps {
-		stepPath := jobPath + "/steps/" + step.Name
-		e.stepsByPath[stepPath] = step
+	for _, stepRef := range jobDef.StepRefs {
+		stepDef, ok := e.stepsByName[stepRef.Name]
+		if !ok {
+			return nil, status.Errorf(codes.NotFound, "unknown step definition %q", stepRef.Name)
+		}
+		stepPath := jobPath + "/steps/" + stepRef.Name
+		stepDependencies := &pulumirpc.DependencyExpression{
+			Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
+		}
+		for _, dep := range stepRef.DependsOn {
+			stepDependencies.Terms = append(stepDependencies.Terms, &pulumirpc.DependencyTerm{
+				Term: &pulumirpc.DependencyTerm_Path{Path: jobPath + "/steps/" + dep},
+			})
+		}
 		if _, err := monitor.RegisterStep(ctx, &pulumirpc.RegisterStepRequest{
-			Context: req.GetContext(),
-			Path:    stepPath,
-			JobPath: jobPath,
-			Dependencies: &pulumirpc.DependencyExpression{
-				Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
-			},
+			Context:      req.GetContext(),
+			Path:         stepPath,
+			JobPath:      jobPath,
+			Dependencies: stepDependencies,
 		}); err != nil {
 			return nil, err
 		}
+		e.stepsByPath[stepPath] = stepDef
 	}
 
 	return &pulumirpc.GenerateNodeResponse{}, nil
@@ -381,11 +451,9 @@ func (e *WorkflowEvaluator) triggerToken(name string) string {
 }
 
 func (e *WorkflowEvaluator) hasTriggerToken(token string) bool {
-	for _, graph := range e.graphsByName {
-		for _, trigger := range graph.Triggers {
-			if token == trigger.Name || token == e.triggerToken(trigger.Name) {
-				return true
-			}
+	for name := range e.triggersByName {
+		if token == name || token == e.triggerToken(name) {
+			return true
 		}
 	}
 	return false
