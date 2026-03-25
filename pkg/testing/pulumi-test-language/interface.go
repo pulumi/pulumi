@@ -81,10 +81,12 @@ type LanguageTestServer interface {
 
 func newLanguageTestServer() *languageTestServer {
 	return &languageTestServer{
-		providersLock:  gsync.Map[string, *sync.Mutex]{},
-		providersCache: gsync.Map[string, bool]{},
-		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
-		artifactMap:    gsync.Map[string, string]{},
+		providersLock:    gsync.Map[string, *sync.Mutex]{},
+		providersCache:   gsync.Map[string, bool]{},
+		policyPacksLock:  gsync.Map[string, *sync.Mutex]{},
+		policyPacksCache: gsync.Map[string, bool]{},
+		sdkLocks:         gsync.Map[string, *sync.Mutex]{},
+		artifactMap:      gsync.Map[string, string]{},
 	}
 }
 
@@ -162,13 +164,15 @@ func installDependencies(
 func Start(ctx context.Context) (LanguageTestServer, error) {
 	// New up an engine RPC server.
 	server := &languageTestServer{
-		ctx:            ctx,
-		cancel:         make(chan bool),
-		providersLock:  gsync.Map[string, *sync.Mutex]{},
-		providersCache: gsync.Map[string, bool]{},
-		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
-		artifactMap:    gsync.Map[string, string]{},
-		cliVersion:     "3.200.0",
+		ctx:              ctx,
+		cancel:           make(chan bool),
+		providersLock:    gsync.Map[string, *sync.Mutex]{},
+		providersCache:   gsync.Map[string, bool]{},
+		policyPacksLock:  gsync.Map[string, *sync.Mutex]{},
+		policyPacksCache: gsync.Map[string, bool]{},
+		sdkLocks:         gsync.Map[string, *sync.Mutex]{},
+		artifactMap:      gsync.Map[string, string]{},
+		cliVersion:       "3.200.0",
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -204,6 +208,13 @@ type languageTestServer struct {
 
 	providersLock  gsync.Map[string, *sync.Mutex]
 	providersCache gsync.Map[string, bool]
+
+	// policyPacksLock and policyPacksCache cache prepared policy packs.
+	// Key: "policyPack@tempDir" — once a policy pack is copied, linked, and
+	// has had its dependencies installed, subsequent tests reuse the same
+	// directory instead of repeating the expensive install (~9s per pack).
+	policyPacksLock  gsync.Map[string, *sync.Mutex]
+	policyPacksCache gsync.Map[string, bool]
 
 	// A map storing the paths to the generated package artifacts.
 	// Also used to cache the core SDK artifact keyed by the absolute source directory.
@@ -1058,7 +1069,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 	setupBackendSpan.End()
 
-	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages, runPackageRefs,
+	languageTestResult, err := runLanguageTests(ctx, eng, token, req.Test, test, loader, packages, runPackageRefs,
 		sdks, localDependencies, languageClient, grpcServer,
 		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
 	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
@@ -1104,7 +1115,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, err
 	}
 
-	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages, nil,
+	return runLanguageTests(ctx, eng, ejectToken, req.Test, test, loader, packages, nil,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
 		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
 }
@@ -1155,7 +1166,8 @@ func createStackReferences(
 }
 
 func runLanguageTests(
-	ctx context.Context, token testToken, testName string, test tests.LanguageTest,
+	ctx context.Context, eng *languageTestServer,
+	token testToken, testName string, test tests.LanguageTest,
 	loader schema.ReferenceLoader, packages []*schema.Package,
 	precomputedPackageRefs [][]schema.PackageReference,
 	sdks, localDependencies map[string]string,
@@ -1609,45 +1621,54 @@ func runLanguageTests(
 					}
 				}
 
-				// Copy the policy pack to a temporary directory and link in the core SDK into it
+				// Cache policy pack setup: copy, link, and install are expensive (~9s per pack).
+				// Reuse the prepared directory for subsequent tests that use the same pack.
 				policyPackDir := filepath.Join(token.TemporaryDirectory, "policy_packs", policyPack)
-				err := os.MkdirAll(policyPackDir, 0o755)
-				if err != nil {
-					return nil, fmt.Errorf("create policy pack dir: %w", err)
-				}
-				func() {
-					_, copySpan := cmdutil.StartSpan(ctx, tracer, "copyDirectory/policyPack/"+policyPack)
-					defer copySpan.End()
-					err = copyDirectory(os.DirFS(token.PolicyPackDirectory), policyPack, policyPackDir, nil, nil)
-				}()
-				if err != nil {
-					return nil, fmt.Errorf("copy policy pack: %w", err)
-				}
+				policyCacheKey := fmt.Sprintf("%s@%s", policyPack, token.TemporaryDirectory)
+				lock, _ := eng.policyPacksLock.LoadOrStore(policyCacheKey, &sync.Mutex{})
+				lock.Lock()
+				defer lock.Unlock()
 
-				policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
+				if cached, _ := eng.policyPacksCache.Load(policyCacheKey); !cached {
+					err := os.MkdirAll(policyPackDir, 0o755)
+					if err != nil {
+						return nil, fmt.Errorf("create policy pack dir: %w", err)
+					}
+					func() {
+						_, copySpan := cmdutil.StartSpan(ctx, tracer, "copyDirectory/policyPack/"+policyPack)
+						defer copySpan.End()
+						err = copyDirectory(os.DirFS(token.PolicyPackDirectory), policyPack, policyPackDir, nil, nil)
+					}()
+					if err != nil {
+						return nil, fmt.Errorf("copy policy pack: %w", err)
+					}
 
-				// Link the core SDK into the policy pack
-				linkDeps := []workspace.LinkablePackageDescriptor{{
-					Path: token.CoreArtifact,
-					Descriptor: workspace.PackageDescriptor{
-						PluginDescriptor: workspace.PluginDescriptor{
-							Name: "pulumi",
+					policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
+
+					// Link the core SDK into the policy pack
+					linkDeps := []workspace.LinkablePackageDescriptor{{
+						Path: token.CoreArtifact,
+						Descriptor: workspace.PackageDescriptor{
+							PluginDescriptor: workspace.PluginDescriptor{
+								Name: "pulumi",
+							},
 						},
-					},
-				}}
-				_, linkSpan := cmdutil.StartSpan(ctx, tracer, "Link/policyPack/"+policyPack)
-				_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
-				linkSpan.End()
-				if err != nil {
-					return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
-				}
+					}}
+					_, linkSpan := cmdutil.StartSpan(ctx, tracer, "Link/policyPack/"+policyPack)
+					_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
+					linkSpan.End()
+					if err != nil {
+						return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
+					}
 
-				// Install the dependencies for the policy pack
-				_, installSpan := cmdutil.StartSpan(ctx, tracer, "installDependencies/policyPack/"+policyPack)
-				resp := installDependencies(languageClient, policyInfo, true /* isPlugin */)
-				installSpan.End()
-				if resp != nil {
-					return resp, nil
+					// Install the dependencies for the policy pack
+					_, installSpan := cmdutil.StartSpan(ctx, tracer, "installDependencies/policyPack/"+policyPack)
+					resp := installDependencies(languageClient, policyInfo, true /* isPlugin */)
+					installSpan.End()
+					if resp != nil {
+						return resp, nil
+					}
+					eng.policyPacksCache.Store(policyCacheKey, true)
 				}
 
 				pack := engine.LocalPolicyPack{
