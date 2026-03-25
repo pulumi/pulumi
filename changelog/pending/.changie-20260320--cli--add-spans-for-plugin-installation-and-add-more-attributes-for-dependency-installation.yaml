@@ -1,0 +1,6 @@
+kind: chore
+body: Add spans for plugin installation and add more attributes for dependency installation
+custom:
+  Scope: cli
+  PR: ''
+time: '2026-03-20T00:00:00Z'

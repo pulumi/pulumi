@@ -1,0 +1,6 @@
+kind: fix
+body: Update golang version
+custom:
+  Scope: engine
+  PR: ''
+time: '2026-03-18T00:00:00Z'

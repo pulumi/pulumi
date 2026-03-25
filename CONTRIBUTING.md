@@ -128,7 +128,7 @@ If `sdk/.version` is the version we want to release, we need to "freeze" that dr
 
 If `sdk/.version` is not the version we want to release yet, usually in the case of a minor release, bump the version to the right version first, and merge that first (always using `scripts/set-version.py`).  Once that's merged the current release can be frozen as above.
 
-For these version bump PRs it's useful for reviewers if the expected changelog is included.  This can be generated using `GITHUB_REPOSITORY=pulumi/pulumi go run github.com/pulumi/go-change@v0.1.3 render`, at the root of the repository.
+For these version bump PRs it's useful for reviewers if the expected changelog is included.  This can be generated using `changie batch <version> --dry-run` at the root of the repository.
 
 The next step, to gain some additional confidence in the release is to run the [Test examples](https://github.com/pulumi/examples/actions/workflows/test-examples.yml), and [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) test suites.  These run the tests in the `pulumi/examples` and `pulumi/templates` repositories using the latest `pulumi/pulumi` dev version, thus including all the latest changes.
 

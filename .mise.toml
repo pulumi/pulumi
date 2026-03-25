@@ -23,6 +23,7 @@ protoc = "29.5"
 "npm:protoc-gen-js" = "3.21.4"
 "go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.8.0"
 "github:WebAssembly/wabt" = "1.0.37"
+changie = "1.21"
 dotnet = "8"
 
 [tool_alias]
