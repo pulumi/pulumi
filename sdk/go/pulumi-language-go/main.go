@@ -1687,25 +1687,8 @@ func copyGoModuleDir(dst, src string, isRoot bool, stats *copyStats) error {
 			}
 		}
 	} else if info.Mode().IsRegular() {
-		// Only copy files the Go toolchain needs. This avoids copying large non-Go
-		// artifacts (JS bundles, Python wheels, proto output) that happen to live
-		// in the same module tree but aren't needed for Go compilation.
-		ext := filepath.Ext(info.Name())
-		switch ext {
-		case ".go", ".s", ".c", ".h", ".syso",
-			".mod", ".sum",
-			".json", ".tmpl",
-			".version", ".txt",
-			".proto":
-			// source, module, embedded, version/metadata, and proto files
-			// copy these
-		default:
-			// Also copy files without extensions if they're small (LICENSE, README, etc.)
-			if ext != "" || info.Size() > 1024*1024 {
-				return nil
-			}
-		}
-
+		// Copy all regular files. Directory-level exclusions (node_modules,
+		// __pycache__, separate go.mod dirs, etc.) handle the large artifacts.
 		srcFile, err := os.Open(src)
 		if err != nil {
 			return fmt.Errorf("open file: %w", err)
