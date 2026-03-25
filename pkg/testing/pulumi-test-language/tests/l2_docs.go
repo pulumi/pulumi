@@ -63,7 +63,7 @@ func init() {
 						if err != nil {
 							return err
 						}
-						assert.NotContainsf(l, string(data), "<pulumi ref=\"", "Should not contain unresolved pulumi ref in %s", d.Name())
+						assert.NotContainsf(l, string(data), "{{% ref ", "Should not contain unresolved pulumi ref in %s", d.Name())
 						return nil
 					})
 					require.NoError(l, err)
