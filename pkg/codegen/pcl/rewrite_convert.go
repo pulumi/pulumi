@@ -27,29 +27,6 @@ import (
 	"github.com/zclconf/go-cty/cty/convert"
 )
 
-// sameTypeKind returns true if both types are the same structural kind.
-// For example, MapType and ObjectType are both map-like but have different kinds.
-// This is used to ensure code generators receive an IntrinsicConvert when the
-// target type carries richer type information than the expression type.
-func sameTypeKind(xt, yt model.Type) bool {
-	switch xt.(type) {
-	case *model.MapType:
-		_, ok := yt.(*model.MapType)
-		return ok
-	case *model.ObjectType:
-		_, ok := yt.(*model.ObjectType)
-		return ok
-	case *model.ListType:
-		_, ok := yt.(*model.ListType)
-		return ok
-	case *model.TupleType:
-		_, ok := yt.(*model.TupleType)
-		return ok
-	default:
-		return true
-	}
-}
-
 func sameSchemaTypes(xt, yt model.Type) bool {
 	xs, _ := GetSchemaForType(xt)
 	ys, _ := GetSchemaForType(yt)
@@ -191,9 +168,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		x, typeChanged = value, true
 	}
 	// If the expression's type is directly assignable to the destination type, no conversion is necessary.
-	// However, when the structural kinds differ (e.g., MapType vs ObjectType, ListType vs TupleType),
-	// we still need a conversion so that code generators can see the target type.
-	if to.AssignableFrom(x.Type()) && sameSchemaTypes(to, x.Type()) && sameTypeKind(to, x.Type()) {
+	if to.AssignableFrom(x.Type()) && sameSchemaTypes(to, x.Type()) {
 		return x, typeChanged
 	}
 
