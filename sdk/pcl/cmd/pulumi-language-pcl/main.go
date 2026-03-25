@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/signal"
 	"path"
@@ -68,6 +69,7 @@ import (
 type runParams struct {
 	tracing       string
 	engineAddress string
+	workflowFile  string
 }
 
 // parseRunParams parses the given arguments into a runParams structure,
@@ -75,6 +77,7 @@ type runParams struct {
 func parseRunParams(flag *flag.FlagSet, args []string) (*runParams, error) {
 	var p runParams
 	flag.StringVar(&p.tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
+	flag.StringVar(&p.workflowFile, "workflow-plugin", "", "Run as a WorkflowEvaluator plugin for the given .pp file")
 
 	if err := flag.Parse(args); err != nil {
 		return nil, err
@@ -134,6 +137,21 @@ func (cmd *mainCmd) Run(p *runParams) error {
 		return err
 	}
 
+	if p.workflowFile != "" {
+		evaluator, err := pclruntime.NewWorkflowEvaluator(p.workflowFile)
+		if err != nil {
+			return err
+		}
+		server := grpc.NewServer(rpcutil.OpenTracingServerInterceptorOptions(nil)...)
+		pulumirpc.RegisterWorkflowEvaluatorServer(server, evaluator)
+		listener, err := net.Listen("tcp4", "127.0.0.1:0")
+		if err != nil {
+			return fmt.Errorf("could not listen for workflow plugin RPC server: %w", err)
+		}
+		fmt.Fprintf(cmd.Stdout, "%d\n", listener.Addr().(*net.TCPAddr).Port)
+		return server.Serve(listener)
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	cancelChannel := make(chan bool)
 	go func() {
@@ -149,13 +167,15 @@ func (cmd *mainCmd) Run(p *runParams) error {
 		}
 	}
 
+	initServer := func(srv *grpc.Server) error {
+		host := newLanguageHost(p.engineAddress, cwd, p.tracing)
+		pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+		return nil
+	}
+
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
-		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(p.engineAddress, cwd, p.tracing)
-			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
-			return nil
-		},
+		Cancel:  cancelChannel,
+		Init:    initServer,
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {

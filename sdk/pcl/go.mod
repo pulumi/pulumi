@@ -129,3 +129,5 @@ require (
 )
 
 tool github.com/quasilyte/go-ruleguard/dsl
+
+replace github.com/pulumi/pulumi/sdk/v3 => ../

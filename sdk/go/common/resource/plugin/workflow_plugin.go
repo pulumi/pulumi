@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -47,13 +48,25 @@ func NewWorkflow(host Host, ctx *Context, programPath string) (Workflow, error) 
 		return nil, fmt.Errorf("resolve workflow program path: %w", err)
 	}
 
-	pythonBin, err := exec.LookPath("python3")
-	if err != nil {
-		return nil, fmt.Errorf("find python3: %w", err)
-	}
-
 	prefix := fmt.Sprintf("%v (workflow)", filepath.Base(absProgramPath))
 	pluginDir := filepath.Dir(absProgramPath)
+	pluginBin := ""
+	pluginArgs := []string{}
+	if strings.EqualFold(filepath.Ext(absProgramPath), ".pp") {
+		pclHost, err := exec.LookPath("pulumi-language-pcl")
+		if err != nil {
+			return nil, fmt.Errorf("find pulumi-language-pcl on PATH: %w", err)
+		}
+		pluginBin = pclHost
+		pluginArgs = []string{"--workflow-plugin", absProgramPath}
+	} else {
+		pythonBin, err := exec.LookPath("python3")
+		if err != nil {
+			return nil, fmt.Errorf("find python3: %w", err)
+		}
+		pluginBin = pythonBin
+		pluginArgs = []string{absProgramPath}
+	}
 
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
@@ -79,10 +92,10 @@ func NewWorkflow(host Host, ctx *Context, programPath string) (Workflow, error) 
 	plug, _, err := newPlugin(
 		ctx,
 		ctx.Pwd,
-		pythonBin,
+		pluginBin,
 		prefix,
 		apitype.WorkflowPlugin,
-		[]string{absProgramPath},
+		pluginArgs,
 		env.Global(),
 		handshake,
 		workflowPluginDialOptions(ctx, absProgramPath),
