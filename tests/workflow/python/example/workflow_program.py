@@ -56,13 +56,13 @@ def main_graph(ctx: workflow.Context) -> None:
     )
 
     @ctx.job("main")
-    def main_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> None:
+    def main_job(job: workflow.JobContext) -> None:
         @job.step("run")
         def run_step() -> str:
             print("running main step", flush=True)
             return "".join(random.choices(string.ascii_lowercase + string.digits, k=12))
 
-    def producer_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> Output[dict[str, Any]]:
+    def producer_job(job: workflow.JobContext) -> Output[dict[str, Any]]:
         @job.step("produce")
         def produce_step() -> dict[str, Any]:
             cwd = os.getcwd()
@@ -76,7 +76,7 @@ def main_graph(ctx: workflow.Context) -> None:
     producer_output = ctx.job("producer", producer_job)
 
     @ctx.job("consumer", dependencies=["producer"])
-    def consumer_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> None:
+    def consumer_job(job: workflow.JobContext) -> None:
         @job.step("consume", producer_output)
         def consume_step(producer: Any) -> str:
             cwd = os.getcwd()
@@ -87,7 +87,7 @@ def main_graph(ctx: workflow.Context) -> None:
             return str(producer)
 
     @ctx.job("from-trigger")
-    def from_trigger_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> None:
+    def from_trigger_job(job: workflow.JobContext) -> None:
         @job.step("consume", trigger_output)
         def consume_step(cron: Any) -> str:
             print(f"consuming trigger payload: {cron}", flush=True)
@@ -96,7 +96,7 @@ def main_graph(ctx: workflow.Context) -> None:
             return str(cron)
 
     @ctx.job("three-step")
-    def three_step_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> None:
+    def three_step_job(job: workflow.JobContext) -> None:
         @job.step("first")
         def first_step() -> dict[str, Any]:
             cwd = os.getcwd()
@@ -136,7 +136,7 @@ def main_graph(ctx: workflow.Context) -> None:
     ctx.job("example:compose-message", workflow.JobOptions(name="external-compose"))
 
     @ctx.job("external-steps")
-    def external_steps_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> None:
+    def external_steps_job(job: workflow.JobContext) -> None:
         upper = job.step("example:to-upper", ExternalStepInput(value="alpha"))
         with_suffix = job.step(
             "example:add-suffix",
@@ -149,15 +149,15 @@ def main_graph(ctx: workflow.Context) -> None:
             return {"value": result.value}
 
     @ctx.job("broken-external-step")
-    def broken_external_step_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> None:
+    def broken_external_step_job(job: workflow.JobContext) -> None:
         job.step("example:missing-step", ExternalStepInput(value="boom"))
 
     @ctx.job("bad-external-input")
-    def bad_external_input_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> None:
+    def bad_external_input_job(job: workflow.JobContext) -> None:
         job.step("example:to-upper", {"oops": "wrong-shape"})
 
     @ctx.job("step-if")
-    def step_if_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> None:
+    def step_if_job(job: workflow.JobContext) -> None:
         @job.step("run", filter=Output.from_input(True))
         def run_step() -> str:
             return "ran"
@@ -167,13 +167,13 @@ def main_graph(ctx: workflow.Context) -> None:
             return "should-not-run"
 
     @ctx.job("job-if", workflow.JobOptions(filter=Output.from_input(True)))
-    def job_if_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> None:
+    def job_if_job(job: workflow.JobContext) -> None:
         @job.step("run")
         def run_step() -> str:
             return "job-ran"
 
     @ctx.job("job-if-disabled", workflow.JobOptions(filter=Output.from_input(False)))
-    def job_if_disabled_job(job: workflow.JobContext, _execution: workflow.ExecutionInput) -> None:
+    def job_if_disabled_job(job: workflow.JobContext) -> None:
         @job.step("run")
         def run_step() -> str:
             return "job-should-not-run"
@@ -198,12 +198,16 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
 
     def compose_message_job(
         job: workflow.JobContext,
-        execution: workflow.ExecutionInput,
     ) -> Output[ExportedJobOutput]:
-        @job.step("seed")
-        def seed_step() -> dict[str, Any]:
+        execution = Output.all(job.execution_id, job.workflow_version)
+
+        @job.step("seed", execution)
+        def seed_step(execution_value: Any) -> dict[str, Any]:
             cwd = os.getcwd()
-            seed_text = f"{execution.execution_id}:{execution.workflow_version}"
+            if isinstance(execution_value, list) and len(execution_value) == 2:
+                seed_text = f"{execution_value[0]}:{execution_value[1]}"
+            else:
+                seed_text = "unknown:unknown"
             with open(os.path.join(cwd, "exported-job-seed.txt"), "w", encoding="utf-8") as f:
                 f.write(seed_text)
             return {"seed": seed_text}
@@ -214,7 +218,8 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
             with open(os.path.join(cwd, "exported-job-seed.txt"), "r", encoding="utf-8") as f:
                 seed_file = f.read().strip()
             seed_value = str(seed.get("seed", seed_file))
-            repeated = f"{execution.execution_id} {execution.execution_id}"
+            execution_id = seed_value.split(":", 1)[0] if ":" in seed_value else "unknown"
+            repeated = f"{execution_id} {execution_id}"
             combined = f"{seed_value}|{repeated}"
             with open(os.path.join(cwd, "exported-job-expanded.txt"), "w", encoding="utf-8") as f:
                 f.write(combined)

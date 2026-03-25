@@ -53,6 +53,7 @@ StepCallback = Callable[[Any], Any]
 
 _WORKFLOW_OUTPUT_PATHS_ATTR = "_pulumi_workflow_output_paths"
 _WORKFLOW_OUTPUT_VALUE_ATTR = "_pulumi_workflow_output_value"
+_WORKFLOW_OUTPUT_MARKER_ATTR = "_pulumi_workflow_output_marker"
 
 
 @dataclass
@@ -80,7 +81,7 @@ class _JobDefinition:
 class _ExportedJobDefinition:
     token: str
     output_type: Type[Any]
-    fn: Callable[[JobContext, ExecutionInput], Output[Any]]
+    fn: Callable[[JobContext], Output[Any]]
     on_error: Optional[OnErrorHandler]
 
 
@@ -135,6 +136,14 @@ class Context:
 
     def __init__(self, state: _EvalState) -> None:
         self._state = state
+
+    @property
+    def execution_id(self) -> str:
+        return self._state.context.execution_id
+
+    @property
+    def workflow_version(self) -> str:
+        return self._state.context.workflow_version
 
     def trigger(
         self,
@@ -287,6 +296,14 @@ class JobContext:
 
     def __init__(self, state: _JobEvalState) -> None:
         self._state = state
+
+    @property
+    def execution_id(self) -> str:
+        return self._state.context.execution_id
+
+    @property
+    def workflow_version(self) -> str:
+        return self._state.context.workflow_version
 
     @overload
     def step(
@@ -503,7 +520,7 @@ class WorkflowRegistry:
     def job(
         self,
         token: str,
-        fn: Callable[[JobContext, ExecutionInput], Output[TOutput]],
+        fn: Callable[[JobContext], Output[TOutput]],
         *,
         on_error: Optional[OnErrorHandler] = None,
     ) -> None:
@@ -521,7 +538,7 @@ class WorkflowRegistry:
         self._jobs[resolved_token] = _ExportedJobDefinition(
             token=resolved_token,
             output_type=output_type,
-            fn=cast(Callable[[JobContext, ExecutionInput], Output[Any]], fn),
+            fn=cast(Callable[[JobContext], Output[Any]], fn),
             on_error=on_error,
         )
 
@@ -773,7 +790,12 @@ def _workflow_output_paths(value: Any) -> Set[str]:
 
 
 def _is_workflow_output(value: Any) -> bool:
-    return isinstance(value, Output) and len(_workflow_output_paths(value)) > 0
+    if not isinstance(value, Output):
+        return False
+    marker = _get_output_internal_attr(value, _WORKFLOW_OUTPUT_MARKER_ATTR)
+    if marker is True:
+        return True
+    return len(_workflow_output_paths(value)) > 0
 
 
 def _workflow_dependency_paths(values: List[Any]) -> Set[str]:
@@ -788,14 +810,8 @@ def _new_workflow_output(path: str, value: Any) -> Output[Any]:
     output = Output.from_input(value)
     setattr(output, _WORKFLOW_OUTPUT_PATHS_ATTR, {path})
     setattr(output, _WORKFLOW_OUTPUT_VALUE_ATTR, value)
+    setattr(output, _WORKFLOW_OUTPUT_MARKER_ATTR, True)
     return output
-
-
-def _execution_input(context: workflow_pb2.WorkflowContext) -> ExecutionInput:
-    return ExecutionInput(
-        execution_id=context.execution_id,
-        workflow_version=context.workflow_version,
-    )
 
 
 def _input_bool_filter_callback(value: Input[bool]) -> FilterCallback:
@@ -857,22 +873,7 @@ def _invoke_step_fn(fn: Callable[..., Any], arg: Any, *, has_arg: bool) -> Any:
 def _invoke_job_fn(
     fn: Callable[..., Any],
     job_ctx: JobContext,
-    execution: ExecutionInput,
 ) -> Any:
-    signature = inspect.signature(fn)
-    parameters = list(signature.parameters.values())
-    has_var_args = any(
-        parameter.kind == inspect.Parameter.VAR_POSITIONAL
-        for parameter in parameters
-    )
-    positional = [
-        parameter
-        for parameter in parameters
-        if parameter.kind
-        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-    ]
-    if has_var_args or len(positional) > 1:
-        return fn(job_ctx, execution)
     return fn(job_ctx)
 
 
@@ -988,7 +989,6 @@ def _evaluate_job(
         job_output = _invoke_job_fn(
             job.fn,
             job_ctx,
-            _execution_input(effective_context),
         )
 
         inferred_dependencies: Set[str] = set(job.dependencies)
@@ -1049,7 +1049,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         if exported is None:
             raise WorkflowError(f"unknown external job token {job.external_token}")
         return _JobDefinition(
-            fn=lambda job_ctx, execution: exported.fn(job_ctx, execution),
+            fn=lambda job_ctx: exported.fn(job_ctx),
             on_error=job.on_error,
             dependencies=job.dependencies,
             external_token=job.external_token,
@@ -1340,7 +1340,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 "input_path for exported jobs must match request.name",
             )
         synthetic_job = _JobDefinition(
-            fn=lambda job_ctx, execution: exported.fn(job_ctx, execution),
+            fn=lambda job_ctx: exported.fn(job_ctx),
             on_error=exported.on_error,
             dependencies=[],
         )
