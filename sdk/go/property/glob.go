@@ -71,7 +71,7 @@ segment:
 func (g *Glob) UnmarshalText(text []byte) error {
 	*g = (*g)[:0]
 	if len(text) == 0 {
-		return fmt.Errorf("cannot unmarshal an empty property path")
+		return errors.New("cannot unmarshal an empty property path")
 	}
 
 	runes := []rune(string(text))
