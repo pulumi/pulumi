@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"testing"
-	"time"
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
@@ -732,10 +731,26 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 func TestAnalyzerCancellation(t *testing.T) {
 	t.Parallel()
 
+	ctx, cancel := context.WithCancel(t.Context())
+
 	gracefulShutdown := false
 	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
 		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 			return &deploytest.Analyzer{
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+					if r.Type == "pkgA:m:typA" {
+						// Cancel from inside AnalyzeF so the executor is
+						// mid-event processing and can't close its done
+						// channel yet. This guarantees the
+						// SignalCancellation goroutine picks
+						// callerCtx.Done() and calls CancelF.
+						cancel()
+					}
+					return plugin.AnalyzeResponse{}, nil
+				},
 				CancelF: func() error {
 					gracefulShutdown = true
 					return nil
@@ -744,12 +759,9 @@ func TestAnalyzerCancellation(t *testing.T) {
 		}, deploytest.WithGrpc),
 	}
 
-	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
-	ctx, cancel := context.WithCancel(context.Background())
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		time.Sleep(1 * time.Second)
-		cancel()
-		return nil
+		_, err := monitor.RegisterResource("pkgA:m:typA", "res", true)
+		return err
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
