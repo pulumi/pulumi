@@ -380,16 +380,25 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
 }
 
-// cachedBuildVenv caches a virtual environment with the `build` package installed.
-// This avoids recreating the venv and reinstalling build for every Pack call.
+// cachedBuildVenv caches a virtual environment with the `build` package and
+// common build backends (setuptools, wheel) pre-installed.  When used with
+// --no-isolation the build module skips creating its own temporary venv,
+// saving ~1s per cold Pack call.
 var (
 	cachedBuildVenvOnce sync.Once
 	cachedBuildVenvUv   bool
+	cachedBuildVenvVenv string // path to the venv directory, needed for installing extra deps
 	cachedBuildVenvTC   toolchain.Toolchain
 	cachedBuildVenvErr  error
+
+	// buildDepsInstalled tracks which sets of build-system requirements have
+	// already been installed into the build venv.  The key is the sorted,
+	// joined list of requirement strings from pyproject.toml [build-system]
+	// requires.
+	buildDepsInstalled sync.Map // map[string]bool
 )
 
-func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
+func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, string, bool, error) {
 	tracer := otel.Tracer("pulumi-language-python")
 	cachedBuildVenvOnce.Do(func() {
 		// Create a persistent temp directory for the build venv.
@@ -419,9 +428,11 @@ func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
 			}
 			createVenvSpan.End()
 
+			// Install build + the most common build backends so --no-isolation works
+			// without extra installs for typical Pulumi SDKs.
 			_, installBuildSpan := cmdutil.StartSpan(ctx, tracer, "ensureBuildVenv/installBuild",
 				trace.WithAttributes(attribute.Bool("useUv", true)))
-			cmd = exec.CommandContext(ctx, "uv", "pip", "install", "build")
+			cmd = exec.CommandContext(ctx, "uv", "pip", "install", "build", "setuptools", "wheel")
 			cmd.Env = append(toolchain.ActivateVirtualEnv(os.Environ(), venv),
 				"PYTHONDONTWRITEBYTECODE=1",
 				"PYTHONNOUSERSITE=1",
@@ -435,6 +446,7 @@ func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
 			}
 			installBuildSpan.End()
 			cachedBuildVenvTC = tc
+			cachedBuildVenvVenv = venv
 			cachedBuildVenvUv = true
 		} else {
 			logging.V(5).Infof("Creating build virtual environment using pip+venv at %s", venv)
@@ -459,7 +471,7 @@ func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
 
 			_, installBuildSpan := cmdutil.StartSpan(ctx, tracer, "ensureBuildVenv/installBuild",
 				trace.WithAttributes(attribute.Bool("useUv", false)))
-			cmd, err = tc.ModuleCommand(ctx, "pip", "install", "build")
+			cmd, err = tc.ModuleCommand(ctx, "pip", "install", "build", "setuptools", "wheel")
 			if err != nil {
 				installBuildSpan.End()
 				cachedBuildVenvErr = err
@@ -472,10 +484,75 @@ func ensureBuildVenv(ctx context.Context) (toolchain.Toolchain, bool, error) {
 			}
 			installBuildSpan.End()
 			cachedBuildVenvTC = tc
+			cachedBuildVenvVenv = venv
 			cachedBuildVenvUv = false
 		}
 	})
-	return cachedBuildVenvTC, cachedBuildVenvUv, cachedBuildVenvErr
+	return cachedBuildVenvTC, cachedBuildVenvVenv, cachedBuildVenvUv, cachedBuildVenvErr
+}
+
+// ensureBuildDeps reads the [build-system] requires from the package's pyproject.toml
+// and installs any missing build dependencies into the shared build venv.  This enables
+// using --no-isolation with `python -m build`, avoiding per-build venv creation.
+func ensureBuildDeps(ctx context.Context, packageDir, venv string, useUv bool,
+	tc toolchain.Toolchain,
+) error {
+	pyproject, err := toolchain.LoadPyproject(packageDir)
+	if err != nil {
+		// If there's no pyproject.toml, let python -m build handle it (it will
+		// fall back to setuptools which we pre-installed).
+		return nil
+	}
+	if pyproject.BuildSystem == nil || len(pyproject.BuildSystem.Requires) == 0 {
+		return nil
+	}
+
+	// Build a cache key from the sorted requirements.
+	requires := make([]string, len(pyproject.BuildSystem.Requires))
+	copy(requires, pyproject.BuildSystem.Requires)
+	slices.Sort(requires)
+	key := strings.Join(requires, "\n")
+
+	// Fast path: already installed this exact set.
+	if _, ok := buildDepsInstalled.Load(key); ok {
+		return nil
+	}
+
+	tracer := otel.Tracer("pulumi-language-python")
+	_, span := cmdutil.StartSpan(ctx, tracer, "ensureBuildDeps",
+		trace.WithAttributes(
+			attribute.StringSlice("requires", requires),
+			attribute.Bool("useUv", useUv),
+		))
+	defer span.End()
+
+	logging.V(5).Infof("Installing build dependencies for %s: %v", packageDir, requires)
+
+	if useUv {
+		args := append([]string{"pip", "install"}, requires...)
+		cmd := exec.CommandContext(ctx, "uv", args...)
+		cmd.Env = append(toolchain.ActivateVirtualEnv(os.Environ(), venv),
+			"PYTHONDONTWRITEBYTECODE=1",
+			"PYTHONNOUSERSITE=1",
+			"UV_LINK_MODE=hardlink",
+			"UV_NO_PROGRESS=1",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("install build deps using uv: %w\n%s", err, string(out))
+		}
+	} else {
+		args := append([]string{"install"}, requires...)
+		cmd, err := tc.ModuleCommand(ctx, "pip", args...)
+		if err != nil {
+			return err
+		}
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("install build deps using pip: %w\n%s", err, string(out))
+		}
+	}
+
+	buildDepsInstalled.Store(key, true)
+	return nil
 }
 
 func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
@@ -506,10 +583,16 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	}
 
 	ctx, buildVenvSpan := cmdutil.StartSpan(ctx, tracer, "Pack/ensureBuildVenv")
-	tc, useUv, err := ensureBuildVenv(ctx)
+	tc, venv, useUv, err := ensureBuildVenv(ctx)
 	buildVenvSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("ensure build venv: %w", err)
+	}
+
+	// Ensure the target package's build-system requirements are installed
+	// in our shared build venv so we can use --no-isolation.
+	if err := ensureBuildDeps(ctx, req.PackageDirectory, venv, useUv, tc); err != nil {
+		return nil, fmt.Errorf("ensure build deps: %w", err)
 	}
 
 	// Create a temporary output directory for this pack operation.
@@ -526,10 +609,10 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		}
 	}()
 
-	args := []string{"--wheel", "--outdir", tmp}
-	if useUv {
-		args = append(args, "--installer", "uv")
-	}
+	// --no-isolation skips creating a temporary venv for each build, reusing
+	// the shared build venv where we've already installed the build deps.
+	// --installer is mutually exclusive with --no-isolation so we omit it.
+	args := []string{"--wheel", "--no-isolation", "--outdir", tmp}
 
 	buildCmd, err := tc.ModuleCommand(ctx, "build", args...)
 	if err != nil {
@@ -1238,6 +1321,9 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 				// Pulumi SDK and other dependencies are computed once and reused
 				// across multiple program runs within the same process.
 				typecheckerArgs = append(typecheckerArgs, "--cache-dir", sharedMypyCacheDir())
+				// Suppress the summary line and ANSI color codes — the output
+				// goes to the language host's stdout/stderr, not a terminal.
+				typecheckerArgs = append(typecheckerArgs, "--no-error-summary", "--no-color-output")
 			}
 			typecheckerArgs = append(typecheckerArgs, req.Info.ProgramDirectory)
 			typecheckerCmd, err := tc.Command(ctx, typecheckerArgs...)
