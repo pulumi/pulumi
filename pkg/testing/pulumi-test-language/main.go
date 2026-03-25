@@ -23,6 +23,11 @@ import (
 )
 
 func main() {
+	// Disable automatic plugin acquisition — the test host provides all
+	// providers in-memory, so there's no need to download them from GitHub.
+	// This avoids ~360s of wasted GitHub API calls across the full test suite.
+	os.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
+
 	// Initialize OTel tracing if the parent process provided an endpoint.
 	if otelEndpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT"); otelEndpoint != "" {
 		if err := cmdutil.InitOtelTracing("pulumi-test-language", otelEndpoint); err != nil {
