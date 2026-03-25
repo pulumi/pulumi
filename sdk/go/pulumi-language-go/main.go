@@ -295,6 +295,10 @@ type goLanguageHost struct {
 	tracing       string
 	otelEndpoint  string
 	buildCache    sync.Map
+	// packCache caches Pack results keyed by the absolute source directory.
+	// When the same directory is packed again (e.g. core SDK packed for multiple
+	// test configs), the cached artifact path is reused.
+	packCache sync.Map // map[string]string (abs source dir → artifact path)
 }
 
 type goOptions struct {
@@ -1575,6 +1579,18 @@ func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest
 
 	// Go is very simple, there's nothing it can do to pack so it just copies the source to the target.
 
+	// Check the pack cache — if we already packed this source directory, reuse it.
+	absSrc, absErr := filepath.Abs(req.PackageDirectory)
+	if absErr == nil {
+		if cached, ok := host.packCache.Load(absSrc); ok {
+			cachedPath := cached.(string)
+			if _, err := os.Stat(cachedPath); err == nil {
+				logging.V(5).Infof("Pack cache hit for %s -> %s", absSrc, cachedPath)
+				return &pulumirpc.PackResponse{ArtifactPath: cachedPath}, nil
+			}
+		}
+	}
+
 	// First read the modfile in the package directory to decide the folder name.
 	_, readModSpan := cmdutil.StartSpan(ctx, tracer, "Pack/readGoMod")
 	data, err := os.ReadFile(filepath.Join(req.PackageDirectory, "go.mod"))
@@ -1597,6 +1613,11 @@ func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest
 	copySpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("copy package: %w", err)
+	}
+
+	// Cache the result for future Pack calls with the same source directory.
+	if absErr == nil {
+		host.packCache.Store(absSrc, artifactPath)
 	}
 
 	return &pulumirpc.PackResponse{
