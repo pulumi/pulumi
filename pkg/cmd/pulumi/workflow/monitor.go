@@ -110,9 +110,3 @@ func collectDependencyPaths(expr *pulumirpc.DependencyExpression) []string {
 	}
 	return paths
 }
-
-func orderStepsByRegistration(steps []observedStep) []observedStep {
-	ordered := make([]observedStep, len(steps))
-	copy(ordered, steps)
-	return ordered
-}

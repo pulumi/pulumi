@@ -182,10 +182,8 @@ func runExportedJob(
 		return nil, "", fmt.Errorf("exported job %q has no steps", jobToken)
 	}
 
-	orderedSteps := orderStepsByRegistration(steps)
-
-	results := make([]stepResult, 0, len(orderedSteps))
-	for _, step := range orderedSteps {
+	results := make([]stepResult, 0, len(steps))
+	for _, step := range steps {
 		runResp, err := runStepWithRetry(ctx, workflowPlugin, workflowContext, step)
 		if err != nil {
 			return nil, "", err
