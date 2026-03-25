@@ -1,54 +1,40 @@
 # Conformance Test Optimization — Autoresearch
 
 ## Objective
-Optimize the nodejs conformance tests (`sdk/nodejs/cmd/pulumi-language-nodejs`) to run faster while maintaining correctness.
+Optimize the nodejs conformance tests to run faster while maintaining correctness.
 
-## Benchmark Command
-Run TSC conformance tests on a remote EC2 c5.4xlarge (16 vCPU, 32 GB RAM) instance.
+## Current Best Result
+- **TSC variant: 319s** (vs 578s baseline) = **44.8% improvement**
+- Key optimizations: tmpfs for temp dirs + cached test binary
 
-## Primary Metric
-- `tsc_ms` — Wall-clock time for TSC variant
+## Experiments Summary
 
-## Current Best
-- **319s** (tmpfs + cached binary) vs **578s baseline** = **44.8% improvement**
+| # | Description | Time | vs Baseline | Status |
+|---|------------|------|-------------|--------|
+| 0 | Baseline (c5.4xlarge) | 578s | - | baseline |
+| 1 | Cache binary build | 578s | 0% | keep |
+| 2 | -parallel=4 | 746s | +29% | discard |
+| 3 | -parallel=16 | 589s | +2% | discard |
+| 4 | npm prefer-offline | crash | - | crash |
+| 5 | node_modules hardlink cache | 698s | +21% | discard |
+| 6 | **tmpfs for temp dirs** | **319s** | **-44.8%** | **keep** |
+| 7 | tmpfs + parallel=32 | 721s | +25% | discard |
 
-## Strategies Tried
+## What Works
+1. **tmpfs (RAM disk)**: Biggest win. npm install + tsc do massive I/O
+2. **Binary caching**: Small win per variant but accumulates across 3 variants
 
-### KEEP: Cache pulumi-test-language binary (Exp 1: 578s → saves ~15s per variant)
-- Used sync.Once to build binary once across TSC/TSNode/Bun variants
-- File: `sdk/nodejs/cmd/pulumi-language-nodejs/language_test.go`
+## What Doesn't Work
+- Parallelism tuning: default is near-optimal
+- node_modules caching: copy overhead > install savings
+- npm_config_prefer_offline: incompatible with local tarballs
+- Very high parallelism + tmpfs: causes OOM
 
-### DISCARD: Reduced parallelism -parallel=4 (Exp 2: 746s — 27% SLOWER)
-- Reducing parallelism significantly slows things down
-- Tests benefit from high parallelism even with contention
+## Key Bottleneck
+- `l1-builtin-require-pulumi-version`: 138-143s (single longest test)
+- This test likely does version checking involving network calls
 
-### DISCARD: Increased parallelism -parallel=16 (Exp 3: 589s — no improvement)
-- Default parallelism (GOMAXPROCS=16 on c5.4xlarge) is already optimal
-
-### CRASH: npm_config_prefer_offline=true (Exp 4: instance became unresponsive)
-- Likely caused issues with local tarball resolution, hung the test
-
-### DISCARD: node_modules caching via hardlinks (Exp 5: 698s — 21% SLOWER)
-- Copying node_modules trees is slow even with hardlinks
-- Lock contention around cache adds overhead
-- The copy+verify overhead exceeds savings
-
-### KEEP: tmpfs (RAM disk) for test temp dirs (Exp 6: 319s — 44.8% improvement!)
-- `sudo mount -t tmpfs -o size=20G tmpfs /mnt/test-tmpfs`
-- `export TMPDIR=/mnt/test-tmpfs`
-- Massive speedup for npm install and tsc which do heavy file I/O
-
-## Dead Ends
-- node_modules hardlink caching: overhead of copying > savings
-- npm_config_prefer_offline: causes hangs with local tarballs
-- Reducing parallelism: makes everything slower
-
-## OTel Tracing
-- Added to `pkg/testing/pulumi-test-language/interface.go`
-- Spans: RunLanguageTest, SetupProviders, GenerateSDKs, runLanguageTests, InstallDependencies, GenerateProject, PreviewStack, UpdateStack, PackCoreSdk
-
-## Key Architecture Notes
-- 133 test projects with 43 unique dependency combinations
-- Each test runs: npm install → tsc (TSC only) → preview → update
-- npm install is the biggest bottleneck per test
-- Tests run in parallel (default GOMAXPROCS)
+## Implementation
+- OTel tracing added to test framework
+- Binary caching via sync.Once in language_test.go
+- tmpfs can be enabled by setting TMPDIR=/mnt/test-tmpfs before running tests

@@ -6,3 +6,4 @@
 {"commit":"","metric":0,"metrics":{"tsc_ms":0},"status":"crash","description":"Experiment 4: npm_config_prefer_offline=true - instance became unresponsive, likely caused issues with local tarball installs","timestamp":1774450256647,"segment":0,"confidence":null}
 {"commit":"","metric":698131,"metrics":{"tsc_ms":698131},"status":"discard","description":"Experiment 5: node_modules + tsc output caching via hardlinks (SLOWER - cache overhead > savings)","timestamp":1774470198505,"segment":0,"confidence":null}
 {"commit":"","metric":319259,"metrics":{"tsc_ms":319259},"status":"keep","description":"Experiment 6: tmpfs (RAM disk) for test temp directories - 44.8% improvement","timestamp":1774470613526,"segment":0,"confidence":null}
+{"commit":"","metric":721088,"metrics":{"tsc_ms":721088},"status":"discard","description":"Experiment 7: tmpfs + parallel=32 (SLOWER - too much parallelism on tmpfs causes OOM/swapping)","timestamp":1774472050915,"segment":0,"confidence":null}
