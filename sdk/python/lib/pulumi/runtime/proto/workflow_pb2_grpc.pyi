@@ -114,11 +114,11 @@ class WorkflowEvaluatorStub:
     ]
     """RunStep executes a single step and returns a PropertyValue-compatible result."""
 
-    ResolveStepResult: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.ResolveStepResultRequest,
-        pulumi.workflow_pb2.ResolveStepResultResponse,
+    ResolveJobResult: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.ResolveJobResultRequest,
+        pulumi.workflow_pb2.ResolveJobResultResponse,
     ]
-    """ResolveStepResult pushes a completed step result and resolved output value to the evaluator."""
+    """ResolveJobResult evaluates and returns the resolved result of a job's Output[T]."""
 
     RunTriggerMock: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunTriggerMockRequest,
@@ -219,11 +219,11 @@ class WorkflowEvaluatorAsyncStub:
     ]
     """RunStep executes a single step and returns a PropertyValue-compatible result."""
 
-    ResolveStepResult: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.ResolveStepResultRequest,
-        pulumi.workflow_pb2.ResolveStepResultResponse,
+    ResolveJobResult: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.ResolveJobResultRequest,
+        pulumi.workflow_pb2.ResolveJobResultResponse,
     ]
-    """ResolveStepResult pushes a completed step result and resolved output value to the evaluator."""
+    """ResolveJobResult evaluates and returns the resolved result of a job's Output[T]."""
 
     RunTriggerMock: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunTriggerMockRequest,
@@ -349,12 +349,12 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         """RunStep executes a single step and returns a PropertyValue-compatible result."""
 
     
-    def ResolveStepResult(
+    def ResolveJobResult(
         self,
-        request: pulumi.workflow_pb2.ResolveStepResultRequest,
+        request: pulumi.workflow_pb2.ResolveJobResultRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.workflow_pb2.ResolveStepResultResponse, collections.abc.Awaitable[pulumi.workflow_pb2.ResolveStepResultResponse]]:
-        """ResolveStepResult pushes a completed step result and resolved output value to the evaluator."""
+    ) -> typing.Union[pulumi.workflow_pb2.ResolveJobResultResponse, collections.abc.Awaitable[pulumi.workflow_pb2.ResolveJobResultResponse]]:
+        """ResolveJobResult evaluates and returns the resolved result of a job's Output[T]."""
 
     
     def RunTriggerMock(

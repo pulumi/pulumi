@@ -232,8 +232,8 @@ func (p *workflowPlugin) RunOnError(
 	return p.clientRaw.RunOnError(ctx, req)
 }
 
-func (p *workflowPlugin) ResolveStepResult(
-	ctx context.Context, req *pulumirpc.ResolveStepResultRequest,
-) (*pulumirpc.ResolveStepResultResponse, error) {
-	return p.clientRaw.ResolveStepResult(ctx, req)
+func (p *workflowPlugin) ResolveJobResult(
+	ctx context.Context, req *pulumirpc.ResolveJobResultRequest,
+) (*pulumirpc.ResolveJobResultResponse, error) {
+	return p.clientRaw.ResolveJobResult(ctx, req)
 }

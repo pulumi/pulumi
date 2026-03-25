@@ -340,7 +340,7 @@ type MockWorkflow struct {
 	RunFilterF         func(context.Context, *pulumirpc.RunFilterRequest) (*pulumirpc.RunFilterResponse, error)
 	RunStepF           func(context.Context, *pulumirpc.RunStepRequest) (*pulumirpc.RunStepResponse, error)
 	RunOnErrorF        func(context.Context, *pulumirpc.RunOnErrorRequest) (*pulumirpc.RunOnErrorResponse, error)
-	ResolveStepResultF func(context.Context, *pulumirpc.ResolveStepResultRequest) (*pulumirpc.ResolveStepResultResponse, error)
+	ResolveJobResultF  func(context.Context, *pulumirpc.ResolveJobResultRequest) (*pulumirpc.ResolveJobResultResponse, error)
 }
 
 var _ Workflow = (*MockWorkflow)(nil)
@@ -478,13 +478,13 @@ func (m *MockWorkflow) RunOnError(
 	return nil, errors.New("RunOnError not implemented")
 }
 
-func (m *MockWorkflow) ResolveStepResult(
-	ctx context.Context, req *pulumirpc.ResolveStepResultRequest,
-) (*pulumirpc.ResolveStepResultResponse, error) {
-	if m.ResolveStepResultF != nil {
-		return m.ResolveStepResultF(ctx, req)
+func (m *MockWorkflow) ResolveJobResult(
+	ctx context.Context, req *pulumirpc.ResolveJobResultRequest,
+) (*pulumirpc.ResolveJobResultResponse, error) {
+	if m.ResolveJobResultF != nil {
+		return m.ResolveJobResultF(ctx, req)
 	}
-	return nil, errors.New("ResolveStepResult not implemented")
+	return nil, errors.New("ResolveJobResult not implemented")
 }
 
 func (m *MockProvider) SignalCancellation(ctx context.Context) error {

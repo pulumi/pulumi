@@ -33,22 +33,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WorkflowEvaluator_Handshake_FullMethodName         = "/pulumirpc.WorkflowEvaluator/Handshake"
-	WorkflowEvaluator_GetPackageInfo_FullMethodName    = "/pulumirpc.WorkflowEvaluator/GetPackageInfo"
-	WorkflowEvaluator_GetGraphs_FullMethodName         = "/pulumirpc.WorkflowEvaluator/GetGraphs"
-	WorkflowEvaluator_GetGraph_FullMethodName          = "/pulumirpc.WorkflowEvaluator/GetGraph"
-	WorkflowEvaluator_GetTriggers_FullMethodName       = "/pulumirpc.WorkflowEvaluator/GetTriggers"
-	WorkflowEvaluator_GetTrigger_FullMethodName        = "/pulumirpc.WorkflowEvaluator/GetTrigger"
-	WorkflowEvaluator_GetJobs_FullMethodName           = "/pulumirpc.WorkflowEvaluator/GetJobs"
-	WorkflowEvaluator_GetJob_FullMethodName            = "/pulumirpc.WorkflowEvaluator/GetJob"
-	WorkflowEvaluator_GenerateJob_FullMethodName       = "/pulumirpc.WorkflowEvaluator/GenerateJob"
-	WorkflowEvaluator_GenerateGraph_FullMethodName     = "/pulumirpc.WorkflowEvaluator/GenerateGraph"
-	WorkflowEvaluator_RunSensor_FullMethodName         = "/pulumirpc.WorkflowEvaluator/RunSensor"
-	WorkflowEvaluator_RunStep_FullMethodName           = "/pulumirpc.WorkflowEvaluator/RunStep"
-	WorkflowEvaluator_ResolveStepResult_FullMethodName = "/pulumirpc.WorkflowEvaluator/ResolveStepResult"
-	WorkflowEvaluator_RunTriggerMock_FullMethodName    = "/pulumirpc.WorkflowEvaluator/RunTriggerMock"
-	WorkflowEvaluator_RunFilter_FullMethodName         = "/pulumirpc.WorkflowEvaluator/RunFilter"
-	WorkflowEvaluator_RunOnError_FullMethodName        = "/pulumirpc.WorkflowEvaluator/RunOnError"
+	WorkflowEvaluator_Handshake_FullMethodName        = "/pulumirpc.WorkflowEvaluator/Handshake"
+	WorkflowEvaluator_GetPackageInfo_FullMethodName   = "/pulumirpc.WorkflowEvaluator/GetPackageInfo"
+	WorkflowEvaluator_GetGraphs_FullMethodName        = "/pulumirpc.WorkflowEvaluator/GetGraphs"
+	WorkflowEvaluator_GetGraph_FullMethodName         = "/pulumirpc.WorkflowEvaluator/GetGraph"
+	WorkflowEvaluator_GetTriggers_FullMethodName      = "/pulumirpc.WorkflowEvaluator/GetTriggers"
+	WorkflowEvaluator_GetTrigger_FullMethodName       = "/pulumirpc.WorkflowEvaluator/GetTrigger"
+	WorkflowEvaluator_GetJobs_FullMethodName          = "/pulumirpc.WorkflowEvaluator/GetJobs"
+	WorkflowEvaluator_GetJob_FullMethodName           = "/pulumirpc.WorkflowEvaluator/GetJob"
+	WorkflowEvaluator_GenerateJob_FullMethodName      = "/pulumirpc.WorkflowEvaluator/GenerateJob"
+	WorkflowEvaluator_GenerateGraph_FullMethodName    = "/pulumirpc.WorkflowEvaluator/GenerateGraph"
+	WorkflowEvaluator_RunSensor_FullMethodName        = "/pulumirpc.WorkflowEvaluator/RunSensor"
+	WorkflowEvaluator_RunStep_FullMethodName          = "/pulumirpc.WorkflowEvaluator/RunStep"
+	WorkflowEvaluator_ResolveJobResult_FullMethodName = "/pulumirpc.WorkflowEvaluator/ResolveJobResult"
+	WorkflowEvaluator_RunTriggerMock_FullMethodName   = "/pulumirpc.WorkflowEvaluator/RunTriggerMock"
+	WorkflowEvaluator_RunFilter_FullMethodName        = "/pulumirpc.WorkflowEvaluator/RunFilter"
+	WorkflowEvaluator_RunOnError_FullMethodName       = "/pulumirpc.WorkflowEvaluator/RunOnError"
 )
 
 // WorkflowEvaluatorClient is the client API for WorkflowEvaluator service.
@@ -85,8 +85,8 @@ type WorkflowEvaluatorClient interface {
 	RunSensor(ctx context.Context, in *RunSensorRequest, opts ...grpc.CallOption) (*RunSensorResponse, error)
 	// RunStep executes a single step and returns a PropertyValue-compatible result.
 	RunStep(ctx context.Context, in *RunStepRequest, opts ...grpc.CallOption) (*RunStepResponse, error)
-	// ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
-	ResolveStepResult(ctx context.Context, in *ResolveStepResultRequest, opts ...grpc.CallOption) (*ResolveStepResultResponse, error)
+	// ResolveJobResult evaluates and returns the resolved result of a job's Output[T].
+	ResolveJobResult(ctx context.Context, in *ResolveJobResultRequest, opts ...grpc.CallOption) (*ResolveJobResultResponse, error)
 	// RunTriggerMock executes a trigger mock function and returns a mock output value.
 	RunTriggerMock(ctx context.Context, in *RunTriggerMockRequest, opts ...grpc.CallOption) (*RunTriggerMockResponse, error)
 	// RunFilter executes a trigger filter and returns pass/fail.
@@ -223,10 +223,10 @@ func (c *workflowEvaluatorClient) RunStep(ctx context.Context, in *RunStepReques
 	return out, nil
 }
 
-func (c *workflowEvaluatorClient) ResolveStepResult(ctx context.Context, in *ResolveStepResultRequest, opts ...grpc.CallOption) (*ResolveStepResultResponse, error) {
+func (c *workflowEvaluatorClient) ResolveJobResult(ctx context.Context, in *ResolveJobResultRequest, opts ...grpc.CallOption) (*ResolveJobResultResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ResolveStepResultResponse)
-	err := c.cc.Invoke(ctx, WorkflowEvaluator_ResolveStepResult_FullMethodName, in, out, cOpts...)
+	out := new(ResolveJobResultResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_ResolveJobResult_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -297,8 +297,8 @@ type WorkflowEvaluatorServer interface {
 	RunSensor(context.Context, *RunSensorRequest) (*RunSensorResponse, error)
 	// RunStep executes a single step and returns a PropertyValue-compatible result.
 	RunStep(context.Context, *RunStepRequest) (*RunStepResponse, error)
-	// ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
-	ResolveStepResult(context.Context, *ResolveStepResultRequest) (*ResolveStepResultResponse, error)
+	// ResolveJobResult evaluates and returns the resolved result of a job's Output[T].
+	ResolveJobResult(context.Context, *ResolveJobResultRequest) (*ResolveJobResultResponse, error)
 	// RunTriggerMock executes a trigger mock function and returns a mock output value.
 	RunTriggerMock(context.Context, *RunTriggerMockRequest) (*RunTriggerMockResponse, error)
 	// RunFilter executes a trigger filter and returns pass/fail.
@@ -351,8 +351,8 @@ func (UnimplementedWorkflowEvaluatorServer) RunSensor(context.Context, *RunSenso
 func (UnimplementedWorkflowEvaluatorServer) RunStep(context.Context, *RunStepRequest) (*RunStepResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunStep not implemented")
 }
-func (UnimplementedWorkflowEvaluatorServer) ResolveStepResult(context.Context, *ResolveStepResultRequest) (*ResolveStepResultResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ResolveStepResult not implemented")
+func (UnimplementedWorkflowEvaluatorServer) ResolveJobResult(context.Context, *ResolveJobResultRequest) (*ResolveJobResultResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResolveJobResult not implemented")
 }
 func (UnimplementedWorkflowEvaluatorServer) RunTriggerMock(context.Context, *RunTriggerMockRequest) (*RunTriggerMockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunTriggerMock not implemented")
@@ -600,20 +600,20 @@ func _WorkflowEvaluator_RunStep_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkflowEvaluator_ResolveStepResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResolveStepResultRequest)
+func _WorkflowEvaluator_ResolveJobResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveJobResultRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkflowEvaluatorServer).ResolveStepResult(ctx, in)
+		return srv.(WorkflowEvaluatorServer).ResolveJobResult(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: WorkflowEvaluator_ResolveStepResult_FullMethodName,
+		FullMethod: WorkflowEvaluator_ResolveJobResult_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowEvaluatorServer).ResolveStepResult(ctx, req.(*ResolveStepResultRequest))
+		return srv.(WorkflowEvaluatorServer).ResolveJobResult(ctx, req.(*ResolveJobResultRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -728,8 +728,8 @@ var WorkflowEvaluator_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorkflowEvaluator_RunStep_Handler,
 		},
 		{
-			MethodName: "ResolveStepResult",
-			Handler:    _WorkflowEvaluator_ResolveStepResult_Handler,
+			MethodName: "ResolveJobResult",
+			Handler:    _WorkflowEvaluator_ResolveJobResult_Handler,
 		},
 		{
 			MethodName: "RunTriggerMock",

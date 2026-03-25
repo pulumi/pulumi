@@ -400,12 +400,6 @@ func (e *WorkflowEvaluator) RunStep(
 	}, nil
 }
 
-func (e *WorkflowEvaluator) ResolveStepResult(
-	context.Context, *pulumirpc.ResolveStepResultRequest,
-) (*pulumirpc.ResolveStepResultResponse, error) {
-	return &pulumirpc.ResolveStepResultResponse{}, nil
-}
-
 func (e *WorkflowEvaluator) RunTriggerMock(
 	_ context.Context, req *pulumirpc.RunTriggerMockRequest,
 ) (*pulumirpc.RunTriggerMockResponse, error) {
@@ -442,6 +436,14 @@ func (e *WorkflowEvaluator) RunOnError(
 	context.Context, *pulumirpc.RunOnErrorRequest,
 ) (*pulumirpc.RunOnErrorResponse, error) {
 	return &pulumirpc.RunOnErrorResponse{Retry: false}, nil
+}
+
+func (e *WorkflowEvaluator) ResolveJobResult(
+	context.Context, *pulumirpc.ResolveJobResultRequest,
+) (*pulumirpc.ResolveJobResultResponse, error) {
+	return &pulumirpc.ResolveJobResultResponse{
+		Result: structpb.NewNullValue(),
+	}, nil
 }
 
 func graphMonitor(address string) (pulumirpc.GraphMonitorClient, *grpc.ClientConn, error) {

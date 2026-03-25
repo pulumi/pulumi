@@ -76,10 +76,10 @@ class WorkflowEvaluatorStub(object):
                 request_serializer=pulumi_dot_workflow__pb2.RunStepRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.RunStepResponse.FromString,
                 )
-        self.ResolveStepResult = channel.unary_unary(
-                '/pulumirpc.WorkflowEvaluator/ResolveStepResult',
-                request_serializer=pulumi_dot_workflow__pb2.ResolveStepResultRequest.SerializeToString,
-                response_deserializer=pulumi_dot_workflow__pb2.ResolveStepResultResponse.FromString,
+        self.ResolveJobResult = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/ResolveJobResult',
+                request_serializer=pulumi_dot_workflow__pb2.ResolveJobResultRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.ResolveJobResultResponse.FromString,
                 )
         self.RunTriggerMock = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/RunTriggerMock',
@@ -190,8 +190,8 @@ class WorkflowEvaluatorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def ResolveStepResult(self, request, context):
-        """ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
+    def ResolveJobResult(self, request, context):
+        """ResolveJobResult evaluates and returns the resolved result of a job's Output[T].
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -281,10 +281,10 @@ def add_WorkflowEvaluatorServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_workflow__pb2.RunStepRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.RunStepResponse.SerializeToString,
             ),
-            'ResolveStepResult': grpc.unary_unary_rpc_method_handler(
-                    servicer.ResolveStepResult,
-                    request_deserializer=pulumi_dot_workflow__pb2.ResolveStepResultRequest.FromString,
-                    response_serializer=pulumi_dot_workflow__pb2.ResolveStepResultResponse.SerializeToString,
+            'ResolveJobResult': grpc.unary_unary_rpc_method_handler(
+                    servicer.ResolveJobResult,
+                    request_deserializer=pulumi_dot_workflow__pb2.ResolveJobResultRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.ResolveJobResultResponse.SerializeToString,
             ),
             'RunTriggerMock': grpc.unary_unary_rpc_method_handler(
                     servicer.RunTriggerMock,
@@ -518,7 +518,7 @@ class WorkflowEvaluator(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def ResolveStepResult(request,
+    def ResolveJobResult(request,
             target,
             options=(),
             channel_credentials=None,
@@ -528,9 +528,9 @@ class WorkflowEvaluator(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/ResolveStepResult',
-            pulumi_dot_workflow__pb2.ResolveStepResultRequest.SerializeToString,
-            pulumi_dot_workflow__pb2.ResolveStepResultResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/ResolveJobResult',
+            pulumi_dot_workflow__pb2.ResolveJobResultRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.ResolveJobResultResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

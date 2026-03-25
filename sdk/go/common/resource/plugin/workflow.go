@@ -37,5 +37,5 @@ type Workflow interface {
 	RunFilter(context.Context, *pulumirpc.RunFilterRequest) (*pulumirpc.RunFilterResponse, error)
 	RunStep(context.Context, *pulumirpc.RunStepRequest) (*pulumirpc.RunStepResponse, error)
 	RunOnError(context.Context, *pulumirpc.RunOnErrorRequest) (*pulumirpc.RunOnErrorResponse, error)
-	ResolveStepResult(context.Context, *pulumirpc.ResolveStepResultRequest) (*pulumirpc.ResolveStepResultResponse, error)
+	ResolveJobResult(context.Context, *pulumirpc.ResolveJobResultRequest) (*pulumirpc.ResolveJobResultResponse, error)
 }

@@ -21,7 +21,7 @@ interface IWorkflowEvaluatorService extends grpc.ServiceDefinition<grpc.UntypedS
     generateGraph: IWorkflowEvaluatorService_IGenerateGraph;
     runSensor: IWorkflowEvaluatorService_IRunSensor;
     runStep: IWorkflowEvaluatorService_IRunStep;
-    resolveStepResult: IWorkflowEvaluatorService_IResolveStepResult;
+    resolveJobResult: IWorkflowEvaluatorService_IResolveJobResult;
     runTriggerMock: IWorkflowEvaluatorService_IRunTriggerMock;
     runFilter: IWorkflowEvaluatorService_IRunFilter;
     runOnError: IWorkflowEvaluatorService_IRunOnError;
@@ -135,14 +135,14 @@ interface IWorkflowEvaluatorService_IRunStep extends grpc.MethodDefinition<pulum
     responseSerialize: grpc.serialize<pulumi_workflow_pb.RunStepResponse>;
     responseDeserialize: grpc.deserialize<pulumi_workflow_pb.RunStepResponse>;
 }
-interface IWorkflowEvaluatorService_IResolveStepResult extends grpc.MethodDefinition<pulumi_workflow_pb.ResolveStepResultRequest, pulumi_workflow_pb.ResolveStepResultResponse> {
-    path: "/pulumirpc.WorkflowEvaluator/ResolveStepResult";
+interface IWorkflowEvaluatorService_IResolveJobResult extends grpc.MethodDefinition<pulumi_workflow_pb.ResolveJobResultRequest, pulumi_workflow_pb.ResolveJobResultResponse> {
+    path: "/pulumirpc.WorkflowEvaluator/ResolveJobResult";
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<pulumi_workflow_pb.ResolveStepResultRequest>;
-    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.ResolveStepResultRequest>;
-    responseSerialize: grpc.serialize<pulumi_workflow_pb.ResolveStepResultResponse>;
-    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.ResolveStepResultResponse>;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.ResolveJobResultRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.ResolveJobResultRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.ResolveJobResultResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.ResolveJobResultResponse>;
 }
 interface IWorkflowEvaluatorService_IRunTriggerMock extends grpc.MethodDefinition<pulumi_workflow_pb.RunTriggerMockRequest, pulumi_workflow_pb.RunTriggerMockResponse> {
     path: "/pulumirpc.WorkflowEvaluator/RunTriggerMock";
@@ -187,7 +187,7 @@ export interface IWorkflowEvaluatorServer extends grpc.UntypedServiceImplementat
     generateGraph: grpc.handleUnaryCall<pulumi_workflow_pb.GenerateGraphRequest, pulumi_workflow_pb.GenerateNodeResponse>;
     runSensor: grpc.handleUnaryCall<pulumi_workflow_pb.RunSensorRequest, pulumi_workflow_pb.RunSensorResponse>;
     runStep: grpc.handleUnaryCall<pulumi_workflow_pb.RunStepRequest, pulumi_workflow_pb.RunStepResponse>;
-    resolveStepResult: grpc.handleUnaryCall<pulumi_workflow_pb.ResolveStepResultRequest, pulumi_workflow_pb.ResolveStepResultResponse>;
+    resolveJobResult: grpc.handleUnaryCall<pulumi_workflow_pb.ResolveJobResultRequest, pulumi_workflow_pb.ResolveJobResultResponse>;
     runTriggerMock: grpc.handleUnaryCall<pulumi_workflow_pb.RunTriggerMockRequest, pulumi_workflow_pb.RunTriggerMockResponse>;
     runFilter: grpc.handleUnaryCall<pulumi_workflow_pb.RunFilterRequest, pulumi_workflow_pb.RunFilterResponse>;
     runOnError: grpc.handleUnaryCall<pulumi_workflow_pb.RunOnErrorRequest, pulumi_workflow_pb.RunOnErrorResponse>;
@@ -230,9 +230,9 @@ export interface IWorkflowEvaluatorClient {
     runStep(request: pulumi_workflow_pb.RunStepRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
     runStep(request: pulumi_workflow_pb.RunStepRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
     runStep(request: pulumi_workflow_pb.RunStepRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
-    resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
-    resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
-    resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
+    resolveJobResult(request: pulumi_workflow_pb.ResolveJobResultRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveJobResultResponse) => void): grpc.ClientUnaryCall;
+    resolveJobResult(request: pulumi_workflow_pb.ResolveJobResultRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveJobResultResponse) => void): grpc.ClientUnaryCall;
+    resolveJobResult(request: pulumi_workflow_pb.ResolveJobResultRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveJobResultResponse) => void): grpc.ClientUnaryCall;
     runTriggerMock(request: pulumi_workflow_pb.RunTriggerMockRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunTriggerMockResponse) => void): grpc.ClientUnaryCall;
     runTriggerMock(request: pulumi_workflow_pb.RunTriggerMockRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunTriggerMockResponse) => void): grpc.ClientUnaryCall;
     runTriggerMock(request: pulumi_workflow_pb.RunTriggerMockRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunTriggerMockResponse) => void): grpc.ClientUnaryCall;
@@ -282,9 +282,9 @@ export class WorkflowEvaluatorClient extends grpc.Client implements IWorkflowEva
     public runStep(request: pulumi_workflow_pb.RunStepRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
     public runStep(request: pulumi_workflow_pb.RunStepRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
     public runStep(request: pulumi_workflow_pb.RunStepRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunStepResponse) => void): grpc.ClientUnaryCall;
-    public resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
-    public resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
-    public resolveStepResult(request: pulumi_workflow_pb.ResolveStepResultRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveStepResultResponse) => void): grpc.ClientUnaryCall;
+    public resolveJobResult(request: pulumi_workflow_pb.ResolveJobResultRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveJobResultResponse) => void): grpc.ClientUnaryCall;
+    public resolveJobResult(request: pulumi_workflow_pb.ResolveJobResultRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveJobResultResponse) => void): grpc.ClientUnaryCall;
+    public resolveJobResult(request: pulumi_workflow_pb.ResolveJobResultRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.ResolveJobResultResponse) => void): grpc.ClientUnaryCall;
     public runTriggerMock(request: pulumi_workflow_pb.RunTriggerMockRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunTriggerMockResponse) => void): grpc.ClientUnaryCall;
     public runTriggerMock(request: pulumi_workflow_pb.RunTriggerMockRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunTriggerMockResponse) => void): grpc.ClientUnaryCall;
     public runTriggerMock(request: pulumi_workflow_pb.RunTriggerMockRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.RunTriggerMockResponse) => void): grpc.ClientUnaryCall;

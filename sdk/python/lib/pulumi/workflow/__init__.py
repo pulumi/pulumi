@@ -177,7 +177,7 @@ class Context:
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
         filter: Optional[Input[bool]] = None,
-    ) -> Union[None, JobCallback, Callable[[JobCallback], JobCallback]]:
+    ) -> Union[Output[Any], Callable[[JobCallback], JobCallback]]:
         """Registers a job in the current graph."""
         inputs: List[Any] = list(inputs_or_fn)
         options: Optional[JobOptions] = None
@@ -216,15 +216,21 @@ class Context:
             else:
                 registered_name = _default_job_name_for_token(name)
 
-        def register(registered_fn: JobCallback) -> JobCallback:
+        def register(registered_fn: JobCallback) -> Output[Any]:
             if not registered_name:
                 raise WorkflowError("job name is required")
+            job_path = f"{self._state.graph_path}/jobs/{registered_name}"
+            job_output = _new_workflow_output(
+                job_path,
+                _workflow_input_value(
+                    self._state.input_path, self._state.input_value, job_path
+                ),
+            )
             if (
                 self._state.target_job_name is not None
                 and registered_name != self._state.target_job_name
             ):
-                return registered_fn
-            job_path = f"{self._state.graph_path}/jobs/{registered_name}"
+                return job_output
 
             request = workflow_pb2.RegisterJobRequest()
             request.context.CopyFrom(self._state.context)
@@ -255,15 +261,19 @@ class Context:
                 external_token=external_token,
                 enabled=True,
             )
-            return registered_fn
+            return job_output
 
         if is_external_job:
-            register(lambda *_args: None)
-            return None
+            return register(lambda *_args: None)
 
         if fn is not None:
             return register(fn)
-        return register
+
+        def decorator(registered_fn: JobCallback) -> JobCallback:
+            register(registered_fn)
+            return registered_fn
+
+        return decorator
 
 
 class JobContext:
@@ -929,7 +939,7 @@ def _evaluate_job(
     context: workflow_pb2.WorkflowContext,
     graph_monitor_address: str,
     default_workflow_version: str = "",
-) -> Tuple[Dict[str, _StepDefinition], Dict[str, FilterCallback]]:
+) -> Tuple[Dict[str, _StepDefinition], Dict[str, FilterCallback], Output[Any]]:
     if not graph_monitor_address:
         raise WorkflowError("graph monitor address is required")
 
@@ -946,7 +956,7 @@ def _evaluate_job(
         filters: Dict[str, FilterCallback] = {}
         if job.fn is None:
             raise WorkflowError(f"job {job_path} has no evaluator callback")
-        job.fn(
+        job_output = job.fn(
             JobContext(
                 _JobEvalState(
                     monitor=monitor,
@@ -959,7 +969,13 @@ def _evaluate_job(
             ),
             *job.inputs,
         )
-        return steps, filters
+        if isinstance(job_output, Output):
+            resolved_job_output = cast(Output[Any], job_output)
+        elif job_output is None:
+            resolved_job_output = Output.from_input(None)
+        else:
+            resolved_job_output = Output.from_input(job_output)
+        return steps, filters, resolved_job_output
 
 
 class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
@@ -978,6 +994,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         self._jobs_by_path: Dict[str, _JobDefinition] = {}
         self._steps_by_path: Dict[str, _StepDefinition] = {}
         self._filters_by_path: Dict[str, FilterCallback] = {}
+        self._job_outputs_by_path: Dict[str, Output[Any]] = {}
 
     def _materialize_graph_job(
         self,
@@ -1261,7 +1278,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job path {request.path}")
 
             materialized_job = self._materialize_graph_job(request.path, job)
-            steps, step_filters = _evaluate_job(
+            steps, step_filters, job_output = _evaluate_job(
                 request.path,
                 materialized_job,
                 self._workflow_registry,
@@ -1271,6 +1288,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             )
             self._steps_by_path.update(self._materialize_job_steps(request.path, steps))
             self._filters_by_path.update(step_filters)
+            self._job_outputs_by_path[request.path] = job_output
             return workflow_pb2.GenerateNodeResponse()
 
         if not request.name:
@@ -1303,7 +1321,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             on_error=exported.on_error,
             inputs=[],
         )
-        steps, step_filters = _evaluate_job(
+        steps, step_filters, job_output = _evaluate_job(
             resolved_token,
             synthetic_job,
             self._workflow_registry,
@@ -1313,6 +1331,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         )
         self._steps_by_path.update(self._materialize_job_steps(request.name, steps))
         self._filters_by_path.update(step_filters)
+        self._job_outputs_by_path[resolved_token] = job_output
         return workflow_pb2.GenerateNodeResponse()
 
     def RunFilter(
@@ -1386,6 +1405,29 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             return response
 
         response.retry = bool(decision)
+        return response
+
+    def ResolveJobResult(
+        self,
+        request: workflow_pb2.ResolveJobResultRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.ResolveJobResultResponse:
+        _ = context
+
+        job_output = self._job_outputs_by_path.get(request.path)
+        if job_output is None:
+            context.abort(
+                grpc.StatusCode.NOT_FOUND, f"unknown job path {request.path}"
+            )
+
+        response = workflow_pb2.ResolveJobResultResponse()
+        try:
+            _ensure_event_loop()
+            value = _sync_await(job_output.future(with_unknowns=True))
+            response.result.CopyFrom(_to_proto_value(value))
+        except Exception as error:  # pylint: disable=broad-except
+            response.error.reason = str(error)
+            response.error.category = "resolve_job_result_failed"
         return response
 
 

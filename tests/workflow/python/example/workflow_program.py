@@ -62,6 +62,30 @@ def main_graph(ctx: workflow.Context) -> None:
             print("running main step", flush=True)
             return "".join(random.choices(string.ascii_lowercase + string.digits, k=12))
 
+    def producer_job(job: workflow.JobContext) -> Output[dict[str, Any]]:
+        @job.step("produce")
+        def produce_step() -> dict[str, Any]:
+            cwd = os.getcwd()
+            path = os.path.join(cwd, "producer-output.txt")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("separate-process-value")
+            return {"value": "separate-process-value"}
+
+        return produce_step
+
+    producer_output = ctx.job("producer", producer_job)
+
+    @ctx.job("consumer", producer_output, dependencies=["producer"])
+    def consumer_job(job: workflow.JobContext, producer: Any) -> None:
+        @job.step("consume")
+        def consume_step() -> str:
+            cwd = os.getcwd()
+            with open(os.path.join(cwd, "producer-output.txt"), "r", encoding="utf-8") as f:
+                file_value = f.read().strip()
+            if isinstance(producer, dict):
+                return f"{producer.get('value')}|{file_value}"
+            return str(producer)
+
     @ctx.job("from-trigger", trigger_output)
     def from_trigger_job(job: workflow.JobContext, cron: Any) -> None:
         @job.step("consume")

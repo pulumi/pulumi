@@ -273,26 +273,26 @@ function deserialize_pulumirpc_RegisterTriggerRequest(buffer_arg) {
   return pulumi_workflow_pb.RegisterTriggerRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_ResolveStepResultRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.ResolveStepResultRequest)) {
-    throw new Error('Expected argument of type pulumirpc.ResolveStepResultRequest');
+function serialize_pulumirpc_ResolveJobResultRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.ResolveJobResultRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ResolveJobResultRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_pulumirpc_ResolveStepResultRequest(buffer_arg) {
-  return pulumi_workflow_pb.ResolveStepResultRequest.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_pulumirpc_ResolveJobResultRequest(buffer_arg) {
+  return pulumi_workflow_pb.ResolveJobResultRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_ResolveStepResultResponse(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.ResolveStepResultResponse)) {
-    throw new Error('Expected argument of type pulumirpc.ResolveStepResultResponse');
+function serialize_pulumirpc_ResolveJobResultResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.ResolveJobResultResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ResolveJobResultResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_pulumirpc_ResolveStepResultResponse(buffer_arg) {
-  return pulumi_workflow_pb.ResolveStepResultResponse.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_pulumirpc_ResolveJobResultResponse(buffer_arg) {
+  return pulumi_workflow_pb.ResolveJobResultResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_RunFilterRequest(arg) {
@@ -578,17 +578,17 @@ runStep: {
     responseSerialize: serialize_pulumirpc_RunStepResponse,
     responseDeserialize: deserialize_pulumirpc_RunStepResponse,
   },
-  // ResolveStepResult pushes a completed step result and resolved output value to the evaluator.
-resolveStepResult: {
-    path: '/pulumirpc.WorkflowEvaluator/ResolveStepResult',
+  // ResolveJobResult evaluates and returns the resolved result of a job's Output[T].
+resolveJobResult: {
+    path: '/pulumirpc.WorkflowEvaluator/ResolveJobResult',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_workflow_pb.ResolveStepResultRequest,
-    responseType: pulumi_workflow_pb.ResolveStepResultResponse,
-    requestSerialize: serialize_pulumirpc_ResolveStepResultRequest,
-    requestDeserialize: deserialize_pulumirpc_ResolveStepResultRequest,
-    responseSerialize: serialize_pulumirpc_ResolveStepResultResponse,
-    responseDeserialize: deserialize_pulumirpc_ResolveStepResultResponse,
+    requestType: pulumi_workflow_pb.ResolveJobResultRequest,
+    responseType: pulumi_workflow_pb.ResolveJobResultResponse,
+    requestSerialize: serialize_pulumirpc_ResolveJobResultRequest,
+    requestDeserialize: deserialize_pulumirpc_ResolveJobResultRequest,
+    responseSerialize: serialize_pulumirpc_ResolveJobResultResponse,
+    responseDeserialize: deserialize_pulumirpc_ResolveJobResultResponse,
   },
   // RunTriggerMock executes a trigger mock function and returns a mock output value.
 runTriggerMock: {
