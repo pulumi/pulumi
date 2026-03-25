@@ -1,0 +1,7 @@
+kind: fix
+body: Fix detailed diff indentation so changed resources are not visually nested under
+  unrelated visible resources when unchanged parents are hidden.
+custom:
+  Scope: display
+  PR: ''
+time: '2026-03-22T00:00:00Z'
