@@ -19,26 +19,36 @@ step "package" {
 }
 
 job "bootstrap" {
-  step_ref "prepare" {}
+  step "prepare" {
+    uses = "prepare"
+  }
 }
 
 job "main" {
-  step_ref "prepare" {}
-  step_ref "compile" {
+  step "prepare" {
+    uses = "prepare"
+  }
+  step "compile" {
+    uses = "compile"
     depends_on = ["prepare"]
   }
-  step_ref "test" {
+  step "test" {
+    uses = "example:test"
     depends_on = ["compile"]
   }
-  step_ref "package" {
+  step "package" {
+    uses = "package"
     depends_on = ["compile", "test"]
   }
 }
 
 workflow "main" {
   trigger_ref "cron" {}
-  job_ref "bootstrap" {}
-  job_ref "main" {
+  job "bootstrap" {
+    uses = "bootstrap"
+  }
+  job "main" {
+    uses = "example:main"
     depends_on = ["bootstrap"]
   }
 }

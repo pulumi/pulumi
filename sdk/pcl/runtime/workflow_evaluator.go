@@ -40,9 +40,9 @@ type workflowFile struct {
 }
 
 type workflowGraph struct {
-	Name        string                `hcl:"name,label"`
-	TriggerRefs []workflowTriggerRef  `hcl:"trigger_ref,block"`
-	JobRefs     []workflowGraphJobRef `hcl:"job_ref,block"`
+	Name        string               `hcl:"name,label"`
+	TriggerRefs []workflowTriggerRef `hcl:"trigger_ref,block"`
+	Jobs        []workflowGraphJob   `hcl:"job,block"`
 }
 
 type workflowTriggerDef struct {
@@ -62,17 +62,19 @@ type workflowStepDef struct {
 }
 
 type workflowJobDef struct {
-	Name     string               `hcl:"name,label"`
-	StepRefs []workflowJobStepRef `hcl:"step_ref,block"`
+	Name  string            `hcl:"name,label"`
+	Steps []workflowJobStep `hcl:"step,block"`
 }
 
-type workflowJobStepRef struct {
+type workflowJobStep struct {
 	Name      string   `hcl:"name,label"`
+	Uses      string   `hcl:"uses,optional"`
 	DependsOn []string `hcl:"depends_on,optional"`
 }
 
-type workflowGraphJobRef struct {
+type workflowGraphJob struct {
 	Name      string   `hcl:"name,label"`
+	Uses      string   `hcl:"uses,optional"`
 	DependsOn []string `hcl:"depends_on,optional"`
 }
 
@@ -306,10 +308,10 @@ func (e *WorkflowEvaluator) GenerateJob(
 		})
 	}
 
-	var selected *workflowGraphJobRef
-	for _, jobRef := range graph.JobRefs {
-		if jobRef.Name == jobName {
-			j := jobRef
+	var selected *workflowGraphJob
+	for _, graphJob := range graph.Jobs {
+		if graphJob.Name == jobName {
+			j := graphJob
 			selected = &j
 			break
 		}
@@ -317,9 +319,9 @@ func (e *WorkflowEvaluator) GenerateJob(
 	if selected == nil {
 		return nil, status.Errorf(codes.NotFound, "unknown job %q", req.GetPath())
 	}
-	jobDef, ok := e.jobsByName[selected.Name]
+	jobDef, ok := e.jobDefinitionForUse(selected.Uses)
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "unknown job definition %q", selected.Name)
+		return nil, status.Errorf(codes.NotFound, "unknown job definition %q", selected.Uses)
 	}
 
 	jobPath := graphName + "/jobs/" + jobName
@@ -339,24 +341,24 @@ func (e *WorkflowEvaluator) GenerateJob(
 		return nil, err
 	}
 
-	for _, stepRef := range jobDef.StepRefs {
-		stepDef, ok := e.stepsByName[stepRef.Name]
+	for _, step := range jobDef.Steps {
+		stepDef, ok := e.stepDefinitionForUse(step.Uses)
 		if !ok {
-			return nil, status.Errorf(codes.NotFound, "unknown step definition %q", stepRef.Name)
+			return nil, status.Errorf(codes.NotFound, "unknown step definition %q", step.Uses)
 		}
-		stepPath := jobPath + "/steps/" + stepRef.Name
+		stepPath := jobPath + "/steps/" + step.Name
 		stepDependencies := &pulumirpc.DependencyExpression{
 			Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
 		}
-		for _, dep := range stepRef.DependsOn {
+		for _, dep := range step.DependsOn {
 			stepDependencies.Terms = append(stepDependencies.Terms, &pulumirpc.DependencyTerm{
 				Term: &pulumirpc.DependencyTerm_Path{Path: jobPath + "/steps/" + dep},
 			})
 		}
 		if _, err := monitor.RegisterStep(ctx, &pulumirpc.RegisterStepRequest{
 			Context:      req.GetContext(),
-			Path:         stepPath,
-			JobPath:      jobPath,
+			Name:         step.Name,
+			Job:          jobPath,
 			Dependencies: stepDependencies,
 		}); err != nil {
 			return nil, err
@@ -457,4 +459,40 @@ func (e *WorkflowEvaluator) hasTriggerToken(token string) bool {
 		}
 	}
 	return false
+}
+
+func (e *WorkflowEvaluator) stepDefinitionForUse(uses string) (workflowStepDef, bool) {
+	if uses == "" {
+		return workflowStepDef{}, false
+	}
+	if step, ok := e.stepsByName[uses]; ok {
+		return step, true
+	}
+	if !strings.Contains(uses, ":") {
+		return workflowStepDef{}, false
+	}
+	_, name, found := strings.Cut(uses, ":")
+	if !found || name == "" {
+		return workflowStepDef{}, false
+	}
+	step, ok := e.stepsByName[name]
+	return step, ok
+}
+
+func (e *WorkflowEvaluator) jobDefinitionForUse(uses string) (workflowJobDef, bool) {
+	if uses == "" {
+		return workflowJobDef{}, false
+	}
+	if job, ok := e.jobsByName[uses]; ok {
+		return job, true
+	}
+	if !strings.Contains(uses, ":") {
+		return workflowJobDef{}, false
+	}
+	_, name, found := strings.Cut(uses, ":")
+	if !found || name == "" {
+		return workflowJobDef{}, false
+	}
+	job, ok := e.jobsByName[name]
+	return job, ok
 }
