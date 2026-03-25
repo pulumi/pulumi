@@ -22,8 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/hashicorp/hcl/v2/hclparse"
+	codegenpcl "github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -32,132 +31,28 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type workflowFile struct {
-	Triggers  []workflowTriggerDef `hcl:"trigger,block"`
-	Steps     []workflowStepDef    `hcl:"step,block"`
-	Jobs      []workflowJobDef     `hcl:"job,block"`
-	Workflows []workflowGraph      `hcl:"workflow,block"`
-}
-
-type workflowGraph struct {
-	Name        string                 `hcl:"name,label"`
-	TriggerRefs []workflowTriggerRef   `hcl:"trigger_ref,block"`
-	Triggers    []workflowGraphTrigger `hcl:"trigger,block"`
-	Jobs        []workflowGraphJob     `hcl:"job,block"`
-}
-
-type workflowTriggerDef struct {
-	Name     string `hcl:"name,label"`
-	Type     string `hcl:"type,optional"`
-	Schedule string `hcl:"schedule,optional"`
-}
-
-type workflowTriggerRef struct {
-	Name string `hcl:"name,label"`
-}
-
-type workflowGraphTrigger struct {
-	Name     string `hcl:"name,label"`
-	Uses     string `hcl:"uses,optional"`
-	Schedule string `hcl:"schedule,optional"`
-}
-
-type workflowStepDef struct {
-	Name    string `hcl:"name,label"`
-	Command string `hcl:"command,optional"`
-	Expr    string `hcl:"expr,optional"`
-}
-
-type workflowJobDef struct {
-	Name  string            `hcl:"name,label"`
-	Steps []workflowJobStep `hcl:"step,block"`
-}
-
-type workflowJobStep struct {
-	Name      string   `hcl:"name,label"`
-	Uses      string   `hcl:"uses,optional"`
-	Command   string   `hcl:"command,optional"`
-	Expr      string   `hcl:"expr,optional"`
-	Filter    *bool    `hcl:"filter,optional"`
-	DependsOn []string `hcl:"depends_on,optional"`
-}
-
-type workflowGraphJob struct {
-	Name      string            `hcl:"name,label"`
-	Uses      string            `hcl:"uses,optional"`
-	Filter    *bool             `hcl:"filter,optional"`
-	Steps     []workflowJobStep `hcl:"step,block"`
-	DependsOn []string          `hcl:"depends_on,optional"`
-}
-
 type WorkflowEvaluator struct {
 	pulumirpc.UnimplementedWorkflowEvaluatorServer
 
 	packageName    string
 	packageVersion string
-	graphsByName   map[string]workflowGraph
-	triggersByName map[string]workflowTriggerDef
-	stepsByName    map[string]workflowStepDef
-	jobsByName     map[string]workflowJobDef
-	stepsByPath    map[string]workflowStepDef
+	program        *codegenpcl.WorkflowProgram
+	stepsByPath    map[string]codegenpcl.WorkflowStepDefinition
 	filtersByPath  map[string]bool
 }
 
 func NewWorkflowEvaluator(programPath string) (*WorkflowEvaluator, error) {
-	parser := hclparse.NewParser()
-	hclFile, diags := parser.ParseHCLFile(programPath)
-	if diags.HasErrors() {
-		return nil, fmt.Errorf("parse workflow pcl file %q: %s", programPath, diags.Error())
-	}
-
-	var file workflowFile
-	decodeDiags := gohcl.DecodeBody(hclFile.Body, nil, &file)
-	if decodeDiags.HasErrors() {
-		return nil, fmt.Errorf("decode workflow pcl file %q: %s", programPath, decodeDiags.Error())
-	}
-
-	graphsByName := map[string]workflowGraph{}
-	for _, graph := range file.Workflows {
-		if _, exists := graphsByName[graph.Name]; exists {
-			return nil, fmt.Errorf("duplicate workflow graph %q", graph.Name)
-		}
-		graphsByName[graph.Name] = graph
-	}
-	triggersByName := map[string]workflowTriggerDef{}
-	for _, trigger := range file.Triggers {
-		if _, exists := triggersByName[trigger.Name]; exists {
-			return nil, fmt.Errorf("duplicate trigger definition %q", trigger.Name)
-		}
-		triggersByName[trigger.Name] = trigger
-	}
-	stepsByName := map[string]workflowStepDef{}
-	for _, step := range file.Steps {
-		if _, exists := stepsByName[step.Name]; exists {
-			return nil, fmt.Errorf("duplicate step definition %q", step.Name)
-		}
-		stepsByName[step.Name] = step
-	}
-	jobsByName := map[string]workflowJobDef{}
-	for _, job := range file.Jobs {
-		if _, exists := jobsByName[job.Name]; exists {
-			return nil, fmt.Errorf("duplicate job definition %q", job.Name)
-		}
-		jobsByName[job.Name] = job
-	}
-
-	if len(graphsByName) == 0 {
-		return nil, fmt.Errorf("no workflow blocks found in %q", programPath)
+	program, err := codegenpcl.BindWorkflowProgram(programPath)
+	if err != nil {
+		return nil, err
 	}
 
 	name := strings.TrimSuffix(filepath.Base(programPath), filepath.Ext(programPath))
 	return &WorkflowEvaluator{
 		packageName:    name,
 		packageVersion: "0.0.1",
-		graphsByName:   graphsByName,
-		triggersByName: triggersByName,
-		stepsByName:    stepsByName,
-		jobsByName:     jobsByName,
-		stepsByPath:    map[string]workflowStepDef{},
+		program:        program,
+		stepsByPath:    map[string]codegenpcl.WorkflowStepDefinition{},
 		filtersByPath:  map[string]bool{},
 	}, nil
 }
@@ -184,7 +79,8 @@ func (e *WorkflowEvaluator) GetGraphs(
 	context.Context, *pulumirpc.GetGraphsRequest,
 ) (*pulumirpc.GetGraphsResponse, error) {
 	resp := &pulumirpc.GetGraphsResponse{}
-	for name := range e.graphsByName {
+	for _, graph := range e.program.Workflows {
+		name := graph.Name
 		resp.Graphs = append(resp.Graphs, &pulumirpc.GraphInfo{Token: name})
 	}
 	return resp, nil
@@ -193,7 +89,7 @@ func (e *WorkflowEvaluator) GetGraphs(
 func (e *WorkflowEvaluator) GetGraph(
 	_ context.Context, req *pulumirpc.GetGraphRequest,
 ) (*pulumirpc.GetGraphResponse, error) {
-	if _, ok := e.graphsByName[req.GetToken()]; !ok {
+	if _, ok := e.program.GraphByName(req.GetToken()); !ok {
 		return nil, status.Errorf(codes.NotFound, "unknown graph token %q", req.GetToken())
 	}
 	return &pulumirpc.GetGraphResponse{Graph: &pulumirpc.GraphInfo{Token: req.GetToken()}}, nil
@@ -204,7 +100,7 @@ func (e *WorkflowEvaluator) GetTriggers(
 ) (*pulumirpc.GetTriggersResponse, error) {
 	_ = req
 	resp := &pulumirpc.GetTriggersResponse{}
-	for name := range e.triggersByName {
+	for _, name := range e.program.TriggerNames() {
 		resp.Triggers = append(resp.Triggers, e.triggerToken(name))
 	}
 	return resp, nil
@@ -237,7 +133,7 @@ func (e *WorkflowEvaluator) GetJob(
 func (e *WorkflowEvaluator) GenerateGraph(
 	ctx context.Context, req *pulumirpc.GenerateGraphRequest,
 ) (*pulumirpc.GenerateNodeResponse, error) {
-	graph, ok := e.graphsByName[req.GetPath()]
+	graph, ok := e.program.GraphByName(req.GetPath())
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, "unknown graph %q", req.GetPath())
 	}
@@ -276,7 +172,7 @@ func (e *WorkflowEvaluator) GenerateJob(
 		return nil, status.Errorf(codes.InvalidArgument, "invalid job path %q", req.GetPath())
 	}
 	graphName, jobName := parts[0], parts[1]
-	graph, ok := e.graphsByName[graphName]
+	graph, ok := e.program.GraphByName(graphName)
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, "unknown graph %q", graphName)
 	}
@@ -299,7 +195,7 @@ func (e *WorkflowEvaluator) GenerateJob(
 		return nil, err
 	}
 
-	var selected *workflowGraphJob
+	var selected *codegenpcl.WorkflowGraphJob
 	for _, graphJob := range graph.Jobs {
 		if graphJob.Name == jobName {
 			j := graphJob
@@ -312,7 +208,7 @@ func (e *WorkflowEvaluator) GenerateJob(
 	}
 	jobSteps := selected.Steps
 	if selected.Uses != "" {
-		jobDef, ok := e.jobDefinitionForUse(selected.Uses)
+		jobDef, ok := e.program.JobDefinitionForUse(selected.Uses)
 		if !ok {
 			return nil, status.Errorf(codes.NotFound, "unknown job definition %q", selected.Uses)
 		}
@@ -462,7 +358,7 @@ func (e *WorkflowEvaluator) triggerToken(name string) string {
 }
 
 func (e *WorkflowEvaluator) hasTriggerToken(token string) bool {
-	for name := range e.triggersByName {
+	for _, name := range e.program.TriggerNames() {
 		if token == name || token == e.triggerToken(name) {
 			return true
 		}
@@ -470,60 +366,24 @@ func (e *WorkflowEvaluator) hasTriggerToken(token string) bool {
 	return false
 }
 
-func (e *WorkflowEvaluator) stepDefinitionForUse(uses string) (workflowStepDef, bool) {
-	if uses == "" {
-		return workflowStepDef{}, false
-	}
-	if step, ok := e.stepsByName[uses]; ok {
-		return step, true
-	}
-	if !strings.Contains(uses, ":") {
-		return workflowStepDef{}, false
-	}
-	_, name, found := strings.Cut(uses, ":")
-	if !found || name == "" {
-		return workflowStepDef{}, false
-	}
-	step, ok := e.stepsByName[name]
-	return step, ok
-}
-
-func (e *WorkflowEvaluator) jobDefinitionForUse(uses string) (workflowJobDef, bool) {
-	if uses == "" {
-		return workflowJobDef{}, false
-	}
-	if job, ok := e.jobsByName[uses]; ok {
-		return job, true
-	}
-	if !strings.Contains(uses, ":") {
-		return workflowJobDef{}, false
-	}
-	_, name, found := strings.Cut(uses, ":")
-	if !found || name == "" {
-		return workflowJobDef{}, false
-	}
-	job, ok := e.jobsByName[name]
-	return job, ok
-}
-
-func (e *WorkflowEvaluator) stepDefinitionForJobStep(step workflowJobStep) (workflowStepDef, error) {
+func (e *WorkflowEvaluator) stepDefinitionForJobStep(step codegenpcl.WorkflowJobStep) (codegenpcl.WorkflowStepDefinition, error) {
 	if step.Uses != "" {
-		stepDef, ok := e.stepDefinitionForUse(step.Uses)
+		stepDef, ok := e.program.StepDefinitionForUse(step.Uses)
 		if !ok {
-			return workflowStepDef{}, status.Errorf(codes.NotFound, "unknown step definition %q", step.Uses)
+			return codegenpcl.WorkflowStepDefinition{}, status.Errorf(codes.NotFound, "unknown step definition %q", step.Uses)
 		}
 		return stepDef, nil
 	}
 
 	if step.Command != "" || step.Expr != "" {
-		return workflowStepDef{
+		return codegenpcl.WorkflowStepDefinition{
 			Name:    step.Name,
 			Command: step.Command,
 			Expr:    step.Expr,
 		}, nil
 	}
 
-	return workflowStepDef{}, status.Errorf(
+	return codegenpcl.WorkflowStepDefinition{}, status.Errorf(
 		codes.InvalidArgument,
 		"step %q must set one of uses, command, or expr",
 		step.Name,
@@ -534,18 +394,18 @@ func (e *WorkflowEvaluator) registerGraphTriggers(
 	ctx context.Context,
 	wfContext *pulumirpc.WorkflowContext,
 	graphPath string,
-	graph workflowGraph,
+	graph codegenpcl.WorkflowGraph,
 	monitor pulumirpc.GraphMonitorClient,
 ) error {
 	if len(graph.Triggers) > 0 {
 		for _, graphTrigger := range graph.Triggers {
 			triggerName := graphTrigger.Name
 			if graphTrigger.Uses != "" {
-				if _, resolved, ok := e.resolveTriggerNameFromUse(graphTrigger.Uses); ok {
+				if _, resolved, ok := e.program.ResolveTriggerNameFromUse(graphTrigger.Uses); ok {
 					triggerName = resolved
 				}
 			}
-			trigger, ok := e.triggersByName[triggerName]
+			trigger, ok := e.program.TriggerByName(triggerName)
 			if !ok {
 				return status.Errorf(codes.NotFound, "unknown trigger %q", graphTrigger.Uses)
 			}
@@ -570,7 +430,7 @@ func (e *WorkflowEvaluator) registerGraphTriggers(
 	}
 
 	for _, triggerRef := range graph.TriggerRefs {
-		trigger, ok := e.triggersByName[triggerRef.Name]
+		trigger, ok := e.program.TriggerByName(triggerRef.Name)
 		if !ok {
 			return status.Errorf(codes.NotFound, "unknown trigger ref %q", triggerRef.Name)
 		}
@@ -588,22 +448,4 @@ func (e *WorkflowEvaluator) registerGraphTriggers(
 		}
 	}
 	return nil
-}
-
-func (e *WorkflowEvaluator) resolveTriggerNameFromUse(uses string) (string, string, bool) {
-	if uses == "" {
-		return "", "", false
-	}
-	if name, ok := e.triggersByName[uses]; ok {
-		return name.Name, uses, true
-	}
-	if !strings.Contains(uses, ":") {
-		return "", "", false
-	}
-	_, name, found := strings.Cut(uses, ":")
-	if !found || name == "" {
-		return "", "", false
-	}
-	_, ok := e.triggersByName[name]
-	return uses, name, ok
 }
