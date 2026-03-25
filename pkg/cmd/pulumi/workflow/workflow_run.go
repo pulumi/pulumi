@@ -164,7 +164,7 @@ func runExportedJob(
 
 	generateResp, err := workflowPlugin.GenerateJob(ctx, &pulumirpc.GenerateJobRequest{
 		Context:             workflowContext,
-		Path:                jobToken,
+		Name:                jobToken,
 		GraphMonitorAddress: listener.Addr().String(),
 		InputPath:           jobToken,
 		InputValue:          inputValue,

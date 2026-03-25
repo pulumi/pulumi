@@ -942,7 +942,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 grpc.StatusCode.INVALID_ARGUMENT, "graph_monitor_address is required"
             )
 
-        if "/jobs/" in request.path:
+        if request.path:
             segments = request.path.split("/jobs/", 1)
             if len(segments) != 2 or not segments[0] or not segments[1]:
                 context.abort(
@@ -983,15 +983,21 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             self._steps_by_path.update(steps)
             return workflow_pb2.GenerateNodeResponse()
 
-        resolved_token = self._workflow_registry.resolve_job_token(request.path)
-        exported = self._workflow_registry._jobs.get(resolved_token)
-        if exported is None:
-            context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job token {request.path}")
-
-        if request.input_path != request.path:
+        if not request.name:
             context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
-                "input_path for exported jobs must match request.path",
+                "either path (inline graph job) or name (exported job) is required",
+            )
+
+        resolved_token = self._workflow_registry.resolve_job_token(request.name)
+        exported = self._workflow_registry._jobs.get(resolved_token)
+        if exported is None:
+            context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job token {request.name}")
+
+        if request.input_path and request.input_path != request.name:
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "input_path for exported jobs must match request.name",
             )
         input_value = (
             _from_proto_value(request.input_value)
@@ -999,7 +1005,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             else None
         )
         coerced_input = _coerce_record_instance(
-            exported.input_type, input_value, f"job input for {request.path}"
+            exported.input_type, input_value, f"job input for {request.name}"
         )
 
         synthetic_job = _JobDefinition(
@@ -1008,7 +1014,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             inputs=[],
         )
         steps = _evaluate_job(
-            request.path,
+            resolved_token,
             synthetic_job,
             request.context,
             request.graph_monitor_address,

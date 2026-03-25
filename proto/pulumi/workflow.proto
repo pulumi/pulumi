@@ -264,10 +264,14 @@ message ErrorRecord {
 
 message GenerateJobRequest {
     WorkflowContext context = 1;
-    string path = 2;
-    string graph_monitor_address = 3;
-    string input_path = 4;
-    google.protobuf.Value input_value = 5;
+    // Name of an exported top-level job.
+    string name = 2;
+    // Full path to a graph-scoped inline job (for example: graph/jobs/main).
+    // This is empty when generating an exported top-level job.
+    string path = 3;
+    string graph_monitor_address = 4;
+    string input_path = 5;
+    google.protobuf.Value input_value = 6;
 }
 
 message GenerateGraphRequest {

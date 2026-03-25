@@ -605,11 +605,17 @@ class GenerateJobRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     CONTEXT_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
     PATH_FIELD_NUMBER: builtins.int
     GRAPH_MONITOR_ADDRESS_FIELD_NUMBER: builtins.int
     INPUT_PATH_FIELD_NUMBER: builtins.int
     INPUT_VALUE_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """Name of an exported top-level job."""
     path: builtins.str
+    """Full path to a graph-scoped inline job (for example: graph/jobs/main).
+    This is empty when generating an exported top-level job.
+    """
     graph_monitor_address: builtins.str
     input_path: builtins.str
     @property
@@ -620,13 +626,14 @@ class GenerateJobRequest(google.protobuf.message.Message):
         self,
         *,
         context: global___WorkflowContext | None = ...,
+        name: builtins.str = ...,
         path: builtins.str = ...,
         graph_monitor_address: builtins.str = ...,
         input_path: builtins.str = ...,
         input_value: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["context", b"context", "input_value", b"input_value"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["context", b"context", "graph_monitor_address", b"graph_monitor_address", "input_path", b"input_path", "input_value", b"input_value", "path", b"path"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["context", b"context", "graph_monitor_address", b"graph_monitor_address", "input_path", b"input_path", "input_value", b"input_value", "name", b"name", "path", b"path"]) -> None: ...
 
 global___GenerateJobRequest = GenerateJobRequest
 

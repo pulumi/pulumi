@@ -1636,12 +1636,16 @@ func (x *ErrorRecord) GetCategory() string {
 }
 
 type GenerateJobRequest struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	Context             *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path                string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	GraphMonitorAddress string                 `protobuf:"bytes,3,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
-	InputPath           string                 `protobuf:"bytes,4,opt,name=input_path,json=inputPath,proto3" json:"input_path,omitempty"`
-	InputValue          *structpb.Value        `protobuf:"bytes,5,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Context *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Name of an exported top-level job.
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Full path to a graph-scoped inline job (for example: graph/jobs/main).
+	// This is empty when generating an exported top-level job.
+	Path                string          `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
+	GraphMonitorAddress string          `protobuf:"bytes,4,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
+	InputPath           string          `protobuf:"bytes,5,opt,name=input_path,json=inputPath,proto3" json:"input_path,omitempty"`
+	InputValue          *structpb.Value `protobuf:"bytes,6,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1681,6 +1685,13 @@ func (x *GenerateJobRequest) GetContext() *WorkflowContext {
 		return x.Context
 	}
 	return nil
+}
+
+func (x *GenerateJobRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
 }
 
 func (x *GenerateJobRequest) GetPath() string {
@@ -3068,14 +3079,15 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\vErrorRecord\x12\x1b\n" +
 	"\tstep_path\x18\x01 \x01(\tR\bstepPath\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1a\n" +
-	"\bcategory\x18\x03 \x01(\tR\bcategory\"\xea\x01\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\"\xfe\x01\n" +
 	"\x12GenerateJobRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\x122\n" +
-	"\x15graph_monitor_address\x18\x03 \x01(\tR\x13graphMonitorAddress\x12\x1d\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04path\x18\x03 \x01(\tR\x04path\x122\n" +
+	"\x15graph_monitor_address\x18\x04 \x01(\tR\x13graphMonitorAddress\x12\x1d\n" +
 	"\n" +
-	"input_path\x18\x04 \x01(\tR\tinputPath\x127\n" +
-	"\vinput_value\x18\x05 \x01(\v2\x16.google.protobuf.ValueR\n" +
+	"input_path\x18\x05 \x01(\tR\tinputPath\x127\n" +
+	"\vinput_value\x18\x06 \x01(\v2\x16.google.protobuf.ValueR\n" +
 	"inputValue\"\x94\x01\n" +
 	"\x14GenerateGraphRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +

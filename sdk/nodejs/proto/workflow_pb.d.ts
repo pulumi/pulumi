@@ -685,6 +685,8 @@ export class GenerateJobRequest extends jspb.Message {
     clearContext(): void;
     getContext(): WorkflowContext | undefined;
     setContext(value?: WorkflowContext): GenerateJobRequest;
+    getName(): string;
+    setName(value: string): GenerateJobRequest;
     getPath(): string;
     setPath(value: string): GenerateJobRequest;
     getGraphMonitorAddress(): string;
@@ -710,6 +712,7 @@ export class GenerateJobRequest extends jspb.Message {
 export namespace GenerateJobRequest {
     export type AsObject = {
         context?: WorkflowContext.AsObject,
+        name: string,
         path: string,
         graphMonitorAddress: string,
         inputPath: string,
