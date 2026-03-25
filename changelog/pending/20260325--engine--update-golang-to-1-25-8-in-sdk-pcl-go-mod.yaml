@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Update golang to 1.25.8 in ‎sdk/pcl/go.mod
