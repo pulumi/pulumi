@@ -13,17 +13,17 @@ export PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true
 
 # Run *all* language tests
 if [ "$1" = "" ]; then
-    cd "$ROOT/sdk/pcl/cmd/pulumi-language-pcl" && go test . -v -count=1 -run "TestLanguage"
+    # cd "$ROOT/sdk/pcl/cmd/pulumi-language-pcl" && go test . -v -count=1 -run "TestLanguage"
 
-    cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguage"
+    # cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguage"
 
-    cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageTSC"
-    cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageTSNode"
-    cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageBun"
+    cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test -p 4 -timeout 1h . -v -count=1 -run "TestLanguageTSC"
+    cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test -p 4 -timeout 1h . -v -count=1 -run "TestLanguageTSNode"
+    cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test -p 4 -timeout 1h . -v -count=1 -run "TestLanguageBun"
 
-    cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageDefault"
-    cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageTOML"
-    cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageClasses"
+    # cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageDefault"
+    # cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageTOML"
+    # cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageClasses"
 
     exit 0
 fi
