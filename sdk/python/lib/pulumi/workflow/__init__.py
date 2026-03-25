@@ -72,6 +72,7 @@ class _JobDefinition:
     on_error: Optional[OnErrorHandler]
     inputs: List[Any]
     external_token: Optional[str] = None
+    enabled: bool = True
 
 
 @dataclass
@@ -174,6 +175,7 @@ class Context:
         fn: Optional[JobCallback] = None,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
+        if_: Optional[bool] = None,
     ) -> Union[None, JobCallback, Callable[[JobCallback], JobCallback]]:
         """Registers a job in the current graph."""
         inputs: List[Any] = list(inputs_or_fn)
@@ -185,6 +187,8 @@ class Context:
             raise WorkflowError("job dependencies must be set either directly or via JobOptions, not both")
         if options is not None and on_error is not None and options.on_error is not None:
             raise WorkflowError("job on_error must be set either directly or via JobOptions, not both")
+        if options is not None and if_ is not None and options.if_ is not None:
+            raise WorkflowError("job if must be set either directly or via JobOptions, not both")
 
         effective_dependencies = dependencies
         if effective_dependencies is None and options is not None:
@@ -193,6 +197,11 @@ class Context:
         effective_on_error = on_error
         if effective_on_error is None and options is not None:
             effective_on_error = options.on_error
+        effective_if = if_
+        if effective_if is None and options is not None:
+            effective_if = options.if_
+        if effective_if is None:
+            effective_if = True
 
         if fn is None and len(inputs) == 1 and callable(inputs[0]):
             fn = inputs[0]
@@ -215,6 +224,8 @@ class Context:
                 self._state.target_job_name is not None
                 and registered_name != self._state.target_job_name
             ):
+                return registered_fn
+            if not effective_if:
                 return registered_fn
 
             job_path = f"{self._state.graph_path}/jobs/{registered_name}"
@@ -244,6 +255,7 @@ class Context:
                 on_error=effective_on_error,
                 inputs=resolved_inputs,
                 external_token=external_token,
+                enabled=bool(effective_if),
             )
             return registered_fn
 
@@ -270,6 +282,7 @@ class JobContext:
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
+        if_: Optional[bool] = None,
     ) -> Output[U]: ...
 
     @overload
@@ -281,6 +294,7 @@ class JobContext:
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
+        if_: Optional[bool] = None,
     ) -> Output[U]: ...
 
     def step(
@@ -291,6 +305,7 @@ class JobContext:
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
+        if_: Optional[bool] = None,
     ) -> Union[Output[U], Callable[[Callable[..., U]], Output[U]]]:
         """Registers a step in the current job."""
         options: Optional[StepOptions] = None
@@ -307,6 +322,8 @@ class JobContext:
             raise WorkflowError("step dependencies must be set either directly or via StepOptions, not both")
         if options is not None and on_error is not None and options.on_error is not None:
             raise WorkflowError("step on_error must be set either directly or via StepOptions, not both")
+        if options is not None and if_ is not None and options.if_ is not None:
+            raise WorkflowError("step if must be set either directly or via StepOptions, not both")
 
         effective_dependencies = dependencies
         if effective_dependencies is None and options is not None:
@@ -314,6 +331,11 @@ class JobContext:
         effective_on_error = on_error
         if effective_on_error is None and options is not None:
             effective_on_error = options.on_error
+        effective_if = if_
+        if effective_if is None and options is not None:
+            effective_if = options.if_
+        if effective_if is None:
+            effective_if = True
 
         if fn is None and callable(arg):
             fn = cast(Callable[[T], U], arg)
@@ -335,6 +357,10 @@ class JobContext:
                 raise WorkflowError(
                     "workflow steps may only accept workflow outputs; resource outputs are not supported"
                 )
+            if not effective_if:
+                _ensure_event_loop()
+                skipped = Output.from_input(None)
+                return cast(Output[U], skipped)
 
             step_path = f"{self._state.job_path}/steps/{registered_name}"
             request = workflow_pb2.RegisterStepRequest()
@@ -394,6 +420,7 @@ class JobOptions:
     name: Optional[str] = None
     dependencies: Optional[List[str]] = None
     on_error: Optional[OnErrorHandler] = None
+    if_: Optional[bool] = None
 
 
 @dataclass
@@ -401,6 +428,7 @@ class StepOptions:
     name: Optional[str] = None
     dependencies: Optional[List[str]] = None
     on_error: Optional[OnErrorHandler] = None
+    if_: Optional[bool] = None
 
 
 class WorkflowRegistry:

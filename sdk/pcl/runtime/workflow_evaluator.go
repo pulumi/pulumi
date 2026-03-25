@@ -78,12 +78,14 @@ type workflowJobStep struct {
 	Uses      string   `hcl:"uses,optional"`
 	Command   string   `hcl:"command,optional"`
 	Expr      string   `hcl:"expr,optional"`
+	If        *bool    `hcl:"if,optional"`
 	DependsOn []string `hcl:"depends_on,optional"`
 }
 
 type workflowGraphJob struct {
 	Name      string            `hcl:"name,label"`
 	Uses      string            `hcl:"uses,optional"`
+	If        *bool             `hcl:"if,optional"`
 	Steps     []workflowJobStep `hcl:"step,block"`
 	DependsOn []string          `hcl:"depends_on,optional"`
 }
@@ -301,6 +303,9 @@ func (e *WorkflowEvaluator) GenerateJob(
 	if selected == nil {
 		return nil, status.Errorf(codes.NotFound, "unknown job %q", req.GetPath())
 	}
+	if selected.If != nil && !*selected.If {
+		return nil, status.Errorf(codes.NotFound, "job %q is disabled by if=false", req.GetPath())
+	}
 	jobSteps := selected.Steps
 	if selected.Uses != "" {
 		jobDef, ok := e.jobDefinitionForUse(selected.Uses)
@@ -328,6 +333,9 @@ func (e *WorkflowEvaluator) GenerateJob(
 	}
 
 	for _, step := range jobSteps {
+		if step.If != nil && !*step.If {
+			continue
+		}
 		stepDef, err := e.stepDefinitionForJobStep(step)
 		if err != nil {
 			return nil, err

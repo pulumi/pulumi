@@ -136,6 +136,28 @@ def main_graph(ctx: workflow.Context) -> None:
     def bad_external_input_job(job: workflow.JobContext) -> None:
         job.step("example:to-upper", {"oops": "wrong-shape"})
 
+    @ctx.job("step-if")
+    def step_if_job(job: workflow.JobContext) -> None:
+        @job.step("run", if_=True)
+        def run_step() -> str:
+            return "ran"
+
+        @job.step("skip", if_=False)
+        def skip_step() -> str:
+            return "should-not-run"
+
+    @ctx.job("job-if", workflow.JobOptions(if_=True))
+    def job_if_job(job: workflow.JobContext) -> None:
+        @job.step("run")
+        def run_step() -> str:
+            return "job-ran"
+
+    @ctx.job("job-if-disabled", workflow.JobOptions(if_=False))
+    def job_if_disabled_job(job: workflow.JobContext) -> None:
+        @job.step("run")
+        def run_step() -> str:
+            return "job-should-not-run"
+
 
 def register_workflows(registry: workflow.WorkflowRegistry) -> None:
     def cron_trigger_mock(args: list[str]) -> CronTriggerOutput:

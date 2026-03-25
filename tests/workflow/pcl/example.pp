@@ -36,9 +36,21 @@ workflow "main" {
       command = "printf 'test-ok'"
       depends_on = ["compile"]
     }
+    step "skipped" {
+      command = "printf 'should-not-run'"
+      if = false
+      depends_on = ["compile"]
+    }
     step "package" {
       uses = "package"
       depends_on = ["compile", "test"]
+    }
+  }
+
+  job "disabled-job" {
+    if = false
+    step "never" {
+      command = "printf 'never'"
     }
   }
 }
