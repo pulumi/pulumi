@@ -15,6 +15,8 @@
 package property
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,6 +44,45 @@ func genPath() *rapid.Generator[Path] {
 	)
 }
 
+type tup[A, B any] struct {
+	a A
+	b B
+}
+
+func genTextGlobPath() *rapid.Generator[tup[string, Glob]] {
+	type ret = tup[string, GlobSegment]
+	return rapid.Map(rapid.SliceOfN(rapid.OneOf(
+		rapid.Just(ret{"*", Splat}),   // Raw Splat
+		rapid.Just(ret{"[*]", Splat}), // Index Splat
+		// Number
+		rapid.Map(rapid.Uint32(), func(i uint32) ret {
+			return ret{"[" + strconv.FormatInt(int64(i), 10) + "]", IndexSegment{int(i)}}
+		}),
+		// Unquoted property path
+		rapid.Map(rapid.StringMatching("[a-zA-Z_][a-zA-Z0-9_]*"), func(s string) ret {
+			return ret{s, KeySegment{s}}
+		}),
+		// Quoted property path
+		rapid.Map(rapid.String(), func(s string) ret { return ret{"[" + strconv.Quote(s) + "]", KeySegment{s}} }),
+	), 1, 10), func(segments []ret) tup[string, Glob] {
+		var s strings.Builder
+		var g Glob
+		for i, v := range segments {
+			g = append(g, v.b)
+			if v.a[0] == '[' {
+				s.WriteString(v.a)
+			} else {
+				if i > 0 {
+					s.WriteRune('.')
+				}
+				s.WriteString(v.a)
+			}
+		}
+
+		return tup[string, Glob]{s.String(), g}
+	})
+}
+
 func rapidTest(t *testing.T, name string, f func(t *rapid.T)) {
 	t.Helper()
 	t.Run(name, func(t *testing.T) { t.Helper(); t.Parallel(); rapid.Check(t, f) })
@@ -64,6 +105,22 @@ func TestGlobEncoding(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, text1, text2, "stable to-text mapping")
+	})
+
+	rapidTest(t, "unmarshal", func(t *rapid.T) {
+		pair := genTextGlobPath().Draw(t, "text")
+		var g Glob
+		err := g.UnmarshalText([]byte(pair.a))
+		require.NoError(t, err)
+		assert.Equal(t, pair.b, g)
+
+		text2, err := g.MarshalText()
+		require.NoError(t, err)
+
+		var g2 Glob
+		err = g2.UnmarshalText(text2)
+		require.NoError(t, err)
+		assert.Equal(t, g, g2, "assert that we can round-trip the Glob")
 	})
 
 	t.Run("unmarshal", func(t *testing.T) {
