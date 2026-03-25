@@ -14,9 +14,181 @@
 
 package property
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+import (
+	"encoding"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"unicode"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+)
 
 type Glob []GlobSegment
+
+var (
+	_ encoding.TextMarshaler   = Glob{}
+	_ encoding.TextUnmarshaler = &Glob{}
+)
+
+func (g Glob) MarshalText() (text []byte, err error) {
+	if len(g) == 0 {
+		return nil, errors.New("cannot marshal an empty glob")
+	}
+	var b strings.Builder
+segment:
+	for i, p := range g {
+		switch p := p.(type) {
+		case KeySegment:
+			if len(p.string) == 0 {
+				fmt.Fprintf(&b, "[%q]", p.string)
+				continue segment
+			}
+			for _, c := range p.string {
+				if !unicode.IsLetter(c) {
+					fmt.Fprintf(&b, "[%q]", p.string)
+					continue segment
+				}
+			}
+			if i != 0 {
+				b.WriteRune('.')
+			}
+			b.WriteString(p.string)
+		case IndexSegment:
+			b.WriteRune('[')
+			b.WriteString(strconv.FormatInt(int64(p.int), 10))
+			b.WriteRune(']')
+		case GlobSegment:
+			b.WriteString("[*]")
+		default:
+			contract.Failf("unknown glob segment %T", p)
+		}
+	}
+	return []byte(b.String()), nil
+}
+
+func (g *Glob) UnmarshalText(text []byte) error {
+	*g = (*g)[:0]
+	if len(text) == 0 {
+		return fmt.Errorf("cannot unmarshal an empty property path")
+	}
+
+	runes := []rune(string(text))
+	for len(runes) > 0 {
+		switch {
+		case runes[0] == '*' && len(*g) == 0:
+			*g = append(*g, Splat)
+			runes = runes[1:]
+		case unicode.IsLetter(runes[0]) && len(*g) == 0:
+			key, remainder, err := parseKey(runes)
+			if err != nil {
+				return err
+			}
+			runes = remainder
+			(*g) = append((*g), key)
+		case runes[0] == '[':
+			seg, remainder, err := parseIndex(runes)
+			if err != nil {
+				return err
+			}
+			runes = remainder
+			(*g) = append((*g), seg)
+		case runes[0] == '.':
+			if len(runes) > 1 && runes[1] == '*' {
+				*g = append(*g, Splat)
+				runes = runes[2:]
+				continue
+			}
+			key, remainder, err := parseKey(runes[1:])
+			if err != nil {
+				return err
+			}
+			runes = remainder
+			(*g) = append((*g), key)
+
+		default:
+			return fmt.Errorf("unknown character '%c' at position %d",
+				runes[0], len([]rune(string(text)))-len(runes))
+		}
+	}
+
+	return nil
+}
+
+func parseKey(runes []rune) (GlobSegment, []rune, error) {
+	if len(runes) == 0 {
+		return nil, nil, errors.New("expected character")
+	}
+	var s strings.Builder
+	for len(runes) > 0 {
+		if !unicode.IsLetter(runes[0]) {
+			break
+		}
+		s.WriteRune(runes[0])
+		runes = runes[1:]
+	}
+	if s.Len() == 0 {
+		return nil, runes, fmt.Errorf("expected letter, found '%c'", runes[0])
+	}
+
+	return KeySegment{s.String()}, runes, nil
+}
+
+func parseIndex(runes []rune) (GlobSegment, []rune, error) {
+	if len(runes) == 0 || runes[0] != '[' {
+		return nil, nil, errors.New("expected '['")
+	}
+	runes = runes[1:]
+	if len(runes) == 0 {
+		return nil, nil, errors.New("unclosed '['")
+	}
+
+	switch {
+	case unicode.IsNumber(runes[0]):
+		i := 1
+		for ; ; i++ {
+			if len(runes) <= i {
+				return nil, nil, fmt.Errorf("unclosed number [%s", string(runes[:i]))
+			}
+			if !unicode.IsNumber(runes[i]) {
+				break
+			}
+		}
+		if len(runes) < i || runes[i] != ']' {
+			return nil, nil, fmt.Errorf("unclosed index [%s", string(runes[:i]))
+		}
+		n, err := strconv.Atoi(string(runes[0:i]))
+		if err != nil {
+			return nil, nil, err
+		}
+		return IndexSegment{n}, runes[i+1:], nil
+	case runes[0] == '"':
+		i := 1
+		for ; ; i++ {
+			if len(runes) <= i {
+				return nil, nil, fmt.Errorf(`unclosed string [%s`, string(runes))
+			}
+			if runes[i] == '"' {
+				if len(runes) <= i+1 || runes[i+1] != ']' {
+					return nil, nil, fmt.Errorf(`unclosed index [%s`, string(runes[:i+1]))
+				}
+				key, err := strconv.Unquote(string(runes[:i+1]))
+				return KeySegment{key}, runes[i+2:], err
+			}
+			if runes[i] == '\\' {
+				i++
+			}
+		}
+	case runes[0] == '*':
+		if len(runes) == 1 || runes[1] != ']' {
+			return nil, nil, errors.New(`expected ']' after "[*"`)
+		}
+		return Splat, runes[2:], nil
+	default:
+		return nil, nil, errors.New("unexpected character after '['")
+	}
+}
 
 func (g Glob) Get(v Value) ([]Value, error) {
 	stack := []Value{v}
