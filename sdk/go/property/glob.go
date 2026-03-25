@@ -276,13 +276,13 @@ func (s Path) AsGlob() Glob {
 	return g
 }
 
-// HasPrefix returns true if the receiver property path contains the other property path.
-// For example, the path `foo["bar"][1]` contains the path `foo.bar[1].baz`.  The key
-// `"*"` is a wildcard which matches any string or int index at that same nesting level.
-// So for example, the path `foo.*.baz` contains `foo.bar.baz.bam`, and the path `*`
-// contains any path.
-func (g Glob) HasPrefix(p Path) bool {
-	// g cannot contain p when p is longer then g.
+// Matches returns true if the receiver glob matches the beginning of the given path.
+//
+// For example, the glob `foo["bar"][1]` matches `foo.bar[1].baz`. The glob segment
+// `[*]` is a wildcard which matches any single segment at that nesting level. So for
+// example, the glob `foo.*.baz` matches `foo.bar.baz.bam`, and the glob `*` matches
+// any path.
+func (g Glob) Matches(p Path) bool {
 	if len(p) < len(g) {
 		return false
 	}
