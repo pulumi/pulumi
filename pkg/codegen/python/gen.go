@@ -3069,7 +3069,7 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 		if err != nil {
 			return err
 		}
-		printComment(w, typeComment, indent) // TODO
+		printComment(w, typeComment, indent)
 	}
 
 	for _, prop := range props {
