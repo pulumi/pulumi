@@ -183,14 +183,14 @@ func TestGlobEncoding(t *testing.T) {
 	})
 }
 
-func TestHasPrefix(t *testing.T) {
+func TestMatches(t *testing.T) {
 	t.Parallel()
 
 	rapidTest(t, "prefixes are always have prefix", func(t *rapid.T) {
 		path := genPath().Draw(t, "path")
 		prefixLen := rapid.IntRange(0, len(path)).Draw(t, "prefixLen")
 
-		assert.True(t, (path[:prefixLen]).AsGlob().HasPrefix(path),
+		assert.True(t, (path[:prefixLen]).AsGlob().Matches(path),
 			"%#v should be a prefix of %#v", path[:prefixLen], path)
 	})
 
@@ -210,7 +210,7 @@ func TestHasPrefix(t *testing.T) {
 		default:
 			require.Fail(t, "unexpected type %T", s)
 		}
-		assert.False(t, glob.HasPrefix(path), "%#v should not be a prefix of %#v", path[:prefixLen], path)
+		assert.False(t, glob.Matches(path), "%#v should not be a prefix of %#v", path[:prefixLen], path)
 	})
 }
 
