@@ -161,6 +161,15 @@ func runExportedJob(
 	workflowContext := &pulumirpc.WorkflowContext{
 		ExecutionId: "cli-run",
 	}
+	jobFilterResp, jobFilterErr := workflowPlugin.RunFilter(ctx, &pulumirpc.RunFilterRequest{
+		Path: jobToken,
+	})
+	if jobFilterErr != nil {
+		return nil, "", fmt.Errorf("run filter for exported job %q: %w", jobToken, jobFilterErr)
+	}
+	if !jobFilterResp.GetPass() {
+		return []stepResult{}, jobToken, nil
+	}
 
 	generateResp, err := workflowPlugin.GenerateJob(ctx, &pulumirpc.GenerateJobRequest{
 		Context:             workflowContext,
@@ -183,6 +192,16 @@ func runExportedJob(
 
 	results := make([]stepResult, 0, len(steps))
 	for _, step := range steps {
+		stepFilterResp, stepFilterErr := workflowPlugin.RunFilter(ctx, &pulumirpc.RunFilterRequest{
+			Path: step.Path,
+		})
+		if stepFilterErr != nil {
+			return nil, "", fmt.Errorf("run filter for step %q: %w", step.Path, stepFilterErr)
+		}
+		if !stepFilterResp.GetPass() {
+			continue
+		}
+
 		runResp, err := runStepWithRetry(ctx, workflowPlugin, workflowContext, step)
 		if err != nil {
 			return nil, "", err

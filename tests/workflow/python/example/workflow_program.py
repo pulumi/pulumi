@@ -138,21 +138,21 @@ def main_graph(ctx: workflow.Context) -> None:
 
     @ctx.job("step-if")
     def step_if_job(job: workflow.JobContext) -> None:
-        @job.step("run", if_=True)
+        @job.step("run", filter=Output.from_input(True))
         def run_step() -> str:
             return "ran"
 
-        @job.step("skip", if_=False)
+        @job.step("skip", filter=Output.from_input(False))
         def skip_step() -> str:
             return "should-not-run"
 
-    @ctx.job("job-if", workflow.JobOptions(if_=True))
+    @ctx.job("job-if", workflow.JobOptions(filter=Output.from_input(True)))
     def job_if_job(job: workflow.JobContext) -> None:
         @job.step("run")
         def run_step() -> str:
             return "job-ran"
 
-    @ctx.job("job-if-disabled", workflow.JobOptions(if_=False))
+    @ctx.job("job-if-disabled", workflow.JobOptions(filter=Output.from_input(False)))
     def job_if_disabled_job(job: workflow.JobContext) -> None:
         @job.step("run")
         def run_step() -> str:

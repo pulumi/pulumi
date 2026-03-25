@@ -38,7 +38,7 @@ workflow "main" {
     }
     step "skipped" {
       command = "printf 'should-not-run'"
-      if = false
+      filter = false
       depends_on = ["compile"]
     }
     step "package" {
@@ -48,7 +48,7 @@ workflow "main" {
   }
 
   job "disabled-job" {
-    if = false
+    filter = false
     step "never" {
       command = "printf 'never'"
     }

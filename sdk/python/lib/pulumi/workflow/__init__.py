@@ -121,6 +121,7 @@ class _JobEvalState:
     job_path: str
     steps: Dict[str, _StepDefinition]
     registry: "WorkflowRegistry"
+    filters: Dict[str, FilterCallback]
 
 
 class Context:
@@ -175,7 +176,7 @@ class Context:
         fn: Optional[JobCallback] = None,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
-        if_: Optional[bool] = None,
+        filter: Optional[Input[bool]] = None,
     ) -> Union[None, JobCallback, Callable[[JobCallback], JobCallback]]:
         """Registers a job in the current graph."""
         inputs: List[Any] = list(inputs_or_fn)
@@ -187,8 +188,8 @@ class Context:
             raise WorkflowError("job dependencies must be set either directly or via JobOptions, not both")
         if options is not None and on_error is not None and options.on_error is not None:
             raise WorkflowError("job on_error must be set either directly or via JobOptions, not both")
-        if options is not None and if_ is not None and options.if_ is not None:
-            raise WorkflowError("job if must be set either directly or via JobOptions, not both")
+        if options is not None and filter is not None and options.filter is not None:
+            raise WorkflowError("job filter must be set either directly or via JobOptions, not both")
 
         effective_dependencies = dependencies
         if effective_dependencies is None and options is not None:
@@ -197,11 +198,9 @@ class Context:
         effective_on_error = on_error
         if effective_on_error is None and options is not None:
             effective_on_error = options.on_error
-        effective_if = if_
-        if effective_if is None and options is not None:
-            effective_if = options.if_
-        if effective_if is None:
-            effective_if = True
+        effective_filter = filter
+        if effective_filter is None and options is not None:
+            effective_filter = options.filter
 
         if fn is None and len(inputs) == 1 and callable(inputs[0]):
             fn = inputs[0]
@@ -225,9 +224,6 @@ class Context:
                 and registered_name != self._state.target_job_name
             ):
                 return registered_fn
-            if not effective_if:
-                return registered_fn
-
             job_path = f"{self._state.graph_path}/jobs/{registered_name}"
 
             request = workflow_pb2.RegisterJobRequest()
@@ -250,12 +246,14 @@ class Context:
 
             resolved_inputs = [_resolve_job_input(value) for value in inputs]
             self._state.monitor.RegisterJob(request)
+            if effective_filter is not None:
+                self._state.filters[job_path] = _input_bool_filter_callback(effective_filter)
             self._state.jobs[job_path] = _JobDefinition(
                 fn=registered_fn,
                 on_error=effective_on_error,
                 inputs=resolved_inputs,
                 external_token=external_token,
-                enabled=bool(effective_if),
+                enabled=True,
             )
             return registered_fn
 
@@ -282,7 +280,7 @@ class JobContext:
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
-        if_: Optional[bool] = None,
+        filter: Optional[Input[bool]] = None,
     ) -> Output[U]: ...
 
     @overload
@@ -294,7 +292,7 @@ class JobContext:
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
-        if_: Optional[bool] = None,
+        filter: Optional[Input[bool]] = None,
     ) -> Output[U]: ...
 
     def step(
@@ -305,7 +303,7 @@ class JobContext:
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
-        if_: Optional[bool] = None,
+        filter: Optional[Input[bool]] = None,
     ) -> Union[Output[U], Callable[[Callable[..., U]], Output[U]]]:
         """Registers a step in the current job."""
         options: Optional[StepOptions] = None
@@ -322,8 +320,8 @@ class JobContext:
             raise WorkflowError("step dependencies must be set either directly or via StepOptions, not both")
         if options is not None and on_error is not None and options.on_error is not None:
             raise WorkflowError("step on_error must be set either directly or via StepOptions, not both")
-        if options is not None and if_ is not None and options.if_ is not None:
-            raise WorkflowError("step if must be set either directly or via StepOptions, not both")
+        if options is not None and filter is not None and options.filter is not None:
+            raise WorkflowError("step filter must be set either directly or via StepOptions, not both")
 
         effective_dependencies = dependencies
         if effective_dependencies is None and options is not None:
@@ -331,11 +329,9 @@ class JobContext:
         effective_on_error = on_error
         if effective_on_error is None and options is not None:
             effective_on_error = options.on_error
-        effective_if = if_
-        if effective_if is None and options is not None:
-            effective_if = options.if_
-        if effective_if is None:
-            effective_if = True
+        effective_filter = filter
+        if effective_filter is None and options is not None:
+            effective_filter = options.filter
 
         if fn is None and callable(arg):
             fn = cast(Callable[[T], U], arg)
@@ -357,11 +353,6 @@ class JobContext:
                 raise WorkflowError(
                     "workflow steps may only accept workflow outputs; resource outputs are not supported"
                 )
-            if not effective_if:
-                _ensure_event_loop()
-                skipped = Output.from_input(None)
-                return cast(Output[U], skipped)
-
             step_path = f"{self._state.job_path}/steps/{registered_name}"
             request = workflow_pb2.RegisterStepRequest()
             request.context.CopyFrom(self._state.context)
@@ -386,6 +377,8 @@ class JobContext:
                 term.path = dep
 
             self._state.monitor.RegisterStep(request)
+            if effective_filter is not None:
+                self._state.filters[step_path] = _input_bool_filter_callback(effective_filter)
             _ensure_event_loop()
             step_output, resolve_output = deferred_output()
             setattr(step_output, _WORKFLOW_OUTPUT_PATHS_ATTR, {step_path})
@@ -420,7 +413,7 @@ class JobOptions:
     name: Optional[str] = None
     dependencies: Optional[List[str]] = None
     on_error: Optional[OnErrorHandler] = None
-    if_: Optional[bool] = None
+    filter: Optional[Input[bool]] = None
 
 
 @dataclass
@@ -428,7 +421,7 @@ class StepOptions:
     name: Optional[str] = None
     dependencies: Optional[List[str]] = None
     on_error: Optional[OnErrorHandler] = None
-    if_: Optional[bool] = None
+    filter: Optional[Input[bool]] = None
 
 
 class WorkflowRegistry:
@@ -798,6 +791,23 @@ def _resolve_job_input(value: Any) -> Any:
     return value
 
 
+def _input_bool_filter_callback(value: Input[bool]) -> FilterCallback:
+    def callback(_unused: Any) -> bool:
+        resolved = _resolve_filter_input(value)
+        if isinstance(resolved, bool):
+            return resolved
+        raise WorkflowError(f"filter must resolve to bool (got {type(resolved).__name__})")
+
+    return callback
+
+
+def _resolve_filter_input(value: Any) -> Any:
+    if isinstance(value, Output):
+        _ensure_event_loop()
+        return _sync_await(value.future(with_unknowns=True))
+    return value
+
+
 def _get_output_internal_attr(output: Output[Any], name: str) -> Any:
     try:
         return object.__getattribute__(output, name)
@@ -919,7 +929,7 @@ def _evaluate_job(
     context: workflow_pb2.WorkflowContext,
     graph_monitor_address: str,
     default_workflow_version: str = "",
-) -> Dict[str, _StepDefinition]:
+) -> Tuple[Dict[str, _StepDefinition], Dict[str, FilterCallback]]:
     if not graph_monitor_address:
         raise WorkflowError("graph monitor address is required")
 
@@ -933,6 +943,7 @@ def _evaluate_job(
         monitor = workflow_pb2_grpc.GraphMonitorStub(graph_channel)
 
         steps: Dict[str, _StepDefinition] = {}
+        filters: Dict[str, FilterCallback] = {}
         if job.fn is None:
             raise WorkflowError(f"job {job_path} has no evaluator callback")
         job.fn(
@@ -943,11 +954,12 @@ def _evaluate_job(
                     job_path=job_path,
                     steps=steps,
                     registry=registry,
+                    filters=filters,
                 )
             ),
             *job.inputs,
         )
-        return steps
+        return steps, filters
 
 
 class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
@@ -1249,7 +1261,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job path {request.path}")
 
             materialized_job = self._materialize_graph_job(request.path, job)
-            steps = _evaluate_job(
+            steps, step_filters = _evaluate_job(
                 request.path,
                 materialized_job,
                 self._workflow_registry,
@@ -1258,6 +1270,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 default_workflow_version=self._package_version,
             )
             self._steps_by_path.update(self._materialize_job_steps(request.path, steps))
+            self._filters_by_path.update(step_filters)
             return workflow_pb2.GenerateNodeResponse()
 
         if not request.name:
@@ -1290,7 +1303,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             on_error=exported.on_error,
             inputs=[],
         )
-        steps = _evaluate_job(
+        steps, step_filters = _evaluate_job(
             resolved_token,
             synthetic_job,
             self._workflow_registry,
@@ -1299,6 +1312,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             default_workflow_version=self._package_version,
         )
         self._steps_by_path.update(self._materialize_job_steps(request.name, steps))
+        self._filters_by_path.update(step_filters)
         return workflow_pb2.GenerateNodeResponse()
 
     def RunFilter(

@@ -78,14 +78,14 @@ type workflowJobStep struct {
 	Uses      string   `hcl:"uses,optional"`
 	Command   string   `hcl:"command,optional"`
 	Expr      string   `hcl:"expr,optional"`
-	If        *bool    `hcl:"if,optional"`
+	Filter    *bool    `hcl:"filter,optional"`
 	DependsOn []string `hcl:"depends_on,optional"`
 }
 
 type workflowGraphJob struct {
 	Name      string            `hcl:"name,label"`
 	Uses      string            `hcl:"uses,optional"`
-	If        *bool             `hcl:"if,optional"`
+	Filter    *bool             `hcl:"filter,optional"`
 	Steps     []workflowJobStep `hcl:"step,block"`
 	DependsOn []string          `hcl:"depends_on,optional"`
 }
@@ -100,6 +100,7 @@ type WorkflowEvaluator struct {
 	stepsByName    map[string]workflowStepDef
 	jobsByName     map[string]workflowJobDef
 	stepsByPath    map[string]workflowStepDef
+	filtersByPath  map[string]bool
 }
 
 func NewWorkflowEvaluator(programPath string) (*WorkflowEvaluator, error) {
@@ -157,6 +158,7 @@ func NewWorkflowEvaluator(programPath string) (*WorkflowEvaluator, error) {
 		stepsByName:    stepsByName,
 		jobsByName:     jobsByName,
 		stepsByPath:    map[string]workflowStepDef{},
+		filtersByPath:  map[string]bool{},
 	}, nil
 }
 
@@ -258,6 +260,11 @@ func (e *WorkflowEvaluator) GenerateGraph(
 	if err := e.registerGraphTriggers(ctx, req.GetContext(), req.GetPath(), graph, monitor); err != nil {
 		return nil, err
 	}
+	for _, graphJob := range graph.Jobs {
+		if graphJob.Filter != nil {
+			e.filtersByPath[req.GetPath()+"/jobs/"+graphJob.Name] = *graphJob.Filter
+		}
+	}
 	return &pulumirpc.GenerateNodeResponse{}, nil
 }
 
@@ -303,9 +310,6 @@ func (e *WorkflowEvaluator) GenerateJob(
 	if selected == nil {
 		return nil, status.Errorf(codes.NotFound, "unknown job %q", req.GetPath())
 	}
-	if selected.If != nil && !*selected.If {
-		return nil, status.Errorf(codes.NotFound, "job %q is disabled by if=false", req.GetPath())
-	}
 	jobSteps := selected.Steps
 	if selected.Uses != "" {
 		jobDef, ok := e.jobDefinitionForUse(selected.Uses)
@@ -331,11 +335,11 @@ func (e *WorkflowEvaluator) GenerateJob(
 	}); err != nil {
 		return nil, err
 	}
+	if selected.Filter != nil {
+		e.filtersByPath[jobPath] = *selected.Filter
+	}
 
 	for _, step := range jobSteps {
-		if step.If != nil && !*step.If {
-			continue
-		}
 		stepDef, err := e.stepDefinitionForJobStep(step)
 		if err != nil {
 			return nil, err
@@ -358,6 +362,9 @@ func (e *WorkflowEvaluator) GenerateJob(
 			return nil, err
 		}
 		e.stepsByPath[stepPath] = stepDef
+		if step.Filter != nil {
+			e.filtersByPath[stepPath] = *step.Filter
+		}
 	}
 
 	return &pulumirpc.GenerateNodeResponse{}, nil
@@ -421,6 +428,12 @@ func (e *WorkflowEvaluator) RunTriggerMock(
 func (e *WorkflowEvaluator) RunFilter(
 	_ context.Context, req *pulumirpc.RunFilterRequest,
 ) (*pulumirpc.RunFilterResponse, error) {
+	if pass, ok := e.filtersByPath[req.GetPath()]; ok {
+		return &pulumirpc.RunFilterResponse{Pass: pass}, nil
+	}
+	if req.GetValue() == nil || req.GetValue().GetStructValue() == nil {
+		return &pulumirpc.RunFilterResponse{Pass: true}, nil
+	}
 	value := req.GetValue().GetStructValue().GetFields()["timestamp"].GetStringValue()
 	return &pulumirpc.RunFilterResponse{Pass: strings.HasSuffix(value, "00:00+00:00")}, nil
 }
