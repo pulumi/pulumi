@@ -32,6 +32,16 @@ class ExportedJobOutput:
     final_file: str
 
 
+@dataclass
+class ExternalStepInput:
+    value: str
+
+
+@dataclass
+class ExternalStepOutput:
+    value: str
+
+
 def main_graph(ctx: workflow.Context) -> None:
     def cron_filter(value: Any) -> bool:
         if not isinstance(value, dict) or "timestamp" not in value:
@@ -105,6 +115,27 @@ def main_graph(ctx: workflow.Context) -> None:
         workflow.JobOptions(name="external-compose"),
     )
 
+    @ctx.job("external-steps")
+    def external_steps_job(job: workflow.JobContext) -> None:
+        upper = job.step("example:to-upper", ExternalStepInput(value="alpha"))
+        with_suffix = job.step(
+            "example:add-suffix",
+            upper,
+            workflow.StepOptions(name="suffix-step"),
+        )
+
+        @job.step("emit", with_suffix, dependencies=["to-upper", "suffix-step"])
+        def emit_step(result: ExternalStepOutput) -> dict[str, Any]:
+            return {"value": result.value}
+
+    @ctx.job("broken-external-step")
+    def broken_external_step_job(job: workflow.JobContext) -> None:
+        job.step("example:missing-step", ExternalStepInput(value="boom"))
+
+    @ctx.job("bad-external-input")
+    def bad_external_input_job(job: workflow.JobContext) -> None:
+        job.step("example:to-upper", {"oops": "wrong-shape"})
+
 
 def register_workflows(registry: workflow.WorkflowRegistry) -> None:
     def cron_trigger_mock(args: list[str]) -> CronTriggerOutput:
@@ -163,6 +194,15 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
         return finalize_step
 
     registry.job("compose-message", ExportedJobInput, compose_message_job)
+
+    def to_upper_step(step_input: ExternalStepInput) -> ExternalStepOutput:
+        return ExternalStepOutput(value=step_input.value.upper())
+
+    def add_suffix_step(step_input: ExternalStepOutput) -> ExternalStepOutput:
+        return ExternalStepOutput(value=step_input.value + "!")
+
+    registry.step("to-upper", ExternalStepInput, to_upper_step)
+    registry.step("example:add-suffix", ExternalStepOutput, add_suffix_step)
     registry.graph("main", main_graph)
 
 

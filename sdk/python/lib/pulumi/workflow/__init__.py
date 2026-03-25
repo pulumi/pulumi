@@ -49,6 +49,7 @@ FilterCallback = Callable[[Any], bool]
 TInput = TypeVar("TInput")
 TOutput = TypeVar("TOutput")
 TriggerMockCallback = Callable[[List[str]], TOutput]
+StepCallback = Callable[[Any], Any]
 
 _WORKFLOW_OUTPUT_PATHS_ATTR = "_pulumi_workflow_output_paths"
 _WORKFLOW_OUTPUT_VALUE_ATTR = "_pulumi_workflow_output_value"
@@ -61,6 +62,8 @@ class _StepDefinition:
     fn: Callable[..., Any]
     on_error: Optional[OnErrorHandler]
     resolve_output: Callable[[Output[Any]], None]
+    external_token: Optional[str] = None
+    expected_output_type: Optional[Type[Any]] = None
 
 
 @dataclass
@@ -89,6 +92,15 @@ class _TriggerDefinition:
 
 
 @dataclass
+class _ExportedStepDefinition:
+    token: str
+    input_type: Type[Any]
+    output_type: Type[Any]
+    fn: StepCallback
+    on_error: Optional[OnErrorHandler]
+
+
+@dataclass
 class _EvalState:
     monitor: workflow_pb2_grpc.GraphMonitorStub
     context: workflow_pb2.WorkflowContext
@@ -107,6 +119,7 @@ class _JobEvalState:
     context: workflow_pb2.WorkflowContext
     job_path: str
     steps: Dict[str, _StepDefinition]
+    registry: "WorkflowRegistry"
 
 
 class Context:
@@ -264,7 +277,7 @@ class JobContext:
         self,
         name: str,
         arg: Input[T],
-        fn: Callable[[T], U],
+        fn: Union[Callable[[T], U], "StepOptions"],
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
@@ -274,39 +287,70 @@ class JobContext:
         self,
         name: str,
         arg: Optional[Input[T]] = None,
-        fn: Optional[Callable[..., U]] = None,
+        fn: Optional[Union[Callable[..., U], "StepOptions"]] = None,
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
     ) -> Union[Output[U], Callable[[Callable[..., U]], Output[U]]]:
         """Registers a step in the current job."""
+        options: Optional[StepOptions] = None
+        if isinstance(fn, StepOptions):
+            options = fn
+            fn = None
+        if isinstance(arg, StepOptions):
+            if options is not None:
+                raise WorkflowError("step options may only be provided once")
+            options = arg
+            arg = None
+
+        if options is not None and dependencies is not None and options.dependencies is not None:
+            raise WorkflowError("step dependencies must be set either directly or via StepOptions, not both")
+        if options is not None and on_error is not None and options.on_error is not None:
+            raise WorkflowError("step on_error must be set either directly or via StepOptions, not both")
+
+        effective_dependencies = dependencies
+        if effective_dependencies is None and options is not None:
+            effective_dependencies = options.dependencies
+        effective_on_error = on_error
+        if effective_on_error is None and options is not None:
+            effective_on_error = options.on_error
+
         if fn is None and callable(arg):
             fn = cast(Callable[[T], U], arg)
             arg = None
+        is_external_step = fn is None and ":" in name
+        registered_name = name
+        external_token: Optional[str] = None
+        if is_external_step:
+            external_token = self._state.registry.resolve_step_token(name)
+            if options is not None and options.name:
+                registered_name = options.name
+            else:
+                registered_name = _default_step_name_for_token(name)
 
         def register(registered_fn: Callable[[T], U]) -> Output[U]:
-            if not name:
+            if not registered_name:
                 raise WorkflowError("step name is required")
             if isinstance(arg, Output) and not _is_workflow_output(arg):
                 raise WorkflowError(
                     "workflow steps may only accept workflow outputs; resource outputs are not supported"
                 )
 
-            step_path = f"{self._state.job_path}/steps/{name}"
+            step_path = f"{self._state.job_path}/steps/{registered_name}"
             request = workflow_pb2.RegisterStepRequest()
             request.context.CopyFrom(self._state.context)
             if hasattr(request, "path"):
                 request.path = step_path
             else:
-                request.name = name
+                request.name = registered_name
                 request.job = self._state.job_path
-            request.has_on_error = on_error is not None
+            request.has_on_error = effective_on_error is not None
             request.dependencies.operator = (
                 workflow_pb2.DependencyExpression.OPERATOR_ALL
             )
             dependency_paths = set()
-            if dependencies:
-                for dep in dependencies:
+            if effective_dependencies:
+                for dep in effective_dependencies:
                     dependency_paths.add(
                         _normalize_step_dependency(self._state.job_path, dep)
                     )
@@ -323,11 +367,14 @@ class JobContext:
                 has_arg=arg is not None,
                 arg=arg,
                 fn=registered_fn,
-                on_error=on_error,
+                on_error=effective_on_error,
                 resolve_output=resolve_output,
+                external_token=external_token,
             )
             return cast(Output[U], step_output)
 
+        if is_external_step:
+            return register(cast(Callable[[T], U], lambda _arg=None: None))
         if fn is not None:
             return register(cast(Callable[[T], U], fn))
         return register
@@ -349,6 +396,13 @@ class JobOptions:
     on_error: Optional[OnErrorHandler] = None
 
 
+@dataclass
+class StepOptions:
+    name: Optional[str] = None
+    dependencies: Optional[List[str]] = None
+    on_error: Optional[OnErrorHandler] = None
+
+
 class WorkflowRegistry:
     """Collects exported workflow components before evaluation."""
 
@@ -356,6 +410,7 @@ class WorkflowRegistry:
         self._package_name = package_name
         self._graphs: Dict[str, GraphCallback] = {}
         self._jobs: Dict[str, _ExportedJobDefinition] = {}
+        self._steps: Dict[str, _ExportedStepDefinition] = {}
         self._triggers: Dict[str, _TriggerDefinition] = {}
 
     def graph(
@@ -435,10 +490,44 @@ class WorkflowRegistry:
             on_error=on_error,
         )
 
+    def step(
+        self,
+        token: str,
+        input_type: Type[TInput],
+        fn: Callable[[TInput], TOutput],
+        *,
+        on_error: Optional[OnErrorHandler] = None,
+    ) -> None:
+        if not token:
+            raise WorkflowError("step token is required")
+        resolved_token = self.resolve_step_token(token)
+        if resolved_token in self._steps:
+            raise WorkflowError(f"step '{resolved_token}' is already registered")
+        if not callable(fn):
+            raise WorkflowError("step callback must be callable")
+
+        _validate_record_type(input_type, "step input type")
+        output_type = _step_return_type(fn)
+        _validate_record_type(output_type, "step output type")
+
+        self._steps[resolved_token] = _ExportedStepDefinition(
+            token=resolved_token,
+            input_type=input_type,
+            output_type=output_type,
+            fn=cast(StepCallback, fn),
+            on_error=on_error,
+        )
+
     def resolve_job_token(self, token: str) -> str:
         if token in self._jobs:
             return token
         qualified = _qualify_job_token(self._package_name, token)
+        return qualified
+
+    def resolve_step_token(self, token: str) -> str:
+        if token in self._steps:
+            return token
+        qualified = _qualify_step_token(self._package_name, token)
         return qualified
 
 
@@ -543,6 +632,20 @@ def _default_job_name_for_token(token: str) -> str:
     return parts[-1] if len(parts) > 0 else token
 
 
+def _qualify_step_token(package_name: str, token: str) -> str:
+    if token.count(":") >= 2:
+        return token
+    if token.count(":") == 1:
+        package, name = token.split(":", 1)
+        return f"{package}:index:{name}"
+    return f"{package_name}:index:{token}"
+
+
+def _default_step_name_for_token(token: str) -> str:
+    parts = token.split(":")
+    return parts[-1] if len(parts) > 0 else token
+
+
 def _job_return_output_type(fn: Callable[..., Any]) -> Type[Any]:
     hints = get_type_hints(fn)
     return_type = hints.get("return")
@@ -558,6 +661,18 @@ def _job_return_output_type(fn: Callable[..., Any]) -> Type[Any]:
     if not inspect.isclass(output_type):
         raise WorkflowError("job callback output type T must be a class/record type")
     return cast(Type[Any], output_type)
+
+
+def _step_return_type(fn: Callable[..., Any]) -> Type[Any]:
+    hints = get_type_hints(fn)
+    return_type = hints.get("return")
+    if return_type is None:
+        raise WorkflowError("step callback must declare a return type annotation")
+    if get_origin(return_type) is Output:
+        raise WorkflowError("step callback return type must be plain T, not Output[T]")
+    if not inspect.isclass(return_type):
+        raise WorkflowError("step callback output type must be a class/record type")
+    return cast(Type[Any], return_type)
 
 
 def _coerce_record_instance(record_type: Type[Any], value: Any, label: str) -> Any:
@@ -772,6 +887,7 @@ def _evaluate_graph(
 def _evaluate_job(
     job_path: str,
     job: _JobDefinition,
+    registry: WorkflowRegistry,
     context: workflow_pb2.WorkflowContext,
     graph_monitor_address: str,
     default_workflow_version: str = "",
@@ -798,6 +914,7 @@ def _evaluate_job(
                     context=effective_context,
                     job_path=job_path,
                     steps=steps,
+                    registry=registry,
                 )
             ),
             *job.inputs,
@@ -825,7 +942,6 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
     def _materialize_graph_job(
         self,
         request_name: str,
-        job_path: str,
         job: _JobDefinition,
     ) -> _JobDefinition:
         if job.external_token is None:
@@ -850,6 +966,56 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             inputs=[],
             external_token=job.external_token,
         )
+
+    def _materialize_job_steps(
+        self,
+        request_name: str,
+        steps: Dict[str, _StepDefinition],
+    ) -> Dict[str, _StepDefinition]:
+        materialized: Dict[str, _StepDefinition] = {}
+        for step_path, step in steps.items():
+            if step.external_token is None:
+                materialized[step_path] = step
+                continue
+
+            exported = self._workflow_registry._steps.get(step.external_token)
+            if exported is None:
+                raise WorkflowError(
+                    f"unknown external step token {step.external_token}"
+                )
+            if not step.has_arg:
+                raise WorkflowError(
+                    f"external step {request_name} must have one input argument"
+                )
+
+            def _call_exported(
+                arg_value: Any,
+                *,
+                exported_step: _ExportedStepDefinition = exported,
+                exported_path: str = step_path,
+            ) -> Any:
+                coerced = _coerce_record_instance(
+                    exported_step.input_type,
+                    arg_value,
+                    f"step input for {exported_path}",
+                )
+                result = exported_step.fn(coerced)
+                if not isinstance(result, exported_step.output_type):
+                    raise WorkflowError(
+                        f"external step {exported_step.token} must return {exported_step.output_type.__name__}"
+                    )
+                return result
+
+            materialized[step_path] = _StepDefinition(
+                has_arg=True,
+                arg=step.arg,
+                fn=_call_exported,
+                on_error=step.on_error if step.on_error is not None else exported.on_error,
+                resolve_output=step.resolve_output,
+                external_token=step.external_token,
+                expected_output_type=exported.output_type,
+            )
+        return materialized
 
     def Handshake(
         self,
@@ -1054,15 +1220,16 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             if job is None:
                 context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job path {request.path}")
 
-            materialized_job = self._materialize_graph_job(request.path, request.path, job)
+            materialized_job = self._materialize_graph_job(request.path, job)
             steps = _evaluate_job(
                 request.path,
                 materialized_job,
+                self._workflow_registry,
                 request.context,
                 request.graph_monitor_address,
                 default_workflow_version=self._package_version,
             )
-            self._steps_by_path.update(steps)
+            self._steps_by_path.update(self._materialize_job_steps(request.path, steps))
             return workflow_pb2.GenerateNodeResponse()
 
         if not request.name:
@@ -1098,11 +1265,12 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         steps = _evaluate_job(
             resolved_token,
             synthetic_job,
+            self._workflow_registry,
             request.context,
             request.graph_monitor_address,
             default_workflow_version=self._package_version,
         )
-        self._steps_by_path.update(steps)
+        self._steps_by_path.update(self._materialize_job_steps(request.name, steps))
         return workflow_pb2.GenerateNodeResponse()
 
     def RunFilter(
