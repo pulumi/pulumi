@@ -75,6 +75,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
+	workflowcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/workflow"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -485,6 +486,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				convert.NewConvertCmd(pkgWorkspace.Instance),
 				operations.NewWatchCmd(),
 				logs.NewLogsCmd(pkgWorkspace.Instance),
+				workflowcmd.NewWorkflowCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
