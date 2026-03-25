@@ -53,7 +53,7 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 			pluginPath := args[0]
 			jobNameOrToken := args[1]
 
-			input, err := parseInputJSON(inputJSON)
+			input, err := parseInputJSON(inputJSON, cmd.Flags().Changed("input"))
 			if err != nil {
 				return err
 			}
@@ -94,13 +94,17 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 		},
 		Required: 2,
 	})
-	cmd.Flags().StringVar(&inputJSON, "input", "{}", "JSON object input passed to the job")
+	cmd.Flags().StringVar(&inputJSON, "input", "", "JSON object input passed to the job (defaults to null when omitted)")
 	cmd.Flags().BoolVar(&emitJSON, "json", false, "Emit machine-readable JSON output")
 
 	return cmd
 }
 
-func parseInputJSON(input string) (map[string]any, error) {
+func parseInputJSON(input string, provided bool) (any, error) {
+	if !provided {
+		return nil, nil
+	}
+
 	var value map[string]any
 	if err := json.Unmarshal([]byte(input), &value); err != nil {
 		return nil, fmt.Errorf("invalid --input JSON object: %w", err)
@@ -115,7 +119,7 @@ func runExportedJob(
 	ctx context.Context,
 	pluginPath string,
 	jobNameOrToken string,
-	input map[string]any,
+	input any,
 ) ([]stepResult, string, error) {
 	server := &monitorServer{}
 	grpcServer := grpc.NewServer()

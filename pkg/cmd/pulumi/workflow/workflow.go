@@ -29,5 +29,6 @@ func NewWorkflowCmd() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	cmd.AddCommand(newWorkflowRunCmd())
+	cmd.AddCommand(newWorkflowTriggerCmd())
 	return cmd
 }

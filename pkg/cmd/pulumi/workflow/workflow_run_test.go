@@ -26,9 +26,13 @@ import (
 func TestParseInputJSON(t *testing.T) {
 	t.Parallel()
 
-	value, err := parseInputJSON(`{"message":"hello","repeat":3}`)
+	valueAny, err := parseInputJSON(`{"message":"hello","repeat":3}`, true)
 	if err != nil {
 		t.Fatalf("parseInputJSON failed: %v", err)
+	}
+	value, ok := valueAny.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map input, got %T", valueAny)
 	}
 	if got := value["message"]; got != "hello" {
 		t.Fatalf("unexpected message value: %#v", got)
@@ -41,9 +45,21 @@ func TestParseInputJSON(t *testing.T) {
 func TestParseInputJSONInvalid(t *testing.T) {
 	t.Parallel()
 
-	_, err := parseInputJSON(`not-json`)
+	_, err := parseInputJSON(`not-json`, true)
 	if err == nil {
 		t.Fatalf("expected parseInputJSON to fail")
+	}
+}
+
+func TestParseInputJSONDefaultsToNullWhenInputNotProvided(t *testing.T) {
+	t.Parallel()
+
+	value, err := parseInputJSON(`{"ignored":"because-not-provided"}`, false)
+	if err != nil {
+		t.Fatalf("parseInputJSON failed: %v", err)
+	}
+	if value != nil {
+		t.Fatalf("expected nil default input, got %#v", value)
 	}
 }
 
