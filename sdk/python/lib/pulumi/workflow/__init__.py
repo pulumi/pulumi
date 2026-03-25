@@ -1,4 +1,4 @@
-# Copyright 2016, Pulumi Corporation.
+# Copyright 2026, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,12 +25,13 @@ from concurrent import futures
 from dataclasses import asdict, dataclass, is_dataclass
 import asyncio
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union, cast, get_type_hints
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union, cast, get_type_hints, overload
 
 import grpc
 from google.protobuf import json_format
 from google.protobuf import struct_pb2
-from pulumi.output import Output as PulumiOutput
+from pulumi import Output, Input
+from pulumi.output import deferred_output
 from pulumi.runtime.sync_await import _sync_await
 
 from pulumi.runtime.proto import workflow_pb2
@@ -48,7 +49,6 @@ FilterCallback = Callable[[Any], bool]
 TInput = TypeVar("TInput")
 TOutput = TypeVar("TOutput")
 TriggerMockCallback = Callable[[List[str]], TOutput]
-Output = PulumiOutput[Any]
 
 _WORKFLOW_OUTPUT_PATHS_ATTR = "_pulumi_workflow_output_paths"
 _WORKFLOW_OUTPUT_VALUE_ATTR = "_pulumi_workflow_output_value"
@@ -60,6 +60,7 @@ class _StepDefinition:
     arg: Any
     fn: Callable[..., Any]
     on_error: Optional[OnErrorHandler]
+    resolve_output: Callable[[Output[Any]], None]
 
 
 @dataclass
@@ -109,7 +110,7 @@ class Context:
         spec: Optional[Any] = None,
         *,
         options: Optional[TriggerOptions] = None,
-    ) -> PulumiOutput[Any]:
+    ) -> Output[Any]:
         """Registers a trigger in the current graph."""
 
         request = workflow_pb2.RegisterTriggerRequest()
@@ -196,24 +197,45 @@ class JobContext:
     def __init__(self, state: _JobEvalState) -> None:
         self._state = state
 
+    @overload
     def step(
         self,
         name: str,
-        arg: Any = None,
-        fn: Optional[Callable[..., Any]] = None,
+        fn: Callable[[], U],
         *,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
-    ) -> Union[Output, Callable[[Callable[..., Any]], Output]]:
+    ) -> Output[U]: ...
+
+    @overload
+    def step(
+        self,
+        name: str,
+        arg: Input[T],
+        fn: Callable[[T], U],
+        *,
+        dependencies: Optional[List[str]] = None,
+        on_error: Optional[OnErrorHandler] = None,
+    ) -> Output[U]: ...
+
+    def step(
+        self,
+        name: str,
+        arg: Optional[Input[T]] = None,
+        fn: Optional[Callable[..., U]] = None,
+        *,
+        dependencies: Optional[List[str]] = None,
+        on_error: Optional[OnErrorHandler] = None,
+    ) -> Union[Output[U], Callable[[Callable[..., U]], Output[U]]]:
         """Registers a step in the current job."""
         if fn is None and callable(arg):
-            fn = cast(Callable[..., Any], arg)
+            fn = cast(Callable[[T], U], arg)
             arg = None
 
-        def register(registered_fn: Callable[..., Any]) -> Output:
+        def register(registered_fn: Callable[[T], U]) -> Output[U]:
             if not name:
                 raise WorkflowError("step name is required")
-            if isinstance(arg, PulumiOutput) and not _is_workflow_output(arg):
+            if isinstance(arg, Output) and not _is_workflow_output(arg):
                 raise WorkflowError(
                     "workflow steps may only accept workflow outputs; resource outputs are not supported"
                 )
@@ -242,13 +264,19 @@ class JobContext:
                 term.path = dep
 
             self._state.monitor.RegisterStep(request)
+            step_output, resolve_output = deferred_output()
+            setattr(step_output, _WORKFLOW_OUTPUT_PATHS_ATTR, {step_path})
             self._state.steps[step_path] = _StepDefinition(
-                has_arg=arg is not None, arg=arg, fn=registered_fn, on_error=on_error
+                has_arg=arg is not None,
+                arg=arg,
+                fn=registered_fn,
+                on_error=on_error,
+                resolve_output=resolve_output,
             )
-            return _new_workflow_output(step_path, None)
+            return cast(Output[U], step_output)
 
         if fn is not None:
-            return register(fn)
+            return register(cast(Callable[[T], U], fn))
         return register
 
 
@@ -432,7 +460,7 @@ def _workflow_input_value(context: workflow_pb2.WorkflowContext, path: str) -> A
 
 
 def _workflow_output_paths(value: Any) -> Set[str]:
-    if not isinstance(value, PulumiOutput):
+    if not isinstance(value, Output):
         return set()
     paths = getattr(value, _WORKFLOW_OUTPUT_PATHS_ATTR, None)
     if paths is None:
@@ -441,7 +469,7 @@ def _workflow_output_paths(value: Any) -> Set[str]:
 
 
 def _is_workflow_output(value: Any) -> bool:
-    return isinstance(value, PulumiOutput) and len(_workflow_output_paths(value)) > 0
+    return isinstance(value, Output) and len(_workflow_output_paths(value)) > 0
 
 
 def _workflow_dependency_paths(values: List[Any]) -> Set[str]:
@@ -451,16 +479,16 @@ def _workflow_dependency_paths(values: List[Any]) -> Set[str]:
     return paths
 
 
-def _new_workflow_output(path: str, value: Any) -> PulumiOutput[Any]:
+def _new_workflow_output(path: str, value: Any) -> Output[Any]:
     _ensure_event_loop()
-    output = PulumiOutput.from_input(value)
+    output = Output.from_input(value)
     setattr(output, _WORKFLOW_OUTPUT_PATHS_ATTR, {path})
     setattr(output, _WORKFLOW_OUTPUT_VALUE_ATTR, value)
     return output
 
 
 def _resolve_job_input(value: Any) -> Any:
-    if isinstance(value, PulumiOutput):
+    if isinstance(value, Output):
         if not _is_workflow_output(value):
             raise WorkflowError(
                 "workflow jobs may only accept workflow outputs; resource outputs are not supported"
@@ -472,25 +500,15 @@ def _resolve_job_input(value: Any) -> Any:
     return value
 
 
-def _resolve_step_arg(arg: Any, step_results_by_path: Dict[str, Any]) -> Any:
-    if not isinstance(arg, PulumiOutput):
+def _resolve_step_arg(arg: Any) -> Any:
+    if not isinstance(arg, Output):
         return arg
     if not _is_workflow_output(arg):
         raise WorkflowError(
             "workflow steps may only accept workflow outputs; resource outputs are not supported"
         )
-
-    paths = sorted(_workflow_output_paths(arg))
-    if len(paths) == 0:
-        return None
-    if len(paths) == 1:
-        path = paths[0]
-        if path in step_results_by_path:
-            return step_results_by_path[path]
-        if hasattr(arg, _WORKFLOW_OUTPUT_VALUE_ATTR):
-            return getattr(arg, _WORKFLOW_OUTPUT_VALUE_ATTR)
-        return None
-    return [step_results_by_path.get(path) for path in paths]
+    _ensure_event_loop()
+    return _sync_await(arg.future(with_unknowns=True))
 
 
 def _invoke_step_fn(fn: Callable[..., Any], arg: Any, *, has_arg: bool) -> Any:
@@ -613,7 +631,6 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
 
         self._jobs_by_path: Dict[str, _JobDefinition] = {}
         self._steps_by_path: Dict[str, _StepDefinition] = {}
-        self._step_results_by_path: Dict[str, Any] = {}
         self._filters_by_path: Dict[str, FilterCallback] = {}
 
     def Handshake(
@@ -833,11 +850,11 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         response = workflow_pb2.RunStepResponse()
         try:
             if step.has_arg:
-                arg_value = _resolve_step_arg(step.arg, self._step_results_by_path)
+                arg_value = _resolve_step_arg(step.arg)
                 result = _invoke_step_fn(step.fn, arg_value, has_arg=True)
             else:
                 result = _invoke_step_fn(step.fn, None, has_arg=False)
-            self._step_results_by_path[request.path] = result
+            step.resolve_output(Output.from_input(result))
             response.result.CopyFrom(_to_proto_value(result))
         except Exception as error:  # pylint: disable=broad-except
             response.error.reason = str(error)
