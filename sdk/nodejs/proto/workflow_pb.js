@@ -1132,11 +1132,8 @@ proto.pulumirpc.WorkflowContext.prototype.toObject = function(opt_includeInstanc
  */
 proto.pulumirpc.WorkflowContext.toObject = function(includeInstance, msg) {
   var f, obj = {
-workflowName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-workflowVersion: jspb.Message.getFieldWithDefault(msg, 2, ""),
-executionId: jspb.Message.getFieldWithDefault(msg, 3, ""),
-inputPath: jspb.Message.getFieldWithDefault(msg, 4, ""),
-inputValue: (f = msg.getInputValue()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
+executionId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+workflowVersion: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -1175,24 +1172,11 @@ proto.pulumirpc.WorkflowContext.deserializeBinaryFromReader = function(msg, read
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setWorkflowName(value);
+      msg.setExecutionId(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
       msg.setWorkflowVersion(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setExecutionId(value);
-      break;
-    case 4:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setInputPath(value);
-      break;
-    case 5:
-      var value = new google_protobuf_struct_pb.Value;
-      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
-      msg.setInputValue(value);
       break;
     default:
       reader.skipField();
@@ -1223,7 +1207,7 @@ proto.pulumirpc.WorkflowContext.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.WorkflowContext.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getWorkflowName();
+  f = message.getExecutionId();
   if (f.length > 0) {
     writer.writeString(
       1,
@@ -1237,36 +1221,14 @@ proto.pulumirpc.WorkflowContext.serializeBinaryToWriter = function(message, writ
       f
     );
   }
-  f = message.getExecutionId();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
-  f = message.getInputPath();
-  if (f.length > 0) {
-    writer.writeString(
-      4,
-      f
-    );
-  }
-  f = message.getInputValue();
-  if (f != null) {
-    writer.writeMessage(
-      5,
-      f,
-      google_protobuf_struct_pb.Value.serializeBinaryToWriter
-    );
-  }
 };
 
 
 /**
- * optional string workflow_name = 1;
+ * optional string execution_id = 1;
  * @return {string}
  */
-proto.pulumirpc.WorkflowContext.prototype.getWorkflowName = function() {
+proto.pulumirpc.WorkflowContext.prototype.getExecutionId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -1275,7 +1237,7 @@ proto.pulumirpc.WorkflowContext.prototype.getWorkflowName = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.WorkflowContext} returns this
  */
-proto.pulumirpc.WorkflowContext.prototype.setWorkflowName = function(value) {
+proto.pulumirpc.WorkflowContext.prototype.setExecutionId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
@@ -1295,79 +1257,6 @@ proto.pulumirpc.WorkflowContext.prototype.getWorkflowVersion = function() {
  */
 proto.pulumirpc.WorkflowContext.prototype.setWorkflowVersion = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string execution_id = 3;
- * @return {string}
- */
-proto.pulumirpc.WorkflowContext.prototype.getExecutionId = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.WorkflowContext} returns this
- */
-proto.pulumirpc.WorkflowContext.prototype.setExecutionId = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-/**
- * optional string input_path = 4;
- * @return {string}
- */
-proto.pulumirpc.WorkflowContext.prototype.getInputPath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.WorkflowContext} returns this
- */
-proto.pulumirpc.WorkflowContext.prototype.setInputPath = function(value) {
-  return jspb.Message.setProto3StringField(this, 4, value);
-};
-
-
-/**
- * optional google.protobuf.Value input_value = 5;
- * @return {?proto.google.protobuf.Value}
- */
-proto.pulumirpc.WorkflowContext.prototype.getInputValue = function() {
-  return /** @type{?proto.google.protobuf.Value} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 5));
-};
-
-
-/**
- * @param {?proto.google.protobuf.Value|undefined} value
- * @return {!proto.pulumirpc.WorkflowContext} returns this
-*/
-proto.pulumirpc.WorkflowContext.prototype.setInputValue = function(value) {
-  return jspb.Message.setWrapperField(this, 5, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
- * @return {!proto.pulumirpc.WorkflowContext} returns this
- */
-proto.pulumirpc.WorkflowContext.prototype.clearInputValue = function() {
-  return this.setInputValue(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.WorkflowContext.prototype.hasInputValue = function() {
-  return jspb.Message.getField(this, 5) != null;
 };
 
 
@@ -5768,7 +5657,9 @@ proto.pulumirpc.GenerateJobRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(includeInstance, f),
 path: jspb.Message.getFieldWithDefault(msg, 2, ""),
-graphMonitorAddress: jspb.Message.getFieldWithDefault(msg, 3, "")
+graphMonitorAddress: jspb.Message.getFieldWithDefault(msg, 3, ""),
+inputPath: jspb.Message.getFieldWithDefault(msg, 4, ""),
+inputValue: (f = msg.getInputValue()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -5817,6 +5708,15 @@ proto.pulumirpc.GenerateJobRequest.deserializeBinaryFromReader = function(msg, r
     case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.setGraphMonitorAddress(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setInputPath(value);
+      break;
+    case 5:
+      var value = new google_protobuf_struct_pb.Value;
+      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
+      msg.setInputValue(value);
       break;
     default:
       reader.skipField();
@@ -5867,6 +5767,21 @@ proto.pulumirpc.GenerateJobRequest.serializeBinaryToWriter = function(message, w
     writer.writeString(
       3,
       f
+    );
+  }
+  f = message.getInputPath();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
+  }
+  f = message.getInputValue();
+  if (f != null) {
+    writer.writeMessage(
+      5,
+      f,
+      google_protobuf_struct_pb.Value.serializeBinaryToWriter
     );
   }
 };
@@ -5942,6 +5857,61 @@ proto.pulumirpc.GenerateJobRequest.prototype.getGraphMonitorAddress = function()
  */
 proto.pulumirpc.GenerateJobRequest.prototype.setGraphMonitorAddress = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string input_path = 4;
+ * @return {string}
+ */
+proto.pulumirpc.GenerateJobRequest.prototype.getInputPath = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.GenerateJobRequest} returns this
+ */
+proto.pulumirpc.GenerateJobRequest.prototype.setInputPath = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional google.protobuf.Value input_value = 5;
+ * @return {?proto.google.protobuf.Value}
+ */
+proto.pulumirpc.GenerateJobRequest.prototype.getInputValue = function() {
+  return /** @type{?proto.google.protobuf.Value} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 5));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Value|undefined} value
+ * @return {!proto.pulumirpc.GenerateJobRequest} returns this
+*/
+proto.pulumirpc.GenerateJobRequest.prototype.setInputValue = function(value) {
+  return jspb.Message.setWrapperField(this, 5, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.GenerateJobRequest} returns this
+ */
+proto.pulumirpc.GenerateJobRequest.prototype.clearInputValue = function() {
+  return this.setInputValue(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.GenerateJobRequest.prototype.hasInputValue = function() {
+  return jspb.Message.getField(this, 5) != null;
 };
 
 
@@ -10169,8 +10139,8 @@ proto.pulumirpc.RegisterStepRequest.prototype.toObject = function(opt_includeIns
 proto.pulumirpc.RegisterStepRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(includeInstance, f),
-path: jspb.Message.getFieldWithDefault(msg, 2, ""),
-jobPath: jspb.Message.getFieldWithDefault(msg, 3, ""),
+name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+job: jspb.Message.getFieldWithDefault(msg, 3, ""),
 dependencies: (f = msg.getDependencies()) && proto.pulumirpc.DependencyExpression.toObject(includeInstance, f),
 hasOnError: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
@@ -10216,11 +10186,11 @@ proto.pulumirpc.RegisterStepRequest.deserializeBinaryFromReader = function(msg, 
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPath(value);
+      msg.setName(value);
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setJobPath(value);
+      msg.setJob(value);
       break;
     case 4:
       var value = new proto.pulumirpc.DependencyExpression;
@@ -10268,14 +10238,14 @@ proto.pulumirpc.RegisterStepRequest.serializeBinaryToWriter = function(message, 
       proto.pulumirpc.WorkflowContext.serializeBinaryToWriter
     );
   }
-  f = message.getPath();
+  f = message.getName();
   if (f.length > 0) {
     writer.writeString(
       2,
       f
     );
   }
-  f = message.getJobPath();
+  f = message.getJob();
   if (f.length > 0) {
     writer.writeString(
       3,
@@ -10338,10 +10308,10 @@ proto.pulumirpc.RegisterStepRequest.prototype.hasContext = function() {
 
 
 /**
- * optional string path = 2;
+ * optional string name = 2;
  * @return {string}
  */
-proto.pulumirpc.RegisterStepRequest.prototype.getPath = function() {
+proto.pulumirpc.RegisterStepRequest.prototype.getName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -10350,16 +10320,16 @@ proto.pulumirpc.RegisterStepRequest.prototype.getPath = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.RegisterStepRequest} returns this
  */
-proto.pulumirpc.RegisterStepRequest.prototype.setPath = function(value) {
+proto.pulumirpc.RegisterStepRequest.prototype.setName = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional string job_path = 3;
+ * optional string job = 3;
  * @return {string}
  */
-proto.pulumirpc.RegisterStepRequest.prototype.getJobPath = function() {
+proto.pulumirpc.RegisterStepRequest.prototype.getJob = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
@@ -10368,7 +10338,7 @@ proto.pulumirpc.RegisterStepRequest.prototype.getJobPath = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.RegisterStepRequest} returns this
  */
-proto.pulumirpc.RegisterStepRequest.prototype.setJobPath = function(value) {
+proto.pulumirpc.RegisterStepRequest.prototype.setJob = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 

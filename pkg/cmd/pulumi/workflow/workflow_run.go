@@ -159,16 +159,15 @@ func runExportedJob(
 		return nil, "", fmt.Errorf("encode job input: %w", err)
 	}
 	workflowContext := &pulumirpc.WorkflowContext{
-		WorkflowName:    "cli-run",
-		WorkflowVersion: "dev",
-		InputPath:       jobToken,
-		InputValue:      inputValue,
+		ExecutionId: "cli-run",
 	}
 
 	generateResp, err := workflowPlugin.GenerateJob(ctx, &pulumirpc.GenerateJobRequest{
 		Context:             workflowContext,
 		Path:                jobToken,
 		GraphMonitorAddress: listener.Addr().String(),
+		InputPath:           jobToken,
+		InputValue:          inputValue,
 	})
 	if err != nil {
 		return nil, "", fmt.Errorf("generate exported job %q: %w", jobToken, err)

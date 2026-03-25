@@ -39,34 +39,21 @@ class WorkflowContext(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    WORKFLOW_NAME_FIELD_NUMBER: builtins.int
-    WORKFLOW_VERSION_FIELD_NUMBER: builtins.int
     EXECUTION_ID_FIELD_NUMBER: builtins.int
-    INPUT_PATH_FIELD_NUMBER: builtins.int
-    INPUT_VALUE_FIELD_NUMBER: builtins.int
-    workflow_name: builtins.str
-    """A stable name for the workflow definition."""
-    workflow_version: builtins.str
-    """A scheduler-defined immutable workflow version identifier."""
+    WORKFLOW_VERSION_FIELD_NUMBER: builtins.int
     execution_id: builtins.str
     """The workflow execution identifier for a single trigger fire."""
-    input_path: builtins.str
-    """The full graph node path whose output value is being passed as workflow input."""
-    @property
-    def input_value(self) -> google.protobuf.struct_pb2.Value:
-        """The encoded input value for input_path."""
-
+    workflow_version: builtins.str
+    """A scheduler-defined immutable workflow version identifier. If empty, evaluators
+    should fall back to their own configured package/workflow version.
+    """
     def __init__(
         self,
         *,
-        workflow_name: builtins.str = ...,
-        workflow_version: builtins.str = ...,
         execution_id: builtins.str = ...,
-        input_path: builtins.str = ...,
-        input_value: google.protobuf.struct_pb2.Value | None = ...,
+        workflow_version: builtins.str = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["input_value", b"input_value"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["execution_id", b"execution_id", "input_path", b"input_path", "input_value", b"input_value", "workflow_name", b"workflow_name", "workflow_version", b"workflow_version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["execution_id", b"execution_id", "workflow_version", b"workflow_version"]) -> None: ...
 
 global___WorkflowContext = WorkflowContext
 
@@ -620,19 +607,26 @@ class GenerateJobRequest(google.protobuf.message.Message):
     CONTEXT_FIELD_NUMBER: builtins.int
     PATH_FIELD_NUMBER: builtins.int
     GRAPH_MONITOR_ADDRESS_FIELD_NUMBER: builtins.int
+    INPUT_PATH_FIELD_NUMBER: builtins.int
+    INPUT_VALUE_FIELD_NUMBER: builtins.int
     path: builtins.str
     graph_monitor_address: builtins.str
+    input_path: builtins.str
     @property
     def context(self) -> global___WorkflowContext: ...
+    @property
+    def input_value(self) -> google.protobuf.struct_pb2.Value: ...
     def __init__(
         self,
         *,
         context: global___WorkflowContext | None = ...,
         path: builtins.str = ...,
         graph_monitor_address: builtins.str = ...,
+        input_path: builtins.str = ...,
+        input_value: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["context", b"context"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["context", b"context", "graph_monitor_address", b"graph_monitor_address", "path", b"path"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["context", b"context", "input_value", b"input_value"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["context", b"context", "graph_monitor_address", b"graph_monitor_address", "input_path", b"input_path", "input_value", b"input_value", "path", b"path"]) -> None: ...
 
 global___GenerateJobRequest = GenerateJobRequest
 
@@ -1125,12 +1119,12 @@ class RegisterStepRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     CONTEXT_FIELD_NUMBER: builtins.int
-    PATH_FIELD_NUMBER: builtins.int
-    JOB_PATH_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    JOB_FIELD_NUMBER: builtins.int
     DEPENDENCIES_FIELD_NUMBER: builtins.int
     HAS_ON_ERROR_FIELD_NUMBER: builtins.int
-    path: builtins.str
-    job_path: builtins.str
+    name: builtins.str
+    job: builtins.str
     has_on_error: builtins.bool
     @property
     def context(self) -> global___WorkflowContext: ...
@@ -1140,13 +1134,13 @@ class RegisterStepRequest(google.protobuf.message.Message):
         self,
         *,
         context: global___WorkflowContext | None = ...,
-        path: builtins.str = ...,
-        job_path: builtins.str = ...,
+        name: builtins.str = ...,
+        job: builtins.str = ...,
         dependencies: global___DependencyExpression | None = ...,
         has_on_error: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["context", b"context", "dependencies", b"dependencies"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["context", b"context", "dependencies", b"dependencies", "has_on_error", b"has_on_error", "job_path", b"job_path", "path", b"path"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["context", b"context", "dependencies", b"dependencies", "has_on_error", b"has_on_error", "job", b"job", "name", b"name"]) -> None: ...
 
 global___RegisterStepRequest = RegisterStepRequest
 

@@ -245,18 +245,13 @@ func (StepResult_Status) EnumDescriptor() ([]byte, []int) {
 // WorkflowContext identifies a workflow definition and execution.
 type WorkflowContext struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// A stable name for the workflow definition.
-	WorkflowName string `protobuf:"bytes,1,opt,name=workflow_name,json=workflowName,proto3" json:"workflow_name,omitempty"`
-	// A scheduler-defined immutable workflow version identifier.
-	WorkflowVersion string `protobuf:"bytes,2,opt,name=workflow_version,json=workflowVersion,proto3" json:"workflow_version,omitempty"`
 	// The workflow execution identifier for a single trigger fire.
-	ExecutionId string `protobuf:"bytes,3,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	// The full graph node path whose output value is being passed as workflow input.
-	InputPath string `protobuf:"bytes,4,opt,name=input_path,json=inputPath,proto3" json:"input_path,omitempty"`
-	// The encoded input value for input_path.
-	InputValue    *structpb.Value `protobuf:"bytes,5,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ExecutionId string `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	// A scheduler-defined immutable workflow version identifier. If empty, evaluators
+	// should fall back to their own configured package/workflow version.
+	WorkflowVersion string `protobuf:"bytes,2,opt,name=workflow_version,json=workflowVersion,proto3" json:"workflow_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *WorkflowContext) Reset() {
@@ -289,9 +284,9 @@ func (*WorkflowContext) Descriptor() ([]byte, []int) {
 	return file_pulumi_workflow_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *WorkflowContext) GetWorkflowName() string {
+func (x *WorkflowContext) GetExecutionId() string {
 	if x != nil {
-		return x.WorkflowName
+		return x.ExecutionId
 	}
 	return ""
 }
@@ -301,27 +296,6 @@ func (x *WorkflowContext) GetWorkflowVersion() string {
 		return x.WorkflowVersion
 	}
 	return ""
-}
-
-func (x *WorkflowContext) GetExecutionId() string {
-	if x != nil {
-		return x.ExecutionId
-	}
-	return ""
-}
-
-func (x *WorkflowContext) GetInputPath() string {
-	if x != nil {
-		return x.InputPath
-	}
-	return ""
-}
-
-func (x *WorkflowContext) GetInputValue() *structpb.Value {
-	if x != nil {
-		return x.InputValue
-	}
-	return nil
 }
 
 // `WorkflowHandshakeRequest` is the type of requests sent as part of a
@@ -1666,6 +1640,8 @@ type GenerateJobRequest struct {
 	Context             *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
 	Path                string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	GraphMonitorAddress string                 `protobuf:"bytes,3,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
+	InputPath           string                 `protobuf:"bytes,4,opt,name=input_path,json=inputPath,proto3" json:"input_path,omitempty"`
+	InputValue          *structpb.Value        `protobuf:"bytes,5,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1719,6 +1695,20 @@ func (x *GenerateJobRequest) GetGraphMonitorAddress() string {
 		return x.GraphMonitorAddress
 	}
 	return ""
+}
+
+func (x *GenerateJobRequest) GetInputPath() string {
+	if x != nil {
+		return x.InputPath
+	}
+	return ""
+}
+
+func (x *GenerateJobRequest) GetInputValue() *structpb.Value {
+	if x != nil {
+		return x.InputValue
+	}
+	return nil
 }
 
 type GenerateGraphRequest struct {
@@ -2861,8 +2851,8 @@ func (x *RegisterGraphRequest) GetHasOnError() bool {
 type RegisterStepRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	JobPath       string                 `protobuf:"bytes,3,opt,name=job_path,json=jobPath,proto3" json:"job_path,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Job           string                 `protobuf:"bytes,3,opt,name=job,proto3" json:"job,omitempty"`
 	Dependencies  *DependencyExpression  `protobuf:"bytes,4,opt,name=dependencies,proto3" json:"dependencies,omitempty"`
 	HasOnError    bool                   `protobuf:"varint,5,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -2906,16 +2896,16 @@ func (x *RegisterStepRequest) GetContext() *WorkflowContext {
 	return nil
 }
 
-func (x *RegisterStepRequest) GetPath() string {
+func (x *RegisterStepRequest) GetName() string {
 	if x != nil {
-		return x.Path
+		return x.Name
 	}
 	return ""
 }
 
-func (x *RegisterStepRequest) GetJobPath() string {
+func (x *RegisterStepRequest) GetJob() string {
 	if x != nil {
-		return x.JobPath
+		return x.Job
 	}
 	return ""
 }
@@ -2983,15 +2973,10 @@ var File_pulumi_workflow_proto protoreflect.FileDescriptor
 
 const file_pulumi_workflow_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/workflow.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\"\xdc\x01\n" +
-	"\x0fWorkflowContext\x12#\n" +
-	"\rworkflow_name\x18\x01 \x01(\tR\fworkflowName\x12)\n" +
-	"\x10workflow_version\x18\x02 \x01(\tR\x0fworkflowVersion\x12!\n" +
-	"\fexecution_id\x18\x03 \x01(\tR\vexecutionId\x12\x1d\n" +
-	"\n" +
-	"input_path\x18\x04 \x01(\tR\tinputPath\x127\n" +
-	"\vinput_value\x18\x05 \x01(\v2\x16.google.protobuf.ValueR\n" +
-	"inputValue\"\xc8\x01\n" +
+	"\x15pulumi/workflow.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\"_\n" +
+	"\x0fWorkflowContext\x12!\n" +
+	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12)\n" +
+	"\x10workflow_version\x18\x02 \x01(\tR\x0fworkflowVersion\"\xc8\x01\n" +
 	"\x18WorkflowHandshakeRequest\x12%\n" +
 	"\x0eengine_address\x18\x01 \x01(\tR\rengineAddress\x12*\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tH\x00R\rrootDirectory\x88\x01\x01\x120\n" +
@@ -3083,11 +3068,15 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\vErrorRecord\x12\x1b\n" +
 	"\tstep_path\x18\x01 \x01(\tR\bstepPath\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1a\n" +
-	"\bcategory\x18\x03 \x01(\tR\bcategory\"\x92\x01\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\"\xea\x01\n" +
 	"\x12GenerateJobRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x122\n" +
-	"\x15graph_monitor_address\x18\x03 \x01(\tR\x13graphMonitorAddress\"\x94\x01\n" +
+	"\x15graph_monitor_address\x18\x03 \x01(\tR\x13graphMonitorAddress\x12\x1d\n" +
+	"\n" +
+	"input_path\x18\x04 \x01(\tR\tinputPath\x127\n" +
+	"\vinput_value\x18\x05 \x01(\v2\x16.google.protobuf.ValueR\n" +
+	"inputValue\"\x94\x01\n" +
 	"\x14GenerateGraphRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x122\n" +
@@ -3174,11 +3163,11 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12C\n" +
 	"\fdependencies\x18\x03 \x01(\v2\x1f.pulumirpc.DependencyExpressionR\fdependencies\x12 \n" +
 	"\fhas_on_error\x18\x04 \x01(\bR\n" +
-	"hasOnError\"\xe1\x01\n" +
+	"hasOnError\"\xd8\x01\n" +
 	"\x13RegisterStepRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\x12\x19\n" +
-	"\bjob_path\x18\x03 \x01(\tR\ajobPath\x12C\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x10\n" +
+	"\x03job\x18\x03 \x01(\tR\x03job\x12C\n" +
 	"\fdependencies\x18\x04 \x01(\v2\x1f.pulumirpc.DependencyExpressionR\fdependencies\x12 \n" +
 	"\fhas_on_error\x18\x05 \x01(\bR\n" +
 	"hasOnError\"D\n" +
@@ -3278,54 +3267,54 @@ var file_pulumi_workflow_proto_goTypes = []any{
 	(*RegisterGraphRequest)(nil),       // 50: pulumirpc.RegisterGraphRequest
 	(*RegisterStepRequest)(nil),        // 51: pulumirpc.RegisterStepRequest
 	(*RegisterNodeResponse)(nil),       // 52: pulumirpc.RegisterNodeResponse
-	(*structpb.Value)(nil),             // 53: google.protobuf.Value
-	(*structpb.Struct)(nil),            // 54: google.protobuf.Struct
+	(*structpb.Struct)(nil),            // 53: google.protobuf.Struct
+	(*structpb.Value)(nil),             // 54: google.protobuf.Value
 }
 var file_pulumi_workflow_proto_depIdxs = []int32{
-	53, // 0: pulumirpc.WorkflowContext.input_value:type_name -> google.protobuf.Value
-	7,  // 1: pulumirpc.GraphInfo.input_type:type_name -> pulumirpc.TypeReference
-	7,  // 2: pulumirpc.GraphInfo.output_type:type_name -> pulumirpc.TypeReference
-	7,  // 3: pulumirpc.JobInfo.input_type:type_name -> pulumirpc.TypeReference
-	7,  // 4: pulumirpc.JobInfo.output_type:type_name -> pulumirpc.TypeReference
-	8,  // 5: pulumirpc.GetPackageInfoResponse.package:type_name -> pulumirpc.PackageInfo
-	9,  // 6: pulumirpc.GetGraphsResponse.graphs:type_name -> pulumirpc.GraphInfo
-	9,  // 7: pulumirpc.GetGraphResponse.graph:type_name -> pulumirpc.GraphInfo
-	7,  // 8: pulumirpc.GetTriggerResponse.input_type:type_name -> pulumirpc.TypeReference
-	7,  // 9: pulumirpc.GetTriggerResponse.output_type:type_name -> pulumirpc.TypeReference
-	10, // 10: pulumirpc.GetJobsResponse.jobs:type_name -> pulumirpc.JobInfo
-	10, // 11: pulumirpc.GetJobResponse.job:type_name -> pulumirpc.JobInfo
-	54, // 12: pulumirpc.WorkflowError.details:type_name -> google.protobuf.Struct
-	27, // 13: pulumirpc.DependencyTerm.expression:type_name -> pulumirpc.DependencyExpression
-	0,  // 14: pulumirpc.DependencyExpression.operator:type_name -> pulumirpc.DependencyExpression.Operator
-	26, // 15: pulumirpc.DependencyExpression.terms:type_name -> pulumirpc.DependencyTerm
-	28, // 16: pulumirpc.PlatformSelector.requirements:type_name -> pulumirpc.PlatformRequirements
-	1,  // 17: pulumirpc.PlatformSelector.match_policy:type_name -> pulumirpc.PlatformSelector.MatchPolicy
-	4,  // 18: pulumirpc.GenerateJobRequest.context:type_name -> pulumirpc.WorkflowContext
+	7,  // 0: pulumirpc.GraphInfo.input_type:type_name -> pulumirpc.TypeReference
+	7,  // 1: pulumirpc.GraphInfo.output_type:type_name -> pulumirpc.TypeReference
+	7,  // 2: pulumirpc.JobInfo.input_type:type_name -> pulumirpc.TypeReference
+	7,  // 3: pulumirpc.JobInfo.output_type:type_name -> pulumirpc.TypeReference
+	8,  // 4: pulumirpc.GetPackageInfoResponse.package:type_name -> pulumirpc.PackageInfo
+	9,  // 5: pulumirpc.GetGraphsResponse.graphs:type_name -> pulumirpc.GraphInfo
+	9,  // 6: pulumirpc.GetGraphResponse.graph:type_name -> pulumirpc.GraphInfo
+	7,  // 7: pulumirpc.GetTriggerResponse.input_type:type_name -> pulumirpc.TypeReference
+	7,  // 8: pulumirpc.GetTriggerResponse.output_type:type_name -> pulumirpc.TypeReference
+	10, // 9: pulumirpc.GetJobsResponse.jobs:type_name -> pulumirpc.JobInfo
+	10, // 10: pulumirpc.GetJobResponse.job:type_name -> pulumirpc.JobInfo
+	53, // 11: pulumirpc.WorkflowError.details:type_name -> google.protobuf.Struct
+	27, // 12: pulumirpc.DependencyTerm.expression:type_name -> pulumirpc.DependencyExpression
+	0,  // 13: pulumirpc.DependencyExpression.operator:type_name -> pulumirpc.DependencyExpression.Operator
+	26, // 14: pulumirpc.DependencyExpression.terms:type_name -> pulumirpc.DependencyTerm
+	28, // 15: pulumirpc.PlatformSelector.requirements:type_name -> pulumirpc.PlatformRequirements
+	1,  // 16: pulumirpc.PlatformSelector.match_policy:type_name -> pulumirpc.PlatformSelector.MatchPolicy
+	4,  // 17: pulumirpc.GenerateJobRequest.context:type_name -> pulumirpc.WorkflowContext
+	54, // 18: pulumirpc.GenerateJobRequest.input_value:type_name -> google.protobuf.Value
 	4,  // 19: pulumirpc.GenerateGraphRequest.context:type_name -> pulumirpc.WorkflowContext
 	25, // 20: pulumirpc.GenerateNodeResponse.error:type_name -> pulumirpc.WorkflowError
 	4,  // 21: pulumirpc.RunSensorRequest.context:type_name -> pulumirpc.WorkflowContext
-	53, // 22: pulumirpc.RunSensorRequest.cursor:type_name -> google.protobuf.Value
+	54, // 22: pulumirpc.RunSensorRequest.cursor:type_name -> google.protobuf.Value
 	25, // 23: pulumirpc.RunSensorResponse.error:type_name -> pulumirpc.WorkflowError
 	2,  // 24: pulumirpc.RunSensorResponse.decision:type_name -> pulumirpc.RunSensorResponse.Decision
-	53, // 25: pulumirpc.RunSensorResponse.cursor:type_name -> google.protobuf.Value
-	53, // 26: pulumirpc.RunSensorResponse.event:type_name -> google.protobuf.Value
+	54, // 25: pulumirpc.RunSensorResponse.cursor:type_name -> google.protobuf.Value
+	54, // 26: pulumirpc.RunSensorResponse.event:type_name -> google.protobuf.Value
 	4,  // 27: pulumirpc.RunStepRequest.context:type_name -> pulumirpc.WorkflowContext
 	25, // 28: pulumirpc.RunStepResponse.error:type_name -> pulumirpc.WorkflowError
-	53, // 29: pulumirpc.RunStepResponse.result:type_name -> google.protobuf.Value
+	54, // 29: pulumirpc.RunStepResponse.result:type_name -> google.protobuf.Value
 	3,  // 30: pulumirpc.StepResult.status:type_name -> pulumirpc.StepResult.Status
 	4,  // 31: pulumirpc.ResolveStepResultRequest.context:type_name -> pulumirpc.WorkflowContext
 	38, // 32: pulumirpc.ResolveStepResultRequest.step:type_name -> pulumirpc.StepResult
-	53, // 33: pulumirpc.ResolveStepResultRequest.result:type_name -> google.protobuf.Value
+	54, // 33: pulumirpc.ResolveStepResultRequest.result:type_name -> google.protobuf.Value
 	25, // 34: pulumirpc.ResolveStepResultResponse.error:type_name -> pulumirpc.WorkflowError
-	54, // 35: pulumirpc.RunTriggerMockResponse.value:type_name -> google.protobuf.Struct
-	53, // 36: pulumirpc.RunFilterRequest.value:type_name -> google.protobuf.Value
+	53, // 35: pulumirpc.RunTriggerMockResponse.value:type_name -> google.protobuf.Struct
+	54, // 36: pulumirpc.RunFilterRequest.value:type_name -> google.protobuf.Value
 	4,  // 37: pulumirpc.RunOnErrorRequest.context:type_name -> pulumirpc.WorkflowContext
 	30, // 38: pulumirpc.RunOnErrorRequest.errors:type_name -> pulumirpc.ErrorRecord
 	25, // 39: pulumirpc.RunOnErrorResponse.error:type_name -> pulumirpc.WorkflowError
 	4,  // 40: pulumirpc.RegisterTriggerRequest.context:type_name -> pulumirpc.WorkflowContext
-	54, // 41: pulumirpc.RegisterTriggerRequest.spec:type_name -> google.protobuf.Struct
+	53, // 41: pulumirpc.RegisterTriggerRequest.spec:type_name -> google.protobuf.Struct
 	4,  // 42: pulumirpc.RegisterSensorRequest.context:type_name -> pulumirpc.WorkflowContext
-	54, // 43: pulumirpc.RegisterSensorRequest.spec:type_name -> google.protobuf.Struct
+	53, // 43: pulumirpc.RegisterSensorRequest.spec:type_name -> google.protobuf.Struct
 	4,  // 44: pulumirpc.RegisterJobRequest.context:type_name -> pulumirpc.WorkflowContext
 	27, // 45: pulumirpc.RegisterJobRequest.dependencies:type_name -> pulumirpc.DependencyExpression
 	29, // 46: pulumirpc.RegisterJobRequest.platform:type_name -> pulumirpc.PlatformSelector
@@ -3333,7 +3322,7 @@ var file_pulumi_workflow_proto_depIdxs = []int32{
 	27, // 48: pulumirpc.RegisterGraphRequest.dependencies:type_name -> pulumirpc.DependencyExpression
 	4,  // 49: pulumirpc.RegisterStepRequest.context:type_name -> pulumirpc.WorkflowContext
 	27, // 50: pulumirpc.RegisterStepRequest.dependencies:type_name -> pulumirpc.DependencyExpression
-	53, // 51: pulumirpc.RegisterNodeResponse.value:type_name -> google.protobuf.Value
+	54, // 51: pulumirpc.RegisterNodeResponse.value:type_name -> google.protobuf.Value
 	5,  // 52: pulumirpc.WorkflowEvaluator.Handshake:input_type -> pulumirpc.WorkflowHandshakeRequest
 	11, // 53: pulumirpc.WorkflowEvaluator.GetPackageInfo:input_type -> pulumirpc.GetPackageInfoRequest
 	13, // 54: pulumirpc.WorkflowEvaluator.GetGraphs:input_type -> pulumirpc.GetGraphsRequest

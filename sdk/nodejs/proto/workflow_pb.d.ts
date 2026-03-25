@@ -8,19 +8,10 @@ import * as jspb from "google-protobuf";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
 export class WorkflowContext extends jspb.Message { 
-    getWorkflowName(): string;
-    setWorkflowName(value: string): WorkflowContext;
-    getWorkflowVersion(): string;
-    setWorkflowVersion(value: string): WorkflowContext;
     getExecutionId(): string;
     setExecutionId(value: string): WorkflowContext;
-    getInputPath(): string;
-    setInputPath(value: string): WorkflowContext;
-
-    hasInputValue(): boolean;
-    clearInputValue(): void;
-    getInputValue(): google_protobuf_struct_pb.Value | undefined;
-    setInputValue(value?: google_protobuf_struct_pb.Value): WorkflowContext;
+    getWorkflowVersion(): string;
+    setWorkflowVersion(value: string): WorkflowContext;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): WorkflowContext.AsObject;
@@ -34,11 +25,8 @@ export class WorkflowContext extends jspb.Message {
 
 export namespace WorkflowContext {
     export type AsObject = {
-        workflowName: string,
-        workflowVersion: string,
         executionId: string,
-        inputPath: string,
-        inputValue?: google_protobuf_struct_pb.Value.AsObject,
+        workflowVersion: string,
     }
 }
 
@@ -701,6 +689,13 @@ export class GenerateJobRequest extends jspb.Message {
     setPath(value: string): GenerateJobRequest;
     getGraphMonitorAddress(): string;
     setGraphMonitorAddress(value: string): GenerateJobRequest;
+    getInputPath(): string;
+    setInputPath(value: string): GenerateJobRequest;
+
+    hasInputValue(): boolean;
+    clearInputValue(): void;
+    getInputValue(): google_protobuf_struct_pb.Value | undefined;
+    setInputValue(value?: google_protobuf_struct_pb.Value): GenerateJobRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateJobRequest.AsObject;
@@ -717,6 +712,8 @@ export namespace GenerateJobRequest {
         context?: WorkflowContext.AsObject,
         path: string,
         graphMonitorAddress: string,
+        inputPath: string,
+        inputValue?: google_protobuf_struct_pb.Value.AsObject,
     }
 }
 
@@ -1313,10 +1310,10 @@ export class RegisterStepRequest extends jspb.Message {
     clearContext(): void;
     getContext(): WorkflowContext | undefined;
     setContext(value?: WorkflowContext): RegisterStepRequest;
-    getPath(): string;
-    setPath(value: string): RegisterStepRequest;
-    getJobPath(): string;
-    setJobPath(value: string): RegisterStepRequest;
+    getName(): string;
+    setName(value: string): RegisterStepRequest;
+    getJob(): string;
+    setJob(value: string): RegisterStepRequest;
 
     hasDependencies(): boolean;
     clearDependencies(): void;
@@ -1338,8 +1335,8 @@ export class RegisterStepRequest extends jspb.Message {
 export namespace RegisterStepRequest {
     export type AsObject = {
         context?: WorkflowContext.AsObject,
-        path: string,
-        jobPath: string,
+        name: string,
+        job: string,
         dependencies?: DependencyExpression.AsObject,
         hasOnError: boolean,
     }

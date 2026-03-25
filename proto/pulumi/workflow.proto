@@ -87,20 +87,12 @@ service GraphMonitor {
 
 // WorkflowContext identifies a workflow definition and execution.
 message WorkflowContext {
-    // A stable name for the workflow definition.
-    string workflow_name = 1;
-
-    // A scheduler-defined immutable workflow version identifier.
-    string workflow_version = 2;
-
     // The workflow execution identifier for a single trigger fire.
-    string execution_id = 3;
+    string execution_id = 1;
 
-    // The full graph node path whose output value is being passed as workflow input.
-    string input_path = 4;
-
-    // The encoded input value for input_path.
-    google.protobuf.Value input_value = 5;
+    // A scheduler-defined immutable workflow version identifier. If empty, evaluators
+    // should fall back to their own configured package/workflow version.
+    string workflow_version = 2;
 }
 
 // `WorkflowHandshakeRequest` is the type of requests sent as part of a
@@ -274,6 +266,8 @@ message GenerateJobRequest {
     WorkflowContext context = 1;
     string path = 2;
     string graph_monitor_address = 3;
+    string input_path = 4;
+    google.protobuf.Value input_value = 5;
 }
 
 message GenerateGraphRequest {

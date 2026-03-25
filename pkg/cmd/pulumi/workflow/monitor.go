@@ -63,8 +63,8 @@ func (m *monitorServer) RegisterJob(
 func (m *monitorServer) RegisterStep(
 	_ context.Context, req *pulumirpc.RegisterStepRequest,
 ) (*pulumirpc.RegisterNodeResponse, error) {
-	stepPath := req.GetPath()
-	if stepPath == "" {
+	stepPath := req.GetJob() + "/steps/" + req.GetName()
+	if req.GetJob() == "" || req.GetName() == "" {
 		return nil, fmt.Errorf("register step request is missing path")
 	}
 

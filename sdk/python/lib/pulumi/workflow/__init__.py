@@ -92,6 +92,8 @@ class _EvalState:
     monitor: workflow_pb2_grpc.GraphMonitorStub
     context: workflow_pb2.WorkflowContext
     graph_path: str
+    input_path: str
+    input_value: Optional[struct_pb2.Value]
     registry: "WorkflowRegistry"
     jobs: Dict[str, _JobDefinition]
     filters: Dict[str, FilterCallback]
@@ -127,7 +129,10 @@ class Context:
         filter_fn = options.filter if options is not None else None
         if self._state.target_job_name is not None:
             return _new_workflow_output(
-                trigger_path, _workflow_input_value(self._state.context, trigger_path)
+                trigger_path,
+                _workflow_input_value(
+                    self._state.input_path, self._state.input_value, trigger_path
+                ),
             )
         request.context.CopyFrom(self._state.context)
         request.path = trigger_path
@@ -142,7 +147,10 @@ class Context:
         if filter_fn is not None:
             self._state.filters[trigger_path] = filter_fn
         return _new_workflow_output(
-            trigger_path, _workflow_input_value(self._state.context, trigger_path)
+            trigger_path,
+            _workflow_input_value(
+                self._state.input_path, self._state.input_value, trigger_path
+            ),
         )
 
     def job(
@@ -545,12 +553,14 @@ def _from_proto_value(value: struct_pb2.Value) -> Any:
     return None
 
 
-def _workflow_input_value(context: workflow_pb2.WorkflowContext, path: str) -> Any:
-    if context.input_path != path:
+def _workflow_input_value(
+    input_path: str, input_value: Optional[struct_pb2.Value], path: str
+) -> Any:
+    if input_path != path:
         return None
-    if not context.HasField("input_value"):
+    if input_value is None:
         return None
-    return _from_proto_value(context.input_value)
+    return _from_proto_value(input_value)
 
 
 def _workflow_output_paths(value: Any) -> Set[str]:
@@ -647,6 +657,16 @@ def _ensure_event_loop() -> None:
         asyncio.set_event_loop(asyncio.new_event_loop())
 
 
+def _with_default_workflow_version(
+    context: workflow_pb2.WorkflowContext, default_version: str
+) -> workflow_pb2.WorkflowContext:
+    effective = workflow_pb2.WorkflowContext()
+    effective.CopyFrom(context)
+    if not effective.workflow_version:
+        effective.workflow_version = default_version
+    return effective
+
+
 def _evaluate_graph(
     token: str,
     registry: WorkflowRegistry,
@@ -654,18 +674,24 @@ def _evaluate_graph(
     context: workflow_pb2.WorkflowContext,
     graph_monitor_address: str,
     target_job_name: Optional[str] = None,
+    input_path: str = "",
+    input_value: Optional[struct_pb2.Value] = None,
+    default_workflow_version: str = "",
 ) -> Tuple[Dict[str, _JobDefinition], Dict[str, FilterCallback]]:
     if not graph_monitor_address:
         raise WorkflowError("graph monitor address is required")
 
     with contextlib.ExitStack() as stack:
+        effective_context = _with_default_workflow_version(
+            context, default_workflow_version
+        )
         graph_channel = stack.enter_context(
             grpc.insecure_channel(graph_monitor_address)
         )
         monitor = workflow_pb2_grpc.GraphMonitorStub(graph_channel)
 
         register_graph = workflow_pb2.RegisterGraphRequest()
-        register_graph.context.CopyFrom(context)
+        register_graph.context.CopyFrom(effective_context)
         register_graph.path = token
         register_graph.has_on_error = False
         register_graph.dependencies.operator = (
@@ -679,8 +705,10 @@ def _evaluate_graph(
             Context(
                 _EvalState(
                     monitor=monitor,
-                    context=context,
+                    context=effective_context,
                     graph_path=token,
+                    input_path=input_path,
+                    input_value=input_value,
                     registry=registry,
                     jobs=jobs,
                     filters=filters,
@@ -696,11 +724,15 @@ def _evaluate_job(
     job: _JobDefinition,
     context: workflow_pb2.WorkflowContext,
     graph_monitor_address: str,
+    default_workflow_version: str = "",
 ) -> Dict[str, _StepDefinition]:
     if not graph_monitor_address:
         raise WorkflowError("graph monitor address is required")
 
     with contextlib.ExitStack() as stack:
+        effective_context = _with_default_workflow_version(
+            context, default_workflow_version
+        )
         graph_channel = stack.enter_context(
             grpc.insecure_channel(graph_monitor_address)
         )
@@ -710,7 +742,10 @@ def _evaluate_job(
         job.fn(
             JobContext(
                 _JobEvalState(
-                    monitor=monitor, context=context, job_path=job_path, steps=steps
+                    monitor=monitor,
+                    context=effective_context,
+                    job_path=job_path,
+                    steps=steps,
                 )
             ),
             *job.inputs,
@@ -891,6 +926,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             graph_fn,
             request.context,
             request.graph_monitor_address,
+            default_workflow_version=self._package_version,
         )
         self._jobs_by_path.update(jobs)
         self._filters_by_path.update(filters)
@@ -926,6 +962,9 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 request.context,
                 request.graph_monitor_address,
                 target_job_name=job_name,
+                input_path=request.input_path,
+                input_value=request.input_value if request.HasField("input_value") else None,
+                default_workflow_version=self._package_version,
             )
             self._jobs_by_path.update(jobs)
             self._filters_by_path.update(filters)
@@ -935,7 +974,11 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job path {request.path}")
 
             steps = _evaluate_job(
-                request.path, job, request.context, request.graph_monitor_address
+                request.path,
+                job,
+                request.context,
+                request.graph_monitor_address,
+                default_workflow_version=self._package_version,
             )
             self._steps_by_path.update(steps)
             return workflow_pb2.GenerateNodeResponse()
@@ -945,7 +988,16 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         if exported is None:
             context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job token {request.path}")
 
-        input_value = _workflow_input_value(request.context, request.path)
+        if request.input_path != request.path:
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "input_path for exported jobs must match request.path",
+            )
+        input_value = (
+            _from_proto_value(request.input_value)
+            if request.HasField("input_value")
+            else None
+        )
         coerced_input = _coerce_record_instance(
             exported.input_type, input_value, f"job input for {request.path}"
         )
@@ -956,7 +1008,11 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             inputs=[],
         )
         steps = _evaluate_job(
-            request.path, synthetic_job, request.context, request.graph_monitor_address
+            request.path,
+            synthetic_job,
+            request.context,
+            request.graph_monitor_address,
+            default_workflow_version=self._package_version,
         )
         self._steps_by_path.update(steps)
         return workflow_pb2.GenerateNodeResponse()
