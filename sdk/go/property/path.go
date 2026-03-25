@@ -15,7 +15,11 @@
 package property
 
 import (
+	"encoding"
+	"errors"
 	"fmt"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Path provides access and alteration methods on [Value]s.
@@ -25,6 +29,36 @@ import (
 // - [KeySegment]: For indexing into [Map]s.
 // - [IndexSegment]: For indexing into [Array]s.
 type Path []PathSegment
+
+var (
+	_ encoding.TextMarshaler   = Path{}
+	_ encoding.TextUnmarshaler = &Path{}
+)
+
+func (g Path) MarshalText() (text []byte, err error) {
+	return g.AsGlob().MarshalText()
+}
+
+func (p *Path) UnmarshalText(text []byte) error {
+	var g Glob
+	if err := g.UnmarshalText(text); err != nil {
+		return err
+	}
+	*p = (*p)[:0]
+	for _, v := range g {
+		switch v := v.(type) {
+		case splat:
+			return errors.New("splat not allowed in non-glob paths")
+		case KeySegment:
+			*p = append(*p, v)
+		case IndexSegment:
+			*p = append(*p, v)
+		default:
+			contract.Failf("g.UnmarshalText(%q) contained invalid segment %T", string(text), v)
+		}
+	}
+	return nil
+}
 
 // Get the [Value] from v by applying the [Path].
 //
