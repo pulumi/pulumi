@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -1248,13 +1247,13 @@ func awaitableTypeNames(tok string) (baseName, awaitableName string) {
 	return baseName, awaitableName
 }
 
-func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) (string, error) {
+func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType, fun *schema.Function) (string, error) {
 	baseName, awaitableName := awaitableTypeNames(obj.Token)
 
 	// Produce a class definition with optional """ comment.
 	fmt.Fprint(w, "@pulumi.output_type\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
-	selfRef := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(obj.Token)}
+	selfRef := schema.DocRefForFunction(fun)
 	comment, err := mod.genComment(obj.Comment, selfRef, false /*filterExamples*/)
 	if err != nil {
 		return "", err
@@ -1732,9 +1731,8 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) (
 
 	if obj := returnTypeObject(method.Function); obj != nil {
 		properties = obj.Properties
-		docRef := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(method.Function.Token)}
 		var err error
-		comment, err = mod.genComment(obj.Comment, docRef, false /*filterExamples*/)
+		comment, err = mod.genComment(obj.Comment, schema.DocRefForFunction(method.Function), false /*filterExamples*/)
 		if err != nil {
 			return "", err
 		}
@@ -1867,9 +1865,9 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) error {
 
 		// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 		docs := &bytes.Buffer{}
+		methodFunRef := schema.DocRefForFunction(fun)
 		if fun.Comment != "" {
-			docRef := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(fun.Token)}
-			comment, err := mod.genComment(fun.Comment, docRef, true /*filterExamples*/)
+			comment, err := mod.genComment(fun.Comment, methodFunRef, true /*filterExamples*/)
 			if err != nil {
 				return err
 			}
@@ -1878,8 +1876,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) error {
 		if len(args) > 0 {
 			fmt.Fprintln(docs, "")
 			for _, arg := range args {
-				docRef := schema.DocRef{Kind: schema.DocRefKindFunctionInputProperty, Ref: "#/functions/" + url.PathEscape(fun.Token) + "/inputs/properties/" + url.PathEscape(arg.Name)}
-				if err := mod.genPropDocstring(docs, PyName(arg.Name), docRef, arg, false /*acceptMapping*/); err != nil {
+				if err := mod.genPropDocstring(docs, PyName(arg.Name), methodFunRef, arg, false /*acceptMapping*/); err != nil {
 					return err
 				}
 			}
@@ -1994,7 +1991,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	var originalOutputTypeName string
 	if returnTypeObj != nil {
 		var err error
-		retTypeName, err = mod.genAwaitableType(w, returnTypeObj)
+		retTypeName, err = mod.genAwaitableType(w, returnTypeObj, fun)
 		if err != nil {
 			return "", err
 		}
@@ -2140,9 +2137,9 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) error 
 
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
+	funRef := schema.DocRefForFunction(fun)
 	if fun.Comment != "" {
-		docRef := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(fun.Token)}
-		comment, err := mod.genComment(fun.Comment, docRef, true /*filterExamples*/)
+		comment, err := mod.genComment(fun.Comment, funRef, true /*filterExamples*/)
 		if err != nil {
 			return err
 		}
@@ -2153,8 +2150,7 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) error 
 	if len(args) > 0 {
 		fmt.Fprintln(docs, "")
 		for _, arg := range args {
-			docRef := schema.DocRef{Kind: schema.DocRefKindFunctionInputProperty, Ref: "#/functions/" + url.PathEscape(fun.Token) + "/inputs/properties/" + url.PathEscape(arg.Name)}
-			if err := mod.genPropDocstring(docs, PyName(arg.Name), docRef, arg, true /*acceptMapping*/); err != nil {
+			if err := mod.genPropDocstring(docs, PyName(arg.Name), funRef, arg, true /*acceptMapping*/); err != nil {
 				return err
 			}
 		}
@@ -2512,9 +2508,9 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	b := &bytes.Buffer{}
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
+	resRef := schema.DocRefForResource(res)
 	if res.Comment != "" {
-		docRef := schema.DocRef{Kind: schema.DocRefKindResource, Ref: "#/resources/" + url.PathEscape(res.Token)}
-		comment, err := mod.genComment(res.Comment, docRef, true /*filterExamples*/)
+		comment, err := mod.genComment(res.Comment, resRef, true /*filterExamples*/)
 		if err != nil {
 			return err
 		}
@@ -2533,8 +2529,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if !argOverload {
 		for _, prop := range res.InputProperties {
-			docRef := schema.DocRef{Kind: schema.DocRefKindResourceInputProperty, Ref: "#/resources/" + url.PathEscape(res.Token) + "/inputProperties/" + url.PathEscape(prop.Name)}
-			if err := mod.genPropDocstring(b, InitParamName(prop.Name), docRef, prop, true /*acceptMapping*/); err != nil {
+			if err := mod.genPropDocstring(b, InitParamName(prop.Name), resRef, prop, true /*acceptMapping*/); err != nil {
 				return err
 			}
 		}
@@ -2612,9 +2607,8 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) error 
 	fmt.Fprintln(b, ":param pulumi.Input[str] id: The unique provider ID of the resource to lookup.")
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if res.StateInputs != nil {
-		resourceDocRef := schema.DocRef{Kind: schema.DocRefKindResource, Ref: "#/resources/" + url.PathEscape(res.Token)}
 		for _, prop := range res.StateInputs.Properties {
-			if err := mod.genPropDocstring(b, InitParamName(prop.Name), resourceDocRef, prop, true /*acceptMapping*/); err != nil {
+			if err := mod.genPropDocstring(b, InitParamName(prop.Name), schema.DocRefForResource(res), prop, true /*acceptMapping*/); err != nil {
 				return err
 			}
 		}

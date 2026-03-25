@@ -1520,7 +1520,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType, usingGene
 	modPkg, ok := pkg.packages[mod]
 	contract.Assertf(ok, "Context for module %q not found", mod)
 
-	enumDocRef := schema.DocRef{Kind: schema.DocRefKindType, Ref: "#/types/" + url.PathEscape(enumType.Token)}
+	enumDocRef := schema.DocRefForType(enumType)
 	if _, err := pkg.printCommentWithDeprecationMessage(w, enumType.Comment, "", enumDocRef, false); err != nil {
 		return err
 	}
@@ -1997,14 +1997,13 @@ func (pkg *pkgContext) genInputArgsStruct(
 ) error {
 	contract.Assertf(t.IsInputShape(), "Object type must have input shape")
 
-	docRef := schema.DocRef{Kind: schema.DocRefKindType, Ref: "#/types/" + url.PathEscape(t.Token)}
+	docRef := schema.DocRefForType(t)
 	if _, err := pkg.printComment(w, t.Comment, docRef, false); err != nil {
 		return err
 	}
 	fmt.Fprintf(w, "type %s struct {\n", typeName)
 	for _, p := range t.Properties {
-		propRef := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(t.Token) + "/properties/" + url.PathEscape(p.Name)}
-		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
+		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, docRef, true); err != nil {
 			return err
 		}
 		inputType := pkg.typeString(p.Type)
@@ -2041,8 +2040,10 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 		name = pkg.tokenToType(t.Token)
 	}
 
+	typeDocRef := schema.DocRefForType(t)
+
 	if details.output || genArgs.output {
-		docRef := schema.DocRef{Kind: schema.DocRefKindType, Ref: "#/types/" + url.PathEscape(t.Token)}
+		docRef := typeDocRef
 		if _, err := pkg.printComment(w, t.Comment, docRef, false); err != nil {
 			return err
 		}
@@ -2054,8 +2055,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 		)
 
 		for _, p := range t.Properties {
-			propRef := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(t.Token) + "/properties/" + url.PathEscape(p.Name)}
-			if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, false); err != nil {
+			if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, docRef, false); err != nil {
 				return err
 			}
 			outputType, applyType := pkg.outputType(p.Type), pkg.typeString(p.Type)
@@ -2092,8 +2092,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 		pkg.genPtrOutput(w, name, name)
 
 		for _, p := range t.Properties {
-			propRef := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(t.Token) + "/properties/" + url.PathEscape(p.Name)}
-			if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, false); err != nil {
+			if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, typeDocRef, false); err != nil {
 				return err
 			}
 			optionalType := codegen.OptionalType(p)
@@ -2272,7 +2271,7 @@ func (pkg *pkgContext) genResource(
 	useGenericVariant bool,
 ) error {
 	name := disambiguatedResourceName(r, pkg)
-	resRef := schema.DocRef{Kind: schema.DocRefKindResource, Ref: "#/resources/" + url.PathEscape(r.Token)}
+	resRef := schema.DocRefForResource(r)
 	if _, err := pkg.printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, resRef, false); err != nil {
 		return err
 	}
@@ -2291,8 +2290,7 @@ func (pkg *pkgContext) genResource(
 	var secretInputProps []*schema.Property
 
 	for _, p := range r.Properties {
-		propRef := schema.DocRef{Kind: schema.DocRefKindResourceProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/properties/" + url.PathEscape(p.Name)}
-		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
+		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, resRef, true); err != nil {
 			return err
 		}
 		outputType := pkg.outputType(p.Type)
@@ -2566,8 +2564,7 @@ func (pkg *pkgContext) genResource(
 		fmt.Fprintf(w, "type %sState struct {\n", cgstrings.Camel(name))
 		if r.StateInputs != nil {
 			for _, p := range r.StateInputs.Properties {
-				propRef := schema.DocRef{Kind: schema.DocRefKindResourceInputProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/inputProperties/" + url.PathEscape(p.Name)}
-				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
+				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, resRef, true); err != nil {
 					return err
 				}
 				fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(r, p), pkg.typeString(codegen.ResolvedType(codegen.OptionalType(p))), p.Name)
@@ -2578,8 +2575,7 @@ func (pkg *pkgContext) genResource(
 		fmt.Fprintf(w, "type %sState struct {\n", name)
 		if r.StateInputs != nil {
 			for _, p := range r.StateInputs.Properties {
-				propRef := schema.DocRef{Kind: schema.DocRefKindResourceInputProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/inputProperties/" + url.PathEscape(p.Name)}
-				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
+				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, resRef, true); err != nil {
 					return err
 				}
 				inputType := pkg.inputType(p.Type)
@@ -2599,8 +2595,7 @@ func (pkg *pkgContext) genResource(
 	// Emit the args types.
 	fmt.Fprintf(w, "type %sArgs struct {\n", cgstrings.Camel(name))
 	for _, p := range r.InputProperties {
-		propRef := schema.DocRef{Kind: schema.DocRefKindResourceInputProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/inputProperties/" + url.PathEscape(p.Name)}
-		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, propRef, true); err != nil {
+		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, resRef, true); err != nil {
 			return err
 		}
 		inputTypeName := pkg.typeString(codegen.ResolvedType(p.Type))
@@ -2634,8 +2629,7 @@ func (pkg *pkgContext) genResource(
 			}
 		}
 
-		ref := schema.DocRef{Kind: schema.DocRefKindResourceInputProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/inputProperties/" + url.PathEscape(p.Name)}
-		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, true); err != nil {
+		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, resRef, true); err != nil {
 			return err
 		}
 		fmt.Fprintf(w, "\t%s %s\n", pkg.fieldName(r, p), inputTypeName)
@@ -2695,8 +2689,7 @@ func (pkg *pkgContext) genResource(
 			retty = fmt.Sprintf("(%s%sResultOutput, error)", name, methodName)
 		}
 		fmt.Fprintf(w, "\n")
-		ref := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(r.Token)}
-		if _, err := pkg.printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, ref, false); err != nil {
+		if _, err := pkg.printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, schema.DocRefForFunction(f), false); err != nil {
 			return err
 		}
 		fmt.Fprintf(w, "func (r *%s) %s(%s) %s {\n", name, methodName, argsig, retty)
@@ -2786,9 +2779,9 @@ func (pkg *pkgContext) genResource(
 		if len(args) > 0 {
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "type %s%sArgs struct {\n", cgstrings.Camel(name), methodName)
+			methodFunRef := schema.DocRefForFunction(f)
 			for _, p := range args {
-				ref := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(f.Token) + "/properties/" + url.PathEscape(p.Name)}
-				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, true); err != nil {
+				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, methodFunRef, true); err != nil {
 					return err
 				}
 				inputTypeName := pkg.typeString(codegen.ResolvedType(p.Type))
@@ -2802,8 +2795,7 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "// The set of arguments for the %s method of the %s resource.\n", methodName, name)
 			fmt.Fprintf(w, "type %s%sArgs struct {\n", name, methodName)
 			for _, p := range args {
-				ref := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(f.Token) + "/properties/" + url.PathEscape(p.Name)}
-				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, true); err != nil {
+				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, methodFunRef, true); err != nil {
 					return err
 				}
 				inputTypeName := pkg.typeString(p.Type)
@@ -2859,8 +2851,7 @@ func (pkg *pkgContext) genResource(
 				if useGenericVariant {
 					outputTypeName = pkg.genericOutputType(p.Type)
 				}
-				ref := schema.DocRef{Kind: schema.DocRefKindTypeProperty, Ref: "#/types/" + url.PathEscape(f.Token) + "/properties/" + url.PathEscape(p.Name)}
-				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, false); err != nil {
+				if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, schema.DocRefForFunction(f), false); err != nil {
 					return err
 				}
 				fmt.Fprintf(w, "func (o %s%sResultOutput) %s() %s {\n", outputStructName, methodName, Title(p.Name),
@@ -2914,8 +2905,7 @@ func (pkg *pkgContext) genResource(
 
 	// Emit chaining methods for the resource output type.
 	for _, p := range r.Properties {
-		ref := schema.DocRef{Kind: schema.DocRefKindResourceProperty, Ref: "#/resources/" + url.PathEscape(r.Token) + "/properties/" + url.PathEscape(p.Name)}
-		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, ref, false); err != nil {
+		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, resRef, false); err != nil {
 			return err
 		}
 		outputType := pkg.outputType(p.Type)
@@ -3074,8 +3064,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 	objectReturnType, _ := returnType.(*schema.ObjectType)
 
 	if f.Plain {
-		ref := schema.DocRef{Kind: schema.DocRefKindFunction, Ref: "#/functions/" + url.PathEscape(f.Token)}
-		if _, err := pkg.printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, ref, false); err != nil {
+		if _, err := pkg.printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, schema.DocRefForFunction(f), false); err != nil {
 			return err
 		}
 

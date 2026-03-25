@@ -135,21 +135,66 @@ func (r DocRef) ResourceToken() string {
 	return rt.Token
 }
 
+// tokenString extracts the token string from the Ref field.
+// Returns "" if the Ref is empty or cannot be parsed.
+func (r DocRef) tokenString() string {
+	parts := strings.Split(r.Ref, "/")
+	if len(parts) < 3 || parts[0] != "#" {
+		return ""
+	}
+	tok, err := url.PathUnescape(parts[2])
+	if err != nil {
+		return ""
+	}
+	return tok
+}
+
 // IsWithin returns true if r is a property ref within the entity described by other.
 // This is used during doc ref interpretation to determine if a referenced property
 // belongs to the entity currently being documented (selfRef).
 func (r DocRef) IsWithin(other DocRef) bool {
+	rTok := r.tokenString()
+	oTok := other.tokenString()
+	if rTok == "" || oTok == "" {
+		return false
+	}
 	switch r.Kind {
 	case DocRefKindUnknown, DocRefKindResource, DocRefKindFunction, DocRefKindType:
 		return false
 	case DocRefKindResourceProperty, DocRefKindResourceInputProperty:
-		return other.Kind == DocRefKindResource && other.Type == r.Type
+		return other.Kind == DocRefKindResource && rTok == oTok
 	case DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
-		return other.Kind == DocRefKindFunction && other.Function == r.Function
+		return other.Kind == DocRefKindFunction && rTok == oTok
 	case DocRefKindTypeProperty:
-		return other.Kind == DocRefKindType && other.Type == r.Type
+		return other.Kind == DocRefKindType && rTok == oTok
 	}
 	return false
+}
+
+// DocRefForType returns a DocRef for the given named schema type.
+// Handles *ResourceType, *ObjectType, and *EnumType.
+// Returns an empty DocRef for other types.
+func DocRefForType(t Type) DocRef {
+	switch v := t.(type) {
+	case *ResourceType:
+		return DocRef{Kind: DocRefKindResource, Type: v, Ref: "#/resources/" + url.PathEscape(v.Token)}
+	case *ObjectType:
+		return DocRef{Kind: DocRefKindType, Type: v, Ref: "#/types/" + url.PathEscape(v.Token)}
+	case *EnumType:
+		return DocRef{Kind: DocRefKindType, Type: v, Ref: "#/types/" + url.PathEscape(v.Token)}
+	default:
+		return DocRef{}
+	}
+}
+
+// DocRefForResource returns a DocRef for the given resource.
+func DocRefForResource(r *Resource) DocRef {
+	return DocRef{Kind: DocRefKindResource, Ref: "#/resources/" + url.PathEscape(r.Token)}
+}
+
+// DocRefForFunction returns a DocRef for the given function.
+func DocRefForFunction(f *Function) DocRef {
+	return DocRef{Kind: DocRefKindFunction, Function: f, Ref: "#/functions/" + url.PathEscape(f.Token)}
 }
 
 type internalDocRef struct {
