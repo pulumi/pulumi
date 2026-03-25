@@ -27,11 +27,13 @@ func genPathSegment() *rapid.Generator[PathSegment] {
 		rapid.Map(rapid.String(), func(s string) PathSegment {
 			return NewSegment(s)
 		}),
-		rapid.Map(rapid.Int(), func(i int) PathSegment {
+		rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 }), func(i int) PathSegment {
 			return NewSegment(i)
 		}),
 	)
 }
+
+func genGlob() *rapid.Generator[Glob] { return rapid.Map(genPath(), Path.AsGlob) }
 
 func genPath() *rapid.Generator[Path] {
 	return rapid.Map(
@@ -43,6 +45,78 @@ func genPath() *rapid.Generator[Path] {
 func rapidTest(t *testing.T, name string, f func(t *rapid.T)) {
 	t.Helper()
 	t.Run(name, func(t *testing.T) { t.Helper(); t.Parallel(); rapid.Check(t, f) })
+}
+
+func TestGlobEncoding(t *testing.T) {
+	t.Parallel()
+
+	rapidTest(t, "canonical values roundtrip", func(t *rapid.T) {
+		path1 := genGlob().Filter(func(p Glob) bool { return len(p) > 0 }).Draw(t, "path")
+		text1, err := path1.MarshalText()
+		require.NoError(t, err)
+
+		var path2 Glob
+		err = path2.UnmarshalText(text1)
+		require.NoError(t, err)
+
+		require.Equal(t, path1, path2)
+		text2, err := path2.MarshalText()
+		require.NoError(t, err)
+
+		require.Equal(t, text1, text2, "stable to-text mapping")
+	})
+
+	t.Run("unmarshal", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			text     string
+			expected Glob
+		}{
+			{"x.*", Glob{KeySegment{"x"}, Splat}},
+			{"*", Glob{Splat}},
+			{`["x"]`, Glob{KeySegment{"x"}}},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.text, func(t *testing.T) {
+				t.Parallel()
+
+				var g Glob
+				err := g.UnmarshalText([]byte(tt.text))
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, g)
+			})
+		}
+	})
+
+	t.Run("errors", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct{ text, expectedError string }{
+			{"", "cannot unmarshal an empty property path"},
+			{".", "expected character"},
+			{"[", "unclosed '['"},
+			{"[1", "unclosed number [1"},
+			{`["x`, `unclosed string ["x`},
+			{`["x"`, `unclosed index ["x"`},
+		}
+		for _, tt := range tests {
+			t.Run(tt.text, func(t *testing.T) {
+				t.Parallel()
+
+				var g Glob
+				err := g.UnmarshalText([]byte(tt.text))
+				require.EqualError(t, err, tt.expectedError)
+			})
+		}
+	})
+
+	rapidTest(t, "does not panic", func(t *rapid.T) {
+		s := rapid.String().Draw(t, "input")
+		var g Glob
+		_ = g.UnmarshalText([]byte(s))
+	})
 }
 
 func TestHasPrefix(t *testing.T) {
