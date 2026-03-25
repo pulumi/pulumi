@@ -1,0 +1,9 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        // TS6 deprecated moduleResolution: "node". Override to "nodenext" which behaves
+        // identically for CJS projects (no "type": "module" in package.json).
+        "module": "nodenext",
+        "moduleResolution": "nodenext"
+    }
+}

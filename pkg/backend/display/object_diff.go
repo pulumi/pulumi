@@ -44,8 +44,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// getIndent computes a step's parent indentation.
-func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
+// getIndent computes a step's visible parent indentation.
+func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata, opts Options) int {
 	indent := 0
 	for p := step.Res.Parent; p != ""; {
 		par, has := seen[p]
@@ -55,7 +55,9 @@ func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepE
 			//     least, it would be ideal to preserve the indentation.
 			break
 		}
-		indent++
+		if isRootStack(par) || shouldShow(par, opts) {
+			indent++
+		}
 		p = par.Res.Parent
 	}
 	return indent

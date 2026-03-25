@@ -581,26 +581,59 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 		}
 	}
 
+	// Check whether the method's schema signature accepts an args parameter.
+	// Methods with no inputs (other than __self__) don't take an args parameter at all.
+	methodHasArgs := methodSchemaHasArgs(res.Schema, method)
+
 	// Generate: self.Method(ctx, &mod.ResourceMethodArgs{...})
-	g.Fgenf(w, "%v.%s(ctx, ", self, methodName)
-	if len(args.Items) > 0 {
-		argsTypeName := fmt.Sprintf("%s.%s%sArgs", modOrAlias, resourceName, methodName)
-		g.Fgenf(w, "&%s{\n", argsTypeName)
-		for _, item := range args.Items {
-			key := item.Key.(*model.LiteralValueExpression).Value.AsString()
-			if destType, ok := propTypes[key]; ok {
-				g.Fgenf(w, "%s: ", Title(key))
-				g.genInputValue(w, item.Value, destType)
-				g.Fgenf(w, ",\n")
-			} else {
-				g.Fgenf(w, "%s: %.v,\n", Title(key), item.Value)
+	// or:       self.Method(ctx) when the method has no args parameter.
+	if methodHasArgs {
+		g.Fgenf(w, "%v.%s(ctx, ", self, methodName)
+		if len(args.Items) > 0 {
+			argsTypeName := fmt.Sprintf("%s.%s%sArgs", modOrAlias, resourceName, methodName)
+			g.Fgenf(w, "&%s{\n", argsTypeName)
+			for _, item := range args.Items {
+				key := item.Key.(*model.LiteralValueExpression).Value.AsString()
+				if destType, ok := propTypes[key]; ok {
+					g.Fgenf(w, "%s: ", Title(key))
+					g.genInputValue(w, item.Value, destType)
+					g.Fgenf(w, ",\n")
+				} else {
+					g.Fgenf(w, "%s: %.v,\n", Title(key), item.Value)
+				}
+			}
+			g.Fprint(w, "}")
+		} else {
+			g.Fprint(w, "nil")
+		}
+		g.Fprint(w, ")")
+	} else {
+		g.Fgenf(w, "%v.%s(ctx)", self, methodName)
+	}
+}
+
+// methodSchemaHasArgs returns true if the named method on the resource schema accepts
+// an args parameter (i.e. has inputs other than __self__). When no schema is available,
+// it conservatively returns true.
+func methodSchemaHasArgs(res *schema.Resource, methodName string) bool {
+	if res == nil {
+		return true
+	}
+	for _, m := range res.Methods {
+		if m.Name != methodName {
+			continue
+		}
+		if m.Function.Inputs == nil {
+			return false
+		}
+		for _, p := range m.Function.Inputs.Properties {
+			if p.Name != "__self__" {
+				return true
 			}
 		}
-		g.Fprint(w, "}")
-	} else {
-		g.Fprint(w, "nil")
+		return false
 	}
-	g.Fprint(w, ")")
+	return true
 }
 
 // genInputValue generates a value expression with the appropriate input type wrapper
