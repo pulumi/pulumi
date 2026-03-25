@@ -165,15 +165,6 @@ func runExportedJob(
 	workflowContext := &pulumirpc.WorkflowContext{
 		ExecutionId: "cli-run",
 	}
-	jobFilterResp, jobFilterErr := workflowPlugin.RunFilter(ctx, &pulumirpc.RunFilterRequest{
-		Path: jobToken,
-	})
-	if jobFilterErr != nil {
-		return nil, "", fmt.Errorf("run filter for exported job %q: %w", jobToken, jobFilterErr)
-	}
-	if !jobFilterResp.GetPass() {
-		return []stepResult{}, jobToken, nil
-	}
 
 	generateResp, err := workflowPlugin.GenerateJob(ctx, &pulumirpc.GenerateJobRequest{
 		Context:             workflowContext,

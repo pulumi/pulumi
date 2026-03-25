@@ -24,9 +24,8 @@ import (
 )
 
 type observedStep struct {
-	Path         string
-	Dependencies []string
-	HasOnError   bool
+	Path       string
+	HasOnError bool
 }
 
 type monitorServer struct {
@@ -70,9 +69,8 @@ func (m *monitorServer) RegisterStep(
 
 	m.mu.Lock()
 	m.steps = append(m.steps, observedStep{
-		Path:         stepPath,
-		Dependencies: collectDependencyPaths(req.GetDependencies()),
-		HasOnError:   req.GetHasOnError(),
+		Path:       stepPath,
+		HasOnError: req.GetHasOnError(),
 	})
 	m.mu.Unlock()
 	return &pulumirpc.RegisterNodeResponse{}, nil
@@ -90,23 +88,4 @@ func (m *monitorServer) snapshotStepsForJob(jobPath string) []observedStep {
 		}
 	}
 	return results
-}
-
-func collectDependencyPaths(expr *pulumirpc.DependencyExpression) []string {
-	if expr == nil {
-		return nil
-	}
-
-	paths := make([]string, 0)
-	for _, term := range expr.GetTerms() {
-		switch value := term.GetTerm().(type) {
-		case *pulumirpc.DependencyTerm_Path:
-			if value.Path != "" {
-				paths = append(paths, value.Path)
-			}
-		case *pulumirpc.DependencyTerm_Expression:
-			paths = append(paths, collectDependencyPaths(value.Expression)...)
-		}
-	}
-	return paths
 }

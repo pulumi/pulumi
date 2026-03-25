@@ -43,7 +43,7 @@ OnErrorHandler = Callable[
 T = TypeVar("T")
 U = TypeVar("U")
 
-JobCallback = Callable[..., None]
+JobCallback = Callable[..., Any]
 GraphCallback = Callable[["Context"], None]
 FilterCallback = Callable[[Any], bool]
 TInput = TypeVar("TInput")
@@ -62,6 +62,7 @@ class _StepDefinition:
     fn: Callable[..., Any]
     on_error: Optional[OnErrorHandler]
     resolve_output: Callable[[Output[Any]], None]
+    dependency_paths: Set[str]
     external_token: Optional[str] = None
     expected_output_type: Optional[Type[Any]] = None
 
@@ -70,7 +71,7 @@ class _StepDefinition:
 class _JobDefinition:
     fn: Optional[JobCallback]
     on_error: Optional[OnErrorHandler]
-    inputs: List[Any]
+    dependencies: List[str]
     external_token: Optional[str] = None
     enabled: bool = True
 
@@ -78,10 +79,15 @@ class _JobDefinition:
 @dataclass
 class _ExportedJobDefinition:
     token: str
-    input_type: Type[Any]
     output_type: Type[Any]
-    fn: Callable[[JobContext, Any], Output[Any]]
+    fn: Callable[[JobContext, ExecutionInput], Output[Any]]
     on_error: Optional[OnErrorHandler]
+
+
+@dataclass
+class ExecutionInput:
+    execution_id: str
+    workflow_version: str
 
 
 @dataclass
@@ -172,17 +178,22 @@ class Context:
     def job(
         self,
         name: str,
-        *inputs_or_fn: Any,
+        fn_or_options: Optional[Union[JobCallback, "JobOptions"]] = None,
         fn: Optional[JobCallback] = None,
         dependencies: Optional[List[str]] = None,
         on_error: Optional[OnErrorHandler] = None,
         filter: Optional[Input[bool]] = None,
     ) -> Union[Output[Any], Callable[[JobCallback], JobCallback]]:
         """Registers a job in the current graph."""
-        inputs: List[Any] = list(inputs_or_fn)
         options: Optional[JobOptions] = None
-        if len(inputs) > 0 and isinstance(inputs[-1], JobOptions):
-            options = cast(JobOptions, inputs.pop())
+        if isinstance(fn_or_options, JobOptions):
+            options = fn_or_options
+        elif callable(fn_or_options):
+            fn = cast(JobCallback, fn_or_options)
+        elif fn_or_options is not None:
+            raise WorkflowError(
+                "job no longer accepts input args; second positional must be a callback or JobOptions"
+            )
 
         if options is not None and dependencies is not None and options.dependencies is not None:
             raise WorkflowError("job dependencies must be set either directly or via JobOptions, not both")
@@ -201,10 +212,6 @@ class Context:
         effective_filter = filter
         if effective_filter is None and options is not None:
             effective_filter = options.filter
-
-        if fn is None and len(inputs) == 1 and callable(inputs[0]):
-            fn = inputs[0]
-            inputs = []
 
         is_external_job = fn is None and ":" in name
         registered_name = name
@@ -239,25 +246,24 @@ class Context:
             request.dependencies.operator = (
                 workflow_pb2.DependencyExpression.OPERATOR_ALL
             )
-            dependency_paths = set()
+            dependency_paths: Set[str] = set()
             if effective_dependencies:
                 for dep in effective_dependencies:
                     dependency_paths.add(
                         _normalize_job_dependency(self._state.graph_path, dep)
                     )
-            dependency_paths.update(_workflow_dependency_paths(inputs))
             for dep in sorted(dependency_paths):
                 term = request.dependencies.terms.add()
                 term.path = dep
 
-            resolved_inputs = [_resolve_job_input(value) for value in inputs]
-            self._state.monitor.RegisterJob(request)
+            if self._state.target_job_name is None:
+                self._state.monitor.RegisterJob(request)
             if effective_filter is not None:
                 self._state.filters[job_path] = _input_bool_filter_callback(effective_filter)
             self._state.jobs[job_path] = _JobDefinition(
                 fn=registered_fn,
                 on_error=effective_on_error,
-                inputs=resolved_inputs,
+                dependencies=sorted(dependency_paths),
                 external_token=external_token,
                 enabled=True,
             )
@@ -398,6 +404,7 @@ class JobContext:
                 fn=registered_fn,
                 on_error=effective_on_error,
                 resolve_output=resolve_output,
+                dependency_paths=set(dependency_paths),
                 external_token=external_token,
             )
             return cast(Output[U], step_output)
@@ -496,8 +503,7 @@ class WorkflowRegistry:
     def job(
         self,
         token: str,
-        input_type: Type[TInput],
-        fn: Callable[[JobContext, TInput], Output[TOutput]],
+        fn: Callable[[JobContext, ExecutionInput], Output[TOutput]],
         *,
         on_error: Optional[OnErrorHandler] = None,
     ) -> None:
@@ -509,15 +515,13 @@ class WorkflowRegistry:
         if not callable(fn):
             raise WorkflowError("job callback must be callable")
 
-        _validate_record_type(input_type, "job input type")
         output_type = _job_return_output_type(fn)
         _validate_record_type(output_type, "job output type")
 
         self._jobs[resolved_token] = _ExportedJobDefinition(
             token=resolved_token,
-            input_type=input_type,
             output_type=output_type,
-            fn=cast(Callable[[JobContext, Any], Output[Any]], fn),
+            fn=cast(Callable[[JobContext, ExecutionInput], Output[Any]], fn),
             on_error=on_error,
         )
 
@@ -787,18 +791,11 @@ def _new_workflow_output(path: str, value: Any) -> Output[Any]:
     return output
 
 
-def _resolve_job_input(value: Any) -> Any:
-    if isinstance(value, Output):
-        if not _is_workflow_output(value):
-            raise WorkflowError(
-                "workflow jobs may only accept workflow outputs; resource outputs are not supported"
-            )
-        embedded = _get_output_internal_attr(value, _WORKFLOW_OUTPUT_VALUE_ATTR)
-        if embedded is not None:
-            return embedded
-        _ensure_event_loop()
-        return _sync_await(value.future(with_unknowns=True))
-    return value
+def _execution_input(context: workflow_pb2.WorkflowContext) -> ExecutionInput:
+    return ExecutionInput(
+        execution_id=context.execution_id,
+        workflow_version=context.workflow_version,
+    )
 
 
 def _input_bool_filter_callback(value: Input[bool]) -> FilterCallback:
@@ -855,6 +852,28 @@ def _invoke_step_fn(fn: Callable[..., Any], arg: Any, *, has_arg: bool) -> Any:
     if has_var_args or len(positional) > 0:
         return fn(arg)
     return fn()
+
+
+def _invoke_job_fn(
+    fn: Callable[..., Any],
+    job_ctx: JobContext,
+    execution: ExecutionInput,
+) -> Any:
+    signature = inspect.signature(fn)
+    parameters = list(signature.parameters.values())
+    has_var_args = any(
+        parameter.kind == inspect.Parameter.VAR_POSITIONAL
+        for parameter in parameters
+    )
+    positional = [
+        parameter
+        for parameter in parameters
+        if parameter.kind
+        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    ]
+    if has_var_args or len(positional) > 1:
+        return fn(job_ctx, execution)
+    return fn(job_ctx)
 
 
 def _ensure_event_loop() -> None:
@@ -956,19 +975,41 @@ def _evaluate_job(
         filters: Dict[str, FilterCallback] = {}
         if job.fn is None:
             raise WorkflowError(f"job {job_path} has no evaluator callback")
-        job_output = job.fn(
-            JobContext(
-                _JobEvalState(
-                    monitor=monitor,
-                    context=effective_context,
-                    job_path=job_path,
-                    steps=steps,
-                    registry=registry,
-                    filters=filters,
-                )
-            ),
-            *job.inputs,
+        job_ctx = JobContext(
+            _JobEvalState(
+                monitor=monitor,
+                context=effective_context,
+                job_path=job_path,
+                steps=steps,
+                registry=registry,
+                filters=filters,
+            )
         )
+        job_output = _invoke_job_fn(
+            job.fn,
+            job_ctx,
+            _execution_input(effective_context),
+        )
+
+        inferred_dependencies: Set[str] = set(job.dependencies)
+        for step in steps.values():
+            for dep in step.dependency_paths:
+                dep_job = dep.split("/steps/", 1)[0] if "/steps/" in dep else dep
+                if dep_job and dep_job != job_path:
+                    inferred_dependencies.add(dep_job)
+
+        register_job = workflow_pb2.RegisterJobRequest()
+        register_job.context.CopyFrom(effective_context)
+        register_job.path = job_path
+        register_job.has_on_error = job.on_error is not None
+        register_job.dependencies.operator = (
+            workflow_pb2.DependencyExpression.OPERATOR_ALL
+        )
+        for dep in sorted(inferred_dependencies):
+            term = register_job.dependencies.terms.add()
+            term.path = dep
+        monitor.RegisterJob(register_job)
+
         if isinstance(job_output, Output):
             resolved_job_output = cast(Output[Any], job_output)
         elif job_output is None:
@@ -1007,20 +1048,10 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         exported = self._workflow_registry._jobs.get(job.external_token)
         if exported is None:
             raise WorkflowError(f"unknown external job token {job.external_token}")
-        if len(job.inputs) != 1:
-            raise WorkflowError(
-                f"external graph job {request_name} must have exactly one input argument"
-            )
-
-        coerced_input = _coerce_record_instance(
-            exported.input_type,
-            job.inputs[0],
-            f"job input for {request_name}",
-        )
         return _JobDefinition(
-            fn=lambda job_ctx: exported.fn(job_ctx, coerced_input),
+            fn=lambda job_ctx, execution: exported.fn(job_ctx, execution),
             on_error=job.on_error,
-            inputs=[],
+            dependencies=job.dependencies,
             external_token=job.external_token,
         )
 
@@ -1069,6 +1100,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 fn=_call_exported,
                 on_error=step.on_error if step.on_error is not None else exported.on_error,
                 resolve_output=step.resolve_output,
+                dependency_paths=set(step.dependency_paths),
                 external_token=step.external_token,
                 expected_output_type=exported.output_type,
             )
@@ -1136,7 +1168,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             job = self._workflow_registry._jobs[token]
             info = response.jobs.add()
             info.token = token
-            info.input_type.token = _type_token(job.input_type)
+            info.input_type.token = _type_token(ExecutionInput)
             info.output_type.token = _type_token(job.output_type)
             info.has_on_error = job.on_error is not None
         return response
@@ -1183,7 +1215,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             )
         response = workflow_pb2.GetJobResponse()
         response.job.token = job.token
-        response.job.input_type.token = _type_token(job.input_type)
+        response.job.input_type.token = _type_token(ExecutionInput)
         response.job.output_type.token = _type_token(job.output_type)
         response.job.has_on_error = job.on_error is not None
         return response
@@ -1307,19 +1339,10 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "input_path for exported jobs must match request.name",
             )
-        input_value = (
-            _from_proto_value(request.input_value)
-            if request.HasField("input_value")
-            else None
-        )
-        coerced_input = _coerce_record_instance(
-            exported.input_type, input_value, f"job input for {request.name}"
-        )
-
         synthetic_job = _JobDefinition(
-            fn=lambda job_ctx: exported.fn(job_ctx, coerced_input),
+            fn=lambda job_ctx, execution: exported.fn(job_ctx, execution),
             on_error=exported.on_error,
-            inputs=[],
+            dependencies=[],
         )
         steps, step_filters, job_output = _evaluate_job(
             resolved_token,
@@ -1457,6 +1480,7 @@ def run(
 __all__ = [
     "Context",
     "JobContext",
+    "ExecutionInput",
     "TriggerOptions",
     "WorkflowRegistry",
     "WorkflowError",
