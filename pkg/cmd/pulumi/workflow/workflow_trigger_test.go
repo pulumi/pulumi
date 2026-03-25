@@ -38,7 +38,9 @@ func TestRunTriggerMockByName(t *testing.T) {
 				Triggers: []string{"example:index:cron"},
 			}, nil
 		},
-		RunTriggerMockF: func(_ context.Context, req *pulumirpc.RunTriggerMockRequest) (*pulumirpc.RunTriggerMockResponse, error) {
+		RunTriggerMockF: func(
+			_ context.Context, req *pulumirpc.RunTriggerMockRequest,
+		) (*pulumirpc.RunTriggerMockResponse, error) {
 			calledToken = req.GetToken()
 			calledArgs = append([]string{}, req.GetArgs()...)
 			return &pulumirpc.RunTriggerMockResponse{
@@ -51,7 +53,7 @@ func TestRunTriggerMockByName(t *testing.T) {
 		},
 	}
 
-	valueJSON, token, err := runTriggerMock(context.Background(), workflowPlugin, "cron", []string{"25th May 2024"})
+	valueJSON, token, err := runTriggerMock(t.Context(), workflowPlugin, "cron", []string{"25th May 2024"})
 	if err != nil {
 		t.Fatalf("runTriggerMock failed: %v", err)
 	}
@@ -85,7 +87,9 @@ func TestRunTriggerMockByToken(t *testing.T) {
 			getTriggerToken = req.GetToken()
 			return &pulumirpc.GetTriggerResponse{}, nil
 		},
-		RunTriggerMockF: func(_ context.Context, req *pulumirpc.RunTriggerMockRequest) (*pulumirpc.RunTriggerMockResponse, error) {
+		RunTriggerMockF: func(
+			_ context.Context, req *pulumirpc.RunTriggerMockRequest,
+		) (*pulumirpc.RunTriggerMockResponse, error) {
 			runTriggerToken = req.GetToken()
 			return &pulumirpc.RunTriggerMockResponse{
 				Value: &structpb.Struct{},
@@ -93,7 +97,7 @@ func TestRunTriggerMockByToken(t *testing.T) {
 		},
 	}
 
-	_, token, err := runTriggerMock(context.Background(), workflowPlugin, "example:index:cron", nil)
+	_, token, err := runTriggerMock(t.Context(), workflowPlugin, "example:index:cron", nil)
 	if err != nil {
 		t.Fatalf("runTriggerMock failed: %v", err)
 	}
@@ -120,7 +124,7 @@ func TestResolveTriggerTokenAmbiguous(t *testing.T) {
 		},
 	}
 
-	_, err := resolveTriggerToken(context.Background(), workflowPlugin, "cron")
+	_, err := resolveTriggerToken(t.Context(), workflowPlugin, "cron")
 	if err == nil {
 		t.Fatalf("expected ambiguous trigger resolution failure")
 	}
@@ -140,7 +144,7 @@ func TestResolveTriggerTokenNotFound(t *testing.T) {
 		},
 	}
 
-	_, err := resolveTriggerToken(context.Background(), workflowPlugin, "cron")
+	_, err := resolveTriggerToken(t.Context(), workflowPlugin, "cron")
 	if err == nil {
 		t.Fatalf("expected trigger not found failure")
 	}
@@ -163,7 +167,7 @@ func TestRunTriggerMockReturnsError(t *testing.T) {
 		},
 	}
 
-	_, _, err := runTriggerMock(context.Background(), workflowPlugin, "cron", nil)
+	_, _, err := runTriggerMock(t.Context(), workflowPlugin, "cron", nil)
 	if err == nil {
 		t.Fatalf("expected run trigger mock failure")
 	}

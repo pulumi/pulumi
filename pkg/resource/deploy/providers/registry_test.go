@@ -85,6 +85,10 @@ func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
 
+func (host *testPluginHost) Workflow(programPath string) (plugin.Workflow, error) {
+	return nil, errors.New("unsupported")
+}
+
 func (host *testPluginHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 	return host.provider(descriptor)
 }

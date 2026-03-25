@@ -84,7 +84,7 @@ func TestRunObservedStepsAppliesStepFilters(t *testing.T) {
 	}
 
 	results, err := runObservedSteps(
-		context.Background(),
+		t.Context(),
 		workflowPlugin,
 		&pulumirpc.WorkflowContext{ExecutionId: "test"},
 		[]observedStep{

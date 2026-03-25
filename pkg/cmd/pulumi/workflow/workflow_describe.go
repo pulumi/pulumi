@@ -160,12 +160,12 @@ func formatDescribeOutput(
 	hasOnError bool,
 ) string {
 	lines := []string{
-		fmt.Sprintf("Package: %s", packageName),
-		fmt.Sprintf("Version: %s", packageVersion),
-		fmt.Sprintf("Kind: %s", kind),
-		fmt.Sprintf("Token: %s", token),
-		fmt.Sprintf("Input Type: %s", typeToken(inputType)),
-		fmt.Sprintf("Output Type: %s", typeToken(outputType)),
+		"Package: " + packageName,
+		"Version: " + packageVersion,
+		"Kind: " + kind,
+		"Token: " + token,
+		"Input Type: " + typeToken(inputType),
+		"Output Type: " + typeToken(outputType),
 	}
 	if kind == "job" || kind == "graph" {
 		lines = append(lines, fmt.Sprintf("Has OnError: %t", hasOnError))

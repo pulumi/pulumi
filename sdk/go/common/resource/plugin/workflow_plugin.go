@@ -50,8 +50,8 @@ func NewWorkflow(host Host, ctx *Context, programPath string) (Workflow, error) 
 
 	prefix := fmt.Sprintf("%v (workflow)", filepath.Base(absProgramPath))
 	pluginDir := filepath.Dir(absProgramPath)
-	pluginBin := ""
-	pluginArgs := []string{}
+	var pluginBin string
+	var pluginArgs []string
 	if strings.EqualFold(filepath.Ext(absProgramPath), ".pp") {
 		pclHost, err := exec.LookPath("pulumi-language-pcl")
 		if err != nil {

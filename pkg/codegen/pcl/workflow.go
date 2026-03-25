@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -171,7 +172,7 @@ func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
 	}
 
 	if len(p.graphsByName) == 0 {
-		return nil, fmt.Errorf("no workflow blocks found")
+		return nil, errors.New("no workflow blocks found")
 	}
 
 	return &p, nil

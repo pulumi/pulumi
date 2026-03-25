@@ -282,7 +282,7 @@ func (e *WorkflowEvaluator) RunStep(
 
 	var value string
 	if step.Command != "" {
-		out, err := exec.Command("/bin/sh", "-c", step.Command).CombinedOutput()
+		out, err := exec.Command("/bin/sh", "-c", step.Command).CombinedOutput() //nolint:gosec
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "step command failed: %v", err)
 		}
@@ -366,7 +366,9 @@ func (e *WorkflowEvaluator) hasTriggerToken(token string) bool {
 	return false
 }
 
-func (e *WorkflowEvaluator) stepDefinitionForJobStep(step codegenpcl.WorkflowJobStep) (codegenpcl.WorkflowStepDefinition, error) {
+func (e *WorkflowEvaluator) stepDefinitionForJobStep(
+	step codegenpcl.WorkflowJobStep,
+) (codegenpcl.WorkflowStepDefinition, error) {
 	if step.Uses != "" {
 		stepDef, ok := e.program.StepDefinitionForUse(step.Uses)
 		if !ok {

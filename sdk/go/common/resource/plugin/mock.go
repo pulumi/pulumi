@@ -324,23 +324,24 @@ func (m *MockProvider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 	return PluginInfo{}, errors.New("GetPluginInfo not implemented")
 }
 
+//nolint:lll
 type MockWorkflow struct {
-	CloseF             func() error
-	HandshakeF         func(context.Context, *pulumirpc.WorkflowHandshakeRequest) (*pulumirpc.WorkflowHandshakeResponse, error)
-	GetPackageInfoF    func(context.Context, *pulumirpc.GetPackageInfoRequest) (*pulumirpc.GetPackageInfoResponse, error)
-	GetGraphsF         func(context.Context, *pulumirpc.GetGraphsRequest) (*pulumirpc.GetGraphsResponse, error)
-	GetGraphF          func(context.Context, *pulumirpc.GetGraphRequest) (*pulumirpc.GetGraphResponse, error)
-	GetTriggersF       func(context.Context, *pulumirpc.GetTriggersRequest) (*pulumirpc.GetTriggersResponse, error)
-	GetTriggerF        func(context.Context, *pulumirpc.GetTriggerRequest) (*pulumirpc.GetTriggerResponse, error)
-	GetJobsF           func(context.Context, *pulumirpc.GetJobsRequest) (*pulumirpc.GetJobsResponse, error)
-	GetJobF            func(context.Context, *pulumirpc.GetJobRequest) (*pulumirpc.GetJobResponse, error)
-	GenerateGraphF     func(context.Context, *pulumirpc.GenerateGraphRequest) (*pulumirpc.GenerateNodeResponse, error)
-	GenerateJobF       func(context.Context, *pulumirpc.GenerateJobRequest) (*pulumirpc.GenerateNodeResponse, error)
-	RunTriggerMockF    func(context.Context, *pulumirpc.RunTriggerMockRequest) (*pulumirpc.RunTriggerMockResponse, error)
-	RunFilterF         func(context.Context, *pulumirpc.RunFilterRequest) (*pulumirpc.RunFilterResponse, error)
-	RunStepF           func(context.Context, *pulumirpc.RunStepRequest) (*pulumirpc.RunStepResponse, error)
-	RunOnErrorF        func(context.Context, *pulumirpc.RunOnErrorRequest) (*pulumirpc.RunOnErrorResponse, error)
-	ResolveJobResultF  func(context.Context, *pulumirpc.ResolveJobResultRequest) (*pulumirpc.ResolveJobResultResponse, error)
+	CloseF            func() error
+	HandshakeF        func(context.Context, *pulumirpc.WorkflowHandshakeRequest) (*pulumirpc.WorkflowHandshakeResponse, error)
+	GetPackageInfoF   func(context.Context, *pulumirpc.GetPackageInfoRequest) (*pulumirpc.GetPackageInfoResponse, error)
+	GetGraphsF        func(context.Context, *pulumirpc.GetGraphsRequest) (*pulumirpc.GetGraphsResponse, error)
+	GetGraphF         func(context.Context, *pulumirpc.GetGraphRequest) (*pulumirpc.GetGraphResponse, error)
+	GetTriggersF      func(context.Context, *pulumirpc.GetTriggersRequest) (*pulumirpc.GetTriggersResponse, error)
+	GetTriggerF       func(context.Context, *pulumirpc.GetTriggerRequest) (*pulumirpc.GetTriggerResponse, error)
+	GetJobsF          func(context.Context, *pulumirpc.GetJobsRequest) (*pulumirpc.GetJobsResponse, error)
+	GetJobF           func(context.Context, *pulumirpc.GetJobRequest) (*pulumirpc.GetJobResponse, error)
+	GenerateGraphF    func(context.Context, *pulumirpc.GenerateGraphRequest) (*pulumirpc.GenerateNodeResponse, error)
+	GenerateJobF      func(context.Context, *pulumirpc.GenerateJobRequest) (*pulumirpc.GenerateNodeResponse, error)
+	RunTriggerMockF   func(context.Context, *pulumirpc.RunTriggerMockRequest) (*pulumirpc.RunTriggerMockResponse, error)
+	RunFilterF        func(context.Context, *pulumirpc.RunFilterRequest) (*pulumirpc.RunFilterResponse, error)
+	RunStepF          func(context.Context, *pulumirpc.RunStepRequest) (*pulumirpc.RunStepResponse, error)
+	RunOnErrorF       func(context.Context, *pulumirpc.RunOnErrorRequest) (*pulumirpc.RunOnErrorResponse, error)
+	ResolveJobResultF func(context.Context, *pulumirpc.ResolveJobResultRequest) (*pulumirpc.ResolveJobResultResponse, error)
 }
 
 var _ Workflow = (*MockWorkflow)(nil)

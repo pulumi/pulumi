@@ -16,7 +16,7 @@ package workflow
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strings"
 	"sync"
 
@@ -64,7 +64,7 @@ func (m *monitorServer) RegisterStep(
 ) (*pulumirpc.RegisterNodeResponse, error) {
 	stepPath := req.GetJob() + "/steps/" + req.GetName()
 	if req.GetJob() == "" || req.GetName() == "" {
-		return nil, fmt.Errorf("register step request is missing path")
+		return nil, errors.New("register step request is missing path")
 	}
 
 	m.mu.Lock()

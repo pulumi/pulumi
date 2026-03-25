@@ -1944,7 +1944,6 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 			}
 			for _, step := range jobSteps {
 				stepDef := pcl.WorkflowStepDefinition{
-					Name:    step.Name,
 					Command: step.Command,
 					Expr:    step.Expr,
 				}

@@ -555,9 +555,9 @@ func runConvert(
 				}
 			}
 		} else {
-			languagePlugin, err := pCtx.Host.LanguageRuntime(language)
-			if err != nil {
-				return err
+			languagePlugin, pluginErr := pCtx.Host.LanguageRuntime(language)
+			if pluginErr != nil {
+				return pluginErr
 			}
 			diagnostics, err = generateWorkflowProject(
 				pCtx, languagePlugin, language, pclDirectory, outDir, loader, strict,

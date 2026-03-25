@@ -51,7 +51,7 @@ func TestDescribeWorkflowJobByName(t *testing.T) {
 		},
 	}
 
-	out, err := describeWorkflow(context.Background(), workflowPlugin, "job", "build")
+	out, err := describeWorkflow(t.Context(), workflowPlugin, "job", "build")
 	if err != nil {
 		t.Fatalf("describeWorkflow failed: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestDescribeWorkflowTriggerByToken(t *testing.T) {
 		},
 	}
 
-	out, err := describeWorkflow(context.Background(), workflowPlugin, "trigger", "example:index:cron")
+	out, err := describeWorkflow(t.Context(), workflowPlugin, "trigger", "example:index:cron")
 	if err != nil {
 		t.Fatalf("describeWorkflow failed: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestDescribeWorkflowUnknownKind(t *testing.T) {
 		},
 	}
 
-	_, err := describeWorkflow(context.Background(), workflowPlugin, "sensor", "foo")
+	_, err := describeWorkflow(t.Context(), workflowPlugin, "sensor", "foo")
 	if err == nil {
 		t.Fatalf("expected unknown kind error")
 	}
@@ -140,7 +140,7 @@ func TestResolveGraphTokenAmbiguous(t *testing.T) {
 		},
 	}
 
-	_, err := resolveGraphToken(context.Background(), workflowPlugin, "main")
+	_, err := resolveGraphToken(t.Context(), workflowPlugin, "main")
 	if err == nil {
 		t.Fatalf("expected ambiguous graph resolution failure")
 	}
