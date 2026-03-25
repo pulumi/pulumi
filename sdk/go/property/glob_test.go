@@ -24,22 +24,29 @@ import (
 	"pgregory.net/rapid"
 )
 
-func genPathSegment() *rapid.Generator[PathSegment] {
-	return rapid.OneOf(
-		rapid.Map(rapid.String(), func(s string) PathSegment {
-			return NewSegment(s)
-		}),
-		rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 }), func(i int) PathSegment {
-			return NewSegment(i)
-		}),
+func genKeySegment() *rapid.Generator[PathSegment] { return rapid.Map(rapid.String(), NewSegment) }
+
+func genIndexSegment() *rapid.Generator[PathSegment] {
+	return rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 }), NewSegment)
+}
+
+func genGlob() *rapid.Generator[Glob] {
+	return rapid.Map(
+		rapid.SliceOf(rapid.OneOf(
+			rapid.Map(genKeySegment(), func(k PathSegment) GlobSegment { return k }),
+			rapid.Map(genIndexSegment(), func(k PathSegment) GlobSegment { return k }),
+			rapid.Just[GlobSegment](Splat),
+		)),
+		func(segs []GlobSegment) Glob { return Glob(segs) },
 	)
 }
 
-func genGlob() *rapid.Generator[Glob] { return rapid.Map(genPath(), Path.AsGlob) }
-
 func genPath() *rapid.Generator[Path] {
 	return rapid.Map(
-		rapid.SliceOf(genPathSegment()),
+		rapid.SliceOf(rapid.OneOf(
+			genKeySegment(),
+			genIndexSegment(),
+		)),
 		func(segs []PathSegment) Path { return Path(segs) },
 	)
 }
