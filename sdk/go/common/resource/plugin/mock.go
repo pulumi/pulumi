@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -321,6 +322,169 @@ func (m *MockProvider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 		return m.GetPluginInfoF(ctx)
 	}
 	return PluginInfo{}, errors.New("GetPluginInfo not implemented")
+}
+
+type MockWorkflow struct {
+	CloseF             func() error
+	HandshakeF         func(context.Context, *pulumirpc.WorkflowHandshakeRequest) (*pulumirpc.WorkflowHandshakeResponse, error)
+	GetPackageInfoF    func(context.Context, *pulumirpc.GetPackageInfoRequest) (*pulumirpc.GetPackageInfoResponse, error)
+	GetGraphsF         func(context.Context, *pulumirpc.GetGraphsRequest) (*pulumirpc.GetGraphsResponse, error)
+	GetGraphF          func(context.Context, *pulumirpc.GetGraphRequest) (*pulumirpc.GetGraphResponse, error)
+	GetTriggersF       func(context.Context, *pulumirpc.GetTriggersRequest) (*pulumirpc.GetTriggersResponse, error)
+	GetTriggerF        func(context.Context, *pulumirpc.GetTriggerRequest) (*pulumirpc.GetTriggerResponse, error)
+	GetJobsF           func(context.Context, *pulumirpc.GetJobsRequest) (*pulumirpc.GetJobsResponse, error)
+	GetJobF            func(context.Context, *pulumirpc.GetJobRequest) (*pulumirpc.GetJobResponse, error)
+	GenerateGraphF     func(context.Context, *pulumirpc.GenerateGraphRequest) (*pulumirpc.GenerateNodeResponse, error)
+	GenerateJobF       func(context.Context, *pulumirpc.GenerateJobRequest) (*pulumirpc.GenerateNodeResponse, error)
+	RunTriggerMockF    func(context.Context, *pulumirpc.RunTriggerMockRequest) (*pulumirpc.RunTriggerMockResponse, error)
+	RunFilterF         func(context.Context, *pulumirpc.RunFilterRequest) (*pulumirpc.RunFilterResponse, error)
+	RunStepF           func(context.Context, *pulumirpc.RunStepRequest) (*pulumirpc.RunStepResponse, error)
+	RunOnErrorF        func(context.Context, *pulumirpc.RunOnErrorRequest) (*pulumirpc.RunOnErrorResponse, error)
+	ResolveStepResultF func(context.Context, *pulumirpc.ResolveStepResultRequest) (*pulumirpc.ResolveStepResultResponse, error)
+}
+
+var _ Workflow = (*MockWorkflow)(nil)
+
+func (m *MockWorkflow) Close() error {
+	if m.CloseF != nil {
+		return m.CloseF()
+	}
+	return nil
+}
+
+func (m *MockWorkflow) Handshake(
+	ctx context.Context, req *pulumirpc.WorkflowHandshakeRequest,
+) (*pulumirpc.WorkflowHandshakeResponse, error) {
+	if m.HandshakeF != nil {
+		return m.HandshakeF(ctx, req)
+	}
+	return nil, errors.New("Handshake not implemented")
+}
+
+func (m *MockWorkflow) GetPackageInfo(
+	ctx context.Context, req *pulumirpc.GetPackageInfoRequest,
+) (*pulumirpc.GetPackageInfoResponse, error) {
+	if m.GetPackageInfoF != nil {
+		return m.GetPackageInfoF(ctx, req)
+	}
+	return nil, errors.New("GetPackageInfo not implemented")
+}
+
+func (m *MockWorkflow) GetGraphs(
+	ctx context.Context, req *pulumirpc.GetGraphsRequest,
+) (*pulumirpc.GetGraphsResponse, error) {
+	if m.GetGraphsF != nil {
+		return m.GetGraphsF(ctx, req)
+	}
+	return nil, errors.New("GetGraphs not implemented")
+}
+
+func (m *MockWorkflow) GetGraph(
+	ctx context.Context, req *pulumirpc.GetGraphRequest,
+) (*pulumirpc.GetGraphResponse, error) {
+	if m.GetGraphF != nil {
+		return m.GetGraphF(ctx, req)
+	}
+	return nil, errors.New("GetGraph not implemented")
+}
+
+func (m *MockWorkflow) GetTriggers(
+	ctx context.Context, req *pulumirpc.GetTriggersRequest,
+) (*pulumirpc.GetTriggersResponse, error) {
+	if m.GetTriggersF != nil {
+		return m.GetTriggersF(ctx, req)
+	}
+	return nil, errors.New("GetTriggers not implemented")
+}
+
+func (m *MockWorkflow) GetTrigger(
+	ctx context.Context, req *pulumirpc.GetTriggerRequest,
+) (*pulumirpc.GetTriggerResponse, error) {
+	if m.GetTriggerF != nil {
+		return m.GetTriggerF(ctx, req)
+	}
+	return nil, errors.New("GetTrigger not implemented")
+}
+
+func (m *MockWorkflow) GetJobs(
+	ctx context.Context, req *pulumirpc.GetJobsRequest,
+) (*pulumirpc.GetJobsResponse, error) {
+	if m.GetJobsF != nil {
+		return m.GetJobsF(ctx, req)
+	}
+	return nil, errors.New("GetJobs not implemented")
+}
+
+func (m *MockWorkflow) GetJob(
+	ctx context.Context, req *pulumirpc.GetJobRequest,
+) (*pulumirpc.GetJobResponse, error) {
+	if m.GetJobF != nil {
+		return m.GetJobF(ctx, req)
+	}
+	return nil, errors.New("GetJob not implemented")
+}
+
+func (m *MockWorkflow) GenerateGraph(
+	ctx context.Context, req *pulumirpc.GenerateGraphRequest,
+) (*pulumirpc.GenerateNodeResponse, error) {
+	if m.GenerateGraphF != nil {
+		return m.GenerateGraphF(ctx, req)
+	}
+	return nil, errors.New("GenerateGraph not implemented")
+}
+
+func (m *MockWorkflow) GenerateJob(
+	ctx context.Context, req *pulumirpc.GenerateJobRequest,
+) (*pulumirpc.GenerateNodeResponse, error) {
+	if m.GenerateJobF != nil {
+		return m.GenerateJobF(ctx, req)
+	}
+	return nil, errors.New("GenerateJob not implemented")
+}
+
+func (m *MockWorkflow) RunTriggerMock(
+	ctx context.Context, req *pulumirpc.RunTriggerMockRequest,
+) (*pulumirpc.RunTriggerMockResponse, error) {
+	if m.RunTriggerMockF != nil {
+		return m.RunTriggerMockF(ctx, req)
+	}
+	return nil, errors.New("RunTriggerMock not implemented")
+}
+
+func (m *MockWorkflow) RunFilter(
+	ctx context.Context, req *pulumirpc.RunFilterRequest,
+) (*pulumirpc.RunFilterResponse, error) {
+	if m.RunFilterF != nil {
+		return m.RunFilterF(ctx, req)
+	}
+	return nil, errors.New("RunFilter not implemented")
+}
+
+func (m *MockWorkflow) RunStep(
+	ctx context.Context, req *pulumirpc.RunStepRequest,
+) (*pulumirpc.RunStepResponse, error) {
+	if m.RunStepF != nil {
+		return m.RunStepF(ctx, req)
+	}
+	return nil, errors.New("RunStep not implemented")
+}
+
+func (m *MockWorkflow) RunOnError(
+	ctx context.Context, req *pulumirpc.RunOnErrorRequest,
+) (*pulumirpc.RunOnErrorResponse, error) {
+	if m.RunOnErrorF != nil {
+		return m.RunOnErrorF(ctx, req)
+	}
+	return nil, errors.New("RunOnError not implemented")
+}
+
+func (m *MockWorkflow) ResolveStepResult(
+	ctx context.Context, req *pulumirpc.ResolveStepResultRequest,
+) (*pulumirpc.ResolveStepResultResponse, error) {
+	if m.ResolveStepResultF != nil {
+		return m.ResolveStepResultF(ctx, req)
+	}
+	return nil, errors.New("ResolveStepResult not implemented")
 }
 
 func (m *MockProvider) SignalCancellation(ctx context.Context) error {

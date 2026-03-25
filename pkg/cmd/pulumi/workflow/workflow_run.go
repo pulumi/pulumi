@@ -190,32 +190,9 @@ func runExportedJob(
 		return nil, "", fmt.Errorf("exported job %q has no steps", jobToken)
 	}
 
-	results := make([]stepResult, 0, len(steps))
-	for _, step := range steps {
-		stepFilterResp, stepFilterErr := workflowPlugin.RunFilter(ctx, &pulumirpc.RunFilterRequest{
-			Path: step.Path,
-		})
-		if stepFilterErr != nil {
-			return nil, "", fmt.Errorf("run filter for step %q: %w", step.Path, stepFilterErr)
-		}
-		if !stepFilterResp.GetPass() {
-			continue
-		}
-
-		runResp, err := runStepWithRetry(ctx, workflowPlugin, workflowContext, step)
-		if err != nil {
-			return nil, "", err
-		}
-		resultJSON := ""
-		if runResp.GetResult() != nil {
-			if bytes, marshalErr := protojson.Marshal(runResp.GetResult()); marshalErr == nil {
-				resultJSON = string(bytes)
-			}
-		}
-		results = append(results, stepResult{
-			Path:       step.Path,
-			ResultJSON: resultJSON,
-		})
+	results, err := runObservedSteps(ctx, workflowPlugin, workflowContext, steps)
+	if err != nil {
+		return nil, "", err
 	}
 
 	return results, jobToken, nil
@@ -324,4 +301,40 @@ func runStepWithRetry(
 			}
 		}
 	}
+}
+
+func runObservedSteps(
+	ctx context.Context,
+	workflowPlugin plugin.Workflow,
+	workflowContext *pulumirpc.WorkflowContext,
+	steps []observedStep,
+) ([]stepResult, error) {
+	results := make([]stepResult, 0, len(steps))
+	for _, step := range steps {
+		stepFilterResp, stepFilterErr := workflowPlugin.RunFilter(ctx, &pulumirpc.RunFilterRequest{
+			Path: step.Path,
+		})
+		if stepFilterErr != nil {
+			return nil, fmt.Errorf("run filter for step %q: %w", step.Path, stepFilterErr)
+		}
+		if !stepFilterResp.GetPass() {
+			continue
+		}
+
+		runResp, err := runStepWithRetry(ctx, workflowPlugin, workflowContext, step)
+		if err != nil {
+			return nil, err
+		}
+		resultJSON := ""
+		if runResp.GetResult() != nil {
+			if bytes, marshalErr := protojson.Marshal(runResp.GetResult()); marshalErr == nil {
+				resultJSON = string(bytes)
+			}
+		}
+		results = append(results, stepResult{
+			Path:       step.Path,
+			ResultJSON: resultJSON,
+		})
+	}
+	return results, nil
 }
