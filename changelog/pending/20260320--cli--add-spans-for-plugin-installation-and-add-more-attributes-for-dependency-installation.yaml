@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli
-  description: Add spans for plugin installation and add more attributes for dependency installation
