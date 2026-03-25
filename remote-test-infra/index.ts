@@ -49,7 +49,7 @@ const userdata = fs.readFileSync("userdata.sh", "utf-8");
 // Create the EC2 instance.
 const instance = new aws.ec2.Instance("test-runner", {
     ami: ami.id,
-    instanceType: "t3.xlarge",
+    instanceType: "c5.4xlarge",
     keyName: keyPair.keyName,
     vpcSecurityGroupIds: [securityGroup.id],
     userData: userdata,

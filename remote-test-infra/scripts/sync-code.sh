@@ -19,11 +19,12 @@ REMOTE_PATH="~/pulumi-work/"
 echo "Syncing ${WORK_DIR} to ${REMOTE_USER}@${REMOTE_IP}:${REMOTE_PATH} ..." >&2
 
 rsync -az --delete \
-    --exclude='.git/' \
+    --exclude='.git' \
     --exclude='node_modules/' \
     --exclude='bin/' \
     --exclude='.make/' \
     --exclude='__pycache__/' \
+    --exclude='autoresearch.*' \
     -e "ssh -i ${REMOTE_KEY_FILE} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR" \
     "${WORK_DIR}/" \
     "${REMOTE_USER}@${REMOTE_IP}:${REMOTE_PATH}"

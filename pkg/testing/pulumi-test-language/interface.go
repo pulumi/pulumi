@@ -33,6 +33,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -88,10 +90,15 @@ func newLanguageTestServer() *languageTestServer {
 }
 
 func installDependencies(
+	ctx context.Context,
 	languageClient plugin.LanguageRuntime,
 	programInfo plugin.ProgramInfo,
 	isPlugin bool,
 ) *testingrpc.RunLanguageTestResponse {
+	_, installSpan := startSpan(ctx, "InstallDependencies",
+		attribute.Bool("isPlugin", isPlugin),
+		attribute.String("rootDir", programInfo.RootDirectory()))
+	defer installSpan.End()
 	installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
 		plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: isPlugin},
 	)
@@ -206,6 +213,11 @@ type languageTestServer struct {
 
 	// A map storing the paths to the generated package artifacts
 	artifactMap gsync.Map[string, string]
+
+	// nodeModulesCache maps a hash of package.json dependencies to a cached node_modules directory.
+	// This avoids re-running npm install for tests with identical dependencies.
+	nodeModulesCache gsync.Map[string, string]
+	nodeModulesLocks gsync.Map[string, *sync.Mutex]
 
 	// Used by _bad snapshot_ tests to disable snapshot writing.
 	DisableSnapshotWriting bool
@@ -527,8 +539,10 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 	var coreArtifact string
 	if req.CoreSdkDirectory != "" {
+		_, packSpan := startSpan(ctx, "PackCoreSdk")
 		coreArtifact, err = languageClient.Pack(
 			req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
+		packSpan.End()
 		if err != nil {
 			return nil, fmt.Errorf("pack core SDK: %w", err)
 		}
@@ -632,6 +646,10 @@ func hasDependency(pkg *schema.Package, dep string) bool {
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (*testingrpc.RunLanguageTestResponse, error) {
+	ctx, span := startSpan(ctx, "RunLanguageTest",
+		attribute.String("test", req.Test))
+	defer span.End()
+
 	test, has := tests.LanguageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
@@ -724,6 +742,10 @@ func (eng *languageTestServer) RunLanguageTest(
 	host.loaderAddress = grpcServer.Addr()
 
 	// And fill that host with our test providers
+	ctx, providerSpan := startSpan(ctx, "SetupProviders",
+		attribute.String("test", req.Test),
+		attribute.Int("count", len(test.Providers)))
+
 	for _, provider := range test.Providers {
 		p := provider()
 		version, err := getProviderVersion(p)
@@ -781,7 +803,7 @@ func (eng *languageTestServer) RunLanguageTest(
 					return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
 				}
 
-				resp := installDependencies(languageClient, providerInfo, true /* isPlugin */)
+				resp := installDependencies(ctx, languageClient, providerInfo, true /* isPlugin */)
 				if resp != nil {
 					return resp, nil
 				}
@@ -802,7 +824,12 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
+	providerSpan.End()
+
 	// Generate SDKs for all the packages we need
+	ctx, sdkSpan := startSpan(ctx, "GenerateSDKs",
+		attribute.String("test", req.Test))
+
 	artifactsDir := filepath.Join(token.TemporaryDirectory, "artifacts")
 
 	// For each test run collect the packages reported by PCL
@@ -994,6 +1021,8 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
+	sdkSpan.End()
+
 	// Just use base64 "secrets" for these tests
 	sm := b64secrets.NewBase64SecretsManager()
 
@@ -1015,7 +1044,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
 		sdks, localDependencies, languageClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
+		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects",
+		&eng.nodeModulesCache, &eng.nodeModulesLocks)
 	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
 		return languageTestResult, err
 	}
@@ -1061,7 +1091,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
+		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project",
+		&eng.nodeModulesCache, &eng.nodeModulesLocks)
 }
 
 func createStackReferences(
@@ -1118,7 +1149,14 @@ func runLanguageTests(
 	stdout, stderr *bytes.Buffer,
 	pctx *plugin.Context,
 	projectDir string,
+	nodeModulesCache *gsync.Map[string, string],
+	nodeModulesLocks *gsync.Map[string, *sync.Mutex],
 ) (*testingrpc.RunLanguageTestResponse, error) {
+	ctx, runSpan := startSpan(ctx, "runLanguageTests",
+		attribute.String("test", testName),
+		attribute.Int("runs", len(test.Runs)))
+	defer runSpan.End()
+
 	sm := b64secrets.NewBase64SecretsManager()
 	dec := sm.Decrypter()
 
@@ -1214,8 +1252,12 @@ func runLanguageTests(
 					return nil, fmt.Errorf("copy override testdata: %w", err)
 				}
 			} else {
+				_, genSpan := startSpan(ctx, "GenerateProject",
+					attribute.String("test", testName),
+					attribute.Int("run", i))
 				diagnostics, err = languageClient.GenerateProject(
 					sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
+				genSpan.End()
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
 				}
@@ -1272,7 +1314,7 @@ func runLanguageTests(
 			main,
 			project.Runtime.Options())
 
-		resp := installDependencies(languageClient, programInfo, false /* isPlugin */)
+		resp := installDependencies(ctx, languageClient, programInfo, false /* isPlugin */)
 		if resp != nil {
 			return resp, nil
 		}
@@ -1533,7 +1575,7 @@ func runLanguageTests(
 			}
 
 			// Install the dependencies for the policy pack
-			resp := installDependencies(languageClient, policyInfo, true /* isPlugin */)
+			resp := installDependencies(ctx, languageClient, policyInfo, true /* isPlugin */)
 			if resp != nil {
 				return resp, nil
 			}
@@ -1596,7 +1638,11 @@ func runLanguageTests(
 			eventsCts.Fulfill(events)
 		}()
 
+		_, previewSpan := startSpan(ctx, "PreviewStack",
+			attribute.String("test", testName),
+			attribute.Int("run", i))
 		plan, previewChanges, res := backend.PreviewStack(ctx, s, updateOperation, eventSink)
+		previewSpan.End()
 		close(eventSink)
 		events, err := eventsCts.Promise().Result(ctx)
 		if err != nil {
@@ -1633,7 +1679,11 @@ func runLanguageTests(
 			}
 			eventsCts.Fulfill(events)
 		}()
+		_, updateSpan := startSpan(ctx, "UpdateStack",
+			attribute.String("test", testName),
+			attribute.Int("run", i))
 		changes, res := backend.UpdateStack(ctx, s, updateOperation, eventSink)
+		updateSpan.End()
 		close(eventSink)
 		events, err = eventsCts.Promise().Result(ctx)
 		if err != nil {
