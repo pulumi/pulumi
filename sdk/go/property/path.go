@@ -114,6 +114,7 @@ func (p Path) Alter(v Value, f func(v Value) Value) (Value, error) {
 }
 
 type PathSegment interface {
+	GlobSegment
 	apply(Value) (Value, PathApplyFailure)
 }
 
