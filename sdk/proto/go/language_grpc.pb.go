@@ -34,23 +34,24 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LanguageRuntime_Handshake_FullMethodName              = "/pulumirpc.LanguageRuntime/Handshake"
-	LanguageRuntime_GetRequiredPlugins_FullMethodName     = "/pulumirpc.LanguageRuntime/GetRequiredPlugins"
-	LanguageRuntime_GetRequiredPackages_FullMethodName    = "/pulumirpc.LanguageRuntime/GetRequiredPackages"
-	LanguageRuntime_Run_FullMethodName                    = "/pulumirpc.LanguageRuntime/Run"
-	LanguageRuntime_GetPluginInfo_FullMethodName          = "/pulumirpc.LanguageRuntime/GetPluginInfo"
-	LanguageRuntime_InstallDependencies_FullMethodName    = "/pulumirpc.LanguageRuntime/InstallDependencies"
-	LanguageRuntime_RuntimeOptionsPrompts_FullMethodName  = "/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts"
-	LanguageRuntime_Template_FullMethodName               = "/pulumirpc.LanguageRuntime/Template"
-	LanguageRuntime_About_FullMethodName                  = "/pulumirpc.LanguageRuntime/About"
-	LanguageRuntime_GetProgramDependencies_FullMethodName = "/pulumirpc.LanguageRuntime/GetProgramDependencies"
-	LanguageRuntime_RunPlugin_FullMethodName              = "/pulumirpc.LanguageRuntime/RunPlugin"
-	LanguageRuntime_GenerateProgram_FullMethodName        = "/pulumirpc.LanguageRuntime/GenerateProgram"
-	LanguageRuntime_GenerateProject_FullMethodName        = "/pulumirpc.LanguageRuntime/GenerateProject"
-	LanguageRuntime_GeneratePackage_FullMethodName        = "/pulumirpc.LanguageRuntime/GeneratePackage"
-	LanguageRuntime_Pack_FullMethodName                   = "/pulumirpc.LanguageRuntime/Pack"
-	LanguageRuntime_Link_FullMethodName                   = "/pulumirpc.LanguageRuntime/Link"
-	LanguageRuntime_Cancel_FullMethodName                 = "/pulumirpc.LanguageRuntime/Cancel"
+	LanguageRuntime_Handshake_FullMethodName               = "/pulumirpc.LanguageRuntime/Handshake"
+	LanguageRuntime_GetRequiredPlugins_FullMethodName      = "/pulumirpc.LanguageRuntime/GetRequiredPlugins"
+	LanguageRuntime_GetRequiredPackages_FullMethodName     = "/pulumirpc.LanguageRuntime/GetRequiredPackages"
+	LanguageRuntime_Run_FullMethodName                     = "/pulumirpc.LanguageRuntime/Run"
+	LanguageRuntime_GetPluginInfo_FullMethodName           = "/pulumirpc.LanguageRuntime/GetPluginInfo"
+	LanguageRuntime_InstallDependencies_FullMethodName     = "/pulumirpc.LanguageRuntime/InstallDependencies"
+	LanguageRuntime_RuntimeOptionsPrompts_FullMethodName   = "/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts"
+	LanguageRuntime_Template_FullMethodName                = "/pulumirpc.LanguageRuntime/Template"
+	LanguageRuntime_About_FullMethodName                   = "/pulumirpc.LanguageRuntime/About"
+	LanguageRuntime_GetProgramDependencies_FullMethodName  = "/pulumirpc.LanguageRuntime/GetProgramDependencies"
+	LanguageRuntime_RunPlugin_FullMethodName               = "/pulumirpc.LanguageRuntime/RunPlugin"
+	LanguageRuntime_GenerateProgram_FullMethodName         = "/pulumirpc.LanguageRuntime/GenerateProgram"
+	LanguageRuntime_GenerateProject_FullMethodName         = "/pulumirpc.LanguageRuntime/GenerateProject"
+	LanguageRuntime_GeneratePackage_FullMethodName         = "/pulumirpc.LanguageRuntime/GeneratePackage"
+	LanguageRuntime_GenerateWorkflowPackage_FullMethodName = "/pulumirpc.LanguageRuntime/GenerateWorkflowPackage"
+	LanguageRuntime_Pack_FullMethodName                    = "/pulumirpc.LanguageRuntime/Pack"
+	LanguageRuntime_Link_FullMethodName                    = "/pulumirpc.LanguageRuntime/Link"
+	LanguageRuntime_Cancel_FullMethodName                  = "/pulumirpc.LanguageRuntime/Cancel"
 )
 
 // LanguageRuntimeClient is the client API for LanguageRuntime service.
@@ -130,6 +131,9 @@ type LanguageRuntimeClient interface {
 	// `GeneratePackage` generates code in this host's language that implements an [SDK](sdkgen) ("sdkgen") for the
 	// given Pulumi package, as specified by a [schema](schema).
 	GeneratePackage(ctx context.Context, in *GeneratePackageRequest, opts ...grpc.CallOption) (*GeneratePackageResponse, error)
+	// `GenerateWorkflowPackage` generates code in this host's language that implements a workflow SDK for the given
+	// workflow package descriptor.
+	GenerateWorkflowPackage(ctx context.Context, in *GenerateWorkflowPackageRequest, opts ...grpc.CallOption) (*GenerateWorkflowPackageResponse, error)
 	// `Pack` accepts a request specifying a generated SDK package and packs it into a language-specific artifact. For
 	// instance, in the case of Java, it might produce a JAR file from a list of `.java` sources; in the case of NodeJS,
 	// a `.tgz` file might be produced from a list of `.js` sources; and so on. Presently, `Pack` is primarily used in
@@ -313,6 +317,16 @@ func (c *languageRuntimeClient) GeneratePackage(ctx context.Context, in *Generat
 	return out, nil
 }
 
+func (c *languageRuntimeClient) GenerateWorkflowPackage(ctx context.Context, in *GenerateWorkflowPackageRequest, opts ...grpc.CallOption) (*GenerateWorkflowPackageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GenerateWorkflowPackageResponse)
+	err := c.cc.Invoke(ctx, LanguageRuntime_GenerateWorkflowPackage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *languageRuntimeClient) Pack(ctx context.Context, in *PackRequest, opts ...grpc.CallOption) (*PackResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PackResponse)
@@ -420,6 +434,9 @@ type LanguageRuntimeServer interface {
 	// `GeneratePackage` generates code in this host's language that implements an [SDK](sdkgen) ("sdkgen") for the
 	// given Pulumi package, as specified by a [schema](schema).
 	GeneratePackage(context.Context, *GeneratePackageRequest) (*GeneratePackageResponse, error)
+	// `GenerateWorkflowPackage` generates code in this host's language that implements a workflow SDK for the given
+	// workflow package descriptor.
+	GenerateWorkflowPackage(context.Context, *GenerateWorkflowPackageRequest) (*GenerateWorkflowPackageResponse, error)
 	// `Pack` accepts a request specifying a generated SDK package and packs it into a language-specific artifact. For
 	// instance, in the case of Java, it might produce a JAR file from a list of `.java` sources; in the case of NodeJS,
 	// a `.tgz` file might be produced from a list of `.js` sources; and so on. Presently, `Pack` is primarily used in
@@ -485,6 +502,9 @@ func (UnimplementedLanguageRuntimeServer) GenerateProject(context.Context, *Gene
 }
 func (UnimplementedLanguageRuntimeServer) GeneratePackage(context.Context, *GeneratePackageRequest) (*GeneratePackageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GeneratePackage not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) GenerateWorkflowPackage(context.Context, *GenerateWorkflowPackageRequest) (*GenerateWorkflowPackageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateWorkflowPackage not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) Pack(context.Context, *PackRequest) (*PackResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Pack not implemented")
@@ -754,6 +774,24 @@ func _LanguageRuntime_GeneratePackage_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LanguageRuntime_GenerateWorkflowPackage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateWorkflowPackageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).GenerateWorkflowPackage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LanguageRuntime_GenerateWorkflowPackage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).GenerateWorkflowPackage(ctx, req.(*GenerateWorkflowPackageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _LanguageRuntime_Pack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PackRequest)
 	if err := dec(in); err != nil {
@@ -862,6 +900,10 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GeneratePackage",
 			Handler:    _LanguageRuntime_GeneratePackage_Handler,
+		},
+		{
+			MethodName: "GenerateWorkflowPackage",
+			Handler:    _LanguageRuntime_GenerateWorkflowPackage_Handler,
 		},
 		{
 			MethodName: "Pack",

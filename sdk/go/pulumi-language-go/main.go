@@ -1525,6 +1525,12 @@ func (host *goLanguageHost) GeneratePackage(
 	}, nil
 }
 
+func (host *goLanguageHost) GenerateWorkflowPackage(
+	context.Context, *pulumirpc.GenerateWorkflowPackageRequest,
+) (*pulumirpc.GenerateWorkflowPackageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "GenerateWorkflowPackage is not implemented for Go")
+}
+
 func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
 	// Go is very simple, there's nothing it can do to pack so it just copies the source to the target.
 

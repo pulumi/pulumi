@@ -78,6 +78,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 const (
@@ -2051,6 +2052,29 @@ func (host *pythonLanguageHost) GeneratePackage(
 	return &pulumirpc.GeneratePackageResponse{
 		Diagnostics: rpcDiagnostics,
 	}, nil
+}
+
+func (host *pythonLanguageHost) GenerateWorkflowPackage(
+	ctx context.Context, req *pulumirpc.GenerateWorkflowPackageRequest,
+) (*pulumirpc.GenerateWorkflowPackageResponse, error) {
+	if req.GetPackage() == nil {
+		return nil, errors.New("workflow package descriptor is required")
+	}
+	if req.GetWorkflowLoaderTarget() == "" {
+		return nil, errors.New("workflow loader target is required")
+	}
+
+	conn, err := grpc.NewClient(req.GetWorkflowLoaderTarget(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("connect workflow loader: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	loader := codegenrpc.NewWorkflowLoaderClient(conn)
+	if err = codegen.GenerateWorkflowPackage(ctx, req.GetDirectory(), req.GetPackage(), loader); err != nil {
+		return nil, err
+	}
+	return &pulumirpc.GenerateWorkflowPackageResponse{}, nil
 }
 
 func (host *pythonLanguageHost) Handshake(ctx context.Context,

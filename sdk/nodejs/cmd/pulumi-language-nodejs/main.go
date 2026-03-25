@@ -1881,6 +1881,12 @@ func (host *nodeLanguageHost) GeneratePackage(
 	}, nil
 }
 
+func (host *nodeLanguageHost) GenerateWorkflowPackage(
+	context.Context, *pulumirpc.GenerateWorkflowPackageRequest,
+) (*pulumirpc.GenerateWorkflowPackageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "GenerateWorkflowPackage is not implemented for Node.js")
+}
+
 func readPackageJSON(packageJSONPath string) (map[string]any, error) {
 	packageJSONData, err := os.ReadFile(packageJSONPath)
 	if err != nil {

@@ -176,6 +176,14 @@ class LanguageRuntimeStub:
     given Pulumi package, as specified by a [schema](schema).
     """
 
+    GenerateWorkflowPackage: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.GenerateWorkflowPackageRequest,
+        pulumi.language_pb2.GenerateWorkflowPackageResponse,
+    ]
+    """`GenerateWorkflowPackage` generates code in this host's language that implements a workflow SDK for the given
+    workflow package descriptor.
+    """
+
     Pack: grpc.UnaryUnaryMultiCallable[
         pulumi.language_pb2.PackRequest,
         pulumi.language_pb2.PackResponse,
@@ -344,6 +352,14 @@ class LanguageRuntimeAsyncStub:
     ]
     """`GeneratePackage` generates code in this host's language that implements an [SDK](sdkgen) ("sdkgen") for the
     given Pulumi package, as specified by a [schema](schema).
+    """
+
+    GenerateWorkflowPackage: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.GenerateWorkflowPackageRequest,
+        pulumi.language_pb2.GenerateWorkflowPackageResponse,
+    ]
+    """`GenerateWorkflowPackage` generates code in this host's language that implements a workflow SDK for the given
+    workflow package descriptor.
     """
 
     Pack: grpc.aio.UnaryUnaryMultiCallable[
@@ -542,6 +558,16 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     ) -> typing.Union[pulumi.language_pb2.GeneratePackageResponse, collections.abc.Awaitable[pulumi.language_pb2.GeneratePackageResponse]]:
         """`GeneratePackage` generates code in this host's language that implements an [SDK](sdkgen) ("sdkgen") for the
         given Pulumi package, as specified by a [schema](schema).
+        """
+
+    
+    def GenerateWorkflowPackage(
+        self,
+        request: pulumi.language_pb2.GenerateWorkflowPackageRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.language_pb2.GenerateWorkflowPackageResponse, collections.abc.Awaitable[pulumi.language_pb2.GenerateWorkflowPackageResponse]]:
+        """`GenerateWorkflowPackage` generates code in this host's language that implements a workflow SDK for the given
+        workflow package descriptor.
         """
 
     

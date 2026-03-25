@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
@@ -830,6 +831,32 @@ func (h *langhost) GenerateProgram(program map[string]string, loaderTarget strin
 
 	logging.V(7).Infof("langhost[%v].GenerateProgram() success", h.runtime)
 	return resp.Source, diags, nil
+}
+
+func (h *langhost) GenerateWorkflowPackage(
+	directory string,
+	descriptor *codegenrpc.WorkflowPackageDescriptor,
+	workflowLoaderTarget string,
+) (hcl.Diagnostics, error) {
+	logging.V(7).Infof("langhost[%v].GenerateWorkflowPackage() executing", h.runtime)
+	resp, err := h.client.GenerateWorkflowPackage(h.ctx.Request(), &pulumirpc.GenerateWorkflowPackageRequest{
+		Package:              descriptor,
+		Directory:            directory,
+		WorkflowLoaderTarget: workflowLoaderTarget,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].GenerateWorkflowPackage() failed: err=%v", h.runtime, rpcError)
+		return nil, rpcError
+	}
+
+	var diags hcl.Diagnostics
+	for _, rpcDiag := range resp.Diagnostics {
+		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
+	}
+
+	logging.V(7).Infof("langhost[%v].GenerateWorkflowPackage() success", h.runtime)
+	return diags, nil
 }
 
 func (h *langhost) Pack(

@@ -7,6 +7,7 @@
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_language_pb from "./language_pb";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
+import * as pulumi_codegen_workflow_pb from "./codegen/workflow_pb";
 import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
@@ -26,6 +27,7 @@ interface ILanguageRuntimeService extends grpc.ServiceDefinition<grpc.UntypedSer
     generateProgram: ILanguageRuntimeService_IGenerateProgram;
     generateProject: ILanguageRuntimeService_IGenerateProject;
     generatePackage: ILanguageRuntimeService_IGeneratePackage;
+    generateWorkflowPackage: ILanguageRuntimeService_IGenerateWorkflowPackage;
     pack: ILanguageRuntimeService_IPack;
     link: ILanguageRuntimeService_ILink;
     cancel: ILanguageRuntimeService_ICancel;
@@ -157,6 +159,15 @@ interface ILanguageRuntimeService_IGeneratePackage extends grpc.MethodDefinition
     responseSerialize: grpc.serialize<pulumi_language_pb.GeneratePackageResponse>;
     responseDeserialize: grpc.deserialize<pulumi_language_pb.GeneratePackageResponse>;
 }
+interface ILanguageRuntimeService_IGenerateWorkflowPackage extends grpc.MethodDefinition<pulumi_language_pb.GenerateWorkflowPackageRequest, pulumi_language_pb.GenerateWorkflowPackageResponse> {
+    path: "/pulumirpc.LanguageRuntime/GenerateWorkflowPackage";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_language_pb.GenerateWorkflowPackageRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_language_pb.GenerateWorkflowPackageRequest>;
+    responseSerialize: grpc.serialize<pulumi_language_pb.GenerateWorkflowPackageResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_language_pb.GenerateWorkflowPackageResponse>;
+}
 interface ILanguageRuntimeService_IPack extends grpc.MethodDefinition<pulumi_language_pb.PackRequest, pulumi_language_pb.PackResponse> {
     path: "/pulumirpc.LanguageRuntime/Pack";
     requestStream: false;
@@ -202,6 +213,7 @@ export interface ILanguageRuntimeServer extends grpc.UntypedServiceImplementatio
     generateProgram: grpc.handleUnaryCall<pulumi_language_pb.GenerateProgramRequest, pulumi_language_pb.GenerateProgramResponse>;
     generateProject: grpc.handleUnaryCall<pulumi_language_pb.GenerateProjectRequest, pulumi_language_pb.GenerateProjectResponse>;
     generatePackage: grpc.handleUnaryCall<pulumi_language_pb.GeneratePackageRequest, pulumi_language_pb.GeneratePackageResponse>;
+    generateWorkflowPackage: grpc.handleUnaryCall<pulumi_language_pb.GenerateWorkflowPackageRequest, pulumi_language_pb.GenerateWorkflowPackageResponse>;
     pack: grpc.handleUnaryCall<pulumi_language_pb.PackRequest, pulumi_language_pb.PackResponse>;
     link: grpc.handleUnaryCall<pulumi_language_pb.LinkRequest, pulumi_language_pb.LinkResponse>;
     cancel: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, google_protobuf_empty_pb.Empty>;
@@ -248,6 +260,9 @@ export interface ILanguageRuntimeClient {
     generatePackage(request: pulumi_language_pb.GeneratePackageRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GeneratePackageResponse) => void): grpc.ClientUnaryCall;
     generatePackage(request: pulumi_language_pb.GeneratePackageRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GeneratePackageResponse) => void): grpc.ClientUnaryCall;
     generatePackage(request: pulumi_language_pb.GeneratePackageRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GeneratePackageResponse) => void): grpc.ClientUnaryCall;
+    generateWorkflowPackage(request: pulumi_language_pb.GenerateWorkflowPackageRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GenerateWorkflowPackageResponse) => void): grpc.ClientUnaryCall;
+    generateWorkflowPackage(request: pulumi_language_pb.GenerateWorkflowPackageRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GenerateWorkflowPackageResponse) => void): grpc.ClientUnaryCall;
+    generateWorkflowPackage(request: pulumi_language_pb.GenerateWorkflowPackageRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GenerateWorkflowPackageResponse) => void): grpc.ClientUnaryCall;
     pack(request: pulumi_language_pb.PackRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
     pack(request: pulumi_language_pb.PackRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
     pack(request: pulumi_language_pb.PackRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
@@ -301,6 +316,9 @@ export class LanguageRuntimeClient extends grpc.Client implements ILanguageRunti
     public generatePackage(request: pulumi_language_pb.GeneratePackageRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GeneratePackageResponse) => void): grpc.ClientUnaryCall;
     public generatePackage(request: pulumi_language_pb.GeneratePackageRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GeneratePackageResponse) => void): grpc.ClientUnaryCall;
     public generatePackage(request: pulumi_language_pb.GeneratePackageRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GeneratePackageResponse) => void): grpc.ClientUnaryCall;
+    public generateWorkflowPackage(request: pulumi_language_pb.GenerateWorkflowPackageRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GenerateWorkflowPackageResponse) => void): grpc.ClientUnaryCall;
+    public generateWorkflowPackage(request: pulumi_language_pb.GenerateWorkflowPackageRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GenerateWorkflowPackageResponse) => void): grpc.ClientUnaryCall;
+    public generateWorkflowPackage(request: pulumi_language_pb.GenerateWorkflowPackageRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.GenerateWorkflowPackageResponse) => void): grpc.ClientUnaryCall;
     public pack(request: pulumi_language_pb.PackRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
     public pack(request: pulumi_language_pb.PackRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
     public pack(request: pulumi_language_pb.PackRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;

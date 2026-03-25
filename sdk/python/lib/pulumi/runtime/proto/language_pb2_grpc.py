@@ -89,6 +89,11 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.GeneratePackageRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.GeneratePackageResponse.FromString,
                 )
+        self.GenerateWorkflowPackage = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/GenerateWorkflowPackage',
+                request_serializer=pulumi_dot_language__pb2.GenerateWorkflowPackageRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.GenerateWorkflowPackageResponse.FromString,
+                )
         self.Pack = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/Pack',
                 request_serializer=pulumi_dot_language__pb2.PackRequest.SerializeToString,
@@ -250,6 +255,14 @@ class LanguageRuntimeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GenerateWorkflowPackage(self, request, context):
+        """`GenerateWorkflowPackage` generates code in this host's language that implements a workflow SDK for the given
+        workflow package descriptor.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def Pack(self, request, context):
         """`Pack` accepts a request specifying a generated SDK package and packs it into a language-specific artifact. For
         instance, in the case of Java, it might produce a JAR file from a list of `.java` sources; in the case of NodeJS,
@@ -351,6 +364,11 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     servicer.GeneratePackage,
                     request_deserializer=pulumi_dot_language__pb2.GeneratePackageRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.GeneratePackageResponse.SerializeToString,
+            ),
+            'GenerateWorkflowPackage': grpc.unary_unary_rpc_method_handler(
+                    servicer.GenerateWorkflowPackage,
+                    request_deserializer=pulumi_dot_language__pb2.GenerateWorkflowPackageRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.GenerateWorkflowPackageResponse.SerializeToString,
             ),
             'Pack': grpc.unary_unary_rpc_method_handler(
                     servicer.Pack,
@@ -615,6 +633,23 @@ class LanguageRuntime(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GeneratePackage',
             pulumi_dot_language__pb2.GeneratePackageRequest.SerializeToString,
             pulumi_dot_language__pb2.GeneratePackageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GenerateWorkflowPackage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GenerateWorkflowPackage',
+            pulumi_dot_language__pb2.GenerateWorkflowPackageRequest.SerializeToString,
+            pulumi_dot_language__pb2.GenerateWorkflowPackageResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

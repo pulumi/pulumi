@@ -746,6 +746,12 @@ func (host *pclLanguageHost) GeneratePackage(
 	}, nil
 }
 
+func (host *pclLanguageHost) GenerateWorkflowPackage(
+	context.Context, *pulumirpc.GenerateWorkflowPackageRequest,
+) (*pulumirpc.GenerateWorkflowPackageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "GenerateWorkflowPackage is not implemented for PCL")
+}
+
 func (host *pclLanguageHost) Pack(
 	ctx context.Context, req *pulumirpc.PackRequest,
 ) (*pulumirpc.PackResponse, error) {

@@ -6,6 +6,7 @@
 
 import * as jspb from "google-protobuf";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
+import * as pulumi_codegen_workflow_pb from "./codegen/workflow_pb";
 import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
@@ -866,6 +867,57 @@ export class GeneratePackageResponse extends jspb.Message {
 }
 
 export namespace GeneratePackageResponse {
+    export type AsObject = {
+        diagnosticsList: Array<pulumi_codegen_hcl_pb.Diagnostic.AsObject>,
+    }
+}
+
+export class GenerateWorkflowPackageRequest extends jspb.Message { 
+
+    hasPackage(): boolean;
+    clearPackage(): void;
+    getPackage(): pulumi_codegen_workflow_pb.WorkflowPackageDescriptor | undefined;
+    setPackage(value?: pulumi_codegen_workflow_pb.WorkflowPackageDescriptor): GenerateWorkflowPackageRequest;
+    getDirectory(): string;
+    setDirectory(value: string): GenerateWorkflowPackageRequest;
+    getWorkflowLoaderTarget(): string;
+    setWorkflowLoaderTarget(value: string): GenerateWorkflowPackageRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GenerateWorkflowPackageRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GenerateWorkflowPackageRequest): GenerateWorkflowPackageRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GenerateWorkflowPackageRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GenerateWorkflowPackageRequest;
+    static deserializeBinaryFromReader(message: GenerateWorkflowPackageRequest, reader: jspb.BinaryReader): GenerateWorkflowPackageRequest;
+}
+
+export namespace GenerateWorkflowPackageRequest {
+    export type AsObject = {
+        pb_package?: pulumi_codegen_workflow_pb.WorkflowPackageDescriptor.AsObject,
+        directory: string,
+        workflowLoaderTarget: string,
+    }
+}
+
+export class GenerateWorkflowPackageResponse extends jspb.Message { 
+    clearDiagnosticsList(): void;
+    getDiagnosticsList(): Array<pulumi_codegen_hcl_pb.Diagnostic>;
+    setDiagnosticsList(value: Array<pulumi_codegen_hcl_pb.Diagnostic>): GenerateWorkflowPackageResponse;
+    addDiagnostics(value?: pulumi_codegen_hcl_pb.Diagnostic, index?: number): pulumi_codegen_hcl_pb.Diagnostic;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GenerateWorkflowPackageResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GenerateWorkflowPackageResponse): GenerateWorkflowPackageResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GenerateWorkflowPackageResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GenerateWorkflowPackageResponse;
+    static deserializeBinaryFromReader(message: GenerateWorkflowPackageResponse, reader: jspb.BinaryReader): GenerateWorkflowPackageResponse;
+}
+
+export namespace GenerateWorkflowPackageResponse {
     export type AsObject = {
         diagnosticsList: Array<pulumi_codegen_hcl_pb.Diagnostic.AsObject>,
     }

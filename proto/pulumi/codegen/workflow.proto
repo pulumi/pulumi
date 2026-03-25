@@ -1,0 +1,121 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package codegen;
+
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
+
+// WorkflowPackageDescriptor identifies a workflow package for SDK generation.
+message WorkflowPackageDescriptor {
+    string name = 1;
+    string version = 2;
+    string download_url = 3;
+}
+
+message GetWorkflowPackageInfoRequest {
+    WorkflowPackageDescriptor package = 1;
+}
+
+message GetWorkflowGraphsRequest {
+    WorkflowPackageDescriptor package = 1;
+}
+
+message GetWorkflowGraphRequest {
+    WorkflowPackageDescriptor package = 1;
+    string token = 2;
+}
+
+message GetWorkflowTriggersRequest {
+    WorkflowPackageDescriptor package = 1;
+}
+
+message GetWorkflowTriggerRequest {
+    WorkflowPackageDescriptor package = 1;
+    string token = 2;
+}
+
+message GetWorkflowJobsRequest {
+    WorkflowPackageDescriptor package = 1;
+}
+
+message GetWorkflowJobRequest {
+    WorkflowPackageDescriptor package = 1;
+    string token = 2;
+}
+
+message TypeReference {
+    string token = 1;
+}
+
+message PackageInfo {
+    string name = 1;
+    string version = 2;
+    string display_name = 3;
+}
+
+message GraphInfo {
+    string token = 1;
+    TypeReference input_type = 2;
+    TypeReference output_type = 3;
+    bool has_on_error = 4;
+}
+
+message JobInfo {
+    string token = 1;
+    TypeReference input_type = 2;
+    TypeReference output_type = 3;
+    bool has_on_error = 4;
+}
+
+message GetPackageInfoResponse {
+    PackageInfo package = 1;
+}
+
+message GetGraphsResponse {
+    repeated GraphInfo graphs = 1;
+}
+
+message GetGraphResponse {
+    GraphInfo graph = 1;
+}
+
+message GetTriggersResponse {
+    repeated string triggers = 1;
+}
+
+message GetTriggerResponse {
+    TypeReference input_type = 1;
+    TypeReference output_type = 2;
+}
+
+message GetJobsResponse {
+    repeated JobInfo jobs = 1;
+}
+
+message GetJobResponse {
+    JobInfo job = 1;
+}
+
+// WorkflowLoader provides schema-fetching APIs for workflow package SDK generation.
+service WorkflowLoader {
+    rpc GetPackageInfo(GetWorkflowPackageInfoRequest) returns (GetPackageInfoResponse) {}
+    rpc GetGraphs(GetWorkflowGraphsRequest) returns (GetGraphsResponse) {}
+    rpc GetGraph(GetWorkflowGraphRequest) returns (GetGraphResponse) {}
+    rpc GetTriggers(GetWorkflowTriggersRequest) returns (GetTriggersResponse) {}
+    rpc GetTrigger(GetWorkflowTriggerRequest) returns (GetTriggerResponse) {}
+    rpc GetJobs(GetWorkflowJobsRequest) returns (GetJobsResponse) {}
+    rpc GetJob(GetWorkflowJobRequest) returns (GetJobResponse) {}
+}

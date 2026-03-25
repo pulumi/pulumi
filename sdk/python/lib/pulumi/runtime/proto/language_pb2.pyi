@@ -24,6 +24,7 @@ import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import google.protobuf.struct_pb2
 import pulumi.codegen.hcl_pb2
+import pulumi.codegen.workflow_pb2
 import pulumi.plugin_pb2
 import sys
 import typing
@@ -1128,6 +1129,61 @@ class GeneratePackageResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics"]) -> None: ...
 
 global___GeneratePackageResponse = GeneratePackageResponse
+
+@typing.final
+class GenerateWorkflowPackageRequest(google.protobuf.message.Message):
+    """`GenerateWorkflowPackageRequest` is the type of requests sent as part of a
+    [](pulumirpc.LanguageRuntime.GenerateWorkflowPackage) call.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_FIELD_NUMBER: builtins.int
+    DIRECTORY_FIELD_NUMBER: builtins.int
+    WORKFLOW_LOADER_TARGET_FIELD_NUMBER: builtins.int
+    directory: builtins.str
+    """The directory to generate the package in. This should be an absolute path on the filesystem that is accessible
+    to the language host.
+    """
+    workflow_loader_target: builtins.str
+    """The target of a codegen.WorkflowLoader service to use for loading workflow schema metadata."""
+    @property
+    def package(self) -> pulumi.codegen.workflow_pb2.WorkflowPackageDescriptor:
+        """The workflow package to generate an SDK for."""
+
+    def __init__(
+        self,
+        *,
+        package: pulumi.codegen.workflow_pb2.WorkflowPackageDescriptor | None = ...,
+        directory: builtins.str = ...,
+        workflow_loader_target: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["package", b"package"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["directory", b"directory", "package", b"package", "workflow_loader_target", b"workflow_loader_target"]) -> None: ...
+
+global___GenerateWorkflowPackageRequest = GenerateWorkflowPackageRequest
+
+@typing.final
+class GenerateWorkflowPackageResponse(google.protobuf.message.Message):
+    """`GenerateWorkflowPackageResponse` is the type of responses sent by a
+    [](pulumirpc.LanguageRuntime.GenerateWorkflowPackage) call.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    DIAGNOSTICS_FIELD_NUMBER: builtins.int
+    @property
+    def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
+        """Any diagnostics raised by code generation."""
+
+    def __init__(
+        self,
+        *,
+        diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics"]) -> None: ...
+
+global___GenerateWorkflowPackageResponse = GenerateWorkflowPackageResponse
 
 @typing.final
 class PackRequest(google.protobuf.message.Message):

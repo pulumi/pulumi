@@ -134,6 +134,12 @@ func (m *MockLanguageRuntimeClient) GeneratePackage(
 	panic("not implemented")
 }
 
+func (m *MockLanguageRuntimeClient) GenerateWorkflowPackage(
+	ctx context.Context, in *pulumirpc.GenerateWorkflowPackageRequest, opts ...grpc.CallOption,
+) (*pulumirpc.GenerateWorkflowPackageResponse, error) {
+	panic("not implemented")
+}
+
 func (m *MockLanguageRuntimeClient) Pack(
 	ctx context.Context, in *pulumirpc.PackRequest, opts ...grpc.CallOption,
 ) (*pulumirpc.PackResponse, error) {

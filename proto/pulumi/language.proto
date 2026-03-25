@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 import "pulumi/codegen/hcl.proto";
+import "pulumi/codegen/workflow.proto";
 import "pulumi/plugin.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
@@ -110,6 +111,10 @@ service LanguageRuntime {
     // `GeneratePackage` generates code in this host's language that implements an [SDK](sdkgen) ("sdkgen") for the
     // given Pulumi package, as specified by a [schema](schema).
     rpc GeneratePackage(GeneratePackageRequest) returns (GeneratePackageResponse) {}
+
+    // `GenerateWorkflowPackage` generates code in this host's language that implements a workflow SDK for the given
+    // workflow package descriptor.
+    rpc GenerateWorkflowPackage(GenerateWorkflowPackageRequest) returns (GenerateWorkflowPackageResponse) {}
 
     // `Pack` accepts a request specifying a generated SDK package and packs it into a language-specific artifact. For
     // instance, in the case of Java, it might produce a JAR file from a list of `.java` sources; in the case of NodeJS,
@@ -587,6 +592,27 @@ message GeneratePackageRequest {
 
 // `GeneratePackageResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GeneratePackage) call.
 message GeneratePackageResponse {
+    // Any diagnostics raised by code generation.
+    repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
+}
+
+// `GenerateWorkflowPackageRequest` is the type of requests sent as part of a
+// [](pulumirpc.LanguageRuntime.GenerateWorkflowPackage) call.
+message GenerateWorkflowPackageRequest {
+    // The workflow package to generate an SDK for.
+    .codegen.WorkflowPackageDescriptor package = 1;
+
+    // The directory to generate the package in. This should be an absolute path on the filesystem that is accessible
+    // to the language host.
+    string directory = 2;
+
+    // The target of a codegen.WorkflowLoader service to use for loading workflow schema metadata.
+    string workflow_loader_target = 3;
+}
+
+// `GenerateWorkflowPackageResponse` is the type of responses sent by a
+// [](pulumirpc.LanguageRuntime.GenerateWorkflowPackage) call.
+message GenerateWorkflowPackageResponse {
     // Any diagnostics raised by code generation.
     repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
 }

@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -166,6 +167,13 @@ type LanguageRuntime interface {
 		directory string, schema string, extraFiles map[string][]byte,
 		loaderTarget string, localDependencies map[string]string,
 		local bool,
+	) (hcl.Diagnostics, error)
+
+	// GenerateWorkflowPackage generates a workflow SDK package from workflow schema metadata.
+	GenerateWorkflowPackage(
+		directory string,
+		descriptor *codegenrpc.WorkflowPackageDescriptor,
+		workflowLoaderTarget string,
 	) (hcl.Diagnostics, error)
 
 	// GenerateProgram is similar to GenerateProject but doesn't include any metadata files, just the program

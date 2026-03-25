@@ -19,6 +19,7 @@
 var grpc = require('@grpc/grpc-js');
 var pulumi_language_pb = require('./language_pb.js');
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
+var pulumi_codegen_workflow_pb = require('./codegen/workflow_pb.js');
 var pulumi_plugin_pb = require('./plugin_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
@@ -120,6 +121,28 @@ function serialize_pulumirpc_GenerateProjectResponse(arg) {
 
 function deserialize_pulumirpc_GenerateProjectResponse(buffer_arg) {
   return pulumi_language_pb.GenerateProjectResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GenerateWorkflowPackageRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.GenerateWorkflowPackageRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GenerateWorkflowPackageRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GenerateWorkflowPackageRequest(buffer_arg) {
+  return pulumi_language_pb.GenerateWorkflowPackageRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GenerateWorkflowPackageResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.GenerateWorkflowPackageResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GenerateWorkflowPackageResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GenerateWorkflowPackageResponse(buffer_arg) {
+  return pulumi_language_pb.GenerateWorkflowPackageResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_GetProgramDependenciesRequest(arg) {
@@ -587,6 +610,19 @@ generatePackage: {
     requestDeserialize: deserialize_pulumirpc_GeneratePackageRequest,
     responseSerialize: serialize_pulumirpc_GeneratePackageResponse,
     responseDeserialize: deserialize_pulumirpc_GeneratePackageResponse,
+  },
+  // `GenerateWorkflowPackage` generates code in this host's language that implements a workflow SDK for the given
+// workflow package descriptor.
+generateWorkflowPackage: {
+    path: '/pulumirpc.LanguageRuntime/GenerateWorkflowPackage',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.GenerateWorkflowPackageRequest,
+    responseType: pulumi_language_pb.GenerateWorkflowPackageResponse,
+    requestSerialize: serialize_pulumirpc_GenerateWorkflowPackageRequest,
+    requestDeserialize: deserialize_pulumirpc_GenerateWorkflowPackageRequest,
+    responseSerialize: serialize_pulumirpc_GenerateWorkflowPackageResponse,
+    responseDeserialize: deserialize_pulumirpc_GenerateWorkflowPackageResponse,
   },
   // `Pack` accepts a request specifying a generated SDK package and packs it into a language-specific artifact. For
 // instance, in the case of Java, it might produce a JAR file from a list of `.java` sources; in the case of NodeJS,
