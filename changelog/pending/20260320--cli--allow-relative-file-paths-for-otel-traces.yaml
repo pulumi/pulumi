@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Allow relative file paths for --otel-traces

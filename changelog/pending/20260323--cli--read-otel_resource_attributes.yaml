@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Read OTEL_RESOURCE_ATTRIBUTES

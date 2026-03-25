@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/state
-  description: Allow `pulumi state delete` to accept multiple resource URNs and delete them in a dependency-safe order

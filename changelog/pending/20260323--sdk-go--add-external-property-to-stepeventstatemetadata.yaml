@@ -1,4 +1,0 @@
-changes:
-- type: improvement
-  scope: sdk/go
-  description: Add 'external' property to StepEventStateMetadata
