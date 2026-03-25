@@ -19,6 +19,19 @@ class CronTriggerOutput:
     timestamp: str
 
 
+@dataclass
+class ExportedJobInput:
+    message: str
+    repeat: int
+
+
+@dataclass
+class ExportedJobOutput:
+    summary: str
+    repeated: str
+    final_file: str
+
+
 def main_graph(ctx: workflow.Context) -> None:
     def cron_filter(value: Any) -> bool:
         if not isinstance(value, dict) or "timestamp" not in value:
@@ -103,6 +116,47 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
         CronTriggerInput,
         cron_trigger_mock,
     )
+
+    def compose_message_job(
+        job: workflow.JobContext,
+        job_input: ExportedJobInput,
+    ) -> Output[ExportedJobOutput]:
+        @job.step("seed")
+        def seed_step() -> dict[str, Any]:
+            cwd = os.getcwd()
+            seed_text = f"{job_input.message}:{job_input.repeat}"
+            with open(os.path.join(cwd, "exported-job-seed.txt"), "w", encoding="utf-8") as f:
+                f.write(seed_text)
+            return {"seed": seed_text}
+
+        @job.step("expand", seed_step)
+        def expand_step(seed: dict[str, Any]) -> dict[str, Any]:
+            cwd = os.getcwd()
+            with open(os.path.join(cwd, "exported-job-seed.txt"), "r", encoding="utf-8") as f:
+                seed_file = f.read().strip()
+            seed_value = str(seed.get("seed", seed_file))
+            repeated = " ".join([job_input.message] * max(job_input.repeat, 1))
+            combined = f"{seed_value}|{repeated}"
+            with open(os.path.join(cwd, "exported-job-expanded.txt"), "w", encoding="utf-8") as f:
+                f.write(combined)
+            return {"combined": combined, "repeated": repeated}
+
+        @job.step("finalize", expand_step)
+        def finalize_step(expanded_output: dict[str, Any]) -> ExportedJobOutput:
+            cwd = os.getcwd()
+            with open(os.path.join(cwd, "exported-job-expanded.txt"), "r", encoding="utf-8") as f:
+                expanded = f.read().strip()
+            seed = expanded.split("|", 1)[0]
+            repeated = str(expanded_output.get("repeated", ""))
+            final_file = os.path.join(cwd, "exported-job-final.txt")
+            summary = f"{seed}|{expanded}"
+            with open(final_file, "w", encoding="utf-8") as f:
+                f.write(summary)
+            return ExportedJobOutput(summary=summary, repeated=repeated, final_file=final_file)
+
+        return finalize_step
+
+    registry.job("compose-message", ExportedJobInput, compose_message_job)
     registry.graph("main", main_graph)
 
 

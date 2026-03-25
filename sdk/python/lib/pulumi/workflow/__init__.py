@@ -25,7 +25,7 @@ from concurrent import futures
 from dataclasses import asdict, dataclass, is_dataclass
 import asyncio
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union, cast, get_type_hints, overload
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union, cast, get_args, get_origin, get_type_hints, overload
 
 import grpc
 from google.protobuf import json_format
@@ -68,6 +68,15 @@ class _JobDefinition:
     fn: JobCallback
     on_error: Optional[OnErrorHandler]
     inputs: List[Any]
+
+
+@dataclass
+class _ExportedJobDefinition:
+    token: str
+    input_type: Type[Any]
+    output_type: Type[Any]
+    fn: Callable[[JobContext, Any], Output[Any]]
+    on_error: Optional[OnErrorHandler]
 
 
 @dataclass
@@ -264,6 +273,7 @@ class JobContext:
                 term.path = dep
 
             self._state.monitor.RegisterStep(request)
+            _ensure_event_loop()
             step_output, resolve_output = deferred_output()
             setattr(step_output, _WORKFLOW_OUTPUT_PATHS_ATTR, {step_path})
             self._state.steps[step_path] = _StepDefinition(
@@ -295,6 +305,7 @@ class WorkflowRegistry:
     def __init__(self, package_name: str) -> None:
         self._package_name = package_name
         self._graphs: Dict[str, GraphCallback] = {}
+        self._jobs: Dict[str, _ExportedJobDefinition] = {}
         self._triggers: Dict[str, _TriggerDefinition] = {}
 
     def graph(
@@ -344,6 +355,40 @@ class WorkflowRegistry:
         if token in self._triggers:
             return token
         qualified = _qualify_trigger_token(self._package_name, token)
+        return qualified
+
+    def job(
+        self,
+        token: str,
+        input_type: Type[TInput],
+        fn: Callable[[JobContext, TInput], Output[TOutput]],
+        *,
+        on_error: Optional[OnErrorHandler] = None,
+    ) -> None:
+        if not token:
+            raise WorkflowError("job token is required")
+        resolved_token = self.resolve_job_token(token)
+        if resolved_token in self._jobs:
+            raise WorkflowError(f"job '{resolved_token}' is already registered")
+        if not callable(fn):
+            raise WorkflowError("job callback must be callable")
+
+        _validate_record_type(input_type, "job input type")
+        output_type = _job_return_output_type(fn)
+        _validate_record_type(output_type, "job output type")
+
+        self._jobs[resolved_token] = _ExportedJobDefinition(
+            token=resolved_token,
+            input_type=input_type,
+            output_type=output_type,
+            fn=cast(Callable[[JobContext, Any], Output[Any]], fn),
+            on_error=on_error,
+        )
+
+    def resolve_job_token(self, token: str) -> str:
+        if token in self._jobs:
+            return token
+        qualified = _qualify_job_token(self._package_name, token)
         return qualified
 
 
@@ -434,6 +479,55 @@ def _qualify_trigger_token(package_name: str, token: str) -> str:
     return f"{package_name}:index:{token}"
 
 
+def _qualify_job_token(package_name: str, token: str) -> str:
+    if ":" in token:
+        return token
+    return f"{package_name}:index:{token}"
+
+
+def _job_return_output_type(fn: Callable[..., Any]) -> Type[Any]:
+    hints = get_type_hints(fn)
+    return_type = hints.get("return")
+    if return_type is None:
+        raise WorkflowError("job callback must declare a return type annotation")
+    origin = get_origin(return_type)
+    if origin is not Output:
+        raise WorkflowError("job callback return type must be Output[T]")
+    args = get_args(return_type)
+    if len(args) != 1:
+        raise WorkflowError("job callback return type must be Output[T]")
+    output_type = args[0]
+    if not inspect.isclass(output_type):
+        raise WorkflowError("job callback output type T must be a class/record type")
+    return cast(Type[Any], output_type)
+
+
+def _coerce_record_instance(record_type: Type[Any], value: Any, label: str) -> Any:
+    if isinstance(value, record_type):
+        return value
+    if isinstance(value, dict):
+        annotations = get_type_hints(record_type)
+        normalized = dict(value)
+        for field_name, field_type in annotations.items():
+            if field_name not in normalized:
+                continue
+            field_value = normalized[field_name]
+            if field_type is int and isinstance(field_value, float):
+                if field_value.is_integer():
+                    normalized[field_name] = int(field_value)
+                else:
+                    raise WorkflowError(
+                        f"invalid {label}: field '{field_name}' requires int, got non-integral float"
+                    )
+        try:
+            return record_type(**normalized)
+        except TypeError as error:
+            raise WorkflowError(f"invalid {label}: {error}") from error
+    raise WorkflowError(
+        f"{label} must decode to {record_type.__name__} (got {type(value).__name__})"
+    )
+
+
 def _from_proto_value(value: struct_pb2.Value) -> Any:
     kind = value.WhichOneof("kind")
     if kind == "null_value":
@@ -462,7 +556,7 @@ def _workflow_input_value(context: workflow_pb2.WorkflowContext, path: str) -> A
 def _workflow_output_paths(value: Any) -> Set[str]:
     if not isinstance(value, Output):
         return set()
-    paths = getattr(value, _WORKFLOW_OUTPUT_PATHS_ATTR, None)
+    paths = _get_output_internal_attr(value, _WORKFLOW_OUTPUT_PATHS_ATTR)
     if paths is None:
         return set()
     return set(paths)
@@ -493,11 +587,19 @@ def _resolve_job_input(value: Any) -> Any:
             raise WorkflowError(
                 "workflow jobs may only accept workflow outputs; resource outputs are not supported"
             )
-        if hasattr(value, _WORKFLOW_OUTPUT_VALUE_ATTR):
-            return getattr(value, _WORKFLOW_OUTPUT_VALUE_ATTR)
+        embedded = _get_output_internal_attr(value, _WORKFLOW_OUTPUT_VALUE_ATTR)
+        if embedded is not None:
+            return embedded
         _ensure_event_loop()
         return _sync_await(value.future(with_unknowns=True))
     return value
+
+
+def _get_output_internal_attr(output: Output[Any], name: str) -> Any:
+    try:
+        return object.__getattribute__(output, name)
+    except AttributeError:
+        return None
 
 
 def _resolve_step_arg(arg: Any) -> Any:
@@ -690,7 +792,15 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
     ) -> workflow_pb2.GetJobsResponse:
         _ = request
         _ = context
-        return workflow_pb2.GetJobsResponse()
+        response = workflow_pb2.GetJobsResponse()
+        for token in sorted(self._workflow_registry._jobs):
+            job = self._workflow_registry._jobs[token]
+            info = response.jobs.add()
+            info.token = token
+            info.input_type.token = _type_token(job.input_type)
+            info.output_type.token = _type_token(job.output_type)
+            info.has_on_error = job.on_error is not None
+        return response
 
     def GetTriggers(
         self,
@@ -726,8 +836,18 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         request: workflow_pb2.GetJobRequest,
         context: grpc.ServicerContext,
     ) -> workflow_pb2.GetJobResponse:
-        _ = request
-        context.abort(grpc.StatusCode.NOT_FOUND, "no jobs exported")
+        resolved_token = self._workflow_registry.resolve_job_token(request.token)
+        job = self._workflow_registry._jobs.get(resolved_token)
+        if job is None:
+            context.abort(
+                grpc.StatusCode.NOT_FOUND, f"unknown job token {request.token}"
+            )
+        response = workflow_pb2.GetJobResponse()
+        response.job.token = job.token
+        response.job.input_type.token = _type_token(job.input_type)
+        response.job.output_type.token = _type_token(job.output_type)
+        response.job.has_on_error = job.on_error is not None
+        return response
 
     def RunTriggerMock(
         self,
@@ -786,35 +906,57 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 grpc.StatusCode.INVALID_ARGUMENT, "graph_monitor_address is required"
             )
 
-        segments = request.path.split("/jobs/", 1)
-        if len(segments) != 2 or not segments[0] or not segments[1]:
-            context.abort(
-                grpc.StatusCode.INVALID_ARGUMENT, f"invalid job path {request.path}"
+        if "/jobs/" in request.path:
+            segments = request.path.split("/jobs/", 1)
+            if len(segments) != 2 or not segments[0] or not segments[1]:
+                context.abort(
+                    grpc.StatusCode.INVALID_ARGUMENT, f"invalid job path {request.path}"
+                )
+            graph_path = segments[0]
+            job_name = segments[1].split("/", 1)[0]
+
+            graph_fn = self._workflow_registry._graphs.get(graph_path)
+            if graph_fn is None:
+                context.abort(grpc.StatusCode.NOT_FOUND, f"unknown graph path {graph_path}")
+
+            jobs, filters = _evaluate_graph(
+                graph_path,
+                self._workflow_registry,
+                graph_fn,
+                request.context,
+                request.graph_monitor_address,
+                target_job_name=job_name,
             )
-        graph_path = segments[0]
-        job_name = segments[1].split("/", 1)[0]
+            self._jobs_by_path.update(jobs)
+            self._filters_by_path.update(filters)
 
-        graph_fn = self._workflow_registry._graphs.get(graph_path)
-        if graph_fn is None:
-            context.abort(grpc.StatusCode.NOT_FOUND, f"unknown graph path {graph_path}")
+            job = self._jobs_by_path.get(request.path)
+            if job is None:
+                context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job path {request.path}")
 
-        jobs, filters = _evaluate_graph(
-            graph_path,
-            self._workflow_registry,
-            graph_fn,
-            request.context,
-            request.graph_monitor_address,
-            target_job_name=job_name,
+            steps = _evaluate_job(
+                request.path, job, request.context, request.graph_monitor_address
+            )
+            self._steps_by_path.update(steps)
+            return workflow_pb2.GenerateNodeResponse()
+
+        resolved_token = self._workflow_registry.resolve_job_token(request.path)
+        exported = self._workflow_registry._jobs.get(resolved_token)
+        if exported is None:
+            context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job token {request.path}")
+
+        input_value = _workflow_input_value(request.context, request.path)
+        coerced_input = _coerce_record_instance(
+            exported.input_type, input_value, f"job input for {request.path}"
         )
-        self._jobs_by_path.update(jobs)
-        self._filters_by_path.update(filters)
 
-        job = self._jobs_by_path.get(request.path)
-        if job is None:
-            context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job path {request.path}")
-
+        synthetic_job = _JobDefinition(
+            fn=lambda job_ctx: exported.fn(job_ctx, coerced_input),
+            on_error=exported.on_error,
+            inputs=[],
+        )
         steps = _evaluate_job(
-            request.path, job, request.context, request.graph_monitor_address
+            request.path, synthetic_job, request.context, request.graph_monitor_address
         )
         self._steps_by_path.update(steps)
         return workflow_pb2.GenerateNodeResponse()
