@@ -387,6 +387,16 @@ func StartSpan(
 	return tracer.Start(ctx, name, opts...)
 }
 
+func SetStringSpanAttributes(ctx context.Context, attrs map[string]string) {
+	span := trace.SpanFromContext(ctx)
+	if !span.SpanContext().IsValid() {
+		return
+	}
+	for k, v := range attrs {
+		span.SetAttributes(attribute.String(k, v))
+	}
+}
+
 // Starts an AppDash server listening on any available TCP port
 // locally and sends the spans and annotations to the given collector.
 // Returns a Pulumi-formatted tracing endpoint pointing to this
