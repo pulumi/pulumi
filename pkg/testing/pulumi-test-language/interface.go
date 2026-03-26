@@ -557,7 +557,9 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		_, warmSpan := startSpan(ctx, "WarmNpmCache")
 		warmDir := filepath.Join(req.TemporaryDirectory, "npm-cache-warm")
 		if mkErr := os.MkdirAll(warmDir, 0o755); mkErr == nil {
-			packageJSON := fmt.Sprintf(`{"name":"cache-warm","dependencies":{"@pulumi/pulumi":"%s"}}`, coreArtifact)
+			packageJSON := fmt.Sprintf(
+			`{"name":"cache-warm","devDependencies":{"@types/node":"^18"},"dependencies":{"typescript":"^4.0.0","@pulumi/pulumi":"%s"}}`,
+			coreArtifact)
 			if writeErr := os.WriteFile(filepath.Join(warmDir, "package.json"), []byte(packageJSON), 0o644); writeErr == nil {
 				resp := installDependencies(ctx, languageClient,
 					plugin.NewProgramInfo(warmDir, warmDir, ".", nil), false)
