@@ -5636,7 +5636,7 @@ context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(incl
 name: jspb.Message.getFieldWithDefault(msg, 2, ""),
 path: jspb.Message.getFieldWithDefault(msg, 3, ""),
 graphMonitorAddress: jspb.Message.getFieldWithDefault(msg, 4, ""),
-inputValue: (f = msg.getInputValue()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
+inputValue: (f = msg.getInputValue()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -5691,8 +5691,8 @@ proto.pulumirpc.GenerateJobRequest.deserializeBinaryFromReader = function(msg, r
       msg.setGraphMonitorAddress(value);
       break;
     case 5:
-      var value = new google_protobuf_struct_pb.Value;
-      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setInputValue(value);
       break;
     default:
@@ -5758,7 +5758,7 @@ proto.pulumirpc.GenerateJobRequest.serializeBinaryToWriter = function(message, w
     writer.writeMessage(
       5,
       f,
-      google_protobuf_struct_pb.Value.serializeBinaryToWriter
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -5856,17 +5856,17 @@ proto.pulumirpc.GenerateJobRequest.prototype.setGraphMonitorAddress = function(v
 
 
 /**
- * optional google.protobuf.Value input_value = 5;
- * @return {?proto.google.protobuf.Value}
+ * optional google.protobuf.Struct input_value = 5;
+ * @return {?proto.google.protobuf.Struct}
  */
 proto.pulumirpc.GenerateJobRequest.prototype.getInputValue = function() {
-  return /** @type{?proto.google.protobuf.Value} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 5));
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 5));
 };
 
 
 /**
- * @param {?proto.google.protobuf.Value|undefined} value
+ * @param {?proto.google.protobuf.Struct|undefined} value
  * @return {!proto.pulumirpc.GenerateJobRequest} returns this
 */
 proto.pulumirpc.GenerateJobRequest.prototype.setInputValue = function(value) {

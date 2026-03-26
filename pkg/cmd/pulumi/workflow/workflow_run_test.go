@@ -88,6 +88,39 @@ func TestResolveExecutionID(t *testing.T) {
 	})
 }
 
+func TestEncodeJobInputStruct(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil input", func(t *testing.T) {
+		t.Parallel()
+		value, err := encodeJobInputStruct(nil)
+		if err != nil {
+			t.Fatalf("encodeJobInputStruct failed: %v", err)
+		}
+		if value != nil {
+			t.Fatalf("expected nil struct for nil input, got %#v", value)
+		}
+	})
+
+	t.Run("object input", func(t *testing.T) {
+		t.Parallel()
+		value, err := encodeJobInputStruct(map[string]any{"message": "hello", "repeat": 3})
+		if err != nil {
+			t.Fatalf("encodeJobInputStruct failed: %v", err)
+		}
+		if got := value.GetFields()["message"].GetStringValue(); got != "hello" {
+			t.Fatalf("unexpected message field: %q", got)
+		}
+	})
+
+	t.Run("scalar input rejected", func(t *testing.T) {
+		t.Parallel()
+		if _, err := encodeJobInputStruct("hello"); err == nil {
+			t.Fatalf("expected scalar input to fail")
+		}
+	})
+}
+
 func TestRunObservedStepsAppliesStepFilters(t *testing.T) {
 	t.Parallel()
 

@@ -165,7 +165,7 @@ func runExportedJob(
 		return nil, "", "", err
 	}
 
-	inputValue, err := structpb.NewValue(input)
+	inputValue, err := encodeJobInputStruct(input)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("encode job input: %w", err)
 	}
@@ -209,6 +209,17 @@ func resolveExecutionID(userProvided string) string {
 		return userProvided
 	}
 	return uuid.NewString()
+}
+
+func encodeJobInputStruct(input any) (*structpb.Struct, error) {
+	if input == nil {
+		return nil, nil
+	}
+	obj, ok := input.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("job input must be a JSON object (got %T)", input)
+	}
+	return structpb.NewStruct(obj)
 }
 
 func resolveJobToken(

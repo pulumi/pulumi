@@ -1632,8 +1632,11 @@ type GenerateJobRequest struct {
 	Path string `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
 	// Scheduler-hosted GraphMonitor address used for node registration callbacks.
 	GraphMonitorAddress string `protobuf:"bytes,4,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
-	// Resolved input value (PropertyValue-encoded) associated with `path`.
-	InputValue    *structpb.Value `protobuf:"bytes,5,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
+	// Resolved input object associated with `path`.
+	//
+	// Jobs only accept struct-like inputs (record/object shape), so this is a Struct instead of
+	// a generic Value.
+	InputValue    *structpb.Struct `protobuf:"bytes,5,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1696,7 +1699,7 @@ func (x *GenerateJobRequest) GetGraphMonitorAddress() string {
 	return ""
 }
 
-func (x *GenerateJobRequest) GetInputValue() *structpb.Value {
+func (x *GenerateJobRequest) GetInputValue() *structpb.Struct {
 	if x != nil {
 		return x.InputValue
 	}
@@ -3024,13 +3027,13 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\vErrorRecord\x12\x1b\n" +
 	"\tstep_path\x18\x01 \x01(\tR\bstepPath\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1a\n" +
-	"\bcategory\x18\x03 \x01(\tR\bcategory\"\xdf\x01\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\"\xe0\x01\n" +
 	"\x12GenerateJobRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04path\x18\x03 \x01(\tR\x04path\x122\n" +
-	"\x15graph_monitor_address\x18\x04 \x01(\tR\x13graphMonitorAddress\x127\n" +
-	"\vinput_value\x18\x05 \x01(\v2\x16.google.protobuf.ValueR\n" +
+	"\x15graph_monitor_address\x18\x04 \x01(\tR\x13graphMonitorAddress\x128\n" +
+	"\vinput_value\x18\x05 \x01(\v2\x17.google.protobuf.StructR\n" +
 	"inputValue\"\x94\x01\n" +
 	"\x14GenerateGraphRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
@@ -3231,7 +3234,7 @@ var file_pulumi_workflow_proto_depIdxs = []int32{
 	27, // 15: pulumirpc.PlatformSelector.requirements:type_name -> pulumirpc.PlatformRequirements
 	1,  // 16: pulumirpc.PlatformSelector.match_policy:type_name -> pulumirpc.PlatformSelector.MatchPolicy
 	3,  // 17: pulumirpc.GenerateJobRequest.context:type_name -> pulumirpc.WorkflowContext
-	52, // 18: pulumirpc.GenerateJobRequest.input_value:type_name -> google.protobuf.Value
+	51, // 18: pulumirpc.GenerateJobRequest.input_value:type_name -> google.protobuf.Struct
 	3,  // 19: pulumirpc.GenerateGraphRequest.context:type_name -> pulumirpc.WorkflowContext
 	24, // 20: pulumirpc.GenerateNodeResponse.error:type_name -> pulumirpc.WorkflowError
 	3,  // 21: pulumirpc.RunSensorRequest.context:type_name -> pulumirpc.WorkflowContext

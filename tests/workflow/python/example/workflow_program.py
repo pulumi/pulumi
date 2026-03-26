@@ -21,8 +21,8 @@ class CronTriggerOutput:
 
 @dataclass
 class ExportedJobInput:
-    message: str
-    repeat: int
+    message: str = "run"
+    repeat: int = 2
 
 
 @dataclass
@@ -194,14 +194,15 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         return CronTriggerOutput(timestamp=timestamp.isoformat())
 
-    @registry.job("compose-message")
+    @registry.job("compose-message", ExportedJobInput)
     def compose_message_job(
         job: workflow.JobContext,
+        job_input: ExportedJobInput = ExportedJobInput(),
     ) -> Output[ExportedJobOutput]:
         @job.step("seed")
         def seed_step() -> dict[str, Any]:
             cwd = os.getcwd()
-            seed_text = f"{job.execution_id}:{job.workflow_version}"
+            seed_text = f"{job.execution_id}:{job.workflow_version}:{job_input.message}:{job_input.repeat}"
             with open(os.path.join(cwd, "exported-job-seed.txt"), "w", encoding="utf-8") as f:
                 f.write(seed_text)
             return {"seed": seed_text}
@@ -212,8 +213,7 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
             with open(os.path.join(cwd, "exported-job-seed.txt"), "r", encoding="utf-8") as f:
                 seed_file = f.read().strip()
             seed_value = str(seed.get("seed", seed_file))
-            execution_id = seed_value.split(":", 1)[0] if ":" in seed_value else "unknown"
-            repeated = f"{execution_id} {execution_id}"
+            repeated = " ".join([job_input.message] * job_input.repeat)
             combined = f"{seed_value}|{repeated}"
             with open(os.path.join(cwd, "exported-job-expanded.txt"), "w", encoding="utf-8") as f:
                 f.write(combined)

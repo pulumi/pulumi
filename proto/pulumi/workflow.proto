@@ -355,8 +355,11 @@ message GenerateJobRequest {
     string path = 3;
     // Scheduler-hosted GraphMonitor address used for node registration callbacks.
     string graph_monitor_address = 4;
-    // Resolved input value (PropertyValue-encoded) associated with `path`.
-    google.protobuf.Value input_value = 5;
+    // Resolved input object associated with `path`.
+    //
+    // Jobs only accept struct-like inputs (record/object shape), so this is a Struct instead of
+    // a generic Value.
+    google.protobuf.Struct input_value = 5;
 }
 
 message GenerateGraphRequest {

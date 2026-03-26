@@ -694,8 +694,8 @@ export class GenerateJobRequest extends jspb.Message {
 
     hasInputValue(): boolean;
     clearInputValue(): void;
-    getInputValue(): google_protobuf_struct_pb.Value | undefined;
-    setInputValue(value?: google_protobuf_struct_pb.Value): GenerateJobRequest;
+    getInputValue(): google_protobuf_struct_pb.Struct | undefined;
+    setInputValue(value?: google_protobuf_struct_pb.Struct): GenerateJobRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateJobRequest.AsObject;
@@ -713,7 +713,7 @@ export namespace GenerateJobRequest {
         name: string,
         path: string,
         graphMonitorAddress: string,
-        inputValue?: google_protobuf_struct_pb.Value.AsObject,
+        inputValue?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 

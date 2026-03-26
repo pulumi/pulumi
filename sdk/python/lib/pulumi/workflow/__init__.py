@@ -80,15 +80,10 @@ class _JobDefinition:
 @dataclass
 class _ExportedJobDefinition:
     token: str
+    input_type: Type[Any]
     output_type: Type[Any]
-    fn: Callable[[JobContext], Output[Any]]
+    fn: Callable[[JobContext, Any], Output[Any]]
     on_error: Optional[OnErrorHandler]
-
-
-@dataclass
-class ExecutionInput:
-    execution_id: str
-    workflow_version: str
 
 
 @dataclass
@@ -114,7 +109,7 @@ class _EvalState:
     context: workflow_pb2.WorkflowContext
     graph_path: str
     input_value_path: str
-    input_value: Optional[struct_pb2.Value]
+    input_value: Optional[struct_pb2.Struct]
     registry: "WorkflowRegistry"
     jobs: Dict[str, _JobDefinition]
     filters: Dict[str, FilterCallback]
@@ -520,10 +515,11 @@ class WorkflowRegistry:
     def job(
         self,
         token: str,
+        input_type: Type[TInput],
         *,
         on_error: Optional[OnErrorHandler] = None,
-    ) -> Callable[[Callable[[JobContext], Output[TOutput]]], Callable[[JobContext], Output[TOutput]]]:
-        def register(fn: Callable[[JobContext], Output[TOutput]]) -> Callable[[JobContext], Output[TOutput]]:
+    ) -> Callable[[Callable[[JobContext, TInput], Output[TOutput]]], Callable[[JobContext, TInput], Output[TOutput]]]:
+        def register(fn: Callable[[JobContext, TInput], Output[TOutput]]) -> Callable[[JobContext, TInput], Output[TOutput]]:
             if not token:
                 raise WorkflowError("job token is required")
             resolved_token = self.resolve_job_token(token)
@@ -531,14 +527,16 @@ class WorkflowRegistry:
                 raise WorkflowError(f"job '{resolved_token}' is already registered")
             if not callable(fn):
                 raise WorkflowError("job callback must be callable")
+            _validate_record_type(input_type, "job input type")
 
             output_type = _job_return_output_type(fn)
             _validate_record_type(output_type, "job output type")
 
             self._jobs[resolved_token] = _ExportedJobDefinition(
                 token=resolved_token,
+                input_type=input_type,
                 output_type=output_type,
-                fn=cast(Callable[[JobContext], Output[Any]], fn),
+                fn=cast(Callable[[JobContext, Any], Output[Any]], fn),
                 on_error=on_error,
             )
             return fn
@@ -777,13 +775,13 @@ def _from_proto_value(value: struct_pb2.Value) -> Any:
 
 
 def _workflow_input_value(
-    input_value_path: str, input_value: Optional[struct_pb2.Value], path: str
+    input_value_path: str, input_value: Optional[struct_pb2.Struct], path: str
 ) -> Any:
     if input_value_path != path:
         return None
     if input_value is None:
         return None
-    return _from_proto_value(input_value)
+    return json_format.MessageToDict(input_value)
 
 
 def _workflow_output_paths(value: Any) -> Set[str]:
@@ -931,7 +929,7 @@ def _evaluate_graph(
     graph_monitor_address: str,
     target_job_name: Optional[str] = None,
     input_value_path: str = "",
-    input_value: Optional[struct_pb2.Value] = None,
+    input_value: Optional[struct_pb2.Struct] = None,
     default_workflow_version: str = "",
 ) -> Tuple[Dict[str, _JobDefinition], Dict[str, FilterCallback]]:
     if not graph_monitor_address:
@@ -1191,7 +1189,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             job = self._workflow_registry._jobs[token]
             info = response.jobs.add()
             info.token = token
-            info.input_type.token = _type_token(ExecutionInput)
+            info.input_type.token = _type_token(job.input_type)
             info.output_type.token = _type_token(job.output_type)
             info.has_on_error = job.on_error is not None
         return response
@@ -1238,7 +1236,7 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             )
         response = workflow_pb2.GetJobResponse()
         response.job.token = job.token
-        response.job.input_type.token = _type_token(ExecutionInput)
+        response.job.input_type.token = _type_token(job.input_type)
         response.job.output_type.token = _type_token(job.output_type)
         response.job.has_on_error = job.on_error is not None
         return response
@@ -1384,9 +1382,19 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         if exported is None:
             context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job token {request.name}")
 
+        input_value = request.input_value if request.HasField("input_value") else struct_pb2.Struct()
+        try:
+            coerced_input = _coerce_record_instance(
+                exported.input_type,
+                json_format.MessageToDict(input_value),
+                f"job input for {resolved_token}",
+            )
+        except WorkflowError as error:
+            context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(error))
+
         runtime_job_path = request.path if request.path else resolved_token
         synthetic_job = _JobDefinition(
-            fn=lambda job_ctx: exported.fn(job_ctx),
+            fn=lambda job_ctx: exported.fn(job_ctx, coerced_input),
             on_error=exported.on_error,
             dependencies=[],
         )
@@ -1526,7 +1534,6 @@ def run(
 __all__ = [
     "Context",
     "JobContext",
-    "ExecutionInput",
     "TriggerOptions",
     "WorkflowRegistry",
     "WorkflowError",

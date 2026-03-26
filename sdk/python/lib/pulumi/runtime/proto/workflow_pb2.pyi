@@ -673,8 +673,12 @@ class GenerateJobRequest(google.protobuf.message.Message):
         """Execution context for this materialization."""
 
     @property
-    def input_value(self) -> google.protobuf.struct_pb2.Value:
-        """Resolved input value (PropertyValue-encoded) associated with `path`."""
+    def input_value(self) -> google.protobuf.struct_pb2.Struct:
+        """Resolved input object associated with `path`.
+
+        Jobs only accept struct-like inputs (record/object shape), so this is a Struct instead of
+        a generic Value.
+        """
 
     def __init__(
         self,
@@ -683,7 +687,7 @@ class GenerateJobRequest(google.protobuf.message.Message):
         name: builtins.str = ...,
         path: builtins.str = ...,
         graph_monitor_address: builtins.str = ...,
-        input_value: google.protobuf.struct_pb2.Value | None = ...,
+        input_value: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["context", b"context", "input_value", b"input_value"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing.Literal["context", b"context", "graph_monitor_address", b"graph_monitor_address", "input_value", b"input_value", "name", b"name", "path", b"path"]) -> None: ...
