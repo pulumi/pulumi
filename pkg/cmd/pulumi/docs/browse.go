@@ -15,6 +15,7 @@
 package docs
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -23,163 +24,496 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// browseLinks fetches a page, renders it, then shows its internal docs links
-// as a menu. Selecting a link renders that page and shows its links, keeping
-// the user in browse mode until they choose "← Done".
-func (dc *docsCmd) browseLinks(path string) error {
+// Navigation label constants used across all browse menus.
+const (
+	navUp       = "↑ Up a level"
+	navBack     = "← Back"
+	navDone     = "🛑 Done"
+	navSections = "📑 Sections"
+	navFullPage = "📄 View full page"
+	navDrill    = " ▸"
+	navNext     = "⏩ Next section"
+	navPrev     = "⏪ Previous section"
+)
+
+// browseNode represents what to display at a given location in the content tree.
+type browseNode struct {
+	path  string      // current location
+	title string      // display title
+	body  string      // raw markdown body (empty for containers/virtual nodes)
+	items []navOption // navigation choices (child pages, links, etc.)
+}
+
+// navOption represents a navigation choice in browse mode.
+type navOption struct {
+	label string
+	path  string // content path (e.g. "iac/concepts/stacks" or "registry/packages/aws")
+}
+
+// browseLoop is the single interactive browse loop. The user is always at a
+// location in the content tree. They can go deeper, go up, go back, or quit.
+func (dc *docsCmd) browseLoop(startPath string) error {
+	path := strings.Trim(startPath, "/")
+	var history []string
+
 	for {
-		// Fetch the page — it may not exist (container-only node in sitemap)
-		rawBody, title, err := FetchDoc(dc.baseURL, path)
-		pageExists := err == nil
+		node := dc.resolveNode(path)
 
-		if pageExists {
-			// Render and display
-			rendered, renderErr := dc.renderBody(rawBody, title)
-			if renderErr != nil {
-				return renderErr
+		headings := extractHeadings(node.body)
+		hasSections := len(headings) > 0 && node.body != ""
+
+		// Determine whether to default to sections view or full page.
+		// Flags override saved preference; default is sections.
+		showFull := dc.fullPage
+		if !showFull && !dc.sectionsView {
+			prefs, _ := LoadPreferences()
+			showFull = prefs.BrowseMode == "full"
+		}
+		useSections := hasSections && !showFull
+
+		// Save the preference when a flag is explicitly used
+		if dc.fullPage || dc.sectionsView {
+			prefs, _ := LoadPreferences()
+			if dc.fullPage {
+				prefs.BrowseMode = "full"
+			} else {
+				prefs.BrowseMode = "sections"
 			}
-			fmt.Print(rendered)
-			fmt.Print(browseFooter(dc.baseURL, path))
+			_ = prefs.Save()
+		}
 
-			// Save as last viewed page
+		var pageLinks []docLink
+		if node.body != "" {
+			if useSections {
+				intro := extractIntro(node.body)
+				rendered, err := dc.renderBody(intro, node.title)
+				if err != nil {
+					return err
+				}
+				fmt.Print(rendered)
+				fmt.Print(browseFooter(dc.baseURLForPath(path), path))
+			} else {
+				displayBody, links := numberLinks(node.body)
+				pageLinks = links
+				rendered, err := dc.renderBody(displayBody, node.title)
+				if err != nil {
+					return err
+				}
+				fmt.Print(rendered)
+				fmt.Print(browseFooter(dc.baseURLForPath(path), path))
+			}
+		}
+
+		if node.body != "" {
 			prefs, _ := LoadPreferences()
 			prefs.LastPage = path
 			_ = prefs.Save()
 		}
 
 		if !cmdutil.Interactive() {
-			if !pageExists {
-				fmt.Fprintf(os.Stderr, "  %s\n", err)
+			if node.body == "" && len(node.items) > 0 {
+				for _, item := range node.items {
+					fmt.Printf("  %s  (%s)\n", item.label, item.path)
+				}
 			}
 			return nil
 		}
 
-		// Build navigation options — from page links if the page exists,
-		// otherwise fall back to sitemap children
-		var navOptions []navOption
-		if pageExists {
-			navOptions = dc.buildNavOptions(rawBody, path)
+		var navItems []navOption
+		if len(pageLinks) > 0 {
+			navItems = numberedNavLinks(pageLinks)
 		} else {
-			// Page doesn't exist — try sitemap children directly
-			children := findSitemapChildren(dc.baseURL, path)
-			for _, c := range children {
-				p := strings.TrimPrefix(c.Path, "/docs/")
-				navOptions = append(navOptions, navOption{label: c.Title, path: strings.Trim(p, "/")})
+			navItems = node.items
+		}
+
+		if len(navItems) == 0 && node.body == "" {
+			url := webURL(dc.baseURLForPath(path), path)
+			fmt.Fprintf(os.Stderr, "No content available. Visit %s\n", url)
+		}
+
+		activeItems := navItems
+		sectionIdx := -1
+		navigated := false
+		for !navigated {
+			isRoot := path == ""
+			hasHeadings := len(headings) > 0
+			menu := buildBrowseMenu(activeItems, isRoot, hasHeadings, len(history) > 0, sectionIdx, headings)
+
+			promptTitle := node.title
+			if promptTitle == "" {
+				promptTitle = path
 			}
-			if len(navOptions) > 0 {
-				// Use the path as a title since we have no page title
-				title = path
+			if promptTitle == "" {
+				promptTitle = "Pulumi"
 			}
-		}
-		if len(navOptions) == 0 {
-			base := strings.TrimRight(dc.baseURL, "/")
-			fmt.Fprintf(os.Stderr, "\nNo links to browse. View in browser: %s/docs/%s/\n", base, path)
-			return nil
-		}
 
-		// Build prompt
-		promptTitle := title
-		if promptTitle == "" {
-			promptTitle = path
-		}
-
-		parts := strings.Split(strings.Trim(path, "/"), "/")
-		upLabel := "↑ Back to docs root"
-		upAction := "root"
-		if len(parts) > 1 {
-			upLabel = "↑ Up a level"
-			upAction = strings.Join(parts[:len(parts)-1], "/")
-		}
-
-		var options []string
-		options = append(options, upLabel)
-		for _, n := range navOptions {
-			options = append(options, n.label)
-		}
-		options = append(options, "← Done")
-
-		defaultIdx := 1
-		if defaultIdx >= len(options) {
-			defaultIdx = 0
-		}
-
-		selected := ui.PromptUser(
-			fmt.Sprintf("Browse %s:", promptTitle),
-			options,
-			options[defaultIdx],
-			cmdutil.GetGlobalColorization(),
-		)
-		if selected == "" || selected == "← Done" {
-			return nil
-		}
-		if selected == upLabel {
-			if upAction == "root" {
-				return dc.browseSitemap()
+			// Default to first nav item (skip Up if present)
+			defaultIdx := 0
+			if !isRoot && len(menu) > 1 {
+				defaultIdx = 1
 			}
-			path = upAction
-			continue
-		}
-		for _, n := range navOptions {
-			if n.label == selected {
-				path = n.path
-				break
+
+			fmt.Println()
+			selected := ui.PromptUser(
+				fmt.Sprintf("Browse %s:", promptTitle),
+				menu,
+				menu[defaultIdx],
+				cmdutil.GetGlobalColorization(),
+			)
+
+			switch selected {
+			case "", navDone:
+				return nil
+
+			case navBack:
+				path = history[len(history)-1]
+				history = history[:len(history)-1]
+				navigated = true
+
+			case navUp:
+				history = append(history, path)
+				path = parentPath(path)
+				navigated = true
+
+			case navSections:
+				idx := showBrowseSectionsIdx(headings)
+				if idx >= 0 {
+					renderSectionByIdx(dc, node.body, headings, idx, &activeItems)
+					sectionIdx = idx
+				}
+
+			case navFullPage:
+				displayBody, links := numberLinks(node.body)
+				rendered, err := dc.renderBody(displayBody, node.title)
+				if err == nil {
+					fmt.Print(rendered)
+					fmt.Print(browseFooter(dc.baseURLForPath(path), path))
+				}
+				activeItems = numberedNavLinks(links)
+				sectionIdx = -1
+
+			default:
+				if strings.HasPrefix(selected, navPrev) && sectionIdx > 0 {
+					sectionIdx--
+					renderSectionByIdx(dc, node.body, headings, sectionIdx, &activeItems)
+				} else if strings.HasPrefix(selected, navNext) && sectionIdx+1 < len(headings) {
+					sectionIdx++
+					renderSectionByIdx(dc, node.body, headings, sectionIdx, &activeItems)
+				} else {
+					// Find the selected nav item
+					for _, item := range activeItems {
+						if item.label == selected {
+							history = append(history, path)
+							path = item.path
+							navigated = true
+							break
+						}
+					}
+				}
 			}
 		}
 	}
 }
 
-// navOption represents a navigation choice in browse mode.
-type navOption struct {
-	label string
-	path  string // path without /docs/ prefix
-}
+// resolveNode determines what to display at a given path in the content tree.
+func (dc *docsCmd) resolveNode(path string) browseNode {
+	path = strings.Trim(path, "/")
 
-// buildNavOptions returns navigation options for a page. It extracts links
-// from the raw markdown body, falling back to sitemap children if none found.
-func (dc *docsCmd) buildNavOptions(rawBody, path string) []navOption {
-	links := extractLinks(rawBody)
-	if len(links) > 0 {
-		var opts []navOption
-		for _, l := range links {
-			p := strings.TrimPrefix(l.href, "/docs/")
-			opts = append(opts, navOption{label: l.text, path: strings.Trim(p, "/")})
-		}
-		return opts
+	// Root — synthetic Docs/Registry menu
+	if path == "" {
+		return dc.resolveRoot()
 	}
 
-	// No inline links — try sitemap children
-	children := findSitemapChildren(dc.baseURL, path)
-	if len(children) > 0 {
-		var opts []navOption
-		for _, c := range children {
-			p := strings.TrimPrefix(c.Path, "/docs/")
-			opts = append(opts, navOption{label: c.Title, path: strings.Trim(p, "/")})
-		}
-		return opts
+	// "docs" — docs sitemap top level
+	if path == "docs" {
+		return dc.resolveDocsSitemap()
 	}
 
-	return nil
+	// "registry" or "registry/packages" — registry package list
+	if path == "registry" || path == "registry/packages" {
+		return dc.resolveRegistryList()
+	}
+
+	// Registry package paths — try content + lazy-load sitemap
+	if isRegistryPath(path) {
+		return dc.resolveRegistryPage(path)
+	}
+
+	// Docs paths — try content, fall back to sitemap for containers
+	return dc.resolveDocsPage(path)
 }
 
-// findSitemapChildren fetches the sitemap and returns children for the given path.
-// If the exact path isn't in the sitemap, it looks for pages whose paths
-// start with the target (for intermediate container nodes that aren't sitemap entries).
-func findSitemapChildren(baseURL, path string) []SitemapPage {
-	pages, err := FetchSitemap(baseURL)
+func (dc *docsCmd) resolveRoot() browseNode {
+	var items []navOption
+
+	// Try to fetch both sitemaps to determine what's available
+	docsPages, _ := FetchSitemap(dc.baseURL)
+	registryPages, _ := FetchRegistrySitemap(dc.registryBaseURL)
+
+	if len(docsPages) > 0 {
+		items = append(items, navOption{label: "Docs" + navDrill, path: "docs"})
+	}
+	if len(registryPages) > 0 {
+		items = append(items, navOption{label: "Registry" + navDrill, path: "registry"})
+	}
+
+	return browseNode{path: "", title: "Pulumi", items: items}
+}
+
+func (dc *docsCmd) resolveDocsSitemap() browseNode {
+	pages, err := FetchSitemap(dc.baseURL)
+	if err != nil {
+		return browseNode{path: "docs", title: "Docs"}
+	}
+	return browseNode{
+		path:  "docs",
+		title: "Docs",
+		items: sitemapToNavOptions(pages),
+	}
+}
+
+func (dc *docsCmd) resolveRegistryList() browseNode {
+	pages, err := FetchRegistrySitemap(dc.registryBaseURL)
+	if err != nil {
+		return browseNode{path: "registry", title: "Registry"}
+	}
+	return browseNode{
+		path:  "registry",
+		title: "Registry",
+		items: sitemapToNavOptions(pages),
+	}
+}
+
+func (dc *docsCmd) resolveRegistryPage(path string) browseNode {
+	node := browseNode{path: path}
+
+	// Try fetching page content
+	body, title, err := FetchDoc(dc.registryBaseURL, path)
+	if err == nil {
+		node.body = body
+		node.title = title
+	} else {
+		var regErr *RegistryNotAvailableError
+		if errors.As(err, &regErr) {
+			url := webURL(dc.registryBaseURL, path)
+			node.title = pathLastSegment(path)
+			// Show fallback as a note, but don't block navigation
+			fmt.Fprintf(os.Stderr,
+				"Registry docs are not yet available for terminal viewing.\nVisit %s instead.\n\n", url)
+		}
+	}
+
+	// Sitemap nav items (links from body are extracted with numbering in the loop)
+	node.items = dc.registryNavItems(path)
+
+	if node.title == "" {
+		node.title = pathLastSegment(path)
+	}
+
+	return node
+}
+
+func (dc *docsCmd) resolveDocsPage(path string) browseNode {
+	node := browseNode{path: path}
+
+	// Try fetching page content
+	body, title, err := FetchDoc(dc.baseURL, path)
+	if err == nil {
+		node.body = body
+		node.title = title
+	}
+
+	// Sitemap nav items (links from body are extracted with numbering in the loop)
+	node.items = dc.docsSitemapNavItems(path)
+
+	if node.title == "" {
+		node.title = pathLastSegment(path)
+	}
+
+	return node
+}
+
+// buildBrowseMenu constructs the menu options for a browse prompt.
+// sectionIdx is the current section index (-1 if not viewing a section).
+func buildBrowseMenu(items []navOption, isRoot, hasHeadings, hasHistory bool, sectionIdx int, headings []heading) []string {
+	var menu []string
+
+	if !isRoot {
+		menu = append(menu, navUp)
+	}
+	if hasHeadings {
+		menu = append(menu, navSections)
+	}
+	if sectionIdx > 0 {
+		menu = append(menu, navPrev+" — "+headings[sectionIdx-1].text)
+	}
+	if hasHeadings {
+		nextIdx := sectionIdx + 1
+		if nextIdx < len(headings) {
+			menu = append(menu, navNext+" — "+headings[nextIdx].text)
+		}
+	}
+	for _, item := range items {
+		menu = append(menu, item.label)
+	}
+	if hasHeadings {
+		menu = append(menu, navFullPage)
+	}
+	if hasHistory {
+		menu = append(menu, navBack)
+	}
+	menu = append(menu, navDone)
+
+	return menu
+}
+
+// showBrowseSectionsIdx displays a TOC picker. Returns the selected heading
+// index, or -1 if the user cancelled.
+func showBrowseSectionsIdx(headings []heading) int {
+	if len(headings) == 0 {
+		return -1
+	}
+
+	options := make([]string, len(headings))
+	for i, h := range headings {
+		indent := strings.Repeat("  ", h.level-2)
+		options[i] = indent + h.text
+	}
+	options = append(options, navBack)
+
+	selected := ui.PromptUser(
+		"Jump to section:",
+		options,
+		options[0],
+		cmdutil.GetGlobalColorization(),
+	)
+	if selected == "" || selected == navBack {
+		return -1
+	}
+
+	for i, opt := range options {
+		if opt == selected && i < len(headings) {
+			return i
+		}
+	}
+	return -1
+}
+
+// renderSectionByIdx renders the section at the given heading index and
+// updates activeItems with any links found in that section.
+func renderSectionByIdx(dc *docsCmd, body string, headings []heading, idx int, activeItems *[]navOption) {
+	section := extractSection(body, headings[idx].slug)
+	if section == "" {
+		return
+	}
+	numbered, sectionLinks := numberLinks(section)
+	rendered, err := dc.renderBody(numbered, "")
+	if err == nil {
+		fmt.Print(rendered)
+	}
+	*activeItems = numberedNavLinks(sectionLinks)
+}
+
+// parentPath returns the parent of a path by removing the last segment.
+// Returns "" (root) for single-segment paths.
+// Collapses dead intermediate levels (e.g. "registry/packages" → "registry").
+func parentPath(path string) string {
+	path = strings.Trim(path, "/")
+	parts := strings.Split(path, "/")
+	if len(parts) <= 1 {
+		return ""
+	}
+	parent := strings.Join(parts[:len(parts)-1], "/")
+	// "registry/packages" is not a real level — the package list lives at "registry"
+	if parent == "registry/packages" {
+		return "registry"
+	}
+	return parent
+}
+
+// pathLastSegment returns the last segment of a path for use as a fallback title.
+func pathLastSegment(path string) string {
+	path = strings.Trim(path, "/")
+	parts := strings.Split(path, "/")
+	return parts[len(parts)-1]
+}
+
+// --- Data helpers (unchanged logic, cleaned up) ---
+
+// numberedNavLinks returns navigation options from internal links, with numbered
+// labels matching the **[N]** markers in the rendered output.
+func numberedNavLinks(links []docLink) []navOption {
+	if len(links) == 0 {
+		return nil
+	}
+	var opts []navOption
+	for i, l := range links {
+		text := strings.ReplaceAll(l.text, "`", "")
+		label := fmt.Sprintf("🔗%d %s", i+1, text)
+		opts = append(opts, navOption{label: label, path: hrefToPath(l.href)})
+	}
+	return opts
+}
+
+// sitemapToNavOptions converts sitemap pages to nav options.
+func sitemapToNavOptions(pages []SitemapPage) []navOption {
+	var opts []navOption
+	for _, p := range pages {
+		label := p.Title
+		if len(p.Children) > 0 {
+			label += navDrill
+		}
+		opts = append(opts, navOption{label: label, path: hrefToPath(p.Path)})
+	}
+	return opts
+}
+
+// childNavOptions finds children for a target path in a sitemap tree,
+// falling back to collecting descendants if no exact match exists.
+func childNavOptions(pages []SitemapPage, targetPath string) []navOption {
+	children := findExactChildren(pages, targetPath)
+	if children == nil {
+		var matches []SitemapPage
+		collectDescendants(pages, targetPath, &matches)
+		children = matches
+	}
+	return sitemapToNavOptions(children)
+}
+
+// docsSitemapNavItems returns nav items from the docs sitemap for a given path.
+func (dc *docsCmd) docsSitemapNavItems(path string) []navOption {
+	pages, err := FetchSitemap(dc.baseURL)
 	if err != nil {
 		return nil
 	}
 	target := "/docs/" + strings.Trim(path, "/") + "/"
+	return childNavOptions(pages, target)
+}
 
-	// First try: exact match
-	if found := findExactChildren(pages, target); found != nil {
-		return found
+// registryNavItems returns nav items for a registry path from sitemaps.
+func (dc *docsCmd) registryNavItems(path string) []navOption {
+	trimmed := strings.Trim(path, "/")
+	parts := strings.Split(trimmed, "/")
+
+	// "registry/packages/<pkg>" or deeper — lazy-load per-package sitemap
+	if len(parts) >= 3 && parts[0] == "registry" && parts[1] == "packages" {
+		pkgName := parts[2]
+		pages, err := FetchPackageSitemap(dc.registryBaseURL, pkgName)
+		if err != nil {
+			return nil
+		}
+
+		// At package root, return top-level pages
+		if len(parts) == 3 {
+			return sitemapToNavOptions(pages)
+		}
+
+		// Deeper — find children within package sitemap
+		target := "/" + trimmed + "/"
+		return childNavOptions(pages, target)
 	}
 
-	// Second try: collect all direct descendants whose paths start with target
-	var matches []SitemapPage
-	collectDescendants(pages, target, &matches)
-	return matches
+	return nil
 }
 
 func findExactChildren(pages []SitemapPage, targetPath string) []SitemapPage {
@@ -197,7 +531,6 @@ func findExactChildren(pages []SitemapPage, targetPath string) []SitemapPage {
 }
 
 // collectDescendants finds pages whose path starts with the target prefix.
-// It only collects the shallowest matches (direct children, not deep descendants).
 func collectDescendants(pages []SitemapPage, prefix string, result *[]SitemapPage) {
 	for _, p := range pages {
 		if strings.HasPrefix(p.Path, prefix) && p.Path != prefix {
@@ -206,105 +539,6 @@ func collectDescendants(pages []SitemapPage, prefix string, result *[]SitemapPag
 			collectDescendants(p.Children, prefix, result)
 		}
 	}
-}
-
-// browseSitemap fetches the docs sitemap and lets the user interactively
-// browse and select a page to view.
-func (dc *docsCmd) browseSitemap() error {
-	pages, err := FetchSitemap(dc.baseURL)
-	if err != nil {
-		return err
-	}
-	if len(pages) == 0 {
-		fmt.Println("No pages found in sitemap.")
-		return nil
-	}
-
-	if !cmdutil.Interactive() {
-		printSitemapTree(pages, 0)
-		return nil
-	}
-
-	current := pages
-	for {
-		options := make([]string, 0, len(current)+1)
-		for _, p := range current {
-			label := p.Title
-			if len(p.Children) > 0 {
-				label += " ▸"
-			}
-			options = append(options, label)
-		}
-		options = append(options, "← Back")
-
-		selected := ui.PromptUser(
-			"Browse docs:",
-			options,
-			options[0],
-			cmdutil.GetGlobalColorization(),
-		)
-		if selected == "" || selected == "← Back" {
-			return nil
-		}
-
-		for _, p := range current {
-			label := p.Title
-			if len(p.Children) > 0 {
-				label += " ▸"
-			}
-			if label != selected {
-				continue
-			}
-			if len(p.Children) == 0 {
-				// Leaf page — enter browse mode on it
-				return dc.browseLinks(pathFromHref(p.Path))
-			}
-			// Drill into children, offering to view the current page too
-			childOptions := []string{p.ViewLabel()}
-			for _, c := range p.Children {
-				cl := c.Title
-				if len(c.Children) > 0 {
-					cl += " ▸"
-				}
-				childOptions = append(childOptions, cl)
-			}
-			childOptions = append(childOptions, "← Back")
-
-			childSelected := ui.PromptUser(
-				p.Title+":",
-				childOptions,
-				childOptions[0],
-				cmdutil.GetGlobalColorization(),
-			)
-			if childSelected == "" || childSelected == "← Back" {
-				break
-			}
-			if childSelected == p.ViewLabel() {
-				return dc.browseLinks(pathFromHref(p.Path))
-			}
-			for _, c := range p.Children {
-				cl := c.Title
-				if len(c.Children) > 0 {
-					cl += " ▸"
-				}
-				if cl == childSelected {
-					if len(c.Children) > 0 {
-						current = c.Children
-					} else {
-						return dc.browseLinks(pathFromHref(c.Path))
-					}
-					break
-				}
-			}
-			break
-		}
-	}
-}
-
-// pathFromHref strips the /docs/ prefix and trailing slash from a sitemap href.
-func pathFromHref(href string) string {
-	p := strings.TrimPrefix(href, "/docs/")
-	return strings.Trim(p, "/")
 }
 
 func printSitemapTree(pages []SitemapPage, depth int) {

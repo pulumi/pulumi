@@ -15,6 +15,7 @@
 package docs
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -26,11 +27,14 @@ import (
 )
 
 type docsCmd struct {
-	baseURL  string
-	language string
-	osFlag   string
-	raw      bool
-	toc      bool
+	baseURL         string
+	registryBaseURL string
+	language        string
+	osFlag          string
+	raw             bool
+	toc             bool
+	fullPage        bool
+	sectionsView    bool
 }
 
 // NewDocsCmd creates the `pulumi docs` command.
@@ -40,10 +44,61 @@ func NewDocsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "docs [path[#section]]",
 		Short: "View Pulumi documentation in the terminal",
-		Long: "Fetch and display Pulumi documentation pages with formatted " +
-			"terminal output.\n\nUse #section to jump to a specific section:\n" +
-			"  pulumi docs iac/concepts/stacks#stack-tags\n\n" +
-			"Use --toc to list available sections.",
+		Long: "Read and browse Pulumi documentation in the terminal.\n\n" +
+			"  pulumi docs                    Browse interactively\n" +
+			"  pulumi docs <path>             Read a specific page\n" +
+			"  pulumi docs read <path>        Read a specific page\n" +
+			"  pulumi docs browse [path]      Browse interactively\n" +
+			"  pulumi docs registry <pkg>     Read a registry package\n" +
+			"  pulumi docs search <query>     Search documentation",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				// Bare path shortcut → read
+				return dc.fetchAndRender(args[0])
+			}
+			// No args: browse interactively if possible, otherwise show help
+			if cmdutil.Interactive() {
+				return dc.browseLoop("")
+			}
+			return cmd.Help()
+		},
+	}
+
+	dc.baseURL = "https://www.pulumi.com"
+	if envURL := os.Getenv("PULUMI_DOCS_BASE_URL"); envURL != "" {
+		dc.baseURL = envURL
+	}
+	// Registry base URL: PULUMI_REGISTRY_BASE_URL > PULUMI_DOCS_BASE_URL > default
+	dc.registryBaseURL = dc.baseURL
+	if envURL := os.Getenv("PULUMI_REGISTRY_BASE_URL"); envURL != "" {
+		dc.registryBaseURL = envURL
+	}
+	cmd.PersistentFlags().StringVar(&dc.language, "language", "",
+		"Filter code examples in docs by language (e.g., python, typescript, go); choice is remembered")
+	cmd.PersistentFlags().StringVar(&dc.osFlag, "os", "",
+		"Filter OS-specific content in docs (e.g., macos, linux, windows); choice is remembered")
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "path"}},
+	})
+
+	// Subcommands
+	cmd.AddCommand(dc.newReadCmd())
+	cmd.AddCommand(dc.newBrowseCmd())
+	cmd.AddCommand(dc.newSearchCmd())
+	cmd.AddCommand(dc.newRegistryCmd())
+
+	return cmd
+}
+
+func (dc *docsCmd) newReadCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "read <path[#section]>",
+		Short: "Read a documentation page",
+		Long: "Fetch and display a Pulumi documentation page.\n\n" +
+			"  pulumi docs read iac/concepts/stacks               Read a docs page\n" +
+			"  pulumi docs read iac/concepts/stacks#stack-tags    Jump to a section\n" +
+			"  pulumi docs read registry/packages/aws             Read a registry page\n" +
+			"  pulumi docs read --toc                             Show sections on last viewed page",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// --toc with no path: use the last viewed page
 			if dc.toc && len(args) == 0 {
@@ -59,15 +114,6 @@ func NewDocsCmd() *cobra.Command {
 			return dc.fetchAndRender(args[0])
 		},
 	}
-
-	dc.baseURL = "https://www.pulumi.com"
-	if envURL := os.Getenv("PULUMI_DOCS_BASE_URL"); envURL != "" {
-		dc.baseURL = envURL
-	}
-	cmd.PersistentFlags().StringVar(&dc.language, "language", "",
-		"Pre-select language for code examples (e.g., python, typescript, go)")
-	cmd.PersistentFlags().StringVar(&dc.osFlag, "os", "",
-		"Pre-select operating system (e.g., macos, linux, windows)")
 	cmd.Flags().BoolVar(&dc.raw, "raw", false,
 		"Output raw markdown without formatting or chooser resolution")
 	cmd.Flags().BoolVar(&dc.toc, "toc", false,
@@ -75,11 +121,37 @@ func NewDocsCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "path"}},
 	})
+	return cmd
+}
 
-	// Subcommands
-	cmd.AddCommand(dc.newSearchCmd())
-	cmd.AddCommand(dc.newBrowseCmd())
-
+func (dc *docsCmd) newBrowseCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "browse [path]",
+		Short: "Browse Pulumi documentation interactively",
+		Long: "Browse docs and registry by following links between pages.\n\n" +
+			"  pulumi docs browse             Browse from last viewed page or root\n" +
+			"  pulumi docs browse <path>      Start browsing at a specific page\n" +
+			"  pulumi docs browse /           Browse from the site map root\n" +
+			"  pulumi docs browse registry/   Browse all registry packages",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			path := ""
+			if len(args) > 0 && args[0] != "/" {
+				path = args[0]
+			} else if len(args) == 0 {
+				prefs, _ := LoadPreferences()
+				path = prefs.LastPage
+			}
+			return dc.browseLoop(path)
+		},
+	}
+	cmd.Flags().BoolVar(&dc.fullPage, "full", false,
+		"Show full page instead of sections view (saved as default when used)")
+	cmd.Flags().BoolVar(&dc.sectionsView, "sections", false,
+		"Show sections view instead of full page (saved as default when used)")
+	cmd.MarkFlagsMutuallyExclusive("full", "sections")
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "path"}},
+	})
 	return cmd
 }
 
@@ -101,35 +173,12 @@ func (dc *docsCmd) newSearchCmd() *cobra.Command {
 	return cmd
 }
 
-func (dc *docsCmd) newBrowseCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "browse [path]",
-		Short: "Browse Pulumi documentation interactively",
-		Long: "Browse docs by following links between pages.\n\n" +
-			"  pulumi docs browse              Browse links on the last viewed page\n" +
-			"  pulumi docs browse <path>        Browse links on a specific page\n" +
-			"  pulumi docs browse /             Browse from the docs site map",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 && args[0] == "/" {
-				return dc.browseSitemap()
-			}
-			path := ""
-			if len(args) > 0 {
-				path = args[0]
-			} else {
-				prefs, _ := LoadPreferences()
-				path = prefs.LastPage
-			}
-			if path == "" {
-				return dc.browseSitemap()
-			}
-			return dc.browseLinks(path)
-		},
+// baseURLForPath returns the appropriate base URL for the given content path.
+func (dc *docsCmd) baseURLForPath(path string) string {
+	if isRegistryPath(path) {
+		return dc.registryBaseURL
 	}
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{{Name: "path"}},
-	})
-	return cmd
+	return dc.baseURL
 }
 
 // fetchAndRender is the main pipeline: fetch → parse → resolve choosers → render → print.
@@ -141,8 +190,17 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 		path = path[:idx]
 	}
 
-	body, title, err := FetchDoc(dc.baseURL, path)
+	fetchBase := dc.baseURLForPath(path)
+	body, title, err := FetchDoc(fetchBase, path)
 	if err != nil {
+		// Graceful fallback for registry pages that aren't available yet
+		var regErr *RegistryNotAvailableError
+		if errors.As(err, &regErr) {
+			fmt.Fprintf(os.Stderr,
+				"Registry docs are not yet available for terminal viewing.\nVisit %s instead.\n",
+				webURL(fetchBase, path))
+			return nil
+		}
 		return err
 	}
 
@@ -191,7 +249,7 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 
 	// Show navigation footer when viewing a full page
 	if section == "" {
-		fmt.Print(pageFooter(dc.baseURL, path))
+		fmt.Print(pageFooter(fetchBase, path))
 	}
 
 	return nil
@@ -210,14 +268,29 @@ func (dc *docsCmd) renderBody(body, title string) (string, error) {
 	return RenderMarkdown(title, resolved)
 }
 
-// viewPage fetches and renders a page given its href path (e.g. /docs/iac/concepts/stacks/).
+// viewPage fetches and renders a page given its href path (e.g. /docs/iac/concepts/stacks/ or /registry/packages/aws/).
 func (dc *docsCmd) viewPage(href string) error {
-	path := strings.TrimPrefix(href, "/docs/")
-	path = strings.Trim(path, "/")
+	path := hrefToPath(href)
 	if path == "" {
 		return fmt.Errorf("invalid page path: %s", href)
 	}
 	return dc.fetchAndRender(path)
+}
+
+// hrefToPath strips /docs/ or /registry/ prefix from an href, returning a clean path.
+// For /registry/ hrefs, the returned path retains the "registry/" prefix.
+// Query parameters and fragments are stripped.
+func hrefToPath(href string) string {
+	// Strip query parameters and fragments
+	if idx := strings.IndexAny(href, "?#"); idx >= 0 {
+		href = href[:idx]
+	}
+	href = strings.Trim(href, "/")
+	if strings.HasPrefix(href, "registry/") {
+		return href
+	}
+	path := strings.TrimPrefix(href, "docs/")
+	return strings.Trim(path, "/")
 }
 
 // showTOC displays the table of contents for a page, either as an interactive

@@ -50,9 +50,9 @@ type segment struct {
 
 // RenderMarkdown renders the given markdown body for terminal display.
 func RenderMarkdown(title, body string) (string, error) {
-	fullMD := body
-	if title != "" {
-		fullMD = fmt.Sprintf("# %s\n\n%s", title, body)
+	fullMD := stripExternalLinks(body)
+	if title != "" && !strings.HasPrefix(strings.TrimSpace(fullMD), "# ") {
+		fullMD = fmt.Sprintf("# %s\n\n%s", title, fullMD)
 	}
 
 	width := getTerminalWidth()
@@ -338,34 +338,36 @@ func boxFooter(width int) string {
 	return "└" + strings.Repeat("─", width-1)
 }
 
+// webURL builds the full web URL for a content path, using the correct prefix.
+func webURL(baseURL, path string) string {
+	base := strings.TrimRight(baseURL, "/")
+	prefix, trimmed := contentPrefix(path)
+	return fmt.Sprintf("%s%s%s/", base, prefix, trimmed)
+}
+
 // pageFooter returns a formatted footer for standalone page views with
 // the web URL and navigation hints.
 func pageFooter(baseURL, path string) string {
 	width := getTerminalWidth()
-	w := width - len(glamourMargin)
-	base := strings.TrimRight(baseURL, "/")
-	webURL := fmt.Sprintf("%s/docs/%s/", base, path)
+	rule := strings.Repeat("─", width-len(glamourMargin))
+	url := webURL(baseURL, path)
+	bold := "\033[1m"
+	reset := "\033[0m"
 
 	var buf strings.Builder
 	buf.WriteString("\n")
-	buf.WriteString(glamourMargin + "┌" + strings.Repeat("─", w-1) + "\n")
-	buf.WriteString(glamourMargin + "│\n")
-	buf.WriteString(glamourMargin + "│  🔗  " + webURL + "\n")
-	buf.WriteString(glamourMargin + "│\n")
-	bold := "\033[1m"
-	reset := "\033[0m"
-	buf.WriteString(glamourMargin + "│  📑  " + bold + "pulumi docs --toc" + reset + "        Jump to a section on this page\n")
-	buf.WriteString(glamourMargin + "│  🧭  " + bold + "pulumi docs browse" + reset + "       Browse from here\n")
-	buf.WriteString(glamourMargin + "│\n")
-	buf.WriteString(glamourMargin + "└" + strings.Repeat("─", w-1) + "\n")
+	buf.WriteString(glamourMargin + rule + "\n")
+	buf.WriteString(glamourMargin + "🔗 " + url + "\n")
+	buf.WriteString(glamourMargin + "🧭 " + bold + "pulumi docs browse" + reset + "       Browse from here\n")
 	buf.WriteString("\n")
 	return buf.String()
 }
 
-// browseFooter returns a single-line footer with the web URL for browse mode.
+// browseFooter returns a compact footer for browse mode showing the web URL.
 func browseFooter(baseURL, path string) string {
-	base := strings.TrimRight(baseURL, "/")
-	return fmt.Sprintf("\n  🔗 %s/docs/%s/\n", base, path)
+	width := getTerminalWidth()
+	rule := strings.Repeat("─", width-len(glamourMargin))
+	return fmt.Sprintf("\n%s%s\n%s🔗 %s\n", glamourMargin, rule, glamourMargin, webURL(baseURL, path))
 }
 
 var noteStartRe = regexp.MustCompile(`^([>|])\s*\*{0,2}(Note|Warning|Tip):\*{0,2}\s*(.*)$`)

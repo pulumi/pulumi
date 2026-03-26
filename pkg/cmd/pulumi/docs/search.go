@@ -53,13 +53,22 @@ type algoliaHit struct {
 }
 
 func (h algoliaHit) displayTitle() string {
-	if h.H1 != "" {
-		return h.H1
+	title := h.H1
+	if title == "" {
+		title = h.Title
 	}
-	if h.Title != "" {
-		return h.Title
+	if title == "" {
+		title = h.Href
 	}
-	return h.Href
+	return title
+}
+
+// sectionTag returns a short tag like "[docs]" or "[registry]" for display in search results.
+func (h algoliaHit) sectionTag() string {
+	if strings.Contains(h.Href, "/registry/") {
+		return "[registry]"
+	}
+	return "[docs]"
 }
 
 // fetchCLIConfig fetches the CLI config file from the docs site.
@@ -122,7 +131,7 @@ func searchDocs(query, appID, apiKey, indexName string) ([]algoliaHit, error) {
 	params := url.Values{}
 	params.Set("query", query)
 	params.Set("hitsPerPage", "10")
-	params.Set("facetFilters", `["section:Docs"]`)
+	params.Set("facetFilters", `[["section:Docs","section:Registry"]]`)
 
 	reqBody, err := json.Marshal(map[string]string{
 		"params": params.Encode(),
@@ -180,14 +189,15 @@ func runSearch(cmd *docsCmd, query string) error {
 		// Build selectable list
 		options := make([]string, len(hits))
 		for i, hit := range hits {
+			tag := hit.sectionTag()
 			desc := hit.Description
 			if len(desc) > 80 {
 				desc = desc[:77] + "..."
 			}
 			if desc != "" {
-				options[i] = fmt.Sprintf("%s — %s", hit.displayTitle(), desc)
+				options[i] = fmt.Sprintf("%s %s — %s", tag, hit.displayTitle(), desc)
 			} else {
-				options[i] = hit.displayTitle()
+				options[i] = fmt.Sprintf("%s %s", tag, hit.displayTitle())
 			}
 		}
 
@@ -209,7 +219,7 @@ func runSearch(cmd *docsCmd, query string) error {
 
 	// Non-interactive: print list
 	for i, hit := range hits {
-		fmt.Printf("%d. %s\n", i+1, hit.displayTitle())
+		fmt.Printf("%d. %s %s\n", i+1, hit.sectionTag(), hit.displayTitle())
 		if hit.Description != "" {
 			fmt.Printf("   %s\n", hit.Description)
 		}

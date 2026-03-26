@@ -28,10 +28,11 @@ const preferencesFile = "docs-preferences.json"
 
 // Preferences stores the user's last chooser selections and last viewed page.
 type Preferences struct {
-	Language string `json:"language,omitempty"`
-	OS       string `json:"os,omitempty"`
-	Cloud    string `json:"cloud,omitempty"`
-	LastPage string `json:"lastPage,omitempty"`
+	Language   string `json:"language,omitempty"`
+	OS         string `json:"os,omitempty"`
+	Cloud      string `json:"cloud,omitempty"`
+	LastPage   string `json:"lastPage,omitempty"`
+	BrowseMode string `json:"browseMode,omitempty"` // "sections" (default) or "full"
 }
 
 // Get returns the stored preference for the given chooser type.

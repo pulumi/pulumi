@@ -15,11 +15,32 @@
 package docs
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
 
-var linkRe = regexp.MustCompile(`\[([^\]]+)\]\((/docs/[^)]+)\)`)
+var linkRe = regexp.MustCompile(`\[([^\]]+)\]\((/(docs|registry)/[^)]+)\)`)
+
+// allLinkRe matches any markdown link.
+var allLinkRe = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
+
+// stripExternalLinks replaces non-internal markdown links with just their
+// display text. Internal links (/docs/... and /registry/...) are preserved.
+// This prevents glamour from rendering unhelpful raw URLs inline.
+func stripExternalLinks(md string) string {
+	return allLinkRe.ReplaceAllStringFunc(md, func(match string) string {
+		// Keep internal links intact
+		if linkRe.MatchString(match) {
+			return match
+		}
+		m := allLinkRe.FindStringSubmatch(match)
+		if m == nil {
+			return match
+		}
+		return m[1]
+	})
+}
 
 // docLink represents a markdown link to an internal docs page.
 type docLink struct {
@@ -27,7 +48,7 @@ type docLink struct {
 	href string
 }
 
-// extractLinks finds all internal docs links (pointing to /docs/...) in the markdown.
+// extractLinks finds all internal links (pointing to /docs/... or /registry/...) in the markdown.
 // Links are deduplicated by href and returned in order of first appearance.
 func extractLinks(md string) []docLink {
 	matches := linkRe.FindAllStringSubmatch(md, -1)
@@ -44,11 +65,51 @@ func extractLinks(md string) []docLink {
 	return links
 }
 
+// numberLinks replaces internal doc/registry links in the markdown with numbered
+// references (e.g. "[1] Link text") and returns the annotated markdown along with
+// the ordered list of links. This makes links easy to identify in rendered output.
+func numberLinks(md string) (annotated string, links []docLink) {
+	links = extractLinks(md)
+	if len(links) == 0 {
+		return md, nil
+	}
+
+	// Build a map from href to number (1-based)
+	linkNum := make(map[string]int, len(links))
+	for i, l := range links {
+		linkNum[l.href] = i + 1
+	}
+
+	annotated = linkRe.ReplaceAllStringFunc(md, func(match string) string {
+		m := linkRe.FindStringSubmatch(match)
+		if m == nil {
+			return match
+		}
+		href := m[2]
+		num, ok := linkNum[href]
+		if !ok {
+			return match
+		}
+		return fmt.Sprintf("🔗%d [%s](%s)", num, m[1], href)
+	})
+	return annotated, links
+}
+
 // heading represents a markdown heading with its nesting level and URL slug.
 type heading struct {
 	level int
 	text  string
 	slug  string
+}
+
+// extractIntro returns the content before the first ## heading.
+func extractIntro(md string) string {
+	for i, line := range strings.Split(md, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "## ") {
+			return strings.TrimSpace(strings.Join(strings.Split(md, "\n")[:i], "\n"))
+		}
+	}
+	return md
 }
 
 // extractHeadings returns all ## and deeper headings from the markdown.
