@@ -282,6 +282,34 @@ func resourceName(r *schema.Resource) string {
 	return tokenToName(r.Token)
 }
 
+// stateTypeName returns the TypeScript interface name for the state of a resource,
+// avoiding collisions with other resource class names in the same module.
+// For example, if resources "Foo" and "FooState" both exist, the state interface for
+// "Foo" would collide with the class "FooState", so we try alternative suffixes.
+func (mod *modContext) stateTypeName(resourceClassName string) string {
+	// Build a set of all resource class names in this module to detect collisions.
+	resourceClassNames := make(map[string]bool, len(mod.resources))
+	for _, r := range mod.resources {
+		resourceClassNames[resourceName(r)] = true
+	}
+
+	// Try candidate names in order, returning the first that doesn't conflict.
+	for _, candidate := range []string{
+		resourceClassName + "State",
+		resourceClassName + "ResourceState",
+		resourceClassName + "ResState",
+		resourceClassName + "PulumiResourceState",
+		resourceClassName + "PulumiResState",
+	} {
+		if !resourceClassNames[candidate] {
+			return candidate
+		}
+	}
+
+	// Unreachable in practice.
+	return resourceClassName + "State"
+}
+
 func (mod *modContext) resourceFileName(r *schema.Resource) string {
 	fileName := camel(resourceName(r)) + ".ts"
 	if mod.isReservedSourceFileName(fileName) {
@@ -626,7 +654,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	fmt.Fprintf(w, "export class %s extends pulumi.%s {\n", info.resourceClassName, baseType)
 
 	// Emit a static factory to read instances of this resource unless this is a provider resource or ComponentResource.
-	stateType := name + "State"
+	stateType := mod.stateTypeName(name)
 	if !r.IsProvider && !r.IsComponent {
 		fmt.Fprintf(w, "    /**\n")
 		fmt.Fprintf(w, "     * Get an existing %s resource's state with the given name, ID, and optional extra\n", name)

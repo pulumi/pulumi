@@ -3,6 +3,8 @@
     ".gitattributes",
     ".gitignore",
     "README.md",
+    "foo.ts",
+    "fooState.ts",
     "index.ts",
     "mainComponent.ts",
     "mod/component.ts",
