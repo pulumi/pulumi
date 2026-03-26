@@ -139,8 +139,11 @@ class PackageInfo(google.protobuf.message.Message):
     VERSION_FIELD_NUMBER: builtins.int
     DISPLAY_NAME_FIELD_NUMBER: builtins.int
     name: builtins.str
+    """Package name (e.g. "example")."""
     version: builtins.str
+    """Semantic version string for this package (e.g. "1.2.3")."""
     display_name: builtins.str
+    """Human-readable name for UIs/CLIs."""
     def __init__(
         self,
         *,
@@ -161,11 +164,17 @@ class GraphInfo(google.protobuf.message.Message):
     OUTPUT_TYPE_FIELD_NUMBER: builtins.int
     HAS_ON_ERROR_FIELD_NUMBER: builtins.int
     token: builtins.str
+    """Fully-qualified graph token."""
     has_on_error: builtins.bool
+    """Whether graph defines an on-error callback."""
     @property
-    def input_type(self) -> global___TypeReference: ...
+    def input_type(self) -> global___TypeReference:
+        """Type token for graph input shape."""
+
     @property
-    def output_type(self) -> global___TypeReference: ...
+    def output_type(self) -> global___TypeReference:
+        """Type token for graph output shape."""
+
     def __init__(
         self,
         *,
@@ -188,11 +197,17 @@ class JobInfo(google.protobuf.message.Message):
     OUTPUT_TYPE_FIELD_NUMBER: builtins.int
     HAS_ON_ERROR_FIELD_NUMBER: builtins.int
     token: builtins.str
+    """Fully-qualified job token."""
     has_on_error: builtins.bool
+    """Whether job defines an on-error callback."""
     @property
-    def input_type(self) -> global___TypeReference: ...
+    def input_type(self) -> global___TypeReference:
+        """Type token for job input shape."""
+
     @property
-    def output_type(self) -> global___TypeReference: ...
+    def output_type(self) -> global___TypeReference:
+        """Type token for job output shape."""
+
     def __init__(
         self,
         *,
@@ -222,7 +237,9 @@ class GetPackageInfoResponse(google.protobuf.message.Message):
 
     PACKAGE_FIELD_NUMBER: builtins.int
     @property
-    def package(self) -> global___PackageInfo: ...
+    def package(self) -> global___PackageInfo:
+        """Package metadata."""
+
     def __init__(
         self,
         *,
@@ -249,7 +266,9 @@ class GetGraphsResponse(google.protobuf.message.Message):
 
     GRAPHS_FIELD_NUMBER: builtins.int
     @property
-    def graphs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___GraphInfo]: ...
+    def graphs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___GraphInfo]:
+        """Exported graph definitions."""
+
     def __init__(
         self,
         *,
@@ -265,6 +284,7 @@ class GetGraphRequest(google.protobuf.message.Message):
 
     TOKEN_FIELD_NUMBER: builtins.int
     token: builtins.str
+    """Fully-qualified graph token to fetch."""
     def __init__(
         self,
         *,
@@ -280,7 +300,9 @@ class GetGraphResponse(google.protobuf.message.Message):
 
     GRAPH_FIELD_NUMBER: builtins.int
     @property
-    def graph(self) -> global___GraphInfo: ...
+    def graph(self) -> global___GraphInfo:
+        """Graph metadata for the requested token."""
+
     def __init__(
         self,
         *,
@@ -307,7 +329,9 @@ class GetTriggersResponse(google.protobuf.message.Message):
 
     TRIGGERS_FIELD_NUMBER: builtins.int
     @property
-    def triggers(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    def triggers(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Fully-qualified trigger tokens."""
+
     def __init__(
         self,
         *,
@@ -323,6 +347,7 @@ class GetTriggerRequest(google.protobuf.message.Message):
 
     TOKEN_FIELD_NUMBER: builtins.int
     token: builtins.str
+    """Fully-qualified trigger token to fetch."""
     def __init__(
         self,
         *,
@@ -339,9 +364,13 @@ class GetTriggerResponse(google.protobuf.message.Message):
     INPUT_TYPE_FIELD_NUMBER: builtins.int
     OUTPUT_TYPE_FIELD_NUMBER: builtins.int
     @property
-    def input_type(self) -> global___TypeReference: ...
+    def input_type(self) -> global___TypeReference:
+        """Type token for trigger input args shape."""
+
     @property
-    def output_type(self) -> global___TypeReference: ...
+    def output_type(self) -> global___TypeReference:
+        """Type token for trigger output/event shape."""
+
     def __init__(
         self,
         *,
@@ -369,7 +398,9 @@ class GetJobsResponse(google.protobuf.message.Message):
 
     JOBS_FIELD_NUMBER: builtins.int
     @property
-    def jobs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___JobInfo]: ...
+    def jobs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___JobInfo]:
+        """Exported job definitions."""
+
     def __init__(
         self,
         *,
@@ -385,6 +416,7 @@ class GetJobRequest(google.protobuf.message.Message):
 
     TOKEN_FIELD_NUMBER: builtins.int
     token: builtins.str
+    """Fully-qualified job token to fetch."""
     def __init__(
         self,
         *,
@@ -400,7 +432,9 @@ class GetJobResponse(google.protobuf.message.Message):
 
     JOB_FIELD_NUMBER: builtins.int
     @property
-    def job(self) -> global___JobInfo: ...
+    def job(self) -> global___JobInfo:
+        """Job metadata for the requested token."""
+
     def __init__(
         self,
         *,
@@ -468,7 +502,10 @@ global___DependencyTerm = DependencyTerm
 
 @typing.final
 class DependencyExpression(google.protobuf.message.Message):
-    """DependencyExpression supports OR/strict compositions of dependencies."""
+    """DependencyExpression describes readiness rules over dependency paths/expressions.
+
+    Schedulers evaluate this expression to decide when a node is runnable.
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -502,8 +539,11 @@ class DependencyExpression(google.protobuf.message.Message):
     OPERATOR_FIELD_NUMBER: builtins.int
     TERMS_FIELD_NUMBER: builtins.int
     operator: global___DependencyExpression.Operator.ValueType
+    """Operator applied to all terms below."""
     @property
-    def terms(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___DependencyTerm]: ...
+    def terms(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___DependencyTerm]:
+        """Child terms participating in this expression."""
+
     def __init__(
         self,
         *,
@@ -523,9 +563,13 @@ class PlatformRequirements(google.protobuf.message.Message):
     MIN_VCPU_FIELD_NUMBER: builtins.int
     MIN_MEMORY_GIB_FIELD_NUMBER: builtins.int
     os: builtins.str
+    """Preferred/required operating system."""
     arch: builtins.str
+    """Preferred/required architecture."""
     min_vcpu: builtins.int
+    """Minimum virtual CPUs required."""
     min_memory_gib: builtins.int
+    """Minimum memory in GiB required."""
     def __init__(
         self,
         *,
@@ -561,9 +605,13 @@ class PlatformSelector(google.protobuf.message.Message):
     REQUIREMENTS_FIELD_NUMBER: builtins.int
     MATCH_POLICY_FIELD_NUMBER: builtins.int
     target: builtins.str
+    """Named scheduler target/pool (if supported by runtime)."""
     match_policy: global___PlatformSelector.MatchPolicy.ValueType
+    """Matching strategy for target/requirements."""
     @property
-    def requirements(self) -> global___PlatformRequirements: ...
+    def requirements(self) -> global___PlatformRequirements:
+        """Hardware/OS constraints for matching."""
+
     def __init__(
         self,
         *,
@@ -611,17 +659,25 @@ class GenerateJobRequest(google.protobuf.message.Message):
     INPUT_PATH_FIELD_NUMBER: builtins.int
     INPUT_VALUE_FIELD_NUMBER: builtins.int
     name: builtins.str
-    """Name of an exported top-level job."""
+    """Name/token of an exported top-level job.
+    Must be set when generating a top-level exported job.
+    """
     path: builtins.str
     """Full path to a graph-scoped inline job (for example: graph/jobs/main).
-    This is empty when generating an exported top-level job.
+    Must be set when generating an inline graph job.
     """
     graph_monitor_address: builtins.str
+    """Scheduler-hosted GraphMonitor address used for node registration callbacks."""
     input_path: builtins.str
+    """Path whose value should be treated as this evaluation's resolved input source."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context for this materialization."""
+
     @property
-    def input_value(self) -> google.protobuf.struct_pb2.Value: ...
+    def input_value(self) -> google.protobuf.struct_pb2.Value:
+        """Resolved input value (PropertyValue-encoded) associated with `input_path`."""
+
     def __init__(
         self,
         *,
@@ -645,9 +701,13 @@ class GenerateGraphRequest(google.protobuf.message.Message):
     PATH_FIELD_NUMBER: builtins.int
     GRAPH_MONITOR_ADDRESS_FIELD_NUMBER: builtins.int
     path: builtins.str
+    """Concrete graph/subgraph path to generate."""
     graph_monitor_address: builtins.str
+    """Scheduler-hosted GraphMonitor address used for node registration callbacks."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context for this materialization."""
+
     def __init__(
         self,
         *,
@@ -666,7 +726,9 @@ class GenerateNodeResponse(google.protobuf.message.Message):
 
     ERROR_FIELD_NUMBER: builtins.int
     @property
-    def error(self) -> global___WorkflowError: ...
+    def error(self) -> global___WorkflowError:
+        """Non-empty on generation/materialization failure."""
+
     def __init__(
         self,
         *,
@@ -685,8 +747,11 @@ class RunSensorRequest(google.protobuf.message.Message):
     PATH_FIELD_NUMBER: builtins.int
     CURSOR_FIELD_NUMBER: builtins.int
     path: builtins.str
+    """Sensor node path."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context."""
+
     @property
     def cursor(self) -> google.protobuf.struct_pb2.Value:
         """Last persisted sensor cursor."""
@@ -764,8 +829,11 @@ class RunStepRequest(google.protobuf.message.Message):
     CONTEXT_FIELD_NUMBER: builtins.int
     PATH_FIELD_NUMBER: builtins.int
     path: builtins.str
+    """Step node path."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context."""
+
     def __init__(
         self,
         *,
@@ -784,9 +852,13 @@ class RunStepResponse(google.protobuf.message.Message):
     ERROR_FIELD_NUMBER: builtins.int
     RESULT_FIELD_NUMBER: builtins.int
     @property
-    def error(self) -> global___WorkflowError: ...
+    def error(self) -> global___WorkflowError:
+        """Non-empty on step execution failure."""
+
     @property
-    def result(self) -> google.protobuf.struct_pb2.Value: ...
+    def result(self) -> google.protobuf.struct_pb2.Value:
+        """Step return value encoded as PropertyValue."""
+
     def __init__(
         self,
         *,
@@ -805,8 +877,11 @@ class ResolveJobResultRequest(google.protobuf.message.Message):
     CONTEXT_FIELD_NUMBER: builtins.int
     PATH_FIELD_NUMBER: builtins.int
     path: builtins.str
+    """Job path whose final Output result should be resolved."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context."""
+
     def __init__(
         self,
         *,
@@ -825,9 +900,13 @@ class ResolveJobResultResponse(google.protobuf.message.Message):
     ERROR_FIELD_NUMBER: builtins.int
     RESULT_FIELD_NUMBER: builtins.int
     @property
-    def error(self) -> global___WorkflowError: ...
+    def error(self) -> global___WorkflowError:
+        """Non-empty on job result resolution failure."""
+
     @property
-    def result(self) -> google.protobuf.struct_pb2.Value: ...
+    def result(self) -> google.protobuf.struct_pb2.Value:
+        """Resolved job output encoded as PropertyValue."""
+
     def __init__(
         self,
         *,
@@ -846,8 +925,11 @@ class RunTriggerMockRequest(google.protobuf.message.Message):
     TOKEN_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
     token: builtins.str
+    """Fully-qualified trigger token."""
     @property
-    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Trigger-specific string arguments."""
+
     def __init__(
         self,
         *,
@@ -864,7 +946,9 @@ class RunTriggerMockResponse(google.protobuf.message.Message):
 
     VALUE_FIELD_NUMBER: builtins.int
     @property
-    def value(self) -> google.protobuf.struct_pb2.Struct: ...
+    def value(self) -> google.protobuf.struct_pb2.Struct:
+        """Structured trigger output payload."""
+
     def __init__(
         self,
         *,
@@ -882,8 +966,11 @@ class RunFilterRequest(google.protobuf.message.Message):
     PATH_FIELD_NUMBER: builtins.int
     VALUE_FIELD_NUMBER: builtins.int
     path: builtins.str
+    """Node path whose filter callback should be evaluated."""
     @property
-    def value(self) -> google.protobuf.struct_pb2.Value: ...
+    def value(self) -> google.protobuf.struct_pb2.Value:
+        """Candidate input value supplied to the filter."""
+
     def __init__(
         self,
         *,
@@ -915,10 +1002,15 @@ class RunOnErrorRequest(google.protobuf.message.Message):
     PATH_FIELD_NUMBER: builtins.int
     ERRORS_FIELD_NUMBER: builtins.int
     path: builtins.str
+    """Node path whose on-error callback should be evaluated."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context."""
+
     @property
-    def errors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ErrorRecord]: ...
+    def errors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ErrorRecord]:
+        """Ordered failure history (oldest -> newest)."""
+
     def __init__(
         self,
         *,
@@ -966,12 +1058,15 @@ class RegisterTriggerRequest(google.protobuf.message.Message):
     SPEC_FIELD_NUMBER: builtins.int
     HAS_FILTER_FIELD_NUMBER: builtins.int
     path: builtins.str
+    """Concrete trigger path in the generated graph."""
     type: builtins.str
     """Trigger type token, e.g. cloud:github:push."""
     has_filter: builtins.bool
     """If true, trigger has a filter function that can be executed via RunFilter."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context for this registration."""
+
     @property
     def spec(self) -> google.protobuf.struct_pb2.Struct:
         """Scheduler-owned declarative trigger specification."""
@@ -999,10 +1094,13 @@ class RegisterSensorRequest(google.protobuf.message.Message):
     SPEC_FIELD_NUMBER: builtins.int
     INTERVAL_FIELD_NUMBER: builtins.int
     path: builtins.str
+    """Concrete sensor path in the generated graph."""
     interval: builtins.str
     """Nominal polling interval used by the scheduler."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context for this registration."""
+
     @property
     def spec(self) -> google.protobuf.struct_pb2.Struct:
         """Declarative sensor polling specification."""
@@ -1030,13 +1128,21 @@ class RegisterJobRequest(google.protobuf.message.Message):
     PLATFORM_FIELD_NUMBER: builtins.int
     HAS_ON_ERROR_FIELD_NUMBER: builtins.int
     path: builtins.str
+    """Concrete job path in the generated graph."""
     has_on_error: builtins.bool
+    """Whether this job has an on-error callback callable via RunOnError."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context for this registration."""
+
     @property
-    def dependencies(self) -> global___DependencyExpression: ...
+    def dependencies(self) -> global___DependencyExpression:
+        """Job readiness dependencies."""
+
     @property
-    def platform(self) -> global___PlatformSelector: ...
+    def platform(self) -> global___PlatformSelector:
+        """Optional platform selector for scheduling placement."""
+
     def __init__(
         self,
         *,
@@ -1060,11 +1166,17 @@ class RegisterGraphRequest(google.protobuf.message.Message):
     DEPENDENCIES_FIELD_NUMBER: builtins.int
     HAS_ON_ERROR_FIELD_NUMBER: builtins.int
     path: builtins.str
+    """Concrete graph/subgraph path."""
     has_on_error: builtins.bool
+    """Whether this graph has an on-error callback callable via RunOnError."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context for this registration."""
+
     @property
-    def dependencies(self) -> global___DependencyExpression: ...
+    def dependencies(self) -> global___DependencyExpression:
+        """Graph readiness dependencies."""
+
     def __init__(
         self,
         *,
@@ -1088,12 +1200,19 @@ class RegisterStepRequest(google.protobuf.message.Message):
     DEPENDENCIES_FIELD_NUMBER: builtins.int
     HAS_ON_ERROR_FIELD_NUMBER: builtins.int
     name: builtins.str
+    """Step name relative to its parent job."""
     job: builtins.str
+    """Parent job path."""
     has_on_error: builtins.bool
+    """Whether this step has an on-error callback callable via RunOnError."""
     @property
-    def context(self) -> global___WorkflowContext: ...
+    def context(self) -> global___WorkflowContext:
+        """Execution context for this registration."""
+
     @property
-    def dependencies(self) -> global___DependencyExpression: ...
+    def dependencies(self) -> global___DependencyExpression:
+        """Step readiness dependencies."""
+
     def __init__(
         self,
         *,

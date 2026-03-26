@@ -6,8 +6,17 @@ from . import workflow_pb2 as pulumi_dot_workflow__pb2
 
 
 class WorkflowEvaluatorStub(object):
-    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
-    schema metadata and execute/materialize specific workflow callable nodes.
+    """WorkflowEvaluator is the execution-side contract implemented by workflow language hosts/plugins.
+
+    A scheduler/engine uses this service in three phases:
+    1. Handshake and schema discovery (`Get*` methods).
+    2. Shape generation (`GenerateGraph` / `GenerateJob`) while the plugin calls back into GraphMonitor.
+    3. Runtime execution (`Run*` methods), including individual step execution and final job result resolution.
+
+    The design is intentionally incremental:
+    - The scheduler does not fetch "everything" up front.
+    - The evaluator materializes only the graph/job currently being examined.
+    - Step execution and final job output evaluation are separate operations.
     """
 
     def __init__(self, channel):
@@ -99,8 +108,17 @@ class WorkflowEvaluatorStub(object):
 
 
 class WorkflowEvaluatorServicer(object):
-    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
-    schema metadata and execute/materialize specific workflow callable nodes.
+    """WorkflowEvaluator is the execution-side contract implemented by workflow language hosts/plugins.
+
+    A scheduler/engine uses this service in three phases:
+    1. Handshake and schema discovery (`Get*` methods).
+    2. Shape generation (`GenerateGraph` / `GenerateJob`) while the plugin calls back into GraphMonitor.
+    3. Runtime execution (`Run*` methods), including individual step execution and final job result resolution.
+
+    The design is intentionally incremental:
+    - The scheduler does not fetch "everything" up front.
+    - The evaluator materializes only the graph/job currently being examined.
+    - Step execution and final job output evaluation are separate operations.
     """
 
     def Handshake(self, request, context):
@@ -115,6 +133,9 @@ class WorkflowEvaluatorServicer(object):
 
     def GetPackageInfo(self, request, context):
         """Returns high-level package metadata (name/version/display name/etc).
+
+        This is analogous to package identity APIs in provider/language protocols and is expected
+        to be stable for a plugin process lifetime.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -122,13 +143,15 @@ class WorkflowEvaluatorServicer(object):
 
     def GetGraphs(self, request, context):
         """Returns the list of exported graph tokens.
+
+        This should include only top-level exported graphs, not inline subgraphs.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GetGraph(self, request, context):
-        """Returns the schema for one exported graph.
+        """Returns schema metadata for one exported graph token.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -142,77 +165,104 @@ class WorkflowEvaluatorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetTrigger(self, request, context):
-        """Returns the schema for one exported trigger.
+        """Returns schema metadata for one exported trigger token.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GetJobs(self, request, context):
-        """Returns the list of exported job tokens.
+        """Returns the list of exported top-level job tokens.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GetJob(self, request, context):
-        """Returns the schema for one exported job.
+        """Returns schema metadata for one exported job token.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GenerateJob(self, request, context):
-        """GenerateJob asks the evaluator to generate the job shape for a path.
+        """Generates a concrete job shape for either:
+        - an exported top-level job (`name`), or
+        - an inline graph-scoped job (`path`).
+
+        During this call, the evaluator registers jobs/steps/dependencies by calling GraphMonitor.
+        No steps are executed here; this is shape/materialization only.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GenerateGraph(self, request, context):
-        """GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path.
+        """Generates the concrete graph shape for `path`.
+
+        During this call, the evaluator registers graph children (triggers/jobs/subgraphs) by
+        calling GraphMonitor. This call does not execute steps.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def RunSensor(self, request, context):
-        """RunSensor executes a sensor poll function and returns fire/skip plus cursor data.
+        """Executes one sensor poll cycle.
+
+        The scheduler supplies the persisted cursor, and the evaluator returns:
+        - whether to fire an execution,
+        - the next cursor to persist,
+        - and optional emitted event payload.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def RunStep(self, request, context):
-        """RunStep executes a single step and returns a PropertyValue-compatible result.
+        """Executes one concrete step instance identified by `path`.
+
+        This is the unit of work the scheduler retries when step-level retry policy allows.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ResolveJobResult(self, request, context):
-        """ResolveJobResult evaluates and returns the resolved result of a job's Output[T].
+        """Evaluates and returns the resolved value of a job's declared Output[T] result expression.
+
+        This is intentionally separate from RunStep:
+        - RunStep yields per-step outputs.
+        - ResolveJobResult yields the overall job output value after all required steps finish.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def RunTriggerMock(self, request, context):
-        """RunTriggerMock executes a trigger mock function and returns a mock output value.
+        """Executes a trigger's mock function for scheduler-side simulation/testing.
+
+        Args are scheduler-provided string inputs interpreted by trigger-specific logic.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def RunFilter(self, request, context):
-        """RunFilter executes a trigger filter and returns pass/fail.
+        """Evaluates a filter callback for a previously registered node path.
+
+        Used for trigger/job/step filter semantics. The scheduler is responsible for deciding
+        when to call it and what value to pass.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def RunOnError(self, request, context):
-        """RunOnError executes a node's on-error callback and returns retry behavior.
+        """Executes a node-level on-error callback and returns retry guidance.
+
+        The scheduler still decides max attempts and retry timing policy; this RPC returns
+        evaluator/user-code intent for the current failure history.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -309,8 +359,17 @@ def add_WorkflowEvaluatorServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class WorkflowEvaluator(object):
-    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
-    schema metadata and execute/materialize specific workflow callable nodes.
+    """WorkflowEvaluator is the execution-side contract implemented by workflow language hosts/plugins.
+
+    A scheduler/engine uses this service in three phases:
+    1. Handshake and schema discovery (`Get*` methods).
+    2. Shape generation (`GenerateGraph` / `GenerateJob`) while the plugin calls back into GraphMonitor.
+    3. Runtime execution (`Run*` methods), including individual step execution and final job result resolution.
+
+    The design is intentionally incremental:
+    - The scheduler does not fetch "everything" up front.
+    - The evaluator materializes only the graph/job currently being examined.
+    - Step execution and final job output evaluation are separate operations.
     """
 
     @staticmethod
@@ -587,8 +646,10 @@ class WorkflowEvaluator(object):
 
 
 class GraphMonitorStub(object):
-    """GraphMonitor is called while evaluating a concrete graph execution/generation.
-    It records the graph shape for that evaluation and resolves prior node outputs.
+    """GraphMonitor is the scheduler-side callback service used during `GenerateGraph`/`GenerateJob`.
+
+    The evaluator calls this service to register concrete nodes discovered during generation.
+    Registration order is meaningful for execution ordering semantics where applicable.
     """
 
     def __init__(self, channel):
@@ -625,36 +686,43 @@ class GraphMonitorStub(object):
 
 
 class GraphMonitorServicer(object):
-    """GraphMonitor is called while evaluating a concrete graph execution/generation.
-    It records the graph shape for that evaluation and resolves prior node outputs.
+    """GraphMonitor is the scheduler-side callback service used during `GenerateGraph`/`GenerateJob`.
+
+    The evaluator calls this service to register concrete nodes discovered during generation.
+    Registration order is meaningful for execution ordering semantics where applicable.
     """
 
     def RegisterTrigger(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Registers a trigger node at a concrete path.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def RegisterSensor(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Registers a sensor node at a concrete path.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def RegisterJob(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Registers a job node at a concrete path.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def RegisterGraph(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Registers a graph/subgraph node at a concrete path.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def RegisterStep(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Registers a step node under a concrete job path.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -695,8 +763,10 @@ def add_GraphMonitorServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class GraphMonitor(object):
-    """GraphMonitor is called while evaluating a concrete graph execution/generation.
-    It records the graph shape for that evaluation and resolves prior node outputs.
+    """GraphMonitor is the scheduler-side callback service used during `GenerateGraph`/`GenerateJob`.
+
+    The evaluator calls this service to register concrete nodes discovered during generation.
+    Registration order is meaningful for execution ordering semantics where applicable.
     """
 
     @staticmethod

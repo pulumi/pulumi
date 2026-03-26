@@ -58,18 +58,20 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 				return err
 			}
 
-			results, jobToken, err := runExportedJob(ctx, pluginPath, jobNameOrToken, input)
+			results, jobToken, jobResultJSON, err := runExportedJob(ctx, pluginPath, jobNameOrToken, input)
 			if err != nil {
 				return err
 			}
 
 			if emitJSON {
 				payload := struct {
-					Job   string       `json:"job"`
-					Steps []stepResult `json:"steps"`
+					Job        string       `json:"job"`
+					ResultJSON string       `json:"resultJson"`
+					Steps      []stepResult `json:"steps"`
 				}{
-					Job:   jobToken,
-					Steps: results,
+					Job:        jobToken,
+					ResultJSON: jobResultJSON,
+					Steps:      results,
 				}
 				bytes, err := json.MarshalIndent(payload, "", "  ")
 				if err != nil {
@@ -80,6 +82,7 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 			}
 
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Ran %s\n", jobToken)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Result: %s\n", jobResultJSON)
 			for _, result := range results {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", result.Path, result.ResultJSON)
 			}
@@ -120,14 +123,14 @@ func runExportedJob(
 	pluginPath string,
 	jobNameOrToken string,
 	input any,
-) ([]stepResult, string, error) {
+) ([]stepResult, string, string, error) {
 	server := &monitorServer{}
 	grpcServer := grpc.NewServer()
 	pulumirpc.RegisterGraphMonitorServer(grpcServer, server)
 
 	listener, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
-		return nil, "", fmt.Errorf("listen: %w", err)
+		return nil, "", "", fmt.Errorf("listen: %w", err)
 	}
 	defer func() {
 		_ = listener.Close()
@@ -139,7 +142,7 @@ func runExportedJob(
 
 	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil, nil)
 	if err != nil {
-		return nil, "", fmt.Errorf("create workflow plugin context: %w", err)
+		return nil, "", "", fmt.Errorf("create workflow plugin context: %w", err)
 	}
 	defer func() {
 		_ = pctx.Close()
@@ -147,7 +150,7 @@ func runExportedJob(
 
 	workflowPlugin, err := pctx.Host.Workflow(pluginPath)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	defer func() {
 		_ = workflowPlugin.Close()
@@ -155,12 +158,12 @@ func runExportedJob(
 
 	jobToken, err := resolveJobToken(ctx, workflowPlugin, jobNameOrToken)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
 	inputValue, err := structpb.NewValue(input)
 	if err != nil {
-		return nil, "", fmt.Errorf("encode job input: %w", err)
+		return nil, "", "", fmt.Errorf("encode job input: %w", err)
 	}
 	workflowContext := &pulumirpc.WorkflowContext{
 		ExecutionId: "cli-run",
@@ -174,23 +177,28 @@ func runExportedJob(
 		InputValue:          inputValue,
 	})
 	if err != nil {
-		return nil, "", fmt.Errorf("generate exported job %q: %w", jobToken, err)
+		return nil, "", "", fmt.Errorf("generate exported job %q: %w", jobToken, err)
 	}
 	if generateResp.GetError() != nil && generateResp.GetError().GetReason() != "" {
-		return nil, "", fmt.Errorf("generate exported job %q failed: %s", jobToken, generateResp.GetError().GetReason())
+		return nil, "", "", fmt.Errorf("generate exported job %q failed: %s", jobToken, generateResp.GetError().GetReason())
 	}
 
 	steps := server.snapshotStepsForJob(jobToken)
 	if len(steps) == 0 {
-		return nil, "", fmt.Errorf("exported job %q has no steps", jobToken)
+		return nil, "", "", fmt.Errorf("exported job %q has no steps", jobToken)
 	}
 
 	results, err := runObservedSteps(ctx, workflowPlugin, workflowContext, steps)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
-	return results, jobToken, nil
+	jobResultJSON, err := resolveObservedJobResult(ctx, workflowPlugin, workflowContext, jobToken)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	return results, jobToken, jobResultJSON, nil
 }
 
 func resolveJobToken(
@@ -332,4 +340,31 @@ func runObservedSteps(
 		})
 	}
 	return results, nil
+}
+
+func resolveObservedJobResult(
+	ctx context.Context,
+	workflowPlugin plugin.Workflow,
+	workflowContext *pulumirpc.WorkflowContext,
+	jobPath string,
+) (string, error) {
+	response, err := workflowPlugin.ResolveJobResult(ctx, &pulumirpc.ResolveJobResultRequest{
+		Context: workflowContext,
+		Path:    jobPath,
+	})
+	if err != nil {
+		return "", fmt.Errorf("resolve job result %q: %w", jobPath, err)
+	}
+	if response.GetError() != nil && response.GetError().GetReason() != "" {
+		return "", fmt.Errorf("resolve job result %q failed: %s", jobPath, response.GetError().GetReason())
+	}
+	if response.GetResult() == nil {
+		return "", fmt.Errorf("resolve job result %q returned empty result", jobPath)
+	}
+
+	bytes, err := protojson.Marshal(response.GetResult())
+	if err != nil {
+		return "", fmt.Errorf("marshal resolved job result for %q: %w", jobPath, err)
+	}
+	return string(bytes), nil
 }

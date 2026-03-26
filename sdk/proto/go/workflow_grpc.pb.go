@@ -55,8 +55,17 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
-// schema metadata and execute/materialize specific workflow callable nodes.
+// WorkflowEvaluator is the execution-side contract implemented by workflow language hosts/plugins.
+//
+// A scheduler/engine uses this service in three phases:
+// 1. Handshake and schema discovery (`Get*` methods).
+// 2. Shape generation (`GenerateGraph` / `GenerateJob`) while the plugin calls back into GraphMonitor.
+// 3. Runtime execution (`Run*` methods), including individual step execution and final job result resolution.
+//
+// The design is intentionally incremental:
+// - The scheduler does not fetch "everything" up front.
+// - The evaluator materializes only the graph/job currently being examined.
+// - Step execution and final job output evaluation are separate operations.
 type WorkflowEvaluatorClient interface {
 	// `Handshake` is the first call made by the engine to a workflow evaluator. It is used to
 	// pass the engine's address to the evaluator so that it may establish its own connections
@@ -64,34 +73,66 @@ type WorkflowEvaluatorClient interface {
 	// two parties.
 	Handshake(ctx context.Context, in *WorkflowHandshakeRequest, opts ...grpc.CallOption) (*WorkflowHandshakeResponse, error)
 	// Returns high-level package metadata (name/version/display name/etc).
+	//
+	// This is analogous to package identity APIs in provider/language protocols and is expected
+	// to be stable for a plugin process lifetime.
 	GetPackageInfo(ctx context.Context, in *GetPackageInfoRequest, opts ...grpc.CallOption) (*GetPackageInfoResponse, error)
 	// Returns the list of exported graph tokens.
+	//
+	// This should include only top-level exported graphs, not inline subgraphs.
 	GetGraphs(ctx context.Context, in *GetGraphsRequest, opts ...grpc.CallOption) (*GetGraphsResponse, error)
-	// Returns the schema for one exported graph.
+	// Returns schema metadata for one exported graph token.
 	GetGraph(ctx context.Context, in *GetGraphRequest, opts ...grpc.CallOption) (*GetGraphResponse, error)
 	// Returns the list of exported trigger tokens.
 	GetTriggers(ctx context.Context, in *GetTriggersRequest, opts ...grpc.CallOption) (*GetTriggersResponse, error)
-	// Returns the schema for one exported trigger.
+	// Returns schema metadata for one exported trigger token.
 	GetTrigger(ctx context.Context, in *GetTriggerRequest, opts ...grpc.CallOption) (*GetTriggerResponse, error)
-	// Returns the list of exported job tokens.
+	// Returns the list of exported top-level job tokens.
 	GetJobs(ctx context.Context, in *GetJobsRequest, opts ...grpc.CallOption) (*GetJobsResponse, error)
-	// Returns the schema for one exported job.
+	// Returns schema metadata for one exported job token.
 	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
-	// GenerateJob asks the evaluator to generate the job shape for a path.
+	// Generates a concrete job shape for either:
+	// - an exported top-level job (`name`), or
+	// - an inline graph-scoped job (`path`).
+	//
+	// During this call, the evaluator registers jobs/steps/dependencies by calling GraphMonitor.
+	// No steps are executed here; this is shape/materialization only.
 	GenerateJob(ctx context.Context, in *GenerateJobRequest, opts ...grpc.CallOption) (*GenerateNodeResponse, error)
-	// GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path.
+	// Generates the concrete graph shape for `path`.
+	//
+	// During this call, the evaluator registers graph children (triggers/jobs/subgraphs) by
+	// calling GraphMonitor. This call does not execute steps.
 	GenerateGraph(ctx context.Context, in *GenerateGraphRequest, opts ...grpc.CallOption) (*GenerateNodeResponse, error)
-	// RunSensor executes a sensor poll function and returns fire/skip plus cursor data.
+	// Executes one sensor poll cycle.
+	//
+	// The scheduler supplies the persisted cursor, and the evaluator returns:
+	// - whether to fire an execution,
+	// - the next cursor to persist,
+	// - and optional emitted event payload.
 	RunSensor(ctx context.Context, in *RunSensorRequest, opts ...grpc.CallOption) (*RunSensorResponse, error)
-	// RunStep executes a single step and returns a PropertyValue-compatible result.
+	// Executes one concrete step instance identified by `path`.
+	//
+	// This is the unit of work the scheduler retries when step-level retry policy allows.
 	RunStep(ctx context.Context, in *RunStepRequest, opts ...grpc.CallOption) (*RunStepResponse, error)
-	// ResolveJobResult evaluates and returns the resolved result of a job's Output[T].
+	// Evaluates and returns the resolved value of a job's declared Output[T] result expression.
+	//
+	// This is intentionally separate from RunStep:
+	// - RunStep yields per-step outputs.
+	// - ResolveJobResult yields the overall job output value after all required steps finish.
 	ResolveJobResult(ctx context.Context, in *ResolveJobResultRequest, opts ...grpc.CallOption) (*ResolveJobResultResponse, error)
-	// RunTriggerMock executes a trigger mock function and returns a mock output value.
+	// Executes a trigger's mock function for scheduler-side simulation/testing.
+	//
+	// Args are scheduler-provided string inputs interpreted by trigger-specific logic.
 	RunTriggerMock(ctx context.Context, in *RunTriggerMockRequest, opts ...grpc.CallOption) (*RunTriggerMockResponse, error)
-	// RunFilter executes a trigger filter and returns pass/fail.
+	// Evaluates a filter callback for a previously registered node path.
+	//
+	// Used for trigger/job/step filter semantics. The scheduler is responsible for deciding
+	// when to call it and what value to pass.
 	RunFilter(ctx context.Context, in *RunFilterRequest, opts ...grpc.CallOption) (*RunFilterResponse, error)
-	// RunOnError executes a node's on-error callback and returns retry behavior.
+	// Executes a node-level on-error callback and returns retry guidance.
+	//
+	// The scheduler still decides max attempts and retry timing policy; this RPC returns
+	// evaluator/user-code intent for the current failure history.
 	RunOnError(ctx context.Context, in *RunOnErrorRequest, opts ...grpc.CallOption) (*RunOnErrorResponse, error)
 }
 
@@ -267,8 +308,17 @@ func (c *workflowEvaluatorClient) RunOnError(ctx context.Context, in *RunOnError
 // All implementations must embed UnimplementedWorkflowEvaluatorServer
 // for forward compatibility.
 //
-// WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
-// schema metadata and execute/materialize specific workflow callable nodes.
+// WorkflowEvaluator is the execution-side contract implemented by workflow language hosts/plugins.
+//
+// A scheduler/engine uses this service in three phases:
+// 1. Handshake and schema discovery (`Get*` methods).
+// 2. Shape generation (`GenerateGraph` / `GenerateJob`) while the plugin calls back into GraphMonitor.
+// 3. Runtime execution (`Run*` methods), including individual step execution and final job result resolution.
+//
+// The design is intentionally incremental:
+// - The scheduler does not fetch "everything" up front.
+// - The evaluator materializes only the graph/job currently being examined.
+// - Step execution and final job output evaluation are separate operations.
 type WorkflowEvaluatorServer interface {
 	// `Handshake` is the first call made by the engine to a workflow evaluator. It is used to
 	// pass the engine's address to the evaluator so that it may establish its own connections
@@ -276,34 +326,66 @@ type WorkflowEvaluatorServer interface {
 	// two parties.
 	Handshake(context.Context, *WorkflowHandshakeRequest) (*WorkflowHandshakeResponse, error)
 	// Returns high-level package metadata (name/version/display name/etc).
+	//
+	// This is analogous to package identity APIs in provider/language protocols and is expected
+	// to be stable for a plugin process lifetime.
 	GetPackageInfo(context.Context, *GetPackageInfoRequest) (*GetPackageInfoResponse, error)
 	// Returns the list of exported graph tokens.
+	//
+	// This should include only top-level exported graphs, not inline subgraphs.
 	GetGraphs(context.Context, *GetGraphsRequest) (*GetGraphsResponse, error)
-	// Returns the schema for one exported graph.
+	// Returns schema metadata for one exported graph token.
 	GetGraph(context.Context, *GetGraphRequest) (*GetGraphResponse, error)
 	// Returns the list of exported trigger tokens.
 	GetTriggers(context.Context, *GetTriggersRequest) (*GetTriggersResponse, error)
-	// Returns the schema for one exported trigger.
+	// Returns schema metadata for one exported trigger token.
 	GetTrigger(context.Context, *GetTriggerRequest) (*GetTriggerResponse, error)
-	// Returns the list of exported job tokens.
+	// Returns the list of exported top-level job tokens.
 	GetJobs(context.Context, *GetJobsRequest) (*GetJobsResponse, error)
-	// Returns the schema for one exported job.
+	// Returns schema metadata for one exported job token.
 	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
-	// GenerateJob asks the evaluator to generate the job shape for a path.
+	// Generates a concrete job shape for either:
+	// - an exported top-level job (`name`), or
+	// - an inline graph-scoped job (`path`).
+	//
+	// During this call, the evaluator registers jobs/steps/dependencies by calling GraphMonitor.
+	// No steps are executed here; this is shape/materialization only.
 	GenerateJob(context.Context, *GenerateJobRequest) (*GenerateNodeResponse, error)
-	// GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path.
+	// Generates the concrete graph shape for `path`.
+	//
+	// During this call, the evaluator registers graph children (triggers/jobs/subgraphs) by
+	// calling GraphMonitor. This call does not execute steps.
 	GenerateGraph(context.Context, *GenerateGraphRequest) (*GenerateNodeResponse, error)
-	// RunSensor executes a sensor poll function and returns fire/skip plus cursor data.
+	// Executes one sensor poll cycle.
+	//
+	// The scheduler supplies the persisted cursor, and the evaluator returns:
+	// - whether to fire an execution,
+	// - the next cursor to persist,
+	// - and optional emitted event payload.
 	RunSensor(context.Context, *RunSensorRequest) (*RunSensorResponse, error)
-	// RunStep executes a single step and returns a PropertyValue-compatible result.
+	// Executes one concrete step instance identified by `path`.
+	//
+	// This is the unit of work the scheduler retries when step-level retry policy allows.
 	RunStep(context.Context, *RunStepRequest) (*RunStepResponse, error)
-	// ResolveJobResult evaluates and returns the resolved result of a job's Output[T].
+	// Evaluates and returns the resolved value of a job's declared Output[T] result expression.
+	//
+	// This is intentionally separate from RunStep:
+	// - RunStep yields per-step outputs.
+	// - ResolveJobResult yields the overall job output value after all required steps finish.
 	ResolveJobResult(context.Context, *ResolveJobResultRequest) (*ResolveJobResultResponse, error)
-	// RunTriggerMock executes a trigger mock function and returns a mock output value.
+	// Executes a trigger's mock function for scheduler-side simulation/testing.
+	//
+	// Args are scheduler-provided string inputs interpreted by trigger-specific logic.
 	RunTriggerMock(context.Context, *RunTriggerMockRequest) (*RunTriggerMockResponse, error)
-	// RunFilter executes a trigger filter and returns pass/fail.
+	// Evaluates a filter callback for a previously registered node path.
+	//
+	// Used for trigger/job/step filter semantics. The scheduler is responsible for deciding
+	// when to call it and what value to pass.
 	RunFilter(context.Context, *RunFilterRequest) (*RunFilterResponse, error)
-	// RunOnError executes a node's on-error callback and returns retry behavior.
+	// Executes a node-level on-error callback and returns retry guidance.
+	//
+	// The scheduler still decides max attempts and retry timing policy; this RPC returns
+	// evaluator/user-code intent for the current failure history.
 	RunOnError(context.Context, *RunOnErrorRequest) (*RunOnErrorResponse, error)
 	mustEmbedUnimplementedWorkflowEvaluatorServer()
 }
@@ -760,13 +842,20 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// GraphMonitor is called while evaluating a concrete graph execution/generation.
-// It records the graph shape for that evaluation and resolves prior node outputs.
+// GraphMonitor is the scheduler-side callback service used during `GenerateGraph`/`GenerateJob`.
+//
+// The evaluator calls this service to register concrete nodes discovered during generation.
+// Registration order is meaningful for execution ordering semantics where applicable.
 type GraphMonitorClient interface {
+	// Registers a trigger node at a concrete path.
 	RegisterTrigger(ctx context.Context, in *RegisterTriggerRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
+	// Registers a sensor node at a concrete path.
 	RegisterSensor(ctx context.Context, in *RegisterSensorRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
+	// Registers a job node at a concrete path.
 	RegisterJob(ctx context.Context, in *RegisterJobRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
+	// Registers a graph/subgraph node at a concrete path.
 	RegisterGraph(ctx context.Context, in *RegisterGraphRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
+	// Registers a step node under a concrete job path.
 	RegisterStep(ctx context.Context, in *RegisterStepRequest, opts ...grpc.CallOption) (*RegisterNodeResponse, error)
 }
 
@@ -832,13 +921,20 @@ func (c *graphMonitorClient) RegisterStep(ctx context.Context, in *RegisterStepR
 // All implementations must embed UnimplementedGraphMonitorServer
 // for forward compatibility.
 //
-// GraphMonitor is called while evaluating a concrete graph execution/generation.
-// It records the graph shape for that evaluation and resolves prior node outputs.
+// GraphMonitor is the scheduler-side callback service used during `GenerateGraph`/`GenerateJob`.
+//
+// The evaluator calls this service to register concrete nodes discovered during generation.
+// Registration order is meaningful for execution ordering semantics where applicable.
 type GraphMonitorServer interface {
+	// Registers a trigger node at a concrete path.
 	RegisterTrigger(context.Context, *RegisterTriggerRequest) (*RegisterNodeResponse, error)
+	// Registers a sensor node at a concrete path.
 	RegisterSensor(context.Context, *RegisterSensorRequest) (*RegisterNodeResponse, error)
+	// Registers a job node at a concrete path.
 	RegisterJob(context.Context, *RegisterJobRequest) (*RegisterNodeResponse, error)
+	// Registers a graph/subgraph node at a concrete path.
 	RegisterGraph(context.Context, *RegisterGraphRequest) (*RegisterNodeResponse, error)
+	// Registers a step node under a concrete job path.
 	RegisterStep(context.Context, *RegisterStepRequest) (*RegisterNodeResponse, error)
 	mustEmbedUnimplementedGraphMonitorServer()
 }

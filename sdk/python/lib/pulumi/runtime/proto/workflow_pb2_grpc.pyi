@@ -33,8 +33,17 @@ class _ServicerContext(grpc.ServicerContext, grpc.aio.ServicerContext):  # type:
     ...
 
 class WorkflowEvaluatorStub:
-    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
-    schema metadata and execute/materialize specific workflow callable nodes.
+    """WorkflowEvaluator is the execution-side contract implemented by workflow language hosts/plugins.
+
+    A scheduler/engine uses this service in three phases:
+    1. Handshake and schema discovery (`Get*` methods).
+    2. Shape generation (`GenerateGraph` / `GenerateJob`) while the plugin calls back into GraphMonitor.
+    3. Runtime execution (`Run*` methods), including individual step execution and final job result resolution.
+
+    The design is intentionally incremental:
+    - The scheduler does not fetch "everything" up front.
+    - The evaluator materializes only the graph/job currently being examined.
+    - Step execution and final job output evaluation are separate operations.
     """
 
     def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
@@ -52,19 +61,26 @@ class WorkflowEvaluatorStub:
         pulumi.workflow_pb2.GetPackageInfoRequest,
         pulumi.workflow_pb2.GetPackageInfoResponse,
     ]
-    """Returns high-level package metadata (name/version/display name/etc)."""
+    """Returns high-level package metadata (name/version/display name/etc).
+
+    This is analogous to package identity APIs in provider/language protocols and is expected
+    to be stable for a plugin process lifetime.
+    """
 
     GetGraphs: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetGraphsRequest,
         pulumi.workflow_pb2.GetGraphsResponse,
     ]
-    """Returns the list of exported graph tokens."""
+    """Returns the list of exported graph tokens.
+
+    This should include only top-level exported graphs, not inline subgraphs.
+    """
 
     GetGraph: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetGraphRequest,
         pulumi.workflow_pb2.GetGraphResponse,
     ]
-    """Returns the schema for one exported graph."""
+    """Returns schema metadata for one exported graph token."""
 
     GetTriggers: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetTriggersRequest,
@@ -76,71 +92,115 @@ class WorkflowEvaluatorStub:
         pulumi.workflow_pb2.GetTriggerRequest,
         pulumi.workflow_pb2.GetTriggerResponse,
     ]
-    """Returns the schema for one exported trigger."""
+    """Returns schema metadata for one exported trigger token."""
 
     GetJobs: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetJobsRequest,
         pulumi.workflow_pb2.GetJobsResponse,
     ]
-    """Returns the list of exported job tokens."""
+    """Returns the list of exported top-level job tokens."""
 
     GetJob: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetJobRequest,
         pulumi.workflow_pb2.GetJobResponse,
     ]
-    """Returns the schema for one exported job."""
+    """Returns schema metadata for one exported job token."""
 
     GenerateJob: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GenerateJobRequest,
         pulumi.workflow_pb2.GenerateNodeResponse,
     ]
-    """GenerateJob asks the evaluator to generate the job shape for a path."""
+    """Generates a concrete job shape for either:
+    - an exported top-level job (`name`), or
+    - an inline graph-scoped job (`path`).
+
+    During this call, the evaluator registers jobs/steps/dependencies by calling GraphMonitor.
+    No steps are executed here; this is shape/materialization only.
+    """
 
     GenerateGraph: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GenerateGraphRequest,
         pulumi.workflow_pb2.GenerateNodeResponse,
     ]
-    """GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path."""
+    """Generates the concrete graph shape for `path`.
+
+    During this call, the evaluator registers graph children (triggers/jobs/subgraphs) by
+    calling GraphMonitor. This call does not execute steps.
+    """
 
     RunSensor: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunSensorRequest,
         pulumi.workflow_pb2.RunSensorResponse,
     ]
-    """RunSensor executes a sensor poll function and returns fire/skip plus cursor data."""
+    """Executes one sensor poll cycle.
+
+    The scheduler supplies the persisted cursor, and the evaluator returns:
+    - whether to fire an execution,
+    - the next cursor to persist,
+    - and optional emitted event payload.
+    """
 
     RunStep: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunStepRequest,
         pulumi.workflow_pb2.RunStepResponse,
     ]
-    """RunStep executes a single step and returns a PropertyValue-compatible result."""
+    """Executes one concrete step instance identified by `path`.
+
+    This is the unit of work the scheduler retries when step-level retry policy allows.
+    """
 
     ResolveJobResult: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.ResolveJobResultRequest,
         pulumi.workflow_pb2.ResolveJobResultResponse,
     ]
-    """ResolveJobResult evaluates and returns the resolved result of a job's Output[T]."""
+    """Evaluates and returns the resolved value of a job's declared Output[T] result expression.
+
+    This is intentionally separate from RunStep:
+    - RunStep yields per-step outputs.
+    - ResolveJobResult yields the overall job output value after all required steps finish.
+    """
 
     RunTriggerMock: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunTriggerMockRequest,
         pulumi.workflow_pb2.RunTriggerMockResponse,
     ]
-    """RunTriggerMock executes a trigger mock function and returns a mock output value."""
+    """Executes a trigger's mock function for scheduler-side simulation/testing.
+
+    Args are scheduler-provided string inputs interpreted by trigger-specific logic.
+    """
 
     RunFilter: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunFilterRequest,
         pulumi.workflow_pb2.RunFilterResponse,
     ]
-    """RunFilter executes a trigger filter and returns pass/fail."""
+    """Evaluates a filter callback for a previously registered node path.
+
+    Used for trigger/job/step filter semantics. The scheduler is responsible for deciding
+    when to call it and what value to pass.
+    """
 
     RunOnError: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunOnErrorRequest,
         pulumi.workflow_pb2.RunOnErrorResponse,
     ]
-    """RunOnError executes a node's on-error callback and returns retry behavior."""
+    """Executes a node-level on-error callback and returns retry guidance.
+
+    The scheduler still decides max attempts and retry timing policy; this RPC returns
+    evaluator/user-code intent for the current failure history.
+    """
 
 class WorkflowEvaluatorAsyncStub:
-    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
-    schema metadata and execute/materialize specific workflow callable nodes.
+    """WorkflowEvaluator is the execution-side contract implemented by workflow language hosts/plugins.
+
+    A scheduler/engine uses this service in three phases:
+    1. Handshake and schema discovery (`Get*` methods).
+    2. Shape generation (`GenerateGraph` / `GenerateJob`) while the plugin calls back into GraphMonitor.
+    3. Runtime execution (`Run*` methods), including individual step execution and final job result resolution.
+
+    The design is intentionally incremental:
+    - The scheduler does not fetch "everything" up front.
+    - The evaluator materializes only the graph/job currently being examined.
+    - Step execution and final job output evaluation are separate operations.
     """
 
     Handshake: grpc.aio.UnaryUnaryMultiCallable[
@@ -157,19 +217,26 @@ class WorkflowEvaluatorAsyncStub:
         pulumi.workflow_pb2.GetPackageInfoRequest,
         pulumi.workflow_pb2.GetPackageInfoResponse,
     ]
-    """Returns high-level package metadata (name/version/display name/etc)."""
+    """Returns high-level package metadata (name/version/display name/etc).
+
+    This is analogous to package identity APIs in provider/language protocols and is expected
+    to be stable for a plugin process lifetime.
+    """
 
     GetGraphs: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetGraphsRequest,
         pulumi.workflow_pb2.GetGraphsResponse,
     ]
-    """Returns the list of exported graph tokens."""
+    """Returns the list of exported graph tokens.
+
+    This should include only top-level exported graphs, not inline subgraphs.
+    """
 
     GetGraph: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetGraphRequest,
         pulumi.workflow_pb2.GetGraphResponse,
     ]
-    """Returns the schema for one exported graph."""
+    """Returns schema metadata for one exported graph token."""
 
     GetTriggers: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetTriggersRequest,
@@ -181,71 +248,115 @@ class WorkflowEvaluatorAsyncStub:
         pulumi.workflow_pb2.GetTriggerRequest,
         pulumi.workflow_pb2.GetTriggerResponse,
     ]
-    """Returns the schema for one exported trigger."""
+    """Returns schema metadata for one exported trigger token."""
 
     GetJobs: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetJobsRequest,
         pulumi.workflow_pb2.GetJobsResponse,
     ]
-    """Returns the list of exported job tokens."""
+    """Returns the list of exported top-level job tokens."""
 
     GetJob: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GetJobRequest,
         pulumi.workflow_pb2.GetJobResponse,
     ]
-    """Returns the schema for one exported job."""
+    """Returns schema metadata for one exported job token."""
 
     GenerateJob: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GenerateJobRequest,
         pulumi.workflow_pb2.GenerateNodeResponse,
     ]
-    """GenerateJob asks the evaluator to generate the job shape for a path."""
+    """Generates a concrete job shape for either:
+    - an exported top-level job (`name`), or
+    - an inline graph-scoped job (`path`).
+
+    During this call, the evaluator registers jobs/steps/dependencies by calling GraphMonitor.
+    No steps are executed here; this is shape/materialization only.
+    """
 
     GenerateGraph: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GenerateGraphRequest,
         pulumi.workflow_pb2.GenerateNodeResponse,
     ]
-    """GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path."""
+    """Generates the concrete graph shape for `path`.
+
+    During this call, the evaluator registers graph children (triggers/jobs/subgraphs) by
+    calling GraphMonitor. This call does not execute steps.
+    """
 
     RunSensor: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunSensorRequest,
         pulumi.workflow_pb2.RunSensorResponse,
     ]
-    """RunSensor executes a sensor poll function and returns fire/skip plus cursor data."""
+    """Executes one sensor poll cycle.
+
+    The scheduler supplies the persisted cursor, and the evaluator returns:
+    - whether to fire an execution,
+    - the next cursor to persist,
+    - and optional emitted event payload.
+    """
 
     RunStep: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunStepRequest,
         pulumi.workflow_pb2.RunStepResponse,
     ]
-    """RunStep executes a single step and returns a PropertyValue-compatible result."""
+    """Executes one concrete step instance identified by `path`.
+
+    This is the unit of work the scheduler retries when step-level retry policy allows.
+    """
 
     ResolveJobResult: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.ResolveJobResultRequest,
         pulumi.workflow_pb2.ResolveJobResultResponse,
     ]
-    """ResolveJobResult evaluates and returns the resolved result of a job's Output[T]."""
+    """Evaluates and returns the resolved value of a job's declared Output[T] result expression.
+
+    This is intentionally separate from RunStep:
+    - RunStep yields per-step outputs.
+    - ResolveJobResult yields the overall job output value after all required steps finish.
+    """
 
     RunTriggerMock: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunTriggerMockRequest,
         pulumi.workflow_pb2.RunTriggerMockResponse,
     ]
-    """RunTriggerMock executes a trigger mock function and returns a mock output value."""
+    """Executes a trigger's mock function for scheduler-side simulation/testing.
+
+    Args are scheduler-provided string inputs interpreted by trigger-specific logic.
+    """
 
     RunFilter: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunFilterRequest,
         pulumi.workflow_pb2.RunFilterResponse,
     ]
-    """RunFilter executes a trigger filter and returns pass/fail."""
+    """Evaluates a filter callback for a previously registered node path.
+
+    Used for trigger/job/step filter semantics. The scheduler is responsible for deciding
+    when to call it and what value to pass.
+    """
 
     RunOnError: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RunOnErrorRequest,
         pulumi.workflow_pb2.RunOnErrorResponse,
     ]
-    """RunOnError executes a node's on-error callback and returns retry behavior."""
+    """Executes a node-level on-error callback and returns retry guidance.
+
+    The scheduler still decides max attempts and retry timing policy; this RPC returns
+    evaluator/user-code intent for the current failure history.
+    """
 
 class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
-    """WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
-    schema metadata and execute/materialize specific workflow callable nodes.
+    """WorkflowEvaluator is the execution-side contract implemented by workflow language hosts/plugins.
+
+    A scheduler/engine uses this service in three phases:
+    1. Handshake and schema discovery (`Get*` methods).
+    2. Shape generation (`GenerateGraph` / `GenerateJob`) while the plugin calls back into GraphMonitor.
+    3. Runtime execution (`Run*` methods), including individual step execution and final job result resolution.
+
+    The design is intentionally incremental:
+    - The scheduler does not fetch "everything" up front.
+    - The evaluator materializes only the graph/job currently being examined.
+    - Step execution and final job output evaluation are separate operations.
     """
 
     
@@ -266,7 +377,11 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.GetPackageInfoRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetPackageInfoResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetPackageInfoResponse]]:
-        """Returns high-level package metadata (name/version/display name/etc)."""
+        """Returns high-level package metadata (name/version/display name/etc).
+
+        This is analogous to package identity APIs in provider/language protocols and is expected
+        to be stable for a plugin process lifetime.
+        """
 
     
     def GetGraphs(
@@ -274,7 +389,10 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.GetGraphsRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetGraphsResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetGraphsResponse]]:
-        """Returns the list of exported graph tokens."""
+        """Returns the list of exported graph tokens.
+
+        This should include only top-level exported graphs, not inline subgraphs.
+        """
 
     
     def GetGraph(
@@ -282,7 +400,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.GetGraphRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetGraphResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetGraphResponse]]:
-        """Returns the schema for one exported graph."""
+        """Returns schema metadata for one exported graph token."""
 
     
     def GetTriggers(
@@ -298,7 +416,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.GetTriggerRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetTriggerResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetTriggerResponse]]:
-        """Returns the schema for one exported trigger."""
+        """Returns schema metadata for one exported trigger token."""
 
     
     def GetJobs(
@@ -306,7 +424,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.GetJobsRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetJobsResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetJobsResponse]]:
-        """Returns the list of exported job tokens."""
+        """Returns the list of exported top-level job tokens."""
 
     
     def GetJob(
@@ -314,7 +432,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.GetJobRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetJobResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetJobResponse]]:
-        """Returns the schema for one exported job."""
+        """Returns schema metadata for one exported job token."""
 
     
     def GenerateJob(
@@ -322,7 +440,13 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.GenerateJobRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GenerateNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GenerateNodeResponse]]:
-        """GenerateJob asks the evaluator to generate the job shape for a path."""
+        """Generates a concrete job shape for either:
+        - an exported top-level job (`name`), or
+        - an inline graph-scoped job (`path`).
+
+        During this call, the evaluator registers jobs/steps/dependencies by calling GraphMonitor.
+        No steps are executed here; this is shape/materialization only.
+        """
 
     
     def GenerateGraph(
@@ -330,7 +454,11 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.GenerateGraphRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GenerateNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GenerateNodeResponse]]:
-        """GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path."""
+        """Generates the concrete graph shape for `path`.
+
+        During this call, the evaluator registers graph children (triggers/jobs/subgraphs) by
+        calling GraphMonitor. This call does not execute steps.
+        """
 
     
     def RunSensor(
@@ -338,7 +466,13 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.RunSensorRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.RunSensorResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RunSensorResponse]]:
-        """RunSensor executes a sensor poll function and returns fire/skip plus cursor data."""
+        """Executes one sensor poll cycle.
+
+        The scheduler supplies the persisted cursor, and the evaluator returns:
+        - whether to fire an execution,
+        - the next cursor to persist,
+        - and optional emitted event payload.
+        """
 
     
     def RunStep(
@@ -346,7 +480,10 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.RunStepRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.RunStepResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RunStepResponse]]:
-        """RunStep executes a single step and returns a PropertyValue-compatible result."""
+        """Executes one concrete step instance identified by `path`.
+
+        This is the unit of work the scheduler retries when step-level retry policy allows.
+        """
 
     
     def ResolveJobResult(
@@ -354,7 +491,12 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.ResolveJobResultRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.ResolveJobResultResponse, collections.abc.Awaitable[pulumi.workflow_pb2.ResolveJobResultResponse]]:
-        """ResolveJobResult evaluates and returns the resolved result of a job's Output[T]."""
+        """Evaluates and returns the resolved value of a job's declared Output[T] result expression.
+
+        This is intentionally separate from RunStep:
+        - RunStep yields per-step outputs.
+        - ResolveJobResult yields the overall job output value after all required steps finish.
+        """
 
     
     def RunTriggerMock(
@@ -362,7 +504,10 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.RunTriggerMockRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.RunTriggerMockResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RunTriggerMockResponse]]:
-        """RunTriggerMock executes a trigger mock function and returns a mock output value."""
+        """Executes a trigger's mock function for scheduler-side simulation/testing.
+
+        Args are scheduler-provided string inputs interpreted by trigger-specific logic.
+        """
 
     
     def RunFilter(
@@ -370,7 +515,11 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.RunFilterRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.RunFilterResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RunFilterResponse]]:
-        """RunFilter executes a trigger filter and returns pass/fail."""
+        """Evaluates a filter callback for a previously registered node path.
+
+        Used for trigger/job/step filter semantics. The scheduler is responsible for deciding
+        when to call it and what value to pass.
+        """
 
     
     def RunOnError(
@@ -378,13 +527,19 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         request: pulumi.workflow_pb2.RunOnErrorRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.RunOnErrorResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RunOnErrorResponse]]:
-        """RunOnError executes a node's on-error callback and returns retry behavior."""
+        """Executes a node-level on-error callback and returns retry guidance.
+
+        The scheduler still decides max attempts and retry timing policy; this RPC returns
+        evaluator/user-code intent for the current failure history.
+        """
 
 def add_WorkflowEvaluatorServicer_to_server(servicer: WorkflowEvaluatorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
 
 class GraphMonitorStub:
-    """GraphMonitor is called while evaluating a concrete graph execution/generation.
-    It records the graph shape for that evaluation and resolves prior node outputs.
+    """GraphMonitor is the scheduler-side callback service used during `GenerateGraph`/`GenerateJob`.
+
+    The evaluator calls this service to register concrete nodes discovered during generation.
+    Registration order is meaningful for execution ordering semantics where applicable.
     """
 
     def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
@@ -392,60 +547,74 @@ class GraphMonitorStub:
         pulumi.workflow_pb2.RegisterTriggerRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
+    """Registers a trigger node at a concrete path."""
 
     RegisterSensor: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RegisterSensorRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
+    """Registers a sensor node at a concrete path."""
 
     RegisterJob: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RegisterJobRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
+    """Registers a job node at a concrete path."""
 
     RegisterGraph: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RegisterGraphRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
+    """Registers a graph/subgraph node at a concrete path."""
 
     RegisterStep: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RegisterStepRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
+    """Registers a step node under a concrete job path."""
 
 class GraphMonitorAsyncStub:
-    """GraphMonitor is called while evaluating a concrete graph execution/generation.
-    It records the graph shape for that evaluation and resolves prior node outputs.
+    """GraphMonitor is the scheduler-side callback service used during `GenerateGraph`/`GenerateJob`.
+
+    The evaluator calls this service to register concrete nodes discovered during generation.
+    Registration order is meaningful for execution ordering semantics where applicable.
     """
 
     RegisterTrigger: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RegisterTriggerRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
+    """Registers a trigger node at a concrete path."""
 
     RegisterSensor: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RegisterSensorRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
+    """Registers a sensor node at a concrete path."""
 
     RegisterJob: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RegisterJobRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
+    """Registers a job node at a concrete path."""
 
     RegisterGraph: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RegisterGraphRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
+    """Registers a graph/subgraph node at a concrete path."""
 
     RegisterStep: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.RegisterStepRequest,
         pulumi.workflow_pb2.RegisterNodeResponse,
     ]
+    """Registers a step node under a concrete job path."""
 
 class GraphMonitorServicer(metaclass=abc.ABCMeta):
-    """GraphMonitor is called while evaluating a concrete graph execution/generation.
-    It records the graph shape for that evaluation and resolves prior node outputs.
+    """GraphMonitor is the scheduler-side callback service used during `GenerateGraph`/`GenerateJob`.
+
+    The evaluator calls this service to register concrete nodes discovered during generation.
+    Registration order is meaningful for execution ordering semantics where applicable.
     """
 
     
@@ -453,34 +622,39 @@ class GraphMonitorServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.workflow_pb2.RegisterTriggerRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]: ...
+    ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]:
+        """Registers a trigger node at a concrete path."""
 
     
     def RegisterSensor(
         self,
         request: pulumi.workflow_pb2.RegisterSensorRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]: ...
+    ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]:
+        """Registers a sensor node at a concrete path."""
 
     
     def RegisterJob(
         self,
         request: pulumi.workflow_pb2.RegisterJobRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]: ...
+    ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]:
+        """Registers a job node at a concrete path."""
 
     
     def RegisterGraph(
         self,
         request: pulumi.workflow_pb2.RegisterGraphRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]: ...
+    ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]:
+        """Registers a graph/subgraph node at a concrete path."""
 
     
     def RegisterStep(
         self,
         request: pulumi.workflow_pb2.RegisterStepRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]: ...
+    ) -> typing.Union[pulumi.workflow_pb2.RegisterNodeResponse, collections.abc.Awaitable[pulumi.workflow_pb2.RegisterNodeResponse]]:
+        """Registers a step node under a concrete job path."""
 
 def add_GraphMonitorServicer_to_server(servicer: GraphMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

@@ -428,8 +428,17 @@ function deserialize_pulumirpc_WorkflowHandshakeResponse(buffer_arg) {
 }
 
 
-// WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
-// schema metadata and execute/materialize specific workflow callable nodes.
+// WorkflowEvaluator is the execution-side contract implemented by workflow language hosts/plugins.
+//
+// A scheduler/engine uses this service in three phases:
+// 1. Handshake and schema discovery (`Get*` methods).
+// 2. Shape generation (`GenerateGraph` / `GenerateJob`) while the plugin calls back into GraphMonitor.
+// 3. Runtime execution (`Run*` methods), including individual step execution and final job result resolution.
+//
+// The design is intentionally incremental:
+// - The scheduler does not fetch "everything" up front.
+// - The evaluator materializes only the graph/job currently being examined.
+// - Step execution and final job output evaluation are separate operations.
 var WorkflowEvaluatorService = exports.WorkflowEvaluatorService = {
   // `Handshake` is the first call made by the engine to a workflow evaluator. It is used to
 // pass the engine's address to the evaluator so that it may establish its own connections
@@ -447,6 +456,9 @@ handshake: {
     responseDeserialize: deserialize_pulumirpc_WorkflowHandshakeResponse,
   },
   // Returns high-level package metadata (name/version/display name/etc).
+//
+// This is analogous to package identity APIs in provider/language protocols and is expected
+// to be stable for a plugin process lifetime.
 getPackageInfo: {
     path: '/pulumirpc.WorkflowEvaluator/GetPackageInfo',
     requestStream: false,
@@ -459,6 +471,8 @@ getPackageInfo: {
     responseDeserialize: deserialize_pulumirpc_GetPackageInfoResponse,
   },
   // Returns the list of exported graph tokens.
+//
+// This should include only top-level exported graphs, not inline subgraphs.
 getGraphs: {
     path: '/pulumirpc.WorkflowEvaluator/GetGraphs',
     requestStream: false,
@@ -470,7 +484,7 @@ getGraphs: {
     responseSerialize: serialize_pulumirpc_GetGraphsResponse,
     responseDeserialize: deserialize_pulumirpc_GetGraphsResponse,
   },
-  // Returns the schema for one exported graph.
+  // Returns schema metadata for one exported graph token.
 getGraph: {
     path: '/pulumirpc.WorkflowEvaluator/GetGraph',
     requestStream: false,
@@ -494,7 +508,7 @@ getTriggers: {
     responseSerialize: serialize_pulumirpc_GetTriggersResponse,
     responseDeserialize: deserialize_pulumirpc_GetTriggersResponse,
   },
-  // Returns the schema for one exported trigger.
+  // Returns schema metadata for one exported trigger token.
 getTrigger: {
     path: '/pulumirpc.WorkflowEvaluator/GetTrigger',
     requestStream: false,
@@ -506,7 +520,7 @@ getTrigger: {
     responseSerialize: serialize_pulumirpc_GetTriggerResponse,
     responseDeserialize: deserialize_pulumirpc_GetTriggerResponse,
   },
-  // Returns the list of exported job tokens.
+  // Returns the list of exported top-level job tokens.
 getJobs: {
     path: '/pulumirpc.WorkflowEvaluator/GetJobs',
     requestStream: false,
@@ -518,7 +532,7 @@ getJobs: {
     responseSerialize: serialize_pulumirpc_GetJobsResponse,
     responseDeserialize: deserialize_pulumirpc_GetJobsResponse,
   },
-  // Returns the schema for one exported job.
+  // Returns schema metadata for one exported job token.
 getJob: {
     path: '/pulumirpc.WorkflowEvaluator/GetJob',
     requestStream: false,
@@ -530,7 +544,12 @@ getJob: {
     responseSerialize: serialize_pulumirpc_GetJobResponse,
     responseDeserialize: deserialize_pulumirpc_GetJobResponse,
   },
-  // GenerateJob asks the evaluator to generate the job shape for a path.
+  // Generates a concrete job shape for either:
+// - an exported top-level job (`name`), or
+// - an inline graph-scoped job (`path`).
+//
+// During this call, the evaluator registers jobs/steps/dependencies by calling GraphMonitor.
+// No steps are executed here; this is shape/materialization only.
 generateJob: {
     path: '/pulumirpc.WorkflowEvaluator/GenerateJob',
     requestStream: false,
@@ -542,7 +561,10 @@ generateJob: {
     responseSerialize: serialize_pulumirpc_GenerateNodeResponse,
     responseDeserialize: deserialize_pulumirpc_GenerateNodeResponse,
   },
-  // GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path.
+  // Generates the concrete graph shape for `path`.
+//
+// During this call, the evaluator registers graph children (triggers/jobs/subgraphs) by
+// calling GraphMonitor. This call does not execute steps.
 generateGraph: {
     path: '/pulumirpc.WorkflowEvaluator/GenerateGraph',
     requestStream: false,
@@ -554,7 +576,12 @@ generateGraph: {
     responseSerialize: serialize_pulumirpc_GenerateNodeResponse,
     responseDeserialize: deserialize_pulumirpc_GenerateNodeResponse,
   },
-  // RunSensor executes a sensor poll function and returns fire/skip plus cursor data.
+  // Executes one sensor poll cycle.
+//
+// The scheduler supplies the persisted cursor, and the evaluator returns:
+// - whether to fire an execution,
+// - the next cursor to persist,
+// - and optional emitted event payload.
 runSensor: {
     path: '/pulumirpc.WorkflowEvaluator/RunSensor',
     requestStream: false,
@@ -566,7 +593,9 @@ runSensor: {
     responseSerialize: serialize_pulumirpc_RunSensorResponse,
     responseDeserialize: deserialize_pulumirpc_RunSensorResponse,
   },
-  // RunStep executes a single step and returns a PropertyValue-compatible result.
+  // Executes one concrete step instance identified by `path`.
+//
+// This is the unit of work the scheduler retries when step-level retry policy allows.
 runStep: {
     path: '/pulumirpc.WorkflowEvaluator/RunStep',
     requestStream: false,
@@ -578,7 +607,11 @@ runStep: {
     responseSerialize: serialize_pulumirpc_RunStepResponse,
     responseDeserialize: deserialize_pulumirpc_RunStepResponse,
   },
-  // ResolveJobResult evaluates and returns the resolved result of a job's Output[T].
+  // Evaluates and returns the resolved value of a job's declared Output[T] result expression.
+//
+// This is intentionally separate from RunStep:
+// - RunStep yields per-step outputs.
+// - ResolveJobResult yields the overall job output value after all required steps finish.
 resolveJobResult: {
     path: '/pulumirpc.WorkflowEvaluator/ResolveJobResult',
     requestStream: false,
@@ -590,7 +623,9 @@ resolveJobResult: {
     responseSerialize: serialize_pulumirpc_ResolveJobResultResponse,
     responseDeserialize: deserialize_pulumirpc_ResolveJobResultResponse,
   },
-  // RunTriggerMock executes a trigger mock function and returns a mock output value.
+  // Executes a trigger's mock function for scheduler-side simulation/testing.
+//
+// Args are scheduler-provided string inputs interpreted by trigger-specific logic.
 runTriggerMock: {
     path: '/pulumirpc.WorkflowEvaluator/RunTriggerMock',
     requestStream: false,
@@ -602,7 +637,10 @@ runTriggerMock: {
     responseSerialize: serialize_pulumirpc_RunTriggerMockResponse,
     responseDeserialize: deserialize_pulumirpc_RunTriggerMockResponse,
   },
-  // RunFilter executes a trigger filter and returns pass/fail.
+  // Evaluates a filter callback for a previously registered node path.
+//
+// Used for trigger/job/step filter semantics. The scheduler is responsible for deciding
+// when to call it and what value to pass.
 runFilter: {
     path: '/pulumirpc.WorkflowEvaluator/RunFilter',
     requestStream: false,
@@ -614,7 +652,10 @@ runFilter: {
     responseSerialize: serialize_pulumirpc_RunFilterResponse,
     responseDeserialize: deserialize_pulumirpc_RunFilterResponse,
   },
-  // RunOnError executes a node's on-error callback and returns retry behavior.
+  // Executes a node-level on-error callback and returns retry guidance.
+//
+// The scheduler still decides max attempts and retry timing policy; this RPC returns
+// evaluator/user-code intent for the current failure history.
 runOnError: {
     path: '/pulumirpc.WorkflowEvaluator/RunOnError',
     requestStream: false,
@@ -629,10 +670,13 @@ runOnError: {
 };
 
 exports.WorkflowEvaluatorClient = grpc.makeGenericClientConstructor(WorkflowEvaluatorService, 'WorkflowEvaluator');
-// GraphMonitor is called while evaluating a concrete graph execution/generation.
-// It records the graph shape for that evaluation and resolves prior node outputs.
+// GraphMonitor is the scheduler-side callback service used during `GenerateGraph`/`GenerateJob`.
+//
+// The evaluator calls this service to register concrete nodes discovered during generation.
+// Registration order is meaningful for execution ordering semantics where applicable.
 var GraphMonitorService = exports.GraphMonitorService = {
-  registerTrigger: {
+  // Registers a trigger node at a concrete path.
+registerTrigger: {
     path: '/pulumirpc.GraphMonitor/RegisterTrigger',
     requestStream: false,
     responseStream: false,
@@ -643,7 +687,8 @@ var GraphMonitorService = exports.GraphMonitorService = {
     responseSerialize: serialize_pulumirpc_RegisterNodeResponse,
     responseDeserialize: deserialize_pulumirpc_RegisterNodeResponse,
   },
-  registerSensor: {
+  // Registers a sensor node at a concrete path.
+registerSensor: {
     path: '/pulumirpc.GraphMonitor/RegisterSensor',
     requestStream: false,
     responseStream: false,
@@ -654,7 +699,8 @@ var GraphMonitorService = exports.GraphMonitorService = {
     responseSerialize: serialize_pulumirpc_RegisterNodeResponse,
     responseDeserialize: deserialize_pulumirpc_RegisterNodeResponse,
   },
-  registerJob: {
+  // Registers a job node at a concrete path.
+registerJob: {
     path: '/pulumirpc.GraphMonitor/RegisterJob',
     requestStream: false,
     responseStream: false,
@@ -665,7 +711,8 @@ var GraphMonitorService = exports.GraphMonitorService = {
     responseSerialize: serialize_pulumirpc_RegisterNodeResponse,
     responseDeserialize: deserialize_pulumirpc_RegisterNodeResponse,
   },
-  registerGraph: {
+  // Registers a graph/subgraph node at a concrete path.
+registerGraph: {
     path: '/pulumirpc.GraphMonitor/RegisterGraph',
     requestStream: false,
     responseStream: false,
@@ -676,7 +723,8 @@ var GraphMonitorService = exports.GraphMonitorService = {
     responseSerialize: serialize_pulumirpc_RegisterNodeResponse,
     responseDeserialize: deserialize_pulumirpc_RegisterNodeResponse,
   },
-  registerStep: {
+  // Registers a step node under a concrete job path.
+registerStep: {
     path: '/pulumirpc.GraphMonitor/RegisterStep',
     requestStream: false,
     responseStream: false,

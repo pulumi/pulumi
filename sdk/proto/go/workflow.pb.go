@@ -406,10 +406,13 @@ func (x *TypeReference) GetToken() string {
 }
 
 type PackageInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	DisplayName   string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Package name (e.g. "example").
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Semantic version string for this package (e.g. "1.2.3").
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	// Human-readable name for UIs/CLIs.
+	DisplayName   string `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -466,11 +469,15 @@ func (x *PackageInfo) GetDisplayName() string {
 }
 
 type GraphInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	InputType     *TypeReference         `protobuf:"bytes,2,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
-	OutputType    *TypeReference         `protobuf:"bytes,3,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
-	HasOnError    bool                   `protobuf:"varint,4,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fully-qualified graph token.
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	// Type token for graph input shape.
+	InputType *TypeReference `protobuf:"bytes,2,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
+	// Type token for graph output shape.
+	OutputType *TypeReference `protobuf:"bytes,3,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
+	// Whether graph defines an on-error callback.
+	HasOnError    bool `protobuf:"varint,4,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -534,11 +541,15 @@ func (x *GraphInfo) GetHasOnError() bool {
 }
 
 type JobInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	InputType     *TypeReference         `protobuf:"bytes,2,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
-	OutputType    *TypeReference         `protobuf:"bytes,3,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
-	HasOnError    bool                   `protobuf:"varint,4,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fully-qualified job token.
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	// Type token for job input shape.
+	InputType *TypeReference `protobuf:"bytes,2,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
+	// Type token for job output shape.
+	OutputType *TypeReference `protobuf:"bytes,3,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
+	// Whether job defines an on-error callback.
+	HasOnError    bool `protobuf:"varint,4,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -638,8 +649,9 @@ func (*GetPackageInfoRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetPackageInfoResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Package       *PackageInfo           `protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Package metadata.
+	Package       *PackageInfo `protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -718,8 +730,9 @@ func (*GetGraphsRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetGraphsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Graphs        []*GraphInfo           `protobuf:"bytes,1,rep,name=graphs,proto3" json:"graphs,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Exported graph definitions.
+	Graphs        []*GraphInfo `protobuf:"bytes,1,rep,name=graphs,proto3" json:"graphs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -762,8 +775,9 @@ func (x *GetGraphsResponse) GetGraphs() []*GraphInfo {
 }
 
 type GetGraphRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fully-qualified graph token to fetch.
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -806,8 +820,9 @@ func (x *GetGraphRequest) GetToken() string {
 }
 
 type GetGraphResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Graph         *GraphInfo             `protobuf:"bytes,1,opt,name=graph,proto3" json:"graph,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Graph metadata for the requested token.
+	Graph         *GraphInfo `protobuf:"bytes,1,opt,name=graph,proto3" json:"graph,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -886,8 +901,9 @@ func (*GetTriggersRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetTriggersResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Triggers      []string               `protobuf:"bytes,1,rep,name=triggers,proto3" json:"triggers,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fully-qualified trigger tokens.
+	Triggers      []string `protobuf:"bytes,1,rep,name=triggers,proto3" json:"triggers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -930,8 +946,9 @@ func (x *GetTriggersResponse) GetTriggers() []string {
 }
 
 type GetTriggerRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fully-qualified trigger token to fetch.
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -974,9 +991,11 @@ func (x *GetTriggerRequest) GetToken() string {
 }
 
 type GetTriggerResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	InputType     *TypeReference         `protobuf:"bytes,1,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
-	OutputType    *TypeReference         `protobuf:"bytes,2,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Type token for trigger input args shape.
+	InputType *TypeReference `protobuf:"bytes,1,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
+	// Type token for trigger output/event shape.
+	OutputType    *TypeReference `protobuf:"bytes,2,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1062,8 +1081,9 @@ func (*GetJobsRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetJobsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Jobs          []*JobInfo             `protobuf:"bytes,1,rep,name=jobs,proto3" json:"jobs,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Exported job definitions.
+	Jobs          []*JobInfo `protobuf:"bytes,1,rep,name=jobs,proto3" json:"jobs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1106,8 +1126,9 @@ func (x *GetJobsResponse) GetJobs() []*JobInfo {
 }
 
 type GetJobRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fully-qualified job token to fetch.
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1150,8 +1171,9 @@ func (x *GetJobRequest) GetToken() string {
 }
 
 type GetJobResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Job           *JobInfo               `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Job metadata for the requested token.
+	Job           *JobInfo `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1342,11 +1364,15 @@ func (*DependencyTerm_Path) isDependencyTerm_Term() {}
 
 func (*DependencyTerm_Expression) isDependencyTerm_Term() {}
 
-// DependencyExpression supports OR/strict compositions of dependencies.
+// DependencyExpression describes readiness rules over dependency paths/expressions.
+//
+// Schedulers evaluate this expression to decide when a node is runnable.
 type DependencyExpression struct {
-	state         protoimpl.MessageState        `protogen:"open.v1"`
-	Operator      DependencyExpression_Operator `protobuf:"varint,1,opt,name=operator,proto3,enum=pulumirpc.DependencyExpression_Operator" json:"operator,omitempty"`
-	Terms         []*DependencyTerm             `protobuf:"bytes,2,rep,name=terms,proto3" json:"terms,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Operator applied to all terms below.
+	Operator DependencyExpression_Operator `protobuf:"varint,1,opt,name=operator,proto3,enum=pulumirpc.DependencyExpression_Operator" json:"operator,omitempty"`
+	// Child terms participating in this expression.
+	Terms         []*DependencyTerm `protobuf:"bytes,2,rep,name=terms,proto3" json:"terms,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1396,11 +1422,15 @@ func (x *DependencyExpression) GetTerms() []*DependencyTerm {
 }
 
 type PlatformRequirements struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Os            string                 `protobuf:"bytes,1,opt,name=os,proto3" json:"os,omitempty"`
-	Arch          string                 `protobuf:"bytes,2,opt,name=arch,proto3" json:"arch,omitempty"`
-	MinVcpu       int32                  `protobuf:"varint,3,opt,name=min_vcpu,json=minVcpu,proto3" json:"min_vcpu,omitempty"`
-	MinMemoryGib  int32                  `protobuf:"varint,4,opt,name=min_memory_gib,json=minMemoryGib,proto3" json:"min_memory_gib,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Preferred/required operating system.
+	Os string `protobuf:"bytes,1,opt,name=os,proto3" json:"os,omitempty"`
+	// Preferred/required architecture.
+	Arch string `protobuf:"bytes,2,opt,name=arch,proto3" json:"arch,omitempty"`
+	// Minimum virtual CPUs required.
+	MinVcpu int32 `protobuf:"varint,3,opt,name=min_vcpu,json=minVcpu,proto3" json:"min_vcpu,omitempty"`
+	// Minimum memory in GiB required.
+	MinMemoryGib  int32 `protobuf:"varint,4,opt,name=min_memory_gib,json=minMemoryGib,proto3" json:"min_memory_gib,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1464,9 +1494,12 @@ func (x *PlatformRequirements) GetMinMemoryGib() int32 {
 }
 
 type PlatformSelector struct {
-	state         protoimpl.MessageState       `protogen:"open.v1"`
-	Target        string                       `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
-	Requirements  *PlatformRequirements        `protobuf:"bytes,2,opt,name=requirements,proto3" json:"requirements,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Named scheduler target/pool (if supported by runtime).
+	Target string `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
+	// Hardware/OS constraints for matching.
+	Requirements *PlatformRequirements `protobuf:"bytes,2,opt,name=requirements,proto3" json:"requirements,omitempty"`
+	// Matching strategy for target/requirements.
 	MatchPolicy   PlatformSelector_MatchPolicy `protobuf:"varint,3,opt,name=match_policy,json=matchPolicy,proto3,enum=pulumirpc.PlatformSelector_MatchPolicy" json:"match_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1587,18 +1620,23 @@ func (x *ErrorRecord) GetCategory() string {
 }
 
 type GenerateJobRequest struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Context *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	// Name of an exported top-level job.
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context for this materialization.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Name/token of an exported top-level job.
+	// Must be set when generating a top-level exported job.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// Full path to a graph-scoped inline job (for example: graph/jobs/main).
-	// This is empty when generating an exported top-level job.
-	Path                string          `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
-	GraphMonitorAddress string          `protobuf:"bytes,4,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
-	InputPath           string          `protobuf:"bytes,5,opt,name=input_path,json=inputPath,proto3" json:"input_path,omitempty"`
-	InputValue          *structpb.Value `protobuf:"bytes,6,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Must be set when generating an inline graph job.
+	Path string `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
+	// Scheduler-hosted GraphMonitor address used for node registration callbacks.
+	GraphMonitorAddress string `protobuf:"bytes,4,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
+	// Path whose value should be treated as this evaluation's resolved input source.
+	InputPath string `protobuf:"bytes,5,opt,name=input_path,json=inputPath,proto3" json:"input_path,omitempty"`
+	// Resolved input value (PropertyValue-encoded) associated with `input_path`.
+	InputValue    *structpb.Value `protobuf:"bytes,6,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GenerateJobRequest) Reset() {
@@ -1674,10 +1712,13 @@ func (x *GenerateJobRequest) GetInputValue() *structpb.Value {
 }
 
 type GenerateGraphRequest struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	Context             *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path                string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	GraphMonitorAddress string                 `protobuf:"bytes,3,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context for this materialization.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Concrete graph/subgraph path to generate.
+	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	// Scheduler-hosted GraphMonitor address used for node registration callbacks.
+	GraphMonitorAddress string `protobuf:"bytes,3,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1734,8 +1775,9 @@ func (x *GenerateGraphRequest) GetGraphMonitorAddress() string {
 }
 
 type GenerateNodeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Error         *WorkflowError         `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Non-empty on generation/materialization failure.
+	Error         *WorkflowError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1778,9 +1820,11 @@ func (x *GenerateNodeResponse) GetError() *WorkflowError {
 }
 
 type RunSensorRequest struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Context *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path    string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Sensor node path.
+	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	// Last persisted sensor cursor.
 	Cursor        *structpb.Value `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1920,9 +1964,11 @@ func (x *RunSensorResponse) GetNextInterval() string {
 }
 
 type RunStepRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Step node path.
+	Path          string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1972,9 +2018,11 @@ func (x *RunStepRequest) GetPath() string {
 }
 
 type RunStepResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Error         *WorkflowError         `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	Result        *structpb.Value        `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Non-empty on step execution failure.
+	Error *WorkflowError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	// Step return value encoded as PropertyValue.
+	Result        *structpb.Value `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2024,9 +2072,11 @@ func (x *RunStepResponse) GetResult() *structpb.Value {
 }
 
 type ResolveJobResultRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Job path whose final Output result should be resolved.
+	Path          string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2076,9 +2126,11 @@ func (x *ResolveJobResultRequest) GetPath() string {
 }
 
 type ResolveJobResultResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Error         *WorkflowError         `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	Result        *structpb.Value        `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Non-empty on job result resolution failure.
+	Error *WorkflowError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	// Resolved job output encoded as PropertyValue.
+	Result        *structpb.Value `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2128,9 +2180,11 @@ func (x *ResolveJobResultResponse) GetResult() *structpb.Value {
 }
 
 type RunTriggerMockRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	Args          []string               `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fully-qualified trigger token.
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	// Trigger-specific string arguments.
+	Args          []string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2180,8 +2234,9 @@ func (x *RunTriggerMockRequest) GetArgs() []string {
 }
 
 type RunTriggerMockResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Value         *structpb.Struct       `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Structured trigger output payload.
+	Value         *structpb.Struct `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2224,9 +2279,11 @@ func (x *RunTriggerMockResponse) GetValue() *structpb.Struct {
 }
 
 type RunFilterRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
-	Value         *structpb.Value        `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Node path whose filter callback should be evaluated.
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Candidate input value supplied to the filter.
+	Value         *structpb.Value `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2320,10 +2377,13 @@ func (x *RunFilterResponse) GetPass() bool {
 }
 
 type RunOnErrorRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Errors        []*ErrorRecord         `protobuf:"bytes,3,rep,name=errors,proto3" json:"errors,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Node path whose on-error callback should be evaluated.
+	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	// Ordered failure history (oldest -> newest).
+	Errors        []*ErrorRecord `protobuf:"bytes,3,rep,name=errors,proto3" json:"errors,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2442,9 +2502,11 @@ func (x *RunOnErrorResponse) GetRetryAfter() string {
 }
 
 type RegisterTriggerRequest struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Context *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path    string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context for this registration.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Concrete trigger path in the generated graph.
+	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	// Trigger type token, e.g. cloud:github:push.
 	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
 	// Scheduler-owned declarative trigger specification.
@@ -2521,9 +2583,11 @@ func (x *RegisterTriggerRequest) GetHasFilter() bool {
 }
 
 type RegisterSensorRequest struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Context *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path    string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context for this registration.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Concrete sensor path in the generated graph.
+	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	// Declarative sensor polling specification.
 	Spec *structpb.Struct `protobuf:"bytes,3,opt,name=spec,proto3" json:"spec,omitempty"`
 	// Nominal polling interval used by the scheduler.
@@ -2591,12 +2655,17 @@ func (x *RegisterSensorRequest) GetInterval() string {
 }
 
 type RegisterJobRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Dependencies  *DependencyExpression  `protobuf:"bytes,3,opt,name=dependencies,proto3" json:"dependencies,omitempty"`
-	Platform      *PlatformSelector      `protobuf:"bytes,4,opt,name=platform,proto3" json:"platform,omitempty"`
-	HasOnError    bool                   `protobuf:"varint,5,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context for this registration.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Concrete job path in the generated graph.
+	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	// Job readiness dependencies.
+	Dependencies *DependencyExpression `protobuf:"bytes,3,opt,name=dependencies,proto3" json:"dependencies,omitempty"`
+	// Optional platform selector for scheduling placement.
+	Platform *PlatformSelector `protobuf:"bytes,4,opt,name=platform,proto3" json:"platform,omitempty"`
+	// Whether this job has an on-error callback callable via RunOnError.
+	HasOnError    bool `protobuf:"varint,5,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2667,11 +2736,15 @@ func (x *RegisterJobRequest) GetHasOnError() bool {
 }
 
 type RegisterGraphRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
-	Dependencies  *DependencyExpression  `protobuf:"bytes,3,opt,name=dependencies,proto3" json:"dependencies,omitempty"`
-	HasOnError    bool                   `protobuf:"varint,4,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context for this registration.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Concrete graph/subgraph path.
+	Path string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	// Graph readiness dependencies.
+	Dependencies *DependencyExpression `protobuf:"bytes,3,opt,name=dependencies,proto3" json:"dependencies,omitempty"`
+	// Whether this graph has an on-error callback callable via RunOnError.
+	HasOnError    bool `protobuf:"varint,4,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2735,12 +2808,17 @@ func (x *RegisterGraphRequest) GetHasOnError() bool {
 }
 
 type RegisterStepRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Context       *WorkflowContext       `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Job           string                 `protobuf:"bytes,3,opt,name=job,proto3" json:"job,omitempty"`
-	Dependencies  *DependencyExpression  `protobuf:"bytes,4,opt,name=dependencies,proto3" json:"dependencies,omitempty"`
-	HasOnError    bool                   `protobuf:"varint,5,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Execution context for this registration.
+	Context *WorkflowContext `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	// Step name relative to its parent job.
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Parent job path.
+	Job string `protobuf:"bytes,3,opt,name=job,proto3" json:"job,omitempty"`
+	// Step readiness dependencies.
+	Dependencies *DependencyExpression `protobuf:"bytes,4,opt,name=dependencies,proto3" json:"dependencies,omitempty"`
+	// Whether this step has an on-error callback callable via RunOnError.
+	HasOnError    bool `protobuf:"varint,5,opt,name=has_on_error,json=hasOnError,proto3" json:"has_on_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -16,6 +16,7 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -111,4 +112,77 @@ func TestRunObservedStepsAppliesStepFilters(t *testing.T) {
 	if results[0].Path != "/main/steps/first" {
 		t.Fatalf("unexpected result path: %q", results[0].Path)
 	}
+}
+
+func TestResolveObservedJobResult(t *testing.T) {
+	t.Parallel()
+
+	workflowPlugin := &plugin.MockWorkflow{
+		ResolveJobResultF: func(_ context.Context, req *pulumirpc.ResolveJobResultRequest) (*pulumirpc.ResolveJobResultResponse, error) {
+			if req.GetPath() != "example:index:job" {
+				t.Fatalf("unexpected resolve path: %q", req.GetPath())
+			}
+			return &pulumirpc.ResolveJobResultResponse{
+				Result: structpb.NewStringValue("done"),
+			}, nil
+		},
+	}
+
+	resultJSON, err := resolveObservedJobResult(
+		t.Context(),
+		workflowPlugin,
+		&pulumirpc.WorkflowContext{ExecutionId: "test"},
+		"example:index:job",
+	)
+	if err != nil {
+		t.Fatalf("resolveObservedJobResult failed: %v", err)
+	}
+	if resultJSON != `"done"` {
+		t.Fatalf("unexpected result json: %q", resultJSON)
+	}
+}
+
+func TestResolveObservedJobResultErrors(t *testing.T) {
+	t.Parallel()
+
+	t.Run("grpc error", func(t *testing.T) {
+		t.Parallel()
+		workflowPlugin := &plugin.MockWorkflow{
+			ResolveJobResultF: func(context.Context, *pulumirpc.ResolveJobResultRequest) (*pulumirpc.ResolveJobResultResponse, error) {
+				return nil, errors.New("boom")
+			},
+		}
+		_, err := resolveObservedJobResult(t.Context(), workflowPlugin, &pulumirpc.WorkflowContext{}, "job")
+		if err == nil {
+			t.Fatalf("expected resolveObservedJobResult to fail")
+		}
+	})
+
+	t.Run("workflow error", func(t *testing.T) {
+		t.Parallel()
+		workflowPlugin := &plugin.MockWorkflow{
+			ResolveJobResultF: func(context.Context, *pulumirpc.ResolveJobResultRequest) (*pulumirpc.ResolveJobResultResponse, error) {
+				return &pulumirpc.ResolveJobResultResponse{
+					Error: &pulumirpc.WorkflowError{Reason: "failed"},
+				}, nil
+			},
+		}
+		_, err := resolveObservedJobResult(t.Context(), workflowPlugin, &pulumirpc.WorkflowContext{}, "job")
+		if err == nil {
+			t.Fatalf("expected resolveObservedJobResult to fail")
+		}
+	})
+
+	t.Run("empty result", func(t *testing.T) {
+		t.Parallel()
+		workflowPlugin := &plugin.MockWorkflow{
+			ResolveJobResultF: func(context.Context, *pulumirpc.ResolveJobResultRequest) (*pulumirpc.ResolveJobResultResponse, error) {
+				return &pulumirpc.ResolveJobResultResponse{}, nil
+			},
+		}
+		_, err := resolveObservedJobResult(t.Context(), workflowPlugin, &pulumirpc.WorkflowContext{}, "job")
+		if err == nil {
+			t.Fatalf("expected resolveObservedJobResult to fail")
+		}
+	})
 }

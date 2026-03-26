@@ -20,8 +20,17 @@ package pulumirpc;
 
 option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 
-// WorkflowEvaluator is called by a scheduler/coordinator to incrementally discover
-// schema metadata and execute/materialize specific workflow callable nodes.
+// WorkflowEvaluator is the execution-side contract implemented by workflow language hosts/plugins.
+//
+// A scheduler/engine uses this service in three phases:
+// 1. Handshake and schema discovery (`Get*` methods).
+// 2. Shape generation (`GenerateGraph` / `GenerateJob`) while the plugin calls back into GraphMonitor.
+// 3. Runtime execution (`Run*` methods), including individual step execution and final job result resolution.
+//
+// The design is intentionally incremental:
+// - The scheduler does not fetch "everything" up front.
+// - The evaluator materializes only the graph/job currently being examined.
+// - Step execution and final job output evaluation are separate operations.
 service WorkflowEvaluator {
     // `Handshake` is the first call made by the engine to a workflow evaluator. It is used to
     // pass the engine's address to the evaluator so that it may establish its own connections
@@ -30,58 +39,97 @@ service WorkflowEvaluator {
     rpc Handshake(WorkflowHandshakeRequest) returns (WorkflowHandshakeResponse) {}
 
     // Returns high-level package metadata (name/version/display name/etc).
+    //
+    // This is analogous to package identity APIs in provider/language protocols and is expected
+    // to be stable for a plugin process lifetime.
     rpc GetPackageInfo(GetPackageInfoRequest) returns (GetPackageInfoResponse) {}
 
     // Returns the list of exported graph tokens.
+    //
+    // This should include only top-level exported graphs, not inline subgraphs.
     rpc GetGraphs(GetGraphsRequest) returns (GetGraphsResponse) {}
 
-    // Returns the schema for one exported graph.
+    // Returns schema metadata for one exported graph token.
     rpc GetGraph(GetGraphRequest) returns (GetGraphResponse) {}
 
     // Returns the list of exported trigger tokens.
     rpc GetTriggers(GetTriggersRequest) returns (GetTriggersResponse) {}
 
-    // Returns the schema for one exported trigger.
+    // Returns schema metadata for one exported trigger token.
     rpc GetTrigger(GetTriggerRequest) returns (GetTriggerResponse) {}
 
-    // Returns the list of exported job tokens.
+    // Returns the list of exported top-level job tokens.
     rpc GetJobs(GetJobsRequest) returns (GetJobsResponse) {}
 
-    // Returns the schema for one exported job.
+    // Returns schema metadata for one exported job token.
     rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
 
-    // GenerateJob asks the evaluator to generate the job shape for a path.
+    // Generates a concrete job shape for either:
+    // - an exported top-level job (`name`), or
+    // - an inline graph-scoped job (`path`).
+    //
+    // During this call, the evaluator registers jobs/steps/dependencies by calling GraphMonitor.
+    // No steps are executed here; this is shape/materialization only.
     rpc GenerateJob(GenerateJobRequest) returns (GenerateNodeResponse) {}
 
-    // GenerateGraph asks the evaluator to generate the graph/subgraph shape for a path.
+    // Generates the concrete graph shape for `path`.
+    //
+    // During this call, the evaluator registers graph children (triggers/jobs/subgraphs) by
+    // calling GraphMonitor. This call does not execute steps.
     rpc GenerateGraph(GenerateGraphRequest) returns (GenerateNodeResponse) {}
 
-    // RunSensor executes a sensor poll function and returns fire/skip plus cursor data.
+    // Executes one sensor poll cycle.
+    //
+    // The scheduler supplies the persisted cursor, and the evaluator returns:
+    // - whether to fire an execution,
+    // - the next cursor to persist,
+    // - and optional emitted event payload.
     rpc RunSensor(RunSensorRequest) returns (RunSensorResponse) {}
 
-    // RunStep executes a single step and returns a PropertyValue-compatible result.
+    // Executes one concrete step instance identified by `path`.
+    //
+    // This is the unit of work the scheduler retries when step-level retry policy allows.
     rpc RunStep(RunStepRequest) returns (RunStepResponse) {}
 
-    // ResolveJobResult evaluates and returns the resolved result of a job's Output[T].
+    // Evaluates and returns the resolved value of a job's declared Output[T] result expression.
+    //
+    // This is intentionally separate from RunStep:
+    // - RunStep yields per-step outputs.
+    // - ResolveJobResult yields the overall job output value after all required steps finish.
     rpc ResolveJobResult(ResolveJobResultRequest) returns (ResolveJobResultResponse) {}
 
-    // RunTriggerMock executes a trigger mock function and returns a mock output value.
+    // Executes a trigger's mock function for scheduler-side simulation/testing.
+    //
+    // Args are scheduler-provided string inputs interpreted by trigger-specific logic.
     rpc RunTriggerMock(RunTriggerMockRequest) returns (RunTriggerMockResponse) {}
 
-    // RunFilter executes a trigger filter and returns pass/fail.
+    // Evaluates a filter callback for a previously registered node path.
+    //
+    // Used for trigger/job/step filter semantics. The scheduler is responsible for deciding
+    // when to call it and what value to pass.
     rpc RunFilter(RunFilterRequest) returns (RunFilterResponse) {}
 
-    // RunOnError executes a node's on-error callback and returns retry behavior.
+    // Executes a node-level on-error callback and returns retry guidance.
+    //
+    // The scheduler still decides max attempts and retry timing policy; this RPC returns
+    // evaluator/user-code intent for the current failure history.
     rpc RunOnError(RunOnErrorRequest) returns (RunOnErrorResponse) {}
 }
 
-// GraphMonitor is called while evaluating a concrete graph execution/generation.
-// It records the graph shape for that evaluation and resolves prior node outputs.
+// GraphMonitor is the scheduler-side callback service used during `GenerateGraph`/`GenerateJob`.
+//
+// The evaluator calls this service to register concrete nodes discovered during generation.
+// Registration order is meaningful for execution ordering semantics where applicable.
 service GraphMonitor {
+    // Registers a trigger node at a concrete path.
     rpc RegisterTrigger(RegisterTriggerRequest) returns (RegisterNodeResponse) {}
+    // Registers a sensor node at a concrete path.
     rpc RegisterSensor(RegisterSensorRequest) returns (RegisterNodeResponse) {}
+    // Registers a job node at a concrete path.
     rpc RegisterJob(RegisterJobRequest) returns (RegisterNodeResponse) {}
+    // Registers a graph/subgraph node at a concrete path.
     rpc RegisterGraph(RegisterGraphRequest) returns (RegisterNodeResponse) {}
+    // Registers a step node under a concrete job path.
     rpc RegisterStep(RegisterStepRequest) returns (RegisterNodeResponse) {}
 }
 
@@ -126,64 +174,86 @@ message TypeReference {
 }
 
 message PackageInfo {
+    // Package name (e.g. "example").
     string name = 1;
+    // Semantic version string for this package (e.g. "1.2.3").
     string version = 2;
+    // Human-readable name for UIs/CLIs.
     string display_name = 3;
 }
 
 message GraphInfo {
+    // Fully-qualified graph token.
     string token = 1;
+    // Type token for graph input shape.
     TypeReference input_type = 2;
+    // Type token for graph output shape.
     TypeReference output_type = 3;
+    // Whether graph defines an on-error callback.
     bool has_on_error = 4;
 }
 
 message JobInfo {
+    // Fully-qualified job token.
     string token = 1;
+    // Type token for job input shape.
     TypeReference input_type = 2;
+    // Type token for job output shape.
     TypeReference output_type = 3;
+    // Whether job defines an on-error callback.
     bool has_on_error = 4;
 }
 
 message GetPackageInfoRequest {}
 message GetPackageInfoResponse {
+    // Package metadata.
     PackageInfo package = 1;
 }
 
 message GetGraphsRequest {}
 message GetGraphsResponse {
+    // Exported graph definitions.
     repeated GraphInfo graphs = 1;
 }
 
 message GetGraphRequest {
+    // Fully-qualified graph token to fetch.
     string token = 1;
 }
 message GetGraphResponse {
+    // Graph metadata for the requested token.
     GraphInfo graph = 1;
 }
 
 message GetTriggersRequest {}
 message GetTriggersResponse {
+    // Fully-qualified trigger tokens.
     repeated string triggers = 1;
 }
 
 message GetTriggerRequest {
+    // Fully-qualified trigger token to fetch.
     string token = 1;
 }
 message GetTriggerResponse {
+    // Type token for trigger input args shape.
     TypeReference input_type = 1;
+    // Type token for trigger output/event shape.
     TypeReference output_type = 2;
 }
 
 message GetJobsRequest {}
 message GetJobsResponse {
+    // Exported job definitions.
     repeated JobInfo jobs = 1;
 }
 
 message GetJobRequest {
+    // Fully-qualified job token to fetch.
     string token = 1;
 }
 message GetJobResponse {
+    // Job metadata for the requested token.
     JobInfo job = 1;
 }
 
@@ -210,7 +280,9 @@ message DependencyTerm {
     }
 }
 
-// DependencyExpression supports OR/strict compositions of dependencies.
+// DependencyExpression describes readiness rules over dependency paths/expressions.
+//
+// Schedulers evaluate this expression to decide when a node is runnable.
 message DependencyExpression {
     enum Operator {
         OPERATOR_UNSPECIFIED = 0;
@@ -228,14 +300,20 @@ message DependencyExpression {
         OPERATOR_UNSTRICT = 4;
     }
 
+    // Operator applied to all terms below.
     Operator operator = 1;
+    // Child terms participating in this expression.
     repeated DependencyTerm terms = 2;
 }
 
 message PlatformRequirements {
+    // Preferred/required operating system.
     string os = 1;
+    // Preferred/required architecture.
     string arch = 2;
+    // Minimum virtual CPUs required.
     int32 min_vcpu = 3;
+    // Minimum memory in GiB required.
     int32 min_memory_gib = 4;
 }
 
@@ -246,8 +324,11 @@ message PlatformSelector {
         MATCH_POLICY_CLOSEST = 2;
     }
 
+    // Named scheduler target/pool (if supported by runtime).
     string target = 1;
+    // Hardware/OS constraints for matching.
     PlatformRequirements requirements = 2;
+    // Matching strategy for target/requirements.
     MatchPolicy match_policy = 3;
 }
 
@@ -263,29 +344,40 @@ message ErrorRecord {
 }
 
 message GenerateJobRequest {
+    // Execution context for this materialization.
     WorkflowContext context = 1;
-    // Name of an exported top-level job.
+    // Name/token of an exported top-level job.
+    // Must be set when generating a top-level exported job.
     string name = 2;
     // Full path to a graph-scoped inline job (for example: graph/jobs/main).
-    // This is empty when generating an exported top-level job.
+    // Must be set when generating an inline graph job.
     string path = 3;
+    // Scheduler-hosted GraphMonitor address used for node registration callbacks.
     string graph_monitor_address = 4;
+    // Path whose value should be treated as this evaluation's resolved input source.
     string input_path = 5;
+    // Resolved input value (PropertyValue-encoded) associated with `input_path`.
     google.protobuf.Value input_value = 6;
 }
 
 message GenerateGraphRequest {
+    // Execution context for this materialization.
     WorkflowContext context = 1;
+    // Concrete graph/subgraph path to generate.
     string path = 2;
+    // Scheduler-hosted GraphMonitor address used for node registration callbacks.
     string graph_monitor_address = 3;
 }
 
 message GenerateNodeResponse {
+    // Non-empty on generation/materialization failure.
     WorkflowError error = 1;
 }
 
 message RunSensorRequest {
+    // Execution context.
     WorkflowContext context = 1;
+    // Sensor node path.
     string path = 2;
 
     // Last persisted sensor cursor.
@@ -316,36 +408,49 @@ message RunSensorResponse {
 }
 
 message RunStepRequest {
+    // Execution context.
     WorkflowContext context = 1;
+    // Step node path.
     string path = 2;
 }
 
 message RunStepResponse {
+    // Non-empty on step execution failure.
     WorkflowError error = 1;
+    // Step return value encoded as PropertyValue.
     google.protobuf.Value result = 2;
 }
 
 message ResolveJobResultRequest {
+    // Execution context.
     WorkflowContext context = 1;
+    // Job path whose final Output result should be resolved.
     string path = 2;
 }
 
 message ResolveJobResultResponse {
+    // Non-empty on job result resolution failure.
     WorkflowError error = 1;
+    // Resolved job output encoded as PropertyValue.
     google.protobuf.Value result = 2;
 }
 
 message RunTriggerMockRequest {
+    // Fully-qualified trigger token.
     string token = 1;
+    // Trigger-specific string arguments.
     repeated string args = 2;
 }
 
 message RunTriggerMockResponse {
+    // Structured trigger output payload.
     google.protobuf.Struct value = 1;
 }
 
 message RunFilterRequest {
+    // Node path whose filter callback should be evaluated.
     string path = 1;
+    // Candidate input value supplied to the filter.
     google.protobuf.Value value = 2;
 }
 
@@ -354,8 +459,11 @@ message RunFilterResponse {
 }
 
 message RunOnErrorRequest {
+    // Execution context.
     WorkflowContext context = 1;
+    // Node path whose on-error callback should be evaluated.
     string path = 2;
+    // Ordered failure history (oldest -> newest).
     repeated ErrorRecord errors = 3;
 }
 
@@ -370,7 +478,9 @@ message RunOnErrorResponse {
 }
 
 message RegisterTriggerRequest {
+    // Execution context for this registration.
     WorkflowContext context = 1;
+    // Concrete trigger path in the generated graph.
     string path = 2;
 
     // Trigger type token, e.g. cloud:github:push.
@@ -384,7 +494,9 @@ message RegisterTriggerRequest {
 }
 
 message RegisterSensorRequest {
+    // Execution context for this registration.
     WorkflowContext context = 1;
+    // Concrete sensor path in the generated graph.
     string path = 2;
 
     // Declarative sensor polling specification.
@@ -395,25 +507,39 @@ message RegisterSensorRequest {
 }
 
 message RegisterJobRequest {
+    // Execution context for this registration.
     WorkflowContext context = 1;
+    // Concrete job path in the generated graph.
     string path = 2;
+    // Job readiness dependencies.
     DependencyExpression dependencies = 3;
+    // Optional platform selector for scheduling placement.
     PlatformSelector platform = 4;
+    // Whether this job has an on-error callback callable via RunOnError.
     bool has_on_error = 5;
 }
 
 message RegisterGraphRequest {
+    // Execution context for this registration.
     WorkflowContext context = 1;
+    // Concrete graph/subgraph path.
     string path = 2;
+    // Graph readiness dependencies.
     DependencyExpression dependencies = 3;
+    // Whether this graph has an on-error callback callable via RunOnError.
     bool has_on_error = 4;
 }
 
 message RegisterStepRequest {
+    // Execution context for this registration.
     WorkflowContext context = 1;
+    // Step name relative to its parent job.
     string name = 2;
+    // Parent job path.
     string job = 3;
+    // Step readiness dependencies.
     DependencyExpression dependencies = 4;
+    // Whether this step has an on-error callback callable via RunOnError.
     bool has_on_error = 5;
 }
 
