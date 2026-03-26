@@ -18,13 +18,18 @@ import (
 	"encoding"
 	"errors"
 	"fmt"
+	"iter"
 	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type Glob []GlobSegment
+type Glob struct{ pathRepr }
+
+func GlobFromSegments(segments ...GlobSegment) Glob {
+	return Glob{pathReprFromSegments(segments)}
+}
 
 var (
 	_ encoding.TextMarshaler   = Glob{}
@@ -32,12 +37,12 @@ var (
 )
 
 func (g Glob) MarshalText() (text []byte, err error) {
-	if len(g) == 0 {
+	if g.len() == 0 {
 		return nil, errors.New("cannot marshal an empty glob")
 	}
 	var b strings.Builder
 segment:
-	for i, p := range g {
+	for i, p := range g.enumerate {
 		switch p := p.(type) {
 		case KeySegment:
 			bare := len(p.string) > 0
@@ -69,7 +74,7 @@ segment:
 }
 
 func (g *Glob) UnmarshalText(text []byte) error {
-	*g = (*g)[:0]
+	*g = Glob{}
 	if len(text) == 0 {
 		return errors.New("cannot unmarshal an empty property path")
 	}
@@ -77,26 +82,26 @@ func (g *Glob) UnmarshalText(text []byte) error {
 	runes := []rune(string(text))
 	for len(runes) > 0 {
 		switch {
-		case runes[0] == '*' && len(*g) == 0:
-			*g = append(*g, Splat)
+		case runes[0] == '*' && g.len() == 0:
+			g.pathRepr = g.appendSplat()
 			runes = runes[1:]
-		case isPlainPathCharacter(runes[0], true) && len(*g) == 0:
+		case isPlainPathCharacter(runes[0], true) && g.len() == 0:
 			key, remainder, err := parseKey(runes)
 			if err != nil {
 				return err
 			}
 			runes = remainder
-			(*g) = append((*g), key)
+			g.pathRepr = g.appendGlobSegment(key)
 		case runes[0] == '[':
 			seg, remainder, err := parseIndex(runes)
 			if err != nil {
 				return err
 			}
 			runes = remainder
-			(*g) = append((*g), seg)
+			g.pathRepr = g.appendGlobSegment(seg)
 		case runes[0] == '.':
 			if len(runes) > 1 && runes[1] == '*' {
-				*g = append(*g, Splat)
+				g.pathRepr = g.appendSplat()
 				runes = runes[2:]
 				continue
 			}
@@ -105,8 +110,7 @@ func (g *Glob) UnmarshalText(text []byte) error {
 				return err
 			}
 			runes = remainder
-			(*g) = append((*g), key)
-
+			g.pathRepr = g.appendGlobSegment(key)
 		default:
 			return fmt.Errorf("unknown character '%c' at position %d",
 				runes[0], len([]rune(string(text)))-len(runes))
@@ -201,7 +205,7 @@ func parseIndex(runes []rune) (GlobSegment, []rune, error) {
 
 func (g Glob) Get(v Value) ([]Value, error) {
 	stack := []Value{v}
-	for _, segment := range g {
+	for segment := range g.segments {
 		for i := len(stack) - 1; i >= 0; i-- {
 			var err PathApplyFailure
 			expansion, err := segment.globApply(stack[i])
@@ -268,13 +272,7 @@ func (s IndexSegment) globApply(v Value) ([]Value, PathApplyFailure) {
 	return []Value{r}, nil
 }
 
-func (s Path) AsGlob() Glob {
-	g := make(Glob, len(s))
-	for i, v := range s {
-		g[i] = v
-	}
-	return g
-}
+func (s Path) AsGlob() Glob { return Glob{s.pathRepr} }
 
 // Matches returns true if the receiver glob matches the beginning of the given path.
 //
@@ -283,12 +281,15 @@ func (s Path) AsGlob() Glob {
 // example, the glob `foo.*.baz` matches `foo.bar.baz.bam`, and the glob `*` matches
 // any path.
 func (g Glob) Matches(p Path) bool {
-	if len(p) < len(g) {
+	if p.len() < g.len() {
 		return false
 	}
-	for i := range g {
-		op := p[i]
-		switch gp := g[i].(type) {
+	opF, stop := iter.Pull(p.segments)
+	defer stop()
+	for gp := range g.segments {
+		op, ok := opF()
+		contract.Assertf(ok, "p.len() should be >= g.len()")
+		switch gp := gp.(type) {
 		case KeySegment:
 			if v, ok := op.(KeySegment); ok && v == gp {
 				continue

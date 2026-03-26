@@ -18,8 +18,6 @@ import (
 	"encoding"
 	"errors"
 	"fmt"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Path provides access and alteration methods on [Value]s.
@@ -28,7 +26,15 @@ import (
 //
 // - [KeySegment]: For indexing into [Map]s.
 // - [IndexSegment]: For indexing into [Array]s.
-type Path []PathSegment
+type Path struct {
+	pathRepr
+	// ensure that there isn't a public cast from Path to [Glob].
+	_isPath struct{}
+}
+
+func PathFromSegments(segments ...PathSegment) Path {
+	return Path{pathReprFromSegments(segments), struct{}{}}
+}
 
 var (
 	_ encoding.TextMarshaler   = Path{}
@@ -44,19 +50,13 @@ func (p *Path) UnmarshalText(text []byte) error {
 	if err := g.UnmarshalText(text); err != nil {
 		return err
 	}
-	*p = (*p)[:0]
-	for _, v := range g {
-		switch v := v.(type) {
-		case splat:
+	*p = Path{}
+	for v := range g.segments {
+		if _, ok := v.(splat); ok {
 			return errors.New("splat not allowed in non-glob paths")
-		case KeySegment:
-			*p = append(*p, v)
-		case IndexSegment:
-			*p = append(*p, v)
-		default:
-			contract.Failf("g.UnmarshalText(%q) contained invalid segment %T", string(text), v)
 		}
 	}
+	p.pathRepr = g.pathRepr
 	return nil
 }
 
@@ -79,9 +79,9 @@ func (p *Path) UnmarshalText(text []byte) error {
 // If the [Path] does not describe a value in v, then an error will be returned. The
 // returned error can be safely cast to [PathApplyFailure].
 func (p Path) Get(v Value) (Value, error) {
-	for _, segment := range p {
+	for segment := range p.segments {
 		var err PathApplyFailure
-		v, err = segment.apply(v)
+		v, err = segment.(PathSegment).apply(v)
 		if err != nil {
 			return Value{}, err
 		}
@@ -96,11 +96,12 @@ func (p Path) Get(v Value) (Value, error) {
 //
 // Any returned error will implement [PathApplyFailure].
 func (p Path) Set(src, newValue Value) (Value, error) {
-	if len(p) == 0 {
+	if p.len() == 0 {
 		return newValue, nil
 	}
-	butLast, last := p[:len(p)-1], p[len(p)-1]
-	v, err := butLast.Get(src)
+
+	butLast, last := p.last()
+	v, err := Path{butLast, struct{}{}}.Get(src)
 	if err != nil {
 		return Value{}, err
 	}
@@ -115,14 +116,14 @@ func (p Path) Set(src, newValue Value) (Value, error) {
 			return Value{}, pathApplyIndexOutOfBoundsError{found: v.AsArray(), idx: i.int}
 		}
 		slice[i.int] = newValue
-		return butLast.Set(src, New(slice))
+		return Path{butLast, struct{}{}}.Set(src, New(slice))
 	case v.IsMap():
 		k, ok := last.(KeySegment)
 		if !ok {
 			return Value{}, pathErrorf(v, "expected a KeySegment, found %T", last)
 		}
 
-		return butLast.Set(src, New(v.AsMap().Set(k.string, newValue)))
+		return Path{butLast, struct{}{}}.Set(src, New(v.AsMap().Set(k.string, newValue)))
 	default:
 		return Value{}, pathApplyKeyExpectedMapError{found: v}
 	}
