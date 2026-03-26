@@ -1317,6 +1317,10 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 					return nil, err
 				}
 				typecheckerArgs = append(typecheckerArgs, "--exclude", relPath)
+				// Skip the sdks directory — conformance tests place generated SDK
+				// packages under projectDir/sdks/ and those are already validated
+				// via snapshot comparison.
+				typecheckerArgs = append(typecheckerArgs, "--exclude", "sdks")
 				// Use a shared mypy cache directory so that type stubs for the
 				// Pulumi SDK and other dependencies are computed once and reused
 				// across multiple program runs within the same process.
