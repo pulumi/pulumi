@@ -269,3 +269,11 @@ type pathApplyError struct {
 
 func (err pathApplyError) Error() string { return err.msg }
 func (err pathApplyError) Found() Value  { return err.found }
+
+func (g Path) Segments(yield func(PathSegment) bool) {
+	for v := range g.segments {
+		if !yield(v.(PathSegment)) {
+			return
+		}
+	}
+}
