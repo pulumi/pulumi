@@ -69,9 +69,9 @@ import (
 // policyPackLocks provides per-policy-pack locking for concurrent test installation.
 var policyPackLocks gsync.Map[string, *sync.Mutex]
 
-// Note: We intentionally do NOT share a PackageCache across tests because different
+// Note: We use per-test PackageCaches (not shared across tests) because different
 // tests may use different versions of the same provider (e.g., simple@2.0.0 vs simple@27.0.0).
-// A shared cache would return the wrong version for tests that need a non-default version.
+// Within a single test, the cache is safe to share since the provider set is fixed.
 
 type LanguageTestServer interface {
 	testingrpc.LanguageTestServer
@@ -680,6 +680,10 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, fmt.Errorf("unknown test %s", req.Test)
 	}
 
+	// Create a per-test PackageCache to reuse loaded package schemas across
+	// the multiple BindDirectory calls within this test.
+	testPkgCache := pcl.NewPackageCache()
+
 	// Decode the test token
 	tokenBytes, err := b64.StdEncoding.DecodeString(req.Token)
 	if err != nil {
@@ -890,7 +894,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		_, bindSpan := startSpan(ctx, "BindPCLDirectory",
 			attribute.String("test", req.Test),
 			attribute.Int("run", i))
-		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
+		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader, pcl.Cache(testPkgCache))
 		bindSpan.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
@@ -1073,7 +1077,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
 		sdks, localDependencies, languageClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
+		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects",
+		testPkgCache)
 	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
 		return languageTestResult, err
 	}
@@ -1119,7 +1124,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
+		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project",
+		testPkgCache)
 }
 
 func createStackReferences(
@@ -1176,6 +1182,7 @@ func runLanguageTests(
 	stdout, stderr *bytes.Buffer,
 	pctx *plugin.Context,
 	projectDir string,
+	pkgCache *pcl.PackageCache,
 ) (*testingrpc.RunLanguageTestResponse, error) {
 	ctx, runSpan := startSpan(ctx, "runLanguageTests",
 		attribute.String("test", testName),
@@ -1235,7 +1242,7 @@ func runLanguageTests(
 			attribute.String("test", testName),
 			attribute.Int("run", i),
 			attribute.String("phase", "runLanguageTests"))
-		program, diags, err := pcl.BindDirectory(sourceDir, loader)
+		program, diags, err := pcl.BindDirectory(sourceDir, loader, pcl.Cache(pkgCache))
 		bindSpan2.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
