@@ -45,3 +45,4 @@
 {"commit":"af81ff6d78","metric":502140,"metrics":{"total_ms":502140},"status":"keep","description":"Experiment 43: Final all-3-variant warm GOMAXPROCS=32 — 502s (66% from ~1478s baseline)","timestamp":1774544561097,"segment":0,"confidence":null}
 {"commit":"","metric":215478,"metrics":{"tsc_ms":215478},"status":"discard","description":"Experiment 44: DISABLE_AUTOMATIC_PLUGIN_ACQUISITION — 215s (WORSE, causes plugin errors)","timestamp":1774544969996,"segment":0,"confidence":null}
 {"commit":"de8a655d06","metric":177027,"metrics":{"tsc_ms_run1":169242,"tsc_ms_run2":184812,"tsc_ms_avg":177027},"status":"keep","description":"Experiment 45: Stable measurement — 169s/185s avg 177s (69.4% from baseline)","timestamp":1774545491426,"segment":0,"confidence":null}
+{"commit":"","metric":208391,"metrics":{"tsc_ms":208391},"status":"keep","description":"Experiment 46: Final stable measurement — 208s (64% from baseline)","timestamp":1774546403188,"segment":0,"confidence":null}
