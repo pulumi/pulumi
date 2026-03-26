@@ -245,15 +245,15 @@ func TestGlobGet(t *testing.T) {
 		name     string
 		glob     Glob
 		from     Value
-		expected []Value
+		expected map[Path]Value
 		errMsg   string
 	}{
 		{
 			name: "single-key",
 			glob: GlobFromSegments(NewSegment("a")),
 			from: nested,
-			expected: []Value{
-				New(map[string]Value{
+			expected: map[Path]Value{
+				PathFromSegments(NewSegment("a")): New(map[string]Value{
 					"x": New("ax"),
 					"y": New("ay"),
 				}),
@@ -263,28 +263,28 @@ func TestGlobGet(t *testing.T) {
 			name: "single-index",
 			glob: GlobFromSegments(NewSegment(1)),
 			from: arrayValue,
-			expected: []Value{
-				New("one"),
+			expected: map[Path]Value{
+				PathFromSegments(NewSegment(1)): New("one"),
 			},
 		},
 		{
 			name: "nested-key-key",
 			glob: GlobFromSegments(NewSegment("a"), NewSegment("x")),
 			from: nested,
-			expected: []Value{
-				New("ax"),
+			expected: map[Path]Value{
+				PathFromSegments(NewSegment("a"), NewSegment("x")): New("ax"),
 			},
 		},
 		{
 			name: "splat-on-map",
 			glob: GlobFromSegments(Splat),
 			from: nested,
-			expected: []Value{
-				New(map[string]Value{
+			expected: map[Path]Value{
+				PathFromSegments(NewSegment("a")): New(map[string]Value{
 					"x": New("ax"),
 					"y": New("ay"),
 				}),
-				New(map[string]Value{
+				PathFromSegments(NewSegment("b")): New(map[string]Value{
 					"x": New("bx"),
 					"y": New("by"),
 				}),
@@ -294,19 +294,19 @@ func TestGlobGet(t *testing.T) {
 			name: "splat-on-array",
 			glob: GlobFromSegments(Splat),
 			from: arrayValue,
-			expected: []Value{
-				New("zero"),
-				New("one"),
-				New("two"),
+			expected: map[Path]Value{
+				PathFromSegments(NewSegment(0)): New("zero"),
+				PathFromSegments(NewSegment(1)): New("one"),
+				PathFromSegments(NewSegment(2)): New("two"),
 			},
 		},
 		{
 			name: "splat-then-key",
 			glob: GlobFromSegments(Splat, NewSegment("x")),
 			from: nested,
-			expected: []Value{
-				New("ax"),
-				New("bx"),
+			expected: map[Path]Value{
+				PathFromSegments(NewSegment("a"), NewSegment("x")): New("ax"),
+				PathFromSegments(NewSegment("b"), NewSegment("x")): New("bx"),
 			},
 		},
 		{
@@ -316,10 +316,12 @@ func TestGlobGet(t *testing.T) {
 			errMsg: "expected a map or array, found string",
 		},
 		{
-			name:     "empty-glob",
-			glob:     Glob{},
-			from:     nested,
-			expected: []Value{nested},
+			name: "empty-glob",
+			glob: Glob{},
+			from: nested,
+			expected: map[Path]Value{
+				PathFromSegments(): nested,
+			},
 		},
 		{
 			name:   "missing-key-returns-error",

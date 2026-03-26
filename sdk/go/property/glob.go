@@ -203,14 +203,47 @@ func parseIndex(runes []rune) (GlobSegment, []rune, error) {
 	}
 }
 
-func (g Glob) Get(v Value) ([]Value, error) {
-	stack := []Value{v}
+func (g Glob) Get(v Value) (map[Path]Value, error) {
+	type entry struct {
+		path pathRepr
+		val  Value
+	}
+	stack := []entry{{val: v}}
 	for segment := range g.segments {
 		for i := len(stack) - 1; i >= 0; i-- {
-			var err PathApplyFailure
-			expansion, err := segment.globApply(stack[i])
-			if err != nil {
-				return nil, err
+			e := stack[i]
+			var expansion []entry
+			switch segment := segment.(type) {
+			case splat:
+				switch {
+				case e.val.IsMap():
+					for k, v := range e.val.AsMap().AllStable {
+						expansion = append(expansion, entry{
+							path: e.path.appendKey(k),
+							val:  v,
+						})
+					}
+				case e.val.IsArray():
+					for j, v := range e.val.AsArray().AsSlice() {
+						expansion = append(expansion, entry{
+							path: e.path.appendIndex(j),
+							val:  v,
+						})
+					}
+				default:
+					return nil, pathErrorf(e.val, "expected a map or array, found %s", typeString(e.val))
+				}
+			default:
+				vals, err := segment.globApply(e.val)
+				if err != nil {
+					return nil, err
+				}
+				for _, v := range vals {
+					expansion = append(expansion, entry{
+						path: e.path.appendGlobSegment(segment),
+						val:  v,
+					})
+				}
 			}
 			if len(expansion) == 0 {
 				if len(stack) == 1 {
@@ -219,15 +252,24 @@ func (g Glob) Get(v Value) ([]Value, error) {
 				}
 				stack[i] = stack[len(stack)-1]
 				stack = stack[:len(stack)-1]
+			} else {
+				stack[i] = expansion[0]
+				stack = append(stack, expansion[1:]...)
 			}
-			stack[i] = expansion[0]
-			stack = append(stack, expansion[1:]...)
 		}
 	}
-	return stack, nil
+	if len(stack) == 0 {
+		return nil, nil
+	}
+	result := make(map[Path]Value, len(stack))
+	for _, e := range stack {
+		result[Path{pathRepr: e.path}] = e.val
+	}
+	return result, nil
 }
 
 type GlobSegment interface {
+	fmt.GoStringer
 	globApply(Value) ([]Value, PathApplyFailure)
 }
 
@@ -240,6 +282,10 @@ var (
 var Splat splat
 
 type splat struct{}
+
+func (splat) GoString() string          { return "property.Splat" }
+func (s KeySegment) GoString() string   { return fmt.Sprintf("property.NewSegment(%q)", s.string) }
+func (i IndexSegment) GoString() string { return fmt.Sprintf("property.NewSegment(%d)", i.int) }
 
 func (splat) globApply(v Value) ([]Value, PathApplyFailure) {
 	switch {
@@ -307,4 +353,12 @@ func (g Glob) Matches(p Path) bool {
 		}
 	}
 	return true
+}
+
+func (g Glob) Segments(yield func(GlobSegment) bool) {
+	for v := range g.segments {
+		if !yield(v) {
+			return
+		}
+	}
 }
