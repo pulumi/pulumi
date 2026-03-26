@@ -434,6 +434,28 @@ func (l *providerLoader) LoadPackageV2(
 	return ref.Definition()
 }
 
+// testPriority returns a sort key for test ordering. Lower values run first.
+// Expensive tests (policy packs, component providers, large-string) get priority 0
+// so they start early in parallel execution, reducing the long tail.
+func testPriority(name string) int {
+	if strings.HasPrefix(name, "policy-") {
+		return 0 // Policy tests are slowest (20-50s each)
+	}
+	if strings.HasPrefix(name, "provider-") {
+		return 0 // Provider component tests are slow (10-25s each)
+	}
+	if name == "l2-large-string" {
+		return 0 // Single slowest test (30-40s)
+	}
+	if strings.HasPrefix(name, "l3-") {
+		return 1 // l3 tests are moderately slow
+	}
+	if strings.HasPrefix(name, "l2-") {
+		return 2 // l2 tests are average
+	}
+	return 3 // l1 tests are fastest
+}
+
 func (eng *languageTestServer) GetLanguageTests(
 	ctx context.Context,
 	req *testingrpc.GetLanguageTestsRequest,
@@ -446,6 +468,13 @@ func (eng *languageTestServer) GetLanguageTests(
 		}
 		filtered = append(filtered, testName)
 	}
+
+	// Sort tests so that expensive ones (policy, provider, large-string) run first.
+	// With parallel test execution, this ensures the long-tail tests start early,
+	// maximizing CPU utilization and reducing overall wall time.
+	sort.Slice(filtered, func(i, j int) bool {
+		return testPriority(filtered[i]) < testPriority(filtered[j])
+	})
 
 	return &testingrpc.GetLanguageTestsResponse{
 		Tests: filtered,
