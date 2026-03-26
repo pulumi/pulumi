@@ -411,6 +411,11 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 		}
 	}
 
+	// Fast path: skip all policy loading when no policies are configured.
+	if len(deployOpts.RequiredPolicies) == 0 && len(deployOpts.LocalPolicyPacks) == 0 {
+		return nil
+	}
+
 	var wg sync.WaitGroup
 	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
 

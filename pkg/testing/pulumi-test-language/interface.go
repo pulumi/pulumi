@@ -958,91 +958,180 @@ func (eng *languageTestServer) RunLanguageTest(
 	// We only generate sdks if running in non-local mode
 	if !token.Local {
 		_, sdkGenSpan := cmdutil.StartSpan(ctx, initTracer, "generateSDKs")
+
+		// Pre-populate the sdks path map (no generation needed for this).
 		for _, pkg := range packages {
 			sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
-			sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
-			sdks[sdkName] = sdkTempDir
-			// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. We do this
-			// using a per-sdk lock for fine grained control. The generated SDK artifacts are then cached, and will be
-			// reused.
-			response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
-				lock, _ := eng.sdkLocks.LoadOrStore(sdkTempDir, &sync.Mutex{})
-				lock.Lock()
-				defer lock.Unlock()
+			sdks[sdkName] = filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
+		}
 
-				sdkArtifact, ok := eng.artifactMap.Load(sdkTempDir)
-				if ok {
-					// If the directory already exists then we know we already created the artifact.
-					// Just use it
-					localDependencies[pkg.Name] = sdkArtifact
-					return nil, nil
+		// Group packages into dependency levels so independent packages can generate in parallel.
+		// Level 0 = packages with no dependencies on other packages in this set.
+		// Level N = packages whose dependencies are all in levels < N.
+		pkgLevel := make(map[string]int, len(packages))
+		maxLevel := 0
+		for _, pkg := range packages {
+			level := 0
+			for _, dep := range pkg.Dependencies {
+				if _, inSet := packageSet[dep.Name]; inSet {
+					if depLevel, ok := pkgLevel[dep.Name]; ok && depLevel+1 > level {
+						level = depLevel + 1
+					}
 				}
-
-				err = os.MkdirAll(sdkTempDir, 0o755)
-				if err != nil {
-					return nil, fmt.Errorf("create temp sdks dir: %w", err)
-				}
-
-				schemaBytes, err := pkg.MarshalJSON()
-				if err != nil {
-					return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
-				}
-
-				_, genPkgSpan := cmdutil.StartSpan(ctx, initTracer, "GeneratePackage/"+pkg.Name)
-				diags, err := languageClient.GeneratePackage(
-					sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), localDependencies, false)
-				genPkgSpan.End()
-				if err != nil {
-					return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
-				}
-				// TODO: Might be good to test warning diagnostics here
-				if diags.HasErrors() {
-					return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, diags)), nil
-				}
-
-				snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-				_, snapSpan := cmdutil.StartSpan(ctx, initTracer, "doSnapshot/sdk/"+pkg.Name)
-				validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkTempDir, snapshotDir, snapshotEdits)
-				snapSpan.End()
-				if err != nil {
-					return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
-				}
-				if len(validations) > 0 {
-					return makeTestResponse(
-						fmt.Sprintf("sdk snapshot validation for %s failed:\n%s",
-							pkg.Name, strings.Join(validations, "\n"))), nil
-				}
-
-				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
-				// any intermediate build files don't end up getting captured in the snapshot folder.
-				_, packSpan := cmdutil.StartSpan(ctx, initTracer, "Pack/sdk/"+pkg.Name)
-				sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
-				packSpan.End()
-				if err != nil {
-					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
-				}
-				localDependencies[pkg.Name] = sdkArtifact
-				eng.artifactMap.Store(sdkTempDir, sdkArtifact)
-
-				// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-				validations, err = compareDirectories(sdkTempDir, snapshotDir, true, snapshotEdits)
-				if err != nil {
-					return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg.Name, err)
-				}
-				if len(validations) > 0 {
-					return makeTestResponse(
-						fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
-							pkg.Name, strings.Join(validations, "\n"))), nil
-				}
-
-				return nil, nil
-			}()
-			if response != nil || err != nil {
-				sdkGenSpan.End()
-				return response, err
+			}
+			pkgLevel[pkg.Name] = level
+			if level > maxLevel {
+				maxLevel = level
 			}
 		}
+
+		levels := make([][]*schema.Package, maxLevel+1)
+		for _, pkg := range packages {
+			l := pkgLevel[pkg.Name]
+			levels[l] = append(levels[l], pkg)
+		}
+
+		// sdkResult carries the outcome of a single SDK generation goroutine.
+		type sdkResult struct {
+			pkgName     string
+			sdkArtifact string
+			response    *testingrpc.RunLanguageTestResponse
+			err         error
+		}
+
+		var localDepsMu sync.Mutex
+
+		// Process each dependency level. Within a level, all packages are independent
+		// and can be generated concurrently.
+		var outerResponse *testingrpc.RunLanguageTestResponse
+		var outerErr error
+	levelLoop:
+		for _, levelPkgs := range levels {
+			// Snapshot localDependencies for this level. Packages in the same level
+			// don't depend on each other, so they all see the same snapshot.
+			localDepsMu.Lock()
+			depSnapshot := make(map[string]string, len(localDependencies))
+			for k, v := range localDependencies {
+				depSnapshot[k] = v
+			}
+			localDepsMu.Unlock()
+
+			results := make(chan sdkResult, len(levelPkgs))
+			var wg sync.WaitGroup
+			for _, pkg := range levelPkgs {
+				wg.Add(1)
+				go func(pkg *schema.Package) {
+					defer wg.Done()
+
+					sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
+					sdkTempDir := sdks[sdkName]
+
+					// Multiple tests might try to generate the same SDK at the same time so we
+					// need to be atomic here. We do this using a per-sdk lock for fine grained
+					// control. The generated SDK artifacts are then cached, and will be reused.
+					response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
+						lock, _ := eng.sdkLocks.LoadOrStore(sdkTempDir, &sync.Mutex{})
+						lock.Lock()
+						defer lock.Unlock()
+
+						sdkArtifact, ok := eng.artifactMap.Load(sdkTempDir)
+						if ok {
+							// If the directory already exists then we know we already created the
+							// artifact. Just use it.
+							results <- sdkResult{pkgName: pkg.Name, sdkArtifact: sdkArtifact}
+							return nil, nil
+						}
+
+						err := os.MkdirAll(sdkTempDir, 0o755)
+						if err != nil {
+							return nil, fmt.Errorf("create temp sdks dir: %w", err)
+						}
+
+						schemaBytes, err := pkg.MarshalJSON()
+						if err != nil {
+							return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg.Name, err)
+						}
+
+						_, genPkgSpan := cmdutil.StartSpan(ctx, initTracer, "GeneratePackage/"+pkg.Name)
+						diags, err := languageClient.GeneratePackage(
+							sdkTempDir, string(schemaBytes), nil, grpcServer.Addr(), depSnapshot, false)
+						genPkgSpan.End()
+						if err != nil {
+							return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
+						}
+						// TODO: Might be good to test warning diagnostics here
+						if diags.HasErrors() {
+							return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, diags)), nil
+						}
+
+						snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
+						_, snapSpan := cmdutil.StartSpan(ctx, initTracer, "doSnapshot/sdk/"+pkg.Name)
+						validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkTempDir, snapshotDir, snapshotEdits)
+						snapSpan.End()
+						if err != nil {
+							return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
+						}
+						if len(validations) > 0 {
+							return makeTestResponse(
+								fmt.Sprintf("sdk snapshot validation for %s failed:\n%s",
+									pkg.Name, strings.Join(validations, "\n"))), nil
+						}
+
+						// Pack the SDK and add it to the artifact dependencies, we do this in the
+						// temporary directory so that any intermediate build files don't end up
+						// getting captured in the snapshot folder.
+						_, packSpan := cmdutil.StartSpan(ctx, initTracer, "Pack/sdk/"+pkg.Name)
+						sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
+						packSpan.End()
+						if err != nil {
+							return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
+						}
+						eng.artifactMap.Store(sdkTempDir, sdkArtifact)
+
+						// Check that packing the SDK didn't mutate any files, but it may have
+						// added ignorable build files.
+						validations, err = compareDirectories(sdkTempDir, snapshotDir, true, snapshotEdits)
+						if err != nil {
+							return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg.Name, err)
+						}
+						if len(validations) > 0 {
+							return makeTestResponse(
+								fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
+									pkg.Name, strings.Join(validations, "\n"))), nil
+						}
+
+						results <- sdkResult{pkgName: pkg.Name, sdkArtifact: sdkArtifact}
+						return nil, nil
+					}()
+					if response != nil || err != nil {
+						results <- sdkResult{pkgName: pkg.Name, response: response, err: err}
+					}
+				}(pkg)
+			}
+
+			// Close the results channel once all goroutines in this level complete.
+			go func() {
+				wg.Wait()
+				close(results)
+			}()
+
+			// Collect results from this level.
+			for r := range results {
+				if r.response != nil || r.err != nil {
+					outerResponse = r.response
+					outerErr = r.err
+					break levelLoop
+				}
+				localDepsMu.Lock()
+				localDependencies[r.pkgName] = r.sdkArtifact
+				localDepsMu.Unlock()
+			}
+		}
+
 		sdkGenSpan.End()
+		if outerResponse != nil || outerErr != nil {
+			return outerResponse, outerErr
+		}
 	}
 
 	// Just use base64 "secrets" for these tests
