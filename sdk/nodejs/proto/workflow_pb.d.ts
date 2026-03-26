@@ -470,6 +470,10 @@ export class GetJobResponse extends jspb.Message {
     clearJob(): void;
     getJob(): JobInfo | undefined;
     setJob(value?: JobInfo): GetJobResponse;
+    clearInputPropertiesList(): void;
+    getInputPropertiesList(): Array<InputProperty>;
+    setInputPropertiesList(value: Array<InputProperty>): GetJobResponse;
+    addInputProperties(value?: InputProperty, index?: number): InputProperty;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetJobResponse.AsObject;
@@ -484,6 +488,36 @@ export class GetJobResponse extends jspb.Message {
 export namespace GetJobResponse {
     export type AsObject = {
         job?: JobInfo.AsObject,
+        inputPropertiesList: Array<InputProperty.AsObject>,
+    }
+}
+
+export class InputProperty extends jspb.Message { 
+    getName(): string;
+    setName(value: string): InputProperty;
+    getType(): string;
+    setType(value: string): InputProperty;
+    getRequired(): boolean;
+    setRequired(value: boolean): InputProperty;
+    getDescription(): string;
+    setDescription(value: string): InputProperty;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): InputProperty.AsObject;
+    static toObject(includeInstance: boolean, msg: InputProperty): InputProperty.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: InputProperty, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): InputProperty;
+    static deserializeBinaryFromReader(message: InputProperty, reader: jspb.BinaryReader): InputProperty;
+}
+
+export namespace InputProperty {
+    export type AsObject = {
+        name: string,
+        type: string,
+        required: boolean,
+        description: string,
     }
 }
 

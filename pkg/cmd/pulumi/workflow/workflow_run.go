@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -39,28 +40,29 @@ type stepResult struct {
 }
 
 func newWorkflowRunCmd() *cobra.Command {
-	var inputJSON string
-	var emitJSON bool
-	var executionID string
-
 	cmd := &cobra.Command{
 		Use:   "run <plugin-path> <job>",
 		Short: "Run an exported workflow job",
 		Long: `Run an exported workflow job from a workflow package plugin path.
 
 For now, <plugin-path> must be a local path (for example to a Python workflow program).`,
-		Args: cobra.ExactArgs(2),
+		DisableFlagParsing: true,
+		Args:               cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
+				return cmd.Help()
+			}
+			if len(args) < 2 {
+				return fmt.Errorf("expected arguments: <plugin-path> <job>")
+			}
 			ctx := cmd.Context()
 			pluginPath := args[0]
 			jobNameOrToken := args[1]
+			runArgs := args[2:]
 
-			input, err := parseInputJSON(inputJSON, cmd.Flags().Changed("input"))
-			if err != nil {
-				return err
-			}
-
-			results, jobToken, jobResultJSON, err := runExportedJob(ctx, pluginPath, jobNameOrToken, input, resolveExecutionID(executionID))
+			results, jobToken, jobResultJSON, emitJSON, err := runExportedJob(
+				ctx, pluginPath, jobNameOrToken, runArgs, resolveExecutionID(""),
+			)
 			if err != nil {
 				return err
 			}
@@ -99,9 +101,6 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 		},
 		Required: 2,
 	})
-	cmd.Flags().StringVar(&inputJSON, "input", "", "JSON object input passed to the job (defaults to null when omitted)")
-	cmd.Flags().BoolVar(&emitJSON, "json", false, "Emit machine-readable JSON output")
-	cmd.Flags().StringVar(&executionID, "execution-id", "", "Execution ID for this run (defaults to a generated UUID)")
 
 	return cmd
 }
@@ -125,16 +124,16 @@ func runExportedJob(
 	ctx context.Context,
 	pluginPath string,
 	jobNameOrToken string,
-	input any,
-	executionID string,
-) ([]stepResult, string, string, error) {
+	runArgs []string,
+	defaultExecutionID string,
+) ([]stepResult, string, string, bool, error) {
 	server := &monitorServer{}
 	grpcServer := grpc.NewServer()
 	pulumirpc.RegisterGraphMonitorServer(grpcServer, server)
 
 	listener, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
-		return nil, "", "", fmt.Errorf("listen: %w", err)
+		return nil, "", "", false, fmt.Errorf("listen: %w", err)
 	}
 	defer func() {
 		_ = listener.Close()
@@ -146,7 +145,7 @@ func runExportedJob(
 
 	pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil, nil)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("create workflow plugin context: %w", err)
+		return nil, "", "", false, fmt.Errorf("create workflow plugin context: %w", err)
 	}
 	defer func() {
 		_ = pctx.Close()
@@ -154,7 +153,7 @@ func runExportedJob(
 
 	workflowPlugin, err := pctx.Host.Workflow(pluginPath)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", false, err
 	}
 	defer func() {
 		_ = workflowPlugin.Close()
@@ -162,15 +161,25 @@ func runExportedJob(
 
 	jobToken, err := resolveJobToken(ctx, workflowPlugin, jobNameOrToken)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", false, err
 	}
 
-	inputValue, err := encodeJobInputStruct(input)
+	jobInfo, err := workflowPlugin.GetJob(ctx, &pulumirpc.GetJobRequest{Token: jobToken})
 	if err != nil {
-		return nil, "", "", fmt.Errorf("encode job input: %w", err)
+		return nil, "", "", false, fmt.Errorf("get job metadata for %q: %w", jobToken, err)
+	}
+
+	parsedOptions, err := parseRunJobArgs(runArgs, jobInfo.GetInputProperties(), defaultExecutionID)
+	if err != nil {
+		return nil, "", "", false, err
+	}
+
+	inputValue, err := encodeJobInputStruct(parsedOptions.input)
+	if err != nil {
+		return nil, "", "", false, fmt.Errorf("encode job input: %w", err)
 	}
 	workflowContext := &pulumirpc.WorkflowContext{
-		ExecutionId: executionID,
+		ExecutionId: parsedOptions.executionID,
 	}
 
 	generateResp, err := workflowPlugin.GenerateJob(ctx, &pulumirpc.GenerateJobRequest{
@@ -180,28 +189,28 @@ func runExportedJob(
 		InputValue:          inputValue,
 	})
 	if err != nil {
-		return nil, "", "", fmt.Errorf("generate exported job %q: %w", jobToken, err)
+		return nil, "", "", false, fmt.Errorf("generate exported job %q: %w", jobToken, err)
 	}
 	if generateResp.GetError() != nil && generateResp.GetError().GetReason() != "" {
-		return nil, "", "", fmt.Errorf("generate exported job %q failed: %s", jobToken, generateResp.GetError().GetReason())
+		return nil, "", "", false, fmt.Errorf("generate exported job %q failed: %s", jobToken, generateResp.GetError().GetReason())
 	}
 
 	steps := server.snapshotStepsForJob(jobToken)
 	if len(steps) == 0 {
-		return nil, "", "", fmt.Errorf("exported job %q has no steps", jobToken)
+		return nil, "", "", false, fmt.Errorf("exported job %q has no steps", jobToken)
 	}
 
 	results, err := runObservedSteps(ctx, workflowPlugin, workflowContext, steps)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", false, err
 	}
 
 	jobResultJSON, err := resolveObservedJobResult(ctx, workflowPlugin, workflowContext, jobToken)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", false, err
 	}
 
-	return results, jobToken, jobResultJSON, nil
+	return results, jobToken, jobResultJSON, parsedOptions.emitJSON, nil
 }
 
 func resolveExecutionID(userProvided string) string {
@@ -209,6 +218,149 @@ func resolveExecutionID(userProvided string) string {
 		return userProvided
 	}
 	return uuid.NewString()
+}
+
+type runJobOptions struct {
+	input       map[string]any
+	executionID string
+	emitJSON    bool
+}
+
+func parseRunJobArgs(
+	args []string,
+	inputProps []*pulumirpc.InputProperty,
+	defaultExecutionID string,
+) (runJobOptions, error) {
+	options := runJobOptions{
+		input:       map[string]any{},
+		executionID: defaultExecutionID,
+		emitJSON:    false,
+	}
+
+	propertyByFlag := map[string]*pulumirpc.InputProperty{}
+	for _, prop := range inputProps {
+		propertyByFlag[prop.GetName()] = prop
+		propertyByFlag[strings.ReplaceAll(prop.GetName(), "_", "-")] = prop
+	}
+
+	for i := 0; i < len(args); i++ {
+		token := args[i]
+		if !strings.HasPrefix(token, "--") {
+			return runJobOptions{}, fmt.Errorf("unexpected argument %q; expected flags", token)
+		}
+		name, value, hasValue := splitFlag(token)
+
+		switch name {
+		case "json":
+			if !hasValue {
+				options.emitJSON = true
+				continue
+			}
+			parsed, err := strconv.ParseBool(value)
+			if err != nil {
+				return runJobOptions{}, fmt.Errorf("invalid --json value %q", value)
+			}
+			options.emitJSON = parsed
+			continue
+		case "execution-id":
+			if !hasValue {
+				if i+1 >= len(args) {
+					return runJobOptions{}, fmt.Errorf("--execution-id requires a value")
+				}
+				i++
+				value = args[i]
+			}
+			options.executionID = value
+			continue
+		case "input":
+			if !hasValue {
+				if i+1 >= len(args) {
+					return runJobOptions{}, fmt.Errorf("--input requires a value")
+				}
+				i++
+				value = args[i]
+			}
+			obj, err := parseInputJSON(value, true)
+			if err != nil {
+				return runJobOptions{}, err
+			}
+			parsed, ok := obj.(map[string]any)
+			if !ok {
+				return runJobOptions{}, fmt.Errorf("--input must decode to an object")
+			}
+			for key, fieldValue := range parsed {
+				options.input[key] = fieldValue
+			}
+			continue
+		}
+
+		prop := propertyByFlag[name]
+		if prop == nil {
+			return runJobOptions{}, fmt.Errorf("unknown flag --%s", name)
+		}
+		if !hasValue {
+			if prop.GetType() == "boolean" {
+				value = "true"
+			} else {
+				if i+1 >= len(args) {
+					return runJobOptions{}, fmt.Errorf("--%s requires a value", name)
+				}
+				i++
+				value = args[i]
+			}
+		}
+		coerced, err := coerceFlagValue(prop.GetType(), value)
+		if err != nil {
+			return runJobOptions{}, fmt.Errorf("invalid value for --%s: %w", name, err)
+		}
+		options.input[prop.GetName()] = coerced
+	}
+
+	for _, prop := range inputProps {
+		if prop.GetRequired() {
+			if _, ok := options.input[prop.GetName()]; !ok {
+				return runJobOptions{}, fmt.Errorf("missing required flag --%s", strings.ReplaceAll(prop.GetName(), "_", "-"))
+			}
+		}
+	}
+
+	return options, nil
+}
+
+func splitFlag(token string) (string, string, bool) {
+	trimmed := strings.TrimPrefix(token, "--")
+	parts := strings.SplitN(trimmed, "=", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1], true
+	}
+	return trimmed, "", false
+}
+
+func coerceFlagValue(kind string, value string) (any, error) {
+	switch kind {
+	case "string":
+		return value, nil
+	case "integer":
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return parsed, nil
+	case "number":
+		parsed, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return nil, err
+		}
+		return parsed, nil
+	case "boolean":
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return nil, err
+		}
+		return parsed, nil
+	default:
+		return nil, fmt.Errorf("unsupported type %q", kind)
+	}
 }
 
 func encodeJobInputStruct(input any) (*structpb.Struct, error) {

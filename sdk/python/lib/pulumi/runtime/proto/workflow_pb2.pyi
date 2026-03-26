@@ -431,19 +431,53 @@ class GetJobResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     JOB_FIELD_NUMBER: builtins.int
+    INPUT_PROPERTIES_FIELD_NUMBER: builtins.int
     @property
     def job(self) -> global___JobInfo:
         """Job metadata for the requested token."""
+
+    @property
+    def input_properties(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___InputProperty]:
+        """Input object fields accepted by this job."""
 
     def __init__(
         self,
         *,
         job: global___JobInfo | None = ...,
+        input_properties: collections.abc.Iterable[global___InputProperty] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["job", b"job"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["job", b"job"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["input_properties", b"input_properties", "job", b"job"]) -> None: ...
 
 global___GetJobResponse = GetJobResponse
+
+@typing.final
+class InputProperty(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    REQUIRED_FIELD_NUMBER: builtins.int
+    DESCRIPTION_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """Field name on the job input object."""
+    type: builtins.str
+    """Primitive type for CLI coercion (string, integer, number, boolean)."""
+    required: builtins.bool
+    """True when callers must provide this field."""
+    description: builtins.str
+    """Optional human-readable description."""
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        required: builtins.bool = ...,
+        description: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["description", b"description", "name", b"name", "required", b"required", "type", b"type"]) -> None: ...
+
+global___InputProperty = InputProperty
 
 @typing.final
 class WorkflowError(google.protobuf.message.Message):

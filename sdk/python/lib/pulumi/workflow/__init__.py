@@ -719,6 +719,50 @@ def _job_return_output_type(fn: Callable[..., Any]) -> Type[Any]:
     return cast(Type[Any], output_type)
 
 
+def _job_input_properties(record_type: Type[Any]) -> List[Dict[str, Any]]:
+    annotations = get_type_hints(record_type)
+    defaults: Dict[str, bool] = {}
+    if is_dataclass(record_type):
+        from dataclasses import MISSING, fields
+
+        for field in fields(record_type):
+            has_default = field.default is not MISSING or field.default_factory is not MISSING
+            defaults[field.name] = has_default
+
+    properties: List[Dict[str, Any]] = []
+    for name, annotation in annotations.items():
+        property_type, optional = _annotation_to_property_type(annotation)
+        required = not optional and not defaults.get(name, False)
+        properties.append(
+            {
+                "name": name,
+                "type": property_type,
+                "required": required,
+            }
+        )
+    return properties
+
+
+def _annotation_to_property_type(annotation: Any) -> Tuple[str, bool]:
+    origin = get_origin(annotation)
+    if origin is Union:
+        args = get_args(annotation)
+        non_none = [arg for arg in args if arg is not type(None)]
+        if len(non_none) == 1 and len(non_none) != len(args):
+            property_type, _ = _annotation_to_property_type(non_none[0])
+            return property_type, True
+
+    if annotation is str:
+        return "string", False
+    if annotation is int:
+        return "integer", False
+    if annotation is float:
+        return "number", False
+    if annotation is bool:
+        return "boolean", False
+    return "object", False
+
+
 def _step_return_type(fn: Callable[..., Any]) -> Type[Any]:
     hints = get_type_hints(fn)
     return_type = hints.get("return")
@@ -1239,6 +1283,11 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         response.job.input_type.token = _type_token(job.input_type)
         response.job.output_type.token = _type_token(job.output_type)
         response.job.has_on_error = job.on_error is not None
+        for property_spec in _job_input_properties(job.input_type):
+            prop = response.input_properties.add()
+            prop.name = str(property_spec["name"])
+            prop.type = str(property_spec["type"])
+            prop.required = bool(property_spec["required"])
         return response
 
     def RunTriggerMock(

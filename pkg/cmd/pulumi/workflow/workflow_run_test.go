@@ -121,6 +121,69 @@ func TestEncodeJobInputStruct(t *testing.T) {
 	})
 }
 
+func TestParseRunJobArgs(t *testing.T) {
+	t.Parallel()
+
+	props := []*pulumirpc.InputProperty{
+		{Name: "message", Type: "string", Required: true},
+		{Name: "repeat", Type: "integer", Required: true},
+		{Name: "dry_run", Type: "boolean", Required: false},
+	}
+
+	t.Run("parses typed flags", func(t *testing.T) {
+		t.Parallel()
+		options, err := parseRunJobArgs(
+			[]string{"--message", "hello", "--repeat=3", "--dry-run"},
+			props,
+			"default-id",
+		)
+		if err != nil {
+			t.Fatalf("parseRunJobArgs failed: %v", err)
+		}
+		if options.executionID != "default-id" {
+			t.Fatalf("unexpected execution id %q", options.executionID)
+		}
+		if options.emitJSON {
+			t.Fatalf("expected emitJSON=false")
+		}
+		if got := options.input["message"]; got != "hello" {
+			t.Fatalf("unexpected message value: %#v", got)
+		}
+		if got := options.input["repeat"]; got != int64(3) {
+			t.Fatalf("unexpected repeat value: %#v", got)
+		}
+		if got := options.input["dry_run"]; got != true {
+			t.Fatalf("unexpected dry_run value: %#v", got)
+		}
+	})
+
+	t.Run("parses static flags", func(t *testing.T) {
+		t.Parallel()
+		options, err := parseRunJobArgs(
+			[]string{"--message", "hello", "--repeat", "3", "--json", "--execution-id", "abc"},
+			props,
+			"default-id",
+		)
+		if err != nil {
+			t.Fatalf("parseRunJobArgs failed: %v", err)
+		}
+		if !options.emitJSON {
+			t.Fatalf("expected emitJSON=true")
+		}
+		if options.executionID != "abc" {
+			t.Fatalf("unexpected execution id %q", options.executionID)
+		}
+	})
+
+	t.Run("missing required input", func(t *testing.T) {
+		t.Parallel()
+		_, err := parseRunJobArgs([]string{"--message", "hello"}, props, "default-id")
+		if err == nil {
+			t.Fatalf("expected parseRunJobArgs to fail")
+		}
+	})
+}
+
 func TestRunObservedStepsAppliesStepFilters(t *testing.T) {
 	t.Parallel()
 

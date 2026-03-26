@@ -255,6 +255,19 @@ message GetJobRequest {
 message GetJobResponse {
     // Job metadata for the requested token.
     JobInfo job = 1;
+    // Input object fields accepted by this job.
+    repeated InputProperty input_properties = 2;
+}
+
+message InputProperty {
+    // Field name on the job input object.
+    string name = 1;
+    // Primitive type for CLI coercion (string, integer, number, boolean).
+    string type = 2;
+    // True when callers must provide this field.
+    bool required = 3;
+    // Optional human-readable description.
+    string description = 4;
 }
 
 // WorkflowError represents an execution or generation error.
