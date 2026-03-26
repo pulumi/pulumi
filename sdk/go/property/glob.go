@@ -36,6 +36,14 @@ var (
 	_ encoding.TextUnmarshaler = &Glob{}
 )
 
+func (g Glob) String() string {
+	text, err := g.MarshalText()
+	if err != nil {
+		return "[invalid]"
+	}
+	return string(text)
+}
+
 func (g Glob) MarshalText() (text []byte, err error) {
 	if g.len() == 0 {
 		return nil, errors.New("cannot marshal an empty glob")

@@ -180,25 +180,25 @@ func (c object) Merge(base object) object {
 }
 
 // Get gets the member value at path. The path to the receiver is prefix.
-func (c object) Get(path resource.PropertyPath) (_ object, ok bool, err error) {
+func (c object) Get(path property.Path) (_ object, ok bool, err error) {
 	if len(path) == 0 {
 		return c, true, nil
 	}
 
 	switch v := c.value.(type) {
 	case []object:
-		index, ok := path[0].(int)
-		if !ok || index < 0 || index >= len(v) {
+		index, ok := path[0].(property.IndexSegment)
+		if !ok || index.Value() < 0 || index.Value() >= len(v) {
 			return object{}, false, nil
 		}
-		elem := v[index]
+		elem := v[index.Value()]
 		return elem.Get(path[1:])
 	case map[string]object:
-		key, ok := path[0].(string)
+		key, ok := path[0].(property.KeySegment)
 		if !ok {
 			return object{}, false, nil
 		}
-		elem, ok := v[key]
+		elem, ok := v[key.Value()]
 		if !ok {
 			return object{}, false, nil
 		}
@@ -209,7 +209,7 @@ func (c object) Get(path resource.PropertyPath) (_ object, ok bool, err error) {
 }
 
 // Delete deletes the member value at path. The path to the receiver is prefix.
-func (c *object) Delete(prefix, path resource.PropertyPath) error {
+func (c *object) Delete(prefix, path property.Path) error {
 	if len(path) == 0 {
 		return nil
 	}
@@ -217,18 +217,18 @@ func (c *object) Delete(prefix, path resource.PropertyPath) error {
 	prefix = append(prefix, path[0])
 	switch v := c.value.(type) {
 	case []object:
-		index, ok := path[0].(int)
-		if !ok || index < 0 || index >= len(v) {
+		index, ok := path[0].(property.IndexSegment)
+		if !ok || index.Value() < 0 || index.Value() >= len(v) {
 			return nil
 		}
 		if len(path) == 1 {
-			c.value = append(v[:index], v[index+1:]...)
+			c.value = append(v[:index.Value()], v[index.Value()+1:]...)
 			return nil
 		}
-		elem := &v[index]
+		elem := &v[index.Value()]
 		return elem.Delete(prefix, path[1:])
 	case map[string]object:
-		key, ok := path[0].(string)
+		key, ok := path[0].(property.KeySegment)
 		if !ok {
 			return nil
 		}
@@ -239,7 +239,7 @@ func (c *object) Delete(prefix, path resource.PropertyPath) error {
 			if len(v) == 2 {
 				keys := make([]string, 0, 2)
 				for k := range v {
-					if k != key {
+					if k != key.Value() {
 						keys = append(keys, k)
 					}
 				}
@@ -250,15 +250,15 @@ func (c *object) Delete(prefix, path resource.PropertyPath) error {
 				}
 			}
 
-			delete(v, key)
+			delete(v, key.Value())
 			return nil
 		}
-		elem, ok := v[key]
+		elem, ok := v[key.Value()]
 		if !ok {
 			return nil
 		}
 		err := elem.Delete(prefix, path[1:])
-		v[key] = elem
+		v[key.Value()] = elem
 		return err
 	default:
 		return nil
@@ -278,7 +278,7 @@ func newContainer(accessor any) any {
 }
 
 // Set sets the member value at path to new. The path to the receiver is prefix.
-func (c *object) Set(prefix, path resource.PropertyPath, new object) error {
+func (c *object) Set(prefix, path property.Path, new object) error {
 	if len(path) == 0 {
 		*c = new
 		return nil
@@ -299,9 +299,9 @@ func (c *object) Set(prefix, path resource.PropertyPath, new object) error {
 			c.value = newContainer(path[0])
 		} else {
 			switch path[0].(type) {
-			case int:
+			case property.IndexSegment:
 				return fmt.Errorf("%v: expected an array", prefix)
-			case string:
+			case property.KeySegment:
 				return fmt.Errorf("%v: expected a map", prefix)
 			default:
 				contract.Failf("unreachable")
@@ -313,36 +313,36 @@ func (c *object) Set(prefix, path resource.PropertyPath, new object) error {
 	prefix = append(prefix, path[0])
 	switch v := c.value.(type) {
 	case []object:
-		index, ok := path[0].(int)
+		index, ok := path[0].(property.IndexSegment)
 		if !ok {
 			return fmt.Errorf("%v: key for an array must be an int", prefix)
 		}
-		if index < 0 || index > len(v) {
+		if index.Value() < 0 || index.Value() > len(v) {
 			return fmt.Errorf("%v: array index out of range", prefix)
 		}
-		if index == len(v) {
+		if index.Value() == len(v) {
 			v = append(v, object{})
 			c.value = v
 		}
-		elem := &v[index]
+		elem := &v[index.Value()]
 		return elem.Set(prefix, path[1:], new)
 	case map[string]object:
-		key, ok := path[0].(string)
+		key, ok := path[0].(property.KeySegment)
 		if !ok {
 			return fmt.Errorf("%v: key for a map must be a string", prefix)
 		}
 
 		// If we're adding a property tothis object, make sure that the result won't be mistaken for a secure
 		// value when it is encoded. Secure values are encoded as `{"secure": "ciphertext"}`.
-		if len(path) == 1 && len(v) == 0 && key == "secure" {
+		if len(path) == 1 && len(v) == 0 && key.Value() == "secure" {
 			if _, ok := new.value.(string); ok {
 				return errSecureReprReserved
 			}
 		}
 
-		elem := v[key]
+		elem := v[key.Value()]
 		err := elem.Set(prefix, path[1:], new)
-		v[key] = elem
+		v[key.Value()] = elem
 		return err
 	default:
 		contract.Failf("unreachable")

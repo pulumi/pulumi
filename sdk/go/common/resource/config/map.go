@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
@@ -329,26 +328,24 @@ func (m *Map) UnmarshalYAML(unmarshal func(any) error) error {
 
 // parseKeyPath returns the property paths in the key and a new config key with the first
 // path segment as the name.
-func parseKeyPath(k Key) (resource.PropertyPath, Key, error) {
+func parseKeyPath(k Key) (property.Path, Key, error) {
 	// Parse the path, which will be in the name portion of the key.
-	p, err := resource.ParsePropertyPathStrict(k.Name())
+	var p property.Path
+	err := p.UnmarshalText([]byte(k.Name()))
 	if err != nil {
 		return nil, Key{}, fmt.Errorf("invalid config key path: %w", err)
 	}
-	if len(p) == 0 {
-		return nil, Key{}, errors.New("empty config key path")
-	}
 
 	// Create a new key that has the first path segment as the name.
-	firstKey, ok := p[0].(string)
+	firstKey, ok := p[0].(property.KeySegment)
 	if !ok {
 		return nil, Key{}, errors.New("first path segement of config key must be a string")
 	}
-	if firstKey == "" {
+	if firstKey.Value() == "" {
 		return nil, Key{}, errors.New("config key is empty")
 	}
 
-	configKey := MustMakeKey(k.Namespace(), firstKey)
+	configKey := MustMakeKey(k.Namespace(), firstKey.Value())
 
 	return p, configKey, nil
 }

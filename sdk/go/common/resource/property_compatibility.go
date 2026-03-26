@@ -174,3 +174,33 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		return property.Value{}
 	}
 }
+
+func FromResourcePropertyPath(p PropertyPath) property.Path {
+	path := make(property.Path, len(p))
+	for i, v := range p {
+		switch v := v.(type) {
+		case int:
+			path[i] = property.NewSegment(v)
+		case string:
+			path[i] = property.NewSegment(v)
+		default:
+			contract.Failf("unknown property path value %T", v)
+		}
+	}
+	return path
+}
+
+func ToResourcePropertyPath(p property.Path) PropertyPath {
+	path := make(PropertyPath, len(p))
+	for i, v := range p {
+		switch v := v.(type) {
+		case property.IndexSegment:
+			path[i] = v.Value()
+		case property.KeySegment:
+			path[i] = v.Value()
+		default:
+			contract.Failf("unknown property path value %T", v)
+		}
+	}
+	return path
+}

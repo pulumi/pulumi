@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // getIndent computes a step's visible parent indentation.
@@ -190,7 +191,7 @@ func getResourcePropertiesDetails(
 	// indent everything an additional level, like other properties.
 	indent++
 
-	var hideDiff []resource.PropertyPath
+	var hideDiff []property.Glob
 	if step.New != nil {
 		hideDiff = step.New.HideDiffs
 	} else if step.Old != nil {
@@ -421,13 +422,13 @@ func getResourceOutputsPropertiesString(
 	}
 	op := step.Op
 
-	var hiddenProperties []resource.PropertyPath
+	var hiddenProperties []property.Glob
 	if step.New != nil {
 		hiddenProperties = step.New.HideDiffs
 	} else if step.Old != nil {
 		hiddenProperties = step.Old.HideDiffs
 	}
-	var hiddenDiffs []resource.PropertyPath
+	var hiddenDiffs []property.Glob
 
 	// If there was an old state associated with this step, we may have old outputs. If we do, and if they differ from
 	// the new outputs, we want to print the diffs.
@@ -437,7 +438,7 @@ func getResourceOutputsPropertiesString(
 			resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
 			resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
 				for _, p := range hiddenProperties {
-					if p.Contains(path) {
+					if p.Matches(resource.FromResourcePropertyPath(path)) {
 						hiddenDiffs = append(hiddenDiffs, p)
 						return true
 					}
@@ -482,13 +483,13 @@ func getResourceOutputsPropertiesString(
 	}
 
 	if len(hiddenDiffs) > 0 {
-		slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
+		slices.SortFunc(hiddenDiffs, func(a, b property.Glob) int {
 			return cmp.Compare(a.String(), b.String())
 		})
-		hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
+		hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b property.Glob) bool {
 			return a.String() == b.String()
 		})
-		p.printHiddenPaths(hiddenDiffs)
+		printHiddenPaths(&p, hiddenDiffs)
 	}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
@@ -496,7 +497,7 @@ func getResourceOutputsPropertiesString(
 		out := outs[k]
 
 		for _, p := range hiddenProperties {
-			if p.Contains(resource.PropertyPath{string(k)}) {
+			if p.Matches(property.Path{property.NewSegment(string(k))}) {
 				continue
 			}
 		}
@@ -511,7 +512,7 @@ func getResourceOutputsPropertiesString(
 					resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
 					resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
 						for _, p := range hiddenProperties {
-							if p.Contains(path) {
+							if p.Matches(resource.FromResourcePropertyPath(path)) {
 								return true
 							}
 						}
@@ -753,17 +754,18 @@ func shortHash(hash string) string {
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
 	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
-	hidePaths []resource.PropertyPath,
+	hidePaths []property.Glob,
 ) {
-	var hiddenDiffs []resource.PropertyPath
+	var hiddenDiffs []property.Path
 
 	// Get the full diff structure between the two, and print it (recursively).
 	diff := olds.DiffWithOptions(news,
 		resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
 		resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
 			for _, v := range hidePaths {
-				if v.Contains(path) {
-					hiddenDiffs = append(hiddenDiffs, v)
+				propV := resource.FromResourcePropertyPath(path)
+				if v.Matches(propV) {
+					hiddenDiffs = append(hiddenDiffs, propV)
 					return true
 				}
 			}
@@ -772,10 +774,10 @@ func printOldNewDiffs(
 	)
 
 	// Ensure that our paths are unique and sorted
-	slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
+	slices.SortFunc(hiddenDiffs, func(a, b property.Path) int {
 		return cmp.Compare(a.String(), b.String())
 	})
-	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
+	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b property.Path) bool {
 		return a.String() == b.String()
 	})
 
@@ -793,9 +795,10 @@ func printOldNewDiffs(
 	}
 }
 
-func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
+func PrintObjectDiff[P property.Path | property.Glob](
+	b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
 	planning bool, indent int, summary bool, truncateOutput bool, debug bool, showSecrets bool,
-	hidden []resource.PropertyPath,
+	hidden []P,
 ) {
 	p := propertyPrinter{
 		dest:           b,
@@ -807,7 +810,7 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 		truncateOutput: truncateOutput,
 		showSecrets:    showSecrets,
 	}
-	p.printHiddenPaths(hidden)
+	printHiddenPaths(&p, hidden)
 	p.printObjectDiff(diff, include)
 }
 
@@ -838,7 +841,7 @@ func (p *propertyPrinter) printObjectDiff(diff resource.ObjectDiff, include []re
 	}
 }
 
-func (p *propertyPrinter) printHiddenPaths(paths []resource.PropertyPath) {
+func printHiddenPaths[P property.Path | property.Glob](p *propertyPrinter, paths []P) {
 	p = p.withOp(deploy.OpUpdate).withPrefix(true)
 	for _, k := range paths {
 		p.writeIndentedf("%s (hidden)\n", k)

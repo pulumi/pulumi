@@ -139,10 +139,12 @@ func parsePropertyPath(path string, strict bool) (PropertyPath, error) {
 	return PropertyPath(elements), nil
 }
 
+// Deprecated: Use [property.Path] or [property.Glob] and [encoding.UnmarshalText].
 func ParsePropertyPath(path string) (PropertyPath, error) {
 	return parsePropertyPath(path, false)
 }
 
+// Deprecated: Use [property.Path] or [property.Glob] and [encoding.UnmarshalText].
 func ParsePropertyPathStrict(path string) (PropertyPath, error) {
 	return parsePropertyPath(path, true)
 }

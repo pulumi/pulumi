@@ -41,6 +41,14 @@ var (
 	_ encoding.TextUnmarshaler = &Path{}
 )
 
+func (g Path) String() string {
+	text, err := g.MarshalText()
+	if err != nil {
+		return "[invalid]"
+	}
+	return string(text)
+}
+
 func (g Path) MarshalText() (text []byte, err error) {
 	return g.AsGlob().MarshalText()
 }
@@ -191,6 +199,8 @@ func (k KeySegment) apply(v Value) (Value, PathApplyFailure) {
 	return Value{}, pathApplyKeyExpectedMapError{found: v}
 }
 
+func (k KeySegment) Value() string { return k.string }
+
 // IndexSegment represents an index into an [Array].
 //
 // To create an IndexSegment, use [NewSegment].
@@ -206,6 +216,8 @@ func (k IndexSegment) apply(v Value) (Value, PathApplyFailure) {
 	}
 	return Value{}, pathApplyIndexExpectedArrayError{found: v}
 }
+
+func (k IndexSegment) Value() int { return k.int }
 
 type pathApplyKeyExpectedMapError struct {
 	found Value

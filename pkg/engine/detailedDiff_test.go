@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestTranslateDetailedDiff(t *testing.T) {
@@ -38,7 +39,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 		inputs         map[string]any
 		detailedDiff   map[string]plugin.PropertyDiff
 		expected       *resource.ObjectDiff
-		hideDiff       []resource.PropertyPath
+		hideDiff       []property.Glob
 		expectedHidden []resource.PropertyPath
 	}{
 		{
@@ -750,10 +751,10 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				"fizzbuzz.bar":   U, // Should be hidden by "fizzbuzz.bar"
 				"fizzbuzz.other": U,
 			},
-			hideDiff: []resource.PropertyPath{
-				{"foo"},
-				{"fizzbuzz", "bar"},
-				{"not", "updated"},
+			hideDiff: []property.Glob{
+				{property.NewSegment("foo")},
+				{property.NewSegment("fizzbuzz"), property.NewSegment("bar")},
+				{property.NewSegment("not"), property.NewSegment("updated")},
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},

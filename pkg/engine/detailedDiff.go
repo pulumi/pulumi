@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // getProperty fetches the child property with the indicated key from the given property value. If the key does not
@@ -54,7 +55,7 @@ func getProperty(key any, v resource.PropertyValue) resource.PropertyValue {
 // property named by the first element of the path exists in both parents, we snip off the first element of the path
 // and recurse into the property itself. If the property does not exist in one parent or the other, the diff kind is
 // disregarded and the change is treated as either an Add or a Delete.
-func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.ValueDiff,
+func addDiff(path property.Path, kind plugin.DiffKind, parent *resource.ValueDiff,
 	oldParent, newParent resource.PropertyValue,
 ) {
 	contract.Requiref(len(path) > 0, "path", "must not be empty")
@@ -63,8 +64,9 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 
 	old, new := getProperty(element, oldParent), getProperty(element, newParent)
 
-	switch element := element.(type) {
-	case int:
+	switch elementSegment := element.(type) {
+	case property.IndexSegment:
+		element := elementSegment.Value()
 		if parent.Array == nil {
 			parent.Array = &resource.ArrayDiff{
 				Adds:    make(map[int]resource.PropertyValue),
@@ -103,7 +105,8 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 				parent.Array.Updates[element] = ed
 			}
 		}
-	case string:
+	case property.KeySegment:
+		element := elementSegment.Value()
 		if parent.Object == nil {
 			parent.Object = &resource.ObjectDiff{
 				Adds:    make(resource.PropertyMap),
@@ -150,15 +153,15 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 // for display.
 //
 // The second returned argument is the list of hidden diffs.
-func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.ObjectDiff, []resource.PropertyPath) {
+func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.ObjectDiff, []property.Glob) {
 	contract.Assertf(step.DetailedDiff != nil, "%v step has no detailed diff", step.Op)
 
 	// The rich diff is presented as a list of simple JS property paths and corresponding diffs. We translate this to
 	// an ObjectDiff by iterating the list and inserting ValueDiffs that reflect the changes in the detailed diff. Old
 	// values are always taken from a step's Outputs; new values are always taken from its Inputs.
 
-	var hiddenPaths []resource.PropertyPath
-	var hiddenDiffs []resource.PropertyPath
+	var hiddenPaths []property.Glob
+	var hiddenDiffs []property.Glob // The list of hiddenPaths that were actually used
 	if step.New != nil {
 		hiddenPaths = step.New.HideDiffs
 	} else if step.Old != nil {
@@ -168,13 +171,13 @@ func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.Obj
 	var diff resource.ValueDiff
 diffs:
 	for path, pdiff := range step.DetailedDiff {
-		elements, err := resource.ParsePropertyPath(path)
-		if err != nil {
-			elements = []any{path}
+		var elements property.Path
+		if err := elements.UnmarshalText([]byte(path)); err != nil {
+			elements = property.Path{property.NewSegment(path)}
 		}
 
 		for _, hiddenPath := range hiddenPaths {
-			if hiddenPath.Contains(elements) {
+			if hiddenPath.Matches(elements) {
 				hiddenDiffs = append(hiddenDiffs, hiddenPath)
 				continue diffs
 			}
@@ -194,10 +197,10 @@ diffs:
 	}
 
 	// Ensure that our paths are unique and sorted
-	slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
+	slices.SortFunc(hiddenDiffs, func(a, b property.Glob) int {
 		return cmp.Compare(a.String(), b.String())
 	})
-	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
+	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b property.Glob) bool {
 		return a.String() == b.String()
 	})
 

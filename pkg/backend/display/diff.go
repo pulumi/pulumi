@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // ShowDiffEvents displays the engine events with the diff view.
@@ -192,7 +193,7 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	// a short diff summary similar to what is show for an update row is emitted.
 	if detailed {
 		var b bytes.Buffer
-		PrintObjectDiff(&b, *diff, nil,
+		PrintObjectDiff[property.Path](&b, *diff, nil,
 			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets, nil)
 		remediationLine = fmt.Sprintf("%s\n%s", remediationLine, b.String())
 	} else {
