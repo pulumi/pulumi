@@ -83,7 +83,8 @@ func (node *npmManager) installCmd(ctx context.Context, production bool) *exec.C
 	// `description`, `repository`, and `license` fields in the package.json file.
 	// We also pass `--no-audit` and `--no-fund` to skip the audit and funding checks,
 	// which add unnecessary overhead.
-	args := []string{"install", "--loglevel=error", "--no-audit", "--no-fund", "--no-optional", "--install-strategy=shallow"}
+	args := []string{"install", "--loglevel=error", "--no-audit", "--no-fund", "--no-optional",
+		"--install-strategy=shallow", "--legacy-peer-deps"}
 
 	if production {
 		args = append(args, "--production")

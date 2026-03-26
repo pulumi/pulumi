@@ -30,3 +30,4 @@
 {"commit":"","metric":175713,"metrics":{"tsc_ms":175713},"status":"keep","description":"Experiment 28: --skipLibCheck in core SDK Pack — 175s (marginal, core pack only runs once)","timestamp":1774525761027,"segment":0,"confidence":null}
 {"commit":"cf0f31388a","metric":536378,"metrics":{"total_ms":536378},"status":"keep","description":"Experiment 29: All 3 variants cold cache — 536s (variance from 329s warm)","timestamp":1774532217600,"segment":0,"confidence":null}
 {"commit":"","metric":192565,"metrics":{"tsc_ms":192565},"status":"keep","description":"Experiment 30: Improved cache warming (add typescript + @types/node) — 192s cold","timestamp":1774532492533,"segment":0,"confidence":null}
+{"commit":"","metric":134748,"metrics":{"tsc_ms":134748},"status":"keep","description":"Experiment 31: --legacy-peer-deps — 134s (76.7% from baseline)","timestamp":1774532699973,"segment":0,"confidence":null}
