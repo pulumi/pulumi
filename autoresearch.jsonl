@@ -40,3 +40,4 @@
 {"commit":"","metric":212124,"metrics":{"tsc_ms":212124},"status":"keep","description":"Experiment 38: Per-test PackageCache (safe, correctness preserved) — 212s","timestamp":1774538601170,"segment":0,"confidence":null}
 {"commit":"62e310961b","metric":192696,"metrics":{"tsc_ms_run1":183888,"tsc_ms_run2":201504,"tsc_ms_avg":192696},"status":"keep","description":"Experiment 39: Back-to-back TSC runs — 184s/201s (avg 192s, 66.7% from baseline)","timestamp":1774539462693,"segment":0,"confidence":null}
 {"commit":"","metric":159840,"metrics":{"tsc_ms":159840},"status":"keep","description":"Experiment 40: GOMAXPROCS=32 parallel=32 — 159s (72.4% from baseline)","timestamp":1774539863207,"segment":0,"confidence":null}
+{"commit":"","metric":0,"metrics":{},"status":"crash","description":"Experiment 41: GOMAXPROCS=64 parallel=64 — instance OOM, too much memory pressure","timestamp":1774541163003,"segment":0,"confidence":null}
