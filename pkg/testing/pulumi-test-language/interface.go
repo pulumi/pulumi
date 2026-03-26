@@ -1463,11 +1463,21 @@ func runLanguageTests(
 			return makeTestResponse(fmt.Sprintf("get pwd main: %v", err)), nil
 		}
 
+		runtimeOpts := project.Runtime.Options()
+		// Skip the typechecker for tests that don't use any provider SDKs.
+		// These tests only import the core pulumi SDK whose types are always
+		// correct, so type-checking them is redundant (~1.8s saved per test).
+		if len(programPackages) == 0 {
+			if runtimeOpts == nil {
+				runtimeOpts = map[string]interface{}{}
+			}
+			runtimeOpts["typechecker"] = "none"
+		}
 		programInfo := plugin.NewProgramInfo(
 			projectDir, /* rootDirectory */
 			pwd,        /* programDirectory */
 			main,
-			project.Runtime.Options())
+			runtimeOpts)
 
 		// For shared-source runs, dependencies are already installed and validated from the first
 		// run. Skip the expensive RPCs (InstallDependencies, GetProgramDependencies,

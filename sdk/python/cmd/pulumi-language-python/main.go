@@ -273,6 +273,8 @@ func parseOptions(
 				pythonOptions.Typechecker = toolchain.TypeCheckerMypy
 			case "pyright":
 				pythonOptions.Typechecker = toolchain.TypeCheckerPyright
+			case "none", "":
+				pythonOptions.Typechecker = toolchain.TypeCheckerNone
 			default:
 				return pythonOptions, fmt.Errorf("unsupported typechecker option: %s", typechecker)
 			}
