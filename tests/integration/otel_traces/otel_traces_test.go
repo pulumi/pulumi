@@ -16,8 +16,11 @@ package ints
 
 import (
 	"bufio"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,18 +42,32 @@ type traceSpan struct {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestOtelTraces(t *testing.T) {
+	// Build the testprovider as a standalone binary so the engine launches it directly in ExecPlugin rather than
+	// through RunPlugin. We currently can't gracefully shut down a RunPlugin process and wait for it to finish, so
+	// providers launched that way don't get a chance to flush their OTEL traces before being killed.
+	binDir := t.TempDir()
+	binaryName := "pulumi-resource-testprovider"
+	if runtime.GOOS == "windows" {
+		binaryName += ".exe"
+	}
+	buildCmd := exec.Command("go", "build", "-o", filepath.Join(binDir, binaryName), ".") //nolint:gosec
+	buildCmd.Dir = filepath.Join("..", "..", "testprovider")
+	out, err := buildCmd.CombinedOutput()
+	require.NoError(t, err, "failed to build testprovider: %s", out)
+
 	traceDir := t.TempDir()
-	tracePath := filepath.Join(traceDir, "traces-{command}.json")
+	tracePath, err := filepath.Abs(filepath.Join(traceDir, "traces-{command}.json"))
+	require.NoError(t, err)
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: "python",
 		Dependencies: []string{
 			filepath.Join("..", "..", "..", "sdk", "python"),
 		},
-		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+		Env: []string{
+			fmt.Sprintf("PATH=%s%c%s", binDir, os.PathListSeparator, os.Getenv("PATH")),
 		},
-		OtelTraces: "file://" + tracePath,
+		OtelTraces: "file:///" + tracePath,
 		Quick:      true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			upTracePath := filepath.Join(traceDir, "traces-pulumi-update-initial.json")
