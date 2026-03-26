@@ -857,7 +857,11 @@ func (eng *languageTestServer) RunLanguageTest(
 			sourceDir = filepath.Join(sourceDir, run.Main)
 		}
 
+		_, bindSpan := startSpan(ctx, "BindPCLDirectory",
+			attribute.String("test", req.Test),
+			attribute.Int("run", i))
 		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
+		bindSpan.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
 		}
@@ -1197,7 +1201,12 @@ func runLanguageTests(
 		}()
 
 		// Check the PCL is valid and get the list of packages it reports
+		_, bindSpan2 := startSpan(ctx, "BindPCLDirectory",
+			attribute.String("test", testName),
+			attribute.Int("run", i),
+			attribute.String("phase", "runLanguageTests"))
 		program, diags, err := pcl.BindDirectory(sourceDir, loader)
+		bindSpan2.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
 		}
@@ -1320,7 +1329,11 @@ func runLanguageTests(
 		// We make a transitive query here because some languages (e.g. Python) treat dependencies as transitive if any of
 		// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
 		// well.
+		_, depSpan := startSpan(ctx, "GetProgramDependencies",
+			attribute.String("test", testName),
+			attribute.Int("run", i))
 		dependencies, err := languageClient.GetProgramDependencies(programInfo, true)
+		depSpan.End()
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
 		}
