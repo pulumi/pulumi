@@ -363,31 +363,13 @@
     minimatch "^3.0.4"
     strip-json-comments "^3.1.1"
 
-"@grpc/grpc-js@^1.10.1":
-  version "1.11.2"
-  resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.11.2.tgz"
-  integrity sha512-DWp92gDD7/Qkj7r8kus6/HCINeo3yPZWZ3paKgDgsbKbSpoxKg1yvN8xe2Q8uE3zOsPe3bX8FQX2+XValq2yTw==
-  dependencies:
-    "@grpc/proto-loader" "^0.7.13"
-    "@js-sdsl/ordered-map" "^4.4.2"
-
-"@grpc/grpc-js@^1.7.1":
+"@grpc/grpc-js@^1.10.1", "@grpc/grpc-js@^1.7.1":
   version "1.14.3"
   resolved "https://registry.yarnpkg.com/@grpc/grpc-js/-/grpc-js-1.14.3.tgz#4c9b817a900ae4020ddc28515ae4b52c78cfb8da"
   integrity sha512-Iq8QQQ/7X3Sac15oB6p0FmUg/klxQvXLeileoqrTRGJYLV+/9tubbr9ipz0GKHjmXVsgFPo/+W+2cA8eNcR+XA==
   dependencies:
     "@grpc/proto-loader" "^0.8.0"
     "@js-sdsl/ordered-map" "^4.4.2"
-
-"@grpc/proto-loader@^0.7.13":
-  version "0.7.13"
-  resolved "https://registry.npmjs.org/@grpc/proto-loader/-/proto-loader-0.7.13.tgz"
-  integrity sha512-AiXO/bfe9bmxBjxxtYxFAXGZvMaN5s8kO+jBHAJCON8rJoB5YS/D6X7ZNc6XQkuHNmyl4CYaMI1fJ/Gn27RGGw==
-  dependencies:
-    lodash.camelcase "^4.3.0"
-    long "^5.0.0"
-    protobufjs "^7.2.5"
-    yargs "^17.7.2"
 
 "@grpc/proto-loader@^0.8.0":
   version "0.8.0"
@@ -3779,15 +3761,10 @@ picomatch@^2.3.1:
   resolved "https://registry.npmjs.org/picomatch/-/picomatch-2.3.1.tgz"
   integrity sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==
 
-picomatch@^3.0.1:
-  version "3.0.1"
-  resolved "https://registry.npmjs.org/picomatch/-/picomatch-3.0.1.tgz"
-  integrity sha512-I3EurrIQMlRc9IaAZnqRR044Phh2DXY+55o7uJ0V+hYZAcQYSuFWsc9q5PvyDHUSCe1Qxn/iBz+78s86zWnGag==
-
-picomatch@^4.0.3:
-  version "4.0.3"
-  resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-4.0.3.tgz#796c76136d1eead715db1e7bad785dedd695a042"
-  integrity sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==
+picomatch@^4.0.0, picomatch@^4.0.3:
+  version "4.0.4"
+  resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-4.0.4.tgz#fd6f5e00a143086e074dffe4c924b8fb293b0589"
+  integrity sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==
 
 pkg-dir@^4.1.0:
   version "4.2.0"
@@ -3853,24 +3830,6 @@ promise-retry@^2.0.1:
   dependencies:
     err-code "^2.0.2"
     retry "^0.12.0"
-
-protobufjs@^7.2.5:
-  version "7.4.0"
-  resolved "https://registry.npmjs.org/protobufjs/-/protobufjs-7.4.0.tgz"
-  integrity sha512-mRUWCc3KUU4w1jU8sGxICXH/gNS94DvI1gxqDvBzhj1JpcsimQkYiOJfwsPUykUI5ZaspFbSgmBLER8IrQ3tqw==
-  dependencies:
-    "@protobufjs/aspromise" "^1.1.2"
-    "@protobufjs/base64" "^1.1.2"
-    "@protobufjs/codegen" "^2.0.4"
-    "@protobufjs/eventemitter" "^1.1.0"
-    "@protobufjs/fetch" "^1.1.0"
-    "@protobufjs/float" "^1.0.2"
-    "@protobufjs/inquire" "^1.1.0"
-    "@protobufjs/path" "^1.1.2"
-    "@protobufjs/pool" "^1.1.0"
-    "@protobufjs/utf8" "^1.1.0"
-    "@types/node" ">=13.7.0"
-    long "^5.0.0"
 
 protobufjs@^7.3.0, protobufjs@^7.5.3:
   version "7.5.4"
