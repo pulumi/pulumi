@@ -237,6 +237,12 @@ type pythonLanguageHost struct {
 	// type-checking. When the same directory is Run again (e.g. preview then
 	// update in conformance tests), the typechecker is skipped.
 	typecheckerCache sync.Map // map[string]bool (abs program dir → true)
+
+	// requiredPackagesCache caches GetRequiredPackages results by program directory.
+	// The engine calls this on every preview/update via gatherPackagesFromProgram.
+	// Since packages don't change between preview and update for the same program,
+	// caching avoids redundant lockfile parsing and Python subprocess calls.
+	requiredPackagesCache sync.Map // map[string]*pulumirpc.GetRequiredPackagesResponse
 }
 
 func parseOptions(
@@ -332,6 +338,12 @@ func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Cl
 func (host *pythonLanguageHost) GetRequiredPackages(ctx context.Context,
 	req *pulumirpc.GetRequiredPackagesRequest,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	// Cache by program directory — packages don't change between preview and update.
+	absProgramDir, _ := filepath.Abs(req.Info.ProgramDirectory)
+	if cached, ok := host.requiredPackagesCache.Load(absProgramDir); ok {
+		return cached.(*pulumirpc.GetRequiredPackagesResponse), nil
+	}
+
 	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
 		return nil, err
@@ -370,7 +382,9 @@ func (host *pythonLanguageHost) GetRequiredPackages(ctx context.Context,
 		}
 	}
 
-	return &pulumirpc.GetRequiredPackagesResponse{Packages: packages}, nil
+	resp := &pulumirpc.GetRequiredPackagesResponse{Packages: packages}
+	host.requiredPackagesCache.Store(absProgramDir, resp)
+	return resp, nil
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
