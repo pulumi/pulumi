@@ -1940,11 +1940,11 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 			return nil, fmt.Errorf("yarn install: %w", err)
 		}
 
-		err = writeString("$ yarn run tsc\n")
+		err = writeString("$ npx tsc --skipLibCheck\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnTscCmd := exec.Command(yarn, "run", "tsc")
+		yarnTscCmd := exec.Command("npx", "tsc", "--skipLibCheck")
 		yarnTscCmd.Dir = req.PackageDirectory
 		if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
