@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 
 	"github.com/blang/semver"
+	"github.com/google/uuid"
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 	"go.opentelemetry.io/otel"
@@ -536,8 +537,9 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
-		rctx, kill := context.WithCancel(ctx.Request()) //nolint:govet // lostcancel
+		rctx, cancelStream := context.WithCancel(ctx.Request())
 
+		executionID := uuid.NewString()
 		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
 		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
 			Info:             info,
@@ -547,16 +549,32 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			Kind:             string(kind),
 			AttachDebugger:   attachDebugger,
 			LoaderAddress:    ctx.Host.LoaderAddr(),
+			ExecutionID:      executionID,
 		})
 		if err != nil {
-			return nil, err //nolint:govet // lostcancel
+			cancelStream()
+			return nil, err
 		}
 
 		return &Plugin{
-			Bin:    bin,
-			Args:   args,
-			Env:    environment,
-			Kill:   func() error { kill(); return nil },
+			Bin:  bin,
+			Args: args,
+			Env:  environment,
+			Kill: sync.OnceValue(func() error {
+				// Signal the plugin with the execution ID to shut down gracefully.
+				if err := runtime.Cancel(executionID); err != nil {
+					logging.V(5).Infof("language runtime cancel failed: %v", err)
+				}
+				// Wait for the child to exit. The done promise resolves when the RunPlugin stream ends.
+				timeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_, err := done.Result(timeout)
+				if errors.Is(err, context.DeadlineExceeded) {
+					// Child didn't exit in time, let's force-cancel the stream.
+					cancelStream()
+				}
+				return nil
+			}),
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
 			Wait: func(ctx context.Context) (int, error) {

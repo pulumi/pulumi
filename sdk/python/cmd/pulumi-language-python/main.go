@@ -59,6 +59,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
@@ -217,10 +218,13 @@ func main() {
 type pythonLanguageHost struct {
 	pulumirpc.UnsafeLanguageRuntimeServer
 
-	exec          string
-	engineAddress string
-	tracing       string
-	otelEndpoint  string
+	exec             string
+	engineAddress    string
+	tracing          string
+	otelEndpoint     string
+	cancelCtx        context.Context
+	cancelFunc       context.CancelFunc
+	runPluginCancels gsync.Map[string, context.CancelFunc]
 
 	// This is used by conformance testing to set the typechecker to use in ProgramGen.
 	typechecker string
@@ -290,6 +294,7 @@ func parseOptions(
 
 func newLanguageHost(exec, engineAddress, tracing, otelEndpoint, typechecker, toolchain string,
 ) pulumirpc.LanguageRuntimeServer {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
@@ -297,6 +302,8 @@ func newLanguageHost(exec, engineAddress, tracing, otelEndpoint, typechecker, to
 		otelEndpoint:  otelEndpoint,
 		typechecker:   typechecker,
 		toolchain:     toolchain,
+		cancelCtx:     ctx,
+		cancelFunc:    cancel,
 	}
 }
 
@@ -1031,10 +1038,20 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	if err := tc.ValidateVenv(ctx); err != nil {
 		return nil, err
 	}
-	cmd, err := tc.Command(ctx, args...)
+	// Cancel if either the Cancel RPC fires (host.cancelCtx) or the gRPC request ends (ctx)
+	runCmdCtx, runCmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(ctx, runCmdCancel)
+	cmd, err := tc.Command(runCmdCtx, args...)
 	if err != nil {
 		return nil, err
 	}
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -1505,6 +1522,16 @@ func (host *pythonLanguageHost) RunPlugin(
 ) error {
 	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
 	ctx := server.Context()
+	// cmdCtx is cancelled when any of:
+	// 1. The global Cancel RPC fires (host.cancelCtx)
+	// 2. The gRPC stream ends (ctx)
+	// 3. A targeted Cancel RPC for this execution ID fires
+	cmdCtx, cmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(ctx, cmdCancel)
+	if execID := req.GetExecutionId(); execID != "" {
+		host.runPluginCancels.Store(execID, cmdCancel)
+		defer host.runPluginCancels.Delete(execID)
+	}
 
 	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
@@ -1575,7 +1602,7 @@ func (host *pythonLanguageHost) RunPlugin(
 
 		args = append(args, pyproject.Project.Name)
 		args = append(args, req.Args...)
-		cmd, err = tc.ModuleCommand(ctx, "pulumi.run.plugin", args...)
+		cmd, err = tc.ModuleCommand(cmdCtx, "pulumi.run.plugin", args...)
 		if err != nil {
 			return err
 		}
@@ -1595,7 +1622,7 @@ func (host *pythonLanguageHost) RunPlugin(
 			args = append(args, req.Info.ProgramDirectory)
 			args = append(args, req.Args...)
 		}
-		cmd, err = tc.Command(ctx, args...)
+		cmd, err = tc.Command(cmdCtx, args...)
 		if err != nil {
 			return err
 		}
@@ -1653,6 +1680,13 @@ func (host *pythonLanguageHost) RunPlugin(
 
 	cmd.Env = append(cmd.Env, req.Env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 
 	run := func() error {
 		err := cmd.Start()
@@ -2007,6 +2041,13 @@ func (host *pythonLanguageHost) Link(
 }
 
 func (host *pythonLanguageHost) Cancel(ctx context.Context, req *pulumirpc.CancelRequest) (*emptypb.Empty, error) {
+	if execID := req.GetExecutionId(); execID != "" {
+		if cancelFunc, ok := host.runPluginCancels.LoadAndDelete(execID); ok {
+			cancelFunc()
+		}
+	} else {
+		host.cancelFunc()
+	}
 	return &emptypb.Empty{}, nil
 }
 

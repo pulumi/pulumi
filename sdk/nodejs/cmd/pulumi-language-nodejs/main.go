@@ -78,6 +78,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -253,10 +254,13 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin
 type nodeLanguageHost struct {
 	pulumirpc.UnsafeLanguageRuntimeServer
 
-	engineAddress string
-	runtime       string
-	tracing       string
-	otelEndpoint  string
+	engineAddress    string
+	runtime          string
+	tracing          string
+	otelEndpoint     string
+	cancelCtx        context.Context
+	cancelFunc       context.CancelFunc
+	runPluginCancels gsync.Map[string, context.CancelFunc]
 
 	// used by language conformance tests to force TSC usage
 	forceTsc bool
@@ -356,12 +360,15 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 func newLanguageHost(
 	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		otelEndpoint:  otelEndpoint,
 		forceTsc:      forceTsc,
 		runtime:       runtime,
+		cancelCtx:     ctx,
+		cancelFunc:    cancel,
 	}
 }
 
@@ -946,8 +953,17 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	// #nosec G204
-	cmd := exec.CommandContext(ctx, runtimeBin, runtimeArgs...)
+	// Cancel if either the Cancel RPC fires (host.cancelCtx) or the gRPC request ends (ctx)
+	cmdCtx, cmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(ctx, cmdCancel)
+	cmd := exec.CommandContext(cmdCtx, runtimeBin, runtimeArgs...)
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 
 	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
 
@@ -1656,7 +1672,24 @@ func (host *nodeLanguageHost) RunPlugin(
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.CommandContext(ctx, runtimeBin, args...)
+	// cmdCtx is cancelled when any of:
+	// 1. The global Cancel RPC fires (host.cancelCtx)
+	// 2. The gRPC stream ends (ctx)
+	// 3. A targeted Cancel RPC for this execution ID fires
+	cmdCtx, cmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(ctx, cmdCancel)
+	if execID := req.GetExecutionId(); execID != "" {
+		host.runPluginCancels.Store(execID, cmdCancel)
+		defer host.runPluginCancels.Delete(execID)
+	}
+	cmd := exec.CommandContext(cmdCtx, runtimeBin, args...)
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 	// node policy packs used to always run with the working directory set to the policy pack directory, not
 	// the main working directory. We need to continue that for backwards compatibility.
 	if req.Kind == string(apitype.AnalyzerPlugin) {
@@ -2221,6 +2254,13 @@ func (host *nodeLanguageHost) Link(
 }
 
 func (host *nodeLanguageHost) Cancel(ctx context.Context, req *pulumirpc.CancelRequest) (*emptypb.Empty, error) {
+	if execID := req.GetExecutionId(); execID != "" {
+		if cancelFunc, ok := host.runPluginCancels.LoadAndDelete(execID); ok {
+			cancelFunc()
+		}
+	} else {
+		host.cancelFunc()
+	}
 	return &emptypb.Empty{}, nil
 }
 

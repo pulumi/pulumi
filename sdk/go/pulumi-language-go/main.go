@@ -61,6 +61,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"go.opentelemetry.io/otel"
@@ -279,10 +280,13 @@ func (cmd *mainCmd) Run(p *runParams, otelEndpoint string) error {
 type goLanguageHost struct {
 	pulumirpc.UnsafeLanguageRuntimeServer // opt out of forward compat
 
-	cwd           string
-	engineAddress string
-	tracing       string
-	otelEndpoint  string
+	cwd              string
+	engineAddress    string
+	tracing          string
+	otelEndpoint     string
+	cancelCtx        context.Context
+	cancelFunc       context.CancelFunc
+	runPluginCancels gsync.Map[string, context.CancelFunc]
 }
 
 type goOptions struct {
@@ -318,11 +322,14 @@ func parseOptions(root string, options map[string]any) (goOptions, error) {
 }
 
 func newLanguageHost(engineAddress, cwd, tracing, otelEndpoint string) pulumirpc.LanguageRuntimeServer {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &goLanguageHost{
 		engineAddress: engineAddress,
 		cwd:           cwd,
 		tracing:       tracing,
 		otelEndpoint:  otelEndpoint,
+		cancelCtx:     ctx,
+		cancelFunc:    cancel,
 	}
 }
 
@@ -969,10 +976,10 @@ func runProgram(
 		}
 		defer dbg.Cleanup()
 		// create a sub-context to cancel the startDebugging operation when the process exits.
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
+		dbgCtx, dbgCancel := context.WithCancel(ctx)
+		defer dbgCancel()
 		go func() {
-			err := startDebugging(ctx, engineClient, dbg, "Pulumi: Program (Go)")
+			err := startDebugging(dbgCtx, engineClient, dbg, "Pulumi: Program (Go)")
 			if err != nil {
 				// kill the program if we can't start debugging.
 				logging.Errorf("Unable to start debugging: %v", err)
@@ -985,6 +992,13 @@ func runProgram(
 	cmd.Dir = pwd
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 	status, err := runCmdStatus(cmd.Run)
 	if err != nil {
 		return &pulumirpc.RunResponse{
@@ -1052,6 +1066,10 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		env = append(env, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
 	}
 
+	// Cancel if either the Cancel RPC fires (host.cancelCtx) or the gRPC request ends (ctx)
+	cmdCtx, cmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(ctx, cmdCancel)
+
 	// the user can explicitly opt in to using a binary executable by specifying
 	// runtime.options.binary in the Pulumi.yaml
 	if opts.binary != "" {
@@ -1059,7 +1077,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		if err != nil {
 			return nil, fmt.Errorf("unable to find '%s' executable: %w", opts.binary, err)
 		}
-		return runProgram(ctx, engineClient, req, req.Pwd, bin, env), nil
+		return runProgram(cmdCtx, engineClient, req, req.Pwd, bin, env), nil
 	}
 
 	// feature flag to enable deprecated old behavior and use `go run`
@@ -1105,7 +1123,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		defer os.Remove(program)
 	}
 
-	return runProgram(ctx, engineClient, req, req.Pwd, program, env), nil
+	return runProgram(cmdCtx, engineClient, req, req.Pwd, program, env), nil
 }
 
 // constructEnv constructs an environment for a Go progam by enumerating all of the optional and non-optional
@@ -1331,30 +1349,47 @@ func (host *goLanguageHost) RunPlugin(
 	defer closer.Close()
 
 	var cmd *exec.Cmd
+	// cmdCtx is cancelled when any of:
+	// 1. The global Cancel RPC fires (host.cancelCtx)
+	// 2. The gRPC stream ends (server.Context)
+	// 3. A targeted Cancel RPC for this execution ID fires
+	cmdCtx, cmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(server.Context(), cmdCancel)
+	if execID := req.GetExecutionId(); execID != "" {
+		host.runPluginCancels.Store(execID, cmdCancel)
+		defer host.runPluginCancels.Delete(execID)
+	}
+
 	if req.GetAttachDebugger() {
 		var dbg *debugger
-		cmd, dbg, err = debugCommand(server.Context(), program, req.Args...)
+		cmd, dbg, err = debugCommand(cmdCtx, program, req.Args...)
 		if err != nil {
 			return err
 		}
 		defer dbg.Cleanup()
-		// create a sub-context to cancel the startDebugging operation when the process exits.
-		ctx, cancel := context.WithCancel(server.Context())
-		defer cancel()
+		dbgCtx, dbgCancel := context.WithCancel(cmdCtx)
+		defer dbgCancel()
 		go func() {
-			err := startDebugging(ctx, engineClient, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
+			err := startDebugging(dbgCtx, engineClient, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
 			if err != nil {
 				// kill the plugin if we can't start debugging.
 				logging.Errorf("Unable to start debugging: %v", err)
-				contract.IgnoreError(cmd.Process.Kill())
+				cmdCancel()
 			}
 		}()
 	} else {
-		cmd = exec.CommandContext(server.Context(), program, req.Args...)
+		cmd = exec.CommandContext(cmdCtx, program, req.Args...)
 		cmd.Dir = req.Pwd
 		cmd.Env = req.Env
 		cmd.Stdout, cmd.Stderr = stdout, stderr
 	}
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 
 	if err = cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
@@ -1707,5 +1742,12 @@ func (host *goLanguageHost) Link(
 }
 
 func (host *goLanguageHost) Cancel(ctx context.Context, req *pulumirpc.CancelRequest) (*emptypb.Empty, error) {
+	if execID := req.GetExecutionId(); execID != "" {
+		if cancelFunc, ok := host.runPluginCancels.LoadAndDelete(execID); ok {
+			cancelFunc()
+		}
+	} else {
+		host.cancelFunc()
+	}
 	return &emptypb.Empty{}, nil
 }

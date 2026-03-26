@@ -785,7 +785,7 @@ func (host *pclLanguageHost) Link(
 }
 
 func (host *pclLanguageHost) Cancel(
-	ctx context.Context, req *emptypb.Empty,
+	ctx context.Context, req *pulumirpc.CancelRequest,
 ) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
