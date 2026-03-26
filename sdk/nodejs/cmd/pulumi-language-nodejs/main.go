@@ -1971,7 +1971,8 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		npmInstallCmd := exec.Command(npm, "install", "--no-audit", "--no-fund", "--no-optional")
+		npmInstallCmd := exec.Command(npm, "install", "--no-audit", "--no-fund", "--no-optional",
+			"--install-strategy=shallow", "--legacy-peer-deps")
 		npmInstallCmd.Dir = req.PackageDirectory
 		if err := runWithOutput(npmInstallCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, errutil.ErrorWithStderr(err, "npm install")
