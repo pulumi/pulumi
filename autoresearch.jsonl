@@ -28,3 +28,4 @@
 {"commit":"","metric":154656,"metrics":{"tsc_ms":154656},"status":"keep","description":"Experiment 26: Pre-warm npm cache — 154s (73.2% from baseline)","timestamp":1774524709629,"segment":0,"confidence":null}
 {"commit":"daa46f7574","metric":329367,"metrics":{"total_ms":329367,"tsc_ms":154656},"status":"keep","description":"Experiment 27: All 3 variants with cache warming — 329s (77.7% from baseline)","timestamp":1774525219710,"segment":0,"confidence":null}
 {"commit":"","metric":175713,"metrics":{"tsc_ms":175713},"status":"keep","description":"Experiment 28: --skipLibCheck in core SDK Pack — 175s (marginal, core pack only runs once)","timestamp":1774525761027,"segment":0,"confidence":null}
+{"commit":"cf0f31388a","metric":536378,"metrics":{"total_ms":536378},"status":"keep","description":"Experiment 29: All 3 variants cold cache — 536s (variance from 329s warm)","timestamp":1774532217600,"segment":0,"confidence":null}
