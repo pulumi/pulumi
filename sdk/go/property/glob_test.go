@@ -15,6 +15,7 @@
 package property
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -27,17 +28,21 @@ import (
 func genKeySegment() *rapid.Generator[PathSegment] { return rapid.Map(rapid.String(), NewSegment) }
 
 func genIndexSegment() *rapid.Generator[PathSegment] {
-	return rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 }), NewSegment)
+	return rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 && i < 16_384 }), NewSegment)
+}
+
+func genGlobSegments() *rapid.Generator[[]GlobSegment] {
+	return rapid.SliceOf(rapid.OneOf(
+		rapid.Map(genKeySegment(), func(k PathSegment) GlobSegment { return k }),
+		rapid.Map(genIndexSegment(), func(k PathSegment) GlobSegment { return k }),
+		rapid.Just[GlobSegment](Splat),
+	))
 }
 
 func genGlob() *rapid.Generator[Glob] {
 	return rapid.Map(
-		rapid.SliceOf(rapid.OneOf(
-			rapid.Map(genKeySegment(), func(k PathSegment) GlobSegment { return k }),
-			rapid.Map(genIndexSegment(), func(k PathSegment) GlobSegment { return k }),
-			rapid.Just[GlobSegment](Splat),
-		)),
-		func(segs []GlobSegment) Glob { return Glob(segs) },
+		genGlobSegments(),
+		func(segs []GlobSegment) Glob { return GlobFromSegments(segs...) },
 	)
 }
 
@@ -47,7 +52,7 @@ func genPath() *rapid.Generator[Path] {
 			genKeySegment(),
 			genIndexSegment(),
 		)),
-		func(segs []PathSegment) Path { return Path(segs) },
+		func(segs []PathSegment) Path { return PathFromSegments(segs...) },
 	)
 }
 
@@ -62,7 +67,7 @@ func genTextGlobPath() *rapid.Generator[tup[string, Glob]] {
 		rapid.Just(ret{"*", Splat}),   // Raw Splat
 		rapid.Just(ret{"[*]", Splat}), // Index Splat
 		// Number
-		rapid.Map(rapid.Uint32(), func(i uint32) ret {
+		rapid.Map(rapid.Uint32().Filter(func(i uint32) bool { return i < 1<<14 }), func(i uint32) ret {
 			return ret{"[" + strconv.FormatInt(int64(i), 10) + "]", IndexSegment{int(i)}}
 		}),
 		// Unquoted property path
@@ -75,7 +80,7 @@ func genTextGlobPath() *rapid.Generator[tup[string, Glob]] {
 		var s strings.Builder
 		var g Glob
 		for i, v := range segments {
-			g = append(g, v.b)
+			g.pathRepr = g.appendGlobSegment(v.b)
 			if v.a[0] == '[' {
 				s.WriteString(v.a)
 			} else {
@@ -99,7 +104,7 @@ func TestGlobEncoding(t *testing.T) {
 	t.Parallel()
 
 	rapidTest(t, "canonical values roundtrip", func(t *rapid.T) {
-		path1 := genGlob().Filter(func(p Glob) bool { return len(p) > 0 }).Draw(t, "path")
+		path1 := genGlob().Filter(func(p Glob) bool { return p.len() > 0 }).Draw(t, "path")
 		text1, err := path1.MarshalText()
 		require.NoError(t, err)
 
@@ -137,9 +142,9 @@ func TestGlobEncoding(t *testing.T) {
 			text     string
 			expected Glob
 		}{
-			{"x.*", Glob{KeySegment{"x"}, Splat}},
-			{"*", Glob{Splat}},
-			{`["x"]`, Glob{KeySegment{"x"}}},
+			{"x.*", GlobFromSegments(KeySegment{"x"}, Splat)},
+			{"*", GlobFromSegments(Splat)},
+			{`["x"]`, GlobFromSegments(KeySegment{"x"})},
 		}
 
 		for _, tt := range tests {
@@ -188,20 +193,21 @@ func TestMatches(t *testing.T) {
 
 	rapidTest(t, "prefixes are always have prefix", func(t *rapid.T) {
 		path := genPath().Draw(t, "path")
-		prefixLen := rapid.IntRange(0, len(path)).Draw(t, "prefixLen")
+		prefixLen := rapid.IntRange(0, path.len()).Draw(t, "prefixLen")
 
-		assert.True(t, (path[:prefixLen]).AsGlob().Matches(path),
-			"%#v should be a prefix of %#v", path[:prefixLen], path)
+		glob := GlobFromSegments(slices.Collect(path.segments)[:prefixLen]...)
+
+		assert.True(t, glob.Matches(path), "%#v should be a prefix of %#v", glob, path)
 	})
 
 	rapidTest(t, "mutations are never prefixes", func(t *rapid.T) {
-		path := genPath().Filter(func(p Path) bool { return len(p) > 0 }).Draw(t, "path")
-		glob := make(Glob, len(path))
-		for i, v := range path {
+		path := genPath().Filter(func(p Path) bool { return p.len() > 0 }).Draw(t, "path")
+		glob := make([]GlobSegment, path.len())
+		for i, v := range path.enumerate {
 			glob[i] = v
 		}
 
-		prefixLen := rapid.IntRange(0, len(path)-1).Draw(t, "mutation index")
+		prefixLen := rapid.IntRange(0, path.len()-1).Draw(t, "mutation index")
 		switch s := glob[prefixLen].(type) {
 		case IndexSegment:
 			glob[prefixLen] = NewSegment(s.int + 1)
@@ -210,7 +216,8 @@ func TestMatches(t *testing.T) {
 		default:
 			require.Fail(t, "unexpected type %T", s)
 		}
-		assert.False(t, glob.Matches(path), "%#v should not be a prefix of %#v", path[:prefixLen], path)
+		assert.False(t, GlobFromSegments(glob...).Matches(path), "%#v should not be a prefix of %#v",
+			GlobFromSegments(glob...), path)
 	})
 }
 
@@ -243,7 +250,7 @@ func TestGlobGet(t *testing.T) {
 	}{
 		{
 			name: "single-key",
-			glob: Glob{NewSegment("a")},
+			glob: GlobFromSegments(NewSegment("a")),
 			from: nested,
 			expected: []Value{
 				New(map[string]Value{
@@ -254,7 +261,7 @@ func TestGlobGet(t *testing.T) {
 		},
 		{
 			name: "single-index",
-			glob: Glob{NewSegment(1)},
+			glob: GlobFromSegments(NewSegment(1)),
 			from: arrayValue,
 			expected: []Value{
 				New("one"),
@@ -262,7 +269,7 @@ func TestGlobGet(t *testing.T) {
 		},
 		{
 			name: "nested-key-key",
-			glob: Glob{NewSegment("a"), NewSegment("x")},
+			glob: GlobFromSegments(NewSegment("a"), NewSegment("x")),
 			from: nested,
 			expected: []Value{
 				New("ax"),
@@ -270,7 +277,7 @@ func TestGlobGet(t *testing.T) {
 		},
 		{
 			name: "splat-on-map",
-			glob: Glob{Splat},
+			glob: GlobFromSegments(Splat),
 			from: nested,
 			expected: []Value{
 				New(map[string]Value{
@@ -285,7 +292,7 @@ func TestGlobGet(t *testing.T) {
 		},
 		{
 			name: "splat-on-array",
-			glob: Glob{Splat},
+			glob: GlobFromSegments(Splat),
 			from: arrayValue,
 			expected: []Value{
 				New("zero"),
@@ -295,7 +302,7 @@ func TestGlobGet(t *testing.T) {
 		},
 		{
 			name: "splat-then-key",
-			glob: Glob{Splat, NewSegment("x")},
+			glob: GlobFromSegments(Splat, NewSegment("x")),
 			from: nested,
 			expected: []Value{
 				New("ax"),
@@ -304,7 +311,7 @@ func TestGlobGet(t *testing.T) {
 		},
 		{
 			name:   "splat-on-primitive",
-			glob:   Glob{Splat},
+			glob:   GlobFromSegments(Splat),
 			from:   New("hello"),
 			errMsg: "expected a map or array, found string",
 		},
@@ -316,29 +323,18 @@ func TestGlobGet(t *testing.T) {
 		},
 		{
 			name:   "missing-key-returns-error",
-			glob:   Glob{NewSegment("missing")},
+			glob:   GlobFromSegments(NewSegment("missing")),
 			from:   nested,
 			errMsg: `missing key "missing" in map`,
 		},
 		{
-			name: "path-as-glob",
-			glob: Path{
-				NewSegment("a"),
-				NewSegment("y"),
-			}.AsGlob(),
-			from: nested,
-			expected: []Value{
-				New("ay"),
-			},
-		},
-		{
 			name: "splat-on-empty-map",
-			glob: Glob{Splat},
+			glob: GlobFromSegments(Splat),
 			from: New(map[string]Value{}),
 		},
 		{
 			name: "splat-on-empty-array",
-			glob: Glob{Splat},
+			glob: GlobFromSegments(Splat),
 			from: New([]Value{}),
 		},
 	}
