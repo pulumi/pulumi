@@ -46,10 +46,11 @@ func TestTestNames(t *testing.T) {
 		isl1 := strings.HasPrefix(name, "l1-")
 		isl2 := strings.HasPrefix(name, "l2-")
 		isl3 := strings.HasPrefix(name, "l3-")
+		isWorkflow := strings.HasPrefix(name, "workflow-")
 		isPolicy := strings.HasPrefix(name, "policy-")
 		isProvider := strings.HasPrefix(name, "provider-")
-		assert.True(t, isInternal || isl1 || isl2 || isl3 || isPolicy || isProvider,
-			"test %s must start with internal-, l1-, l2-, l3-, policy-, or provider-", name)
+		assert.True(t, isInternal || isl1 || isl2 || isl3 || isWorkflow || isPolicy || isProvider,
+			"test %s must start with internal-, l1-, l2-, l3-, workflow-, policy-, or provider-", name)
 	}
 }
 

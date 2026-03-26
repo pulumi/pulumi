@@ -314,14 +314,11 @@ func (e *WorkflowEvaluator) RunStep(
 		}
 	}
 
-	value, err := executeStepDefinition(step)
+	value, err := executeStepDefinition(step, req.GetInput())
 	if err != nil {
 		return nil, err
 	}
-
-	return &pulumirpc.RunStepResponse{
-		Result: structpb.NewStringValue(value),
-	}, nil
+	return &pulumirpc.RunStepResponse{Result: value}, nil
 }
 
 func (e *WorkflowEvaluator) RunTriggerMock(
@@ -414,15 +411,29 @@ func defaultTypeToken(token string) string {
 	return "pulumi:json#/Any"
 }
 
-func executeStepDefinition(step codegenpcl.WorkflowStepDefinition) (string, error) {
+func executeStepDefinition(step codegenpcl.WorkflowStepDefinition, input *structpb.Value) (*structpb.Value, error) {
 	if step.Command != "" {
 		out, err := exec.Command("/bin/sh", "-c", step.Command).CombinedOutput() //nolint:gosec
 		if err != nil {
-			return "", status.Errorf(codes.Internal, "step command failed: %v", err)
+			return nil, status.Errorf(codes.Internal, "step command failed: %v", err)
 		}
-		return strings.TrimSpace(string(out)), nil
+		return structpb.NewStringValue(strings.TrimSpace(string(out))), nil
 	}
-	return step.Expr, nil
+	expr := strings.TrimSpace(step.Expr)
+	switch expr {
+	case "input":
+		if input == nil {
+			return structpb.NewNullValue(), nil
+		}
+		return input, nil
+	case "!input", "not input":
+		if input == nil {
+			return nil, status.Error(codes.InvalidArgument, "step expression requires bool input")
+		}
+		return structpb.NewBoolValue(!input.GetBoolValue()), nil
+	default:
+		return structpb.NewStringValue(step.Expr), nil
+	}
 }
 
 func (e *WorkflowEvaluator) stepDefinitionForJobStep(

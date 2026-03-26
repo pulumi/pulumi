@@ -980,6 +980,11 @@ export class RunStepRequest extends jspb.Message {
     getPath(): string;
     setPath(value: string): RunStepRequest;
 
+    hasInput(): boolean;
+    clearInput(): void;
+    getInput(): google_protobuf_struct_pb.Value | undefined;
+    setInput(value?: google_protobuf_struct_pb.Value): RunStepRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunStepRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RunStepRequest): RunStepRequest.AsObject;
@@ -994,6 +999,7 @@ export namespace RunStepRequest {
     export type AsObject = {
         context?: WorkflowContext.AsObject,
         path: string,
+        input?: google_protobuf_struct_pb.Value.AsObject,
     }
 }
 

@@ -452,6 +452,8 @@ message RunStepRequest {
     WorkflowContext context = 1;
     // Step node path.
     string path = 2;
+    // Optional input value for this step invocation.
+    google.protobuf.Value input = 3;
 }
 
 message RunStepResponse {

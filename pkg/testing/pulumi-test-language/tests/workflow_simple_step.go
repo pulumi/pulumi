@@ -15,39 +15,37 @@
 package tests
 
 import (
-	"context"
-
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func init() {
-	LanguageTests["internal-workflow-step"] = LanguageTest{
+	LanguageTests["workflow-simple-step"] = LanguageTest{
 		Runs: []TestRun{
 			{
 				AssertWorkflow: func(l *L, args AssertWorkflowArgs) {
-					ctx := context.Background()
-
-					steps, err := args.Workflow.GetSteps(ctx, &pulumirpc.GetStepsRequest{})
+					steps, err := args.Workflow.GetSteps(args.Context, &pulumirpc.GetStepsRequest{})
 					require.NoError(l, err)
 					require.Len(l, steps.GetSteps(), 1)
 
 					stepToken := steps.GetSteps()[0]
-					step, err := args.Workflow.GetStep(ctx, &pulumirpc.GetStepRequest{Token: stepToken})
+					step, err := args.Workflow.GetStep(args.Context, &pulumirpc.GetStepRequest{Token: stepToken})
 					require.NoError(l, err)
 					require.NotNil(l, step.GetInputType())
 					require.NotNil(l, step.GetOutputType())
-					assert.Equal(l, "internal:workflow:StepInput", step.GetInputType().GetToken())
-					assert.Equal(l, "internal:workflow:StepOutput", step.GetOutputType().GetToken())
+					assert.Equal(l, "bool", step.GetInputType().GetToken())
+					assert.Equal(l, "bool", step.GetOutputType().GetToken())
 
-					runResp, err := args.Workflow.RunStep(ctx, &pulumirpc.RunStepRequest{
+					runResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
 						Context: &pulumirpc.WorkflowContext{ExecutionId: "test"},
 						Path:    stepToken,
+						Input:   structpb.NewBoolValue(true),
 					})
 					require.NoError(l, err)
 					require.NotNil(l, runResp.GetResult())
-					assert.Equal(l, "step-output", runResp.GetResult().GetStringValue())
+					assert.False(l, runResp.GetResult().GetBoolValue())
 				},
 			},
 		},

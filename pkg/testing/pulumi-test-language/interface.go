@@ -1299,6 +1299,7 @@ func runLanguageTests(
 			result = tests.WithL(func(l *tests.L) {
 				assertWorkflow(l, tests.AssertWorkflowArgs{
 					ProjectDirectory: projectDir,
+					Context:          ctx,
 					Err:              nil,
 					Workflow:         workflow,
 					SDKs:             sdks,

@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -260,6 +261,7 @@ type AssertArgs struct {
 
 type AssertWorkflowArgs struct {
 	ProjectDirectory string          // required
+	Context          context.Context // required
 	Err              error           // required
 	Workflow         plugin.Workflow // required
 	SDKs             map[string]string

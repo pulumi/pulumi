@@ -7820,7 +7820,8 @@ proto.pulumirpc.RunStepRequest.prototype.toObject = function(opt_includeInstance
 proto.pulumirpc.RunStepRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(includeInstance, f),
-path: jspb.Message.getFieldWithDefault(msg, 2, "")
+path: jspb.Message.getFieldWithDefault(msg, 2, ""),
+input: (f = msg.getInput()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -7866,6 +7867,11 @@ proto.pulumirpc.RunStepRequest.deserializeBinaryFromReader = function(msg, reade
       var value = /** @type {string} */ (reader.readString());
       msg.setPath(value);
       break;
+    case 3:
+      var value = new google_protobuf_struct_pb.Value;
+      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
+      msg.setInput(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -7908,6 +7914,14 @@ proto.pulumirpc.RunStepRequest.serializeBinaryToWriter = function(message, write
     writer.writeString(
       2,
       f
+    );
+  }
+  f = message.getInput();
+  if (f != null) {
+    writer.writeMessage(
+      3,
+      f,
+      google_protobuf_struct_pb.Value.serializeBinaryToWriter
     );
   }
 };
@@ -7965,6 +7979,43 @@ proto.pulumirpc.RunStepRequest.prototype.getPath = function() {
  */
 proto.pulumirpc.RunStepRequest.prototype.setPath = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional google.protobuf.Value input = 3;
+ * @return {?proto.google.protobuf.Value}
+ */
+proto.pulumirpc.RunStepRequest.prototype.getInput = function() {
+  return /** @type{?proto.google.protobuf.Value} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 3));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Value|undefined} value
+ * @return {!proto.pulumirpc.RunStepRequest} returns this
+*/
+proto.pulumirpc.RunStepRequest.prototype.setInput = function(value) {
+  return jspb.Message.setWrapperField(this, 3, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.RunStepRequest} returns this
+ */
+proto.pulumirpc.RunStepRequest.prototype.clearInput = function() {
+  return this.setInput(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.RunStepRequest.prototype.hasInput = function() {
+  return jspb.Message.getField(this, 3) != null;
 };
 
 

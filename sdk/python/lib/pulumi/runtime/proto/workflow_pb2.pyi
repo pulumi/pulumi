@@ -932,20 +932,26 @@ class RunStepRequest(google.protobuf.message.Message):
 
     CONTEXT_FIELD_NUMBER: builtins.int
     PATH_FIELD_NUMBER: builtins.int
+    INPUT_FIELD_NUMBER: builtins.int
     path: builtins.str
     """Step node path."""
     @property
     def context(self) -> global___WorkflowContext:
         """Execution context."""
 
+    @property
+    def input(self) -> google.protobuf.struct_pb2.Value:
+        """Optional input value for this step invocation."""
+
     def __init__(
         self,
         *,
         context: global___WorkflowContext | None = ...,
         path: builtins.str = ...,
+        input: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["context", b"context"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["context", b"context", "path", b"path"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["context", b"context", "input", b"input"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["context", b"context", "input", b"input", "path", b"path"]) -> None: ...
 
 global___RunStepRequest = RunStepRequest
 
