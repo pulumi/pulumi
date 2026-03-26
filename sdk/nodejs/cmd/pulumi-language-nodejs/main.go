@@ -1979,14 +1979,16 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 
 		// Pulumi SDKs always define a build command that will run tsc writing to a bin directory.
 		// So we can run that, then edit the package.json in that directory, and then pack it.
-		err = writeString("$ npm run build\n")
+		// We pass --skipLibCheck to avoid type-checking library .d.ts files, which is
+		// unnecessary for SDK packaging and significantly speeds up the build.
+		err = writeString("$ npx tsc --skipLibCheck\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		npmBuildCmd := exec.Command(npm, "run", "build")
+		npmBuildCmd := exec.Command("npx", "tsc", "--skipLibCheck")
 		npmBuildCmd.Dir = req.PackageDirectory
 		if err := runWithOutput(npmBuildCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, errutil.ErrorWithStderr(err, "npm run build")
+			return nil, errutil.ErrorWithStderr(err, "npx tsc --skipLibCheck")
 		}
 
 		// "build" in SDKs isn't setup to copy the package.json to ./bin/
