@@ -49,7 +49,7 @@ import (
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
 	MinimumValidSDKVersion   string = "^3.142.0"
-	MinimumTypescriptVersion string = "^4.3.5"
+	MinimumTypescriptVersion string = "^4.7.0"
 	MinimumNodeTypesVersion  string = "^18"
 )
 
@@ -2622,8 +2622,8 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
     "compilerOptions": {
         "outDir": "bin",
         "target": "ES2020",
-        "module": "commonjs",
-        "moduleResolution": "node",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
         "declaration": true,
         "sourceMap": true,
         "stripInternal": true,
