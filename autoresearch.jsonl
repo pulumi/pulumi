@@ -16,3 +16,4 @@
 {"commit":"","metric":192080,"metrics":{"tsc_ms":192080},"status":"keep","description":"Experiment 14: tsc --skipLibCheck — 192s (66.8% improvement from baseline 578s)","timestamp":1774519233739,"segment":0,"confidence":null}
 {"commit":"d5a7ab11fc","metric":520745,"metrics":{"total_ms":520745,"tsc_ms":192080},"status":"keep","description":"Experiment 15: All 3 variants with all optimizations including --skipLibCheck — 520s total","timestamp":1774519966643,"segment":0,"confidence":null}
 {"commit":"","metric":180898,"metrics":{"tsc_ms":180898},"status":"keep","description":"Experiment 16: npm --no-optional — 181s (68.7% from baseline)","timestamp":1774520440587,"segment":0,"confidence":null}
+{"commit":"","metric":184288,"metrics":{"tsc_ms":184288},"status":"discard","description":"Experiment 17: --ignore-scripts — no improvement (184s vs 181s, within noise)","timestamp":1774520671756,"segment":0,"confidence":null}
